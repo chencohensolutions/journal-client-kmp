@@ -1,3 +1,16 @@
 <resources>
-    <string name="app_name">MyApplication</string>
+    <string name="app_name">Journal</string>
+    <string name="server_url_hint">Server URL</string>
+    <string name="identity_none">No identity selected</string>
+    <string name="identity_selected">Identity: %s</string>
+    <string name="identity_selected_toast">Identity selected: %s</string>
+    <string name="btn_select_identity">Select identity</string>
+    <string name="btn_connect">Connect</string>
+    <string name="status_not_connected">Status: Not connected</string>
+    <string name="status_connecting">Connecting…\nTime: %1$s\nTrusting: %2$s</string>
+    <string name="status_connected">Status: Connected successfully!</string>
+    <string name="status_failed_http">Status: Failed (HTTP %d)</string>
+    <string name="status_error_url">Status: Error - Please enter server URL</string>
+    <string name="status_error_identity">Error: Please select an identity first</string>
+    <string name="status_error_prefix">Status: Error - %s</string>
 </resources>

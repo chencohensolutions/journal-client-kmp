@@ -1,35 +1,35 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Journal client (Kotlin Multiplatform)
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+Android and iOS clients for journal-server-go. Only the logic is shared; each platform has a native UI.
 
-* [/sharedLogic](./sharedLogic/src) is for the code that will be shared between app targets in the project.
-  The most important subfolder is [commonMain](./sharedLogic/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+| Module | Contents |
+|---|---|
+| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), GraphQL probe (Ktor), bundled server CA. Platform folders hold the mTLS client for each OS. |
+| [androidApp](./androidApp/src/main/kotlin) | Jetpack Compose UI. |
+| [iosApp](./iosApp/iosApp) | SwiftUI UI, using the `SharedLogic` framework. |
 
-* [/sharedUI](./sharedUI/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./sharedUI/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./sharedUI/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./sharedUI/src/jvmMain/kotlin)
-    folder is the appropriate location.
+## Authentication (mTLS)
 
-### Running the apps
+The server authenticates users by client certificate; the certificate CN maps to the user.
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+- **Android:** install the user's `.p12` in the system (Settings → Security → Encryption & credentials →
+  Install a certificate → VPN & app user certificate), then tap **Select identity** to pick it from the KeyChain.
+- **iOS:** tap **Import Identity (.p12)…** and pick the bundle produced by
+  `scripts/generate-user-cert.ps1` in journal-server-go (no password by default). It is stored in the app Keychain.
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+The server CA is embedded in
+[ServerCa.kt](./sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/tls/ServerCa.kt); replace it if
+the CA is regenerated. From the Android emulator, the host machine is `https://10.0.2.2:8080/graphql`.
 
-### Running tests
+## Running
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+- Android: `./gradlew :androidApp:assembleDebug`, or run `androidApp` from Android Studio.
+- iOS: open [iosApp/iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode and run. The build phase compiles
+  `sharedLogic` via Gradle.
 
-- Android tests: `./gradlew :sharedUI:testAndroidHostTest :sharedLogic:testAndroidHostTest`
-- iOS tests: `./gradlew :sharedLogic:iosSimulatorArm64Test`
+## Tests
 
----
+The shared tests in `sharedLogic/src/commonTest` run on both platforms:
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+- `./gradlew :sharedLogic:testAndroidHostTest`
+- `./gradlew :sharedLogic:iosSimulatorArm64Test`

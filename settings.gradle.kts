@@ -1,4 +1,4 @@
-rootProject.name = "MyApplication"
+rootProject.name = "Journal"
 
 pluginManagement {
     repositories {
@@ -29,4 +29,3 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":sharedLogic")
-include(":sharedUI")
