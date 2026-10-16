@@ -4,7 +4,7 @@ Android and iOS clients for journal-server-go. Only the logic is shared; each pl
 
 | Module | Contents |
 |---|---|
-| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), GraphQL probe (Ktor), bundled server CA. Platform folders hold the mTLS client for each OS. |
+| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), GraphQL via Apollo Kotlin, bundled server CA. Platform folders hold the mTLS client for each OS. |
 | [androidApp](./androidApp/src/main/kotlin) | Jetpack Compose UI. |
 | [iosApp](./iosApp/iosApp) | SwiftUI UI, using the `SharedLogic` framework. |
 
@@ -19,7 +19,19 @@ The server authenticates users by client certificate; the certificate CN maps to
 
 The server CA is embedded in
 [ServerCa.kt](./sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/tls/ServerCa.kt); replace it if
-the CA is regenerated. From the Android emulator, the host machine is `https://10.0.2.2:8080/graphql`.
+the CA is regenerated. The GraphQL endpoint is `/query`; from the Android emulator the host machine is `https://10.0.2.2:8080/query`.
+
+## GraphQL (Apollo Kotlin)
+
+- Schema: [schema.graphqls](./sharedLogic/src/commonMain/graphql/schema.graphqls), copied from
+  `journal-server-go/graph/schema/schema.graphql`. When the server schema changes, run
+  `./gradlew :sharedLogic:syncServerSchema` (add `-PjournalServerDir=<path>` if the server repo isn't a sibling
+  folder) and commit the result. Don't edit the copy by hand.
+- Operations: add `.graphql` files next to it (e.g. [Images.graphql](./sharedLogic/src/commonMain/graphql/Images.graphql)).
+  Apollo generates typed `…Query` classes in `com.chencohensolution.journal.graphql` on build
+  (or `./gradlew :sharedLogic:generateApolloSources`).
+- Apollo runs on the platform mTLS Ktor client (`apollo-engine-ktor`), so requests use the selected identity.
+- Generated models are `internal`; map them to plain models (like `JournalImage`) before exposing them to the UIs.
 
 ## Running
 

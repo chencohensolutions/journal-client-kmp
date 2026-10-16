@@ -13,4 +13,6 @@
     <string name="status_error_url">Status: Error - Please enter server URL</string>
     <string name="status_error_identity">Error: Please select an identity first</string>
     <string name="status_error_prefix">Status: Error - %s</string>
+    <string name="images_title">Images (%d)</string>
+    <string name="images_error">Could not load images: %s</string>
 </resources>

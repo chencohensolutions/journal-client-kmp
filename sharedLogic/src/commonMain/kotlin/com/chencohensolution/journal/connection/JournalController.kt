@@ -1,8 +1,11 @@
 package com.chencohensolution.journal.connection
 
+import com.chencohensolution.journal.network.ImagesResult
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
+import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.network.describe
-import com.chencohensolution.journal.network.probeGraphQlServer
+import com.chencohensolution.journal.network.fetchImages
+import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.certificateCommonName
@@ -32,10 +35,20 @@ sealed interface ConnectionStatus {
     data class Error(val message: String) : ConnectionStatus
 }
 
+data class JournalImage(
+    val id: String,
+    val title: String,
+    /** Absolute URL; fetching it requires the same mTLS identity. */
+    val url: String,
+    val description: String?,
+)
+
 data class JournalState(
     val serverUrl: String,
     val identityAlias: String?,
     val status: ConnectionStatus,
+    val images: List<JournalImage> = emptyList(),
+    val imagesError: String? = null,
 )
 
 /** Handle returned by [JournalController.observe]; call [cancel] to stop receiving updates. */
@@ -44,8 +57,8 @@ fun interface ObservationHandle {
 }
 
 /**
- * Shared screen logic: holds the server URL and selected identity, and runs the mTLS connection
- * check. Platform UIs render [state] and call the action methods; they never touch networking.
+ * Shared screen logic: holds the server URL and selected identity, connects over mTLS and loads
+ * the user's images through Apollo. Platform UIs render [state] and call the action methods; they never touch networking.
  */
 class JournalController internal constructor(
     private val settings: JournalSettings,
@@ -96,18 +109,15 @@ class JournalController internal constructor(
         setStatus(ConnectionStatus.Connecting(now(), trustedCas.map(::certificateCommonName)))
         connectJob = scope.launch {
             val result = try {
-                val client = clientFactory.create(alias, trustedCas)
-                try {
-                    probeGraphQlServer(client, url)
-                } finally {
-                    client.close()
+                createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
+                    fetchImages(apollo, url)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                ConnectionStatus.Error(e.describe())
+                ImagesResult(ConnectionStatus.Error(e.describe()))
             }
-            setStatus(result)
+            _state.update { it.copy(status = result.status, images = result.images, imagesError = result.imagesError) }
         }
     }
 

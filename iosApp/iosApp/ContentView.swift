@@ -46,6 +46,25 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
+
+                if viewModel.state.status is ConnectionStatusConnected {
+                    Section("Images (\(viewModel.state.images.count))") {
+                        if let error = viewModel.state.imagesError {
+                            Text("Could not load images: \(error)")
+                                .foregroundStyle(.red)
+                        }
+                        ForEach(viewModel.state.images, id: \.id) { image in
+                            VStack(alignment: .leading) {
+                                Text(image.title)
+                                if let description = image.description_ {
+                                    Text(description)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Journal")
             .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.pkcs12]) { result in

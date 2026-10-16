@@ -17,7 +17,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         set(value) = store.putString(KEY_IDENTITY_ALIAS, value)
 
     companion object {
-        const val DEFAULT_SERVER_URL = "https://192.168.50.2:8080/graphql"
+        const val DEFAULT_SERVER_URL = "https://192.168.50.2:8080/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
     }
