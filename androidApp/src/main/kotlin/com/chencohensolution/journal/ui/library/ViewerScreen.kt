@@ -280,15 +280,15 @@ private fun InfoPanel(
         modifier
             .fillMaxWidth()
             .heightIn(max = 600.dp)
-            .background(LibraryColors.Light, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(LibraryColors.Inverse, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column {
-            Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(formatDate(taken, "jmm"), color = LibraryColors.InkMuted, fontSize = 14.sp)
+            Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.OnInverse, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(formatDate(taken, "jmm"), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
         }
         CaptionBlock(note?.caption.orEmpty(), onEditCaption)
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
@@ -308,8 +308,8 @@ private fun InfoPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 pair.forEach { (label, value) ->
                     Column(Modifier.weight(1f)) {
-                        Text(label, color = LibraryColors.InkMuted, fontSize = 12.sp)
-                        Text(value, color = LibraryColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
+                        Text(value, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 if (pair.size == 1) Box(Modifier.weight(1f))
@@ -329,10 +329,10 @@ private fun CaptionBlock(caption: String, onEdit: () -> Unit) {
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(stringResource(R.string.library_note_title), color = LibraryColors.InkMuted, fontSize = 12.sp)
+        Text(stringResource(R.string.library_note_title), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
         Text(
             caption.ifBlank { stringResource(R.string.library_note_prompt) },
-            color = if (caption.isBlank()) LibraryColors.InkMuted else LibraryColors.Ink,
+            color = if (caption.isBlank()) LibraryColors.OnInverseMuted else LibraryColors.OnInverse,
             fontFamily = FontFamily.Serif,
             fontSize = 16.sp,
             lineHeight = 23.sp,
@@ -345,7 +345,7 @@ private fun CaptionBlock(caption: String, onEdit: () -> Unit) {
 @Composable
 private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.library_info_tags), color = LibraryColors.InkMuted, fontSize = 12.sp)
+        Text(stringResource(R.string.library_info_tags), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             tags.forEach { tag ->
                 Row(
@@ -354,9 +354,9 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
                         .padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(tag, color = LibraryColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(tag, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     IconButton(onClick = { onRemove(tag) }, modifier = Modifier.size(36.dp)) {
-                        Icon(LibraryIcons.Close, stringResource(R.string.library_remove_tag, tag), tint = LibraryColors.InkMuted, modifier = Modifier.size(14.dp))
+                        Icon(LibraryIcons.Close, stringResource(R.string.library_remove_tag, tag), tint = LibraryColors.OnInverseMuted, modifier = Modifier.size(14.dp))
                     }
                 }
             }
@@ -372,13 +372,13 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
 @Composable
 private fun GroupRow(group: GroupView, isCover: Boolean, onSetCover: () -> Unit, onRemove: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(stringResource(R.string.library_info_group), color = LibraryColors.InkMuted, fontSize = 12.sp)
-        Text(group.title ?: timeRange(group.items), color = LibraryColors.Ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.library_info_group), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
+        Text(group.title ?: timeRange(group.items), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (isCover) {
                 Text(
                     stringResource(R.string.library_is_cover),
-                    color = LibraryColors.InkMuted,
+                    color = LibraryColors.OnInverseMuted,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
@@ -399,10 +399,10 @@ private fun GroupRow(group: GroupView, isCover: Boolean, onSetCover: () -> Unit,
 @Composable
 private fun StoriesRow(memberOf: List<StoryView>, removable: StoryView?, onAdd: () -> Unit, onRemove: (StoryView) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(stringResource(R.string.library_info_stories), color = LibraryColors.InkMuted, fontSize = 12.sp)
+        Text(stringResource(R.string.library_info_stories), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
         Text(
             if (memberOf.isEmpty()) stringResource(R.string.library_info_no_stories) else memberOf.joinToString { it.title },
-            color = LibraryColors.Ink,
+            color = LibraryColors.OnInverse,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -438,7 +438,7 @@ private fun BackupCard(status: BackupStatus) {
             Box(Modifier.size(28.dp).background(LibraryColors.Accent.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
                 BackupBadge(status, 22.dp)
             }
-            Text(backupLabel(status), color = LibraryColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(backupLabel(status), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (status is BackupStatus.Uploading) {
                 Text("${(status.progress * 100).roundToInt()}%", color = LibraryColors.Accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }

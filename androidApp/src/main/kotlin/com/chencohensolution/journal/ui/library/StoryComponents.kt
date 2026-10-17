@@ -38,6 +38,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -67,7 +68,7 @@ internal fun dateRange(start: LocalDay, end: LocalDay): String {
     // An end at midnight counts as the day before, so end on the midnight after the last day.
     return DateUtils.formatDateRange(
         context,
-        java.util.Formatter(StringBuilder(), java.util.Locale.getDefault()),
+        java.util.Formatter(StringBuilder(), LocalLocale.current.platformLocale),
         start.toEpochDay() * dayMillis,
         (end.toEpochDay() + 1) * dayMillis,
         flags,
@@ -95,12 +96,12 @@ internal fun DateBlock(day: LocalDay, modifier: Modifier = Modifier) {
     Column(
         modifier
             .width(52.dp)
-            .background(LibraryColors.Light.copy(alpha = 0.94f), RoundedCornerShape(12.dp))
+            .background(LibraryColors.Paper.copy(alpha = 0.94f), RoundedCornerShape(12.dp))
             .padding(top = 6.dp, bottom = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(formatDate(date, "MMM").uppercase(), color = LibraryColors.Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
-        Text(date.dayOfMonth.toString(), color = LibraryColors.Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp)
+        Text(date.dayOfMonth.toString(), color = LibraryColors.PaperInk, fontSize = 24.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp)
     }
 }
 
@@ -137,7 +138,7 @@ internal fun StoryCard(story: StoryView, onOpen: () -> Unit) {
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(LibraryColors.BottomFade)
+                .background(LibraryColors.PhotoFade)
                 .padding(start = 16.dp, end = 16.dp, top = 56.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Bottom,
@@ -146,13 +147,13 @@ internal fun StoryCard(story: StoryView, onOpen: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     story.title,
-                    color = Color.White,
+                    color = LibraryColors.PhotoText,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 28.sp,
                     modifier = Modifier.semantics { heading() },
                 )
-                Text(storySummary(story), color = Color(0xFFE3E8E6), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Text(storySummary(story), color = LibraryColors.PhotoTextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

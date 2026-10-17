@@ -46,7 +46,6 @@ struct StoryPageView: View {
         .navigationTitle(selection.map { "\($0.count) selected" } ?? "")
         .navigationBarBackButtonHidden(selection != nil)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar { toolbar }
         .safeAreaInset(edge: .bottom) { bottomBar }
         .alert("Rename story", isPresented: $renaming) {
@@ -86,7 +85,7 @@ struct StoryPageView: View {
                         Label("Delete story", systemImage: "trash")
                     }
                 } label: {
-                    Image(systemName: "ellipsis").foregroundStyle(.white)
+                    Image(systemName: "ellipsis").foregroundStyle(LibraryColors.onBackground)
                 }
                 .accessibilityLabel("More")
             }
@@ -106,8 +105,8 @@ struct StoryPageView: View {
                     Label("Group", systemImage: "square.on.square")
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 52)
-                        .foregroundStyle(LibraryColors.ink)
-                        .background(LibraryColors.light.opacity(selection.count >= 2 ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundStyle(LibraryColors.onInverse)
+                        .background(LibraryColors.inverse.opacity(selection.count >= 2 ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(selection.count < 2)
                 Button {
@@ -134,10 +133,10 @@ struct StoryPageView: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(LibraryColors.accent)
             }
-            .foregroundStyle(LibraryColors.ink)
+            .foregroundStyle(LibraryColors.onInverse)
             .padding(.horizontal, 16)
             .frame(height: 52)
-            .background(LibraryColors.light, in: RoundedRectangle(cornerRadius: 14))
+            .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 14))
             .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
@@ -172,7 +171,7 @@ struct StoryPageView: View {
                         }
                     }
                     if story.missingCount > 0 {
-                        note("\(story.missingCount) photos of this story aren't on this device.")
+                        note("\(Int(story.missingCount)) photos of this story aren't on this device.")
                     }
                     if story.items.isEmpty {
                         note("None of this story's photos are on this device.")
@@ -206,10 +205,10 @@ struct StoryPageView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(story.title)
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LibraryColors.onBackground)
                     .accessibilityAddTraits(.isHeader)
                 let groups = story.groups.count
-                Text(groups > 0 ? "\(story.summary) · \(groups) \(groups == 1 ? "group" : "groups")" : story.summary)
+                Text(groups > 0 ? "\(story.summary) · \(String(localized: "\(groups) groups"))" : story.summary)
                     .font(.subheadline)
                     .foregroundStyle(LibraryColors.muted)
             }
@@ -225,10 +224,10 @@ struct StoryPageView: View {
                     Button { actions.addDay(day.day) } label: {
                         Label("Add \(day.day.label) · \(day.items.count) photos", systemImage: "plus")
                             .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LibraryColors.onBackground)
                             .padding(.horizontal, 14)
                             .frame(height: 40)
-                            .overlay(Capsule().stroke(.white.opacity(0.28)))
+                            .overlay(Capsule().stroke(LibraryColors.onBackground.opacity(0.28)))
                     }
                 }
             }
@@ -242,10 +241,10 @@ struct StoryPageView: View {
     private func label(for day: StoryDay, in story: StoryView) -> String {
         guard story.isShortSpan, story.dayCount > 1, let first = story.firstDay else { return day.day.label }
         let number = day.day.toEpochDay() - first.toEpochDay() + 1
-        return "Day \(number) · \(day.day.label)"
+        return String(localized: "Day \(number) · \(day.day.label)")
     }
 
-    private func note(_ text: String) -> some View {
+    private func note(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.subheadline)
             .foregroundStyle(LibraryColors.muted)

@@ -45,7 +45,7 @@ struct JournalHomeView: View {
                         Message(text: "Couldn't read your photos: \(error)")
                     }
                     if library.loading && library.days.isEmpty {
-                        ProgressView().tint(.white).frame(maxWidth: .infinity).padding(48)
+                        ProgressView().tint(LibraryColors.onBackground).frame(maxWidth: .infinity).padding(48)
                     } else if canRead && library.days.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
                     }
@@ -84,7 +84,7 @@ struct JournalHomeView: View {
         .overlay(alignment: .bottom) {
             BottomControls(notBackedUp: Int(library.notBackedUpCount)) {
                 SegmentedBar(
-                    options: [(Tab.journal, "Journal"), (Tab.unsorted, "Unsorted \(stories.unsortedCount)")],
+                    options: [(Tab.journal, "Journal"), (Tab.unsorted, "Unsorted \(Int(stories.unsortedCount))")],
                     selection: $tab
                 )
             }
@@ -102,14 +102,14 @@ struct JournalHomeView: View {
         HStack {
             Text("Journal")
                 .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(LibraryColors.onBackground)
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             if health == .offline { OfflinePill() }
             Button(action: actions.openTags) {
                 Image(systemName: "tag")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LibraryColors.onBackground)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Tags")
@@ -120,7 +120,7 @@ struct JournalHomeView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LibraryColors.onBackground)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("More")
@@ -144,7 +144,7 @@ private struct UnsortedDay: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(day.day.label)
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LibraryColors.onBackground)
                         .accessibilityAddTraits(.isHeader)
                     Text("\(day.items.count) unsorted")
                         .font(.footnote)
@@ -154,10 +154,10 @@ private struct UnsortedDay: View {
                 Button(action: onNewStory) {
                     Label("Story", systemImage: "plus")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(LibraryColors.onBackground)
                         .padding(.horizontal, 12)
                         .frame(height: 34)
-                        .overlay(Capsule().stroke(.white.opacity(0.28)))
+                        .overlay(Capsule().stroke(LibraryColors.onBackground.opacity(0.28)))
                 }
                 .accessibilityLabel("New story from \(day.day.label)")
             }
@@ -189,7 +189,7 @@ private struct RegisterAgainCard: View {
             Text("This device isn't registered with the server").font(.subheadline.weight(.semibold))
             Text("The server doesn't accept this device's certificate anymore. Register it again with a new enrollment code.")
                 .font(.subheadline)
-                .foregroundStyle(LibraryColors.inkMuted)
+                .foregroundStyle(LibraryColors.onInverseMuted)
             Button("Register again", action: onRegister)
                 .buttonStyle(.borderedProminent)
                 .tint(LibraryColors.error)
@@ -205,7 +205,7 @@ private struct NoAccessCard: View {
             Text("Journal can't see your photos").font(.subheadline.weight(.semibold))
             Text("Allow access to see your photos and videos here.")
                 .font(.subheadline)
-                .foregroundStyle(LibraryColors.inkMuted)
+                .foregroundStyle(LibraryColors.onInverseMuted)
             Button("Allow access", action: onAllow)
                 .buttonStyle(.borderedProminent)
                 .tint(LibraryColors.accent)
@@ -221,7 +221,7 @@ private struct LimitedBanner: View {
         HStack {
             Text("Journal can see \(count) photos and videos")
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(LibraryColors.onBackground)
             Spacer()
             Button("Change") { presentLimitedPicker() }
                 .font(.subheadline.weight(.semibold))
@@ -246,17 +246,17 @@ private struct Card<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) { content }
-            .foregroundStyle(LibraryColors.ink)
+            .foregroundStyle(LibraryColors.onInverse)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(LibraryColors.light, in: RoundedRectangle(cornerRadius: 16))
+            .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
     }
 }
 
 private struct Message: View {
-    let text: String
+    let text: LocalizedStringKey
 
     var body: some View {
         Text(text)

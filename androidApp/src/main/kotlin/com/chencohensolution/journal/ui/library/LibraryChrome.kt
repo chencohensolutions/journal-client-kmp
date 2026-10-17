@@ -48,14 +48,14 @@ internal fun OfflinePill(modifier: Modifier = Modifier) {
 internal fun BackupSummaryPill(text: String, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .background(LibraryColors.Light.copy(alpha = 0.16f), RoundedCornerShape(50))
+            .background(LibraryColors.OnBackground.copy(alpha = 0.12f), RoundedCornerShape(50))
             .height(36.dp)
             .padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(LibraryIcons.CloudOff, null, tint = Color.White, modifier = Modifier.size(16.dp))
-        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
+        Text(text, color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -75,8 +75,8 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
                 onClick = { onSelect(value) },
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.textButtonColors(
-                    containerColor = if (isSelected) LibraryColors.Light else Color.Transparent,
-                    contentColor = if (isSelected) LibraryColors.Ink else Color.White,
+                    containerColor = if (isSelected) LibraryColors.Inverse else Color.Transparent,
+                    contentColor = if (isSelected) LibraryColors.OnInverse else LibraryColors.OnBackground,
                 ),
                 modifier = Modifier
                     .height(40.dp)
@@ -108,6 +108,6 @@ internal fun BottomControls(summary: String?, modifier: Modifier = Modifier, bar
 @Composable
 internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
     Box(modifier.background(LibraryColors.LabelFade).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 24.dp)) {
-        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = LibraryColors.PhotoText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }

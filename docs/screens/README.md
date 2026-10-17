@@ -71,7 +71,9 @@ length is unknown.
 
 ## Look
 
-The library screens are always dark, like a photo app, whatever the system theme; the colors are in
-`LibraryColors` ([Android](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/LibraryStyle.kt),
-[iOS](../../iosApp/iosApp/LibraryStyle.swift)). Photos run edge to edge, under the status bar; controls float on
-top with a dark fade behind them. The photo access screen follows the system theme like the enrollment wizard.
+The library screens follow the system light or dark theme, like the enrollment wizard and the photo access screen;
+the photo viewer is always dark, like a photo app. The colors are in `LibraryColors`
+([Android](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/LibraryStyle.kt),
+[iOS](../../iosApp/iosApp/LibraryStyle.swift)): page colors change with the theme, while anything written over a
+photo (labels, badges, the calendar block) is white or light on a dark scrim in both. Photos run edge to edge, under
+the status bar; controls float on top with a fade of the page color behind them.

@@ -16,8 +16,8 @@ extension StoryView {
     /// "Oct 8 – 16 · 9 days · 142 photos". The day count shows only for trip-like stories of more than one day.
     var summary: String {
         var parts = [dateRange].compactMap { $0 }
-        if isShortSpan && dayCount > 1 { parts.append("\(dayCount) days") }
-        parts.append(itemCount == 1 ? "1 photo" : "\(itemCount) photos")
+        if isShortSpan && dayCount > 1 { parts.append(String(localized: "\(Int(dayCount)) days")) }
+        parts.append(String(localized: "\(Int(itemCount)) photos"))
         return parts.joined(separator: " · ")
     }
 }
@@ -34,11 +34,11 @@ struct DateBlock: View {
                 .foregroundStyle(LibraryColors.accent)
             Text("\(day.day)")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(LibraryColors.ink)
+                .foregroundStyle(LibraryColors.paperInk)
         }
         .frame(width: 52)
         .padding(.vertical, 6)
-        .background(LibraryColors.light.opacity(0.94), in: RoundedRectangle(cornerRadius: 12))
+        .background(LibraryColors.paper.opacity(0.94), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityHidden(true)
     }
 }
@@ -52,12 +52,12 @@ struct StoryCardView: View {
         CoverMosaic(items: Array(story.items.prefix(5)), width: width)
             .overlay(alignment: .topTrailing) {
                 if story.notBackedUpCount > 0 {
-                    Label("\(story.notBackedUpCount) not backed up", systemImage: "icloud.slash")
+                    Label("\(Int(story.notBackedUpCount)) not backed up", systemImage: "icloud.slash")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4)
-                        .background(LibraryColors.background.opacity(0.7), in: Capsule())
+                        .background(LibraryColors.pillScrim, in: Capsule())
                         .padding(10)
                 }
             }
@@ -70,14 +70,14 @@ struct StoryCardView: View {
                             .foregroundStyle(.white)
                         Text(story.summary)
                             .font(.footnote.weight(.medium))
-                            .foregroundStyle(Color(white: 0.9))
+                            .foregroundStyle(LibraryColors.photoTextMuted)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 56)
                 .padding(.bottom, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LibraryColors.bottomFade)
+                .background(LibraryColors.photoFade)
             }
             .contentShape(Rectangle())
             .accessibilityElement(children: .combine)

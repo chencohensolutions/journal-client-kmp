@@ -1,11 +1,16 @@
 package com.chencohensolution.journal
 
 import android.app.Application
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +48,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             JournalTheme {
+                // Android 17 blocks connections to local network addresses (the journal server) without this.
+                val localNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= 37 && checkSelfPermission(LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                        localNetwork.launch(LOCAL_NETWORK)
+                    }
+                }
                 // Without an identity the device has to be registered first.
                 var showWizard by rememberSaveable { mutableStateOf(viewModel.controller.currentState.identityAlias == null) }
                 if (showWizard) {
@@ -68,3 +80,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/** `Manifest.permission.ACCESS_LOCAL_NETWORK`, API 37. */
+private const val LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"

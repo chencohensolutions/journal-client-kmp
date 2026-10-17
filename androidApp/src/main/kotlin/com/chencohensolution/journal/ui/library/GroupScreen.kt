@@ -95,7 +95,7 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
                     Text(story.title.uppercase(), color = LibraryColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.7.sp)
                     Text(
                         name,
-                        color = Color.White,
+                        color = LibraryColors.OnBackground,
                         fontSize = 28.sp,
                         lineHeight = 32.sp,
                         fontWeight = FontWeight.Bold,
@@ -126,12 +126,12 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
                             if (item.id == group.cover.id) {
                                 Text(
                                     stringResource(R.string.library_cover),
-                                    color = LibraryColors.Ink,
+                                    color = LibraryColors.PaperInk,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier
                                         .padding(6.dp)
-                                        .background(LibraryColors.Light, RoundedCornerShape(50))
+                                        .background(LibraryColors.Paper, RoundedCornerShape(50))
                                         .padding(horizontal = 8.dp, vertical = 3.dp),
                                 )
                             }
@@ -152,12 +152,12 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = actions.back) {
-                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
             }
             Box(Modifier.weight(1f))
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = Color.White)
+                    Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(

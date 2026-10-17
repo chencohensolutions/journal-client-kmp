@@ -7,7 +7,7 @@ before the unsorted photos.
 
 ## Layout
 
-Photos fill the screen on a dark background; the controls float on top.
+Photos fill the screen on the page background (light or dark with the system); the controls float on top.
 
 - **Top bar:** "Journal", the **Offline** pill (only when the server can't be reached), a **Tags** button
   ([tags.md](tags.md)) and a **⋯** menu with **All photos**.

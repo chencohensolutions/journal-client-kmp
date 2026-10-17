@@ -38,7 +38,7 @@ internal class FileStoryStore(private val fileSystem: FileSystem, private val ro
     }
 
     override fun save(story: Story) {
-        val dir = storiesDir / story.id
+        val dir = dirOf(story.id)
         fileSystem.createDirectories(dir)
         writeAtomically(dir / STORY_FILE, json.encodeToString(StoryFile.of(story)))
         writeAtomically(dir / TEXT_FILE, textOf(story).toMarkdown(story.title))
@@ -46,10 +46,19 @@ internal class FileStoryStore(private val fileSystem: FileSystem, private val ro
 
     override fun delete(id: String) {
         try {
-            fileSystem.deleteRecursively(storiesDir / id)
+            fileSystem.deleteRecursively(dirOf(id))
         } catch (e: IOException) {
             // Already gone.
         }
+    }
+
+    /**
+     * The story's folder. Ids come from files and routes, so they are checked first: only a plain name can reach
+     * the file system, never "..", "/" or an empty name that would point at the stories folder itself or above it.
+     */
+    private fun dirOf(id: String): Path {
+        require(SAFE_ID.matches(id) && ".." !in id) { "Not a story id: $id" }
+        return storiesDir / id
     }
 
     /** Before stories were called events they lived in `events/<id>/event.json`; their old dates are ignored. */
@@ -75,6 +84,9 @@ internal class FileStoryStore(private val fileSystem: FileSystem, private val ro
     private companion object {
         const val STORY_FILE = "story.json"
         const val TEXT_FILE = "story.md"
+
+        /** Timestamp ids ("2026-10-17T12-52-22.257Z") and the UUIDs of older stories. */
+        val SAFE_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
         val json = Json {
             prettyPrint = true
             ignoreUnknownKeys = true

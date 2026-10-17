@@ -158,3 +158,10 @@ tasks.register<Copy>("syncServerSchema") {
     }
     into(layout.projectDirectory.dir("src/commonMain/graphql"))
 }
+
+// PhotoSafetyTest scans the apps' sources as well, so a change there must run the host tests again.
+tasks.matching { it.name == "testAndroidHostTest" }.configureEach {
+    listOf("androidApp/src", "iosApp/iosApp").forEach { dir ->
+        inputs.dir(rootProject.file(dir)).withPropertyName("scanned-$dir").withPathSensitivity(PathSensitivity.RELATIVE)
+    }
+}

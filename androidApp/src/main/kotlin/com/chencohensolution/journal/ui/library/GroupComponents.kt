@@ -185,16 +185,16 @@ internal fun GroupTile(group: GroupView, modifier: Modifier = Modifier, large: B
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .background(LibraryColors.BottomFade)
+                    .background(LibraryColors.PhotoFade)
                     .padding(start = 10.dp, end = 8.dp, top = 32.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 Column(Modifier.weight(1f)) {
                     group.title?.let {
-                        Text(it, color = Color.White, fontSize = if (large) 17.sp else 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                        Text(it, color = LibraryColors.PhotoText, fontSize = if (large) 17.sp else 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                     }
                     if (large || group.title == null) {
-                        Text(timeRange(group.items), color = Color(0xFFE3E8E6), fontSize = 12.sp)
+                        Text(timeRange(group.items), color = LibraryColors.PhotoTextMuted, fontSize = 12.sp)
                     }
                 }
                 StackCount(group.itemCount)
@@ -212,8 +212,8 @@ private fun StackCount(count: Int) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(13.dp))
-        Text(count.toString(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
+        Text(count.toString(), color = LibraryColors.PhotoText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -248,7 +248,7 @@ internal fun BurstSuggestionCard(suggestion: BurstSuggestion, onGroup: () -> Uni
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     pluralStringResource(R.plurals.library_burst_title, suggestion.count, suggestion.count),
-                    color = Color.White,
+                    color = LibraryColors.OnBackground,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -264,14 +264,14 @@ internal fun BurstSuggestionCard(suggestion: BurstSuggestion, onGroup: () -> Uni
             Button(
                 onClick = onGroup,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Light, contentColor = LibraryColors.Ink),
+                colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
                 modifier = Modifier.weight(1f).height(44.dp),
             ) { Text(stringResource(R.string.library_burst_group), fontWeight = FontWeight.Bold) }
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.weight(1f).height(44.dp),
-            ) { Text(stringResource(R.string.library_burst_not_now), color = Color.White) }
+            ) { Text(stringResource(R.string.library_burst_not_now), color = LibraryColors.OnBackground) }
         }
     }
 }
@@ -289,7 +289,7 @@ internal fun WritingBlock(text: String, emptyPrompt: String, onEdit: () -> Unit)
     ) {
         Text(
             text.ifBlank { emptyPrompt },
-            color = if (text.isBlank()) LibraryColors.Muted else Color(0xFFE8ECEA),
+            color = if (text.isBlank()) LibraryColors.Muted else LibraryColors.OnBackground,
             fontFamily = FontFamily.Serif,
             fontSize = 17.sp,
             lineHeight = 25.sp,
@@ -298,8 +298,8 @@ internal fun WritingBlock(text: String, emptyPrompt: String, onEdit: () -> Unit)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.library_writing_saved_in), color = LibraryColors.Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
             TextButton(onClick = onEdit) {
-                Icon(LibraryIcons.Edit, null, tint = LibraryColors.Light, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.library_writing_edit), color = LibraryColors.Light, modifier = Modifier.padding(start = 6.dp))
+                Icon(LibraryIcons.Edit, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
+                Text(stringResource(R.string.library_writing_edit), color = LibraryColors.OnBackground, modifier = Modifier.padding(start = 6.dp))
             }
         }
     }
@@ -315,8 +315,8 @@ internal fun WritingEditor(title: String, initial: String, onSave: (String) -> U
         Surface(Modifier.fillMaxSize(), color = LibraryColors.Background) {
             Column(Modifier.systemBarsPadding().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel), color = Color.White) }
-                    Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
+                    Text(title, color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
                     TextButton(onClick = { onSave(text) }) {
                         Text(stringResource(R.string.library_save), color = LibraryColors.Warning, fontWeight = FontWeight.Bold)
                     }
@@ -325,7 +325,7 @@ internal fun WritingEditor(title: String, initial: String, onSave: (String) -> U
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text(stringResource(R.string.library_writing_placeholder)) },
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontFamily = FontFamily.Serif, fontSize = 18.sp, lineHeight = 27.sp),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 18.sp, lineHeight = 27.sp),
                     modifier = Modifier.fillMaxSize().padding(16.dp).focusRequester(focus),
                 )
             }

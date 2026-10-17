@@ -127,7 +127,7 @@ private struct SelectionOverlay: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if selected { Rectangle().stroke(LibraryColors.light, lineWidth: 3) }
+            if selected { Rectangle().stroke(.white, lineWidth: 3) }
             ZStack {
                 Circle().fill(selected ? LibraryColors.accent : LibraryColors.badgeScrim)
                 Circle().stroke(.white, lineWidth: 2)
@@ -167,20 +167,20 @@ struct GroupTileView: View {
                             .font(.caption.weight(.bold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(LibraryColors.background.opacity(0.7), in: Capsule())
+                            .background(LibraryColors.pillScrim, in: Capsule())
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.top, 32)
                     .padding(.bottom, 8)
-                    .background(LibraryColors.bottomFade)
+                    .background(LibraryColors.photoFade)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .padding(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 6))
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Group: \(group.name), \(group.itemCount) photos")
+        .accessibilityLabel("Group: \(group.name), \(Int(group.itemCount)) photos")
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -206,23 +206,23 @@ struct BurstSuggestionCard: View {
                 .frame(width: 64, height: 64, alignment: .topLeading)
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(suggestion.count) similar photos").font(.subheadline.weight(.bold))
-                    Text("\(timeRange(Array(suggestion.items.prefix(1)))) · taken within \(max(suggestion.seconds, 1)) seconds")
+                    Text("\(Int(suggestion.count)) similar photos").font(.subheadline.weight(.bold))
+                    Text("\(timeRange(Array(suggestion.items.prefix(1)))) · taken within \(Int(max(suggestion.seconds, 1))) seconds")
                         .font(.footnote).foregroundStyle(LibraryColors.muted)
                     Text("Show them as one?").font(.footnote).foregroundStyle(LibraryColors.muted)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(LibraryColors.onBackground)
             }
             HStack(spacing: 8) {
                 Button(action: onGroup) {
                     Text("Group them").font(.subheadline.weight(.bold)).frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(LibraryColors.ink)
-                        .background(LibraryColors.light, in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(LibraryColors.onInverse)
+                        .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 12))
                 }
                 Button(action: onDismiss) {
                     Text("Not now").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(.white)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.28)))
+                        .foregroundStyle(LibraryColors.onBackground)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(LibraryColors.onBackground.opacity(0.28)))
                 }
             }
         }
@@ -236,22 +236,22 @@ struct BurstSuggestionCard: View {
 /// Story text (from story.md) in a journal serif, with Edit; a prompt to write when it's empty.
 struct WritingBlock: View {
     let text: String
-    let emptyPrompt: String
+    let emptyPrompt: LocalizedStringKey
     let onEdit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(text.isEmpty ? emptyPrompt : text)
+            (text.isEmpty ? Text(emptyPrompt) : Text(text))
                 .font(.system(size: 17, design: .serif))
                 .lineSpacing(4)
-                .foregroundStyle(text.isEmpty ? LibraryColors.muted : Color(white: 0.92))
+                .foregroundStyle(text.isEmpty ? LibraryColors.muted : LibraryColors.onBackground)
                 .frame(maxWidth: .infinity, alignment: .leading)
             HStack {
                 Text("Saved in story.md").font(.caption).foregroundStyle(LibraryColors.muted)
                 Spacer()
                 Button(action: onEdit) { Label("Edit", systemImage: "pencil") }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(LibraryColors.light)
+                    .foregroundStyle(LibraryColors.onBackground)
             }
         }
         .padding(.horizontal, 16)
@@ -300,6 +300,5 @@ struct WritingEditor: View {
                 }
                 .onAppear { focused = true }
         }
-        .preferredColorScheme(.dark)
     }
 }

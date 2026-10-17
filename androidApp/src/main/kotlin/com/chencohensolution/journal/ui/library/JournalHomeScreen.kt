@@ -103,7 +103,7 @@ internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, hea
             when {
                 library.loading && library.days.isEmpty() -> item(key = "loading") {
                     Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color.White)
+                        CircularProgressIndicator(color = LibraryColors.OnBackground)
                     }
                 }
                 canRead && library.days.isEmpty() && library.loadError == null ->
@@ -177,18 +177,18 @@ private fun TopBar(health: ServerHealth, onAllPhotos: () -> Unit, onTags: () -> 
     ) {
         Text(
             stringResource(R.string.library_title),
-            color = Color.White,
+            color = LibraryColors.OnBackground,
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (health == ServerHealth.OFFLINE) OfflinePill()
         IconButton(onClick = onTags) {
-            Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = Color.White)
+            Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
-                Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = Color.White)
+                Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
@@ -215,7 +215,7 @@ private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: 
             Column(Modifier.weight(1f)) {
                 Text(
                     dayLabel(day.day),
-                    color = Color.White,
+                    color = LibraryColors.OnBackground,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.semantics { heading() },
@@ -229,12 +229,12 @@ private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: 
             TextButton(
                 onClick = onNewStory,
                 shape = RoundedCornerShape(50),
-                modifier = Modifier.height(36.dp).border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(50)),
+                modifier = Modifier.height(36.dp).border(1.dp, LibraryColors.OnBackground.copy(alpha = 0.28f), RoundedCornerShape(50)),
             ) {
-                Icon(LibraryIcons.Plus, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.library_story),
-                    color = Color.White,
+                    color = LibraryColors.OnBackground,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(start = 4.dp),
@@ -261,8 +261,8 @@ private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: 
 @Composable
 private fun RegisterAgainBanner(onRegister: () -> Unit) {
     Card {
-        Text(stringResource(R.string.library_rejected_title), color = LibraryColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.library_rejected_body), color = LibraryColors.InkMuted, fontSize = 14.sp)
+        Text(stringResource(R.string.library_rejected_title), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.library_rejected_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
         Button(
             onClick = onRegister,
             colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Error, contentColor = Color.White),
@@ -275,8 +275,8 @@ private fun RegisterAgainBanner(onRegister: () -> Unit) {
 @Composable
 private fun NoAccessCard(onAllow: () -> Unit) {
     Card {
-        Text(stringResource(R.string.library_no_access_title), color = LibraryColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.library_no_access_body), color = LibraryColors.InkMuted, fontSize = 14.sp)
+        Text(stringResource(R.string.library_no_access_title), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.library_no_access_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
         Button(
             onClick = onAllow,
             colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Accent, contentColor = Color.White),
@@ -298,7 +298,7 @@ private fun LimitedBanner(count: Int, onChange: () -> Unit) {
     ) {
         Text(
             pluralStringResource(R.plurals.library_limited, count, count),
-            color = Color.White,
+            color = LibraryColors.OnBackground,
             fontSize = 14.sp,
             modifier = Modifier.weight(1f),
         )
@@ -314,7 +314,7 @@ private fun Card(content: @Composable () -> Unit) {
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Light, RoundedCornerShape(16.dp))
+            .background(LibraryColors.Inverse, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

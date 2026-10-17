@@ -76,7 +76,7 @@ struct EnrollmentView: View {
 
                     FieldLabel("Server address")
                         .padding(.top, 28)
-                    TextField("192.168.50.2:8080", text: binding(\.serverAddress, viewModel.updateServerAddress))
+                    TextField("192.168.50.150:8080", text: binding(\.serverAddress, viewModel.updateServerAddress))
                         .keyboardType(.URL)
                         .textContentType(.URL)
                         .textInputAutocapitalization(.never)
@@ -94,7 +94,7 @@ struct EnrollmentView: View {
                         .onSubmit(viewModel.checkCode)
                         .fieldStyle(isError: codeError != nil)
                         .disabled(step.checking)
-                    Text(codeError.map(errorMessage) ?? "8 letters and digits. Works once, expires 10 minutes after it was created.")
+                    Text(codeError.map(errorMessage) ?? String(localized: "8 letters and digits. Works once, expires 10 minutes after it was created."))
                         .font(.footnote)
                         .foregroundStyle(codeError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
                         .padding(.top, 6)
@@ -122,7 +122,7 @@ struct EnrollmentView: View {
                                   detail: "Verified by journal-server-ca", highlight: true)
                         Divider().padding(.leading, 72)
                         DetailRow(systemName: "person", label: "Account", value: step.user,
-                                  detail: "Code \(viewModel.state.code.uppercased()) · expires in \(step.minutesLeft) min",
+                                  detail: "Code \(viewModel.state.code.uppercased()) · expires in \(Int(step.minutesLeft)) min",
                                   highlight: false)
                     }
                     .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
@@ -156,7 +156,7 @@ struct EnrollmentView: View {
     }
 
     private func registering(_ step: EnrollmentStepRegistering) -> some View {
-        let items: [(String, String)] = [
+        let items: [(LocalizedStringKey, LocalizedStringKey)] = [
             ("Create key in secure hardware", "EC P-256 · non-exportable"),
             ("Send certificate request", "Signed by the new key, with your enrollment code"),
             ("Save certificate", "Issued by journal-server-ca"),
@@ -237,14 +237,14 @@ struct EnrollmentView: View {
                         .font(.title.weight(.semibold))
                         .padding(.top, 28)
                     Text(invalidCode
-                         ? "The server rejected \(viewModel.state.code.uppercased()). It may be mistyped, expired or already used. Each code works once, for 10 minutes."
+                         ? String(localized: "The server rejected \(viewModel.state.code.uppercased()). It may be mistyped, expired or already used. Each code works once, for 10 minutes.")
                          : errorMessage(step.error))
                         .foregroundStyle(.secondary)
                         .padding(.top, 12)
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Create a new code on the server")
                             .font(.subheadline.weight(.semibold))
-                        Text("$ journal-server enroll-code")
+                        Text(verbatim: "$ journal-server enroll-code")
                             .font(.system(.subheadline, design: .monospaced))
                             .foregroundStyle(Color(red: 0.86, green: 0.9, blue: 0.87))
                             .padding(.horizontal, 12)
@@ -281,25 +281,25 @@ struct EnrollmentView: View {
 
     private func keyLabel(_ protection: KeyProtection) -> String {
         switch protection {
-        case .secureEnclave: return "Secure Enclave"
-        case .strongbox: return "StrongBox security chip"
-        case .tee: return "Secure hardware (TEE)"
-        default: return "Software (Simulator)"
+        case .secureEnclave: return String(localized: "Secure Enclave")
+        case .strongbox: return String(localized: "StrongBox security chip")
+        case .tee: return String(localized: "Secure hardware (TEE)")
+        default: return String(localized: "Software (Simulator)")
         }
     }
 
     private func errorMessage(_ error: EnrollmentError) -> String {
         switch error {
-        case is EnrollmentErrorMissingServerAddress: return "Enter the server address."
-        case is EnrollmentErrorMissingCode: return "Enter the enrollment code."
-        case is EnrollmentErrorInvalidCode: return "This code is wrong, expired or already used."
-        case is EnrollmentErrorRateLimited: return "Too many wrong codes. Wait a minute and try again."
-        case is EnrollmentErrorRequestRejected: return "The server could not process this device's certificate request."
-        case let error as EnrollmentErrorUnreachable: return "Could not reach the server: \(error.message)"
-        case let error as EnrollmentErrorKeyStoreFailed: return "The Keychain failed: \(error.message)"
+        case is EnrollmentErrorMissingServerAddress: return String(localized: "Enter the server address.")
+        case is EnrollmentErrorMissingCode: return String(localized: "Enter the enrollment code.")
+        case is EnrollmentErrorInvalidCode: return String(localized: "This code is wrong, expired or already used.")
+        case is EnrollmentErrorRateLimited: return String(localized: "Too many wrong codes. Wait a minute and try again.")
+        case is EnrollmentErrorRequestRejected: return String(localized: "The server could not process this device's certificate request.")
+        case let error as EnrollmentErrorUnreachable: return String(localized: "Could not reach the server: \(error.message)")
+        case let error as EnrollmentErrorKeyStoreFailed: return String(localized: "The Keychain failed: \(error.message)")
         case let error as EnrollmentErrorConnectionTestFailed:
-            return "The certificate was issued, but signing in with it failed: \(error.message)"
-        default: return "Something went wrong."
+            return String(localized: "The certificate was issued, but signing in with it failed: \(error.message)")
+        default: return String(localized: "Something went wrong.")
         }
     }
 }
@@ -308,7 +308,7 @@ struct EnrollmentView: View {
 
 private struct WizardHeader: View {
     let step: Int
-    let label: String
+    let label: LocalizedStringKey
     let onBack: (() -> Void)?
 
     var body: some View {
@@ -322,7 +322,7 @@ private struct WizardHeader: View {
                     }
                     .accessibilityLabel("Back")
                 }
-                Text("Step \(step) of 3 · \(label)")
+                Text("Step \(step) of 3 · \(Text(label))")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -353,7 +353,7 @@ private struct BottomActions<Content: View>: View {
 }
 
 private struct PrimaryButton: View {
-    let title: String
+    let title: LocalizedStringKey
     var loading = false
     let action: () -> Void
 
@@ -389,8 +389,8 @@ private struct Badge: View {
 
 private struct NumberedItem: View {
     let number: Int
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -407,8 +407,8 @@ private struct NumberedItem: View {
 }
 
 private struct FieldLabel: View {
-    let text: String
-    init(_ text: String) { self.text = text }
+    let text: LocalizedStringKey
+    init(_ text: LocalizedStringKey) { self.text = text }
 
     var body: some View {
         Text(text).font(.subheadline.weight(.semibold)).padding(.bottom, 6)
@@ -417,9 +417,9 @@ private struct FieldLabel: View {
 
 private struct DetailRow: View {
     let systemName: String
-    let label: String
+    let label: LocalizedStringKey
     let value: String
-    let detail: String
+    let detail: LocalizedStringKey
     let highlight: Bool
 
     var body: some View {
@@ -439,7 +439,7 @@ private struct DetailRow: View {
 }
 
 private struct SummaryRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
     var isLast = false
 
@@ -460,8 +460,8 @@ private struct SummaryRow: View {
 private struct ProgressRow: View {
     enum State { case done, active, pending }
 
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
     let state: State
     let isLast: Bool
 

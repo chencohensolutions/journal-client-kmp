@@ -89,4 +89,11 @@ private fun resolveServerPath(serverUrl: String, relativePath: String): String =
         appendPathSegments(relativePath.split('/').filter { it.isNotEmpty() })
     }.buildString()
 
-internal fun Throwable.describe(): String = message ?: this::class.simpleName ?: "Unknown error"
+/**
+ * The innermost cause's message: Apollo wraps failures ("No data was found" → "Failed to execute GraphQL http network
+ * request" → the TLS or socket error), and only the last one says what went wrong.
+ */
+internal fun Throwable.describe(): String {
+    val causes = generateSequence(this) { it.cause?.takeIf { cause -> cause !== it } }.take(10).toList()
+    return causes.lastOrNull { it.message != null }?.message ?: this::class.simpleName ?: "Unknown error"
+}

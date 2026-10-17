@@ -21,8 +21,8 @@ struct TagsView: View {
                     HStack(spacing: 14) {
                         TagThumbnail(tag: tag, size: 56)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(tag.name).font(.body.weight(.semibold)).foregroundStyle(.white)
-                            Text(tag.count == 1 ? "1 photo" : "\(tag.count) photos")
+                            Text(tag.name).font(.body.weight(.semibold)).foregroundStyle(LibraryColors.onBackground)
+                            Text("\(Int(tag.count)) photos")
                                 .font(.footnote)
                                 .foregroundStyle(LibraryColors.muted)
                         }
@@ -38,7 +38,6 @@ struct TagsView: View {
         .navigationTitle("Tags")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 
@@ -55,7 +54,7 @@ struct TagView: View {
             let cell = (geometry.size.width - 4) / 3
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
-                    Text(count == 1 ? "1 photo" : "\(count) photos")
+                    Text("\(count) photos")
                         .font(.subheadline)
                         .foregroundStyle(LibraryColors.muted)
                         .padding(.horizontal, 16)
@@ -76,6 +75,5 @@ struct TagView: View {
         .navigationTitle(tag)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }

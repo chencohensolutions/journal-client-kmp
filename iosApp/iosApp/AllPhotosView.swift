@@ -34,7 +34,6 @@ struct AllPhotosView: View {
         .navigationTitle("All photos")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             if health == .offline {
                 ToolbarItem(placement: .topBarTrailing) { OfflinePill() }

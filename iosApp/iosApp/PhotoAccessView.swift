@@ -92,8 +92,8 @@ private struct PhotoStack: View {
 
 private struct Point: View {
     let systemName: String
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {

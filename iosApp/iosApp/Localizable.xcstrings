@@ -1,0 +1,2333 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "shouldTranslate" : false
+    },
+    "!" : {
+      "shouldTranslate" : false
+    },
+    "%@ · taken within %lld seconds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · taken within %#@seconds@"
+          },
+          "substitutions" : {
+            "seconds" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg second"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg seconds"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · צולמו בתוך %#@seconds@"
+          },
+          "substitutions" : {
+            "seconds" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שנייה"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שתי שניות"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg שניות"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg שניות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%d" : {
+      "shouldTranslate" : false
+    },
+    "%lld" : {
+      "shouldTranslate" : false
+    },
+    "%lld days" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "יום אחד"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "יומיים"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ימים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ימים"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld groups" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "קבוצה אחת"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי קבוצות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קבוצות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קבוצות"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld group"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld groups"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld not backed up" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת לא מגובה"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld לא מגובות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld לא מגובות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld מתוך %2$lld · %3$@"
+          }
+        }
+      }
+    },
+    "%lld photos" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos of this story aren't on this device." : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת מהסיפור הזה לא נמצאת במכשיר."
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות מהסיפור הזה לא נמצאות במכשיר."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות מהסיפור הזה לא נמצאות במכשיר."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות מהסיפור הזה לא נמצאות במכשיר."
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo of this story isn't on this device."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos of this story aren't on this device."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld selected" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "נבחרה אחת"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld נבחרו"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld נבחרו"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld similar photos" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה דומה אחת"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות דומות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות דומות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות דומות"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld similar photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld similar photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld stories · closest in time first" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "סיפור אחד · הקרובים בזמן קודם"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שני סיפורים · הקרובים בזמן קודם"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld סיפורים · הקרובים בזמן קודם"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld סיפורים · הקרובים בזמן קודם"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld story · closest in time first"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld stories · closest in time first"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unsorted" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת לא ממוינת"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld לא ממוינות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld לא ממוינות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld · Open" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld · פתיחה"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+      "shouldTranslate" : false
+    },
+    "192.168.50.150:8080" : {
+      "shouldTranslate" : false
+    },
+    "8 letters and digits. Works once, expires 10 minutes after it was created." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "8 אותיות וספרות. עובד פעם אחת, ותוקפו פג 10 דקות אחרי שנוצר."
+          }
+        }
+      }
+    },
+    "A new key will be created in this iPhone's Secure Enclave. It can't be copied, exported or backed up." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח חדש ייווצר ב-Secure Enclave של האייפון הזה. אי אפשר להעתיק, לייצא או לגבות אותו."
+          }
+        }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חשבון"
+          }
+        }
+      }
+    },
+    "Add %@ · %lld photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add %1$@ · %#@photos@"
+          },
+          "substitutions" : {
+            "photos" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photo"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת %1$@ · %#@photos@"
+          },
+          "substitutions" : {
+            "photos" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "תמונה אחת"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שתי תמונות"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Add to story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספה לסיפור"
+          }
+        }
+      }
+    },
+    "Added" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נוספה"
+          }
+        }
+      }
+    },
+    "All" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכול"
+          }
+        }
+      }
+    },
+    "All photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל התמונות"
+          }
+        }
+      }
+    },
+    "Allow access" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתן גישה"
+          }
+        }
+      }
+    },
+    "Allow access to see your photos and videos here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשרו גישה כדי לראות כאן את התמונות והסרטונים שלך."
+          }
+        }
+      }
+    },
+    "Along with your server's address." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יחד עם הכתובת של השרת שלך."
+          }
+        }
+      }
+    },
+    "Back" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חזרה"
+          }
+        }
+      }
+    },
+    "Backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגובה"
+          }
+        }
+      }
+    },
+    "Backed up to your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגובה בשרת שלך"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול"
+          }
+        }
+      }
+    },
+    "Cancel selection" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול הבחירה"
+          }
+        }
+      }
+    },
+    "Certificate valid until" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התעודה בתוקף עד"
+          }
+        }
+      }
+    },
+    "Change" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שינוי"
+          }
+        }
+      }
+    },
+    "Code %@ · expires in %lld min" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד %1$@ · בתוקף עוד %2$lld דק׳"
+          }
+        }
+      }
+    },
+    "Confirm" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אישור"
+          }
+        }
+      }
+    },
+    "Connect" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיבור"
+          }
+        }
+      }
+    },
+    "Connect this device to your journal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיבור המכשיר הזה ליומן שלך"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך"
+          }
+        }
+      }
+    },
+    "Could not reach the server: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין גישה לשרת: %@"
+          }
+        }
+      }
+    },
+    "Couldn't read your photos: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לקרוא את התמונות שלך: %@"
+          }
+        }
+      }
+    },
+    "Cover" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שער"
+          }
+        }
+      }
+    },
+    "Create" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצירה"
+          }
+        }
+      }
+    },
+    "Create a new code on the server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צרו קוד חדש בשרת"
+          }
+        }
+      }
+    },
+    "Create key in secure hardware" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצירת מפתח בחומרה מאובטחת"
+          }
+        }
+      }
+    },
+    "Create one on the server. It works once and expires after 10 minutes." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יוצרים אותו בשרת. הוא עובד פעם אחת ותוקפו פג אחרי 10 דקות."
+          }
+        }
+      }
+    },
+    "Create tag “%@”" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצירת התגית ״%@״"
+          }
+        }
+      }
+    },
+    "Create “%@”" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצירת ״%@״"
+          }
+        }
+      }
+    },
+    "Day %lld · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יום %1$lld · %2$@"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחיקה"
+          }
+        }
+      }
+    },
+    "Delete \"%@\"?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק את ״%@״?"
+          }
+        }
+      }
+    },
+    "Delete story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחיקת הסיפור"
+          }
+        }
+      }
+    },
+    "Details" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטים"
+          }
+        }
+      }
+    },
+    "Device" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכשיר"
+          }
+        }
+      }
+    },
+    "Device name" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם המכשיר"
+          }
+        }
+      }
+    },
+    "Dimensions" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מידות"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיום"
+          }
+        }
+      }
+    },
+    "EC P-256 · non-exportable" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EC P-256 · לא ניתן לייצוא"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עריכה"
+          }
+        }
+      }
+    },
+    "Enrollment code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד רישום"
+          }
+        }
+      }
+    },
+    "Enter a new code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הזנת קוד חדש"
+          }
+        }
+      }
+    },
+    "Enter enrollment code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הזנת קוד רישום"
+          }
+        }
+      }
+    },
+    "Enter the enrollment code." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יש להזין את קוד הרישום."
+          }
+        }
+      }
+    },
+    "Enter the server address." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יש להזין את כתובת השרת."
+          }
+        }
+      }
+    },
+    "File" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובץ"
+          }
+        }
+      }
+    },
+    "From then on, this device signs in automatically." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאותו רגע המכשיר הזה מתחבר אוטומטית."
+          }
+        }
+      }
+    },
+    "Get an enrollment code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקבלים קוד רישום"
+          }
+        }
+      }
+    },
+    "Get started" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתחילים"
+          }
+        }
+      }
+    },
+    "Group" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבוצה"
+          }
+        }
+      }
+    },
+    "Group them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבצו אותן"
+          }
+        }
+      }
+    },
+    "Group: %@, %lld photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבוצה: %1$@, %2$lld תמונות"
+          }
+        }
+      }
+    },
+    "Grouped %lld photos" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת קובצה"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות קובצו"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות קובצו"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות קובצו"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grouped %lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grouped %lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Issued by journal-server-ca" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הונפקה על ידי journal-server-ca"
+          }
+        }
+      }
+    },
+    "Japan trip, Noa's birthday…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טיול ליפן, יום ההולדת של נועה…"
+          }
+        }
+      }
+    },
+    "Journal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יומן"
+          }
+        }
+      }
+    },
+    "Journal can see %lld photos and videos" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ליומן יש גישה לתמונה או לסרטון אחד"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ליומן יש גישה ל-%lld תמונות וסרטונים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ליומן יש גישה ל-%lld תמונות וסרטונים"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Journal can see %lld photo or video"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Journal can see %lld photos and videos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Journal can't see your photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ליומן אין גישה לתמונות שלך"
+          }
+        }
+      }
+    },
+    "Journal needs access to your library to show your moments by day and back them up to your own server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היומן צריך גישה לספרייה שלך כדי להציג את הרגעים שלך לפי ימים ולגבות אותם לשרת שלך."
+          }
+        }
+      }
+    },
+    "K7QM-4XPD" : {
+      "shouldTranslate" : false
+    },
+    "Key" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפתח"
+          }
+        }
+      }
+    },
+    "Length" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אורך"
+          }
+        }
+      }
+    },
+    "More" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד"
+          }
+        }
+      }
+    },
+    "Nearby" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בקרבת מקום"
+          }
+        }
+      }
+    },
+    "New story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיפור חדש"
+          }
+        }
+      }
+    },
+    "New story from %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיפור חדש מ-%@"
+          }
+        }
+      }
+    },
+    "New story with this photo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיפור חדש עם התמונה הזו"
+          }
+        }
+      }
+    },
+    "No photos on this device have this tag." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין במכשיר הזה תמונות עם התגית הזו."
+          }
+        }
+      }
+    },
+    "No photos or videos on this device yet." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין תמונות או סרטונים במכשיר הזה."
+          }
+        }
+      }
+    },
+    "No tags yet. Open a photo, show its details and tap + Tag." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין תגיות. פתחו תמונה, הציגו את הפרטים שלה והקישו על + תגית."
+          }
+        }
+      }
+    },
+    "No tags yet. Type one above to create it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין תגיות. הקלידו תגית למעלה כדי ליצור אותה."
+          }
+        }
+      }
+    },
+    "None of this story's photos are on this device." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף תמונה מהסיפור הזה לא נמצאת במכשיר."
+          }
+        }
+      }
+    },
+    "Not backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא מגובות"
+          }
+        }
+      }
+    },
+    "Not in any story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נמצאת באף סיפור"
+          }
+        }
+      }
+    },
+    "Not now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא עכשיו"
+          }
+        }
+      }
+    },
+    "Note" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הערה"
+          }
+        }
+      }
+    },
+    "Nothing here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין כאן כלום."
+          }
+        }
+      }
+    },
+    "Nothing is uploaded until you turn backup on." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שום דבר לא מועלה עד שמפעילים גיבוי."
+          }
+        }
+      }
+    },
+    "Offline" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא מחובר"
+          }
+        }
+      }
+    },
+    "On these days" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "באותם ימים"
+          }
+        }
+      }
+    },
+    "On your server, run `journal-server enroll-code` and type the address and code it prints." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת שלך, הריצו `journal-server enroll-code` והקלידו את הכתובת והקוד שהוא מדפיס."
+          }
+        }
+      }
+    },
+    "Only on this device" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק במכשיר הזה"
+          }
+        }
+      }
+    },
+    "Open journal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פתיחת היומן"
+          }
+        }
+      }
+    },
+    "Photo, %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונה, %@"
+          }
+        }
+      }
+    },
+    "Photos and videos, grouped like a diary." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות וסרטונים, מסודרים כמו ביומן."
+          }
+        }
+      }
+    },
+    "Play video" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפעלת הסרטון"
+          }
+        }
+      }
+    },
+    "Recent" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחרונים"
+          }
+        }
+      }
+    },
+    "Recent tags" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תגיות אחרונות"
+          }
+        }
+      }
+    },
+    "Register" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רישום"
+          }
+        }
+      }
+    },
+    "Register again" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רישום מחדש"
+          }
+        }
+      }
+    },
+    "Register device" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רישום המכשיר"
+          }
+        }
+      }
+    },
+    "Register this device?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לרשום את המכשיר הזה?"
+          }
+        }
+      }
+    },
+    "Registering %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רושמים את %@"
+          }
+        }
+      }
+    },
+    "Registration failed" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הרישום נכשל"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרה"
+          }
+        }
+      }
+    },
+    "Remove from %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרה מ-%@"
+          }
+        }
+      }
+    },
+    "Remove from group" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרה מהקבוצה"
+          }
+        }
+      }
+    },
+    "Remove tag %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרת התגית %@"
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שינוי שם"
+          }
+        }
+      }
+    },
+    "Rename group" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שינוי שם הקבוצה"
+          }
+        }
+      }
+    },
+    "Rename story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שינוי שם הסיפור"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמירה"
+          }
+        }
+      }
+    },
+    "Save certificate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמירת התעודה"
+          }
+        }
+      }
+    },
+    "Saved in story.md" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשמר ב-story.md"
+          }
+        }
+      }
+    },
+    "Search stories, or name a new one" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש סיפורים, או שם לסיפור חדש"
+          }
+        }
+      }
+    },
+    "Search tags" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש תגיות"
+          }
+        }
+      }
+    },
+    "Search tags, or type a new one" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש תגיות, או תגית חדשה"
+          }
+        }
+      }
+    },
+    "Secure Enclave" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure Enclave"
+          }
+        }
+      }
+    },
+    "Secure hardware (TEE)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חומרה מאובטחת (TEE)"
+          }
+        }
+      }
+    },
+    "Send certificate request" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שליחת בקשה לתעודה"
+          }
+        }
+      }
+    },
+    "Server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שרת"
+          }
+        }
+      }
+    },
+    "Server address" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתובת השרת"
+          }
+        }
+      }
+    },
+    "Set as cover" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדרה כשער"
+          }
+        }
+      }
+    },
+    "Show them as one?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להציג אותן כאחת?"
+          }
+        }
+      }
+    },
+    "Shown on the server so you can tell devices apart and revoke one later." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוצג בשרת, כדי שתוכלו להבחין בין מכשירים ולבטל מכשיר בהמשך."
+          }
+        }
+      }
+    },
+    "Signed by the new key, with your enrollment code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חתומה במפתח החדש, עם קוד הרישום שלך"
+          }
+        }
+      }
+    },
+    "Signing in with the new certificate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחברות עם התעודה החדשה"
+          }
+        }
+      }
+    },
+    "Software (Simulator)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנה (סימולטור)"
+          }
+        }
+      }
+    },
+    "Something went wrong." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משהו השתבש."
+          }
+        }
+      }
+    },
+    "Step %lld of 3 · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שלב %1$lld מתוך 3 · %2$@"
+          }
+        }
+      }
+    },
+    "Stories" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיפורים"
+          }
+        }
+      }
+    },
+    "Story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיפור"
+          }
+        }
+      }
+    },
+    "StrongBox security chip" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שבב האבטחה StrongBox"
+          }
+        }
+      }
+    },
+    "Tag" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תגית"
+          }
+        }
+      }
+    },
+    "Tags" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תגיות"
+          }
+        }
+      }
+    },
+    "Test connection" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בדיקת החיבור"
+          }
+        }
+      }
+    },
+    "That code didn't work" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקוד הזה לא עבד"
+          }
+        }
+      }
+    },
+    "The Keychain failed: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאה ב-Keychain: %@"
+          }
+        }
+      }
+    },
+    "The certificate was issued, but signing in with it failed: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התעודה הונפקה, אבל ההתחברות איתה נכשלה: %@"
+          }
+        }
+      }
+    },
+    "The key created for this attempt was deleted from the device." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח שנוצר בניסיון הזה נמחק מהמכשיר."
+          }
+        }
+      }
+    },
+    "The server could not process this device's certificate request." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת לא הצליח לעבד את בקשת התעודה של המכשיר הזה."
+          }
+        }
+      }
+    },
+    "The server doesn't accept this device's certificate anymore. Register it again with a new enrollment code." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת כבר לא מקבל את התעודה של המכשיר הזה. רשמו אותו מחדש עם קוד רישום חדש."
+          }
+        }
+      }
+    },
+    "The server issues a certificate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת מנפיק תעודה"
+          }
+        }
+      }
+    },
+    "The server rejected %@. It may be mistyped, expired or already used. Each code works once, for 10 minutes." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת דחה את %@. ייתכן שהוקלד לא נכון, שתוקפו פג או שכבר השתמשו בו. כל קוד עובד פעם אחת, למשך 10 דקות."
+          }
+        }
+      }
+    },
+    "The story and its title go away. Its photos and videos stay on this device." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסיפור והכותרת שלו יימחקו. התמונות והסרטונים שבו יישארו במכשיר."
+          }
+        }
+      }
+    },
+    "This code is wrong, expired or already used." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקוד שגוי, פג תוקף או שכבר השתמשו בו."
+          }
+        }
+      }
+    },
+    "This device is registered as **%@**." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המכשיר הזה רשום בתור **%@**."
+          }
+        }
+      }
+    },
+    "This device isn't registered with the server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המכשיר הזה לא רשום בשרת"
+          }
+        }
+      }
+    },
+    "This is the cover" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זו תמונת השער"
+          }
+        }
+      }
+    },
+    "This takes a few seconds. Keep the app open." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה לוקח כמה שניות. השאירו את האפליקציה פתוחה."
+          }
+        }
+      }
+    },
+    "Title" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כותרת"
+          }
+        }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היום"
+          }
+        }
+      }
+    },
+    "Too many wrong codes. Wait a minute and try again." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יותר מדי קודים שגויים. חכו דקה ונסו שוב."
+          }
+        }
+      }
+    },
+    "Type the code here" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקלידים את הקוד כאן"
+          }
+        }
+      }
+    },
+    "Type to search all %lld stories" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הקלידו כדי לחפש בשני הסיפורים"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הקלידו כדי לחפש בכל %lld הסיפורים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הקלידו כדי לחפש בכל %lld הסיפורים"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Type to search your story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלידו כדי לחפש בסיפור שלך"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול"
+          }
+        }
+      }
+    },
+    "Ungroup" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פירוק הקבוצה"
+          }
+        }
+      }
+    },
+    "Unsorted %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ממוינות %lld"
+          }
+        }
+      }
+    },
+    "Upload failed: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההעלאה נכשלה: %@"
+          }
+        }
+      }
+    },
+    "Uploading to your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מועלה לשרת שלך"
+          }
+        }
+      }
+    },
+    "Verified by journal-server-ca" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאומת על ידי journal-server-ca"
+          }
+        }
+      }
+    },
+    "Video, %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון, %@"
+          }
+        }
+      }
+    },
+    "Videos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטונים"
+          }
+        }
+      }
+    },
+    "Waiting to upload" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין להעלאה"
+          }
+        }
+      }
+    },
+    "Write about this moment…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתבו על הרגע הזה…"
+          }
+        }
+      }
+    },
+    "Write about this photo…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתבו על התמונה הזו…"
+          }
+        }
+      }
+    },
+    "Write about this story…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתבו על הסיפור הזה…"
+          }
+        }
+      }
+    },
+    "Yesterday" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתמול"
+          }
+        }
+      }
+    },
+    "You can pick specific photos instead of your whole library." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשר לבחור תמונות מסוימות במקום את כל הספרייה."
+          }
+        }
+      }
+    },
+    "You're connected" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המכשיר מחובר"
+          }
+        }
+      }
+    },
+    "Your journal server only talks to devices it knows. Registering creates a private key on this iPhone. The key never leaves it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שרת היומן שלך מדבר רק עם מכשירים שהוא מכיר. הרישום יוצר מפתח פרטי באייפון הזה, והמפתח אף פעם לא יוצא ממנו."
+          }
+        }
+      }
+    },
+    "Your journal starts with your photos and videos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היומן שלך מתחיל בתמונות ובסרטונים שלך"
+          }
+        }
+      }
+    },
+    "Your moments, day by day" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הרגעים שלך, יום אחרי יום"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

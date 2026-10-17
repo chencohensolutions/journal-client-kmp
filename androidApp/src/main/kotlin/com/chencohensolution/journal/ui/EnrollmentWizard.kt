@@ -546,7 +546,7 @@ private object Icons {
 private fun ConfirmPreview() {
     JournalTheme {
         EnrollmentContent(
-            state = EnrollmentState("https://192.168.50.2:8080", "K7QM-4XPD", "Pixel 9 Pro", EnrollmentStep.Confirm("hen", 8)),
+            state = EnrollmentState("https://192.168.50.150:8080", "K7QM-4XPD", "Pixel 9 Pro", EnrollmentStep.Confirm("hen", 8)),
             actions = EnrollmentActions(),
         )
     }
@@ -557,7 +557,7 @@ private fun ConfirmPreview() {
 private fun RegisteringPreview() {
     JournalTheme {
         EnrollmentContent(
-            state = EnrollmentState("https://192.168.50.2:8080", "K7QM-4XPD", "Pixel 9 Pro", EnrollmentStep.Registering(RegistrationProgress.SENDING_REQUEST)),
+            state = EnrollmentState("https://192.168.50.150:8080", "K7QM-4XPD", "Pixel 9 Pro", EnrollmentStep.Registering(RegistrationProgress.SENDING_REQUEST)),
             actions = EnrollmentActions(),
         )
     }

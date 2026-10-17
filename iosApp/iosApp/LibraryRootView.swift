@@ -113,7 +113,6 @@ struct LibraryRootView: View {
                         }
                     }
                 }
-                .preferredColorScheme(.dark)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
                         items: request.itemIds.compactMap { stories.state.itemsById[$0] },
@@ -148,6 +147,8 @@ struct LibraryRootView: View {
                             }
                         )
                     )
+                    // The viewer is always dark, like a photo app; the rest follows the system.
+                    .preferredColorScheme(.dark)
                 }
             }
         }

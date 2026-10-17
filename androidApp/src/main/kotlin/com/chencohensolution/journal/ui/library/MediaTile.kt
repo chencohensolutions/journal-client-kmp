@@ -125,7 +125,7 @@ internal fun MediaTile(
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))
         }
         if (selected != null) {
-            if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.Light))
+            if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.PhotoText))
             SelectionCheck(selected, Modifier.align(Alignment.TopStart).padding(7.dp))
         } else {
             BackupBadge(item.backup, badgeSize, Modifier.align(Alignment.BottomEnd).padding(5.dp))

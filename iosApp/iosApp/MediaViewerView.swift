@@ -80,7 +80,7 @@ struct MediaViewerView: View {
                 if group == nil, let item = items[safe: index], let coverOf = openedFrom?.groupOf(itemId: item.id),
                    coverOf.cover.id == item.id {
                     Button { actions.openGroup(coverOf.id) } label: {
-                        Label("\(coverOf.itemCount) · Open", systemImage: "square.on.square")
+                        Label("\(Int(coverOf.itemCount)) · Open", systemImage: "square.on.square")
                             .font(.subheadline.weight(.semibold))
                     }
                 }
@@ -140,7 +140,7 @@ struct MediaViewerView: View {
         }
         .sheet(isPresented: $editingCaption) {
             if let item = items[safe: index] {
-                WritingEditor(title: "Note", initial: stories.note(itemId: item.id)?.caption ?? "") {
+                WritingEditor(title: String(localized: "Note"), initial: stories.note(itemId: item.id)?.caption ?? "") {
                     actions.setCaption(item.id, $0)
                 }
             }
@@ -245,14 +245,14 @@ private struct InfoPanel: View {
                         .font(.title3.weight(.bold))
                     Text(item.takenAt.formatted(date: .omitted, time: .shortened))
                         .font(.subheadline)
-                        .foregroundStyle(LibraryColors.inkMuted)
+                        .foregroundStyle(LibraryColors.onInverseMuted)
                 }
                 Button(action: onEditCaption) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Note").font(.caption).foregroundStyle(LibraryColors.inkMuted)
-                        Text(note?.caption.isBlank == false ? note!.caption : "Write about this photo…")
+                        Text("Note").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
+                        Text(note?.caption.isBlank == false ? note!.caption : String(localized: "Write about this photo…"))
                             .font(.system(size: 16, design: .serif))
-                            .foregroundStyle(note?.caption.isBlank == false ? LibraryColors.ink : LibraryColors.inkMuted)
+                            .foregroundStyle(note?.caption.isBlank == false ? LibraryColors.onInverse : LibraryColors.onInverseMuted)
                             .multilineTextAlignment(.leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -261,7 +261,7 @@ private struct InfoPanel: View {
                 }
                 .accessibilityHint("Edit")
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Tags").font(.caption).foregroundStyle(LibraryColors.inkMuted)
+                    Text("Tags").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
                     FlowLayout(spacing: 6) {
                         ForEach(note?.tags ?? [], id: \.self) { tag in
                             HStack(spacing: 4) {
@@ -269,7 +269,7 @@ private struct InfoPanel: View {
                                 Button { onRemoveTag(tag) } label: {
                                     Image(systemName: "xmark").font(.caption2.weight(.bold)).frame(width: 28, height: 32)
                                 }
-                                .foregroundStyle(LibraryColors.inkMuted)
+                                .foregroundStyle(LibraryColors.onInverseMuted)
                                 .accessibilityLabel("Remove tag \(tag)")
                             }
                             .padding(.leading, 12)
@@ -295,11 +295,11 @@ private struct InfoPanel: View {
                 .background(.white, in: RoundedRectangle(cornerRadius: 16))
                 if let group {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Group").font(.caption).foregroundStyle(LibraryColors.inkMuted)
+                        Text("Group").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
                         Text(group.name).font(.subheadline.weight(.medium))
                         HStack(spacing: 16) {
                             if group.cover.id == item.id {
-                                Text("This is the cover").foregroundStyle(LibraryColors.inkMuted)
+                                Text("This is the cover").foregroundStyle(LibraryColors.onInverseMuted)
                             } else {
                                 Button("Set as cover", action: onSetCover).foregroundStyle(LibraryColors.accent)
                             }
@@ -311,8 +311,8 @@ private struct InfoPanel: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Stories").font(.caption).foregroundStyle(LibraryColors.inkMuted)
-                        Text(memberOf.isEmpty ? "Not in any story" : memberOf.map(\.title).joined(separator: ", "))
+                        Text("Stories").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
+                        Text(memberOf.isEmpty ? String(localized: "Not in any story") : memberOf.map(\.title).joined(separator: ", "))
                             .font(.subheadline.weight(.medium))
                         HStack(spacing: 16) {
                             Button(action: onAddToStory) { Label("Add to story", systemImage: "plus") }
@@ -332,26 +332,26 @@ private struct InfoPanel: View {
                     if let duration = item.duration { Detail(label: "Length", value: formatDuration(duration)) }
                 }
             }
-            .foregroundStyle(LibraryColors.ink)
+            .foregroundStyle(LibraryColors.onInverse)
             .padding(20)
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxHeight: 560)
         .fixedSize(horizontal: false, vertical: true)
-        .background(LibraryColors.light, in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
+        .background(LibraryColors.inverse, in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
         .ignoresSafeArea(edges: .bottom)
         .task(id: item.id) { fileName = PhotoLibraryImages.shared.originalFileName(id: item.id) }
     }
 }
 
 private struct Detail: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.caption).foregroundStyle(LibraryColors.inkMuted)
+            Text(label).font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
             Text(value).font(.subheadline.weight(.medium))
         }
     }

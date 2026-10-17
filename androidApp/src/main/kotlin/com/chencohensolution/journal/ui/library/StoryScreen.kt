@@ -248,13 +248,13 @@ private fun StoryTopBar(health: ServerHealth, onBack: () -> Unit, onRename: () -
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+            Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
         }
         Box(Modifier.weight(1f))
         if (health == ServerHealth.OFFLINE) OfflinePill()
         Box {
             IconButton(onClick = { menuOpen = true }) {
-                Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = Color.White)
+                Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
@@ -290,11 +290,11 @@ private fun SelectionTopBar(count: Int, onClose: () -> Unit, modifier: Modifier 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onClose) {
-            Icon(LibraryIcons.Close, stringResource(R.string.library_cancel_selection), tint = Color.White)
+            Icon(LibraryIcons.Close, stringResource(R.string.library_cancel_selection), tint = LibraryColors.OnBackground)
         }
         Text(
             pluralStringResource(R.plurals.library_selected, count, count),
-            color = Color.White,
+            color = LibraryColors.OnBackground,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -315,7 +315,7 @@ private fun SelectionBottomBar(canGroup: Boolean, onGroup: () -> Unit, onRemove:
             onClick = onGroup,
             enabled = canGroup,
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Light, contentColor = LibraryColors.Ink),
+            colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
             modifier = Modifier.weight(1f).height(52.dp),
         ) {
             Icon(LibraryIcons.Stack, null, modifier = Modifier.size(20.dp))
@@ -339,7 +339,7 @@ private fun Header(story: StoryView) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 story.title,
-                color = Color.White,
+                color = LibraryColors.OnBackground,
                 fontSize = 28.sp,
                 lineHeight = 32.sp,
                 fontWeight = FontWeight.Bold,
@@ -370,16 +370,16 @@ private fun NeighborDays(days: List<DayGroup>, onAdd: (LocalDay) -> Unit) {
                 shape = RoundedCornerShape(50),
                 modifier = Modifier
                     .height(40.dp)
-                    .border(1.dp, Color.White.copy(alpha = 0.28f), RoundedCornerShape(50)),
+                    .border(1.dp, LibraryColors.OnBackground.copy(alpha = 0.28f), RoundedCornerShape(50)),
             ) {
-                Icon(LibraryIcons.Plus, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
                 Text(
                     stringResource(
                         R.string.library_story_add_day,
                         dayLabel(day.day),
                         pluralStringResource(R.plurals.library_story_items, day.items.size, day.items.size),
                     ),
-                    color = Color.White,
+                    color = LibraryColors.OnBackground,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(start = 6.dp),

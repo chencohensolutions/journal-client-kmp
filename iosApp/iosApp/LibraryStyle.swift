@@ -1,24 +1,48 @@
 import SwiftUI
 import SharedLogic
 
-/// The library screens are always dark, like a photo app, whatever the system appearance.
+/// Library colors, light or dark with the system appearance (the viewer is always dark). Things drawn over photos
+/// (the photo* colors, scrims and labelFade) are the same in both: white on a dark scrim reads on any photo.
 enum LibraryColors {
-    static let background = Color(red: 0x0F / 255, green: 0x14 / 255, blue: 0x13 / 255)
-    static let raised = Color(red: 0x1E / 255, green: 0x27 / 255, blue: 0x25 / 255)
-    static let muted = Color(red: 0xA9 / 255, green: 0xB4 / 255, blue: 0xB1 / 255)
-    static let accent = Color(red: 0x1F / 255, green: 0x5F / 255, blue: 0x5B / 255)
-    static let light = Color(red: 0xF5 / 255, green: 0xF6 / 255, blue: 0xF4 / 255)
-    static let ink = Color(red: 0x17 / 255, green: 0x20 / 255, blue: 0x1F / 255)
-    static let inkMuted = Color(red: 0x5E / 255, green: 0x68 / 255, blue: 0x66 / 255)
-    static let warning = Color(red: 0xF2 / 255, green: 0xB8 / 255, blue: 0x4B / 255)
-    static let error = Color(red: 0xC2 / 255, green: 0x41 / 255, blue: 0x0C / 255)
-    static let badgeScrim = background.opacity(0.6)
+    static let background = dynamic(light: 0xF4F5F3, dark: 0x0F1413)
+    static let raised = dynamic(light: 0xFFFFFF, dark: 0x1E2725)
+    /// Text and icons on `background` and `raised`.
+    static let onBackground = dynamic(light: 0x17201F, dark: 0xFFFFFF)
+    static let muted = dynamic(light: 0x5E6866, dark: 0xA9B4B1)
+    static let accent = hex(0x1F5F5B)
+    /// A surface that stands out from the page: light on dark, dark on light (cards, the selected tab, Undo).
+    static let inverse = dynamic(light: 0x17201F, dark: 0xF5F6F4)
+    static let onInverse = dynamic(light: 0xF5F6F4, dark: 0x17201F)
+    static let onInverseMuted = dynamic(light: 0xA9B4B1, dark: 0x5E6866)
+    static let warning = dynamic(light: 0xB45309, dark: 0xF2B84B)
+    static let error = hex(0xC2410C)
 
-    /// Behind the floating top bar: dark at the edge, fading into the content.
+    private static let scrim = hex(0x0F1413)
+    static let badgeScrim = scrim.opacity(0.6)
+    static let pillScrim = scrim.opacity(0.7)
+    static let photoText = Color.white
+    static let photoTextMuted = Color(white: 0.9)
+    /// Light chips over photos (the calendar block, "Cover").
+    static let paper = hex(0xF5F6F4)
+    static let paperInk = hex(0x17201F)
+
+    /// Behind the floating top bar: the page color at the edge, fading into the content.
     static let topFade = LinearGradient(
         colors: [background.opacity(0.95), background.opacity(0.75), .clear], startPoint: .top, endPoint: .bottom)
     static let bottomFade = LinearGradient(colors: [.clear, background.opacity(0.9)], startPoint: .top, endPoint: .bottom)
-    static let labelFade = LinearGradient(colors: [background.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+    /// Under text written over the top or bottom of a photo.
+    static let labelFade = LinearGradient(colors: [scrim.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+    static let photoFade = LinearGradient(colors: [.clear, scrim.opacity(0.9)], startPoint: .top, endPoint: .bottom)
+
+    private static func hex(_ rgb: UInt32) -> Color { Color(uiColor: uiColor(rgb)) }
+
+    private static func dynamic(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? uiColor(dark) : uiColor(light) })
+    }
+
+    private static func uiColor(_ rgb: UInt32) -> UIColor {
+        UIColor(red: CGFloat(rgb >> 16 & 0xFF) / 255, green: CGFloat(rgb >> 8 & 0xFF) / 255, blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
+    }
 }
 
 extension LocalDay {
@@ -30,8 +54,8 @@ extension LocalDay {
     var label: String {
         let calendar = Calendar.current
         let date = self.date
-        if calendar.isDateInToday(date) { return "Today" }
-        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        if calendar.isDateInToday(date) { return String(localized: "Today") }
+        if calendar.isDateInYesterday(date) { return String(localized: "Yesterday") }
         let formatter = DateFormatter()
         let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: Date())
         formatter.setLocalizedDateFormatFromTemplate(sameYear ? "EEEMMMd" : "EEEMMMdyyyy")
@@ -46,18 +70,19 @@ extension MediaItem {
 
     /// "Photo, only on this device" for VoiceOver.
     var accessibilityDescription: String {
-        "\(isVideo ? "Video" : "Photo"), \(backup.label.lowercased())"
+        let status = backup.label.lowercased()
+        return isVideo ? String(localized: "Video, \(status)") : String(localized: "Photo, \(status)")
     }
 }
 
 extension BackupStatus {
     var label: String {
         switch self {
-        case is BackupStatusQueued: return "Waiting to upload"
-        case is BackupStatusUploading: return "Uploading to your server"
-        case is BackupStatusBackedUp: return "Backed up"
-        case let failed as BackupStatusFailed: return "Upload failed: \(failed.reason)"
-        default: return "Only on this device"
+        case is BackupStatusQueued: return String(localized: "Waiting to upload")
+        case is BackupStatusUploading: return String(localized: "Uploading to your server")
+        case is BackupStatusBackedUp: return String(localized: "Backed up")
+        case let failed as BackupStatusFailed: return String(localized: "Upload failed: \(failed.reason)")
+        default: return String(localized: "Only on this device")
         }
     }
 
@@ -129,13 +154,13 @@ struct OfflinePill: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(LibraryColors.background.opacity(0.7), in: Capsule())
+        .background(LibraryColors.pillScrim, in: Capsule())
     }
 }
 
 /// The floating segmented bar at the bottom of the library screens.
 struct SegmentedBar<Value: Equatable>: View {
-    let options: [(Value, String)]
+    let options: [(Value, LocalizedStringKey)]
     @Binding var selection: Value
 
     var body: some View {
@@ -148,8 +173,8 @@ struct SegmentedBar<Value: Equatable>: View {
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 16)
                         .frame(height: 40)
-                        .foregroundStyle(selected ? LibraryColors.ink : .white)
-                        .background(selected ? LibraryColors.light : .clear, in: Capsule())
+                        .foregroundStyle(selected ? LibraryColors.onInverse : LibraryColors.onBackground)
+                        .background(selected ? LibraryColors.inverse : .clear, in: Capsule())
                 }
                 .accessibilityAddTraits(selected ? [.isSelected] : [])
             }
@@ -170,10 +195,10 @@ struct BottomControls<Bar: View>: View {
             if notBackedUp > 0 {
                 Label("\(notBackedUp) not backed up", systemImage: "icloud.slash")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(LibraryColors.onBackground)
                     .padding(.horizontal, 14)
                     .frame(height: 36)
-                    .background(LibraryColors.light.opacity(0.16), in: Capsule())
+                    .background(LibraryColors.onBackground.opacity(0.12), in: Capsule())
             }
             bar
         }

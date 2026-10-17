@@ -1,0 +1,244 @@
+<resources>
+    <!-- Hebrew. "iw" is the code Android uses for Hebrew (it maps "he" to it). -->
+
+    <!-- Photo access -->
+    <string name="library_access_title">היומן שלך מתחיל בתמונות ובסרטונים שלך</string>
+    <string name="library_access_body">היומן צריך גישה לספרייה שלך כדי להציג את הרגעים שלך לפי ימים ולגבות אותם לשרת שלך.</string>
+    <string name="library_access_days_title">הרגעים שלך, יום אחרי יום</string>
+    <string name="library_access_days_body">תמונות וסרטונים, מסודרים כמו ביומן.</string>
+    <string name="library_access_backup_title">מגובה בשרת שלך</string>
+    <string name="library_access_backup_body">שום דבר לא מועלה עד שמפעילים גיבוי.</string>
+    <string name="library_access_allow">מתן גישה</string>
+    <string name="library_access_not_now">לא עכשיו</string>
+    <string name="library_access_footnote">אפשר לבחור תמונות מסוימות במקום את כל הספרייה.</string>
+
+    <!-- Journal home, All photos, viewer -->
+    <string name="library_title">יומן</string>
+    <string name="library_offline">לא מחובר</string>
+    <string name="library_more">עוד</string>
+    <string name="library_back">חזרה</string>
+    <string name="library_all_photos">כל התמונות</string>
+    <string name="library_today">היום</string>
+    <string name="library_yesterday">אתמול</string>
+    <string name="library_tab_journal">יומן</string>
+    <string name="library_tab_unsorted">לא ממוינות %d</string>
+    <plurals name="library_unsorted_count">
+        <item quantity="one">תמונה אחת לא ממוינת</item>
+        <item quantity="two">%d לא ממוינות</item>
+        <item quantity="other">%d לא ממוינות</item>
+    </plurals>
+    <plurals name="library_not_backed_up">
+        <item quantity="one">תמונה אחת לא מגובה</item>
+        <item quantity="two">%d לא מגובות</item>
+        <item quantity="other">%d לא מגובות</item>
+    </plurals>
+    <plurals name="library_limited">
+        <item quantity="one">ליומן יש גישה לתמונה או לסרטון אחד</item>
+        <item quantity="two">ליומן יש גישה ל-%d תמונות וסרטונים</item>
+        <item quantity="other">ליומן יש גישה ל-%d תמונות וסרטונים</item>
+    </plurals>
+    <string name="library_limited_change">שינוי</string>
+    <string name="library_no_access_title">ליומן אין גישה לתמונות שלך</string>
+    <string name="library_no_access_body">אפשרו גישה כדי לראות כאן את התמונות והסרטונים שלך.</string>
+    <string name="library_rejected_title">המכשיר הזה לא רשום בשרת</string>
+    <string name="library_rejected_body">השרת כבר לא מקבל את התעודה של המכשיר הזה. רשמו אותו מחדש עם קוד רישום חדש.</string>
+    <string name="library_rejected_action">רישום מחדש</string>
+    <string name="library_empty">עדיין אין תמונות או סרטונים במכשיר הזה.</string>
+    <string name="library_filter_empty">אין כאן כלום.</string>
+    <string name="library_load_error">לא ניתן לקרוא את התמונות שלך: %s</string>
+    <string name="library_filter_all">הכול</string>
+    <string name="library_filter_not_backed_up">לא מגובות</string>
+    <string name="library_filter_videos">סרטונים</string>
+    <string name="library_photo_description">תמונה, %s</string>
+    <string name="library_video_description">סרטון, %s</string>
+    <string name="library_backup_not_backed_up">רק במכשיר הזה</string>
+    <string name="library_backup_queued">ממתין להעלאה</string>
+    <string name="library_backup_uploading">מועלה לשרת שלך</string>
+    <string name="library_backup_done">מגובה</string>
+    <string name="library_backup_failed">ההעלאה נכשלה: %s</string>
+    <string name="library_viewer_position">%1$d מתוך %2$d · %3$s</string>
+    <string name="library_viewer_details">פרטים</string>
+    <string name="library_viewer_play">הפעלת הסרטון</string>
+    <string name="library_info_file">קובץ</string>
+    <string name="library_info_size">גודל</string>
+    <string name="library_info_dimensions">מידות</string>
+    <string name="library_info_length">אורך</string>
+
+    <!-- Stories -->
+    <string name="library_story">סיפור</string>
+    <string name="library_new_story">סיפור חדש</string>
+    <string name="library_story_title_hint">טיול ליפן, יום ההולדת של נועה…</string>
+    <string name="library_create">יצירה</string>
+    <string name="library_cancel">ביטול</string>
+    <string name="library_save">שמירה</string>
+    <string name="library_rename">שינוי שם</string>
+    <string name="library_rename_story">שינוי שם הסיפור</string>
+    <string name="library_delete">מחיקה</string>
+    <string name="library_delete_story">מחיקת הסיפור</string>
+    <string name="library_delete_story_title">למחוק את ״%s״?</string>
+    <string name="library_delete_story_body">הסיפור והכותרת שלו יימחקו. התמונות והסרטונים שבו יישארו במכשיר.</string>
+    <string name="library_add_to_story">הוספה לסיפור</string>
+    <string name="library_in_story">בסיפור הזה</string>
+    <string name="library_remove_from_story">הסרה מ-%s</string>
+    <string name="library_info_stories">סיפורים</string>
+    <string name="library_info_no_stories">לא נמצאת באף סיפור</string>
+    <string name="library_story_day">יום %1$d · %2$s</string>
+    <string name="library_story_add_day">הוספת %1$s · %2$s</string>
+    <string name="library_story_empty">אף תמונה מהסיפור הזה לא נמצאת במכשיר.</string>
+    <plurals name="library_story_days">
+        <item quantity="one">יום אחד</item>
+        <item quantity="two">יומיים</item>
+        <item quantity="other">%d ימים</item>
+    </plurals>
+    <plurals name="library_story_items">
+        <item quantity="one">תמונה אחת</item>
+        <item quantity="two">שתי תמונות</item>
+        <item quantity="other">%d תמונות</item>
+    </plurals>
+    <plurals name="library_story_missing">
+        <item quantity="one">תמונה אחת מהסיפור הזה לא נמצאת במכשיר.</item>
+        <item quantity="two">שתי תמונות מהסיפור הזה לא נמצאות במכשיר.</item>
+        <item quantity="other">%d תמונות מהסיפור הזה לא נמצאות במכשיר.</item>
+    </plurals>
+
+    <!-- Groups -->
+    <string name="library_group_action">קיבוץ</string>
+    <string name="library_remove">הסרה</string>
+    <string name="library_cancel_selection">ביטול הבחירה</string>
+    <plurals name="library_selected">
+        <item quantity="one">נבחרה אחת</item>
+        <item quantity="two">%d נבחרו</item>
+        <item quantity="other">%d נבחרו</item>
+    </plurals>
+    <string name="library_grouped">%d תמונות קובצו</string>
+    <string name="library_undo">ביטול</string>
+    <plurals name="library_burst_title">
+        <item quantity="one">תמונה דומה אחת</item>
+        <item quantity="two">שתי תמונות דומות</item>
+        <item quantity="other">%d תמונות דומות</item>
+    </plurals>
+    <string name="library_burst_detail">%1$s · צולמו בתוך %2$d שניות</string>
+    <string name="library_burst_question">להציג אותן כאחת?</string>
+    <string name="library_burst_group">קבצו אותן</string>
+    <string name="library_burst_not_now">לא עכשיו</string>
+    <plurals name="library_story_groups">
+        <item quantity="one">קבוצה אחת</item>
+        <item quantity="two">שתי קבוצות</item>
+        <item quantity="other">%d קבוצות</item>
+    </plurals>
+    <string name="library_group_description">קבוצה: %1$s, %2$d תמונות</string>
+    <string name="library_open_group">%d · פתיחה</string>
+    <string name="library_cover">שער</string>
+    <string name="library_is_cover">זו תמונת השער</string>
+    <string name="library_set_cover">הגדרה כשער</string>
+    <string name="library_remove_from_group">הסרה מהקבוצה</string>
+    <string name="library_info_group">קבוצה</string>
+    <string name="library_ungroup">פירוק הקבוצה</string>
+    <string name="library_rename_group">שינוי שם הקבוצה</string>
+    <string name="library_writing_edit">עריכה</string>
+    <string name="library_writing_saved_in">נשמר ב-story.md</string>
+    <string name="library_writing_story_prompt">כתבו על הסיפור הזה…</string>
+    <string name="library_writing_group_prompt">כתבו על הרגע הזה…</string>
+    <string name="library_writing_placeholder">מה קרה, איך זה הרגיש…</string>
+
+    <!-- Story and tag pickers, photo notes, tags -->
+    <string name="library_search_stories">חיפוש סיפורים, או שם לסיפור חדש</string>
+    <string name="library_create_story">יצירת ״%s״</string>
+    <string name="library_create_story_detail">סיפור חדש עם התמונה הזו</string>
+    <string name="library_picker_on_these_days">באותם ימים</string>
+    <string name="library_picker_nearby">בקרבת מקום</string>
+    <string name="library_picker_recent">אחרונים</string>
+    <string name="library_picker_checked">נוספה</string>
+    <plurals name="library_picker_search_all">
+        <item quantity="one">הקלידו כדי לחפש בסיפור שלך</item>
+        <item quantity="two">הקלידו כדי לחפש בשני הסיפורים</item>
+        <item quantity="other">הקלידו כדי לחפש בכל %d הסיפורים</item>
+    </plurals>
+    <plurals name="library_picker_story_results">
+        <item quantity="one">סיפור אחד · הקרובים בזמן קודם</item>
+        <item quantity="two">שני סיפורים · הקרובים בזמן קודם</item>
+        <item quantity="other">%d סיפורים · הקרובים בזמן קודם</item>
+    </plurals>
+    <string name="library_add_tag">תגיות</string>
+    <string name="library_search_tags">חיפוש תגיות, או תגית חדשה</string>
+    <string name="library_create_tag">יצירת התגית ״%s״</string>
+    <string name="library_picker_recent_tags">תגיות אחרונות</string>
+    <string name="library_picker_tags">תגיות</string>
+    <string name="library_tags_empty_hint">עדיין אין תגיות. הקלידו תגית למעלה כדי ליצור אותה.</string>
+    <string name="library_tags">תגיות</string>
+    <string name="library_find_tag">חיפוש תגיות</string>
+    <string name="library_tags_empty">עדיין אין תגיות. פתחו תמונה, הציגו את הפרטים שלה והקישו על + תגית.</string>
+    <string name="library_tag_empty">אין במכשיר הזה תמונות עם התגית הזו.</string>
+    <string name="library_tag">תגית</string>
+    <string name="library_remove_tag">הסרת התגית %s</string>
+    <string name="library_info_tags">תגיות</string>
+    <string name="library_note_title">הערה</string>
+    <string name="library_note_prompt">כתבו על התמונה הזו…</string>
+
+    <!-- Enrollment wizard -->
+    <string name="enroll_welcome_title">חיבור המכשיר הזה ליומן שלך</string>
+    <string name="enroll_welcome_body">שרת היומן שלך מדבר רק עם מכשירים שהוא מכיר. הרישום יוצר מפתח פרטי בטלפון הזה, והמפתח אף פעם לא יוצא ממנו.</string>
+    <string name="enroll_welcome_step1_title">מקבלים קוד רישום</string>
+    <string name="enroll_welcome_step1_body">יוצרים אותו בשרת. הוא עובד פעם אחת ותוקפו פג אחרי 10 דקות.</string>
+    <string name="enroll_welcome_step2_title">מקלידים את הקוד כאן</string>
+    <string name="enroll_welcome_step2_body">יחד עם הכתובת של השרת שלך.</string>
+    <string name="enroll_welcome_step3_title">השרת מנפיק תעודה</string>
+    <string name="enroll_welcome_step3_body">מאותו רגע המכשיר הזה מתחבר אוטומטית.</string>
+    <string name="enroll_get_started">מתחילים</string>
+    <string name="enroll_back">חזרה</string>
+    <string name="enroll_step_of">שלב %1$d מתוך 3 · %2$s</string>
+    <string name="enroll_step_connect">חיבור</string>
+    <string name="enroll_step_confirm">אישור</string>
+    <string name="enroll_step_register">רישום</string>
+    <string name="enroll_code_title">הזנת קוד רישום</string>
+    <string name="enroll_code_body">בשרת שלך, הריצו journal-server enroll-code והקלידו את הכתובת והקוד שהוא מדפיס.</string>
+    <string name="enroll_server_address">כתובת השרת</string>
+    <string name="enroll_server_address_help">לדוגמה 192.168.50.150:8080</string>
+    <string name="enroll_code">קוד רישום</string>
+    <string name="enroll_code_help">8 אותיות וספרות. עובד פעם אחת, ותוקפו פג 10 דקות אחרי שנוצר.</string>
+    <string name="enroll_continue">המשך</string>
+    <string name="enroll_confirm_title">לרשום את המכשיר הזה?</string>
+    <string name="enroll_server">שרת</string>
+    <string name="enroll_server_verified">מאומת על ידי journal-server-ca</string>
+    <string name="enroll_account">חשבון</string>
+    <string name="enroll_code_expires">קוד %1$s · בתוקף עוד %2$d דק׳</string>
+    <string name="enroll_device_name">שם המכשיר</string>
+    <string name="enroll_device_name_help">מוצג בשרת, כדי שתוכלו להבחין בין מכשירים ולבטל מכשיר בהמשך.</string>
+    <string name="enroll_key_notice">מפתח חדש ייווצר בחומרה המאובטחת של הטלפון הזה. אי אפשר להעתיק, לייצא או לגבות אותו.</string>
+    <string name="enroll_register">רישום המכשיר</string>
+    <string name="enroll_registering_title">רושמים את %s</string>
+    <string name="enroll_registering_body">זה לוקח כמה שניות. השאירו את האפליקציה פתוחה.</string>
+    <string name="enroll_progress_key">יצירת מפתח בחומרה מאובטחת</string>
+    <string name="enroll_progress_key_detail">EC P-256 · לא ניתן לייצוא</string>
+    <string name="enroll_progress_request">שליחת בקשה לתעודה</string>
+    <string name="enroll_progress_request_detail">חתומה במפתח החדש, עם קוד הרישום שלך</string>
+    <string name="enroll_progress_certificate">שמירת התעודה</string>
+    <string name="enroll_progress_certificate_detail">הונפקה על ידי journal-server-ca</string>
+    <string name="enroll_progress_test">בדיקת החיבור</string>
+    <string name="enroll_progress_test_detail">התחברות עם התעודה החדשה</string>
+    <string name="enroll_cancel">ביטול</string>
+    <string name="enroll_done_title">המכשיר מחובר</string>
+    <string name="enroll_done_body">המכשיר הזה רשום בתור %s.</string>
+    <string name="enroll_device">מכשיר</string>
+    <string name="enroll_key">מפתח</string>
+    <string name="enroll_valid_until">התעודה בתוקף עד</string>
+    <string name="enroll_key_strongbox">שבב האבטחה StrongBox</string>
+    <string name="enroll_key_tee">חומרה מאובטחת (TEE)</string>
+    <string name="enroll_key_secure_enclave">Secure Enclave</string>
+    <string name="enroll_key_software">תוכנה (אמולטור)</string>
+    <string name="enroll_open_journal">פתיחת היומן</string>
+    <string name="enroll_failed_code_title">הקוד הזה לא עבד</string>
+    <string name="enroll_failed_code_body">השרת דחה את %s. ייתכן שהוקלד לא נכון, שתוקפו פג או שכבר השתמשו בו. כל קוד עובד פעם אחת, למשך 10 דקות.</string>
+    <string name="enroll_failed_title">הרישום נכשל</string>
+    <string name="enroll_failed_new_code">צרו קוד חדש בשרת</string>
+    <string name="enroll_failed_key_deleted">המפתח שנוצר בניסיון הזה נמחק מהמכשיר.</string>
+    <string name="enroll_new_code">הזנת קוד חדש</string>
+    <string name="enroll_error_missing_address">יש להזין את כתובת השרת.</string>
+    <string name="enroll_error_missing_code">יש להזין את קוד הרישום.</string>
+    <string name="enroll_error_invalid_code">הקוד שגוי, פג תוקף או שכבר השתמשו בו.</string>
+    <string name="enroll_error_rate_limited">יותר מדי קודים שגויים. חכו דקה ונסו שוב.</string>
+    <string name="enroll_error_request_rejected">השרת לא הצליח לעבד את בקשת התעודה של המכשיר הזה.</string>
+    <string name="enroll_error_unreachable">אין גישה לשרת: %s</string>
+    <string name="enroll_error_key_store">שגיאה במאגר המפתחות של המכשיר: %s</string>
+    <string name="enroll_error_connection_test">התעודה הונפקה, אבל ההתחברות איתה נכשלה: %s</string>
+</resources>

@@ -8,6 +8,10 @@ Android and iOS clients for journal-server-go. Only the logic is shared; each pl
 | [androidApp](./androidApp/src/main/kotlin) | Jetpack Compose UI. |
 | [iosApp](./iosApp/iosApp) | SwiftUI UI, using the `SharedLogic` framework. |
 
+## Design
+
+What the app is, the decisions behind it, the data format and the current status: [docs/design.md](./docs/design.md).
+
 ## Screens
 
 Each screen after enrollment (photo access, the Journal home, All photos, the viewer) is described in

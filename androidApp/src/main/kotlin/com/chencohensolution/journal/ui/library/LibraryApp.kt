@@ -14,6 +14,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -138,102 +139,106 @@ fun LibraryApp(journal: JournalController, library: LibraryController, stories: 
         return
     }
 
-    DarkSystemBars(activity as? ComponentActivity)
-
     var stack by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(listOf<Route>(Route.Journal)) }
     val push: (Route) -> Unit = { stack = stack + it }
     val pop: () -> Unit = { stack = stack.dropLast(1) }
     BackHandler(enabled = stack.size > 1, onBack = pop)
 
-    when (val route = stack.last()) {
-        Route.Journal -> JournalHomeScreen(
-            library = libraryState,
-            stories = storiesState,
-            health = journalState.health,
-            actions = HomeActions(
-                openItem = { day, item -> push(Route.Viewer(null, null, day.day, LibraryFilter.ALL, item.id)) },
-                openTags = { push(Route.Tags) },
-                openStory = { push(Route.Story(it)) },
-                createStory = { title, day -> stories.createStoryFromDay(title, day)?.let { push(Route.Story(it)) } },
-                openAllPhotos = { push(Route.AllPhotos(LibraryFilter.ALL)) },
-                allowAccess = requestAccess,
-                changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
-                registerAgain = onRegisterAgain,
-            ),
-        )
-        is Route.AllPhotos -> AllPhotosScreen(
-            library = libraryState,
-            health = journalState.health,
-            filter = route.filter,
-            onFilter = { stack = stack.dropLast(1) + Route.AllPhotos(it) },
-            onOpenItem = { push(Route.Viewer(null, null, null, route.filter, it.id)) },
-            onBack = pop,
-        )
-        is Route.Story -> StoryScreen(
-            story = storiesState.story(route.id),
-            neighborDays = storiesState.neighborDays(route.id),
-            health = journalState.health,
-            actions = StoryActions(
-                openItem = { push(Route.Viewer(route.id, null, null, LibraryFilter.ALL, it.id)) },
-                openGroup = { push(Route.Group(route.id, it.id)) },
-                addDay = { stories.addDay(route.id, it) },
-                rename = { stories.rename(route.id, it) },
-                delete = {
-                    stories.delete(route.id)
-                    pop()
-                },
-                setIntro = { stories.setIntro(route.id, it) },
-                acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
-                createGroup = { stories.createGroup(route.id, it) },
-                dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
-                ungroup = { stories.ungroup(route.id, it) },
-                removeItems = { stories.removeItems(route.id, it) },
-                back = pop,
-            ),
-        )
-        is Route.Group -> GroupScreen(
-            story = storiesState.story(route.storyId),
-            group = storiesState.story(route.storyId)?.group(route.groupId),
-            actions = GroupActions(
-                openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
-                rename = { stories.renameGroup(route.storyId, route.groupId, it) },
-                setText = { stories.setGroupText(route.storyId, route.groupId, it) },
-                ungroup = { stories.ungroup(route.storyId, route.groupId) },
-                back = pop,
-            ),
-        )
-        Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
-        is Route.Tag -> TagScreen(
-            tag = route.name,
-            stories = storiesState,
-            onOpenItem = { push(Route.Viewer(null, null, null, LibraryFilter.ALL, it.id, tag = route.name)) },
-            onBack = pop,
-        )
-        is Route.Viewer -> ViewerScreen(
-            // Fixed when opened: tagging or grouping a photo must not pull it out from under the viewer.
-            items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
-                .mapNotNull { storiesState.itemsById[it] },
-            startId = route.itemId,
-            stories = storiesState,
-            openedFrom = route.storyId?.let(storiesState::story),
-            group = route.groupId?.let { route.storyId?.let(storiesState::story)?.group(it) },
-            actions = ViewerActions(
-                back = pop,
-                openGroup = { groupId -> route.storyId?.let { push(Route.Group(it, groupId)) } },
-                setCover = { itemId -> if (route.storyId != null && route.groupId != null) stories.setCover(route.storyId, route.groupId, itemId) },
-                removeFromGroup = { itemId ->
-                    if (route.storyId != null && route.groupId != null) stories.removeFromGroup(route.storyId, route.groupId, listOf(itemId))
-                },
-                toggleStory = { storyId, itemId, add ->
-                    if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
-                },
-                createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
-                setCaption = { itemId, text -> stories.setCaption(itemId, text) },
-                toggleTag = { itemId, tag, add ->
-                    if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
-                },
-            ),
-        )
+    // The library follows the system theme; the viewer is always dark, like a photo app.
+    val route = stack.last()
+    val dark = route is Route.Viewer || isSystemInDarkTheme()
+    SystemBars(activity as? ComponentActivity, dark)
+    LibraryTheme(dark = dark) {
+        when (route) {
+            Route.Journal -> JournalHomeScreen(
+                library = libraryState,
+                stories = storiesState,
+                health = journalState.health,
+                actions = HomeActions(
+                    openItem = { day, item -> push(Route.Viewer(null, null, day.day, LibraryFilter.ALL, item.id)) },
+                    openTags = { push(Route.Tags) },
+                    openStory = { push(Route.Story(it)) },
+                    createStory = { title, day -> stories.createStoryFromDay(title, day)?.let { push(Route.Story(it)) } },
+                    openAllPhotos = { push(Route.AllPhotos(LibraryFilter.ALL)) },
+                    allowAccess = requestAccess,
+                    changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
+                    registerAgain = onRegisterAgain,
+                ),
+            )
+            is Route.AllPhotos -> AllPhotosScreen(
+                library = libraryState,
+                health = journalState.health,
+                filter = route.filter,
+                onFilter = { stack = stack.dropLast(1) + Route.AllPhotos(it) },
+                onOpenItem = { push(Route.Viewer(null, null, null, route.filter, it.id)) },
+                onBack = pop,
+            )
+            is Route.Story -> StoryScreen(
+                story = storiesState.story(route.id),
+                neighborDays = storiesState.neighborDays(route.id),
+                health = journalState.health,
+                actions = StoryActions(
+                    openItem = { push(Route.Viewer(route.id, null, null, LibraryFilter.ALL, it.id)) },
+                    openGroup = { push(Route.Group(route.id, it.id)) },
+                    addDay = { stories.addDay(route.id, it) },
+                    rename = { stories.rename(route.id, it) },
+                    delete = {
+                        stories.delete(route.id)
+                        pop()
+                    },
+                    setIntro = { stories.setIntro(route.id, it) },
+                    acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
+                    createGroup = { stories.createGroup(route.id, it) },
+                    dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
+                    ungroup = { stories.ungroup(route.id, it) },
+                    removeItems = { stories.removeItems(route.id, it) },
+                    back = pop,
+                ),
+            )
+            is Route.Group -> GroupScreen(
+                story = storiesState.story(route.storyId),
+                group = storiesState.story(route.storyId)?.group(route.groupId),
+                actions = GroupActions(
+                    openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
+                    rename = { stories.renameGroup(route.storyId, route.groupId, it) },
+                    setText = { stories.setGroupText(route.storyId, route.groupId, it) },
+                    ungroup = { stories.ungroup(route.storyId, route.groupId) },
+                    back = pop,
+                ),
+            )
+            Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
+            is Route.Tag -> TagScreen(
+                tag = route.name,
+                stories = storiesState,
+                onOpenItem = { push(Route.Viewer(null, null, null, LibraryFilter.ALL, it.id, tag = route.name)) },
+                onBack = pop,
+            )
+            is Route.Viewer -> ViewerScreen(
+                // Fixed when opened: tagging or grouping a photo must not pull it out from under the viewer.
+                items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
+                    .mapNotNull { storiesState.itemsById[it] },
+                startId = route.itemId,
+                stories = storiesState,
+                openedFrom = route.storyId?.let(storiesState::story),
+                group = route.groupId?.let { route.storyId?.let(storiesState::story)?.group(it) },
+                actions = ViewerActions(
+                    back = pop,
+                    openGroup = { groupId -> route.storyId?.let { push(Route.Group(it, groupId)) } },
+                    setCover = { itemId -> if (route.storyId != null && route.groupId != null) stories.setCover(route.storyId, route.groupId, itemId) },
+                    removeFromGroup = { itemId ->
+                        if (route.storyId != null && route.groupId != null) stories.removeFromGroup(route.storyId, route.groupId, listOf(itemId))
+                    },
+                    toggleStory = { storyId, itemId, add ->
+                        if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
+                    },
+                    createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
+                    setCaption = { itemId, text -> stories.setCaption(itemId, text) },
+                    toggleTag = { itemId, tag, add ->
+                        if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
+                    },
+                ),
+            )
+        }
     }
 }
 
@@ -249,12 +254,16 @@ private fun viewerItems(library: LibraryState, stories: StoriesState, route: Rou
     else -> library.days(route.filter).flatMap { it.items }
 }
 
-/** Light status and navigation bar icons over the always-dark library screens. */
+/** Status and navigation bar icons that read on the library: light over dark screens, dark over light ones. */
 @Composable
-private fun DarkSystemBars(activity: ComponentActivity?) {
-    DisposableEffect(activity) {
-        val dark = SystemBarStyle.dark(AndroidColor.TRANSPARENT)
-        activity?.enableEdgeToEdge(statusBarStyle = dark, navigationBarStyle = dark)
+private fun SystemBars(activity: ComponentActivity?, dark: Boolean) {
+    DisposableEffect(activity, dark) {
+        val style = if (dark) {
+            SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+        }
+        activity?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
         onDispose { activity?.enableEdgeToEdge() }
     }
 }

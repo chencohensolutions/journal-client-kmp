@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Journal</string>
+    <string name="app_name" translatable="false">Journal</string>
 
     <!-- Photo access -->
     <string name="library_access_title">Your journal starts with your photos and videos</string>
@@ -182,7 +182,7 @@
     <string name="enroll_code_title">Enter enrollment code</string>
     <string name="enroll_code_body">On your server, run journal-server enroll-code and type the address and code it prints.</string>
     <string name="enroll_server_address">Server address</string>
-    <string name="enroll_server_address_help">For example 192.168.50.2:8080</string>
+    <string name="enroll_server_address_help">For example 192.168.50.150:8080</string>
     <string name="enroll_code">Enrollment code</string>
     <string name="enroll_code_help">8 letters and digits. Works once, expires 10 minutes after it was created.</string>
     <string name="enroll_continue">Continue</string>

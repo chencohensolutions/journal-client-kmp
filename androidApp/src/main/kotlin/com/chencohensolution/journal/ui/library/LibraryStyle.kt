@@ -1,7 +1,12 @@
 package com.chencohensolution.journal.ui.library
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -17,24 +22,78 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The library screens are always dark, like a photo app, whatever the system theme. */
-internal object LibraryColors {
-    val Background = Color(0xFF0F1413)
-    val Raised = Color(0xFF1E2725)
-    val Muted = Color(0xFFA9B4B1)
-    val Accent = Color(0xFF1F5F5B)
-    val Light = Color(0xFFF5F6F4)
-    val Ink = Color(0xFF17201F)
-    val InkMuted = Color(0xFF5E6866)
-    val Warning = Color(0xFFF2B84B)
-    val Error = Color(0xFFC2410C)
+/**
+ * Library colors, light or dark with the system theme (the viewer is always dark). Things drawn over photos (the
+ * Photo* colors, scrims and LabelFade) are the same in both: white on a dark scrim reads on any photo.
+ */
+@Immutable
+internal class LibraryPalette(
+    val Background: Color,
+    val Raised: Color,
+    /** Text and icons on Background and Raised. */
+    val OnBackground: Color,
+    val Muted: Color,
+    val Accent: Color,
+    /** A surface that stands out from the page: light on dark, dark on light (cards, the selected tab, Undo). */
+    val Inverse: Color,
+    val OnInverse: Color,
+    val OnInverseMuted: Color,
+    val Warning: Color,
+    val Error: Color,
+) {
     val BadgeScrim = Color(0x990F1413)
     val PillScrim = Color(0xB30F1413)
+    val PhotoText = Color.White
+    val PhotoTextMuted = Color(0xFFE3E8E6)
 
-    /** Behind the floating top bar: dark at the edge, fading into the content. */
+    /** Light chips over photos (the calendar block, "Cover"). */
+    val Paper = Color(0xFFF5F6F4)
+    val PaperInk = Color(0xFF17201F)
+
+    /** Behind the floating top bar: the page color at the edge, fading into the content. */
     val TopFade = Brush.verticalGradient(listOf(Background.copy(alpha = 0.95f), Background.copy(alpha = 0.75f), Color.Transparent))
     val BottomFade = Brush.verticalGradient(listOf(Color.Transparent, Background.copy(alpha = 0.9f)))
-    val LabelFade = Brush.verticalGradient(listOf(Background.copy(alpha = 0.55f), Color.Transparent))
+
+    /** Under text written over the top or bottom of a photo. */
+    val LabelFade = Brush.verticalGradient(listOf(Color(0x8C0F1413), Color.Transparent))
+    val PhotoFade = Brush.verticalGradient(listOf(Color.Transparent, Color(0xE60F1413)))
+}
+
+internal val DarkLibraryPalette = LibraryPalette(
+    Background = Color(0xFF0F1413),
+    Raised = Color(0xFF1E2725),
+    OnBackground = Color.White,
+    Muted = Color(0xFFA9B4B1),
+    Accent = Color(0xFF1F5F5B),
+    Inverse = Color(0xFFF5F6F4),
+    OnInverse = Color(0xFF17201F),
+    OnInverseMuted = Color(0xFF5E6866),
+    Warning = Color(0xFFF2B84B),
+    Error = Color(0xFFC2410C),
+)
+
+internal val LightLibraryPalette = LibraryPalette(
+    Background = Color(0xFFF4F5F3),
+    Raised = Color.White,
+    OnBackground = Color(0xFF17201F),
+    Muted = Color(0xFF5E6866),
+    Accent = Color(0xFF1F5F5B),
+    Inverse = Color(0xFF17201F),
+    OnInverse = Color(0xFFF5F6F4),
+    OnInverseMuted = Color(0xFFA9B4B1),
+    Warning = Color(0xFFB45309),
+    Error = Color(0xFFC2410C),
+)
+
+private val LocalLibraryPalette = staticCompositionLocalOf { DarkLibraryPalette }
+
+internal val LibraryColors: LibraryPalette
+    @Composable @ReadOnlyComposable get() = LocalLibraryPalette.current
+
+/** The library palette for [content]: the system theme's, or dark when [dark] says so (the viewer). */
+@Composable
+internal fun LibraryTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalLibraryPalette provides if (dark) DarkLibraryPalette else LightLibraryPalette, content = content)
 }
 
 /** Line icons (Material icons are not a dependency of this app). */

@@ -20,6 +20,7 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -182,6 +183,21 @@ class StoriesControllerTest {
         assertTrue(setup.stories.currentState.stories.isEmpty())
         assertEquals(5, setup.stories.currentState.unsortedCount)
         assertTrue(!setup.fileSystem.exists(ROOT / "stories" / id))
+    }
+
+    @Test
+    fun unsafeIdsNeverReachTheFileSystem() = runTest {
+        val fileSystem = FakeFileSystem()
+        val store = FileStoryStore(fileSystem, ROOT)
+        fileSystem.createDirectories(ROOT / "stories" / "keep")
+        fileSystem.write(ROOT / "stories" / "keep" / "story.json") { writeUtf8("{}") }
+        fileSystem.write(ROOT / "photo.jpg") { writeUtf8("pixels") }
+
+        listOf("..", "", ".", "../..", "a/b", "a..b", "/abs").forEach { id ->
+            assertFailsWith<IllegalArgumentException>(id) { store.delete(id) }
+        }
+        assertTrue(fileSystem.exists(ROOT / "stories" / "keep" / "story.json"))
+        assertTrue(fileSystem.exists(ROOT / "photo.jpg"))
     }
 
     @Test

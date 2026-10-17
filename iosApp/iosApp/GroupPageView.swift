@@ -27,7 +27,6 @@ struct GroupPageView: View {
         .background(LibraryColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -37,7 +36,7 @@ struct GroupPageView: View {
                     } label: { Label("Rename", systemImage: "pencil") }
                     Button(action: onUngroup) { Label("Ungroup", systemImage: "square.on.square") }
                 } label: {
-                    Image(systemName: "ellipsis").foregroundStyle(.white)
+                    Image(systemName: "ellipsis").foregroundStyle(LibraryColors.onBackground)
                 }
                 .accessibilityLabel("More")
             }
@@ -70,13 +69,13 @@ struct GroupPageView: View {
                             .foregroundStyle(LibraryColors.muted)
                         Text(group.name)
                             .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(LibraryColors.onBackground)
                             .accessibilityAddTraits(.isHeader)
                         // An untitled group already shows its time as the title.
                         Text([
                             group.items.first?.day.date.formatted(.dateTime.month(.abbreviated).day()),
                             group.title != nil ? timeRange(group.items) : nil,
-                            "\(group.itemCount) photos",
+                            String(localized: "\(Int(group.itemCount)) photos"),
                         ].compactMap { $0 }.joined(separator: " · "))
                             .font(.subheadline)
                             .foregroundStyle(LibraryColors.muted)
@@ -93,10 +92,10 @@ struct GroupPageView: View {
                                     if item.id == group.cover.id {
                                         Text("Cover")
                                             .font(.caption2.weight(.bold))
-                                            .foregroundStyle(LibraryColors.ink)
+                                            .foregroundStyle(LibraryColors.paperInk)
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 3)
-                                            .background(LibraryColors.light, in: Capsule())
+                                            .background(LibraryColors.paper, in: Capsule())
                                             .padding(6)
                                     }
                                 }

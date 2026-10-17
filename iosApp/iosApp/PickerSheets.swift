@@ -13,8 +13,8 @@ struct AddToStorySheet: View {
 
     var body: some View {
         PickerSheet(title: "Add to story", prompt: "Search stories, or name a new one", query: $query,
-                    createLabel: query.isBlank ? nil : "Create “\(query.trimmed)”",
-                    createDetail: "New story with this photo",
+                    createLabel: query.isBlank ? nil : String(localized: "Create “\(query.trimmed)”"),
+                    createDetail: String(localized: "New story with this photo"),
                     onCreate: { onCreate(query.trimmed) }) {
             if query.isBlank {
                 let suggestions = stories.storySuggestions(itemIds: itemIds)
@@ -28,13 +28,13 @@ struct AddToStorySheet: View {
                 }
             } else {
                 let results = stories.searchStories(query: query, itemIds: itemIds)
-                section("\(results.count) \(results.count == 1 ? "story" : "stories") · closest in time first", results)
+                section("\(results.count) stories · closest in time first", results)
             }
         }
     }
 
     @ViewBuilder
-    private func section(_ title: String, _ list: [StoryView]) -> some View {
+    private func section(_ title: LocalizedStringKey, _ list: [StoryView]) -> some View {
         if !list.isEmpty {
             Section(title) {
                 ForEach(list, id: \.id) { story in
@@ -62,7 +62,7 @@ struct TagSheet: View {
     var body: some View {
         let exists = stories.tags.contains { $0.name.caseInsensitiveCompare(query.trimmed) == .orderedSame }
         PickerSheet(title: "Tags", prompt: "Search tags, or type a new one", query: $query,
-                    createLabel: query.isBlank || exists ? nil : "Create tag “\(query.trimmed)”",
+                    createLabel: query.isBlank || exists ? nil : String(localized: "Create tag “\(query.trimmed)”"),
                     createDetail: nil,
                     onCreate: { onCreate(query.trimmed) }) {
             let list = query.isBlank ? stories.tags : stories.searchTags(query: query)
@@ -74,7 +74,7 @@ struct TagSheet: View {
                         let applied = itemIds.allSatisfy { id in
                             stories.note(itemId: id)?.tags.contains { $0.caseInsensitiveCompare(tag.name) == .orderedSame } == true
                         }
-                        PickerRow(title: tag.name, detail: tag.count == 1 ? "1 photo" : "\(tag.count) photos", checked: applied) {
+                        PickerRow(title: tag.name, detail: String(localized: "\(Int(tag.count)) photos"), checked: applied) {
                             onToggle(tag.name, !applied)
                         } leading: {
                             TagThumbnail(tag: tag, size: 44)
@@ -87,8 +87,8 @@ struct TagSheet: View {
 }
 
 private struct PickerSheet<Content: View>: View {
-    let title: String
-    let prompt: String
+    let title: LocalizedStringKey
+    let prompt: LocalizedStringKey
     @Binding var query: String
     let createLabel: String?
     let createDetail: String?

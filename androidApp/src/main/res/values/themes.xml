@@ -1,0 +1,4 @@
+<resources>
+    <!-- Only the window behind Compose (launch, before the first frame); follows the system theme. -->
+    <style name="Theme.Journal" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

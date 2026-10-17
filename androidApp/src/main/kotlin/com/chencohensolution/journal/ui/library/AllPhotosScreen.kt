@@ -109,11 +109,11 @@ internal fun AllPhotosScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
             }
             Text(
                 stringResource(R.string.library_all_photos),
-                color = Color.White,
+                color = LibraryColors.OnBackground,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).semantics { heading() },

@@ -60,9 +60,9 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = LibraryColors.Light,
+                        focusedTextColor = LibraryColors.OnBackground,
+                        unfocusedTextColor = LibraryColors.OnBackground,
+                        focusedBorderColor = LibraryColors.OnBackground,
                         unfocusedBorderColor = LibraryColors.Muted.copy(alpha = 0.5f),
                     ),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -82,7 +82,7 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
                 ) {
                     TagThumbnail(tag, 56.dp)
                     Column(Modifier.weight(1f)) {
-                        Text(tag.name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text(tag.name, color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, fontSize = 13.sp)
                     }
                 }
@@ -131,11 +131,11 @@ private fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mod
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+            Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
         }
         Text(
             title,
-            color = Color.White,
+            color = LibraryColors.OnBackground,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.semantics { heading() },

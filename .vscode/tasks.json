@@ -62,6 +62,22 @@
             ]
         },
         {
+            "label": "Android: run on phone",
+            "detail": "Build, install on the first real device (USB or wireless debugging) and open the app",
+            "type": "shell",
+            "command": "./scripts/android-run.sh phone",
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+            "problemMatcher": []
+        },
+        {
+            "label": "Android: run on emulator",
+            "detail": "Build, install on the running emulator and open the app",
+            "type": "shell",
+            "command": "./scripts/android-run.sh emulator",
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+            "problemMatcher": []
+        },
+        {
             "label": "iOS: WebDriverAgent",
             "detail": "Reinstall and run WebDriverAgent on the booted simulator (for mobile-mcp)",
             "type": "shell",
@@ -76,6 +92,25 @@
                     "activesEnd": "ServerURLHere->"
                 }
             }
+        },
+        {
+            "label": "Server: new enrollment code",
+            "detail": "Create a one-time code (valid 10 minutes) to register a device; the server must be running",
+            "type": "shell",
+            "command": "go",
+            "args": ["run", ".", "enroll-code", "${input:enrollUser}"],
+            // enroll-code reads config.json and admin.token next to the running server.
+            "options": { "cwd": "${workspaceFolder}/../journal-server-go" },
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "enrollUser",
+            "type": "promptString",
+            "description": "User to register the device for",
+            "default": "hen"
         }
     ]
 }
