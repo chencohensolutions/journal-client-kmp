@@ -60,6 +60,22 @@
                     }
                 }
             ]
+        },
+        {
+            "label": "iOS: WebDriverAgent",
+            "detail": "Reinstall and run WebDriverAgent on the booted simulator (for mobile-mcp)",
+            "type": "shell",
+            "command": "./scripts/wda-simulator.sh",
+            "isBackground": true,
+            "presentation": { "reveal": "always", "panel": "dedicated" },
+            "problemMatcher": {
+                "owner": "wda",
+                "pattern": { "regexp": "^(No booted iOS simulator.*)$", "message": 1 },
+                "background": {
+                    "activesBegin": "^Simulator: ",
+                    "activesEnd": "ServerURLHere->"
+                }
+            }
         }
     ]
 }
