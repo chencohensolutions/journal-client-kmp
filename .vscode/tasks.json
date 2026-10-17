@@ -1,0 +1,65 @@
+{
+    // Real Kotlin compiler errors from Gradle in the Problems panel. The Kotlin extension's own
+    // diagnostics read sharedLogic from a prebuilt jar and can be stale; these tasks also refresh that jar.
+    // Needs JAVA_HOME (or a system JDK) in the environment VS Code was started with.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Kotlin: check",
+            "detail": "Compile shared logic (Android + iOS) and the Android app once",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": [
+                "--console=plain",
+                "--continue",
+                ":sharedLogic:createFullJarAndroidMain",
+                ":sharedLogic:compileKotlinIosSimulatorArm64",
+                ":androidApp:compileDebugKotlin"
+            ],
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true },
+            "problemMatcher": [
+                {
+                    "owner": "kotlin",
+                    "source": "kotlinc",
+                    "fileLocation": "absolute",
+                    "pattern": {
+                        "regexp": "^([ew]): file://(.+?):(\\d+):(\\d+) (.*)$",
+                        "severity": 1, "file": 2, "line": 3, "column": 4, "message": 5
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Kotlin: watch",
+            "detail": "Recompile on every save and keep the Problems panel current",
+            "type": "shell",
+            "command": "./gradlew",
+            "args": [
+                "--continuous",
+                "--console=plain",
+                "--continue",
+                ":sharedLogic:createFullJarAndroidMain",
+                ":sharedLogic:compileKotlinIosSimulatorArm64",
+                ":androidApp:compileDebugKotlin"
+            ],
+            "isBackground": true,
+            "presentation": { "reveal": "silent", "panel": "dedicated" },
+            "problemMatcher": [
+                {
+                    "owner": "kotlin",
+                    "source": "kotlinc",
+                    "fileLocation": "absolute",
+                    "pattern": {
+                        "regexp": "^([ew]): file://(.+?):(\\d+):(\\d+) (.*)$",
+                        "severity": 1, "file": 2, "line": 3, "column": 4, "message": 5
+                    },
+                    "background": {
+                        "activesBegin": "^(Starting a Gradle Daemon|Reusing configuration cache|Calculating task graph|Change detected)",
+                        "activesEnd": "^Waiting for changes to input files"
+                    }
+                }
+            ]
+        }
+    ]
+}
