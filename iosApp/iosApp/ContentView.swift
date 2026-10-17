@@ -5,6 +5,7 @@ import SharedLogic
 struct ContentView: View {
     @StateObject private var viewModel = JournalViewModel()
 
+    @State private var isEnrollmentPresented = false
     @State private var isImporterPresented = false
     @State private var pendingBundle: Data?
     @State private var password = ""
@@ -24,13 +25,17 @@ struct ContentView: View {
                 Section {
                     Text(identityText)
                         .italic()
+                    Button("Register This Device…") {
+                        viewModel.enrollment.reset()
+                        isEnrollmentPresented = true
+                    }
                     Button("Import Identity (.p12)…") {
                         isImporterPresented = true
                     }
                 } header: {
                     Text("Identity")
                 } footer: {
-                    Text("The PKCS#12 bundle created by the server's generate-user-cert script.")
+                    Text("Register with an enrollment code from `journal-server enroll-code`, or import the PKCS#12 bundle created by the server's generate-user-cert script.")
                 }
 
                 Section {
@@ -67,6 +72,23 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Journal")
+            .fullScreenCover(isPresented: $isEnrollmentPresented) {
+                EnrollmentView(
+                    viewModel: viewModel.enrollment,
+                    onUseCertificateFile: { isEnrollmentPresented = false },
+                    onOpenJournal: {
+                        isEnrollmentPresented = false
+                        viewModel.enrollment.reset()
+                        viewModel.connect()
+                    }
+                )
+            }
+            .onAppear {
+                // First launch without an identity starts with device registration.
+                if viewModel.state.identityAlias == nil {
+                    isEnrollmentPresented = true
+                }
+            }
             .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.pkcs12]) { result in
                 loadBundle(result)
             }
@@ -107,10 +129,13 @@ struct ContentView: View {
     }
 
     private var identityText: String {
-        if let alias = viewModel.state.identityAlias {
-            return "Identity: \(alias)"
+        guard let alias = viewModel.state.identityAlias else {
+            return "No identity selected"
         }
-        return "No identity selected"
+        if alias.hasPrefix(EnrollmentController.identityAliasPrefix) {
+            return "Identity: this device (registered)"
+        }
+        return "Identity: \(alias)"
     }
 
     private var statusText: String {

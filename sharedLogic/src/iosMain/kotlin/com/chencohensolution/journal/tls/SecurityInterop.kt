@@ -19,6 +19,9 @@ import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
 import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
+import platform.Foundation.NSData
+import platform.Foundation.create
+import platform.posix.memcpy
 import platform.Security.SecCertificateCopySubjectSummary
 import platform.Security.SecCertificateCreateWithData
 import platform.Security.SecCertificateRef
@@ -62,6 +65,15 @@ internal fun secCertificateObject(der: ByteArray): Any {
     } finally {
         CFRelease(data)
     }
+}
+
+internal fun ByteArray.toNSData(): NSData =
+    if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.convert()) }
+
+internal fun NSData.toByteArray(): ByteArray {
+    val size = length.toInt()
+    if (size == 0) return ByteArray(0)
+    return ByteArray(size).also { bytes -> bytes.usePinned { memcpy(it.addressOf(0), this.bytes, length) } }
 }
 
 internal fun subjectSummary(certificate: SecCertificateRef?): String? {

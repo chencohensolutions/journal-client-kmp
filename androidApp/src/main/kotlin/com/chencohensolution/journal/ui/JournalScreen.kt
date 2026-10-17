@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,14 +35,16 @@ import com.chencohensolution.journal.connection.ConnectionStatus
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.connection.JournalImage
 import com.chencohensolution.journal.connection.JournalState
+import com.chencohensolution.journal.enrollment.EnrollmentController
 
 @Composable
-fun JournalScreen(controller: JournalController, onSelectIdentity: () -> Unit) {
+fun JournalScreen(controller: JournalController, onSelectIdentity: () -> Unit, onRegisterDevice: () -> Unit) {
     val state by controller.state.collectAsStateWithLifecycle()
     JournalContent(
         state = state,
         onServerUrlChange = controller::updateServerUrl,
         onSelectIdentity = onSelectIdentity,
+        onRegisterDevice = onRegisterDevice,
         onConnect = controller::connect,
     )
 }
@@ -51,6 +54,7 @@ private fun JournalContent(
     state: JournalState,
     onServerUrlChange: (String) -> Unit,
     onSelectIdentity: () -> Unit,
+    onRegisterDevice: () -> Unit,
     onConnect: () -> Unit,
 ) {
     Scaffold { innerPadding ->
@@ -71,15 +75,23 @@ private fun JournalContent(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val alias = state.identityAlias
                 Text(
-                    text = state.identityAlias?.let { stringResource(R.string.identity_selected, it) }
-                        ?: stringResource(R.string.identity_none),
+                    text = when {
+                        alias == null -> stringResource(R.string.identity_none)
+                        alias.startsWith(EnrollmentController.IDENTITY_ALIAS_PREFIX) -> stringResource(R.string.identity_enrolled)
+                        else -> stringResource(R.string.identity_selected, alias)
+                    },
                     fontStyle = FontStyle.Italic,
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedButton(onClick = onSelectIdentity) {
                     Text(stringResource(R.string.btn_select_identity))
                 }
+            }
+
+            TextButton(onClick = onRegisterDevice, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.btn_register_device))
             }
 
             Button(
@@ -157,6 +169,7 @@ private fun JournalContentPreview() {
             ),
             onServerUrlChange = {},
             onSelectIdentity = {},
+            onRegisterDevice = {},
             onConnect = {},
         )
     }

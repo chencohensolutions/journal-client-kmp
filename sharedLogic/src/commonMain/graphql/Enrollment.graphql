@@ -1,0 +1,28 @@
+query EnrollmentPreview($code: String!) {
+  enrollmentPreview(code: $code) {
+    __typename
+    ... on EnrollmentPreview {
+      user
+      expiresAt
+    }
+    ... on EnrollmentRejected {
+      reason
+    }
+  }
+}
+
+mutation EnrollDevice($input: EnrollDeviceInput!) {
+  enrollDevice(input: $input) {
+    __typename
+    ... on EnrolledDevice {
+      user
+      deviceName
+      certificate
+      serial
+      expiresAt
+    }
+    ... on EnrollmentRejected {
+      reason
+    }
+  }
+}

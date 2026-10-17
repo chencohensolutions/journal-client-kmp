@@ -63,6 +63,8 @@ apollo {
         // Schema copied from journal-server-go/graph/schema/schema.graphql; operations live next to it.
         srcDir("src/commonMain/graphql")
         packageName.set("com.chencohensolution.journal.graphql")
+        // RFC 3339 timestamps from gqlgen's Time scalar.
+        mapScalarToKotlinString("Time")
         // Keep generated models out of the public API (and the iOS framework header).
         generateAsInternal.set(true)
     }

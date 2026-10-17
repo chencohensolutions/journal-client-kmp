@@ -27,12 +27,16 @@ import platform.Security.SecTrustSetAnchorCertificatesOnly
 
 private typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Unit
 
-/** mTLS over URLSession, using an identity imported into the app Keychain by [KeychainIdentities]. */
+/**
+ * mTLS over URLSession, using an identity in the app Keychain: imported by [KeychainIdentities] or
+ * created by enrollment (IosDeviceKeyStore).
+ */
 internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 
-    override suspend fun create(identityAlias: String, trustedCas: List<ByteArray>): HttpClient {
-        val identity = KeychainIdentities.find(identityAlias)
-            ?: error("Identity \"$identityAlias\" is not in the Keychain; import it again")
+    override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient {
+        val identity = identityAlias?.let {
+            KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again")
+        }
         val anchors: List<Any> = trustedCas.map(::secCertificateObject)
 
         return HttpClient(Darwin) {
@@ -69,7 +73,12 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
         }
     }
 
-    private fun presentIdentity(identity: Any, completion: ChallengeCompletion) {
+    private fun presentIdentity(identity: Any?, completion: ChallengeCompletion) {
+        if (identity == null) {
+            // No client certificate: the server accepts that for enrollment only.
+            completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
+            return
+        }
         val credential = withCFBridge(identity) { identityRef ->
             NSURLCredential.credentialWithIdentity(
                 identity = identityRef!!.reinterpret(),

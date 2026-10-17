@@ -12,6 +12,15 @@ Android and iOS clients for journal-server-go. Only the logic is shared; each pl
 
 The server authenticates users by client certificate; the certificate CN maps to the user.
 
+**Register this device (recommended).** On first launch, or via **Register this device**, the
+enrollment wizard asks for the server address and a one-time code from `journal-server enroll-code <user>`.
+It creates an EC P-256 key in secure hardware (Android Keystore/StrongBox, iOS Secure Enclave; software keys on
+emulators where neither is available), sends a certificate request, and stores the certificate the server issues.
+The logic is shared ([enrollment/](./sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/enrollment/));
+see `docs/authentication.md` in journal-server-go for the full design.
+
+Alternatively, use a certificate file:
+
 - **Android:** install the user's `.p12` in the system (Settings → Security → Encryption & credentials →
   Install a certificate → VPN & app user certificate), then tap **Select identity** to pick it from the KeyChain.
 - **iOS:** tap **Import Identity (.p12)…** and pick the bundle produced by

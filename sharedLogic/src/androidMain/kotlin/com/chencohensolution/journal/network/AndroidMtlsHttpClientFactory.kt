@@ -2,6 +2,7 @@ package com.chencohensolution.journal.network
 
 import android.content.Context
 import android.security.KeyChain
+import com.chencohensolution.journal.enrollment.androidKeyStore
 import com.chencohensolution.journal.tls.parseX509Certificate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -17,25 +18,23 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.X509ExtendedKeyManager
 
-/** mTLS over OkHttp, using a client identity the user installed in the Android system KeyChain. */
+/**
+ * mTLS over OkHttp. The identity is either a key created by enrollment (app Android Keystore) or
+ * one the user installed in the Android system KeyChain.
+ */
 internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFactory {
     private val appContext = context.applicationContext
 
-    override suspend fun create(identityAlias: String, trustedCas: List<ByteArray>): HttpClient =
+    override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient =
         withContext(Dispatchers.IO) {
             val trust = HandshakeCertificates.Builder()
                 .addPlatformTrustedCertificates()
                 .apply { trustedCas.forEach { addTrustedCertificate(parseX509Certificate(it)) } }
                 .build()
 
-            // KeyChain blocks, so it must stay off the main thread.
-            val privateKey = KeyChain.getPrivateKey(appContext, identityAlias)
-                ?: error("Could not access system private key for $identityAlias")
-            val chain = KeyChain.getCertificateChain(appContext, identityAlias)
-                ?: error("Could not access system certificate chain for $identityAlias")
-
+            val keyManagers = identityAlias?.let { arrayOf(keyManager(it)) }
             val sslContext = SSLContext.getInstance("TLS").apply {
-                init(arrayOf(KeyChainKeyManager(identityAlias, privateKey, chain)), arrayOf(trust.trustManager), null)
+                init(keyManagers, arrayOf(trust.trustManager), null)
             }
             val okHttp = OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.socketFactory, trust.trustManager)
@@ -43,10 +42,27 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
 
             HttpClient(OkHttp) { engine { preconfigured = okHttp } }
         }
+
+    /** Blocks (KeyChain and Keystore), so it must stay off the main thread. */
+    private fun keyManager(alias: String): KeyChainKeyManager {
+        val keyStore = androidKeyStore()
+        if (keyStore.containsAlias(alias)) {
+            val privateKey = keyStore.getKey(alias, null) as? PrivateKey
+                ?: error("Could not access the device key for $alias")
+            val chain = keyStore.getCertificateChain(alias)?.map { it as X509Certificate }?.toTypedArray()
+                ?: error("Could not access the device certificate for $alias")
+            return KeyChainKeyManager(alias, privateKey, chain)
+        }
+        val privateKey = KeyChain.getPrivateKey(appContext, alias)
+            ?: error("Could not access system private key for $alias")
+        val chain = KeyChain.getCertificateChain(appContext, alias)
+            ?: error("Could not access system certificate chain for $alias")
+        return KeyChainKeyManager(alias, privateKey, chain)
+    }
 }
 
 /**
- * Presents a single KeyChain identity. KeyChain keys may be hardware-backed and non-exportable,
+ * Presents a single KeyChain or Keystore identity. Such keys may be hardware-backed and non-exportable,
  * so they are handed to the TLS stack directly instead of being copied into a KeyStore.
  */
 private class KeyChainKeyManager(

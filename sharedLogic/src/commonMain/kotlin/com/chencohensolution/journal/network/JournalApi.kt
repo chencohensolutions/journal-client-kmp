@@ -13,11 +13,26 @@ import io.ktor.http.encodedPath
 
 /**
  * Builds an [HttpClient] that trusts [trustedCas] (DER) in addition to the platform roots and
- * presents the client identity named [identityAlias] during the TLS handshake.
+ * presents the client identity named [identityAlias] during the TLS handshake. Without an alias
+ * no client certificate is sent, which the server accepts only for enrollment.
  */
 internal fun interface MtlsHttpClientFactory {
-    suspend fun create(identityAlias: String, trustedCas: List<ByteArray>): HttpClient
+    suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient
 }
+
+private const val GRAPHQL_PATH = "/query"
+
+/** The GraphQL endpoint for what the user typed: `https://` is assumed and `/query` added when there is no path. */
+internal fun graphQlEndpoint(serverAddress: String): String {
+    val trimmed = serverAddress.trim().trimEnd('/')
+    val withScheme = if ("://" in trimmed) trimmed else "https://$trimmed"
+    return URLBuilder(withScheme).apply {
+        if (encodedPath.isEmpty() || encodedPath == "/") encodedPath = GRAPHQL_PATH
+    }.buildString()
+}
+
+/** The address to show the user for a stored endpoint; the inverse of [graphQlEndpoint]. */
+internal fun serverAddress(endpoint: String): String = endpoint.removeSuffix(GRAPHQL_PATH)
 
 /** Apollo on top of the platform mTLS client. Closing the ApolloClient also closes [httpClient]. */
 internal fun createApolloClient(httpClient: HttpClient, serverUrl: String): ApolloClient =

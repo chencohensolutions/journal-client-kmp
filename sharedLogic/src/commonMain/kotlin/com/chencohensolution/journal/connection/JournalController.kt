@@ -91,6 +91,16 @@ class JournalController internal constructor(
         _state.update { it.copy(identityAlias = alias) }
     }
 
+    /** Switches to an identity created by enrollment; called by EnrollmentController. */
+    internal fun useEnrolledIdentity(serverUrl: String, alias: String) {
+        connectJob?.cancel()
+        settings.serverUrl = serverUrl
+        settings.identityAlias = alias
+        _state.update {
+            JournalState(serverUrl = serverUrl, identityAlias = alias, status = ConnectionStatus.NotConnected)
+        }
+    }
+
     fun connect() {
         val url = _state.value.serverUrl.trim()
         if (url.isEmpty()) {

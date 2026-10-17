@@ -117,7 +117,7 @@ class JournalApiTest {
 
 class JournalControllerTest {
     private val store = InMemoryStore()
-    private val requestedAliases = mutableListOf<String>()
+    private val requestedAliases = mutableListOf<String?>()
 
     private fun TestScope.controller(handler: MockRequestHandler = respondJson(IMAGES_JSON)) = JournalController(
         settings = JournalSettings(store),
@@ -165,7 +165,7 @@ class JournalControllerTest {
 
         assertEquals(ConnectionStatus.Connected, controller.finalStatus())
         assertEquals(listOf("IMG 1", "beach"), controller.currentState.images.map { it.title })
-        assertEquals(listOf("hen"), requestedAliases)
+        assertEquals(listOf<String?>("hen"), requestedAliases)
 
         val reloaded = controller().currentState
         assertEquals(SERVER_URL, reloaded.serverUrl)
