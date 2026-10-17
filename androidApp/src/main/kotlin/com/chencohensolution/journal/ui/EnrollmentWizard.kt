@@ -68,7 +68,6 @@ import com.chencohensolution.journal.enrollment.RegistrationProgress
 @Composable
 fun EnrollmentWizard(
     controller: EnrollmentController,
-    onUseCertificateFile: () -> Unit,
     onOpenJournal: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
@@ -85,7 +84,6 @@ fun EnrollmentWizard(
             updateDeviceName = controller::updateDeviceName,
             checkCode = controller::checkCode,
             register = controller::register,
-            useCertificateFile = onUseCertificateFile,
             openJournal = onOpenJournal,
         ),
     )
@@ -99,7 +97,6 @@ private class EnrollmentActions(
     val updateDeviceName: (String) -> Unit = {},
     val checkCode: () -> Unit = {},
     val register: () -> Unit = {},
-    val useCertificateFile: () -> Unit = {},
     val openJournal: () -> Unit = {},
 )
 
@@ -139,9 +136,6 @@ private fun ColumnScope.WelcomeStep(actions: EnrollmentActions) {
     }
     BottomActions {
         PrimaryButton(stringResource(R.string.enroll_get_started), onClick = actions.start)
-        TextButton(onClick = actions.useCertificateFile, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text(stringResource(R.string.enroll_have_certificate))
-        }
     }
 }
 

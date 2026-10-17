@@ -1,22 +1,14 @@
 <resources>
     <string name="app_name">Journal</string>
-    <string name="server_url_hint">Server URL</string>
-    <string name="identity_none">No identity selected</string>
-    <string name="identity_selected">Identity: %s</string>
-    <string name="identity_selected_toast">Identity selected: %s</string>
-    <string name="btn_select_identity">Select identity</string>
-    <string name="btn_connect">Connect</string>
-    <string name="status_not_connected">Status: Not connected</string>
-    <string name="status_connecting">Connecting…\nTime: %1$s\nTrusting: %2$s</string>
-    <string name="status_connected">Status: Connected successfully!</string>
-    <string name="status_failed_http">Status: Failed (HTTP %d)</string>
-    <string name="status_error_url">Status: Error - Please enter server URL</string>
-    <string name="status_error_identity">Error: Please select an identity first</string>
-    <string name="status_error_prefix">Status: Error - %s</string>
-    <string name="images_title">Images (%d)</string>
-    <string name="images_error">Could not load images: %s</string>
-    <string name="identity_enrolled">Identity: this device (registered)</string>
-    <string name="btn_register_device">Register this device</string>
+    <string name="home_title">home</string>
+    <string name="home_status_not_connected">Not connected</string>
+    <string name="home_status_connecting">Connecting…</string>
+    <string name="home_status_connected">Connected</string>
+    <string name="home_status_rejected">Connection failed: the server rejected this device\'s certificate</string>
+    <string name="home_status_failed_http">Connection failed (HTTP %d)</string>
+    <string name="home_status_failed">Connection failed: %s</string>
+    <string name="home_status_not_registered">This device is not registered</string>
+    <string name="home_retry">Try again</string>
 
     <!-- Enrollment wizard -->
     <string name="enroll_welcome_title">Connect this device to your journal</string>
@@ -28,7 +20,6 @@
     <string name="enroll_welcome_step3_title">The server issues a certificate</string>
     <string name="enroll_welcome_step3_body">From then on, this device signs in automatically.</string>
     <string name="enroll_get_started">Get started</string>
-    <string name="enroll_have_certificate">I already have a certificate</string>
     <string name="enroll_back">Back</string>
     <string name="enroll_step_of">Step %1$d of 3 · %2$s</string>
     <string name="enroll_step_connect">Connect</string>

@@ -1,181 +1,23 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import SharedLogic
 
+/// Shows the registration wizard until this device has an identity, then the home screen.
 struct ContentView: View {
     @StateObject private var viewModel = JournalViewModel()
-
-    @State private var isEnrollmentPresented = false
-    @State private var isImporterPresented = false
-    @State private var pendingBundle: Data?
-    @State private var password = ""
-    @State private var importError: String?
+    @State private var showWizard: Bool?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Server") {
-                    TextField("Server URL", text: serverUrl)
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                Section {
-                    Text(identityText)
-                        .italic()
-                    Button("Register This Device…") {
-                        viewModel.enrollment.reset()
-                        isEnrollmentPresented = true
-                    }
-                    Button("Import Identity (.p12)…") {
-                        isImporterPresented = true
-                    }
-                } header: {
-                    Text("Identity")
-                } footer: {
-                    Text("Register with an enrollment code from `journal-server enroll-code`, or import the PKCS#12 bundle created by the server's generate-user-cert script.")
-                }
-
-                Section {
-                    Button("Connect") {
-                        viewModel.connect()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .disabled(viewModel.state.status is ConnectionStatusConnecting)
-                }
-
-                Section("Status") {
-                    Text(statusText)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
-
-                if viewModel.state.status is ConnectionStatusConnected {
-                    Section("Images (\(viewModel.state.images.count))") {
-                        if let error = viewModel.state.imagesError {
-                            Text("Could not load images: \(error)")
-                                .foregroundStyle(.red)
-                        }
-                        ForEach(viewModel.state.images, id: \.id) { image in
-                            VStack(alignment: .leading) {
-                                Text(image.title)
-                                if let description = image.description_ {
-                                    Text(description)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
+        // Decided once at launch; afterwards only "Open journal" leaves the wizard, so the
+        // success screen stays visible after the identity is stored.
+        if showWizard ?? (viewModel.state.identityAlias == nil) {
+            EnrollmentView(viewModel: viewModel.enrollment) {
+                showWizard = false
+                viewModel.enrollment.reset()
             }
-            .navigationTitle("Journal")
-            .fullScreenCover(isPresented: $isEnrollmentPresented) {
-                EnrollmentView(
-                    viewModel: viewModel.enrollment,
-                    onUseCertificateFile: { isEnrollmentPresented = false },
-                    onOpenJournal: {
-                        isEnrollmentPresented = false
-                        viewModel.enrollment.reset()
-                        viewModel.connect()
-                    }
-                )
-            }
-            .onAppear {
-                // First launch without an identity starts with device registration.
-                if viewModel.state.identityAlias == nil {
-                    isEnrollmentPresented = true
-                }
-            }
-            .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.pkcs12]) { result in
-                loadBundle(result)
-            }
-            .alert("Certificate Password", isPresented: isPasswordPromptPresented) {
-                SecureField("Password (empty if none)", text: $password)
-                Button("Import") { importPendingBundle() }
-                Button("Cancel", role: .cancel) { pendingBundle = nil }
-            } message: {
-                Text("Enter the password protecting the .p12 file.")
-            }
-            .alert("Import Failed", isPresented: isImportErrorPresented) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(importError ?? "")
-            }
+            .onAppear { showWizard = showWizard ?? true }
+        } else {
+            HomeView(viewModel: viewModel)
         }
-    }
-
-    private var serverUrl: Binding<String> {
-        Binding(
-            get: { viewModel.state.serverUrl },
-            set: { viewModel.updateServerUrl($0) }
-        )
-    }
-
-    private var isPasswordPromptPresented: Binding<Bool> {
-        Binding(
-            get: { pendingBundle != nil },
-            set: { if !$0 { pendingBundle = nil } }
-        )
-    }
-
-    private var isImportErrorPresented: Binding<Bool> {
-        Binding(
-            get: { importError != nil },
-            set: { if !$0 { importError = nil } }
-        )
-    }
-
-    private var identityText: String {
-        guard let alias = viewModel.state.identityAlias else {
-            return "No identity selected"
-        }
-        if alias.hasPrefix(EnrollmentController.identityAliasPrefix) {
-            return "Identity: this device (registered)"
-        }
-        return "Identity: \(alias)"
-    }
-
-    private var statusText: String {
-        switch viewModel.state.status {
-        case is ConnectionStatusNotConnected:
-            return "Status: Not connected"
-        case is ConnectionStatusMissingServerUrl:
-            return "Status: Error - Please enter server URL"
-        case is ConnectionStatusMissingIdentity:
-            return "Error: Please import an identity first"
-        case let connecting as ConnectionStatusConnecting:
-            return "Connecting…\nTime: \(connecting.startedAt)\nTrusting: \(connecting.trustedCaNames.joined(separator: ", "))"
-        case is ConnectionStatusConnected:
-            return "Status: Connected successfully!"
-        case let failed as ConnectionStatusFailed:
-            return "Status: Failed (HTTP \(failed.httpCode))"
-        case let error as ConnectionStatusError:
-            return "Status: Error - \(error.message)"
-        default:
-            return ""
-        }
-    }
-
-    private func loadBundle(_ result: Result<URL, Error>) {
-        do {
-            let url = try result.get()
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-            password = ""
-            pendingBundle = try Data(contentsOf: url)
-        } catch {
-            importError = error.localizedDescription
-        }
-    }
-
-    private func importPendingBundle() {
-        guard let bundle = pendingBundle else { return }
-        pendingBundle = nil
-        importError = viewModel.importIdentity(bundle, password: password)
-        password = ""
     }
 }
 

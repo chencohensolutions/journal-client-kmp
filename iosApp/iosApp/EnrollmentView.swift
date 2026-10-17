@@ -4,7 +4,6 @@ import SharedLogic
 /// Registers this device with the server: enrollment code → Secure Enclave key → client certificate.
 struct EnrollmentView: View {
     @ObservedObject var viewModel: EnrollmentViewModel
-    var onUseCertificateFile: () -> Void
     var onOpenJournal: () -> Void
 
     var body: some View {
@@ -58,8 +57,6 @@ struct EnrollmentView: View {
             }
             BottomActions {
                 PrimaryButton(title: "Get started", action: viewModel.start)
-                Button("I already have a certificate", action: onUseCertificateFile)
-                    .frame(maxWidth: .infinity, minHeight: 44)
             }
         }
     }

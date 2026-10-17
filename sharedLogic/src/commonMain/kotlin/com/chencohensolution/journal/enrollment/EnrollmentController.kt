@@ -132,7 +132,7 @@ class EnrollmentController internal constructor(
     }
 
     fun updateCode(code: String) {
-        _state.update { it.copy(code = code, step = clearedCodeError(it.step)) }
+        _state.update { it.copy(code = cleanCode(code), step = clearedCodeError(it.step)) }
     }
 
     fun updateDeviceName(name: String) {
@@ -290,6 +290,28 @@ class EnrollmentController internal constructor(
     companion object {
         /** Aliases of keys created by enrollment, as opposed to identities imported by the user. */
         const val IDENTITY_ALIAS_PREFIX = "journal-device-"
+    }
+}
+
+private const val CODE_LENGTH = 8
+private val PASTED_CODE = Regex("""(?<![A-Za-z0-9])[A-Za-z0-9]{4}-?[A-Za-z0-9]{4}(?![A-Za-z0-9])""")
+
+/**
+ * Keeps what the user typed to letters, digits and dashes, at most [CODE_LENGTH] letters and digits.
+ * Pasted text (e.g. a terminal line with "Code  K7QM-4XPD" or extra lines) is reduced to the first
+ * code-shaped word in it. The server ignores case and dashes.
+ */
+internal fun cleanCode(input: String): String {
+    val pasted = input.any(Char::isWhitespace) || input.count(Char::isLetterOrDigit) > CODE_LENGTH
+    val candidate = if (pasted) PASTED_CODE.find(input)?.value ?: input else input
+    var letters = 0
+    return buildString {
+        for (c in candidate.uppercase()) {
+            when {
+                c == '-' && letters in 1 until CODE_LENGTH -> append(c)
+                c in 'A'..'Z' || c in '0'..'9' -> if (letters < CODE_LENGTH) append(c).also { letters++ }
+            }
+        }
     }
 }
 

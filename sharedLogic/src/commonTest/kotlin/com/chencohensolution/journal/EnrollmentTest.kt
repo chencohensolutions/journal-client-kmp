@@ -10,6 +10,7 @@ import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.enrollment.EnrollmentError
 import com.chencohensolution.journal.enrollment.EnrollmentStep
 import com.chencohensolution.journal.enrollment.KeyProtection
+import com.chencohensolution.journal.enrollment.cleanCode
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.graphQlEndpoint
 import com.chencohensolution.journal.network.serverAddress
@@ -73,6 +74,25 @@ class CertificateRequestTest {
         val info = "3072" + "020100" + "3010310e300c06035504030c05506978656c" + publicKeyInfo + "a000"
         assertEquals(info, signed.hex(), "the signature must cover exactly the CertificationRequestInfo")
         assertEquals("30818b" + info + "300a06082a8648ce3d040302" + "030900" + "3006020101020102", csr.hex())
+    }
+}
+
+class CleanCodeTest {
+    @Test
+    fun keepsTypedCodes() {
+        assertEquals("K7QM-4XPD", cleanCode("k7qm-4xpd"))
+        assertEquals("K7QM", cleanCode("K7QM"))
+        assertEquals("K7QM-", cleanCode("K7QM-"))
+        assertEquals("K7QM4XPD", cleanCode("K7QM4XPD9"))
+        assertEquals("K7QM-4XPD", cleanCode("K7QM-4XPD!"))
+    }
+
+    @Test
+    fun extractsCodeFromPastedText() {
+        val pasted = "5MHH-0JDB\n2026/10/17 13:51:27 http: TLS handshake error from 127.0.0.1:55470: remote error"
+        assertEquals("5MHH-0JDB", cleanCode(pasted))
+        assertEquals("K7QM-4XPD", cleanCode("  Code     K7QM-4XPD"))
+        assertEquals("K7QM-4XPD", cleanCode(" k7qm-4xpd "))
     }
 }
 
@@ -198,7 +218,7 @@ class EnrollmentControllerTest {
         assertEquals(EnrollmentStep.EnterCode(checking = true), controller.currentState.step)
         assertEquals(EnrollmentStep.Confirm(user = "hen", minutesLeft = 8), controller.awaitStep { it is EnrollmentStep.Confirm })
         assertEquals(listOf<String?>(null), requestedAliases)
-        assertContains(requests.single(), "\"code\":\"k7qm-4xpd\"")
+        assertContains(requests.single(), "\"code\":\"K7QM-4XPD\"")
     }
 
     @Test

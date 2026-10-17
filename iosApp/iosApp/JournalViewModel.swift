@@ -26,21 +26,8 @@ final class JournalViewModel: ObservableObject {
         controller.close()
     }
 
-    func updateServerUrl(_ url: String) {
-        controller.updateServerUrl(url: url)
-    }
-
+    /// Connects with the stored identity; progress and result arrive in `state.status`.
     func connect() {
         controller.connect()
-    }
-
-    /// Imports a PKCS#12 bundle into the Keychain and selects it. Returns an error message on failure.
-    func importIdentity(_ data: Data, password: String) -> String? {
-        let result = IosJournal.shared.importIdentity(pkcs12: data, password: password)
-        if let success = result as? IdentityImportResultSuccess {
-            controller.selectIdentity(alias: success.label)
-            return nil
-        }
-        return (result as? IdentityImportResultFailure)?.message ?? "Unknown error"
     }
 }
