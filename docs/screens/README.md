@@ -1,0 +1,77 @@
+# Screens
+
+One page per screen: what it's for, what it shows, how it behaves, and where the code is on each platform.
+The mockups are in the design canvas: https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf
+
+| Screen | Shown when | Doc |
+|---|---|---|
+| Enrollment wizard | The device has no identity yet | `docs/authentication.md` in journal-server-go |
+| Photo access | After enrollment, until the user answers once | [photo-access.md](photo-access.md) |
+| Journal (home) | Every launch after that | [journal-home.md](journal-home.md) |
+| Story | Tapping a story card, or right after creating a story | [story page](story-page.md) |
+| Group | Tapping a group tile in a story | [group.md](group.md) |
+| Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
+| All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
+| Viewer | Tapping any photo or video | [viewer.md](viewer.md) |
+
+```
+Enrollment ──► Photo access ──► Journal ──► All photos
+                (once)            │  │           │
+                                  │  └─► Story ─► Group
+                                  │        │     │    │
+                                  └──► Viewer ◄──┴────┘
+```
+
+## Shared logic
+
+All screens after enrollment read from `LibraryController`
+([library/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/library/)):
+
+- `LibraryState.access`: `NOT_DETERMINED`, `DENIED`, `LIMITED` or `FULL`. Android can't tell "never asked" from
+  "denied", so the controller remembers whether the question was answered (`photoAccessRequested` in settings).
+- `LibraryState.days`: every photo and video, grouped by the day it was taken (device time zone), newest first.
+  `days(filter)` narrows it for All photos.
+- `notBackedUpCount` / `notBackedUpBytes`: what the backup summary shows.
+- `refresh()` re-checks the permission and re-reads the library. Both apps call it when they come to the foreground.
+
+The platform part is `MediaLibrary`: MediaStore on Android
+([AndroidMediaLibrary.kt](../../sharedLogic/src/androidMain/kotlin/com/chencohensolution/journal/library/AndroidMediaLibrary.kt)),
+PhotoKit on iOS ([IosMediaLibrary.kt](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/library/IosMediaLibrary.kt)).
+Thumbnails and full images are loaded by the UIs, by item id.
+
+Stories come from `StoriesController`
+([stories/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/)): it keeps stories on the
+device, along with each photo's caption and tags (`PhotoNote`), and combines them with the library into
+`StoriesState.timeline` (stories and unsorted days, newest first), `unsortedDays` (photos in no story and without
+tags) and `tags`. See [story page](story-page.md) for the file format.
+
+Server state comes from `JournalState.health`:
+
+| `ServerHealth` | When | Shown |
+|---|---|---|
+| `OK` | Connected, or still checking | Nothing |
+| `OFFLINE` | Network error, timeout, any HTTP error but 401 | "Offline" pill in the top bar |
+| `REJECTED` | HTTP 401 (certificate unknown or revoked), or no identity | "Register again" card on the Journal |
+
+## Backup badges
+
+Every tile has a badge in its bottom-right corner. Uploads are not implemented yet, so today every item is
+**Only on this device**; the other states are drawn and ready.
+
+| Badge | `BackupStatus` | Meaning |
+|---|---|---|
+| Cloud with a slash, dark | `NotBackedUp` | Only on this device |
+| Dashed ring, dark | `Queued` | Waiting to upload (for example, for Wi-Fi) |
+| Ring filling up, green | `Uploading(progress)` | Uploading; exact % in the viewer |
+| Check, green | `BackedUp` | On the server |
+| `!`, orange | `Failed(reason)` | Upload failed; the viewer shows why |
+
+Videos also have a chip in the top-right corner: a play icon and the length, or only the play icon when the
+length is unknown.
+
+## Look
+
+The library screens are always dark, like a photo app, whatever the system theme; the colors are in
+`LibraryColors` ([Android](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/LibraryStyle.kt),
+[iOS](../../iosApp/iosApp/LibraryStyle.swift)). Photos run edge to edge, under the status bar; controls float on
+top with a dark fade behind them. The photo access screen follows the system theme like the enrollment wizard.

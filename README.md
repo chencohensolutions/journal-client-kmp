@@ -4,9 +4,14 @@ Android and iOS clients for journal-server-go. Only the logic is shared; each pl
 
 | Module | Contents |
 |---|---|
-| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), GraphQL via Apollo Kotlin, bundled server CA. Platform folders hold the mTLS client for each OS. |
+| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), the device photo library (`LibraryController`), GraphQL via Apollo Kotlin, bundled server CA. Platform folders hold the mTLS client and the photo library (MediaStore / PhotoKit) for each OS. |
 | [androidApp](./androidApp/src/main/kotlin) | Jetpack Compose UI. |
 | [iosApp](./iosApp/iosApp) | SwiftUI UI, using the `SharedLogic` framework. |
+
+## Screens
+
+Each screen after enrollment (photo access, the Journal home, All photos, the viewer) is described in
+[docs/screens](./docs/screens/README.md).
 
 ## Authentication (mTLS)
 

@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Journal shows your photos and videos by day and backs them up to your own server.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Journal connects to your journal server on the local network.</string>
 </dict>

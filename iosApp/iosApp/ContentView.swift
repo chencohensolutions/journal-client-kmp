@@ -1,7 +1,7 @@
 import SwiftUI
 import SharedLogic
 
-/// Shows the registration wizard until this device has an identity, then the home screen.
+/// Shows the registration wizard until this device has an identity, then the journal.
 struct ContentView: View {
     @StateObject private var viewModel = JournalViewModel()
     @State private var showWizard: Bool?
@@ -16,7 +16,10 @@ struct ContentView: View {
             }
             .onAppear { showWizard = showWizard ?? true }
         } else {
-            HomeView(viewModel: viewModel)
+            LibraryRootView(journal: viewModel, library: viewModel.library, stories: viewModel.stories) {
+                viewModel.enrollment.reset()
+                showWizard = true
+            }
         }
     }
 }

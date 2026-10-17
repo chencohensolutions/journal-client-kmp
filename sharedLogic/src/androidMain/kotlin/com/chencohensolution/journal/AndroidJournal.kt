@@ -5,9 +5,17 @@ import android.os.Build
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.AndroidDeviceKeyStore
 import com.chencohensolution.journal.enrollment.EnrollmentController
+import com.chencohensolution.journal.stories.StoryIds
+import com.chencohensolution.journal.stories.StoriesController
+import com.chencohensolution.journal.stories.FilePhotoNoteStore
+import com.chencohensolution.journal.stories.FileStoryStore
+import com.chencohensolution.journal.library.AndroidMediaLibrary
+import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SharedPreferencesStore
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
 
 /** Android entry point into the shared logic. */
 fun createJournalController(context: Context): JournalController =
@@ -24,4 +32,20 @@ fun createEnrollmentController(context: Context, journal: JournalController): En
         keyStore = AndroidDeviceKeyStore(),
         defaultDeviceName = Build.MODEL,
         onEnrolled = journal::useEnrolledIdentity,
+    )
+
+/** The device photo library (MediaStore). */
+fun createLibraryController(context: Context): LibraryController =
+    LibraryController(
+        library = AndroidMediaLibrary(context),
+        settings = JournalSettings(SharedPreferencesStore(context)),
+    )
+
+/** Stories kept on this device, in the app's private files folder (`files/journal/stories`). */
+fun createStoriesController(context: Context, library: LibraryController): StoriesController =
+    StoriesController(
+        store = FileStoryStore(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "journal"),
+        noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "journal"),
+        library = library,
+        newId = StoryIds(JournalSettings(SharedPreferencesStore(context)), System::currentTimeMillis)::next,
     )

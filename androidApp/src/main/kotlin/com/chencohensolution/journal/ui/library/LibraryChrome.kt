@@ -1,0 +1,113 @@
+package com.chencohensolution.journal.ui.library
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.chencohensolution.journal.R
+
+/** Shown only while the server can't be reached; nothing is shown when it can. */
+@Composable
+internal fun OfflinePill(modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .background(LibraryColors.PillScrim, RoundedCornerShape(50))
+            .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.Warning, modifier = Modifier.size(15.dp))
+        Text(stringResource(R.string.library_offline), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** "1,248 not backed up": the backup summary above the bottom bar. */
+@Composable
+internal fun BackupSummaryPill(text: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .background(LibraryColors.Light.copy(alpha = 0.16f), RoundedCornerShape(50))
+            .height(36.dp)
+            .padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(LibraryIcons.CloudOff, null, tint = Color.White, modifier = Modifier.size(16.dp))
+        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** The floating segmented bar at the bottom of the library screens. */
+@Composable
+internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .shadow(12.dp, RoundedCornerShape(50))
+            .background(LibraryColors.Raised.copy(alpha = 0.95f), RoundedCornerShape(50))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
+            TextButton(
+                onClick = { onSelect(value) },
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = if (isSelected) LibraryColors.Light else Color.Transparent,
+                    contentColor = if (isSelected) LibraryColors.Ink else Color.White,
+                ),
+                modifier = Modifier
+                    .height(40.dp)
+                    .semantics {
+                        role = Role.Tab
+                        this.selected = isSelected
+                    },
+            ) {
+                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. */
+@Composable
+internal fun BottomControls(summary: String?, modifier: Modifier = Modifier, bar: @Composable () -> Unit) {
+    Column(
+        modifier.background(LibraryColors.BottomFade).padding(top = 48.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (summary != null) BackupSummaryPill(summary)
+        bar()
+    }
+}
+
+/** A day label written over the first photo of the day. */
+@Composable
+internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
+    Box(modifier.background(LibraryColors.LabelFade).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 24.dp)) {
+        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    }
+}

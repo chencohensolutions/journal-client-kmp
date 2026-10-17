@@ -43,13 +43,32 @@ data class JournalImage(
     val description: String?,
 )
 
+/** What the library screens show about the server: nothing, an "Offline" pill, or a register-again banner. */
+enum class ServerHealth {
+    /** Connected, or still checking: show nothing. */
+    OK,
+
+    /** Network error, timeout or server error: show the quiet "Offline" pill. */
+    OFFLINE,
+
+    /** The server refused this device's certificate (401), or the device has no identity: needs registering again. */
+    REJECTED,
+}
+
 data class JournalState(
     val serverUrl: String,
     val identityAlias: String?,
     val status: ConnectionStatus,
     val images: List<JournalImage> = emptyList(),
     val imagesError: String? = null,
-)
+) {
+    val health: ServerHealth = when (status) {
+        ConnectionStatus.NotConnected, is ConnectionStatus.Connecting, ConnectionStatus.Connected -> ServerHealth.OK
+        is ConnectionStatus.Failed -> if (status.httpCode == 401) ServerHealth.REJECTED else ServerHealth.OFFLINE
+        is ConnectionStatus.Error -> ServerHealth.OFFLINE
+        ConnectionStatus.MissingServerUrl, ConnectionStatus.MissingIdentity -> ServerHealth.REJECTED
+    }
+}
 
 /** Handle returned by [JournalController.observe]; call [cancel] to stop receiving updates. */
 fun interface ObservationHandle {

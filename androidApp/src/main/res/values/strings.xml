@@ -1,14 +1,168 @@
 <resources>
     <string name="app_name">Journal</string>
-    <string name="home_title">home</string>
-    <string name="home_status_not_connected">Not connected</string>
-    <string name="home_status_connecting">Connecting…</string>
-    <string name="home_status_connected">Connected</string>
-    <string name="home_status_rejected">Connection failed: the server rejected this device\'s certificate</string>
-    <string name="home_status_failed_http">Connection failed (HTTP %d)</string>
-    <string name="home_status_failed">Connection failed: %s</string>
-    <string name="home_status_not_registered">This device is not registered</string>
-    <string name="home_retry">Try again</string>
+
+    <!-- Photo access -->
+    <string name="library_access_title">Your journal starts with your photos and videos</string>
+    <string name="library_access_body">Journal needs access to your library to show your moments by day and back them up to your own server.</string>
+    <string name="library_access_days_title">Your moments, day by day</string>
+    <string name="library_access_days_body">Photos and videos, grouped like a diary.</string>
+    <string name="library_access_backup_title">Backed up to your server</string>
+    <string name="library_access_backup_body">Nothing is uploaded until you turn backup on.</string>
+    <string name="library_access_allow">Allow access</string>
+    <string name="library_access_not_now">Not now</string>
+    <string name="library_access_footnote">You can pick specific photos instead of your whole library.</string>
+
+    <!-- Journal home, All photos, viewer -->
+    <string name="library_title">Journal</string>
+    <string name="library_offline">Offline</string>
+    <string name="library_more">More</string>
+    <string name="library_back">Back</string>
+    <string name="library_all_photos">All photos</string>
+    <string name="library_today">Today</string>
+    <string name="library_yesterday">Yesterday</string>
+    <string name="library_tab_journal">Journal</string>
+    <string name="library_tab_unsorted">Unsorted %d</string>
+    <plurals name="library_unsorted_count">
+        <item quantity="one">%d unsorted</item>
+        <item quantity="other">%d unsorted</item>
+    </plurals>
+    <plurals name="library_not_backed_up">
+        <item quantity="one">%d not backed up</item>
+        <item quantity="other">%d not backed up</item>
+    </plurals>
+    <plurals name="library_limited">
+        <item quantity="one">Journal can see %d photo or video</item>
+        <item quantity="other">Journal can see %d photos and videos</item>
+    </plurals>
+    <string name="library_limited_change">Change</string>
+    <string name="library_no_access_title">Journal can\'t see your photos</string>
+    <string name="library_no_access_body">Allow access to see your photos and videos here.</string>
+    <string name="library_rejected_title">This device isn\'t registered with the server</string>
+    <string name="library_rejected_body">The server doesn\'t accept this device\'s certificate anymore. Register it again with a new enrollment code.</string>
+    <string name="library_rejected_action">Register again</string>
+    <string name="library_empty">No photos or videos on this device yet.</string>
+    <string name="library_filter_empty">Nothing here.</string>
+    <string name="library_load_error">Couldn\'t read your photos: %s</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_filter_not_backed_up">Not backed up</string>
+    <string name="library_filter_videos">Videos</string>
+    <string name="library_photo_description">Photo, %s</string>
+    <string name="library_video_description">Video, %s</string>
+    <string name="library_backup_not_backed_up">Only on this device</string>
+    <string name="library_backup_queued">Waiting to upload</string>
+    <string name="library_backup_uploading">Uploading to your server</string>
+    <string name="library_backup_done">Backed up</string>
+    <string name="library_backup_failed">Upload failed: %s</string>
+    <string name="library_viewer_position">%1$d of %2$d · %3$s</string>
+    <string name="library_viewer_details">Details</string>
+    <string name="library_viewer_play">Play video</string>
+    <string name="library_info_file">File</string>
+    <string name="library_info_size">Size</string>
+    <string name="library_info_dimensions">Dimensions</string>
+    <string name="library_info_length">Length</string>
+
+    <!-- Stories -->
+    <string name="library_story">Story</string>
+    <string name="library_new_story">New story</string>
+    <string name="library_story_title_hint">Japan trip, Noa\'s birthday…</string>
+    <string name="library_create">Create</string>
+    <string name="library_cancel">Cancel</string>
+    <string name="library_save">Save</string>
+    <string name="library_rename">Rename</string>
+    <string name="library_rename_story">Rename story</string>
+    <string name="library_delete">Delete</string>
+    <string name="library_delete_story">Delete story</string>
+    <string name="library_delete_story_title">Delete \"%s\"?</string>
+    <string name="library_delete_story_body">The story and its title go away. Its photos and videos stay on this device.</string>
+    <string name="library_add_to_story">Add to story</string>
+    <string name="library_in_story">In this story</string>
+    <string name="library_remove_from_story">Remove from %s</string>
+    <string name="library_info_stories">Stories</string>
+    <string name="library_info_no_stories">Not in any story</string>
+    <string name="library_story_day">Day %1$d · %2$s</string>
+    <string name="library_story_add_day">Add %1$s · %2$s</string>
+    <string name="library_story_empty">None of this story\'s photos are on this device.</string>
+    <plurals name="library_story_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="library_story_items">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+    <plurals name="library_story_missing">
+        <item quantity="one">%d photo of this story isn\'t on this device.</item>
+        <item quantity="other">%d photos of this story aren\'t on this device.</item>
+    </plurals>
+
+    <!-- Groups -->
+    <string name="library_group_action">Group</string>
+    <string name="library_remove">Remove</string>
+    <string name="library_cancel_selection">Cancel selection</string>
+    <plurals name="library_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="library_grouped">Grouped %d photos</string>
+    <string name="library_undo">Undo</string>
+    <plurals name="library_burst_title">
+        <item quantity="one">%d similar photo</item>
+        <item quantity="other">%d similar photos</item>
+    </plurals>
+    <string name="library_burst_detail">%1$s · taken within %2$d seconds</string>
+    <string name="library_burst_question">Show them as one?</string>
+    <string name="library_burst_group">Group them</string>
+    <string name="library_burst_not_now">Not now</string>
+    <plurals name="library_story_groups">
+        <item quantity="one">%d group</item>
+        <item quantity="other">%d groups</item>
+    </plurals>
+    <string name="library_group_description">Group: %1$s, %2$d photos</string>
+    <string name="library_open_group">%d · Open</string>
+    <string name="library_cover">Cover</string>
+    <string name="library_is_cover">This is the cover</string>
+    <string name="library_set_cover">Set as cover</string>
+    <string name="library_remove_from_group">Remove from group</string>
+    <string name="library_info_group">Group</string>
+    <string name="library_ungroup">Ungroup</string>
+    <string name="library_rename_group">Rename group</string>
+    <string name="library_writing_edit">Edit</string>
+    <string name="library_writing_saved_in">Saved in story.md</string>
+    <string name="library_writing_story_prompt">Write about this story…</string>
+    <string name="library_writing_group_prompt">Write about this moment…</string>
+    <string name="library_writing_placeholder">What happened, how it felt…</string>
+
+    <!-- Story and tag pickers, photo notes, tags -->
+    <string name="library_search_stories">Search stories, or name a new one</string>
+    <string name="library_create_story">Create \u201c%s\u201d</string>
+    <string name="library_create_story_detail">New story with this photo</string>
+    <string name="library_picker_on_these_days">On these days</string>
+    <string name="library_picker_nearby">Nearby</string>
+    <string name="library_picker_recent">Recent</string>
+    <string name="library_picker_checked">Added</string>
+    <plurals name="library_picker_search_all">
+        <item quantity="one">Type to search your %d story</item>
+        <item quantity="other">Type to search all %d stories</item>
+    </plurals>
+    <plurals name="library_picker_story_results">
+        <item quantity="one">%d story · closest in time first</item>
+        <item quantity="other">%d stories · closest in time first</item>
+    </plurals>
+    <string name="library_add_tag">Tags</string>
+    <string name="library_search_tags">Search tags, or type a new one</string>
+    <string name="library_create_tag">Create tag \u201c%s\u201d</string>
+    <string name="library_picker_recent_tags">Recent tags</string>
+    <string name="library_picker_tags">Tags</string>
+    <string name="library_tags_empty_hint">No tags yet. Type one above to create it.</string>
+    <string name="library_tags">Tags</string>
+    <string name="library_find_tag">Search tags</string>
+    <string name="library_tags_empty">No tags yet. Open a photo, show its details and tap + Tag.</string>
+    <string name="library_tag_empty">No photos on this device have this tag.</string>
+    <string name="library_tag">Tag</string>
+    <string name="library_remove_tag">Remove tag %s</string>
+    <string name="library_info_tags">Tags</string>
+    <string name="library_note_title">Note</string>
+    <string name="library_note_prompt">Write about this photo…</string>
 
     <!-- Enrollment wizard -->
     <string name="enroll_welcome_title">Connect this device to your journal</string>

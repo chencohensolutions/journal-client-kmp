@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.apollo)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -39,6 +40,8 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.apollo.runtime)
             implementation(libs.apollo.engine.ktor)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.okio)
         }
         androidMain.dependencies {
             implementation(libs.kotlinx.coroutines.android)
@@ -54,6 +57,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+            implementation(libs.okio.fakefilesystem)
         }
     }
 }

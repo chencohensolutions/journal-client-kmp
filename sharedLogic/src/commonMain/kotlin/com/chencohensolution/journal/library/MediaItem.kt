@@ -1,0 +1,104 @@
+package com.chencohensolution.journal.library
+
+enum class MediaType { IMAGE, VIDEO }
+
+/** A calendar day in the device's time zone. */
+data class LocalDay(val year: Int, val month: Int, val day: Int) : Comparable<LocalDay> {
+    override fun compareTo(other: LocalDay): Int =
+        compareValuesBy(this, other, LocalDay::year, LocalDay::month, LocalDay::day)
+
+    /** Days since 1970-01-01 (proleptic Gregorian calendar). */
+    fun toEpochDay(): Long {
+        // Howard Hinnant's days_from_civil.
+        val y = if (month <= 2) year - 1 else year
+        val era = (if (y >= 0) y else y - 399) / 400
+        val yearOfEra = y - era * 400
+        val dayOfYear = (153 * (month + (if (month > 2) -3 else 9)) + 2) / 5 + day - 1
+        val dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear
+        return era * 146097L + dayOfEra - 719468
+    }
+
+    fun plusDays(days: Long): LocalDay = fromEpochDay(toEpochDay() + days)
+
+    /** ISO 8601, e.g. "2026-10-08". */
+    override fun toString(): String =
+        "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+
+    companion object {
+        fun fromEpochDay(epochDay: Long): LocalDay {
+            // Howard Hinnant's civil_from_days.
+            val z = epochDay + 719468
+            val era = (if (z >= 0) z else z - 146096) / 146097
+            val dayOfEra = z - era * 146097
+            val yearOfEra = (dayOfEra - dayOfEra / 1460 + dayOfEra / 36524 - dayOfEra / 146096) / 365
+            val dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100)
+            val mp = (5 * dayOfYear + 2) / 153
+            val day = (dayOfYear - (153 * mp + 2) / 5 + 1).toInt()
+            val month = (if (mp < 10) mp + 3 else mp - 9).toInt()
+            val year = (yearOfEra + era * 400 + (if (month <= 2) 1 else 0)).toInt()
+            return LocalDay(year, month, day)
+        }
+
+        /** Parses [toString]'s format; null if it isn't one. */
+        fun parse(value: String): LocalDay? {
+            val parts = value.split("-")
+            if (parts.size != 3) return null
+            val (y, m, d) = parts.map { it.toIntOrNull() ?: return null }
+            return LocalDay(y, m, d).takeIf { m in 1..12 && d in 1..31 }
+        }
+    }
+}
+
+/** Where a photo or video is in the backup process. Uploads are not implemented yet, so everything is [NotBackedUp]. */
+sealed interface BackupStatus {
+    /** Only on this device. */
+    data object NotBackedUp : BackupStatus
+    data object Queued : BackupStatus
+
+    /** [progress] is 0..1. */
+    data class Uploading(val progress: Float) : BackupStatus
+    data object BackedUp : BackupStatus
+    data class Failed(val reason: String) : BackupStatus
+}
+
+/** A photo or video in the device library. */
+data class MediaItem(
+    /** MediaStore row id on Android, PHAsset localIdentifier on iOS. */
+    val id: String,
+    val type: MediaType,
+    /** When it was taken (falls back to when the file was created), in epoch milliseconds. */
+    val takenAtMillis: Long,
+    /** [takenAtMillis] as a day in the device's time zone. */
+    val day: LocalDay,
+    /** Length of a video; null for photos and for videos whose length is unknown. */
+    val durationMillis: Long?,
+    val width: Int,
+    val height: Int,
+    /** Null when the platform does not report it cheaply (iOS). */
+    val sizeBytes: Long?,
+    /** Null when the platform does not report it cheaply (iOS). */
+    val fileName: String?,
+    val backup: BackupStatus = BackupStatus.NotBackedUp,
+    /** Shots of one camera burst share this: iOS burstIdentifier, or the Samsung "20261008_140901_092" name pattern. */
+    val burstId: String? = null,
+)
+
+/** What the user allowed the app to read from the photo library. */
+enum class PhotoAccess {
+    /** Never asked. */
+    NOT_DETERMINED,
+    DENIED,
+
+    /** Only photos the user picked (Android "Select photos", iOS "Limited Access"). */
+    LIMITED,
+    FULL,
+}
+
+/** The platform photo library: MediaStore on Android, PhotoKit on iOS. */
+internal interface MediaLibrary {
+    /** The current permission. Android can't tell "never asked" from "denied" and reports [PhotoAccess.DENIED] for both. */
+    fun access(): PhotoAccess
+
+    /** All photos and videos the app can read, in any order. Called off the main thread by the implementation itself. */
+    suspend fun loadItems(): List<MediaItem>
+}

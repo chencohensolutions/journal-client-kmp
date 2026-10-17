@@ -8,12 +8,18 @@ final class JournalViewModel: ObservableObject {
     /// The device registration wizard; a successful enrollment switches this controller's identity.
     let enrollment: EnrollmentViewModel
 
+    /// The device photo library, and the stories built on it.
+    let library: LibraryViewModel
+    let stories: StoriesViewModel
+
     private let controller: JournalController
     private var observation: ObservationHandle?
 
     init() {
         controller = IosJournal.shared.createController()
         enrollment = EnrollmentViewModel(journal: controller)
+        library = LibraryViewModel()
+        stories = StoriesViewModel(library: library)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in
