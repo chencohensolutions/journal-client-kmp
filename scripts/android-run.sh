@@ -33,6 +33,8 @@ fi
 echo "Device: $serial ($("$adb" -s "$serial" shell getprop ro.product.model | tr -d '\r'))"
 
 ./gradlew --console=plain :androidApp:assembleDebug
-"$adb" -s "$serial" install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
+apk=androidApp/build/outputs/apk/debug/androidApp-debug.apk
+# The first install over wireless debugging often fails while the connection wakes up; the retry succeeds.
+"$adb" -s "$serial" install -r "$apk" || { echo "Install failed, retrying once..." >&2; sleep 2; "$adb" -s "$serial" install -r "$apk"; }
 "$adb" -s "$serial" shell am start -S -n com.chencohensolution.journal/.MainActivity # -S: stop the old process so the new build runs
 echo "Running on $serial"

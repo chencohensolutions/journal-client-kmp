@@ -39,17 +39,37 @@ data class TimelineGrouping(
     }
 }
 
+/**
+ * How alike two photos must be for a "Look alike" suggestion: the cosine similarity of their image embeddings, as a
+ * percentage. The default depends on the platform's image model.
+ */
+data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPercent: Int = DEFAULT_PERCENT) {
+    val isDefault: Boolean get() = percent == defaultPercent
+
+    companion object {
+        const val DEFAULT_PERCENT = 85
+
+        /** What the Settings screen offers; anything stored outside falls back to the default. */
+        val RANGE: IntRange = 50..99
+    }
+}
+
 /** The user's choices on the Settings screen. */
-data class SettingsState(val grouping: TimelineGrouping = TimelineGrouping())
+data class SettingsState(
+    val grouping: TimelineGrouping = TimelineGrouping(),
+    val similarity: SimilarityThreshold = SimilarityThreshold(),
+)
 
 /** The Settings screen's logic: reads and saves the user's choices on this device. */
 class SettingsController internal constructor(
     private val settings: JournalSettings,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    /** The platform image model's own threshold ([SimilarityThreshold.defaultPercent]). */
+    private val defaultSimilarityPercent: Int = SimilarityThreshold.DEFAULT_PERCENT,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
-    private val _state = MutableStateFlow(SettingsState(grouping = settings.grouping))
+    private val _state = MutableStateFlow(SettingsState(grouping = settings.grouping, similarity = similarity(settings.similarityPercent)))
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -62,6 +82,24 @@ class SettingsController internal constructor(
         if (hours !in TimelineGrouping.GAP_HOURS_RANGE) return
         changeGrouping { it.copy(gapHours = hours) }
     }
+
+    /** Values outside [SimilarityThreshold.RANGE] are ignored. */
+    fun setSimilarityPercent(percent: Int) {
+        if (percent !in SimilarityThreshold.RANGE) return
+        settings.similarityPercent = percent.takeIf { it != defaultSimilarityPercent }
+        _state.update { it.copy(similarity = similarity(percent)) }
+    }
+
+    /** Back to the platform's own threshold. */
+    fun resetSimilarity() {
+        settings.similarityPercent = null
+        _state.update { it.copy(similarity = similarity(null)) }
+    }
+
+    private fun similarity(percent: Int?) = SimilarityThreshold(
+        percent = percent?.takeIf { it in SimilarityThreshold.RANGE } ?: defaultSimilarityPercent,
+        defaultPercent = defaultSimilarityPercent,
+    )
 
     /** Callback-style observation for Swift; Android collects [state] directly. */
     fun observe(onChange: (SettingsState) -> Unit): ObservationHandle {

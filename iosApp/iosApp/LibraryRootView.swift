@@ -14,6 +14,8 @@ struct LibraryRootView: View {
     @State private var path: [Route] = []
     @State private var filter = LibraryFilter.all
     @State private var viewer: ViewerRequest?
+    /// Photos, story cards and group tiles mark themselves in it; the screens they open zoom out of them.
+    @Namespace private var zoom
 
     private enum Route: Hashable {
         case allPhotos
@@ -103,9 +105,11 @@ struct LibraryRootView: View {
                                     restore: { stories.restore($0) },
                                     dismissSuggestion: { stories.dismissSuggestion($0, in: id) },
                                     ungroup: { stories.ungroup($0, in: id) },
-                                    removeItems: { stories.remove($0, from: id) }
+                                    removeItems: { stories.remove($0, from: id) },
+                                    resetGroups: { stories.resetGroups(in: id) }
                                 )
                             )
+                            .navigationTransition(.zoom(sourceID: ZoomID.story(id), in: zoom))
                         case let .group(storyId, groupId):
                             GroupPageView(
                                 story: stories.state.story(id: storyId),
@@ -121,12 +125,16 @@ struct LibraryRootView: View {
                                     groupTiles: { stories.groupTiles($0, in: storyId, parent: groupId) },
                                     mergeTiles: { stories.mergeTiles($0, in: storyId, parent: groupId) },
                                     restore: { stories.restore($0) },
-                                    takeOut: { stories.removeFromGroup($0, groupId: groupId, in: storyId) }
+                                    takeOut: { stories.removeFromGroup($0, groupId: groupId, in: storyId) },
+                                    acceptSuggestion: { stories.acceptSuggestion($0, inGroup: groupId, of: storyId) },
+                                    dismissSuggestion: { stories.dismissSuggestion($0, in: storyId) }
                                 )
                             )
+                            .navigationTransition(.zoom(sourceID: ZoomID.group(groupId), in: zoom))
                         }
                     }
                 }
+                .environment(\.zoomNamespace, zoom)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
                         items: request.itemIds.compactMap { stories.state.itemsById[$0] },
@@ -163,6 +171,7 @@ struct LibraryRootView: View {
                     )
                     // The viewer is always dark, like a photo app; the rest follows the system.
                     .preferredColorScheme(.dark)
+                    .navigationTransition(.zoom(sourceID: ZoomID.item(request.itemId), in: zoom))
                 }
             }
         }

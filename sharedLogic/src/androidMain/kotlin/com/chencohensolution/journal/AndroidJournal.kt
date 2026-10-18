@@ -15,6 +15,9 @@ import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
+import com.chencohensolution.journal.similarity.AndroidPhotoAnalyzer
+import com.chencohensolution.journal.similarity.FingerprintCache
+import com.chencohensolution.journal.similarity.PhotoSimilarity
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 
@@ -44,9 +47,15 @@ fun createLibraryController(context: Context): LibraryController =
 
 /** The user's choices on the Settings screen. */
 fun createSettingsController(context: Context): SettingsController =
-    SettingsController(JournalSettings(SharedPreferencesStore(context)))
+    SettingsController(
+        JournalSettings(SharedPreferencesStore(context)),
+        defaultSimilarityPercent = AndroidPhotoAnalyzer.DEFAULT_SAME_SCENE_PERCENT,
+    )
 
-/** Stories kept on this device, in the app's private files folder (`files/journal/stories`). */
+/**
+ * Stories kept on this device, in the app's private files folder (`files/journal/stories`). Photo fingerprints for
+ * burst suggestions are cached in `cache/similarity`.
+ */
 fun createStoriesController(context: Context, library: LibraryController, settings: SettingsController): StoriesController =
     StoriesController(
         store = FileStoryStore(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "journal"),
@@ -54,4 +63,8 @@ fun createStoriesController(context: Context, library: LibraryController, settin
         library = library,
         settings = settings,
         newId = StoryIds(JournalSettings(SharedPreferencesStore(context)), System::currentTimeMillis)::next,
+        similarity = PhotoSimilarity(
+            AndroidPhotoAnalyzer(context),
+            FingerprintCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "similarity"),
+        ),
     )

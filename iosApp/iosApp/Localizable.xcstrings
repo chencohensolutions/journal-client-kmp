@@ -27,6 +27,78 @@
         }
       }
     },
+    "%@ · taken within %lld minutes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · taken within %#@minutes@"
+          },
+          "substitutions" : {
+            "minutes" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg minute"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · צולמו בתוך %#@minutes@"
+          },
+          "substitutions" : {
+            "minutes" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "דקה"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שתי דקות"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg דקות"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg דקות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ · taken within %lld seconds" : {
       "localizations" : {
         "en" : {
@@ -354,6 +426,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld photos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos in a row" : {
+      "localizations" : {
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת ברצף"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות ברצף"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות ברצף"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות ברצף"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo in a row"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos in a row"
                 }
               }
             }
@@ -1161,6 +1285,16 @@
         }
       }
     },
+    "Every group in this story is removed and its photos go back to the story. Group text moves to the story's text. Suggestions start over, including ones you answered \"Not now\"." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל הקבוצות בסיפור יוסרו והתמונות שלהן יחזרו לסיפור. הטקסט של הקבוצות יעבור לטקסט של הסיפור. ההצעות יתחילו מחדש, כולל כאלה שעניתם עליהן \"לא עכשיו\"."
+          }
+        }
+      }
+    },
     "File" : {
       "localizations" : {
         "he" : {
@@ -1293,6 +1427,36 @@
         }
       }
     },
+    "Groups reset" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבוצות אופסו"
+          }
+        }
+      }
+    },
+    "Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גבוה יותר: רק תמונות שנראות כמעט זהות מוצעות יחד. נמוך יותר: יותר תמונות בכל הצעה, אבל פחות דומות."
+          }
+        }
+      }
+    },
+    "How alike" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רמת דמיון"
+          }
+        }
+      }
+    },
     "Issued by journal-server-ca" : {
       "localizations" : {
         "he" : {
@@ -1408,6 +1572,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אורך"
+          }
+        }
+      }
+    },
+    "Look alike" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נראות דומות"
           }
         }
       }
@@ -1842,6 +2016,36 @@
         }
       }
     },
+    "Reset groups" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס קבוצות"
+          }
+        }
+      }
+    },
+    "Reset the groups?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לאפס את הקבוצות?"
+          }
+        }
+      }
+    },
+    "Reset to %lld%%" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס ל־%lld%%"
+          }
+        }
+      }
+    },
     "Save" : {
       "localizations" : {
         "he" : {
@@ -2072,6 +2276,16 @@
         }
       }
     },
+    "Suggestions for similar photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצעות לתמונות דומות"
+          }
+        }
+      }
+    },
     "Tag" : {
       "localizations" : {
         "he" : {
@@ -2088,6 +2302,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תגיות"
+          }
+        }
+      }
+    },
+    "Taken together" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צולמו יחד"
           }
         }
       }

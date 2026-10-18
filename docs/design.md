@@ -47,6 +47,13 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 - **Burst suggestions** are automatic: photos within **10 s** of each other, or sharing the camera's burst id (iOS
   `burstIdentifier`; Samsung `20261008_140901_092.jpg` names), runs of **3+** photos, videos excluded. "Not now" is
   remembered per story.
+- **Suggestions go by looks, at any time** (asked Oct 18, 2026): in a story, and inside a group (as subgroups),
+  photos that look alike are suggested together however far apart they were taken, and quick shots of different
+  things are split; two are enough. Time (10 s, 3+) is only the fallback for photos not read yet. Looks: a dHash for
+  near-duplicates plus each platform's own image embedding for the same scene (Vision feature print on iOS,
+  MediaPipe MobileNet-V3 on Android); a new story or group is read first. The owner chose native per platform for this, and **one shared open model**
+  (commercial use allowed, e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) later for
+  search across the library, to be decided with upload and sync. Fingerprints are a per-device cache, never synced.
 - **Group** puts the selected tiles (photos and groups) in a new group, in the story or, from a group's page, as a
   subgroup: **groups nest**, to any depth. Undo restores the story as it was.
 - **Merge** (offered when a group is selected) joins the selected tiles into the first selected group instead; the
@@ -110,7 +117,7 @@ disposable `.cache/` index rebuilt from the files.
 - Photo access screen, Journal timeline, All photos (2×2 hero per day, filters), viewer (photos, video, details).
 - Backup status model and badges (everything shows "Only on this device": uploads don't exist).
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
-- Groups: burst suggestions, select-and-group with Undo, merging groups (with photos or each other), group page,
+- Groups: burst suggestions (by time, and by looks: dHash + native embeddings), select-and-group with Undo, merging groups (with photos or each other), group page,
   set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
 - Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point and zoom,
   reset. iOS
@@ -134,7 +141,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
 - Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).
-- Renaming/merging tags; grouping by visual similarity (perceptual hash); month scrubber.
+- Renaming/merging tags; month scrubber; similarity search across the library (shared model, see Groups).
 
 ## Next: upload and sync
 

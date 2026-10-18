@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.okhttp)
             implementation(libs.okhttp.tls)
+            implementation(libs.mediapipe.tasks.vision)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

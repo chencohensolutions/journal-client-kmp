@@ -160,6 +160,28 @@ class GroupsTest {
     }
 
     @Test
+    fun resettingGroupsBringsSuggestionsBack() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d")))
+        stories.setGroupText(storyId, outer, "Morning walk.")
+        assertNotNull(stories.groupTiles(storyId, listOf("a", "b"), parentId = outer))
+        stories.dismissSuggestion(storyId, "e")
+        val before = stories.currentState.story(storyId)!!.story
+
+        stories.resetGroups(storyId)
+        val story = stories.currentState.story(storyId)!!
+        assertTrue(story.groups.isEmpty())
+        assertEquals(6, story.tiles.size)
+        assertEquals("Morning walk.", story.intro)
+        assertTrue(story.story.dismissedSuggestions.isEmpty())
+        assertEquals(listOf("a", "b", "c", "d"), story.suggestions.single().items.map { it.id })
+
+        stories.restore(before)
+        assertEquals(2, stories.currentState.story(storyId)!!.groups.size)
+    }
+
+    @Test
     fun dismissedSuggestionsStayDismissed() = runTest {
         val fileSystem = FakeFileSystem()
         val stories = setup(fileSystem).stories

@@ -2,7 +2,8 @@ import SwiftUI
 import SharedLogic
 
 /// What the group page can ask its parent to do. `groupTiles` and `mergeTiles` take tile keys (photos and
-/// subgroups) and return the group's id; `restore` undoes either; `takeOut` moves photos to the level above.
+/// subgroups) and return the group's id; `restore` undoes either; `takeOut` moves photos to the level above;
+/// `acceptSuggestion` makes a suggestion's photos a subgroup and returns its id.
 struct GroupPageActions {
     var openItem: (MediaItem) -> Void
     var openGroup: (GroupView) -> Void
@@ -13,6 +14,8 @@ struct GroupPageActions {
     var mergeTiles: ([String]) -> String?
     var restore: (Story) -> Void
     var takeOut: ([String]) -> Void
+    var acceptSuggestion: (String) -> String?
+    var dismissSuggestion: (String) -> Void
 }
 
 /// A group: its cover, title and story text, then its photos and subgroups. Long-press a tile to select tiles and
@@ -156,6 +159,18 @@ struct GroupPageView: View {
                     .offset(y: -36)
                     WritingBlock(text: group.text, emptyPrompt: "Write about this moment…") { editing = true }
                         .offset(y: -24)
+                    if selection == nil {
+                        ForEach(group.suggestions, id: \.key) { suggestion in
+                            BurstSuggestionCard(
+                                suggestion: suggestion,
+                                onGroup: {
+                                    let before = story.story
+                                    showUndo(actions.acceptSuggestion(suggestion.key), count: Int(suggestion.count), before: before)
+                                },
+                                onDismiss: { actions.dismissSuggestion(suggestion.key) }
+                            )
+                        }
+                    }
                     LazyVGrid(columns: Array(repeating: GridItem(.fixed(cell), spacing: 2), count: 3), spacing: 2) {
                         ForEach(group.tiles, id: \.key) { tile in
                             self.tile(tile, in: group)
@@ -181,8 +196,10 @@ struct GroupPageView: View {
         Group {
             if let subgroup {
                 GroupTileView(group: subgroup, large: false)
+                    .zoomSource(ZoomID.group(subgroup.id))
             } else if let media = tile as? StoryTileMedia {
                 MediaTileView(item: media.item)
+                    .zoomSource(ZoomID.item(media.item.id))
             }
         }
         .overlay(alignment: .topLeading) {

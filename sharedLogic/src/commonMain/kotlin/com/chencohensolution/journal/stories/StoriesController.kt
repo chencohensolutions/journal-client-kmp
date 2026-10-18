@@ -12,6 +12,8 @@ import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.TimelineGrouping
+import com.chencohensolution.journal.similarity.PhotoLooks
+import com.chencohensolution.journal.similarity.PhotoSimilarity
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,10 @@ data class GroupView(
     val items: List<MediaItem>,
     /** What its page shows: its own photos, and each subgroup as one tile, oldest first. */
     val tiles: List<StoryTile> = items.map { StoryTile.Media(it) },
+    /** Fingerprints of its own photos, for [suggestions]. */
+    val looks: PhotoLooks = PhotoLooks.NONE,
+    /** The story's [Story.dismissedSuggestions]. */
+    val dismissed: Set<String> = emptySet(),
 ) {
     val id: String get() = group.id
     val title: String? get() = group.title
@@ -48,6 +54,15 @@ data class GroupView(
 
     /** The subgroup shown as [itemId] in [viewerItems], if that photo stands for one. */
     fun coverStop(itemId: String): GroupView? = tiles.coverStop(itemId)
+
+    /**
+     * Its own photos that look alike (or were taken in a burst), to become subgroups; never all of its tiles, which
+     * would only wrap the group again. Worked out when first read.
+     */
+    val suggestions: List<BurstSuggestion> by lazy {
+        val own = tiles.filterIsInstance<StoryTile.Media>().map { it.item }
+        findSuggestions(own, dismissed, looks).filter { it.count < tiles.size }
+    }
 }
 
 private fun List<StoryTile>.coverStop(itemId: String): GroupView? =
@@ -70,13 +85,17 @@ sealed interface StoryTile {
 /** One day of a story's grid, packed into [bands]. A group sits on the day of its first photo. */
 data class StoryDay(val day: LocalDay, val tiles: List<StoryTile>, val bands: List<StoryBand>)
 
-/** Photos taken in quick succession that could become a group. */
-data class BurstSuggestion(val items: List<MediaItem>) {
+/**
+ * Photos that could become a group: ones that look alike, taken at any time ([byLooks]), or, for photos not read
+ * yet, ones taken in quick succession.
+ */
+data class BurstSuggestion(val items: List<MediaItem>, val byLooks: Boolean = false) {
     /** The first photo's id; remembered when the suggestion is dismissed. */
     val key: String get() = items.first().id
     val count: Int get() = items.size
     val startMillis: Long get() = items.first().takenAtMillis
     val seconds: Long get() = (items.last().takenAtMillis - items.first().takenAtMillis) / 1000
+    val sameDay: Boolean get() = items.first().day == items.last().day
 }
 
 /** A story with its photos and videos as they are on this device. */
@@ -84,6 +103,8 @@ data class StoryView(
     val story: Story,
     /** Members found on this device, oldest first. */
     val items: List<MediaItem>,
+    /** Fingerprints of its photos worked out so far; they make [suggestions] find photos that look alike. */
+    val looks: PhotoLooks = PhotoLooks.NONE,
 ) {
     val id: String get() = story.id
     /** "" when the story has no title. */
@@ -118,6 +139,8 @@ data class StoryView(
     /** Groups with at least one photo on this device, nested ones included: each followed by its subgroups. */
     val groups: List<GroupView>
 
+    private val dismissed = story.dismissedSuggestions.toSet()
+
     init {
         val byId = items.associateBy { it.id }
         val known = story.groups.map { it.id }.toSet()
@@ -132,7 +155,8 @@ data class StoryView(
             val subgroups = childrenOf[group.id].orEmpty().mapNotNull(::view).map { StoryTile.Group(it) }
             val tiles = (own + subgroups).sortedBy { it.firstItem().takenAtMillis }
             if (tiles.isEmpty()) return null
-            return GroupView(group, tiles.flatMap { it.allItems() }.sortedBy { it.takenAtMillis }, tiles).also { all[slot] = it }
+            val items = tiles.flatMap { it.allItems() }.sortedBy { it.takenAtMillis }
+            return GroupView(group, items, tiles, looks.only(own.map { it.item.id }), dismissed).also { all[slot] = it }
         }
         rootGroups = story.groups.filter { it.parentId == null || it.parentId !in known }.mapNotNull(::view)
         groups = all.filterNotNull()
@@ -158,11 +182,11 @@ data class StoryView(
     /** What the viewer swipes through: loose photos, and each group as its cover. */
     val viewerItems: List<MediaItem> = tiles.map { it.firstItem(cover = true) }
 
-    /** Bursts among the loose photos, except dismissed ones. */
-    val suggestions: List<BurstSuggestion> = findBursts(
-        tiles.filterIsInstance<StoryTile.Media>().map { it.item },
-        story.dismissedSuggestions.toSet(),
-    )
+    /** The loose photos and videos: the story's own, in no group. */
+    val looseItems: List<MediaItem> get() = tiles.filterIsInstance<StoryTile.Media>().map { it.item }
+
+    /** Photos that look alike (or bursts) among the loose photos, except dismissed ones. Worked out when first read. */
+    val suggestions: List<BurstSuggestion> by lazy { findSuggestions(looseItems, dismissed, looks) }
 
     fun group(id: String): GroupView? = groups.firstOrNull { it.id == id }
 
@@ -224,25 +248,44 @@ data class StorySuggestions(
 /** A new burst starts after a gap longer than this between two photos. */
 internal const val BURST_GAP_MILLIS = 10_000L
 
-/** Fewer photos than this aren't worth a suggestion. */
+/** Fewer photos than this taken in quick succession aren't worth a suggestion; two that look alike are. */
 internal const val BURST_MIN_PHOTOS = 3
 
 /**
+ * What to suggest grouping among [items] (oldest first). Photos with a fingerprint go by looks, whenever they were
+ * taken: each joins the first set where it looks like ([PhotoLooks.similar], or the same camera burst) more than half
+ * of the photos (so sets don't drift through chains of look-alikes), and sets of two or more are suggested. Photos not read yet go by time ([findBursts]). Videos and
+ * sets holding a dismissed photo are left out. Oldest first.
+ */
+internal fun findSuggestions(items: List<MediaItem>, dismissed: Set<String>, looks: PhotoLooks = PhotoLooks.NONE): List<BurstSuggestion> {
+    val (read, unread) = items.filter { it.type == MediaType.IMAGE }.partition(looks::canCompare)
+    val sets = mutableListOf<MutableList<MediaItem>>()
+    read.forEach { photo ->
+        val set = sets.firstOrNull { set -> set.count { looks.similar(it, photo) || sameBurst(it, photo) } * 2 > set.size }
+        if (set != null) set += photo else sets += mutableListOf(photo)
+    }
+    val byLooks = sets.filter { it.size >= 2 && it.none { photo -> photo.id in dismissed } }.map { BurstSuggestion(it, byLooks = true) }
+    return (byLooks + findBursts(unread, dismissed)).sortedBy { it.startMillis }
+}
+
+private fun sameBurst(a: MediaItem, b: MediaItem) = a.burstId != null && a.burstId == b.burstId
+
+/**
  * Splits [items] (oldest first) into runs of photos taken within [BURST_GAP_MILLIS] of each other, or sharing the
- * camera's burst id, and suggests the runs of at least [BURST_MIN_PHOTOS]. Videos are left out.
+ * camera's burst id, and suggests the runs of at least [BURST_MIN_PHOTOS]. Videos and runs holding a dismissed photo
+ * are left out.
  */
 internal fun findBursts(items: List<MediaItem>, dismissed: Set<String>): List<BurstSuggestion> {
     val runs = mutableListOf<MutableList<MediaItem>>()
     items.filter { it.type == MediaType.IMAGE }.forEach { item ->
         val previous = runs.lastOrNull()?.last()
-        val sameBurst = previous != null && item.burstId != null && item.burstId == previous.burstId
-        if (previous != null && (item.takenAtMillis - previous.takenAtMillis <= BURST_GAP_MILLIS || sameBurst)) {
+        if (previous != null && (item.takenAtMillis - previous.takenAtMillis <= BURST_GAP_MILLIS || sameBurst(previous, item))) {
             runs.last() += item
         } else {
             runs += mutableListOf(item)
         }
     }
-    return runs.filter { it.size >= BURST_MIN_PHOTOS && it.first().id !in dismissed }.map(::BurstSuggestion)
+    return runs.filter { run -> run.size >= BURST_MIN_PHOTOS && run.none { it.id in dismissed } }.map(::BurstSuggestion)
 }
 
 /**
@@ -407,6 +450,8 @@ class StoriesController internal constructor(
     settings: SettingsController,
     /** New story ids; see [StoryIds]. */
     private val newId: () -> String,
+    /** Finds photos that look alike for burst suggestions; without it they go by time only. */
+    private val similarity: PhotoSimilarity? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val now: () -> String = { Clock.System.now().toString() },
 ) {
@@ -416,14 +461,18 @@ class StoriesController internal constructor(
     private var stories = loadStories()
     private var notes = loadNotes()
     private var error: String? = null
+    // Compared with the threshold chosen in Settings.
+    private val looks get() =
+        (similarity?.looks?.value ?: PhotoLooks.NONE).withSameScene(settingsState.value.similarity.percent / 100f)
 
     // Rebuilt right away on every change here, so a screen opened just after `createStory` already sees the story.
-    private val _state = MutableStateFlow(buildState(libraryState.value, stories, notes, error, settingsState.value.grouping))
+    private val _state = MutableStateFlow(buildState(libraryState.value, stories, notes, error, settingsState.value.grouping, looks))
     val state: StateFlow<StoriesState> = _state.asStateFlow()
 
     init {
         scope.launch { libraryState.collect { publish() } }
         scope.launch { settingsState.collect { publish() } }
+        similarity?.let { scope.launch { it.looks.collect { publish() } } }
     }
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -583,9 +632,26 @@ class StoriesController internal constructor(
         return createGroup(storyId, suggestion.items.map { it.id })
     }
 
-    /** "Not now" on a burst suggestion: it won't be suggested again. */
+    /** "Group them" on a suggestion on a group's page: the photos become a subgroup. */
+    fun acceptGroupSuggestion(storyId: String, groupId: String, key: String): String? {
+        val suggestion = currentState.story(storyId)?.group(groupId)?.suggestions?.firstOrNull { it.key == key } ?: return null
+        return groupTiles(storyId, suggestion.items.map { it.id }, parentId = groupId)
+    }
+
+    /** "Not now" on a suggestion, in the story or on a group's page: it won't be suggested again. */
     fun dismissSuggestion(storyId: String, key: String) = change(storyId) { story ->
         story.copy(dismissedSuggestions = (story.dismissedSuggestions + key).distinct())
+    }
+
+    /**
+     * Removes every group of the story, nested ones too, so its photos are loose again and suggestions start over:
+     * "Not now" answers are forgotten. Group text joins the story's opening text, so nothing written is lost. Undo
+     * with [restore].
+     */
+    fun resetGroups(storyId: String) = change(storyId) { story ->
+        var reset = story
+        while (reset.groups.isNotEmpty()) reset = dissolve(reset, reset.groups.first().id)
+        reset.copy(dismissedSuggestions = emptyList())
     }
 
     /** A blank title removes it; the tile then shows the time only. */
@@ -669,6 +735,7 @@ class StoriesController internal constructor(
 
     fun close() {
         scope.cancel()
+        similarity?.close()
     }
 
     // MARK: Captions and tags
@@ -835,7 +902,9 @@ class StoriesController internal constructor(
     }
 
     private fun publish() {
-        _state.value = buildState(libraryState.value, stories, notes, error, settingsState.value.grouping)
+        val state = buildState(libraryState.value, stories, notes, error, settingsState.value.grouping, looks)
+        _state.value = state
+        similarity?.request(photosToCompare(state.stories))
     }
 
     private fun itemsById(ids: List<String>): List<MediaItem> {
@@ -849,16 +918,29 @@ class StoriesController internal constructor(
 
 private fun MediaItem.toMember() = StoryMember(deviceId = id, fileName = fileName, takenAtMillis = takenAtMillis)
 
+/**
+ * The photos to fingerprint for suggestions: every photo of every story, the story changed last first (a story or
+ * group just made is read first), oldest photo first within it.
+ */
+internal fun photosToCompare(stories: List<StoryView>): List<MediaItem> = stories
+    .sortedByDescending { it.story.updatedAt }
+    .flatMap { story -> story.items.filter { it.type == MediaType.IMAGE } }
+    .distinctBy { it.id }
+
 internal fun buildState(
     library: LibraryState,
     stories: List<Story>,
     notes: Map<String, PhotoNote>,
     error: String?,
     grouping: TimelineGrouping,
+    looks: PhotoLooks = PhotoLooks.NONE,
 ): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     val views = stories
-        .map { story -> StoryView(story, story.members.mapNotNull { itemsById[it.deviceId] }.sortedBy { it.takenAtMillis }) }
+        .map { story ->
+            val items = story.members.mapNotNull { itemsById[it.deviceId] }.sortedBy { it.takenAtMillis }
+            StoryView(story, items, looks.only(items.map { it.id }))
+        }
         .sortedWith(compareByDescending<StoryView> { it.timelineDay }.thenByDescending { it.story.createdAt })
     // A photo in a story, or with a tag, has a place already; only the rest is unsorted.
     val sorted = stories.flatMap { story -> story.members.map { it.deviceId } }.toSet() +

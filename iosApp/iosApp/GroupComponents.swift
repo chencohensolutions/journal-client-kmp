@@ -59,9 +59,11 @@ struct StoryGrid: View {
             switch tile {
             case let group as StoryTileGroup:
                 GroupTileView(group: group.group, large: true)
+                    .zoomSource(ZoomID.group(group.group.id))
                     .onTapGesture { selection == nil ? onOpenGroup(group.group) : onToggle(key) }
             case let media as StoryTileMedia:
                 MediaTileView(item: media.item)
+                    .zoomSource(ZoomID.item(media.item.id))
                     .onTapGesture { selection == nil ? onOpenItem(media.item) : onToggle(key) }
             default:
                 EmptyView()
@@ -159,12 +161,14 @@ let undoSeconds = 6
 /// "Grouped 14 photos · Undo ✕", for a few seconds after grouping.
 struct UndoBar: View {
     let count: Int
+    /// Instead of "Grouped N photos".
+    var message: LocalizedStringKey?
     let onUndo: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         HStack(spacing: 4) {
-            Text("Grouped \(count) photos").font(.subheadline)
+            Text(message ?? "Grouped \(count) photos").font(.subheadline)
             Spacer()
             Button("Undo", action: onUndo)
                 .font(.subheadline.weight(.bold))
@@ -209,7 +213,8 @@ struct GroupTileView: View {
     }
 }
 
-/// "13 similar photos · 2:09 PM · taken within 14 seconds" with Group them / Not now.
+/// "Look alike", "13 similar photos" (or "Taken together", "13 photos in a row"), "2:09 PM · taken within 14 seconds" (or minutes, hours,
+/// days) with Group them / Not now.
 struct BurstSuggestionCard: View {
     let suggestion: BurstSuggestion
     let onGroup: () -> Void
@@ -230,8 +235,30 @@ struct BurstSuggestionCard: View {
                 .frame(width: 64, height: 64, alignment: .topLeading)
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(Int(suggestion.count)) similar photos").font(.subheadline.weight(.bold))
-                    Text("\(timeRange(Array(suggestion.items.prefix(1)))) · taken within \(Int(max(suggestion.seconds, 1))) seconds")
+                    // Why they were picked: what's in them, or when they were taken.
+                    Label(suggestion.byLooks ? "Look alike" : "Taken together", systemImage: suggestion.byLooks ? "eye" : "timer")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(LibraryColors.muted)
+                    Group {
+                        if suggestion.byLooks {
+                            Text("\(Int(suggestion.count)) similar photos")
+                        } else {
+                            Text("\(Int(suggestion.count)) photos in a row")
+                        }
+                    }
+                        .font(.subheadline.weight(.bold))
+                    // Photos that look alike can be taken hours or days apart.
+                    Group {
+                        if suggestion.seconds < 60 {
+                            Text("\(timeRange(Array(suggestion.items.prefix(1)))) · taken within \(Int(max(suggestion.seconds, 1))) seconds")
+                        } else if suggestion.sameDay && suggestion.seconds < 3600 {
+                            Text("\(timeRange(Array(suggestion.items.prefix(1)))) · taken within \(Int((suggestion.seconds + 59) / 60)) minutes")
+                        } else if suggestion.sameDay {
+                            Text(timeRange(suggestion.items))
+                        } else if let first = suggestion.items.first, let last = suggestion.items.last {
+                            Text("\(first.day.date.formatted(.dateTime.month(.abbreviated).day())) – \(last.day.date.formatted(.dateTime.month(.abbreviated).day()))")
+                        }
+                    }
                         .font(.footnote).foregroundStyle(LibraryColors.muted)
                     Text("Show them as one?").font(.footnote).foregroundStyle(LibraryColors.muted)
                 }

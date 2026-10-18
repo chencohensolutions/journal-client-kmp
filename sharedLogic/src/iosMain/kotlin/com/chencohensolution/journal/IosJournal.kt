@@ -13,11 +13,15 @@ import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.UserDefaultsStore
+import com.chencohensolution.journal.similarity.FingerprintCache
+import com.chencohensolution.journal.similarity.IosPhotoAnalyzer
+import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
@@ -51,17 +55,25 @@ object IosJournal {
         )
 
     /** The user's choices on the Settings screen. */
-    fun createSettingsController(): SettingsController = SettingsController(JournalSettings(UserDefaultsStore()))
+    fun createSettingsController(): SettingsController = SettingsController(
+        JournalSettings(UserDefaultsStore()),
+        defaultSimilarityPercent = IosPhotoAnalyzer.DEFAULT_SAME_SCENE_PERCENT,
+    )
 
-    /** Stories kept on this device, in Application Support (`journal/stories`). */
+    /**
+     * Stories kept on this device, in Application Support (`journal/stories`). Photo fingerprints for burst
+     * suggestions are cached in Caches (`similarity`).
+     */
     fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
         val support = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
+        val caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
         return StoriesController(
             store = FileStoryStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             library = library,
             settings = settings,
             newId = StoryIds(JournalSettings(UserDefaultsStore())) { (NSDate().timeIntervalSince1970 * 1000).toLong() }::next,
+            similarity = PhotoSimilarity(IosPhotoAnalyzer(), FingerprintCache(FileSystem.SYSTEM, caches.toPath() / "similarity")),
         )
     }
 

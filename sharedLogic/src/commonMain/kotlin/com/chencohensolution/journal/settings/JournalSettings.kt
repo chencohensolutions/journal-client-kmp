@@ -39,6 +39,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_GROUPING_GAP_HOURS, value.gapHours.toString())
         }
 
+    /** The "Look alike" threshold in percent; null for the platform's default. See [SimilarityThreshold]. */
+    var similarityPercent: Int?
+        get() = store.getString(KEY_SIMILARITY_PERCENT)?.toIntOrNull()
+        set(value) = store.putString(KEY_SIMILARITY_PERCENT, value?.toString())
+
     companion object {
         const val DEFAULT_SERVER_URL = "https://192.168.50.150:8080/query"
         private const val KEY_SERVER_URL = "server_url"
@@ -47,5 +52,6 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_LAST_STORY_ID_MILLIS = "last_story_id_millis"
         private const val KEY_GROUPING_MODE = "grouping_mode"
         private const val KEY_GROUPING_GAP_HOURS = "grouping_gap_hours"
+        private const val KEY_SIMILARITY_PERCENT = "similarity_percent"
     }
 }

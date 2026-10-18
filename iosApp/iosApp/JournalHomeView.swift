@@ -58,6 +58,7 @@ struct JournalHomeView: View {
                         switch row.entry {
                         case let storyEntry as TimelineEntryStoryEntry:
                             StoryCardView(story: storyEntry.story, width: geometry.size.width)
+                                .zoomSource(ZoomID.story(storyEntry.story.id))
                                 .onTapGesture { actions.openStory(storyEntry.story.id) }
                         case let momentEntry as TimelineEntryMomentEntry:
                             UnsortedMoment(
@@ -176,6 +177,7 @@ private struct UnsortedMoment: View {
                         MediaTileView(item: item, badgeSize: 18)
                             .frame(width: 76, height: 76)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .zoomSource(ZoomID.item(item.id))
                             .onTapGesture { onOpen(item) }
                     }
                 }

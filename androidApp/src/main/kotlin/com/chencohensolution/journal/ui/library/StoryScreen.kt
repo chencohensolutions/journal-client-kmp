@@ -87,6 +87,8 @@ internal class StoryActions(
     val setTileFocus: (tileKey: String, focus: FocusPoint, zoom: Float) -> Unit = { _, _, _ -> },
     val moveTile: (tileKey: String, offset: Int) -> Unit = { _, _ -> },
     val resetLayout: () -> Unit = {},
+    /** Removes every group and brings suggestions back; Undo puts the story back with [restore]. */
+    val resetGroups: () -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -120,6 +122,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     /** The tile whose focus is being chosen; kept apart from [arrangeKey] so the editor stays on it. */
     var focusKey by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmingReset by rememberSaveable { mutableStateOf(false) }
+    var confirmingGroupsReset by rememberSaveable { mutableStateOf(false) }
     fun placed(key: String?) = key?.let { story.tileDays.asSequence().flatMap { it.bands }.flatMap { it.tiles }.firstOrNull { it.tile.key == key } }
     val arranged = placed(arrangeKey)
     val snackbar = remember { SnackbarHostState() }
@@ -244,6 +247,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
                 onBack = actions.back,
                 onRename = { renaming = true },
                 onArrange = { arranging = true },
+                onResetGroups = { confirmingGroupsReset = true }.takeIf { story.groups.isNotEmpty() || story.story.dismissedSuggestions.isNotEmpty() },
                 onDelete = { confirmingDelete = true },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
@@ -275,6 +279,25 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
             },
             dismissButton = {
                 TextButton(onClick = { confirmingReset = false }) { Text(stringResource(R.string.library_cancel)) }
+            },
+        )
+    }
+    if (confirmingGroupsReset) {
+        val resetMessage = stringResource(R.string.library_reset_groups_done)
+        AlertDialog(
+            onDismissRequest = { confirmingGroupsReset = false },
+            title = { Text(stringResource(R.string.library_reset_groups_title)) },
+            text = { Text(stringResource(R.string.library_reset_groups_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingGroupsReset = false
+                    val before = story.story
+                    actions.resetGroups()
+                    scope.launch { if (snackbar.offerUndo(resetMessage, undoLabel)) actions.restore(before) }
+                }) { Text(stringResource(R.string.library_reset_groups)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingGroupsReset = false }) { Text(stringResource(R.string.library_cancel)) }
             },
         )
     }
@@ -325,6 +348,8 @@ private fun StoryTopBar(
     onBack: () -> Unit,
     onRename: () -> Unit,
     onArrange: () -> Unit,
+    /** Null when the story has no groups and nothing dismissed: then there is nothing to reset. */
+    onResetGroups: (() -> Unit)?,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -363,6 +388,16 @@ private fun StoryTopBar(
                         onArrange()
                     },
                 )
+                if (onResetGroups != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.library_reset_groups)) },
+                        leadingIcon = { Icon(LibraryIcons.Stack, null) },
+                        onClick = {
+                            menuOpen = false
+                            onResetGroups()
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.library_delete_story)) },
                     leadingIcon = { Icon(LibraryIcons.Trash, null) },

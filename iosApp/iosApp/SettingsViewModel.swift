@@ -25,6 +25,14 @@ final class SettingsViewModel: ObservableObject {
 
     func setGroupingMode(_ mode: GroupingMode) { controller.setGroupingMode(mode: mode) }
     func setGapHours(_ hours: Int) { controller.setGapHours(hours: Int32(hours)) }
+    func setSimilarityPercent(_ percent: Int) { controller.setSimilarityPercent(percent: Int32(percent)) }
+    func resetSimilarity() { controller.resetSimilarity() }
+
+    /// What the similarity slider offers.
+    static var similarityRange: ClosedRange<Double> {
+        let range = SimilarityThreshold.Companion.shared.RANGE
+        return Double(range.first)...Double(range.last)
+    }
 
     /// What the gap picker offers.
     static var gapHoursOptions: [Int] { TimelineGrouping.Companion.shared.GAP_HOURS_OPTIONS.map { $0.intValue } }

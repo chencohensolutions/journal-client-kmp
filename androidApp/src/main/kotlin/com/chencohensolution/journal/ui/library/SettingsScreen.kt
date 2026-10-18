@@ -22,10 +22,18 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -37,11 +45,14 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsState
+import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 
 internal class SettingsActions(
     val setGroupingMode: (GroupingMode) -> Unit = {},
     val setGapHours: (Int) -> Unit = {},
+    val setSimilarityPercent: (Int) -> Unit = {},
+    val resetSimilarity: () -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -99,8 +110,55 @@ internal fun SettingsScreen(settings: SettingsState, actions: SettingsActions) {
                     }
                 }
             }
+            SectionTitle(stringResource(R.string.settings_similarity_title))
+            SimilarityCard(settings.similarity, actions)
         }
         TitleBar(stringResource(R.string.library_settings), actions.back, Modifier.align(Alignment.TopCenter))
+    }
+}
+
+/** How alike photos must be for a "Look alike" suggestion: a slider in percent, saved when let go. */
+@Composable
+private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsActions) {
+    var dragging by remember(similarity.percent) { mutableFloatStateOf(similarity.percent.toFloat()) }
+    val range = SimilarityThreshold.RANGE
+    Column(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.settings_similarity_label),
+                color = LibraryColors.OnBackground,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Slider(
+            value = dragging,
+            onValueChange = { dragging = it },
+            onValueChangeFinished = { actions.setSimilarityPercent(dragging.toInt()) },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = range.last - range.first - 1,
+            colors = SliderDefaults.colors(
+                thumbColor = LibraryColors.OnBackground,
+                activeTrackColor = LibraryColors.OnBackground,
+                inactiveTrackColor = LibraryColors.Muted.copy(alpha = 0.3f),
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+            ),
+        )
+        Text(stringResource(R.string.settings_similarity_body), color = LibraryColors.Muted, fontSize = 13.sp)
+        if (!similarity.isDefault) {
+            TextButton(onClick = actions.resetSimilarity, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.settings_similarity_reset, similarity.defaultPercent), color = LibraryColors.OnBackground)
+            }
+        }
     }
 }
 

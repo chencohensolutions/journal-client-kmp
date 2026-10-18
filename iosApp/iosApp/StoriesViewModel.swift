@@ -58,6 +58,10 @@ final class StoriesViewModel: ObservableObject {
     func restore(_ story: Story) { controller.restore(snapshot: story) }
 
     func dismissSuggestion(_ key: String, in storyId: String) { controller.dismissSuggestion(storyId: storyId, key: key) }
+    func resetGroups(in storyId: String) { controller.resetGroups(storyId: storyId) }
+    func acceptSuggestion(_ key: String, inGroup groupId: String, of storyId: String) -> String? {
+        controller.acceptGroupSuggestion(storyId: storyId, groupId: groupId, key: key)
+    }
     func renameGroup(_ groupId: String, in storyId: String, to title: String) {
         controller.renameGroup(storyId: storyId, groupId: groupId, title: title)
     }

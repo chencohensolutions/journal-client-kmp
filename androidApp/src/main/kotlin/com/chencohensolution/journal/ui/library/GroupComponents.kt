@@ -266,7 +266,10 @@ internal fun GroupTile(
     }
 }
 
-/** "13 similar photos · 2:09 PM · taken within 14 seconds" with Group them / Not now. */
+/**
+ * "Look alike", "13 similar photos" (or "Taken together", "13 photos in a row"), "2:09 PM · taken within 14 seconds" (or minutes, hours,
+ * days) with Group them / Not now.
+ */
 @Composable
 internal fun BurstSuggestionCard(suggestion: BurstSuggestion, onGroup: () -> Unit, onDismiss: () -> Unit) {
     Column(
@@ -295,14 +298,41 @@ internal fun BurstSuggestionCard(suggestion: BurstSuggestion, onGroup: () -> Uni
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Why they were picked: what's in them, or when they were taken.
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (suggestion.byLooks) LibraryIcons.Eye else LibraryIcons.Clock,
+                        contentDescription = null,
+                        tint = LibraryColors.Muted,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        stringResource(if (suggestion.byLooks) R.string.library_burst_by_looks else R.string.library_burst_by_time),
+                        color = LibraryColors.Muted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
                 Text(
-                    pluralStringResource(R.plurals.library_burst_title, suggestion.count, suggestion.count),
+                    pluralStringResource(
+                        if (suggestion.byLooks) R.plurals.library_burst_title else R.plurals.library_burst_title_time,
+                        suggestion.count,
+                        suggestion.count,
+                    ),
                     color = LibraryColors.OnBackground,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                 )
+                // Photos that look alike can be taken hours or days apart.
+                val start = timeRange(suggestion.items.take(1))
                 Text(
-                    stringResource(R.string.library_burst_detail, timeRange(suggestion.items.take(1)), suggestion.seconds.coerceAtLeast(1)),
+                    when {
+                        suggestion.seconds < 60 -> stringResource(R.string.library_burst_detail, start, suggestion.seconds.coerceAtLeast(1))
+                        suggestion.sameDay && suggestion.seconds < 3600 ->
+                            stringResource(R.string.library_burst_detail_minutes, start, (suggestion.seconds + 59) / 60)
+                        suggestion.sameDay -> timeRange(suggestion.items)
+                        else -> dateRange(suggestion.items.first().day, suggestion.items.last().day)
+                    },
                     color = LibraryColors.Muted,
                     fontSize = 13.sp,
                 )

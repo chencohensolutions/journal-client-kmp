@@ -111,7 +111,14 @@
         <item quantity="one">%d similar photo</item>
         <item quantity="other">%d similar photos</item>
     </plurals>
+    <plurals name="library_burst_title_time">
+        <item quantity="one">%d photo in a row</item>
+        <item quantity="other">%d photos in a row</item>
+    </plurals>
     <string name="library_burst_detail">%1$s · taken within %2$d seconds</string>
+    <string name="library_burst_detail_minutes">%1$s · taken within %2$d minutes</string>
+    <string name="library_burst_by_looks">Look alike</string>
+    <string name="library_burst_by_time">Taken together</string>
     <string name="library_burst_question">Show them as one?</string>
     <string name="library_burst_group">Group them</string>
     <string name="library_burst_not_now">Not now</string>
@@ -241,6 +248,10 @@
     <string name="settings_grouping_by_day_body">One row for each calendar day.</string>
     <string name="settings_grouping_by_gap">By breaks between photos</string>
     <string name="settings_grouping_by_gap_body">A new row starts after a break without photos, so an evening that runs past midnight stays in one row.</string>
+    <string name="settings_similarity_title">Suggestions for similar photos</string>
+    <string name="settings_similarity_label">How alike</string>
+    <string name="settings_similarity_body">Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike.</string>
+    <string name="settings_similarity_reset">Reset to %d%%</string>
     <string name="settings_gap_title">New row after a break of</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">%d hour</item>
@@ -253,6 +264,10 @@
     <string name="library_arrange">Arrange layout</string>
     <string name="library_arrange_title">Arrange</string>
     <string name="library_arrange_done">Done</string>
+    <string name="library_reset_groups">Reset groups</string>
+    <string name="library_reset_groups_title">Reset the groups?</string>
+    <string name="library_reset_groups_body">Every group in this story is removed and its photos go back to the story. Group text moves to the story\'s text. Suggestions start over, including ones you answered "Not now".</string>
+    <string name="library_reset_groups_done">Groups reset</string>
     <string name="library_arrange_reset">Reset</string>
     <string name="library_arrange_reset_title">Reset the layout?</string>
     <string name="library_arrange_reset_body">Sizes, order and focus go back to automatic. Photos and text stay.</string>

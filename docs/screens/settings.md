@@ -10,17 +10,24 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - **By breaks between photos:** a new row starts after a break without photos, so an evening that runs past
     midnight, or a day out that starts before dawn, stays in one row.
   - With breaks chosen: **New row after a break of** 2, 4, 6, 8, **12** (default), 24 or 48 hours.
+- **Suggestions for similar photos:** **How alike** a slider from 50% to 99%, with the value shown: the cosine
+  similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
+  suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
+  own (**70%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 
 ## Behavior
 
 - A change applies right away; the Journal rebuilds its rows from the same photos.
 - The break length is kept while **By day** is chosen, so switching back restores it.
-- The setting changes only the Journal's unsorted rows. All photos, tags and the story page stay by day, and so do
+- The similarity value is saved when the slider is let go; story and group suggestions update right away (no photo
+  is read again). Near-duplicates by dHash are suggested at any value. Only the default is stored as "none", so a
+  better default later reaches everyone who didn't choose one.
+- The grouping setting changes only the Journal's unsorted rows. All photos, tags and the story page stay by day, and so do
   the "+ Add <day>" suggestions on a story page.
 
 ## Code
 
-- Shared: `SettingsController` and `TimelineGrouping` in
+- Shared: `SettingsController`, `TimelineGrouping` and `SimilarityThreshold` in
   [settings/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/settings/SettingsController.kt);
   the rows are `StoriesState.moments`, built by `groupMoments` in
   [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).

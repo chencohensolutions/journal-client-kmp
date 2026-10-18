@@ -18,6 +18,8 @@ struct StoryPageActions {
     var dismissSuggestion: (String) -> Void
     var ungroup: (String) -> Void
     var removeItems: ([String]) -> Void
+    /// Removes every group and brings suggestions back; `restore` undoes it.
+    var resetGroups: () -> Void
 }
 
 /// One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
@@ -32,6 +34,9 @@ struct StoryPageView: View {
     @State private var renaming = false
     @State private var newTitle = ""
     @State private var confirmingDelete = false
+    @State private var confirmingGroupsReset = false
+    /// The story as it was before Reset groups, to put back on Undo.
+    @State private var resetUndo: Story?
     @State private var editingIntro = false
     @State private var selection: Set<String>?
     /// The story as it was before grouping, to put back on Undo.
@@ -58,6 +63,19 @@ struct StoryPageView: View {
             // Titles are optional: a blank one removes it.
             Button("Save") { actions.rename(newTitle) }
             Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Reset the groups?", isPresented: $confirmingGroupsReset, titleVisibility: .visible) {
+            Button("Reset groups", role: .destructive) {
+                guard let before = story?.story else { return }
+                actions.resetGroups()
+                withAnimation { resetUndo = before }
+                Task {
+                    try? await Task.sleep(for: .seconds(undoSeconds))
+                    if resetUndo === before { withAnimation { resetUndo = nil } }
+                }
+            }
+        } message: {
+            Text("Every group in this story is removed and its photos go back to the story. Group text moves to the story's text. Suggestions start over, including ones you answered \"Not now\".")
         }
         .confirmationDialog("Delete \"\(story?.name ?? "")\"?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive, action: actions.delete)
@@ -86,6 +104,11 @@ struct StoryPageView: View {
                         newTitle = story?.title ?? ""
                         renaming = true
                     } label: { Label("Rename", systemImage: "pencil") }
+                    if let story, !story.groups.isEmpty || !story.story.dismissedSuggestions.isEmpty {
+                        Button { confirmingGroupsReset = true } label: {
+                            Label("Reset groups", systemImage: "square.stack")
+                        }
+                    }
                     Button(role: .destructive) { confirmingDelete = true } label: {
                         Label("Delete story", systemImage: "trash")
                     }
@@ -122,6 +145,11 @@ struct StoryPageView: View {
                     self.selection = nil
                 }
             )
+        } else if let resetUndo {
+            UndoBar(count: 0, message: "Groups reset", onUndo: {
+                actions.restore(resetUndo)
+                self.resetUndo = nil
+            }, onDismiss: { withAnimation { self.resetUndo = nil } })
         } else if let undo {
             UndoBar(count: undo.count, onUndo: {
                 actions.restore(undo.before)

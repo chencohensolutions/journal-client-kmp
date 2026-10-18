@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.stories.BurstSuggestion
 import com.chencohensolution.journal.stories.GroupView
 import com.chencohensolution.journal.stories.Story
 import com.chencohensolution.journal.stories.StoryTile
@@ -73,6 +74,9 @@ internal class GroupActions(
     val restore: (Story) -> Unit = {},
     /** Takes photos out of this group, into the level above. */
     val takeOut: (itemIds: List<String>) -> Unit = {},
+    /** "Group them" on a suggestion ([BurstSuggestion.key]): its photos become a subgroup. Returns its id. */
+    val acceptSuggestion: (key: String) -> String? = { null },
+    val dismissSuggestion: (key: String) -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -122,6 +126,14 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
             }
         }
         endSelection()
+    }
+    fun acceptSuggestion(suggestion: BurstSuggestion) {
+        val before = story.story
+        if (actions.acceptSuggestion(suggestion.key) != null) {
+            scope.launch {
+                if (snackbar.offerUndo(groupedMessage.format(suggestion.count), undoLabel)) actions.restore(before)
+            }
+        }
     }
     fun toggle(key: String) {
         selected = if (key in selected) selected - key else selected + key
@@ -178,6 +190,15 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
             item(key = "story", span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.offset(y = (-24).dp)) {
                     WritingBlock(group.text, stringResource(R.string.library_writing_group_prompt)) { editing = true }
+                }
+            }
+            if (!selecting) {
+                items(group.suggestions, key = { "suggestion-${it.key}" }, span = { GridItemSpan(maxLineSpan) }) { suggestion ->
+                    BurstSuggestionCard(
+                        suggestion,
+                        onGroup = { acceptSuggestion(suggestion) },
+                        onDismiss = { actions.dismissSuggestion(suggestion.key) },
+                    )
                 }
             }
             items(group.tiles, key = { it.key }) { tile ->

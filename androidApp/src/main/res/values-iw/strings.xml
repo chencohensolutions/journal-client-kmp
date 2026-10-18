@@ -119,7 +119,15 @@
         <item quantity="two">שתי תמונות דומות</item>
         <item quantity="other">%d תמונות דומות</item>
     </plurals>
+    <plurals name="library_burst_title_time">
+        <item quantity="one">תמונה אחת ברצף</item>
+        <item quantity="two">שתי תמונות ברצף</item>
+        <item quantity="other">%d תמונות ברצף</item>
+    </plurals>
     <string name="library_burst_detail">%1$s · צולמו בתוך %2$d שניות</string>
+    <string name="library_burst_detail_minutes">%1$s · צולמו בתוך %2$d דקות</string>
+    <string name="library_burst_by_looks">נראות דומות</string>
+    <string name="library_burst_by_time">צולמו יחד</string>
     <string name="library_burst_question">להציג אותן כאחת?</string>
     <string name="library_burst_group">קבצו אותן</string>
     <string name="library_burst_not_now">לא עכשיו</string>
@@ -252,6 +260,10 @@
     <string name="settings_grouping_by_day_body">שורה אחת לכל יום בלוח השנה.</string>
     <string name="settings_grouping_by_gap">לפי הפסקות בין תמונות</string>
     <string name="settings_grouping_by_gap_body">שורה חדשה מתחילה אחרי הפסקה בלי תמונות, כך שערב שנמשך אחרי חצות נשאר בשורה אחת.</string>
+    <string name="settings_similarity_title">הצעות לתמונות דומות</string>
+    <string name="settings_similarity_label">רמת דמיון</string>
+    <string name="settings_similarity_body">גבוה יותר: רק תמונות שנראות כמעט זהות מוצעות יחד. נמוך יותר: יותר תמונות בכל הצעה, אבל פחות דומות.</string>
+    <string name="settings_similarity_reset">איפוס ל־%d%%</string>
     <string name="settings_gap_title">שורה חדשה אחרי הפסקה של</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">שעה אחת</item>
@@ -264,6 +276,10 @@
     <string name="library_arrange">סידור הפריסה</string>
     <string name="library_arrange_title">סידור</string>
     <string name="library_arrange_done">סיום</string>
+    <string name="library_reset_groups">איפוס קבוצות</string>
+    <string name="library_reset_groups_title">לאפס את הקבוצות?</string>
+    <string name="library_reset_groups_body">כל הקבוצות בסיפור יוסרו והתמונות שלהן יחזרו לסיפור. הטקסט של הקבוצות יעבור לטקסט של הסיפור. ההצעות יתחילו מחדש, כולל כאלה שעניתם עליהן \"לא עכשיו\".</string>
+    <string name="library_reset_groups_done">הקבוצות אופסו</string>
     <string name="library_arrange_reset">איפוס</string>
     <string name="library_arrange_reset_title">לאפס את הפריסה?</string>
     <string name="library_arrange_reset_body">הגדלים, הסדר והמיקוד יחזרו לאוטומטי. התמונות והטקסט יישארו.</string>

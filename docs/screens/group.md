@@ -15,16 +15,34 @@ button that opens the group.
 
 ## Creating a group
 
-1. **Burst suggestions** (automatic). The story page shows a card for each burst among its loose photos:
-   *"14 similar photos · 2:09 PM · taken within 9 seconds · Show them as one?"* with **Group them** and **Not now**.
-   - Photos are taken in time order; a photo joins the current run if it was taken **within 10 seconds** of the
-     previous one, or carries the **same camera burst id** (iOS `burstIdentifier`; Samsung names burst shots
-     `20261008_140901_092.jpg`, the same second plus a shot number).
-   - A run of **3 or more photos** is suggested. Videos and photos already in a group are left out.
-   - **Not now** is saved in story.json (`dismissedSuggestions`, by the run's first photo), so it isn't suggested
-     again.
-   - Constants: `BURST_GAP_MILLIS` and `BURST_MIN_PHOTOS` in
-     [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).
+1. **Suggestions** (automatic). The story page shows a card for each set of loose photos that look alike, and a
+   group's page for each set of its own photos (accepting makes them a **subgroup**):
+   *"4 similar photos · 2:09 PM · taken within 9 seconds · Show them as one?"* with **Group them** and **Not now**.
+   The detail says seconds, minutes, a time range, or a date range, by how far apart the photos are. A small label
+   above the title says why the photos were picked: **Look alike** (eye icon) or **Taken together** (clock icon;
+   photos not read yet, grouped by time), and the title says "N similar photos" or "N photos in a row".
+   - **By looks, at any time.** Photos with a fingerprint are compared whenever they were taken: in time order,
+     each joins the first set where it looks like **more than half** the photos (so sets don't drift through chains
+     of look-alikes), and sets of **2 or more** are suggested. Two photos look alike when their **dHash** (64-bit
+     difference hash of a 9×8 grayscale copy) differs in at most 10 bits, when the cosine similarity of the
+     platform's image embedding reaches its threshold, or when they share the camera's burst id (iOS
+     `burstIdentifier`; Samsung `20261008_140901_092.jpg` names). Looks also **split** quick shots of different
+     things that time alone would have joined.
+   - **By time, until read.** Photos without a fingerprint yet (or that can't have one, like iCloud-only photos on
+     iOS) go by the old rule: taken within **10 seconds** of the previous one or the same burst id, runs of **3+**.
+   - Embeddings: **Vision feature print** on iOS (threshold 0.80), **MediaPipe image embedder** with MobileNet-V3
+     small on Android (0.70, model bundled in `sharedLogic/src/androidMain/assets`). These are the
+     defaults; **How alike** in Settings changes the threshold (see [settings.md](settings.md)).
+   - Every photo of every story is read, one at a time in the background, the story changed last first (so a new
+     story or group is ready first); cards update as fingerprints arrive. Fingerprints are cached per device and
+     model in the caches folder (`similarity/fingerprints.json`), never synced: the two platforms' embeddings can't
+     be compared. Read failures are logged (`PhotoSimilarity` on Android).
+   - Videos are left out. A set covering every tile of a group isn't suggested on its page.
+   - **Not now** is saved in story.json (`dismissedSuggestions`, by the set's first photo), so it isn't suggested
+     again; a set holding any dismissed photo stays hidden.
+   - Code: `findSuggestions`, `findBursts`, `BURST_GAP_MILLIS`, `BURST_MIN_PHOTOS` in
+     [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt);
+     fingerprints in [similarity/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/similarity/).
 2. **Select, then Group.** Long-press a photo or group in the story to start selecting; tap others; **Group**
    (needs two or more tiles) makes a new group of them in their place. Selected groups become its **subgroups**. The
    bar also has **Remove** (from the story).
@@ -92,6 +110,9 @@ Group ids (`g1`, `g2`…) are unique within their story and never reused while a
 
 ## Code
 
+- Shared: `PhotoSimilarity` and the dHash in
+  [similarity/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/similarity/), with
+  `AndroidPhotoAnalyzer` / `IosPhotoAnalyzer` in the platform source sets.
 - Shared: `GroupView`, `StoryTile`, `BurstSuggestion` and the group actions in
   [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt);
   [Story.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/Story.kt)

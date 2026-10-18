@@ -96,6 +96,6 @@ struct DayGrid: View {
     }
 
     private func tile(_ item: MediaItem) -> some View {
-        MediaTileView(item: item).onTapGesture { onOpen(item) }
+        MediaTileView(item: item).zoomSource(ZoomID.item(item.id)).onTapGesture { onOpen(item) }
     }
 }

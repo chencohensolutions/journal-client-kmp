@@ -6,7 +6,8 @@ after creating a story.
 ## Layout
 
 - **Top bar:** back, the Offline pill when the server can't be reached, and **⋯** with **Rename**,
-  **Arrange layout** and **Delete story**.
+  **Arrange layout** (Android), **Reset groups** (when the story has groups or dismissed suggestions) and
+  **Delete story**.
 - **Header:** the first day as a calendar block (OCT / 8), the title, and a summary such as
   "Oct 8 – 16 · 9 days · 142 photos · 2 groups". One-day stories leave out the day count. An untitled story has no
   title line; the summary is its heading.
@@ -60,6 +61,7 @@ fall in by time, right after the last tile taken no later than them. The group p
 | Edit story | Full-screen editor; saved to story.md |
 | Group them / Group / Merge | Makes a group (nesting selected groups) or merges into one; "Grouped N photos · Undo" for a few seconds |
 | Not now | Hides that burst suggestion for good |
+| Reset groups | Confirmation; removes every group (nested ones too), their text joins the story's opening text, and "Not now" answers are forgotten, so suggestions start over. "Groups reset · Undo" puts it all back |
 | Remove (selection) | Takes the photos out of the story and its groups |
 | Arrange: size, Earlier/Later, Focus | Saved to story.json at once; a photo that joins a group loses its own size and focus |
 | Arrange: Reset | Confirmation; back to the automatic layout |
@@ -128,7 +130,7 @@ Uninstalling the app deletes these files.
 ## Not built yet
 
 Sub-stories, layout templates, drag-and-drop reordering, arranging on iOS (iOS still shows the automatic layout,
-see below), choosing the story's cover, and grouping by visual similarity (today bursts are found by time and the camera's burst id only).
+see below), and choosing the story's cover.
 
 ## Code
 
