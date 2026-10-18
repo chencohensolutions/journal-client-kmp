@@ -18,9 +18,8 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Made-up library and stories for previews and screenshot tests (src/screenshotTest). Dates are relative to now, so
- * "Today" and "Yesterday" read right whenever the previews are rendered. Thumbnails are placeholders drawn by
- * [rememberThumbnail].
+ * Made-up library and stories for the screenshot tests. Dates are relative to now, so "Today" and "Yesterday" read
+ * right whenever the previews are rendered. The pictures are placeholders (see [Screen]).
  */
 internal object PreviewData {
     private const val HOUR = 3_600_000L

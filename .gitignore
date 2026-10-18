@@ -17,3 +17,6 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 iosApp/Configuration/Local.xcconfig
+
+# Screenshot test images: rendered locally with ./scripts/screenshots.sh (docs/previews.md)
+androidApp/src/screenshotTestDebug/

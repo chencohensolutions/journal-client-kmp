@@ -16,10 +16,13 @@ looks shows up as an image diff in review.
 
 - Screens take their data as parameters (`JournalHomeScreen(library, stories, health, actions)`), so a preview
   passes made-up state instead of the controllers' state.
-- [PreviewData.kt](../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PreviewData.kt) holds that
+- [PreviewData.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/PreviewData.kt) holds that
   state: a library, stories and unsorted days, dated relative to today.
-- In a preview there is no photo library, so `rememberThumbnail` draws a colored placeholder at the photo's aspect
-  ratio instead ([MediaTile.kt](../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MediaTile.kt)).
+- There is no photo library in a screenshot, so every preview is wrapped in `Screen { … }`
+  ([Placeholders.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/Placeholders.kt)),
+  which sets the app's themes and draws a colored placeholder for each photo. The app's only hook for this is
+  `LocalThumbnailSource` in [MediaTile.kt](../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MediaTile.kt):
+  null in the app, where thumbnails come from MediaStore.
 - The previews are in `androidApp/src/screenshotTest/kotlin/`, one file per screen. Each function is marked
   `@PreviewTest` and has one `@Preview` per variant (light, dark, offline…). Google's Compose Preview Screenshot
   Testing plugin (`com.android.compose.screenshot`, still alpha) renders them on the JVM.

@@ -28,20 +28,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -73,12 +71,19 @@ private val thumbnailCache = object : LruCache<String, Bitmap>((Runtime.getRunti
 }
 
 /**
- * The item's thumbnail at [sizePx], or null while it loads (or when the file can't be read). In previews and
- * screenshot tests, where there is no photo library, a placeholder picture instead.
+ * Draws thumbnails instead of the photo library, for screenshot tests (see docs/previews.md). Null in the app: then
+ * thumbnails come from MediaStore.
  */
+internal fun interface ThumbnailSource {
+    fun thumbnail(item: MediaItem, sizePx: Int): ImageBitmap?
+}
+
+internal val LocalThumbnailSource = staticCompositionLocalOf<ThumbnailSource?> { null }
+
+/** The item's thumbnail at [sizePx], or null while it loads (or when the file can't be read). */
 @Composable
 internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
-    if (LocalInspectionMode.current) return remember(item.id, item.width, item.height) { placeholderThumbnail(item) }
+    LocalThumbnailSource.current?.let { source -> return remember(source, item, sizePx) { source.thumbnail(item, sizePx) } }
     val resolver = LocalContext.current.contentResolver
     val key = "${item.id}@$sizePx"
     // The state outlives a change of item, so each new key replaces the value, even with null when it can't be read.
@@ -88,27 +93,6 @@ internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
         }?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
-}
-
-private val placeholderTones = longArrayOf(
-    0xFF8FB3A6, 0xFFE3CDB4, 0xFFC9D6CF, 0xFFB9A58E, 0xFF6F8F9B, 0xFFD8B7A6,
-    0xFFA7B98F, 0xFF9AA7C4, 0xFF5E8A7C, 0xFFE8D9B8, 0xFF7E9C8C, 0xFFCDB8A0,
-)
-
-/** A flat landscape (sun and hill) in a color picked by the item's id, at the item's aspect ratio. */
-private fun placeholderThumbnail(item: MediaItem): ImageBitmap {
-    val w = 320
-    val h = if (item.width > 0 && item.height > 0) (w.toLong() * item.height / item.width).toInt().coerceIn(80, 960) else w
-    val bitmap = ImageBitmap(w, h)
-    val canvas = androidx.compose.ui.graphics.Canvas(bitmap)
-    val paint = Paint()
-    paint.color = Color(placeholderTones[Math.floorMod(item.id.hashCode(), placeholderTones.size)])
-    canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
-    paint.color = Color.White.copy(alpha = 0.45f)
-    canvas.drawCircle(Offset(w * 0.75f, h * 0.27f), minOf(w, h) * 0.11f, paint)
-    paint.color = Color.Black.copy(alpha = 0.12f)
-    canvas.drawOval(-0.2f * w, 0.62f * h, 1.2f * w, 1.25f * h, paint)
-    return bitmap
 }
 
 /** The full image scaled so its longer side is at most [maxSide] pixels. */

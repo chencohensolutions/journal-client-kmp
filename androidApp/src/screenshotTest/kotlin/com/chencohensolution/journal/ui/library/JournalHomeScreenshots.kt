@@ -1,7 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
@@ -10,11 +9,6 @@ import com.chencohensolution.journal.library.PhotoAccess
 
 // The Journal home screen with made-up data (PreviewData). Render with ./gradlew :androidApp:updateDebugScreenshotTest;
 // the images land in androidApp/src/screenshotTestDebug/reference/. See docs/previews.md.
-
-private const val PHONE = "spec:width=390dp,height=844dp,dpi=420"
-
-@Composable
-private fun Screen(content: @Composable () -> Unit) = MaterialTheme { LibraryTheme(content = content) }
 
 @PreviewTest
 @Preview(name = "light", device = PHONE, showBackground = true)
