@@ -58,6 +58,7 @@ import com.chencohensolution.journal.stories.GroupView
 import com.chencohensolution.journal.stories.Story
 import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
+import com.chencohensolution.journal.stories.aspectRatio
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.stories.photo
 import kotlinx.coroutines.launch
@@ -213,9 +214,10 @@ internal fun GroupScreen(
                     )
                 }
             }
-            items(group.tiles, key = { it.key }) { tile ->
+            // Full width at the photo's own ratio (a subgroup's cover), one under the other, so nothing is cropped.
+            items(group.tiles, key = { it.key }, span = { GridItemSpan(maxLineSpan) }) { tile ->
                 val isSelected = if (selecting) tile.key in selected else null
-                Box(Modifier.aspectRatio(1f)) {
+                Box(Modifier.aspectRatio(tile.photo.aspectRatio)) {
                     when (tile) {
                         is StoryTile.Media -> MediaTile(
                             tile.item,

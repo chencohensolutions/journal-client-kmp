@@ -127,7 +127,6 @@ struct GroupPageView: View {
 
     private func content(_ story: StoryView, _ group: GroupView) -> some View {
         GeometryReader { geometry in
-            let cell = (geometry.size.width - 4) / 3
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     MediaTileView(item: group.cover, badgeSize: 0)
@@ -171,10 +170,11 @@ struct GroupPageView: View {
                             )
                         }
                     }
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(cell), spacing: 2), count: 3), spacing: 2) {
+                    // Full width at the photo's own ratio (a subgroup's cover), one under the other, so nothing is cropped.
+                    LazyVStack(spacing: 2) {
                         ForEach(group.tiles, id: \.key) { tile in
                             self.tile(tile, in: group)
-                                .frame(width: cell, height: cell)
+                                .frame(width: geometry.size.width, height: geometry.size.width / tileRatio(tile))
                                 .clipped()
                         }
                     }
@@ -198,7 +198,7 @@ struct GroupPageView: View {
             ?? ((tile as? StoryTileMedia)?.item.id == group.cover.id)
         Group {
             if let subgroup {
-                GroupTileView(group: subgroup, large: false)
+                GroupTileView(group: subgroup, large: true)
                     .zoomSource(ZoomID.group(subgroup.id))
             } else if let media = tile as? StoryTileMedia {
                 MediaTileView(item: media.item)

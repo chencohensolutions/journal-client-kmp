@@ -68,7 +68,8 @@ it was (`StoriesController.restore`).
 - The cover across the top, the story's name (and the groups around this one: "JAPAN TRIP › DAY AT THE SEA") above
   the group's title (or its time when untitled), and "Oct 8 · 2:09 – 2:10 PM · 14 photos", counting subgroups' photos.
 - **Story text** in a serif, with **Edit** (full-screen editor). Empty groups prompt "Write about this moment…".
-- Its photos and subgroups, oldest first, three across; a subgroup is its cover with the photo count, like a group in
+- Its photos and subgroups, oldest first, one under the other, each full width at its photo's own aspect ratio (so
+  nothing is cropped, videos included); a subgroup is its cover with the photo count, like a group in
   the story. The tile holding the cover is marked **Cover**. Tapping a photo opens the viewer on the group's photos
   (each subgroup one stop); tapping a subgroup opens its page.
 - **Long-press** to select: **Group** (into a subgroup), **Merge** (when a subgroup is selected) and **Take out**
@@ -88,7 +89,8 @@ the story list.
   the story, and its text to the end of that group's text or the story's opening text, so no text is lost.
 - The cover is the oldest photo until you choose another, which can be any photo of the group or its subgroups; if
   the cover leaves the group, the oldest photo takes over.
-- Only the story's own tiles can be arranged; a group's page, at any depth, keeps its automatic grid.
+- Only the story's own tiles can be arranged; a group's page, at any depth, keeps its automatic layout (full width at each
+  photo's own ratio).
 
 ## How it's saved
 

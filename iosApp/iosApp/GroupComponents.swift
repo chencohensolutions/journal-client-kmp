@@ -34,6 +34,17 @@ func tilePlace(of itemId: String, in tiles: [StoryTile]) -> String? {
     return nil
 }
 
+/// Width over height of the tile's photo (a group's cover); 1.5 when the library doesn't know its size.
+func tileRatio(_ tile: StoryTile) -> CGFloat {
+    let item: MediaItem
+    switch tile {
+    case let group as StoryTileGroup: item = group.group.cover
+    case let media as StoryTileMedia: item = media.item
+    default: return 1.5
+    }
+    return item.width > 0 && item.height > 0 ? CGFloat(item.width) / CGFloat(item.height) : 1.5
+}
+
 struct StoryGrid: View {
     let days: [StoryDay]
     let label: (StoryDay) -> String
@@ -51,7 +62,7 @@ struct StoryGrid: View {
             VStack(spacing: gap) {
                 ForEach(day.tiles, id: \.key) { tile in
                     self.tile(tile)
-                        .frame(width: width, height: width / ratio(tile))
+                        .frame(width: width, height: width / tileRatio(tile))
                         .clipped()
                 }
             }
@@ -92,16 +103,6 @@ struct StoryGrid: View {
         .onLongPressGesture { onLongPress(key) }
     }
 
-    /// Width over height of the tile's photo (a group's cover); 1.5 when the library doesn't know its size.
-    private func ratio(_ tile: StoryTile) -> CGFloat {
-        let item: MediaItem
-        switch tile {
-        case let group as StoryTileGroup: item = group.group.cover
-        case let media as StoryTileMedia: item = media.item
-        default: return 1.5
-        }
-        return item.width > 0 && item.height > 0 ? CGFloat(item.width) / CGFloat(item.height) : 1.5
-    }
 }
 
 /// Check circle and outline over a photo in selection mode.
