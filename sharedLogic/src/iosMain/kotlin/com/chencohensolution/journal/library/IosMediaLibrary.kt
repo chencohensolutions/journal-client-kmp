@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.library
 
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import platform.Foundation.NSCalendar
@@ -11,6 +13,7 @@ import platform.Foundation.timeIntervalSince1970
 import platform.Photos.PHAccessLevelReadWrite
 import platform.Photos.PHAsset
 import platform.Photos.PHAssetMediaTypeImage
+import platform.Photos.PHAssetMediaSubtypePhotoScreenshot
 import platform.Photos.PHAssetMediaTypeVideo
 import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusLimited
@@ -26,6 +29,7 @@ internal class IosMediaLibrary : MediaLibrary {
         else -> PhotoAccess.DENIED
     }
 
+    @OptIn(ExperimentalForeignApi::class)
     override suspend fun loadItems(): List<MediaItem> = withContext(Dispatchers.Default) {
         val calendar = NSCalendar.currentCalendar
         val items = mutableListOf<MediaItem>()
@@ -48,6 +52,9 @@ internal class IosMediaLibrary : MediaLibrary {
                     sizeBytes = null,
                     fileName = null,
                     burstId = asset.burstIdentifier,
+                    // PhotoKit marks screenshots; telling WhatsApp's saved photos apart needs an album lookup.
+                    source = if (asset.mediaSubtypes and PHAssetMediaSubtypePhotoScreenshot != 0uL) MediaSource.SCREENSHOTS else MediaSource.CAMERA,
+                    location = asset.location?.coordinate?.useContents { GeoPoint(latitude, longitude) },
                 )
             }
         }

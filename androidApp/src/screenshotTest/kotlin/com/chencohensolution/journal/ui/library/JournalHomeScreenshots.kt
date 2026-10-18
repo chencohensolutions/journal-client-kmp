@@ -23,7 +23,14 @@ fun JournalTab() = Screen {
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
 fun UnsortedTab() = Screen {
-    JournalHomeScreen(PreviewData.library, PreviewData.stories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.UNSORTED)
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.UNSORTED)
+}
+
+@PreviewTest
+@Preview(name = "whole scroll", device = "spec:width=390dp,height=4400dp,dpi=420", showBackground = true)
+@Composable
+fun UnsortedTabLong() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.UNSORTED)
 }
 
 @PreviewTest

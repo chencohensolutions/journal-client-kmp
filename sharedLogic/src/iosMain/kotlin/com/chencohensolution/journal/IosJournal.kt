@@ -13,6 +13,9 @@ import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.UserDefaultsStore
+import com.chencohensolution.journal.places.IosPlaceReader
+import com.chencohensolution.journal.places.PhotoPlaces
+import com.chencohensolution.journal.places.PlaceCache
 import com.chencohensolution.journal.similarity.FingerprintCache
 import com.chencohensolution.journal.similarity.IosPhotoAnalyzer
 import com.chencohensolution.journal.similarity.PhotoSimilarity
@@ -62,7 +65,7 @@ object IosJournal {
 
     /**
      * Stories kept on this device, in Application Support (`journal/stories`). Photo fingerprints for burst
-     * suggestions are cached in Caches (`similarity`).
+     * suggestions are cached in Caches (`similarity`), where photos were taken and place names too (`places`).
      */
     fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
         val support = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
@@ -74,6 +77,7 @@ object IosJournal {
             settings = settings,
             newId = StoryIds(JournalSettings(UserDefaultsStore())) { (NSDate().timeIntervalSince1970 * 1000).toLong() }::next,
             similarity = PhotoSimilarity(IosPhotoAnalyzer(), FingerprintCache(FileSystem.SYSTEM, caches.toPath() / "similarity")),
+            places = PhotoPlaces(IosPlaceReader(), PlaceCache(FileSystem.SYSTEM, caches.toPath() / "places")),
         )
     }
 

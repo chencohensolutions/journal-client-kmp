@@ -5,9 +5,15 @@ import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.stories.FeedBlock
+import com.chencohensolution.journal.stories.FeedEntry
+import com.chencohensolution.journal.stories.FeedMoment
+import com.chencohensolution.journal.stories.FeedSection
+import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.Story
@@ -15,6 +21,7 @@ import com.chencohensolution.journal.stories.StoryGroup
 import com.chencohensolution.journal.stories.StoryMember
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.TimelineEntry
+import com.chencohensolution.journal.stories.UnsortedFeed
 import java.time.Instant
 import java.time.ZoneId
 
@@ -148,4 +155,41 @@ internal object PreviewData {
 
     /** A first launch: access granted, but no stories yet. */
     val noStories = stories.copy(stories = emptyList(), timeline = stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>())
+
+    /** The Unsorted tab as a feed: rows split into moments by time, place and source, near-duplicates as one photo. */
+    val feed: UnsortedFeed = run {
+        fun shot(daysAgo: Int, hour: Int, ratio: Float, source: MediaSource = MediaSource.CAMERA, video: Int? = null) =
+            photo(daysAgo, hour = hour, ratio = ratio, videoSeconds = video).copy(source = source)
+        fun similar(daysAgo: Int, hour: Int, ratio: Float, count: Int) = FeedBlock.Similar(List(count) { shot(daysAgo, hour, ratio) })
+        fun single(item: MediaItem) = FeedBlock.Single(item)
+        fun section(moments: List<FeedMoment>, vararg places: String) =
+            FeedSection(Moment(moments.flatMap { it.items }.sortedByDescending { it.takenAtMillis }, GroupingMode.BY_DAY), moments, places.toList())
+        val screen = 9f / 19.5f
+        val tripCover = shot(14, 11, 16f / 9f)
+        val today = section(
+            listOf(
+                FeedMoment(MediaSource.CAMERA, listOf(similar(0, 19, 4f / 3f, 4), single(shot(0, 19, 3f / 4f)), single(shot(0, 19, 16f / 9f, video = 42))), "Jaffa Port"),
+                FeedMoment(MediaSource.WHATSAPP, listOf(single(shot(0, 14, 3f / 4f, MediaSource.WHATSAPP)), single(shot(0, 16, 1f, MediaSource.WHATSAPP))), null),
+                FeedMoment(MediaSource.CAMERA, listOf(single(shot(0, 9, 4f / 3f)), similar(0, 10, 3f / 4f, 3), single(shot(0, 10, 1f))), "Carmel Market"),
+            ),
+            "Tel Aviv", "Jaffa",
+        )
+        val yesterday = section(
+            listOf(
+                FeedMoment(MediaSource.SCREENSHOTS, listOf(single(shot(1, 15, screen, MediaSource.SCREENSHOTS)), single(shot(1, 16, screen, MediaSource.SCREENSHOTS))), null),
+                FeedMoment(MediaSource.CAMERA, listOf(single(shot(1, 20, 3f / 4f)), similar(1, 21, 4f / 3f, 5)), "Old North"),
+            ),
+            "Tel Aviv",
+        )
+        val tripDay = section(listOf(FeedMoment(MediaSource.CAMERA, listOf(single(tripCover), similar(14, 12, 3f / 4f, 3)), "Bahá’í Gardens")), "Haifa")
+        val trip = FeedTrip("trip", "Haifa", LocalDay.fromEpochDay(tripCover.day.toEpochDay() - 2), tripCover.day, tripDay.items)
+        UnsortedFeed(
+            entries = listOf(FeedEntry.Section(today), FeedEntry.Section(yesterday), FeedEntry.Trip(trip), FeedEntry.Section(tripDay)),
+            counts = mapOf(MediaSource.CAMERA to 168, MediaSource.WHATSAPP to 19, MediaSource.SCREENSHOTS to 23, MediaSource.OTHER to 4),
+            shown = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS),
+        )
+    }
+
+    /** The journal with the feed in its Unsorted tab. */
+    val feedStories: StoriesState = stories.copy(feed = feed)
 }

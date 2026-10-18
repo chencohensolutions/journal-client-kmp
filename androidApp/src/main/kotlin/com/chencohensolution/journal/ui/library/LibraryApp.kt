@@ -2,6 +2,7 @@ package com.chencohensolution.journal.ui.library
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.provider.Settings
@@ -52,6 +53,8 @@ private val PHOTO_PERMISSIONS = arrayOf(
     Manifest.permission.READ_MEDIA_IMAGES,
     Manifest.permission.READ_MEDIA_VIDEO,
     Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+    // Read-only: without it MediaStore hides where photos were taken, which the Unsorted tab groups by.
+    Manifest.permission.ACCESS_MEDIA_LOCATION,
 )
 
 /** Library screens, as a back stack. Each is encoded as a string so the stack survives rotation. */
@@ -65,8 +68,8 @@ private sealed interface Route {
     data object Settings : Route
 
     /**
-     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one moment of the journal
-     * ([moment], its key), or All photos with [filter].
+     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Unsorted tab
+     * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), or All photos with [filter].
      */
     data class Viewer(
         val storyId: String?,
@@ -143,6 +146,17 @@ fun LibraryApp(
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         library.onAccessRequested()
     }
+    // Photo access given before photo locations were asked for with it: ask for them once.
+    val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { library.refresh() }
+    var locationAsked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(libraryState.access) {
+        val canRead = libraryState.access == PhotoAccess.FULL || libraryState.access == PhotoAccess.LIMITED
+        val granted = activity?.checkSelfPermission(Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (canRead && !granted && !locationAsked) {
+            locationAsked = true
+            locationLauncher.launch(Manifest.permission.ACCESS_MEDIA_LOCATION)
+        }
+    }
     val requestAccess: () -> Unit = {
         // After two denials Android stops showing the prompt; only the app's settings page can grant access.
         val blocked = library.accessRequested &&
@@ -197,10 +211,12 @@ fun LibraryApp(
                                     stories = storiesState,
                                     health = journalState.health,
                                     actions = HomeActions(
-                                        openItem = { moment, item -> push(Route.Viewer(null, null, moment.key, LibraryFilter.ALL, item.id)) },
+                                        openItem = { section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id)) },
                                         openTags = { push(Route.Tags) },
                                         openStory = { push(Route.Story(it)) },
-                                        createStory = { title, key -> stories.createStoryFromMoment(title, key)?.let { push(Route.Story(it)) } },
+                                        createStory = { title, key -> stories.createStoryFromFeed(title, key)?.let { push(Route.Story(it)) } },
+                                        toggleSource = settings::toggleFeedSource,
+                                        dismissTrip = settings::dismissTrip,
                                         openAllPhotos = { push(Route.AllPhotos) },
                                         openSettings = { push(Route.Settings) },
                                         allowAccess = requestAccess,
@@ -341,13 +357,13 @@ private fun sharedAxis(forward: Boolean): ContentTransform {
 
 /**
  * The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its cover),
- * the moment of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
+ * the row of the Unsorted tab (as shown there), or everything in the All photos filter.
  */
 private fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
     route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.viewerItems.orEmpty()
     route.storyId != null -> stories.story(route.storyId)?.viewerItems.orEmpty()
-    route.moment != null -> stories.moment(route.moment)?.items.orEmpty()
+    route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()
     else -> library.days(route.filter).flatMap { it.items }
 }
 

@@ -61,6 +61,36 @@ sealed interface BackupStatus {
     data class Failed(val reason: String) : BackupStatus
 }
 
+/** Where a photo came from, by the folder it is in (Android) or what the camera marked it as (iOS). */
+enum class MediaSource {
+    /** Taken with the phone's camera (DCIM). */
+    CAMERA,
+
+    /** Received in WhatsApp. */
+    WHATSAPP,
+    SCREENSHOTS,
+
+    /** Downloads, other apps' folders, edits saved elsewhere. */
+    OTHER,
+}
+
+/** A position on Earth in degrees, as GPS writes it. */
+data class GeoPoint(val latitude: Double, val longitude: Double)
+
+/**
+ * The source of a file in [relativePath], Android's folder of it inside shared storage ("DCIM/Camera/",
+ * "Pictures/Screenshots/", "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/").
+ */
+internal fun sourceOfFolder(relativePath: String?): MediaSource {
+    val path = relativePath?.lowercase() ?: return MediaSource.OTHER
+    return when {
+        "screenshot" in path || "screenrecord" in path || "screen record" in path -> MediaSource.SCREENSHOTS
+        "whatsapp" in path -> MediaSource.WHATSAPP
+        path.startsWith("dcim/") -> MediaSource.CAMERA
+        else -> MediaSource.OTHER
+    }
+}
+
 /** A photo or video in the device library. */
 data class MediaItem(
     /** MediaStore row id on Android, PHAsset localIdentifier on iOS. */
@@ -82,6 +112,12 @@ data class MediaItem(
     val backup: BackupStatus = BackupStatus.NotBackedUp,
     /** Shots of one camera burst share this: iOS burstIdentifier, or the Samsung "20261008_140901_092" name pattern. */
     val burstId: String? = null,
+    val source: MediaSource = MediaSource.CAMERA,
+    /**
+     * Where it was taken, when the platform reports it with the library (iOS). Android hides it until the file is read
+     * (see [com.chencohensolution.journal.places.PhotoPlaces]).
+     */
+    val location: GeoPoint? = null,
 )
 
 /** What the user allowed the app to read from the photo library. */

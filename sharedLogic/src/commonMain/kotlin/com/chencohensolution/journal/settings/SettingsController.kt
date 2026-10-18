@@ -1,6 +1,8 @@
 package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.stories.UnsortedFeed
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,10 +56,12 @@ data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPe
     }
 }
 
-/** The user's choices on the Settings screen. */
+/** The user's choices on the Settings screen, and the Unsorted tab's filter bar and trip answers. */
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
     val similarity: SimilarityThreshold = SimilarityThreshold(),
+    val feedSources: Set<MediaSource> = UnsortedFeed.DEFAULT_SOURCES,
+    val dismissedTrips: Set<String> = emptySet(),
 )
 
 /** The Settings screen's logic: reads and saves the user's choices on this device. */
@@ -69,7 +73,14 @@ class SettingsController internal constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
-    private val _state = MutableStateFlow(SettingsState(grouping = settings.grouping, similarity = similarity(settings.similarityPercent)))
+    private val _state = MutableStateFlow(
+        SettingsState(
+            grouping = settings.grouping,
+            similarity = similarity(settings.similarityPercent),
+            feedSources = settings.feedSources,
+            dismissedTrips = settings.dismissedTrips,
+        ),
+    )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -88,6 +99,21 @@ class SettingsController internal constructor(
         if (percent !in SimilarityThreshold.RANGE) return
         settings.similarityPercent = percent.takeIf { it != defaultSimilarityPercent }
         _state.update { it.copy(similarity = similarity(percent)) }
+    }
+
+    /** Turns a source on or off in the Unsorted tab's filter bar. */
+    fun toggleFeedSource(source: MediaSource) {
+        val current = _state.value.feedSources
+        val sources = if (source in current) current - source else current + source
+        settings.feedSources = sources
+        _state.update { it.copy(feedSources = sources) }
+    }
+
+    /** "Not now" on a trip suggestion: it isn't offered again. */
+    fun dismissTrip(key: String) {
+        val trips = _state.value.dismissedTrips + key
+        settings.dismissedTrips = trips
+        _state.update { it.copy(dismissedTrips = trips) }
     }
 
     /** Back to the platform's own threshold. */

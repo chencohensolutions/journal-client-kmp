@@ -10,6 +10,7 @@ updated.
 | Enrollment wizard | The device has no identity yet | `docs/authentication.md` in journal-server-go |
 | Photo access | After enrollment, until the user answers once | [photo-access.md](photo-access.md) |
 | Journal (home) | Every launch after that | [journal-home.md](journal-home.md) |
+| Unsorted (feed) | The Unsorted tab of the Journal (Android) | [unsorted.md](unsorted.md) |
 | Story | Tapping a story card, or right after creating a story | [story page](story-page.md) |
 | Group | Tapping a group tile in a story | [group.md](group.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
@@ -46,7 +47,8 @@ Stories come from `StoriesController`
 ([stories/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/)): it keeps stories on the
 device, along with each photo's caption and tags (`PhotoNote`), and combines them with the library into
 `StoriesState.timeline` (stories and unsorted moments, newest first), `unsortedDays` (photos in no story and without
-tags), `moments` (the same photos split as the grouping setting says, see [settings.md](settings.md)) and `tags`. See [story page](story-page.md) for the file format.
+tags), `moments` (the same photos split as the grouping setting says, see [settings.md](settings.md)), `feed` (the
+Unsorted tab, see [unsorted.md](unsorted.md)) and `tags`. See [story page](story-page.md) for the file format.
 
 Server state comes from `JournalState.health`:
 

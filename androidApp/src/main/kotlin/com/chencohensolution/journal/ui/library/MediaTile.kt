@@ -55,6 +55,7 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.withContext
 
 /** Thumbnail sizes in pixels; few sizes so the cache is shared between screens. */
@@ -130,16 +131,23 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
                         ?: loaded
                 }
             } else {
-                runCatching {
-                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
-                        coverDimensions(info.size.width, info.size.height, width, height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
-                    }
-                }.getOrNull()
+                // A few at a time: a fast scroll asks for many, and those scrolled past are cancelled before they start.
+                withContext(fullDecodes) {
+                    runCatching {
+                        ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
+                            coverDimensions(info.size.width, info.size.height, width, height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
+                        }
+                    }.getOrNull()
+                }
             }
         }?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
 }
+
+/** Decodes of whole photos, which take far longer than MediaStore's thumbnails, run this many at a time. */
+@OptIn(ExperimentalCoroutinesApi::class)
+private val fullDecodes = Dispatchers.IO.limitedParallelism(3)
 
 /** The gap between photo tiles in a grid. */
 internal val TILE_GAP = 2.dp

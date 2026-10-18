@@ -1,5 +1,8 @@
 package com.chencohensolution.journal.settings
 
+import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.stories.UnsortedFeed
+
 /** Minimal persistent string storage: SharedPreferences on Android, NSUserDefaults on iOS. */
 internal interface KeyValueStore {
     fun getString(key: String): String?
@@ -44,6 +47,20 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SIMILARITY_PERCENT)?.toIntOrNull()
         set(value) = store.putString(KEY_SIMILARITY_PERCENT, value?.toString())
 
+    /** The sources the Unsorted tab shows (its filter bar). */
+    var feedSources: Set<MediaSource>
+        get() = store.getString(KEY_FEED_SOURCES)
+            ?.split(",")
+            ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
+            ?.toSet()
+            ?: UnsortedFeed.DEFAULT_SOURCES
+        set(value) = store.putString(KEY_FEED_SOURCES, value.joinToString(",") { it.name })
+
+    /** Trips the user answered "Not now" to, by key ("trip-2026-10-04"). */
+    var dismissedTrips: Set<String>
+        get() = store.getString(KEY_DISMISSED_TRIPS)?.split(",")?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+        set(value) = store.putString(KEY_DISMISSED_TRIPS, value.joinToString(",").ifEmpty { null })
+
     companion object {
         const val DEFAULT_SERVER_URL = "https://192.168.50.150:8080/query"
         private const val KEY_SERVER_URL = "server_url"
@@ -53,5 +70,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_GROUPING_MODE = "grouping_mode"
         private const val KEY_GROUPING_GAP_HOURS = "grouping_gap_hours"
         private const val KEY_SIMILARITY_PERCENT = "similarity_percent"
+        private const val KEY_FEED_SOURCES = "feed_sources"
+        private const val KEY_DISMISSED_TRIPS = "dismissed_trips"
     }
 }

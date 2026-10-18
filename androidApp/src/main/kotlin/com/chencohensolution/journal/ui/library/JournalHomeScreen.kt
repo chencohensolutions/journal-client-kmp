@@ -34,13 +34,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -50,11 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
+import com.chencohensolution.journal.stories.FeedSection
+import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.TimelineEntry
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.GroupingMode
 import java.time.Instant
@@ -63,9 +72,13 @@ import java.time.ZoneId
 internal enum class HomeTab { JOURNAL, UNSORTED }
 
 internal class HomeActions(
-    val openItem: (Moment, MediaItem) -> Unit = { _, _ -> },
+    /** A photo of the Unsorted tab; the viewer swipes through its row. */
+    val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
     val openStory: (String) -> Unit = {},
-    val createStory: (title: String, momentKey: String) -> Unit = { _, _ -> },
+    /** "+ Story" on a row of the Unsorted tab, or "Save as story" on a trip ([FeedSection.key] or [FeedTrip.key]). */
+    val createStory: (title: String, feedKey: String) -> Unit = { _, _ -> },
+    val toggleSource: (MediaSource) -> Unit = {},
+    val dismissTrip: (key: String) -> Unit = {},
     val openAllPhotos: () -> Unit = {},
     val openSettings: () -> Unit = {},
     val openTags: () -> Unit = {},
@@ -76,7 +89,8 @@ internal class HomeActions(
 
 /**
  * The home screen: the journal's stories as a timeline, newest first, and in the Unsorted tab the photos in no story
- * as moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
+ * as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
+ * docs/screens/journal-home.md and docs/screens/unsorted.md.
  */
 @Composable
 internal fun JournalHomeScreen(
@@ -90,26 +104,41 @@ internal fun JournalHomeScreen(
     landing: String? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
-    // The key of the moment whose "+ Story" was tapped.
-    var newStoryMoment by rememberSaveable { mutableStateOf<String?>(null) }
+    // The row or trip whose "+ Story" or "Save as story" was tapped, and the title to start with.
+    var newStoryKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var newStoryTitle by rememberSaveable { mutableStateOf("") }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
-    // Journal shows only stories; photos in no story are in the Unsorted tab.
-    val entries = if (tab == HomeTab.UNSORTED) {
-        stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>()
-    } else {
-        stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
-    }
+    // Journal shows only stories; photos in no story are in the Unsorted tab, as the feed.
+    val unsorted = tab == HomeTab.UNSORTED
+    val entries = if (unsorted) emptyList() else stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
+    val feedRows = remember(stories.feed) { stories.feed.rows() }
     val list = rememberLazyListState()
-    list.LandOn(landing, entries.size) { id ->
-        entries.indexOfFirst { it is TimelineEntry.MomentEntry && it.moment.items.any { item -> item.id == id } }
-    }
+    list.LandOn(landing, feedRows.size) { id -> if (unsorted) feedRows.rowOf(id) else -1 }
+    // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
+    val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val canPlay = unsorted && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
+    val playingId by remember(feedRows, list) { derivedStateOf { list.videoToPlay(feedRows) } }
+    var muted by rememberSaveable { mutableStateOf(true) }
+    val video = FeedVideo(playingId?.takeIf { canPlay }, muted, toggleMute = { muted = !muted })
+    val feedActions = FeedActions(
+        openItem = actions.openItem,
+        newStory = { key ->
+            newStoryTitle = ""
+            newStoryKey = key
+        },
+        saveTrip = { trip ->
+            newStoryTitle = trip.place.orEmpty()
+            newStoryKey = trip.key
+        },
+        dismissTrip = actions.dismissTrip,
+    )
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
             state = list,
             contentPadding = PaddingValues(
-                top = insets.calculateTopPadding() + 72.dp,
+                top = insets.calculateTopPadding() + if (unsorted) 118.dp else 72.dp,
                 bottom = insets.calculateBottomPadding() + 150.dp,
             ),
         ) {
@@ -137,25 +166,24 @@ internal fun JournalHomeScreen(
             if (tab == HomeTab.JOURNAL && entries.isEmpty() && library.days.isNotEmpty()) {
                 item(key = "no-stories") { Message(stringResource(R.string.library_no_stories)) }
             }
-            items(entries, key = { it.key }) { entry ->
-                when (entry) {
-                    is TimelineEntry.StoryEntry -> StoryCard(
-                        cardState(entry.story),
-                        onOpen = { actions.openStory(entry.story.id) },
-                        // The card grows into the story's page.
-                        modifier = Modifier.sharedContainer(SharedKey.story(entry.story.id)),
-                    )
-                    is TimelineEntry.MomentEntry -> UnsortedMoment(
-                        entry.moment,
-                        onOpen = { actions.openItem(entry.moment, it) },
-                        onNewStory = { newStoryMoment = entry.moment.key },
-                        landing = landing,
-                    )
-                }
+            if (unsorted && stories.feed.entries.isEmpty() && stories.unsortedCount > 0) {
+                item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
             }
+            items(entries, key = { "story-${it.story.id}" }) { entry ->
+                StoryCard(
+                    cardState(entry.story),
+                    onOpen = { actions.openStory(entry.story.id) },
+                    // The card grows into the story's page.
+                    modifier = Modifier.sharedContainer(SharedKey.story(entry.story.id)),
+                )
+            }
+            // Last, so landing from the viewer can count them from the end.
+            if (unsorted) feedItems(feedRows, feedActions, landing, video)
         }
 
-        TopBar(health, actions, Modifier.align(Alignment.TopCenter))
+        TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
+            if (unsorted) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
+        }
 
         BottomControls(
             summary = library.notBackedUpCount.takeIf { it > 0 }?.let {
@@ -174,70 +202,64 @@ internal fun JournalHomeScreen(
         }
     }
 
-    newStoryMoment?.let { key ->
+    newStoryKey?.let { key ->
         StoryTitleDialog(
             title = stringResource(R.string.library_new_story),
+            initial = newStoryTitle,
             confirmLabel = stringResource(R.string.library_create),
             onConfirm = {
-                newStoryMoment = null
+                newStoryKey = null
                 actions.createStory(it, key)
             },
-            onDismiss = { newStoryMoment = null },
+            onDismiss = { newStoryKey = null },
         )
     }
 }
 
-private val TimelineEntry.key: String
-    get() = when (this) {
-        is TimelineEntry.StoryEntry -> "story-${story.id}"
-        is TimelineEntry.MomentEntry -> "moment-${moment.key}"
-    }
-
 @Composable
-private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifier = Modifier) {
+private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifier = Modifier, below: @Composable () -> Unit = {}) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    Row(
-        modifier
-            .fillMaxWidth()
-            .background(LibraryColors.TopFade)
-            .statusBarsPadding()
-            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            stringResource(R.string.library_title),
-            color = LibraryColors.OnBackground,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f).semantics { heading() },
-        )
-        if (health == ServerHealth.OFFLINE) OfflinePill()
-        IconButton(onClick = actions.openTags) {
-            Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
-        }
-        Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
+    Column(modifier.fillMaxWidth().background(LibraryColors.TopFade).statusBarsPadding().padding(top = 8.dp, bottom = 24.dp)) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.library_title),
+                color = LibraryColors.OnBackground,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            if (health == ServerHealth.OFFLINE) OfflinePill()
+            IconButton(onClick = actions.openTags) {
+                Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.library_all_photos)) },
-                    leadingIcon = { Icon(LibraryIcons.Grid, null) },
-                    onClick = {
-                        menuOpen = false
-                        actions.openAllPhotos()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.library_settings)) },
-                    leadingIcon = { Icon(LibraryIcons.Settings, null) },
-                    onClick = {
-                        menuOpen = false
-                        actions.openSettings()
-                    },
-                )
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.library_all_photos)) },
+                        leadingIcon = { Icon(LibraryIcons.Grid, null) },
+                        onClick = {
+                            menuOpen = false
+                            actions.openAllPhotos()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.library_settings)) },
+                        leadingIcon = { Icon(LibraryIcons.Settings, null) },
+                        onClick = {
+                            menuOpen = false
+                            actions.openSettings()
+                        },
+                    )
+                }
             }
         }
+        below()
     }
 }
 
@@ -245,7 +267,7 @@ private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifie
  * "Today", or by breaks between photos "Today · 9:14 – 21:40" and "Sat, Oct 4 – Mon, Oct 6" for one that spans days.
  */
 @Composable
-private fun momentLabel(moment: Moment): String {
+internal fun momentLabel(moment: Moment): String {
     val day = dayLabel(moment.newestDay)
     if (moment.mode == GroupingMode.BY_DAY) return day
     if (moment.oldestDay != moment.newestDay) return stringResource(R.string.library_moment_days, dayLabel(moment.oldestDay), day)
@@ -255,63 +277,7 @@ private fun momentLabel(moment: Moment): String {
 }
 
 /** "9:14" or "9:14 AM", as the locale writes it. */
-private fun timeLabel(millis: Long): String = formatDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()), "jmm")
-
-/** Photos that are in no story, taken on one day or close together: a heading, "+ Story", and a row of small photos. */
-@Composable
-private fun UnsortedMoment(moment: Moment, onOpen: (MediaItem) -> Unit, onNewStory: () -> Unit, landing: String?) {
-    val strip = rememberLazyListState()
-    strip.LandOn(landing, moment.items.size) { id -> moment.items.indexOfFirst { it.id == id } }
-    Column(Modifier.padding(top = 14.dp, bottom = 16.dp)) {
-        Row(
-            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    momentLabel(moment),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    pluralStringResource(R.plurals.library_unsorted_count, moment.items.size, moment.items.size),
-                    color = LibraryColors.Muted,
-                    fontSize = 13.sp,
-                )
-            }
-            TextButton(
-                onClick = onNewStory,
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.height(36.dp).border(1.dp, LibraryColors.OnBackground.copy(alpha = 0.28f), RoundedCornerShape(50)),
-            ) {
-                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
-                Text(
-                    stringResource(R.string.library_story),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
-            }
-        }
-        LazyRow(
-            state = strip,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            items(moment.items, key = { it.id }) { item ->
-                MediaTile(
-                    item,
-                    onClick = { onOpen(item) },
-                    badgeSize = 18.dp,
-                    modifier = Modifier.size(76.dp).clip(RoundedCornerShape(4.dp)),
-                )
-            }
-        }
-    }
-}
+internal fun timeLabel(millis: Long): String = formatDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()), "jmm")
 
 /** The server refused this device (401) or there is no identity: offer to register again. */
 @Composable

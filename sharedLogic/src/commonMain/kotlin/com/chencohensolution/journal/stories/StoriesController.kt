@@ -7,10 +7,14 @@ import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.network.describe
+import com.chencohensolution.journal.places.PhotoPlaces
+import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsController
+import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoLooks
 import com.chencohensolution.journal.similarity.PhotoSimilarity
@@ -23,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -338,6 +343,8 @@ data class StoriesState(
     val tags: List<TagSummary> = emptyList(),
     /** Every photo and video on the device, by id. */
     val itemsById: Map<String, MediaItem> = emptyMap(),
+    /** The Unsorted tab: the same photos as [moments], of the sources turned on, split by time, place and looks. */
+    val feed: UnsortedFeed = UnsortedFeed(),
     /** The last save or delete that failed. */
     val error: String? = null,
 ) {
@@ -452,8 +459,16 @@ class StoriesController internal constructor(
     private val newId: () -> String,
     /** Finds photos that look alike for burst suggestions; without it they go by time only. */
     private val similarity: PhotoSimilarity? = null,
+    /** Finds where photos were taken, for the Unsorted tab; without it moments go by time only. */
+    private val places: PhotoPlaces? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val now: () -> String = { Clock.System.now().toString() },
+    /**
+     * Where the state is rebuilt when the library, settings, fingerprints or places change: a rebuild of a large
+     * library takes long enough to make scrolling stutter. Off the main thread in the app; tests run it on their own
+     * dispatcher, so waiting for it is deterministic.
+     */
+    private val background: CoroutineDispatcher = if (dispatcher === Dispatchers.Main) Dispatchers.Default else dispatcher,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
@@ -465,14 +480,29 @@ class StoriesController internal constructor(
     private val looks get() =
         (similarity?.looks?.value ?: PhotoLooks.NONE).withSameScene(settingsState.value.similarity.percent / 100f)
 
-    // Rebuilt right away on every change here, so a screen opened just after `createStory` already sees the story.
-    private val _state = MutableStateFlow(buildState(libraryState.value, stories, notes, error, settingsState.value.grouping, looks))
+    // Rebuilt right away on every change made here, so a screen opened just after `createStory` already sees the story.
+    private val _state = MutableStateFlow(inputs().build().state)
     val state: StateFlow<StoriesState> = _state.asStateFlow()
 
+    // Counts changes made here: a background rebuild started before one is dropped, as it was built from older stories.
+    private var version = 0
+
+    // Bumped for each change from outside; collecting it skips to the latest, so a burst of changes is one rebuild.
+    private val outsideChanges = MutableStateFlow(0)
+
     init {
-        scope.launch { libraryState.collect { publish() } }
-        scope.launch { settingsState.collect { publish() } }
-        similarity?.let { scope.launch { it.looks.collect { publish() } } }
+        scope.launch { libraryState.collect { outsideChanges.value++ } }
+        scope.launch { settingsState.collect { outsideChanges.value++ } }
+        similarity?.let { scope.launch { it.looks.collect { outsideChanges.value++ } } }
+        places?.let { scope.launch { it.places.collect { outsideChanges.value++ } } }
+        scope.launch {
+            outsideChanges.collect {
+                val startedAt = version
+                val inputs = inputs()
+                val built = withContext(background) { inputs.build() }
+                if (version == startedAt) show(built)
+            }
+        }
     }
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -498,6 +528,18 @@ class StoriesController internal constructor(
 
     /** Creates a story from the unsorted photos and videos of [day]. */
     fun createStoryFromDay(title: String, day: LocalDay): String? = createStory(title, unsortedIdsOf(day))
+
+    /**
+     * "+ Story" on a row of the Unsorted tab ([FeedSection.key]), or "Save as story" on a trip ([FeedTrip.key]): a story
+     * of its photos, with each set of near-duplicates already a group. Returns the story's id.
+     */
+    fun createStoryFromFeed(title: String, key: String): String? {
+        val feed = state.value.feed
+        val items = feed.section(key)?.items ?: feed.trip(key)?.items ?: return null
+        val storyId = createStory(title, items.map { it.id }) ?: return null
+        feed.similarSets(items.map { it.id }).forEach { set -> createGroup(storyId, set.map { it.id }) }
+        return storyId
+    }
 
     /** Creates a story from a moment of the journal ([Moment.key]). */
     fun createStoryFromMoment(title: String, key: String): String? =
@@ -736,6 +778,7 @@ class StoriesController internal constructor(
     fun close() {
         scope.cancel()
         similarity?.close()
+        places?.close()
     }
 
     // MARK: Captions and tags
@@ -901,11 +944,51 @@ class StoriesController internal constructor(
         return saved
     }
 
+    /** After a change made here: rebuilt right away. */
     private fun publish() {
-        val state = buildState(libraryState.value, stories, notes, error, settingsState.value.grouping, looks)
-        _state.value = state
-        similarity?.request(photosToCompare(state.stories))
+        version++
+        show(inputs().build())
     }
+
+    private fun show(built: Built) {
+        _state.value = built.state
+        similarity?.request(built.toCompare)
+        places?.request(built.toLocate)
+    }
+
+    /** Everything the state is built from, as it is now. */
+    private fun inputs() = Inputs(libraryState.value, stories, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE)
+
+    private class Inputs(
+        val library: LibraryState,
+        val stories: List<Story>,
+        val notes: Map<String, PhotoNote>,
+        val error: String?,
+        val settings: SettingsState,
+        val looks: PhotoLooks,
+        val places: Places,
+    ) {
+        fun build(): Built {
+            val state = buildState(
+                library, stories, notes, error, settings.grouping, looks,
+                feedSources = settings.feedSources,
+                dismissedTrips = settings.dismissedTrips,
+                places = places,
+            )
+            return Built(
+                state,
+                // Story photos first (their suggestions are asked for), then the Unsorted tab's, newest first.
+                photosToCompare(state.stories) + state.feed.entries.flatMap { entry ->
+                    (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
+                },
+                // Unsorted photos first, then the rest: all of them tell where home is.
+                (state.unsortedDays + library.days).flatMap { it.items }.distinctBy { it.id },
+            )
+        }
+    }
+
+    /** A state, and the photos to fingerprint and to locate for it. */
+    private class Built(val state: StoriesState, val toCompare: List<MediaItem>, val toLocate: List<MediaItem>)
 
     private fun itemsById(ids: List<String>): List<MediaItem> {
         val wanted = ids.toSet()
@@ -934,6 +1017,9 @@ internal fun buildState(
     error: String?,
     grouping: TimelineGrouping,
     looks: PhotoLooks = PhotoLooks.NONE,
+    feedSources: Set<MediaSource> = UnsortedFeed.DEFAULT_SOURCES,
+    dismissedTrips: Set<String> = emptySet(),
+    places: Places = Places.NONE,
 ): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     val views = stories
@@ -975,6 +1061,7 @@ internal fun buildState(
         notes = notes,
         tags = tags,
         itemsById = itemsById,
+        feed = buildFeed(unsorted.flatMap { it.items }, itemsById.values.toList(), feedSources, grouping, places, looks, dismissedTrips),
         error = error,
     )
 }

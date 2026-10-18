@@ -25,6 +25,16 @@ class PhotoSafetyTest {
         "deleteAssets", "PHContentEditingOutput", "NSPhotoLibraryAddUsageDescription", "UIImageWriteToSavedPhotosAlbum",
     )
 
+    /**
+     * Read-only exceptions, each only in the files named (allowed by the owner on Oct 18, 2026, to group the Unsorted
+     * tab by where photos were taken): MediaStore hides a photo's GPS unless the app holds ACCESS_MEDIA_LOCATION and
+     * opens the original with setRequireOriginal, which returns a URI to read; neither can write.
+     */
+    private val readOnlyExceptions = mapOf(
+        "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt"),
+        "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryApp.kt"),
+    )
+
     @Test
     fun nothingCanModifyOrDeletePhotos() {
         val sources = listOf("sharedLogic/src", "androidApp/src", "iosApp/iosApp")
@@ -36,7 +46,8 @@ class PhotoSafetyTest {
 
         val hits = sources.flatMap { file ->
             file.readLines().mapIndexedNotNull { index, line ->
-                forbidden.firstOrNull { it in line }?.let { "${file.relativeTo(root)}:${index + 1}: uses $it" }
+                forbidden.firstOrNull { it in line && file.name !in readOnlyExceptions[it].orEmpty() }
+                    ?.let { "${file.relativeTo(root)}:${index + 1}: uses $it" }
             }
         }
         if (hits.isNotEmpty()) fail("Code that could change or delete photos:\n" + hits.joinToString("\n"))
@@ -51,6 +62,8 @@ class PhotoSafetyTest {
             "android.permission.READ_MEDIA_IMAGES",
             "android.permission.READ_MEDIA_VIDEO",
             "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+            // Read-only: un-hides GPS in what the app reads (see readOnlyExceptions).
+            "android.permission.ACCESS_MEDIA_LOCATION",
         )
         assertTrue(permissions.isNotEmpty() && allowed.containsAll(permissions), "unexpected permissions: ${permissions - allowed}")
     }

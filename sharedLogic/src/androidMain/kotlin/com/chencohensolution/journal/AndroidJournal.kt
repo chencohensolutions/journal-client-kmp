@@ -12,6 +12,9 @@ import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
+import com.chencohensolution.journal.places.AndroidPlaceReader
+import com.chencohensolution.journal.places.PhotoPlaces
+import com.chencohensolution.journal.places.PlaceCache
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
@@ -54,7 +57,7 @@ fun createSettingsController(context: Context): SettingsController =
 
 /**
  * Stories kept on this device, in the app's private files folder (`files/journal/stories`). Photo fingerprints for
- * burst suggestions are cached in `cache/similarity`.
+ * burst suggestions are cached in `cache/similarity`, where photos were taken and place names in `cache/places`.
  */
 fun createStoriesController(context: Context, library: LibraryController, settings: SettingsController): StoriesController =
     StoriesController(
@@ -67,4 +70,5 @@ fun createStoriesController(context: Context, library: LibraryController, settin
             AndroidPhotoAnalyzer(context),
             FingerprintCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "similarity"),
         ),
+        places = PhotoPlaces(AndroidPlaceReader(context), PlaceCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "places")),
     )

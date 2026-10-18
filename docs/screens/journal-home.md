@@ -24,7 +24,9 @@ Photos fill the screen on the page background (light or dark with the system); t
   them a mosaic of the story's **main photos**: its first six tiles in the story's order, a group as its cover. One
   photo is full width, two sit side by side, three to five are a large one with two beside it, and six add a row of
   three under them. The last photo shows "+N" for the rest of the story. Tapping opens the [story](story-page.md).
-- **Unsorted moments.** Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
+- **Unsorted (Android):** a feed that groups itself, full-width photos split by time, place, source and looks; see
+  [unsorted.md](unsorted.md). iOS still shows the unsorted moments below.
+- **Unsorted moments (iOS).** Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
   scroll sideways. Tapping a photo opens the [viewer](viewer.md) on that moment's unsorted photos. Headings:
   - By day: "Today", "Yesterday", "Tue, Oct 7", with the year for other years.
   - By breaks, within one day: the day and the times, "Today · 9:14 – 21:40" (one time for a single photo).

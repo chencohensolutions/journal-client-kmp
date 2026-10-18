@@ -298,4 +298,19 @@
     <string name="library_size_original">מקורי</string>
     <string name="library_arrange_zoom">זום</string>
     <string name="library_arrange_zoom_value">%1$.1f×</string>
+    <!-- The Unsorted tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
+    <string name="feed_source_camera">מצלמה</string>
+    <string name="feed_source_whatsapp">וואטסאפ</string>
+    <string name="feed_source_screenshots">צילומי מסך</string>
+    <string name="feed_source_other">אחר</string>
+    <string name="feed_place_time">%1$s · %2$s</string>
+    <string name="feed_time_range">%1$s – %2$s</string>
+    <string name="feed_source_count">%1$s · %2$d</string>
+    <string name="feed_similar_position">%1$d / %2$d</string>
+    <string name="feed_trip_kicker">נראה כמו טיול</string>
+    <string name="feed_trip_untitled">טיול</string>
+    <string name="feed_trip_save">שמירה כסיפור</string>
+    <string name="feed_nothing_shown">אין מה להציג. אפשר להפעיל מקור למעלה.</string>
+    <string name="feed_unmute">הפעלת צליל</string>
+    <string name="feed_mute">השתקה</string>
 </resources>

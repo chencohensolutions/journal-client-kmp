@@ -32,6 +32,11 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
   or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
 - Unsorted photos are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
+- Unsorted reads **like a story that arranged itself** (asked Oct 18, 2026; Android first): full-width photos at
+  their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
+  one photo you swipe (no peek), a filter bar of source toggles (Camera and WhatsApp on at first), and trip
+  suggestions. **Stories are never made automatically**; only + Story or Save as story does. See
+  [screens/unsorted.md](screens/unsorted.md).
 - Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Journal / Unsorted, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 - Sub-stories (stories inside stories) were agreed in principle; when built, they show only inside their parent

@@ -286,4 +286,19 @@
     <string name="library_size_original">Original</string>
     <string name="library_arrange_zoom">Zoom</string>
     <string name="library_arrange_zoom_value">%1$.1f×</string>
+    <!-- The Unsorted tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
+    <string name="feed_source_camera">Camera</string>
+    <string name="feed_source_whatsapp">WhatsApp</string>
+    <string name="feed_source_screenshots">Screenshots</string>
+    <string name="feed_source_other">Other</string>
+    <string name="feed_place_time">%1$s · %2$s</string>
+    <string name="feed_time_range">%1$s – %2$s</string>
+    <string name="feed_source_count">%1$s · %2$d</string>
+    <string name="feed_similar_position">%1$d / %2$d</string>
+    <string name="feed_trip_kicker">Looks like a trip</string>
+    <string name="feed_trip_untitled">A trip</string>
+    <string name="feed_trip_save">Save as story</string>
+    <string name="feed_nothing_shown">Nothing to show. Turn on a source above.</string>
+    <string name="feed_unmute">Turn sound on</string>
+    <string name="feed_mute">Turn sound off</string>
 </resources>
