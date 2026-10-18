@@ -116,6 +116,18 @@ class SettingsController internal constructor(
         _state.update { it.copy(dismissedTrips = trips) }
     }
 
+    /**
+     * The photo a swipe set in Moments was last turned to ([setKey]: the set's first photo's id), so it opens there next
+     * time; not part of [state], as nothing else changes with it.
+     */
+    fun feedPage(setKey: String): String? = settings.feedPage(setKey)
+
+    /** Remembers the photo a swipe set is turned to; its first photo is not kept (it is where a set opens anyway). */
+    fun setFeedPage(setKey: String, itemId: String) {
+        val value = itemId.takeIf { it != setKey }
+        if (settings.feedPage(setKey) != value) settings.setFeedPage(setKey, value)
+    }
+
     /** Back to the platform's own threshold. */
     fun resetSimilarity() {
         settings.similarityPercent = null

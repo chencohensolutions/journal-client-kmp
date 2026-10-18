@@ -40,6 +40,8 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import androidx.compose.ui.unit.IntOffset
 import com.chencohensolution.journal.connection.JournalController
+import com.chencohensolution.journal.stories.CropKind
+import com.chencohensolution.journal.stories.PhotoCrops
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.library.LibraryController
@@ -67,6 +69,9 @@ private sealed interface Route {
     data class Tag(val name: String) : Route
     data object Settings : Route
 
+    /** The crop screen for one photo, opened on [kind]. */
+    data class Crop(val itemId: String, val kind: CropKind) : Route
+
     /**
      * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), or All photos with [filter].
@@ -89,6 +94,7 @@ private sealed interface Route {
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
+        is Crop -> "crop|$kind|$itemId"
         is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
 
@@ -102,6 +108,7 @@ private sealed interface Route {
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
+                "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
                 "viewer" -> Viewer(
                     storyId = parts[1].ifEmpty { null },
                     groupId = parts[2].ifEmpty { null },
@@ -188,7 +195,7 @@ fun LibraryApp(
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
     val systemDark = isSystemInDarkTheme()
-    SystemBars(activity as? ComponentActivity, stack.last() is Route.Viewer || systemDark)
+    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
         CompositionLocalProvider(LocalSharedTransitionScope provides this) {
@@ -204,7 +211,7 @@ fun LibraryApp(
                     NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
                         val route = entry.route
                         val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
-                        LibraryTheme(dark = route is Route.Viewer || systemDark) {
+                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
                                     library = libraryState,
@@ -222,6 +229,19 @@ fun LibraryApp(
                                         allowAccess = requestAccess,
                                         changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
                                         registerAgain = onRegisterAgain,
+                                        setCaption = { itemId, text -> stories.setCaption(itemId, text) },
+                                        crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
+                                        merge = stories::mergeInFeed,
+                                        takeOutOfSet = stories::takeOutOfSet,
+                                        savedFeedPage = settings::feedPage,
+                                        saveFeedPage = settings::setFeedPage,
+                                        toggleStory = { storyId, itemId, add ->
+                                            if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
+                                        },
+                                        createStoryWith = { title, itemId -> stories.createStory(title, listOf(itemId)) },
+                                        toggleTag = { itemId, tag, add ->
+                                            if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
+                                        },
                                     ),
                                     landing = landingHere,
                                 )
@@ -328,8 +348,27 @@ fun LibraryApp(
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },
                                         showing = { landing = Landing(entry.depth - 1, it) },
+                                        crop = { itemId, kind -> push(Route.Crop(itemId, kind)) },
                                     ),
                                 )
+                                is Route.Crop -> {
+                                    val item = storiesState.itemsById[route.itemId]
+                                    if (item == null) {
+                                        // Deleted from the device while open.
+                                        LaunchedEffect(Unit) { pop() }
+                                    } else {
+                                        CropEditor(
+                                            item = item,
+                                            saved = storiesState.note(item.id)?.crops ?: PhotoCrops(),
+                                            startKind = route.kind,
+                                            onDone = { crops ->
+                                                stories.setCrops(item.id, crops)
+                                                pop()
+                                            },
+                                            onClose = pop,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

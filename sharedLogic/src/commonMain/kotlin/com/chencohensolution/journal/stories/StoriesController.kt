@@ -807,6 +807,22 @@ class StoriesController internal constructor(
     fun setCaption(itemId: String, text: String) = changeNotes(listOf(itemId)) { it.copy(caption = text.trim()) }
 
     /**
+     * Moments: [itemIds] (the photos of the sets and photos picked) become one set you swipe, shown where its oldest
+     * photo is. Nothing happens with fewer than two.
+     */
+    fun mergeInFeed(itemIds: List<String>) {
+        if (itemIds.distinct().size < 2) return
+        val set = newId()
+        changeNotes(itemIds.distinct()) { it.copy(feedSet = set, apart = false) }
+    }
+
+    /** Moments: the photo leaves its set (made by hand or by itself) and isn't put in one by itself again. */
+    fun takeOutOfSet(itemId: String) = changeNotes(listOf(itemId)) { it.copy(feedSet = null, apart = true) }
+
+    /** The photo's crops, for looking only (the photo isn't changed); empty crops remove them. */
+    fun setCrops(itemId: String, crops: PhotoCrops) = changeNotes(listOf(itemId)) { it.copy(crops = crops) }
+
+    /**
      * Tags [itemIds] with [tag]; an existing tag with the same name in another case is reused. Returns the tag as
      * saved, or null when it is blank. Tagged photos leave Unsorted.
      */
@@ -1081,7 +1097,12 @@ internal fun buildState(
         notes = notes,
         tags = tags,
         itemsById = itemsById,
-        feed = buildFeed(library.days.flatMap { it.items }, feedSources, grouping, places, looks, dismissedTrips, sorted),
+        feed = buildFeed(
+            library.days.flatMap { it.items }, feedSources, grouping, places, looks, dismissedTrips, sorted,
+            // A cropped photo is shown on its own, out of its near-duplicate set, and so is one taken out of a set.
+            alone = notes.values.filter { !it.crops.isEmpty || it.apart }.map { it.deviceId }.toSet(),
+            sets = notes.values.mapNotNull { note -> note.feedSet?.let { note.deviceId to it } }.toMap(),
+        ),
         error = error,
     )
 }

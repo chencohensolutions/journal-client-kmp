@@ -138,6 +138,12 @@ class FeedTest {
         val blocks = feed(*items, looks = looks).sections().single().moments.single().blocks
         assertEquals(listOf(listOf("b1", "b2"), listOf("x1", "x2"), listOf("y"), listOf("t1", "t2"), listOf("v")), blocks.map { block -> block.items.map { it.id } })
         assertIs<FeedBlock.Single>(blocks[2])
+
+        // A cropped photo leaves its set, and the ones after it don't join it.
+        val cropped = buildFeed(newestFirst(*items), MediaSource.entries.toSet(), TimelineGrouping(), looks = looks, alone = setOf("b1"))
+            .sections().single().moments.single().blocks
+        assertEquals(listOf("b1"), cropped.first().items.map { it.id })
+        assertEquals(listOf("b2"), cropped[1].items.map { it.id })
         assertEquals(listOf(listOf("b1", "b2"), listOf("x1", "x2"), listOf("t1", "t2")), feed(*items, looks = looks).similarSets(items.map { it.id }).map { set -> set.map { it.id } })
     }
 
@@ -152,6 +158,40 @@ class FeedTest {
         assertEquals(listOf("Jaffa Port", "Old North"), section.moments.map { it.place })
         assertEquals(listOf("Tel Aviv", "Jaffa"), section.places)
         assertEquals("Haifa", PlaceName("79", "Haifa").label)
+    }
+
+    @Test
+    fun videosFromOnePlaceAreOneSet() {
+        val near = GeoPoint(32.0858, 34.7818) // About 55 m from TEL_AVIV.
+        val far = GeoPoint(32.0900, 34.7818) // About 500 m: the same moment, another place.
+        val items = arrayOf(
+            pic("v1", 0, at = TEL_AVIV, type = MediaType.VIDEO),
+            pic("p", 2, at = TEL_AVIV),
+            pic("v2", 4, at = near, type = MediaType.VIDEO),
+            pic("v3", 6, at = far, type = MediaType.VIDEO),
+            pic("v4", 8, type = MediaType.VIDEO),
+            pic("v5", 10, at = near, type = MediaType.VIDEO),
+        )
+        val blocks = feed(*items).sections().single().moments.single().blocks.map { block -> block.items.map { it.id } }
+        // Where the first video of the place is, with the photo between after it; no location: alone.
+        assertEquals(listOf(listOf("v1", "v2", "v5"), listOf("p"), listOf("v3"), listOf("v4")), blocks)
+    }
+
+    @Test
+    fun photosMergedByHandAreOneSetWhereTheOldestIs() {
+        // Two moments (3 hours apart) and a burst; "a" and "late" merged by hand, "b2" taken out of its burst.
+        val items = arrayOf(
+            pic("a", 0), pic("b1", 10, burst = "x"), pic("b2", 11, burst = "x"), pic("b3", 12, burst = "x"),
+            pic("late", 200), pic("later", 210),
+        )
+        val feed = buildFeed(
+            newestFirst(*items), MediaSource.entries.toSet(), TimelineGrouping(),
+            alone = setOf("b2"),
+            sets = mapOf("a" to "s1", "late" to "s1"),
+        )
+        val blocks = feed.sections().single().moments.map { moment -> moment.blocks.map { block -> block.items.map { it.id } } }
+        // Newest moment first: "late" now shows only in the set, with "a", in the older moment.
+        assertEquals(listOf(listOf(listOf("later")), listOf(listOf("a", "late"), listOf("b1"), listOf("b2"), listOf("b3"))), blocks)
     }
 
     @Test
@@ -294,11 +334,26 @@ class FeedStoryTest {
         advanceUntilIdle()
         assertEquals(5, stories.currentState.feed.sections().single().items.size)
 
+        // The photo a set was turned to is remembered; turning it back to its first forgets it.
+        settings.setFeedPage("a", "b")
+        assertEquals("b", settings.feedPage("a"))
+        settings.setFeedPage("a", "a")
+        assertEquals(null, settings.feedPage("a"))
+
         val storyId = assertNotNull(stories.createStoryFromFeed("", stories.currentState.feed.sections().single().key))
         advanceUntilIdle()
         val story = assertNotNull(stories.currentState.story(storyId))
         assertEquals(5, story.itemCount)
         assertEquals(listOf("a", "b"), assertIs<StoryTile.Group>(story.tiles.first()).group.items.map { it.id })
+        // Merged by hand, then one taken out: kept in the note files, so they survive a restart.
+        stories.mergeInFeed(listOf("c", "w"))
+        advanceUntilIdle()
+        assertTrue(stories.currentState.feed.sections().single().moments.any { moment -> moment.blocks.any { block -> block.items.map { it.id } == listOf("c", "w") } })
+        stories.takeOutOfSet("b")
+        advanceUntilIdle()
+        val blocks = stories.currentState.feed.sections().single().moments.flatMap { it.blocks }.map { block -> block.items.map { it.id } }
+        assertTrue(listOf("a") in blocks && listOf("b") in blocks, "$blocks")
+
         // The feed shows every photo: those in a story stay in it.
         assertEquals(5, stories.currentState.feed.sections().single().items.size)
         assertEquals(0, stories.currentState.unsortedCount)

@@ -30,11 +30,13 @@ tapping a photo opens the viewer on that tag's photos.
 
 One small file per photo, `media/<device id>.json` next to the stories in the app's private storage, like the
 server's sidecar files: the photo itself is never changed. iOS ids contain "/", so anything but letters, digits,
-`-`, `_` and `.` becomes `_` in the file name. A note with no text and no tags is deleted.
+`-`, `_` and `.` becomes `_` in the file name. A note with no text, tags, [crops](crop.md) or Moments set is deleted.
+Format v2 added `"crops"`, and `"set"` / `"apart"` for sets merged or split by hand in [Moments](moments.md);
+saving keeps fields the app doesn't know.
 
 ```json
 {
-  "v": 1,
+  "v": 2,
   "deviceId": "22",
   "fileName": "20261016_224526.heic",
   "takenAt": 1792179926824,

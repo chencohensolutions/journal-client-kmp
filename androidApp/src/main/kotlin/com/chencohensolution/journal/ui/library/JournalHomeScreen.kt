@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
+import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
@@ -95,6 +97,18 @@ internal class HomeActions(
     val allowAccess: () -> Unit = {},
     val changeSelection: () -> Unit = {},
     val registerAgain: () -> Unit = {},
+    /** Moments: the photos of the sets and photos picked become one set; a photo leaves its set. */
+    val merge: (itemIds: List<String>) -> Unit = {},
+    val takeOutOfSet: (itemId: String) -> Unit = {},
+    /** The photo a swipe set was last turned to (by the set's key), kept across launches. */
+    val savedFeedPage: (setKey: String) -> String? = { null },
+    val saveFeedPage: (setKey: String, itemId: String) -> Unit = { _, _ -> },
+    /** From a photo's long-press menu in Moments, by item id. */
+    val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
+    val crop: (itemId: String) -> Unit = {},
+    val toggleStory: (storyId: String, itemId: String, add: Boolean) -> Unit = { _, _, _ -> },
+    val createStoryWith: (title: String, itemId: String) -> Unit = { _, _ -> },
+    val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
 )
 
 /**
@@ -113,11 +127,23 @@ internal fun JournalHomeScreen(
     initialTab: HomeTab = HomeTab.STORIES,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
+    /** The photo whose long-press menu is open at first; previews use it. */
+    initialMenuItem: String? = null,
+    /** Photos and sets picked at first (by first photo id); previews use it. */
+    initialSelection: Set<String> = emptySet(),
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     // The row or trip whose "+ Story" or "Save as story" was tapped, and the title to start with.
     var newStoryKey by rememberSaveable { mutableStateOf<String?>(null) }
     var newStoryTitle by rememberSaveable { mutableStateOf("") }
+    // The photo whose long-press menu is open, and the one being written about, added to a story or tagged from it.
+    var menuItem by rememberSaveable { mutableStateOf(initialMenuItem) }
+    var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var storyFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
+    // Photos and sets picked to merge; back stops picking.
+    val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
+    BackHandler(enabled = selection.active) { selection.clear() }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
     // Stories shows only stories; every photo is in the Moments tab, as the feed.
@@ -142,21 +168,29 @@ internal fun JournalHomeScreen(
     // Watched in a coroutine, not read here: a change redraws only the videos, not the whole screen (which took 20 ms).
     val playingId = remember { mutableStateOf<String?>(null) }
     val currentRows by rememberUpdatedState(feedRows)
+    val muted = rememberSaveable { mutableStateOf(true) }
+    // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
+    val currentActions by rememberUpdatedState(actions)
+    val video = remember {
+        FeedVideo(
+            playingId = { playingId.value },
+            isMuted = { muted.value },
+            toggleMute = { muted.value = !muted.value },
+            savedPage = { currentActions.savedFeedPage(it) },
+            savePage = { key, id -> currentActions.saveFeedPage(key, id) },
+        )
+    }
     LaunchedEffect(list, canPlay) {
         if (!canPlay) {
             playingId.value = null
             return@LaunchedEffect
         }
-        snapshotFlow { list.videoToPlay(currentRows) }.collectLatest { inView ->
+        snapshotFlow { list.videoToPlay(currentRows, video) }.collectLatest { inView ->
             // Stops at once; starts only once the scroll has settled on it.
             if (inView != null) delay(VIDEO_SETTLE_MILLIS)
             playingId.value = inView
         }
     }
-    val muted = rememberSaveable { mutableStateOf(true) }
-    val video = remember { FeedVideo(playingId = { playingId.value }, isMuted = { muted.value }, toggleMute = { muted.value = !muted.value }) }
-    // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
-    val currentActions by rememberUpdatedState(actions)
     val feedActions = remember {
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
@@ -169,6 +203,7 @@ internal fun JournalHomeScreen(
                 newStoryKey = trip.key
             },
             dismissTrip = { currentActions.dismissTrip(it) },
+            itemMenu = { _, item -> menuItem = item.id },
         )
     }
 
@@ -216,7 +251,7 @@ internal fun JournalHomeScreen(
                 )
             }
             // Last, so landing from the viewer can count them from the end.
-            if (moments) feedItems(feedRows, feedActions, landing, video)
+            if (moments) feedItems(feedRows, feedActions, landing, video, stories.notes, selection)
         }
 
         TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
@@ -224,20 +259,89 @@ internal fun JournalHomeScreen(
         }
 
         BottomControls(
-            summary = library.notBackedUpCount.takeIf { it > 0 }?.let {
+            summary = library.notBackedUpCount.takeIf { it > 0 && !selection.active }?.let {
                 pluralStringResource(R.plurals.library_not_backed_up, it, it)
             },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
         ) {
-            SegmentedBar(
-                options = listOf(
-                    HomeTab.STORIES to stringResource(R.string.library_tab_stories),
-                    HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
-                ),
-                selected = tab,
-                onSelect = { tab = it },
+            if (selection.active && moments) {
+                FeedSelectionBar(
+                    count = selection.keys.size,
+                    onCancel = selection::clear,
+                    onMerge = {
+                        val ids = feedRows.filterIsInstance<FeedRow.Photo>().filter { it.block.key in selection.keys }.flatMap { it.block.items }.map { it.id }
+                        selection.clear()
+                        actions.merge(ids)
+                    },
+                )
+            } else {
+                SegmentedBar(
+                    options = listOf(
+                        HomeTab.STORIES to stringResource(R.string.library_tab_stories),
+                        HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                    ),
+                    selected = tab,
+                    onSelect = {
+                        selection.clear()
+                        tab = it
+                    },
+                )
+            }
+        }
+
+        menuItem?.let { stories.itemsById[it] }?.let { item ->
+            val block = feedRows.firstNotNullOfOrNull { row -> (row as? FeedRow.Photo)?.block?.takeIf { block -> block.items.any { it.id == item.id } } }
+            FeedItemMenu(
+                item,
+                note = stories.notes[item.id]?.caption,
+                inSet = block is FeedBlock.Similar,
+                onDismiss = { menuItem = null },
+                onChoose = { choice ->
+                    menuItem = null
+                    when (choice) {
+                        FeedItemChoice.WRITE -> writingFor = item.id
+                        FeedItemChoice.CROP -> actions.crop(item.id)
+                        FeedItemChoice.ADD_TO_STORY -> storyFor = item.id
+                        FeedItemChoice.TAG -> tagFor = item.id
+                        FeedItemChoice.SELECT -> selection.toggle(block?.key ?: item.id)
+                        FeedItemChoice.TAKE_OUT -> actions.takeOutOfSet(item.id)
+                    }
+                },
             )
         }
+    }
+
+    writingFor?.let { id ->
+        WritingEditor(
+            title = stringResource(R.string.library_note_title),
+            initial = stories.notes[id]?.caption.orEmpty(),
+            onSave = {
+                writingFor = null
+                actions.setCaption(id, it)
+            },
+            onDismiss = { writingFor = null },
+        )
+    }
+    storyFor?.let { id ->
+        AddToStorySheet(
+            itemIds = listOf(id),
+            stories = stories,
+            onToggle = { storyId, add -> actions.toggleStory(storyId, id, add) },
+            onCreate = { title ->
+                storyFor = null
+                actions.createStoryWith(title, id)
+            },
+            onDismiss = { storyFor = null },
+        )
+    }
+    tagFor?.let { id ->
+        TagSheet(
+            itemIds = listOf(id),
+            stories = stories,
+            onToggle = { tag, add -> actions.toggleTag(id, tag, add) },
+            onCreate = { tag -> actions.toggleTag(id, tag, true) },
+            onDismiss = { tagFor = null },
+        )
     }
 
     newStoryKey?.let { key ->

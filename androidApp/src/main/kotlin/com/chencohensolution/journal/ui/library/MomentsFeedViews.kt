@@ -3,10 +3,13 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -35,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
@@ -51,6 +57,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,12 +68,14 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.MomentsFeed
+import com.chencohensolution.journal.stories.PhotoNote
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
 // Photos are full width at their own shape; near-duplicates are one photo you swipe. See docs/screens/moments.md.
@@ -74,6 +86,8 @@ internal class FeedActions(
     val newStory: (sectionKey: String) -> Unit = {},
     val saveTrip: (FeedTrip) -> Unit = {},
     val dismissTrip: (key: String) -> Unit = {},
+    /** Long press on a photo: Write about it, Crop, Add to story, Tag. */
+    val itemMenu: (FeedSection, MediaItem) -> Unit = { _, _ -> },
 )
 
 /**
@@ -100,6 +114,25 @@ internal sealed interface FeedRow {
     }
 }
 
+/** Photos and sets picked in Moments to merge, by their first photo's id; picking is on while any is. */
+@Stable
+internal class FeedSelection {
+    var keys by mutableStateOf(emptySet<String>())
+        private set
+    val active: Boolean get() = keys.isNotEmpty()
+
+    fun toggle(key: String) {
+        keys = if (key in keys) keys - key else keys + key
+    }
+
+    fun clear() {
+        keys = emptySet()
+    }
+}
+
+/** The key a block is picked by: its first photo's id. */
+internal val FeedBlock.key: String get() = items.first().id
+
 /** The feed as list items; worked out once per feed. */
 internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
@@ -115,21 +148,47 @@ internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row -> ro
 
 /**
  * The feed's [rows], for the home screen's list. [landing] is the photo the viewer above shows; [video] says which
- * video plays.
+ * video plays. A photo's note ([notes], by id) is written above it, and its Moments crop sets its shape.
  */
-internal fun LazyListScope.feedItems(rows: List<FeedRow>, actions: FeedActions, landing: String?, video: FeedVideo = FeedVideo()) {
+@OptIn(ExperimentalFoundationApi::class)
+internal fun LazyListScope.feedItems(
+    rows: List<FeedRow>,
+    actions: FeedActions,
+    landing: String?,
+    video: FeedVideo = FeedVideo(),
+    notes: Map<String, PhotoNote> = emptyMap(),
+    selection: FeedSelection = FeedSelection(),
+) {
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
             is FeedRow.Trip -> TripCard(row.trip, actions)
             is FeedRow.Heading -> SectionHeading(row.section) { actions.newStory(row.section.key) }
             is FeedRow.Label -> MomentLabel(row.moment)
             is FeedRow.Photo -> when (val block = row.block) {
-                is FeedBlock.Single -> FullWidthPhoto(
-                    block.item,
+                is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
+                    PhotoNoteText(notes[block.item.id]?.caption)
+                    Box {
+                        FullWidthPhoto(
+                            block.item,
+                            video,
+                            notes[block.item.id]?.crops?.moments,
+                            Modifier.combinedClickable(
+                                onLongClick = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(row.section, block.item) },
+                                onClick = { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, block.item) },
+                            ),
+                        )
+                        if (selection.active) SelectMark(block.key in selection.keys, Modifier.align(Alignment.TopStart).padding(10.dp))
+                    }
+                }
+                is FeedBlock.Similar -> SimilarPhotos(
+                    block,
+                    landing,
+                    notes,
                     video,
-                    Modifier.padding(bottom = TILE_GAP).clickable { actions.openItem(row.section, block.item) },
-                )
-                is FeedBlock.Similar -> SimilarPhotos(block, landing, Modifier.padding(bottom = TILE_GAP)) { actions.openItem(row.section, it) }
+                    Modifier.padding(bottom = TILE_GAP),
+                    selected = if (selection.active) block.key in selection.keys else null,
+                    onLongPress = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(row.section, it) },
+                ) { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, it) }
             }
         }
     }
@@ -249,17 +308,54 @@ private fun momentHeading(moment: FeedMoment): String {
 }
 
 /**
- * A photo at its own shape, the width of the screen; a video plays in it, muted at first, while [video] says so. The
+ * The photo's note above it, in the serif of written text: up to four lines, then "more" (tap to read it all).
+ * Nothing when it has none.
+ */
+@Composable
+private fun PhotoNoteText(caption: String?) {
+    if (caption.isNullOrBlank()) return
+    var expanded by remember(caption) { mutableStateOf(false) }
+    val style = TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 16.sp, lineHeight = 24.sp)
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)) {
+        // Measured here, not after drawing, so "more" is there in the first frame.
+        val cut = remember(caption, constraints.maxWidth) {
+            measurer.measure(caption, style, maxLines = NOTE_LINES, constraints = Constraints(maxWidth = constraints.maxWidth)).hasVisualOverflow
+        }
+        Column(Modifier.fillMaxWidth().clickable(enabled = cut) { expanded = !expanded }) {
+            Text(caption, style = style, maxLines = if (expanded) Int.MAX_VALUE else NOTE_LINES, overflow = TextOverflow.Ellipsis)
+            if (cut && !expanded) {
+                Text(stringResource(R.string.feed_note_more), color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+/**
+ * A photo at its own shape (or its Moments [crop]'s), the width of the screen; a video plays in it, muted at first, while [video] says so. The
  * photo stays composed on top of the video and only turns transparent once the video shows, so starting and stopping
  * a video doesn't rebuild it.
  */
 @Composable
-private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, modifier: Modifier = Modifier) {
+private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, crop: CropRect?, modifier: Modifier = Modifier) {
+    // Videos aren't cropped (yet).
+    val frame = crop?.takeIf { item.durationMillis == null }
+    Box(modifier.fillMaxWidth().aspectRatio(frame?.ratioOn(item.ratio) ?: item.ratio).background(LibraryColors.Raised).shared(SharedKey.item(item.id))) {
+        PhotoOrVideo(item, video, feedWidth(), frame)
+    }
+}
+
+/**
+ * [item] filling its box ([width] pixels wide, at its shape or its [frame]'s): a photo, or a video's poster with its
+ * length, playing in place while [video] says so.
+ */
+@Composable
+private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: CropRect? = null) {
     val playing = video.isPlaying(item)
     // Start over each time it starts playing.
     var showing by remember(item.id, playing) { mutableStateOf(false) }
     var failed by remember(item.id, playing) { mutableStateOf(false) }
-    Box(modifier.fillMaxWidth().aspectRatio(item.ratio).background(LibraryColors.Raised).shared(SharedKey.item(item.id))) {
+    Box(Modifier.fillMaxSize()) {
         if (playing) {
             InlineVideo(
                 item,
@@ -270,7 +366,11 @@ private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, modifier: Modifier
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        SharpPhoto(item, feedWidth(), Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
+        if (frame != null) {
+            CropBox(frame, Modifier.fillMaxSize()) { SharpPhoto(item, (width / frame.w).toInt(), Modifier.fillMaxSize()) }
+        } else {
+            SharpPhoto(item, width, Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
+        }
         if (playing && !failed) MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
     }
@@ -293,46 +393,176 @@ private fun SharpPhoto(item: MediaItem, width: Int, modifier: Modifier = Modifie
 private fun feedWidth(): Int = LocalWindowInfo.current.containerSize.width
 
 /**
- * Near-duplicates as one photo at the first one's shape; swipe for the others ("2 / 4" and dots). Turns to the photo
- * the viewer closes on, so it lands on its own page.
+ * Near-duplicates as one photo at the first one's shape; swipe for the others ("2 / 4" and dots), each with its own
+ * note above. Turns to the photo the viewer closes on, so it lands on its own page.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SimilarPhotos(block: FeedBlock.Similar, landing: String?, modifier: Modifier = Modifier, onOpen: (MediaItem) -> Unit) {
+private fun SimilarPhotos(
+    block: FeedBlock.Similar,
+    landing: String?,
+    notes: Map<String, PhotoNote>,
+    video: FeedVideo,
+    modifier: Modifier = Modifier,
+    /** While picking: whether this set is picked; null when not picking. */
+    selected: Boolean? = null,
+    onLongPress: (MediaItem) -> Unit,
+    onOpen: (MediaItem) -> Unit,
+) {
     // The list item is keyed by the set's first photo, so a set that grows while photos are compared keeps its page.
-    val pager = rememberPagerState { block.items.size }
+    // Opens on the photo it was last turned to, also after scrolling away or a new launch.
+    val pager = rememberPagerState(initialPage = remember(block.key) { video.startPage(block) }) { block.items.size }
     LaunchedEffect(landing) {
         val page = block.items.indexOfFirst { it.id == landing }
         if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
     }
+    // The page shown is the one that plays, when it is a video.
+    LaunchedEffect(pager.currentPage, block) {
+        video.showPage(block.key, block.items[pager.currentPage.coerceIn(block.items.indices)].id)
+    }
     val pageWidth = feedWidth()
-    Box(modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
-        HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP) { page ->
-            val item = block.items[page]
-            Box(Modifier.fillMaxSize().background(Color.Black).clickable { onOpen(item) }, contentAlignment = Alignment.Center) {
-                // A photo of another shape than the set's first fits inside, at its own shape.
-                // Narrower than the set's first: as tall as the page, so as wide as its shape makes it.
-                val first = block.items.first().ratio
-                val width = if (item.ratio >= first) pageWidth else (pageWidth / first * item.ratio).toInt()
-                SharpPhoto(item, width, Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id)))
+    Column(modifier) {
+        PhotoNoteText(notes[block.items[pager.currentPage.coerceIn(block.items.indices)].id]?.caption)
+        Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
+            HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP) { page ->
+                val item = block.items[page]
+                Box(
+                    Modifier.fillMaxSize().background(Color.Black).combinedClickable(onLongClick = { onLongPress(item) }, onClick = { onOpen(item) }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // A photo of another shape than the set's first fits inside, at its own shape.
+                    // Narrower than the set's first: as tall as the page, so as wide as its shape makes it.
+                    val first = block.items.first().ratio
+                    val width = if (item.ratio >= first) pageWidth else (pageWidth / first * item.ratio).toInt()
+                    Box(Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id))) { PhotoOrVideo(item, video, width) }
+                }
             }
+            Row(
+                Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
+                Text(
+                    stringResource(R.string.feed_similar_position, pager.currentPage + 1, block.items.size),
+                    color = LibraryColors.PhotoText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                repeat(block.items.size.coerceAtMost(MAX_DOTS)) { i ->
+                    val current = i == pager.currentPage.coerceAtMost(MAX_DOTS - 1)
+                    Box(Modifier.size(if (current) 7.dp else 6.dp).background(Color.White.copy(alpha = if (current) 1f else 0.5f), CircleShape))
+                }
+            }
+            if (selected != null) SelectMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
         }
-        Row(
-            Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    }
+}
+
+internal enum class FeedItemChoice { WRITE, CROP, ADD_TO_STORY, TAG, SELECT, TAKE_OUT }
+
+/** While picking: a filled check when picked, an empty ring when not. */
+@Composable
+private fun SelectMark(selected: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(28.dp)
+            .background(if (selected) LibraryColors.Accent else Color.Black.copy(alpha = 0.25f), CircleShape)
+            .border(2.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) Icon(LibraryIcons.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+    }
+}
+
+/** While picking, in place of the tabs: Cancel, "2 picked", and Merge once two or more are picked. */
+@Composable
+internal fun FeedSelectionBar(count: Int, onCancel: () -> Unit, onMerge: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnInverse) }
+        Text(
+            pluralStringResource(R.plurals.feed_selected, count, count),
+            color = LibraryColors.OnInverseMuted,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
+        val canMerge = count >= 2
+        Box(
+            Modifier
+                .height(40.dp)
+                .background(if (canMerge) LibraryColors.Accent else LibraryColors.OnInverseMuted.copy(alpha = 0.3f), RoundedCornerShape(50))
+                .clickable(enabled = canMerge, onClick = onMerge)
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
-            Text(
-                stringResource(R.string.feed_similar_position, pager.currentPage + 1, block.items.size),
-                color = LibraryColors.PhotoText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Text(stringResource(R.string.feed_merge), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
-        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            repeat(block.items.size.coerceAtMost(MAX_DOTS)) { i ->
-                val current = i == pager.currentPage.coerceAtMost(MAX_DOTS - 1)
-                Box(Modifier.size(if (current) 7.dp else 6.dp).background(Color.White.copy(alpha = if (current) 1f else 0.5f), CircleShape))
+    }
+}
+
+/**
+ * A photo's long-press menu over the feed: the photo and what's written about it, then Write about it, Crop, Add to
+ * story and Tag. Drawn in the screen (not a popup), so it shows in previews too.
+ */
+@Composable
+internal fun FeedItemMenu(item: MediaItem, note: String?, inSet: Boolean, onDismiss: () -> Unit, onChoose: (FeedItemChoice) -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onDismiss)) {
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(LibraryColors.Inverse, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .clickable(enabled = false) {}
+                .navigationBarsPadding()
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 12.dp),
+        ) {
+            Box(Modifier.align(Alignment.CenterHorizontally).padding(bottom = 10.dp).size(36.dp, 4.dp).background(LibraryColors.OnInverseMuted.copy(alpha = 0.4f), CircleShape))
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)).background(LibraryColors.Raised)) {
+                    CroppedThumbnail(item, Modifier.fillMaxSize())
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.feed_place_time, dayLabel(item.day), timeLabel(item.takenAtMillis)),
+                        color = LibraryColors.OnInverse,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        note?.takeIf { it.isNotBlank() } ?: stringResource(R.string.feed_menu_no_note),
+                        color = LibraryColors.OnInverseMuted,
+                        fontFamily = if (note.isNullOrBlank()) null else FontFamily.Serif,
+                        fontSize = 14.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            val hasNote = !note.isNullOrBlank()
+            listOf(
+                Triple(FeedItemChoice.WRITE, LibraryIcons.Edit, if (hasNote) R.string.feed_menu_edit_note else R.string.feed_menu_write),
+                Triple(FeedItemChoice.CROP, LibraryIcons.Crop, R.string.feed_menu_crop),
+                Triple(FeedItemChoice.ADD_TO_STORY, LibraryIcons.Plus, R.string.library_add_to_story),
+                Triple(FeedItemChoice.TAG, LibraryIcons.Tag, R.string.library_tag),
+                Triple(FeedItemChoice.SELECT, LibraryIcons.Check, R.string.feed_menu_select),
+                Triple(FeedItemChoice.TAKE_OUT, LibraryIcons.Minus, R.string.feed_menu_take_out).takeIf { inSet },
+            ).filterNotNull().forEach { (choice, icon, label) ->
+                Row(
+                    Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(12.dp)).clickable { onChoose(choice) }.padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(icon, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text(stringResource(label), color = LibraryColors.OnInverse, fontSize = 16.sp)
+                }
             }
         }
     }
@@ -411,11 +641,11 @@ private fun VideoLength(millis: Long, modifier: Modifier = Modifier) {
 /** Towns shown in a row's heading; a long day shows where it started. */
 private const val MAX_TOWNS = 3
 
+/** A note longer than this shows "more". */
+private const val NOTE_LINES = 4
+
 /** A set longer than this shows this many dots, the last one standing for the rest. */
 private const val MAX_DOTS = 8
-
-private val MediaItem.ratio: Float
-    get() = if (width > 0 && height > 0) width.toFloat() / height else 4f / 3f
 
 @Composable
 private fun sourceName(source: MediaSource): String = stringResource(

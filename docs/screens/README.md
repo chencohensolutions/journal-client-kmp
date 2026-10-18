@@ -17,6 +17,7 @@ updated.
 | All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
 | Settings | ⋯ menu → Settings | [settings.md](settings.md) |
 | Viewer | Tapping any photo or video | [viewer.md](viewer.md) |
+| Crop | Viewer → Crop, or long press in Moments → Crop | [crop.md](crop.md) |
 
 ```
 Enrollment ──► Photo access ──► Journal ──► All photos, Settings

@@ -21,7 +21,10 @@ import com.chencohensolution.journal.stories.StoryGroup
 import com.chencohensolution.journal.stories.StoryMember
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.TimelineEntry
+import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.MomentsFeed
+import com.chencohensolution.journal.stories.PhotoCrops
+import com.chencohensolution.journal.stories.PhotoNote
 import java.time.Instant
 import java.time.ZoneId
 
@@ -156,6 +159,8 @@ internal object PreviewData {
     /** A first launch: access granted, but no stories yet. */
     val noStories = stories.copy(stories = emptyList(), timeline = stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>())
 
+    private var tripCoverItem: MediaItem? = null
+
     /** The Moments tab as a feed: rows split into moments by time, place and source, near-duplicates as one photo. */
     val feed: MomentsFeed = run {
         fun shot(daysAgo: Int, hour: Int, ratio: Float, source: MediaSource = MediaSource.CAMERA, video: Int? = null) =
@@ -165,7 +170,7 @@ internal object PreviewData {
         fun section(moments: List<FeedMoment>, vararg places: String) =
             FeedSection(Moment(moments.flatMap { it.items }.sortedByDescending { it.takenAtMillis }, GroupingMode.BY_DAY), moments, places.toList())
         val screen = 9f / 19.5f
-        val tripCover = shot(14, 11, 16f / 9f)
+        val tripCover = shot(14, 11, 16f / 9f).also { tripCoverItem = it }
         val today = section(
             listOf(
                 FeedMoment(MediaSource.CAMERA, listOf(similar(0, 19, 4f / 3f, 4), single(shot(0, 19, 3f / 4f)), single(shot(0, 19, 16f / 9f, video = 42))), "Jaffa Port"),
@@ -190,6 +195,47 @@ internal object PreviewData {
         )
     }
 
-    /** The journal with the feed in its Moments tab. */
-    val feedStories: StoriesState = stories.copy(feed = feed)
+    private val todayMoments = (feed.entries.first() as FeedEntry.Section).section.moments
+
+    /** The near-duplicate set at the top of Today, with a note on its first photo. */
+    val notedPhoto: MediaItem = todayMoments[0].blocks[0].items.first()
+
+    /** A 4:3 photo of Carmel Market, cropped wide for Moments, with a short note. */
+    val croppedPhoto: MediaItem = todayMoments[2].blocks[0].items.first()
+
+    /** A 16:9 photo of the trip, cropped to the screen's shape for the viewer held upright. */
+    val tripPhoto: MediaItem = tripCoverItem!!
+
+    /** This phone's screen held upright (width / height), as in [PHONE]. */
+    const val SCREEN_RATIO = 390f / 844f
+
+    val marketCrops = PhotoCrops(
+        moments = CropRect(0f, 0.18f, 1f, 0.62f),
+        portrait = CropRect(0.4f, 0f, SCREEN_RATIO / (4f / 3f), 1f, SCREEN_RATIO),
+        landscape = CropRect(0f, 0.2f, 1f, (4f / 3f) * SCREEN_RATIO, 1 / SCREEN_RATIO),
+    )
+
+    private fun note(item: MediaItem, text: String, crops: PhotoCrops = PhotoCrops()) =
+        item.id to PhotoNote(item.id, item.fileName, item.takenAtMillis, caption = text, updatedAt = "2026-10-19T10:00:00Z", crops = crops)
+
+    /** The journal with the feed in its Moments tab, some photos with notes. */
+    val feedStories: StoriesState = stories.copy(
+        feed = feed,
+        notes = mapOf(
+            note(
+                notedPhoto,
+                "The fishermen came in just as the sun dropped behind the old port. Noa wanted to stay until the last boat " +
+                    "was tied, so we sat on the wall with the ice cream melting and watched the gulls fight over what was left. " +
+                    "One of those evenings that didn't need a plan.",
+            ),
+            note(croppedPhoto, "Breakfast at the market before everyone woke up.", marketCrops),
+            note(tripPhoto, "", PhotoCrops(portrait = CropRect(0.52f, 0f, SCREEN_RATIO / (16f / 9f), 1f, SCREEN_RATIO))),
+        ),
+        itemsById = stories.itemsById + feed.entries.flatMap { entry ->
+            when (entry) {
+                is FeedEntry.Section -> entry.section.items
+                is FeedEntry.Trip -> entry.trip.items
+            }
+        }.associateBy { it.id },
+    )
 }

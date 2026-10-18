@@ -17,9 +17,21 @@ rows of small photos.
 - **Moments** within a row, newest first, each with a small label and then its photos, oldest first:
   - Camera: "📍 Jaffa Port · 18:10 – 19:05" (place · time; only the time until the place is known).
   - Other sources: "WhatsApp · 6 · 14:02 – 17:30": one moment per source per row.
-- **Photos** are edge to edge and full width, at their own shape (never cropped to squares). A video shows its length.
+- **Photos** are edge to edge and full width, at their own shape (never cropped to squares), or at their Moments
+  [crop](crop.md). A video shows its length.
+- **Notes:** a photo's note is written above it in serif, up to 4 lines and then **more**. In a near-duplicate set,
+  the note of the photo shown.
+- **Long press** a photo for **Write about it** (or **Edit what you wrote**), **Crop**, **Add to story**, **Tag**,
+  **Select**, and in a set **Take out of this set**.
+- **Merging (asked Oct 19, 2026):** **Select** starts picking: tapping a photo or set picks it (a check at its
+  corner), back or **Cancel** stops. **Merge**, with two or more picked, makes them one set you swipe, shown where its
+  oldest photo is, wherever the others were. **Take out of this set** removes a photo from a set (made by hand or by
+  itself) and it isn't put in one by itself again. A [cropped](crop.md) photo is never put in a set by itself either.
+  Saved in each photo's note file (`"set"`, `"apart"`); merged sets become groups in a story made with **+ Story**.
 - **Near-duplicates** are one photo at the first one's shape. Swipe sideways for the others; a "2 / 4" badge and
   dots show where you are, with no peek of the next one.
+- A set **opens on the photo it was last turned to**, also after scrolling away or restarting the app (kept on this
+  device in settings, `feed_page|<first photo id>`; turning back to the first forgets it).
 - **Trip card** ("Looks like a trip · Haifa · Oct 4 – 6 · 3 days · 128 photos") above the newest day of a trip, with
   **Save as story** (asks for a title, starting with the town) and **Not now** (never offered again for that trip).
 
@@ -47,7 +59,10 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
   their neighbors.
 - **Near-duplicates:** a photo joins the set before it when it looks like the set's first photo (the same
   fingerprints and threshold as group suggestions, see [group.md](group.md)) or is from the same camera burst.
-  Photos not fingerprinted yet join when taken within 10 seconds. Videos stand alone.
+  Photos not fingerprinted yet join when taken within 10 seconds.
+- **Videos from one place** (within 150 m, in one moment) are one set you swipe, where the first of them is, even
+  with photos between (asked Oct 19, 2026). A video without a location stands alone. In a set, the video turned to
+  plays like any other in the feed.
 - **Places:** the moment's label is the name most of its photos share: the neighborhood, else the street, else the
   town. A row lists towns.
 - **Trips:** home is the 10 km square where most located photos were taken (with 20 or more). Two or more days in a

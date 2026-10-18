@@ -100,7 +100,7 @@ journal/
                                     dismissed suggestions; format v1
       story.md                    ← "# Title", opening text, then <!-- group:g1 --> sections
   media/
-    22.json                       ← one note per photo: caption, tags (device id; "/" etc. become "_")
+    22.json                       ← one note per photo: caption, tags, crops (device id; "/" etc. become "_")
 ```
 
 - **Ids**: the UTC creation time with dashes (valid folder name everywhere). Each device issues strictly increasing

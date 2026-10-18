@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -50,10 +51,29 @@ internal class FeedVideo(
     private val playingId: () -> String? = { null },
     private val isMuted: () -> Boolean = { true },
     val toggleMute: () -> Unit = {},
+    /** The photo a set was last turned to, kept across launches (by the set's key), and remembering it. */
+    private val savedPage: (setKey: String) -> String? = { null },
+    private val savePage: (setKey: String, itemId: String) -> Unit = { _, _ -> },
 ) {
     fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && playingId() == item.id
 
     val muted: Boolean get() = isMuted()
+
+    /** The item each swipe set shows, by the set's key: a set plays the video it is turned to. */
+    private val pages = mutableStateMapOf<String, String>()
+
+    fun showPage(setKey: String, itemId: String) {
+        if (pages[setKey] == itemId) return
+        pages[setKey] = itemId
+        savePage(setKey, itemId)
+    }
+
+    /** The page [block] opens on: the one it was last turned to, else its first. */
+    fun startPage(block: FeedBlock): Int =
+        (pages[block.key] ?: savedPage(block.key))?.let { id -> block.items.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
+
+    /** The item [block] shows now: its page, or the only item. */
+    fun shownIn(block: FeedBlock): MediaItem = pages[block.key]?.let { id -> block.items.firstOrNull { it.id == id } } ?: block.items.first()
 }
 
 /**
@@ -61,7 +81,7 @@ internal class FeedVideo(
  * taller than it), the one closest to the middle of the uncovered part of the screen, between the top bar and the
  * bottom controls. Rows are the list's last items.
  */
-internal fun LazyListState.videoToPlay(rows: List<FeedRow>): String? {
+internal fun LazyListState.videoToPlay(rows: List<FeedRow>, video: FeedVideo): String? {
     val info = layoutInfo
     val top = 0
     val bottom = info.viewportEndOffset - info.afterContentPadding
@@ -69,11 +89,11 @@ internal fun LazyListState.videoToPlay(rows: List<FeedRow>): String? {
     val middle = (top + bottom) / 2
     return info.visibleItemsInfo
         .mapNotNull { item ->
-            val video = ((rows.getOrNull(item.index - first) as? FeedRow.Photo)?.block as? FeedBlock.Single)?.item
+            val shown = (rows.getOrNull(item.index - first) as? FeedRow.Photo)?.block?.let(video::shownIn)
                 ?.takeIf { it.type == MediaType.VIDEO } ?: return@mapNotNull null
-            val shown = minOf(item.offset + item.size, bottom) - maxOf(item.offset, top)
-            if (shown < MIN_SHOWN * minOf(item.size, bottom - top)) return@mapNotNull null
-            video to kotlin.math.abs(item.offset + item.size / 2 - middle)
+            val inView = minOf(item.offset + item.size, bottom) - maxOf(item.offset, top)
+            if (inView < MIN_SHOWN * minOf(item.size, bottom - top)) return@mapNotNull null
+            shown to kotlin.math.abs(item.offset + item.size / 2 - middle)
         }
         .minByOrNull { it.second }
         ?.first?.id

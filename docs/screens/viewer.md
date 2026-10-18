@@ -17,6 +17,10 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 ## Layout
 
 - **Top bar:** back, the position ("4 of 29 · Yesterday"), and the **ⓘ** button.
+- **Bottom (Android):** **Write** (the note editor) and **Crop** (photos only; opens the [crop screen](crop.md) on
+  Portrait or Landscape, as the phone is held). Hidden while the details panel is open.
+- **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
+  **Cropped · Show all** at the top.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS).
 - **Videos:** the first frame with a play button. Play starts the system player (Android `VideoView` with media

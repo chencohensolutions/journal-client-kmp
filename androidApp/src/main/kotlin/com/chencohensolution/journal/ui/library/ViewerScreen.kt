@@ -50,12 +50,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.stories.CropKind
+import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.StoriesState
@@ -84,6 +87,8 @@ internal class ViewerActions(
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
     val showing: (itemId: String) -> Unit = {},
+    /** Opens the crop screen for the photo, on the crop for how the phone is held. */
+    val crop: (itemId: String, kind: CropKind) -> Unit = { _, _ -> },
 )
 
 /**
@@ -110,7 +115,16 @@ internal fun ViewerScreen(
     var choosingStory by rememberSaveable { mutableStateOf(false) }
     var choosingTag by rememberSaveable { mutableStateOf(false) }
     var editingCaption by rememberSaveable { mutableStateOf(false) }
+    // The whole photo instead of its crop, until turned back (kept while swiping).
+    var showWhole by rememberSaveable { mutableStateOf(false) }
+    // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
+    val window = LocalWindowInfo.current.containerSize
+    val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
+    val cropKind = if (screenRatio <= 1f) CropKind.PORTRAIT else CropKind.LANDSCAPE
+    fun cropOf(item: MediaItem) =
+        stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
     val current = items[pager.currentPage.coerceIn(items.indices)]
+    val currentCrop = cropOf(current)
     LaunchedEffect(current.id) { actions.showing(current.id) }
     // A group is one stop here, its cover: that photo is shared with the group's tile, so closing on it lands there.
     val groupOfCover = remember(openedFrom, group) {
@@ -124,7 +138,26 @@ internal fun ViewerScreen(
             if (item.type == MediaType.VIDEO) {
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
             } else {
-                PhotoPage(item, sharedKey(item))
+                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole })
+            }
+        }
+
+        if (currentCrop != null && !showInfo) {
+            CropChip(
+                showingWhole = showWhole,
+                onToggle = { showWhole = !showWhole },
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 60.dp),
+            )
+        }
+        if (!showInfo) {
+            Row(
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
+                if (current.type != MediaType.VIDEO) {
+                    ViewerAction(LibraryIcons.Crop, stringResource(R.string.viewer_crop)) { actions.crop(current.id, cropKind) }
+                }
             }
         }
 
@@ -223,29 +256,75 @@ internal fun ViewerScreen(
 }
 
 @Composable
-private fun PhotoPage(item: MediaItem, sharedKey: String) {
+private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
     val resolver = LocalContext.current.contentResolver
     val preview = rememberThumbnail(item, THUMB_LARGE)
     val full by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { loadImage(resolver, item, VIEWER_MAX_SIDE) }
     }
     val image = full?.asImageBitmap() ?: preview
-    if (image != null) ViewerImage(image, sharedKey)
+    if (image != null) ViewerImage(image, sharedKey, crop)
 }
 
 /**
- * The photo at its own shape, centred: it looks fitted, and it is shared with the tile it was opened from, so its crop
- * opens up as the tile grows into it.
+ * The photo at its own shape (or its [crop]'s), centred: it looks fitted, and it is shared with the tile it was opened
+ * from, so its crop opens up as the tile grows into it.
  */
 @Composable
-private fun ViewerImage(image: ImageBitmap, sharedKey: String) {
+private fun ViewerImage(image: ImageBitmap, sharedKey: String, crop: CropRect? = null) {
+    val ratio = image.width.toFloat() / image.height
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Image(
-            image,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.aspectRatio(image.width.toFloat() / image.height).shared(sharedKey),
+        if (crop != null) {
+            CropBox(crop, Modifier.aspectRatio(ratio * crop.w / crop.h).shared(sharedKey)) {
+                Image(image, contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
+            }
+        } else {
+            Image(
+                image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.aspectRatio(ratio).shared(sharedKey),
+            )
+        }
+    }
+}
+
+/** "Cropped · Show all" over a cropped photo, or "Show crop" while the whole photo shows. */
+@Composable
+private fun CropChip(showingWhole: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .background(LibraryColors.PillScrim, RoundedCornerShape(50))
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(LibraryIcons.Crop, null, tint = Color.White, modifier = Modifier.size(14.dp))
+        if (!showingWhole) Text(stringResource(R.string.viewer_cropped) + " ·", color = Color(0xFFB8C2BF), fontSize = 13.sp)
+        Text(
+            stringResource(if (showingWhole) R.string.viewer_show_crop else R.string.viewer_show_all),
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
         )
+    }
+}
+
+/** A round-ended button over the photo: Write, Crop. */
+@Composable
+private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .height(44.dp)
+            .background(LibraryColors.PillScrim, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

@@ -61,6 +61,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_DISMISSED_TRIPS)?.split(",")?.filter { it.isNotEmpty() }?.toSet().orEmpty()
         set(value) = store.putString(KEY_DISMISSED_TRIPS, value.joinToString(",").ifEmpty { null })
 
+    /** The photo a swipe set in Moments was last turned to, by the set's key (its first photo's id); null for its first. */
+    fun feedPage(setKey: String): String? = store.getString(KEY_FEED_PAGE + setKey)
+
+    fun setFeedPage(setKey: String, itemId: String?) = store.putString(KEY_FEED_PAGE + setKey, itemId)
+
     companion object {
         const val DEFAULT_SERVER_URL = "https://192.168.50.150:8080/query"
         private const val KEY_SERVER_URL = "server_url"
@@ -72,5 +77,6 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SIMILARITY_PERCENT = "similarity_percent"
         private const val KEY_FEED_SOURCES = "feed_sources"
         private const val KEY_DISMISSED_TRIPS = "dismissed_trips"
+        private const val KEY_FEED_PAGE = "feed_page|"
     }
 }

@@ -299,6 +299,36 @@
     <string name="feed_trip_untitled">A trip</string>
     <string name="feed_trip_save">Save as story</string>
     <string name="feed_nothing_shown">Nothing to show. Turn on a source above.</string>
+    <string name="feed_note_more">more</string>
+    <!-- Long press on a photo in Moments -->
+    <string name="feed_menu_write">Write about it</string>
+    <string name="feed_menu_edit_note">Edit what you wrote</string>
+    <string name="feed_menu_no_note">Nothing written yet</string>
+    <string name="feed_menu_crop">Crop</string>
+    <string name="feed_menu_select">Select</string>
+    <string name="feed_menu_take_out">Take out of this set</string>
+    <string name="feed_merge">Merge</string>
+    <plurals name="feed_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <!-- Crop screen: crops are only for looking, the photo is never changed -->
+    <string name="crop_title">Crop</string>
+    <string name="crop_reset">Reset</string>
+    <string name="crop_done">Done</string>
+    <string name="crop_mode_moments">Moments</string>
+    <string name="crop_mode_portrait">Portrait</string>
+    <string name="crop_mode_landscape">Landscape</string>
+    <string name="crop_hint_moments">Any shape. This is how the photo shows in Moments.</string>
+    <string name="crop_hint_portrait">Your screen\'s shape. Shown when you view it with the phone upright.</string>
+    <string name="crop_hint_landscape">Your screen\'s shape, sideways. Shown when you view it with the phone turned.</string>
+    <string name="crop_untouched">The photo itself isn\'t changed.</string>
+    <!-- Viewer -->
+    <string name="viewer_write">Write</string>
+    <string name="viewer_crop">Crop</string>
+    <string name="viewer_cropped">Cropped</string>
+    <string name="viewer_show_all">Show all</string>
+    <string name="viewer_show_crop">Show crop</string>
     <string name="feed_unmute">Turn sound on</string>
     <string name="feed_mute">Turn sound off</string>
 </resources>

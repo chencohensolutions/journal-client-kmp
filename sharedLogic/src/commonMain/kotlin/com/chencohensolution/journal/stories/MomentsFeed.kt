@@ -118,6 +118,9 @@ internal const val MOMENT_GAP_MILLIS = 2 * 3_600_000L
 internal const val MOMENT_MOVE_GAP_MILLIS = 20 * 60_000L
 internal const val MOMENT_MOVE_METERS = 1_000.0
 
+/** Videos taken this close together (in one moment) are one set you swipe. */
+internal const val VIDEO_SET_METERS = 150.0
+
 /** Days with most located photos this far from home are away; two or more in a row are a trip. */
 internal const val TRIP_AWAY_METERS = 50_000.0
 internal const val TRIP_MIN_DAYS = 2
@@ -129,7 +132,8 @@ internal const val HOME_MIN_PHOTOS = 20
  * The feed of [items] (the whole library, newest first): only the [shown] sources, split into rows ([grouping]),
  * each into moments ([splitMoments]) of blocks ([blocksOf]). Trips are found among the rows using every located
  * photo to tell where home is; [dismissedTrips], and trips whose photos are all [sorted] already (in a story or
- * tagged, as when the trip was saved), are left out.
+ * tagged, as when the trip was saved), are left out. Photos in [alone] (cropped, or taken out of a set) are never in
+ * a near-duplicate set; photos merged by hand ([sets]: photo id to set id) are one set, where its oldest photo is.
  */
 internal fun buildFeed(
     items: List<MediaItem>,
@@ -139,12 +143,20 @@ internal fun buildFeed(
     looks: PhotoLooks = PhotoLooks.NONE,
     dismissedTrips: Set<String> = emptySet(),
     sorted: Set<String> = emptySet(),
+    alone: Set<String> = emptySet(),
+    sets: Map<String, String> = emptyMap(),
 ): MomentsFeed {
     val counts = items.groupingBy { it.source }.eachCount()
-    val sections = groupMoments(items.filter { it.source in shown }, grouping).map { span ->
+    val visible = items.filter { it.source in shown }
+    // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
+    val merged = visible.filter { it.id in sets }.groupBy { sets.getValue(it.id) }.values
+        .map { members -> members.sortedBy { it.takenAtMillis } }
+        .associateBy { it.first().id }
+    val inLaterPlace = merged.values.flatMap { it.drop(1) }.map { it.id }.toSet()
+    val sections = groupMoments(visible.filter { it.id !in inLaterPlace }, grouping).map { span ->
         val moments = span.items.groupBy { it.source }
             .flatMap { (source, items) -> splitMoments(source, items.reversed(), places) }
-            .map { items -> FeedMoment(items.first().source, blocksOf(items, looks), mostCommon(items) { places.nameOf(it)?.label }) }
+            .map { items -> FeedMoment(items.first().source, blocksOf(items, looks, alone, merged, places), mostCommon(items) { places.nameOf(it)?.label }) }
             .sortedByDescending { it.startMillis }
         val towns = moments.reversed()
             .filter { it.source == MediaSource.CAMERA }
@@ -189,14 +201,42 @@ internal fun splitMoments(source: MediaSource, items: List<MediaItem>, places: P
 /**
  * [items] (oldest first) as blocks: a photo joins the block before it when it looks like that block's first photo
  * ([PhotoLooks.similar]) or is from the same camera burst; photos not read yet join when taken within
- * [BURST_GAP_MILLIS]. Videos stand alone.
+ * [BURST_GAP_MILLIS]. Videos taken within [VIDEO_SET_METERS] of each other are one set, where the first of them is;
+ * a video without a location stands alone. Photos and videos in [alone] (a cropped photo) are shown on their own. A
+ * photo that starts a set merged by hand ([merged], by its first photo's id) is that whole set, and nothing joins it.
  */
-internal fun blocksOf(items: List<MediaItem>, looks: PhotoLooks): List<FeedBlock> {
+internal fun blocksOf(
+    items: List<MediaItem>,
+    looks: PhotoLooks,
+    alone: Set<String> = emptySet(),
+    merged: Map<String, List<MediaItem>> = emptyMap(),
+    places: Places = Places.NONE,
+): List<FeedBlock> {
     val runs = mutableListOf<MutableList<MediaItem>>()
+    // Sets of videos from one place; a later video of the place joins its set even with photos between.
+    val videoRuns = mutableListOf<MutableList<MediaItem>>()
+    // Runs nothing may join: sets merged by hand.
+    val closed = mutableListOf<MutableList<MediaItem>>()
     items.forEach { item ->
+        merged[item.id]?.let { members ->
+            runs += members.toMutableList().also { closed += it }
+            return@forEach
+        }
+        if (item.type == MediaType.VIDEO && item.id !in alone) {
+            places.location(item)?.let { here ->
+                val set = videoRuns.lastOrNull { run -> places.location(run.first())?.let { distanceMeters(it, here) <= VIDEO_SET_METERS } == true }
+                if (set != null) {
+                    set += item
+                } else {
+                    runs += mutableListOf(item).also { videoRuns += it }
+                }
+                return@forEach
+            }
+        }
         val run = runs.lastOrNull()
         val first = run?.first()
-        val joins = run != null && first != null && item.type == MediaType.IMAGE && first.type == MediaType.IMAGE && (
+        val joins = run != null && closed.none { it === run } && first != null && item.type == MediaType.IMAGE && first.type == MediaType.IMAGE &&
+            item.id !in alone && first.id !in alone && (
             (first.burstId != null && first.burstId == item.burstId) ||
                 (if (looks.canCompare(first) && looks.canCompare(item)) {
                     looks.similar(first, item)

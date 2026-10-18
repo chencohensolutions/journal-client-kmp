@@ -311,6 +311,37 @@
     <string name="feed_trip_untitled">טיול</string>
     <string name="feed_trip_save">שמירה כסיפור</string>
     <string name="feed_nothing_shown">אין מה להציג. אפשר להפעיל מקור למעלה.</string>
+    <string name="feed_note_more">עוד</string>
+    <!-- לחיצה ארוכה על תמונה ברגעים -->
+    <string name="feed_menu_write">לכתוב עליה</string>
+    <string name="feed_menu_edit_note">עריכת מה שנכתב</string>
+    <string name="feed_menu_no_note">עוד לא נכתב כלום</string>
+    <string name="feed_menu_crop">חיתוך</string>
+    <string name="feed_menu_select">בחירה</string>
+    <string name="feed_menu_take_out">הוצאה מהקבוצה</string>
+    <string name="feed_merge">איחוד</string>
+    <plurals name="feed_selected">
+        <item quantity="one">נבחר אחד</item>
+        <item quantity="two">%d נבחרו</item>
+        <item quantity="other">%d נבחרו</item>
+    </plurals>
+    <!-- מסך החיתוך: רק לתצוגה, התמונה עצמה לא משתנה -->
+    <string name="crop_title">חיתוך</string>
+    <string name="crop_reset">איפוס</string>
+    <string name="crop_done">סיום</string>
+    <string name="crop_mode_moments">רגעים</string>
+    <string name="crop_mode_portrait">לאורך</string>
+    <string name="crop_mode_landscape">לרוחב</string>
+    <string name="crop_hint_moments">כל צורה. כך התמונה תופיע ברגעים.</string>
+    <string name="crop_hint_portrait">בצורת המסך. מוצג כשמסתכלים עליה כשהטלפון עומד.</string>
+    <string name="crop_hint_landscape">בצורת המסך, לרוחב. מוצג כשמסתכלים עליה כשהטלפון שוכב.</string>
+    <string name="crop_untouched">התמונה עצמה לא משתנה.</string>
+    <!-- מציג התמונות -->
+    <string name="viewer_write">כתיבה</string>
+    <string name="viewer_crop">חיתוך</string>
+    <string name="viewer_cropped">חתוכה</string>
+    <string name="viewer_show_all">הצגת הכול</string>
+    <string name="viewer_show_crop">הצגת החיתוך</string>
     <string name="feed_unmute">הפעלת צליל</string>
     <string name="feed_mute">השתקה</string>
 </resources>
