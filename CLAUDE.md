@@ -28,16 +28,33 @@ whenever a screen changes.
 - Files under `journal/` are formats other tools will read: version them (`"v": 1`), write to a temp file and rename,
   and never let a damaged file hide the others.
 
+## Visualizing a screen before building it
+
+When the owner asks to visualize (show, mock up) a screen, build the look only and show screenshots; the logic waits
+until they ask for it:
+
+1. Write only the Compose screen in `androidApp/.../ui/library/`: it takes a state object and an actions object, with
+   no controllers, loading or navigation. If the data doesn't exist yet, define the state shape next to the screen;
+   it is what the shared logic will produce later.
+2. Add sample data to `androidApp/src/screenshotTest/.../PreviewData.kt` and a `<Screen>Screenshots.kt` beside it
+   with the states worth seeing (light/dark, empty, offline, a menu or dialog open), each wrapped in `Screen { }`.
+3. Run `./scripts/screenshots.sh`, look at the PNGs in `androidApp/src/screenshotTestDebug/reference/` (git-ignored),
+   fix what renders wrong, then `open` them for the owner and give the paths.
+
+Android only; the SwiftUI version follows once the design settles. Images are still, so each state is its own
+preview. See [docs/previews.md](docs/previews.md).
+
 ## Commands
 
-No system JDK: use Android Studio's.
+No system JDK: use Homebrew's `openjdk@21` (or Android Studio's, if installed). `scripts/*.sh` find it themselves.
 
 ```sh
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./gradlew :sharedLogic:testAndroidHostTest          # shared tests on the JVM (includes PhotoSafetyTest)
 ./gradlew :sharedLogic:iosSimulatorArm64Test        # shared tests on the iOS simulator
 ./gradlew :androidApp:assembleDebug
 ./scripts/android-run.sh phone|emulator|<serial>    # build, install on one device, open (also VS Code tasks)
+./scripts/screenshots.sh                            # render the screen previews to PNGs (docs/previews.md)
 cd iosApp && xcodebuild -project iosApp.xcodeproj -scheme iosApp \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
 ```
