@@ -153,21 +153,30 @@ struct SelectionBar: View {
     }
 }
 
-/// "Grouped 14 photos · Undo", for a few seconds after grouping.
+/// How long "Grouped 14 photos · Undo" stays, unless closed with its ✕ first.
+let undoSeconds = 6
+
+/// "Grouped 14 photos · Undo ✕", for a few seconds after grouping.
 struct UndoBar: View {
     let count: Int
     let onUndo: () -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 4) {
             Text("Grouped \(count) photos").font(.subheadline)
             Spacer()
             Button("Undo", action: onUndo)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(LibraryColors.accent)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Dismiss")
         }
         .foregroundStyle(LibraryColors.onInverse)
-        .padding(.horizontal, 16)
+        .padding(.leading, 16)
+        .padding(.trailing, 6)
         .frame(height: 52)
         .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.4), radius: 12, y: 6)

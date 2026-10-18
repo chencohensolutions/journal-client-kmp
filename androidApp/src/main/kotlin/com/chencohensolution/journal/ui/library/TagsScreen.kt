@@ -100,7 +100,7 @@ internal fun TagScreen(tag: String, stories: StoriesState, onOpenItem: (MediaIte
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
             contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             item(key = "count") {
                 val count = days.sumOf { it.items.size }

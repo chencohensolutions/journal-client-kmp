@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -132,8 +131,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     fun offerUndo(groupId: String?, count: Int, undo: () -> Unit = { groupId?.let(actions.ungroup) }) {
         groupId ?: return
         scope.launch {
-            val result = snackbar.showSnackbar(groupedMessage.format(count), actionLabel = undoLabel, withDismissAction = false)
-            if (result == SnackbarResult.ActionPerformed) undo()
+            if (snackbar.offerUndo(groupedMessage.format(count), undoLabel)) undo()
         }
     }
     fun endSelection() {
@@ -153,7 +151,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
                 top = insets.calculateTopPadding() + 64.dp,
                 bottom = insets.calculateBottomPadding() + if (arranging) 200.dp else 110.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             item(key = "header") { Header(story) }
             if (!arranging) {

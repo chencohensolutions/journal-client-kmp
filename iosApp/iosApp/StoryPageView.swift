@@ -123,10 +123,10 @@ struct StoryPageView: View {
                 }
             )
         } else if let undo {
-            UndoBar(count: undo.count) {
+            UndoBar(count: undo.count, onUndo: {
                 actions.restore(undo.before)
                 self.undo = nil
-            }
+            }, onDismiss: { withAnimation { self.undo = nil } })
         }
     }
 
@@ -134,7 +134,7 @@ struct StoryPageView: View {
         guard let groupId else { return }
         withAnimation { undo = (groupId, count, before) }
         Task {
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(for: .seconds(undoSeconds))
             if undo?.groupId == groupId { withAnimation { undo = nil } }
         }
     }

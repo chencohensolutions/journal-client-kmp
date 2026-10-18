@@ -1,6 +1,10 @@
 package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.Image
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -72,8 +76,6 @@ import com.chencohensolution.journal.stories.GroupView
 import com.chencohensolution.journal.library.MediaItem
 import java.time.Instant
 import java.time.ZoneId
-
-private val GAP = 2.dp
 
 /** "2:09 PM", or "2:09 – 2:10 PM" when the photos span minutes. */
 internal fun timeRange(items: List<MediaItem>): String {
@@ -174,8 +176,8 @@ private fun BandGrid(band: StoryBand, tile: @Composable (PlacedTile, Modifier) -
         return
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val cell = (maxWidth - GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
-        fun span(cells: Int) = cell * cells + GAP * (cells - 1)
+        val cell = (maxWidth - TILE_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
+        fun span(cells: Int) = cell * cells + TILE_GAP * (cells - 1)
         Box(Modifier.fillMaxWidth().height(span(band.rows))) {
             band.tiles.forEach { placed ->
                 key(placed.tile.key) {
@@ -183,7 +185,7 @@ private fun BandGrid(band: StoryBand, tile: @Composable (PlacedTile, Modifier) -
                     tile(
                         placed,
                         Modifier
-                            .offset(x = (cell + GAP) * placed.column, y = (cell + GAP) * placed.row)
+                            .offset(x = (cell + TILE_GAP) * placed.column, y = (cell + TILE_GAP) * placed.row)
                             .size(span(placed.size.columns), span(placed.size.rows)),
                     )
                 }
@@ -378,4 +380,20 @@ internal fun WritingEditor(title: String, initial: String, onSave: (String) -> U
             }
         }
     }
+}
+
+/** How long "Grouped N photos · Undo" stays, unless closed with its ✕ first. */
+private const val UNDO_MILLIS = 6_000L
+
+/**
+ * Shows "Grouped N photos · Undo" with a ✕ for [UNDO_MILLIS], replacing one already showing. Returns whether Undo
+ * was tapped.
+ */
+internal suspend fun SnackbarHostState.offerUndo(message: String, undoLabel: String): Boolean {
+    currentSnackbarData?.dismiss()
+    // A snackbar with an action never leaves by itself; timing out cancels it, which dismisses it.
+    val result = withTimeoutOrNull(UNDO_MILLIS) {
+        showSnackbar(message, actionLabel = undoLabel, withDismissAction = true, duration = SnackbarDuration.Indefinite)
+    }
+    return result == SnackbarResult.ActionPerformed
 }

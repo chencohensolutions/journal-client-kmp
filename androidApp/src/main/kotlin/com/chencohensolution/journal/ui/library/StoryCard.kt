@@ -103,7 +103,6 @@ internal fun StoryCard(card: StoryCardState, onOpen: () -> Unit) {
  */
 @Composable
 private fun HighlightMosaic(items: List<MediaItem>, more: Int) {
-    val gap = 2.dp
     val last = items.lastOrNull()
     val tile: @Composable (MediaItem, Modifier) -> Unit = { item, modifier ->
         Highlight(item, modifier, more = if (item == last) more else 0)
@@ -111,19 +110,19 @@ private fun HighlightMosaic(items: List<MediaItem>, more: Int) {
     when {
         items.isEmpty() -> Box(Modifier.fillMaxWidth().aspectRatio(3f).background(LibraryColors.Raised))
         items.size == 1 -> tile(items[0], Modifier.fillMaxWidth().aspectRatio(1.5f))
-        items.size == 2 -> Row(Modifier.fillMaxWidth().aspectRatio(2f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+        items.size == 2 -> Row(Modifier.fillMaxWidth().aspectRatio(2f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
             items.forEach { tile(it, Modifier.weight(1f).fillMaxHeight()) }
         }
-        else -> Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-            Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+        else -> Column(verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+            Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
                 tile(items[0], Modifier.weight(2f).fillMaxHeight())
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
                     tile(items[1], Modifier.weight(1f).fillMaxWidth())
                     tile(items[2], Modifier.weight(1f).fillMaxWidth())
                 }
             }
             if (items.size >= 6) {
-                Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
                     items.subList(3, 6).forEach { tile(it, Modifier.weight(1f).fillMaxHeight()) }
                 }
             }

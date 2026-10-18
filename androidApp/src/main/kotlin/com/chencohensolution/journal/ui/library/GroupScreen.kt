@@ -8,11 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,8 +19,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -119,8 +118,7 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
         val count = selectedItemIds.size
         if (action(selected) != null) {
             scope.launch {
-                val result = snackbar.showSnackbar(groupedMessage.format(count), actionLabel = undoLabel, withDismissAction = false)
-                if (result == SnackbarResult.ActionPerformed) actions.restore(before)
+                if (snackbar.offerUndo(groupedMessage.format(count), undoLabel)) actions.restore(before)
             }
         }
         endSelection()
@@ -135,11 +133,13 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
     BackHandler(enabled = selecting, onBack = ::endSelection)
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
             contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + if (selecting) 110.dp else 32.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(TILE_GAP),
+            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
-            item(key = "cover") {
+            item(key = "cover", span = { GridItemSpan(maxLineSpan) }) {
                 val cover = rememberThumbnail(group.cover, THUMB_LARGE)
                 Box(Modifier.fillMaxWidth().height(300.dp).background(LibraryColors.Raised)) {
                     if (cover != null) Image(cover, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -152,7 +152,7 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
                     )
                 }
             }
-            item(key = "title") {
+            item(key = "title", span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.offset(y = (-36).dp).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(path.uppercase(), color = LibraryColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.7.sp)
                     Text(
@@ -175,53 +175,48 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
                     )
                 }
             }
-            item(key = "story") {
+            item(key = "story", span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.offset(y = (-24).dp)) {
                     WritingBlock(group.text, stringResource(R.string.library_writing_group_prompt)) { editing = true }
                 }
             }
-            items(group.tiles.chunked(3), key = { row -> row.first().key }) { row ->
-                Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    row.forEach { tile ->
-                        val isSelected = if (selecting) tile.key in selected else null
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            when (tile) {
-                                is StoryTile.Media -> MediaTile(
-                                    tile.item,
-                                    onClick = { if (selecting) toggle(tile.key) else actions.openItem(tile.item) },
-                                    modifier = Modifier.fillMaxSize(),
-                                    onLongClick = { startSelecting(tile.key) },
-                                    selected = isSelected,
-                                )
-                                is StoryTile.Group -> GroupTile(
-                                    tile.group,
-                                    Modifier.fillMaxSize(),
-                                    thumbnailSize = THUMB_SMALL,
-                                    onLongClick = { startSelecting(tile.key) },
-                                    selected = isSelected,
-                                ) { if (selecting) toggle(tile.key) else actions.openGroup(tile.group) }
-                            }
-                            // The tile holding the cover: the photo itself, or the subgroup it is in. Hidden while selecting, where
-                            // the check circle takes its corner.
-                            val holdsCover = when (tile) {
-                                is StoryTile.Media -> tile.item.id == group.cover.id
-                                is StoryTile.Group -> tile.group.items.any { it.id == group.cover.id }
-                            }
-                            if (holdsCover && !selecting) {
-                                Text(
-                                    stringResource(R.string.library_cover),
-                                    color = LibraryColors.PaperInk,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier
-                                        .padding(6.dp)
-                                        .background(LibraryColors.Paper, RoundedCornerShape(50))
-                                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                                )
-                            }
-                        }
+            items(group.tiles, key = { it.key }) { tile ->
+                val isSelected = if (selecting) tile.key in selected else null
+                Box(Modifier.aspectRatio(1f)) {
+                    when (tile) {
+                        is StoryTile.Media -> MediaTile(
+                            tile.item,
+                            onClick = { if (selecting) toggle(tile.key) else actions.openItem(tile.item) },
+                            modifier = Modifier.fillMaxSize(),
+                            onLongClick = { startSelecting(tile.key) },
+                            selected = isSelected,
+                        )
+                        is StoryTile.Group -> GroupTile(
+                            tile.group,
+                            Modifier.fillMaxSize(),
+                            thumbnailSize = THUMB_SMALL,
+                            onLongClick = { startSelecting(tile.key) },
+                            selected = isSelected,
+                        ) { if (selecting) toggle(tile.key) else actions.openGroup(tile.group) }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    // The tile holding the cover: the photo itself, or the subgroup it is in. Hidden while selecting, where
+                    // the check circle takes its corner.
+                    val holdsCover = when (tile) {
+                        is StoryTile.Media -> tile.item.id == group.cover.id
+                        is StoryTile.Group -> tile.group.items.any { it.id == group.cover.id }
+                    }
+                    if (holdsCover && !selecting) {
+                        Text(
+                            stringResource(R.string.library_cover),
+                            color = LibraryColors.PaperInk,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .background(LibraryColors.Paper, RoundedCornerShape(50))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
                 }
             }
         }

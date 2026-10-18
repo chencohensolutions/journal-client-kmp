@@ -60,6 +60,9 @@ internal const val THUMB_SMALL = 256
 internal const val THUMB_LARGE = 640
 internal const val THUMB_FULL = 1280
 
+/** The gap between photo tiles in a grid. */
+internal val TILE_GAP = 2.dp
+
 internal fun MediaItem.contentUri(): Uri = ContentUris.withAppendedId(
     if (type == MediaType.VIDEO) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
     id.toLong(),

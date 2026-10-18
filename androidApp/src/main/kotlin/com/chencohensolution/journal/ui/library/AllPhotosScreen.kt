@@ -42,8 +42,6 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 
-private val GAP = 2.dp
-
 /** One row of the grid: a large photo with two small ones beside it, or up to three small ones. */
 private sealed interface GridRow {
     val key: String
@@ -84,7 +82,7 @@ internal fun AllPhotosScreen(
                 top = insets.calculateTopPadding() + 64.dp,
                 bottom = insets.calculateBottomPadding() + 150.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(GAP),
+            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             if (days.isEmpty() && !library.loading) {
                 item(key = "empty") {
@@ -165,9 +163,9 @@ internal fun LazyListScope.dayGrids(
 
 @Composable
 private fun HeroRow(row: GridRow.Hero, onOpen: (MediaItem) -> Unit) {
-    Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+    Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
         MediaTile(row.large, { onOpen(row.large) }, Modifier.weight(2f).fillMaxHeight(), thumbnailSize = THUMB_LARGE)
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(GAP)) {
+        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
             row.side.forEach { item ->
                 MediaTile(item, { onOpen(item) }, Modifier.weight(1f).fillMaxWidth())
             }
@@ -177,7 +175,7 @@ private fun HeroRow(row: GridRow.Hero, onOpen: (MediaItem) -> Unit) {
 
 @Composable
 private fun RegularRow(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
-    Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+    Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
         items.forEach { item ->
             MediaTile(item, { onOpen(item) }, Modifier.weight(1f).fillMaxHeight())
         }

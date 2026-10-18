@@ -11,6 +11,7 @@ import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.Story
+import com.chencohensolution.journal.stories.StoryGroup
 import com.chencohensolution.journal.stories.StoryMember
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.TimelineEntry
@@ -130,6 +131,20 @@ internal object PreviewData {
             TimelineEntry.StoryEntry(weekend),
         ),
     )
+
+    /**
+     * A story with a group of seven photos and a three-photo subgroup that holds the cover: eight tiles, so the last
+     * row of the group's page is not full.
+     */
+    val seaside: StoryView = run {
+        val items = day(5, 10) { photo(5, hour = 8 + it, ratio = ratios[it % 4], backup = BackupStatus.BackedUp) }.sortedBy { it.takenAtMillis }
+        val view = story("Summer by the sea", items)
+        val groups = listOf(
+            StoryGroup("g1", "Day at the sea", coverId = items[8].id, memberIds = items.take(7).map { it.id }, text = "Cold water, warm sand."),
+            StoryGroup("g2", "Sunset", coverId = items[8].id, memberIds = items.drop(7).map { it.id }, parentId = "g1"),
+        )
+        StoryView(view.story.copy(groups = groups), view.items)
+    }
 
     /** A first launch: access granted, but no stories yet. */
     val noStories = stories.copy(stories = emptyList(), timeline = stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>())
