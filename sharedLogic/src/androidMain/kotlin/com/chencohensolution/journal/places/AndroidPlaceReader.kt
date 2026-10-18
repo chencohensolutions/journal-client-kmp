@@ -7,16 +7,18 @@ import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.media.ExifInterface
+import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 /**
- * Reads the GPS position from a photo's EXIF, and names places with the platform Geocoder (Google's service: it needs
+ * Reads the GPS position from a photo's EXIF or a video's metadata, and names places with the platform Geocoder (Google's service: it needs
  * a network connection, and names are asked again when it had none).
  *
  * MediaStore removes the position from what an app reads unless it holds ACCESS_MEDIA_LOCATION and asks for the
@@ -31,11 +33,20 @@ internal class AndroidPlaceReader(context: Context) : PlaceReader {
 
     override suspend fun location(item: MediaItem): GeoPoint? = withContext(Dispatchers.IO) {
         val id = item.id.toLongOrNull() ?: return@withContext null
-        val uri = MediaStore.setRequireOriginal(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id))
+        val collection = if (item.type == MediaType.VIDEO) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        val uri = MediaStore.setRequireOriginal(ContentUris.withAppendedId(collection, id))
         // Throws when the file can't be read now; PhotoPlaces then tries again on the next launch.
-        val latLong = FloatArray(2)
-        val found = context.contentResolver.openInputStream(uri)?.use { ExifInterface(it).getLatLong(latLong) } == true
-        GeoPoint(latLong[0].toDouble(), latLong[1].toDouble()).takeIf { found && (it.latitude != 0.0 || it.longitude != 0.0) }
+        val point = if (item.type == MediaType.VIDEO) {
+            MediaMetadataRetriever().use { retriever ->
+                retriever.setDataSource(context, uri)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_LOCATION)?.let(::parseIso6709)
+            }
+        } else {
+            val latLong = FloatArray(2)
+            val found = context.contentResolver.openInputStream(uri)?.use { ExifInterface(it).getLatLong(latLong) } == true
+            GeoPoint(latLong[0].toDouble(), latLong[1].toDouble()).takeIf { found }
+        }
+        point?.takeIf { it.latitude != 0.0 || it.longitude != 0.0 }
     }
 
     override suspend fun name(point: GeoPoint): PlaceName? {
@@ -55,4 +66,12 @@ internal class AndroidPlaceReader(context: Context) : PlaceReader {
         val city = address.locality ?: address.subAdminArea ?: address.adminArea
         return PlaceName(area = (address.subLocality ?: address.thoroughfare)?.takeIf { it != city }, city = city)
     }
+}
+
+/** A video's location as cameras write it (ISO 6709): "+32.0853+034.7818/", sometimes with an altitude after. */
+internal fun parseIso6709(value: String): GeoPoint? {
+    val match = Regex("""^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)""").find(value.trim()) ?: return null
+    val latitude = match.groupValues[1].toDouble()
+    val longitude = match.groupValues[2].toDouble()
+    return GeoPoint(latitude, longitude).takeIf { latitude in -90.0..90.0 && longitude in -180.0..180.0 }
 }

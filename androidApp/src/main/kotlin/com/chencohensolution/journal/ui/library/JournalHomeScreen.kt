@@ -79,13 +79,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
 
-internal enum class HomeTab { JOURNAL, UNSORTED }
+internal enum class HomeTab { STORIES, MOMENTS }
 
 internal class HomeActions(
-    /** A photo of the Unsorted tab; the viewer swipes through its row. */
+    /** A photo of the Moments tab; the viewer swipes through its row. */
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
     val openStory: (String) -> Unit = {},
-    /** "+ Story" on a row of the Unsorted tab, or "Save as story" on a trip ([FeedSection.key] or [FeedTrip.key]). */
+    /** "+ Story" on a row of the Moments tab, or "Save as story" on a trip ([FeedSection.key] or [FeedTrip.key]). */
     val createStory: (title: String, feedKey: String) -> Unit = { _, _ -> },
     val toggleSource: (MediaSource) -> Unit = {},
     val dismissTrip: (key: String) -> Unit = {},
@@ -98,9 +98,9 @@ internal class HomeActions(
 )
 
 /**
- * The home screen: the journal's stories as a timeline, newest first, and in the Unsorted tab the photos in no story
- * as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
- * docs/screens/journal-home.md and docs/screens/unsorted.md.
+ * The home screen: in the Stories tab the journal's stories as a timeline, newest first, and in the Moments tab every
+ * photo as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
+ * docs/screens/journal-home.md and docs/screens/moments.md.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,8 +109,8 @@ internal fun JournalHomeScreen(
     stories: StoriesState,
     health: ServerHealth,
     actions: HomeActions,
-    /** The tab shown first; previews use it to show Unsorted. */
-    initialTab: HomeTab = HomeTab.JOURNAL,
+    /** The tab shown first; previews use it to show Moments. */
+    initialTab: HomeTab = HomeTab.STORIES,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
 ) {
@@ -120,9 +120,9 @@ internal fun JournalHomeScreen(
     var newStoryTitle by rememberSaveable { mutableStateOf("") }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
-    // Journal shows only stories; photos in no story are in the Unsorted tab, as the feed.
-    val unsorted = tab == HomeTab.UNSORTED
-    val entries = if (unsorted) emptyList() else stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
+    // Stories shows only stories; every photo is in the Moments tab, as the feed.
+    val moments = tab == HomeTab.MOMENTS
+    val entries = if (moments) emptyList() else stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
     // Composes items about two screens ahead in spare time between frames, not in the frame they scroll into view.
     val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
     // A feed that changes mid-scroll (fingerprints and places keep arriving while a library is read) is shown once the
@@ -135,10 +135,10 @@ internal fun JournalHomeScreen(
     val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
         value = withContext(Dispatchers.Default) { shownFeed.rows() }
     }
-    list.LandOn(landing, feedRows.size) { id -> if (unsorted) feedRows.rowOf(id) else -1 }
+    list.LandOn(landing, feedRows.size) { id -> if (moments) feedRows.rowOf(id) else -1 }
     // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val canPlay = unsorted && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
+    val canPlay = moments && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
     // Watched in a coroutine, not read here: a change redraws only the videos, not the whole screen (which took 20 ms).
     val playingId = remember { mutableStateOf<String?>(null) }
     val currentRows by rememberUpdatedState(feedRows)
@@ -176,7 +176,7 @@ internal fun JournalHomeScreen(
         LazyColumn(
             state = list,
             contentPadding = PaddingValues(
-                top = insets.calculateTopPadding() + if (unsorted) 118.dp else 72.dp,
+                top = insets.calculateTopPadding() + if (moments) 118.dp else 72.dp,
                 bottom = insets.calculateBottomPadding() + 150.dp,
             ),
         ) {
@@ -201,10 +201,10 @@ internal fun JournalHomeScreen(
                 canRead && library.days.isEmpty() && library.loadError == null ->
                     item(key = "empty") { Message(stringResource(R.string.library_empty)) }
             }
-            if (tab == HomeTab.JOURNAL && entries.isEmpty() && library.days.isNotEmpty()) {
+            if (tab == HomeTab.STORIES && entries.isEmpty() && library.days.isNotEmpty()) {
                 item(key = "no-stories") { Message(stringResource(R.string.library_no_stories)) }
             }
-            if (unsorted && stories.feed.entries.isEmpty() && stories.unsortedCount > 0) {
+            if (moments && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
                 item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
             }
             items(entries, key = { "story-${it.story.id}" }) { entry ->
@@ -216,11 +216,11 @@ internal fun JournalHomeScreen(
                 )
             }
             // Last, so landing from the viewer can count them from the end.
-            if (unsorted) feedItems(feedRows, feedActions, landing, video)
+            if (moments) feedItems(feedRows, feedActions, landing, video)
         }
 
         TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
-            if (unsorted) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
+            if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
         }
 
         BottomControls(
@@ -231,8 +231,8 @@ internal fun JournalHomeScreen(
         ) {
             SegmentedBar(
                 options = listOf(
-                    HomeTab.JOURNAL to stringResource(R.string.library_tab_journal),
-                    HomeTab.UNSORTED to stringResource(R.string.library_tab_unsorted, stories.unsortedCount),
+                    HomeTab.STORIES to stringResource(R.string.library_tab_stories),
+                    HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
                 ),
                 selected = tab,
                 onSelect = { tab = it },

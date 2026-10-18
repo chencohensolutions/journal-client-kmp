@@ -30,7 +30,7 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("Unsorted photos on the Journal")
+                Text("Rows in Moments")
             }
             .listRowBackground(LibraryColors.raised)
             similaritySection

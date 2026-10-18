@@ -20,24 +20,25 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 | **Group** | Photos of one moment shown as one tile inside a story (a burst, or picked by hand), with its own text. Groups nest: a group's tiles are its photos and its subgroups. Within a story a photo is directly in at most one group. |
 | **Tag** | A label on a photo, for photos that belong somewhere but don't deserve a story. Free text, compared ignoring case. |
 | **Note** | A photo's own text (caption), shown wherever the photo appears. |
-| **Unsorted** | Photos in no story **and** without tags. A note alone doesn't sort a photo. |
+| **Unsorted** | Photos in no story **and** without tags. A note alone doesn't sort a photo. Neighboring days on a story page offer only these. |
 
 ## Decisions (and why)
 
 **Look and navigation**
 - The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
   light or dark theme; the photo viewer is always dark.
-- Home is the **Journal timeline**, newest first, with **only story cards**; unsorted photos are only in the
-  **Unsorted** tab. A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
+- Home has two tabs, **Stories** and **Moments** (renamed from Journal / Unsorted on Oct 19, 2026). Stories is the
+  timeline, newest first, with **only story cards**. Moments shows **every photo**, also those in stories or tagged
+  (asked Oct 19, 2026; Android; iOS still shows only unsorted photos there). A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
   or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
-- Unsorted photos are **by day** by default; Settings can switch to **by breaks between photos**
+- Moments are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
-- Unsorted reads **like a story that arranged itself** (asked Oct 18, 2026; Android first): full-width photos at
+- Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
   one photo you swipe (no peek), a filter bar of source toggles (Camera and WhatsApp on at first), and trip
   suggestions. **Stories are never made automatically**; only + Story or Save as story does. See
-  [screens/unsorted.md](screens/unsorted.md).
-- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Journal / Unsorted, plus "N not backed up".
+  [screens/moments.md](screens/moments.md).
+- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Stories / Moments, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 - Sub-stories (stories inside stories) were agreed in principle; when built, they show only inside their parent
   (with a Settings option later), never on the home timeline.

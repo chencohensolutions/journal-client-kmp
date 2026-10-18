@@ -2,7 +2,6 @@ package com.chencohensolution.journal.places
 
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
-import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -114,7 +113,7 @@ class PhotoPlaces internal constructor(
         if (reader.canReadLocations) {
             while (true) {
                 val next = wanted.firstOrNull {
-                    it.location == null && it.type == MediaType.IMAGE && it.id !in contents.located && it.id !in failedPhotos
+                    it.location == null && it.id !in contents.located && it.id !in failedPhotos
                 } ?: break
                 try {
                     contents.located[next.id] = reader.location(next)

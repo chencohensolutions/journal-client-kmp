@@ -27,7 +27,7 @@ import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.StoryTile
-import com.chencohensolution.journal.stories.UnsortedFeed
+import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.buildFeed
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -68,12 +68,12 @@ private val JAFFA = GeoPoint(32.0504, 34.7522)
 private val HAIFA = GeoPoint(32.7940, 34.9896)
 
 private fun feed(vararg items: MediaItem, places: Places = Places.NONE, looks: PhotoLooks = PhotoLooks.NONE, shown: Set<MediaSource> = MediaSource.entries.toSet()) =
-    buildFeed(newestFirst(*items), items.toList(), shown, TimelineGrouping(), places, looks)
+    buildFeed(newestFirst(*items), shown, TimelineGrouping(), places, looks)
 
-private fun UnsortedFeed.sections() = entries.filterIsInstance<FeedEntry.Section>().map { it.section }
+private fun MomentsFeed.sections() = entries.filterIsInstance<FeedEntry.Section>().map { it.section }
 
 /** Each moment's photo ids, newest moment first. */
-private fun UnsortedFeed.moments() = sections().flatMap { section -> section.moments.map { moment -> moment.items.map { it.id } } }
+private fun MomentsFeed.moments() = sections().flatMap { section -> section.moments.map { moment -> moment.items.map { it.id } } }
 
 class FeedTest {
     @Test
@@ -165,7 +165,7 @@ class FeedTest {
         val back = pic("back", 600, at = TEL_AVIV, day = LocalDay(2026, 10, 7))
         val items = home + trip + back
         val places = Places(emptyMap(), mapOf(cellKey(HAIFA) to PlaceName(null, "Haifa")))
-        val feed = buildFeed(newestFirst(*items.toTypedArray()), items, MediaSource.entries.toSet(), TimelineGrouping(), places)
+        val feed = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places)
 
         // A day without locations in the middle of a trip belongs to it; one at its end doesn't.
         val offered = feed.entries.filterIsInstance<FeedEntry.Trip>().single().trip
@@ -177,8 +177,13 @@ class FeedTest {
         val index = feed.entries.indexOfFirst { it is FeedEntry.Trip }
         assertEquals(LocalDay(2026, 10, 5), assertIs<FeedEntry.Section>(feed.entries[index + 1]).section.span.newestDay)
 
-        val dismissed = buildFeed(newestFirst(*items.toTypedArray()), items, MediaSource.entries.toSet(), TimelineGrouping(), places, dismissedTrips = setOf("trip-2026-10-04"))
+        val dismissed = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places, dismissedTrips = setOf("trip-2026-10-04"))
         assertTrue(dismissed.entries.none { it is FeedEntry.Trip })
+
+        // Once its photos are in a story, it isn't offered again; they still show in the feed.
+        val saved = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places, sorted = setOf("t1", "t2"))
+        assertTrue(saved.entries.none { it is FeedEntry.Trip })
+        assertTrue(saved.sections().any { section -> section.items.any { it.id == "t1" } })
     }
 }
 
@@ -211,7 +216,8 @@ class PhotoPlacesTest {
         val items = listOf(pic("gps1", 0), pic("gps2", 1), pic("none", 2), pic("cloud", 3), pic("video", 4, type = MediaType.VIDEO))
         places.request(items)
         advanceUntilIdle()
-        assertEquals(listOf("gps1", "gps2", "none", "cloud"), reader.read)
+        // Videos too: without a place a video joins the moment before it, even after a drive.
+        assertEquals(listOf("gps1", "gps2", "none", "cloud", "video"), reader.read)
         assertEquals(TEL_AVIV, places.places.value.location(items[0]))
         // Both photos are in one square: named once.
         assertEquals(1, reader.named.size)
@@ -293,6 +299,8 @@ class FeedStoryTest {
         val story = assertNotNull(stories.currentState.story(storyId))
         assertEquals(5, story.itemCount)
         assertEquals(listOf("a", "b"), assertIs<StoryTile.Group>(story.tiles.first()).group.items.map { it.id })
-        assertTrue(stories.currentState.feed.entries.isEmpty())
+        // The feed shows every photo: those in a story stay in it.
+        assertEquals(5, stories.currentState.feed.sections().single().items.size)
+        assertEquals(0, stories.currentState.unsortedCount)
     }
 }

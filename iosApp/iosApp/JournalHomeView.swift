@@ -14,16 +14,17 @@ struct HomeActions {
     var registerAgain: () -> Void
 }
 
-/// The home screen: the journal's stories as a timeline, newest first, and in the Unsorted tab the photos in no story
-/// as moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
+/// The home screen: in the Stories tab the journal's stories as a timeline, newest first, and in the Moments tab the
+/// photos in no story as moments (a day, or a run of photos; see the grouping setting). Android's Moments tab shows
+/// every photo as a feed; iOS doesn't have it yet. See docs/screens/journal-home.md.
 struct JournalHomeView: View {
     let library: LibraryState
     let stories: StoriesState
     let health: ServerHealth
     let actions: HomeActions
 
-    private enum Tab { case journal, unsorted }
-    @State private var tab = Tab.journal
+    private enum Tab { case stories, moments }
+    @State private var tab = Tab.stories
     /// The key of the moment whose "+ Story" was tapped.
     @State private var newStoryMoment: String?
     @State private var newTitle = ""
@@ -51,8 +52,8 @@ struct JournalHomeView: View {
                     } else if canRead && library.days.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
                     }
-                    if tab == .journal && entries.isEmpty && !library.days.isEmpty {
-                        Message(text: "No stories yet. Make one from a day in Unsorted.")
+                    if tab == .stories && entries.isEmpty && !library.days.isEmpty {
+                        Message(text: "No stories yet. Make one from a day in Moments.")
                     }
                     ForEach(entries, id: \.id) { row in
                         switch row.entry {
@@ -96,7 +97,7 @@ struct JournalHomeView: View {
         .overlay(alignment: .bottom) {
             BottomControls(notBackedUp: Int(library.notBackedUpCount)) {
                 SegmentedBar(
-                    options: [(Tab.journal, "Journal"), (Tab.unsorted, "Unsorted \(Int(stories.unsortedCount))")],
+                    options: [(Tab.stories, "Stories"), (Tab.moments, "Moments")],
                     selection: $tab
                 )
             }
@@ -106,8 +107,8 @@ struct JournalHomeView: View {
     private var canRead: Bool { library.access == .full || library.access == .limited }
 
     private var entries: [TimelineRow] {
-        // Journal shows only stories; photos in no story are in the Unsorted tab.
-        let entries = stories.timeline.filter { tab == .unsorted ? $0 is TimelineEntryMomentEntry : $0 is TimelineEntryStoryEntry }
+        // Stories shows only stories; photos in no story are in the Moments tab.
+        let entries = stories.timeline.filter { tab == .moments ? $0 is TimelineEntryMomentEntry : $0 is TimelineEntryStoryEntry }
         return entries.map(TimelineRow.init)
     }
 

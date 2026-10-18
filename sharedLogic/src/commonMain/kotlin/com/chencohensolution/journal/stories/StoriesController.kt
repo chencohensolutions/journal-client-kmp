@@ -347,8 +347,8 @@ data class StoriesState(
     val tags: List<TagSummary> = emptyList(),
     /** Every photo and video on the device, by id. */
     val itemsById: Map<String, MediaItem> = emptyMap(),
-    /** The Unsorted tab: the same photos as [moments], of the sources turned on, split by time, place and looks. */
-    val feed: UnsortedFeed = UnsortedFeed(),
+    /** The Moments tab: every photo and video of the sources turned on, split by time, place and looks. */
+    val feed: MomentsFeed = MomentsFeed(),
     /** The last save or delete that failed. */
     val error: String? = null,
 ) {
@@ -469,7 +469,7 @@ class StoriesController internal constructor(
     private val newId: () -> String,
     /** Finds photos that look alike for burst suggestions; without it they go by time only. */
     private val similarity: PhotoSimilarity? = null,
-    /** Finds where photos were taken, for the Unsorted tab; without it moments go by time only. */
+    /** Finds where photos were taken, for the Moments tab; without it moments go by time only. */
     private val places: PhotoPlaces? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val now: () -> String = { Clock.System.now().toString() },
@@ -550,8 +550,8 @@ class StoriesController internal constructor(
     fun createStoryFromDay(title: String, day: LocalDay): String? = createStory(title, unsortedIdsOf(day))
 
     /**
-     * "+ Story" on a row of the Unsorted tab ([FeedSection.key]), or "Save as story" on a trip ([FeedTrip.key]): a story
-     * of its photos, with each set of near-duplicates already a group. Returns the story's id.
+     * "+ Story" on a row of the Moments tab ([FeedSection.key]), or "Save as story" on a trip ([FeedTrip.key]): a story
+     * of all its photos (also those in other stories already), with each set of near-duplicates already a group. Returns the story's id.
      */
     fun createStoryFromFeed(title: String, key: String): String? {
         val feed = state.value.feed
@@ -997,7 +997,7 @@ class StoriesController internal constructor(
             )
             return Built(
                 state,
-                // Story photos first (their suggestions are asked for), then the Unsorted tab's, newest first.
+                // Story photos first (their suggestions are asked for), then the Moments tab's, newest first.
                 photosToCompare(state.stories) + state.feed.entries.flatMap { entry ->
                     (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
                 },
@@ -1037,7 +1037,7 @@ internal fun buildState(
     error: String?,
     grouping: TimelineGrouping,
     looks: PhotoLooks = PhotoLooks.NONE,
-    feedSources: Set<MediaSource> = UnsortedFeed.DEFAULT_SOURCES,
+    feedSources: Set<MediaSource> = MomentsFeed.DEFAULT_SOURCES,
     dismissedTrips: Set<String> = emptySet(),
     places: Places = Places.NONE,
 ): StoriesState {
@@ -1081,7 +1081,7 @@ internal fun buildState(
         notes = notes,
         tags = tags,
         itemsById = itemsById,
-        feed = buildFeed(unsorted.flatMap { it.items }, itemsById.values.toList(), feedSources, grouping, places, looks, dismissedTrips),
+        feed = buildFeed(library.days.flatMap { it.items }, feedSources, grouping, places, looks, dismissedTrips, sorted),
         error = error,
     )
 }

@@ -5,7 +5,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 ## Layout
 
 - **Top bar:** back and "Settings".
-- **Unsorted photos on the Journal:** how the Journal splits the photos that are in no story into rows.
+- **Rows in Moments:** how the Moments tab splits the photos into rows.
   - **By day** (default): one row for each calendar day.
   - **By breaks between photos:** a new row starts after a break without photos, so an evening that runs past
     midnight, or a day out that starts before dawn, stays in one row.
@@ -22,7 +22,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 - The similarity value is saved when the slider is let go; story and group suggestions update right away (no photo
   is read again). Near-duplicates by dHash are suggested at any value. Only the default is stored as "none", so a
   better default later reaches everyone who didn't choose one.
-- The grouping setting changes only the Journal's unsorted rows. All photos, tags and the story page stay by day, and so do
+- The grouping setting changes only the rows of the Moments tab. All photos, tags and the story page stay by day, and so do
   the "+ Add <day>" suggestions on a story page.
 
 ## Code

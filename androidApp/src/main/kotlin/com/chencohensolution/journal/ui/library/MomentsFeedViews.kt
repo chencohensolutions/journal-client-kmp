@@ -63,10 +63,10 @@ import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.FeedTrip
-import com.chencohensolution.journal.stories.UnsortedFeed
+import com.chencohensolution.journal.stories.MomentsFeed
 
-// The Unsorted tab: unsorted photos read like a story that arranged itself (see UnsortedFeed in the shared logic).
-// Photos are full width at their own shape; near-duplicates are one photo you swipe. See docs/screens/unsorted.md.
+// The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
+// Photos are full width at their own shape; near-duplicates are one photo you swipe. See docs/screens/moments.md.
 
 internal class FeedActions(
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
@@ -101,7 +101,7 @@ internal sealed interface FeedRow {
 }
 
 /** The feed as list items; worked out once per feed. */
-internal fun UnsortedFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
+internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
         is FeedEntry.Trip -> listOf(FeedRow.Trip(entry.trip))
         is FeedEntry.Section -> listOf(FeedRow.Heading(entry.section)) + entry.section.moments.flatMap { moment ->
@@ -137,7 +137,7 @@ internal fun LazyListScope.feedItems(rows: List<FeedRow>, actions: FeedActions, 
 
 /** The filter bar: each source with its count, on (filled, with a check) or off (outlined). */
 @Composable
-internal fun FeedSourceBar(feed: UnsortedFeed, onToggle: (MediaSource) -> Unit, modifier: Modifier = Modifier) {
+internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

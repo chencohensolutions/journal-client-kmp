@@ -64,6 +64,8 @@ class PhotoSafetyTest {
             "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
             // Read-only: un-hides GPS in what the app reads (see readOnlyExceptions).
             "android.permission.ACCESS_MEDIA_LOCATION",
+            // Not about photos: Android 17 needs it to reach the journal server on the local network.
+            "android.permission.ACCESS_LOCAL_NETWORK",
         )
         assertTrue(permissions.isNotEmpty() && allowed.containsAll(permissions), "unexpected permissions: ${permissions - allowed}")
     }

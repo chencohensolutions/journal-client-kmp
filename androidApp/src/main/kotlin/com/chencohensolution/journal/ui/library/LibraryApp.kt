@@ -53,7 +53,7 @@ private val PHOTO_PERMISSIONS = arrayOf(
     Manifest.permission.READ_MEDIA_IMAGES,
     Manifest.permission.READ_MEDIA_VIDEO,
     Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
-    // Read-only: without it MediaStore hides where photos were taken, which the Unsorted tab groups by.
+    // Read-only: without it MediaStore hides where photos were taken, which the Moments tab groups by.
     Manifest.permission.ACCESS_MEDIA_LOCATION,
 )
 
@@ -68,7 +68,7 @@ private sealed interface Route {
     data object Settings : Route
 
     /**
-     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Unsorted tab
+     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), or All photos with [filter].
      */
     data class Viewer(
@@ -357,7 +357,7 @@ private fun sharedAxis(forward: Boolean): ContentTransform {
 
 /**
  * The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its cover),
- * the row of the Unsorted tab (as shown there), or everything in the All photos filter.
+ * the row of the Moments tab (as shown there), or everything in the All photos filter.
  */
 private fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }

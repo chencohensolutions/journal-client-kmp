@@ -18,7 +18,7 @@ In the [viewer](viewer.md), open the details (ⓘ):
 Tags are compared ignoring case: typing "dog" when "Dog" exists reuses "Dog". Spaces at the ends are dropped and
 runs of spaces become one.
 
-**A tagged photo leaves Unsorted** on the Journal, just like a photo in a story. A note alone doesn't move it.
+**A tagged photo is no longer unsorted**, just like a photo in a story: neighboring days and iOS's Moments tab leave it out. It still shows in the Android Moments tab. A note alone doesn't change it.
 
 ## The Tags screen
 

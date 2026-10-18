@@ -40,7 +40,7 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.stories.FeedBlock
 
-// Videos in the Unsorted feed play by themselves, muted, while they are the one most in view. See docs/screens/unsorted.md.
+// Videos in the Moments feed play by themselves, muted, while they are the one most in view. See docs/screens/moments.md.
 
 /**
  * Which video of the feed plays, and its sound: one setting for the whole feed, so unmuting carries to the next. Both

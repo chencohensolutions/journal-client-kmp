@@ -14,7 +14,7 @@ import com.chencohensolution.journal.library.PhotoAccess
 @Preview(name = "light", device = PHONE, showBackground = true)
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun JournalTab() = Screen {
+fun StoriesTab() = Screen {
     JournalHomeScreen(PreviewData.library, PreviewData.stories, ServerHealth.OK, HomeActions())
 }
 
@@ -22,15 +22,15 @@ fun JournalTab() = Screen {
 @Preview(name = "light", device = PHONE, showBackground = true)
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun UnsortedTab() = Screen {
-    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.UNSORTED)
+fun MomentsTab() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
 }
 
 @PreviewTest
 @Preview(name = "whole scroll", device = "spec:width=390dp,height=4400dp,dpi=420", showBackground = true)
 @Composable
-fun UnsortedTabLong() = Screen {
-    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.UNSORTED)
+fun MomentsTabLong() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
 }
 
 @PreviewTest

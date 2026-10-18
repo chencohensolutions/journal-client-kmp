@@ -20,9 +20,9 @@
     <string name="library_all_photos">כל התמונות</string>
     <string name="library_today">היום</string>
     <string name="library_yesterday">אתמול</string>
-    <string name="library_tab_journal">יומן</string>
-    <string name="library_tab_unsorted">לא ממוינות %d</string>
-    <string name="library_no_stories">אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״לא ממוינות״.</string>
+    <string name="library_tab_stories">סיפורים</string>
+    <string name="library_tab_moments">רגעים</string>
+    <string name="library_no_stories">אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״רגעים״.</string>
     <plurals name="library_unsorted_count">
         <item quantity="one">תמונה אחת לא ממוינת</item>
         <item quantity="two">%d לא ממוינות</item>
@@ -255,7 +255,7 @@
     <string name="enroll_error_connection_test">התעודה הונפקה, אבל ההתחברות איתה נכשלה: %s</string>
     <!-- Settings; see docs/screens/settings.md -->
     <string name="library_settings">הגדרות</string>
-    <string name="settings_grouping_title">תמונות לא ממוינות ביומן</string>
+    <string name="settings_grouping_title">שורות בלשונית ״רגעים״</string>
     <string name="settings_grouping_by_day">לפי יום</string>
     <string name="settings_grouping_by_day_body">שורה אחת לכל יום בלוח השנה.</string>
     <string name="settings_grouping_by_gap">לפי הפסקות בין תמונות</string>
@@ -298,7 +298,7 @@
     <string name="library_size_original">מקורי</string>
     <string name="library_arrange_zoom">זום</string>
     <string name="library_arrange_zoom_value">%1$.1f×</string>
-    <!-- The Unsorted tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
+    <!-- The Moments tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
     <string name="feed_source_camera">מצלמה</string>
     <string name="feed_source_whatsapp">וואטסאפ</string>
     <string name="feed_source_screenshots">צילומי מסך</string>

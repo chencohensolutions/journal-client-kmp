@@ -72,7 +72,7 @@
           </div>
         </div>
       </button>
-      <p v-if="!SAMPLE.stories.length" class="empty">No stories yet. Make one from a day in Unsorted.</p>
+      <p v-if="!SAMPLE.stories.length" class="empty">No stories yet. Make one from a day in Moments.</p>
     </div>
 
     <div class="contents" v-if="tab === 'unsorted'">
@@ -109,8 +109,8 @@
   <div class="bottom-float">
     <button class="backup-chip"><span v-html="icon('offline')"></span>1,248 not backed up</button>
     <div class="segmented" role="tablist">
-      <button :class="{ on: tab === 'journal' }" @click="tab = 'journal'">Journal</button>
-      <button :class="{ on: tab === 'unsorted' }" @click="tab = 'unsorted'">Unsorted {{ moments.reduce((a, m) => a + m.items.length, 0) }}</button>
+      <button :class="{ on: tab === 'journal' }" @click="tab = 'journal'">Stories</button>
+      <button :class="{ on: tab === 'unsorted' }" @click="tab = 'unsorted'">Moments</button>
     </div>
   </div>
 

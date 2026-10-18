@@ -9,7 +9,7 @@ They follow the specs in [docs/screens/](..). When a spec changes, change its mo
 | File | Screen | Try |
 |---|---|---|
 | `photo-access.html` | [Photo access](../photo-access.md) | Allow access, Not now |
-| `journal-home.html` | [Journal](../journal-home.md) | Journal / Unsorted, ⋯, + Story |
+| `journal-home.html` | [Journal](../journal-home.md) | Stories / Moments, ⋯, + Story |
 | `story.html` | [Story](../story-page.md) | Group them, long-press to select, ⋯ › Arrange layout |
 | `group.html` | [Group](../group.md) | ⋯ › Rename, Edit |
 | `viewer.html` | [Viewer](../viewer.md) | ⓘ, + Tag, Add to story |

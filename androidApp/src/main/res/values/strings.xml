@@ -20,9 +20,9 @@
     <string name="library_all_photos">All photos</string>
     <string name="library_today">Today</string>
     <string name="library_yesterday">Yesterday</string>
-    <string name="library_tab_journal">Journal</string>
-    <string name="library_tab_unsorted">Unsorted %d</string>
-    <string name="library_no_stories">No stories yet. Make one from a day in Unsorted.</string>
+    <string name="library_tab_stories">Stories</string>
+    <string name="library_tab_moments">Moments</string>
+    <string name="library_no_stories">No stories yet. Make one from a day in Moments.</string>
     <plurals name="library_unsorted_count">
         <item quantity="one">%d unsorted</item>
         <item quantity="other">%d unsorted</item>
@@ -243,7 +243,7 @@
     <string name="enroll_error_connection_test">The certificate was issued, but signing in with it failed: %s</string>
     <!-- Settings; see docs/screens/settings.md -->
     <string name="library_settings">Settings</string>
-    <string name="settings_grouping_title">Unsorted photos on the Journal</string>
+    <string name="settings_grouping_title">Rows in Moments</string>
     <string name="settings_grouping_by_day">By day</string>
     <string name="settings_grouping_by_day_body">One row for each calendar day.</string>
     <string name="settings_grouping_by_gap">By breaks between photos</string>
@@ -286,7 +286,7 @@
     <string name="library_size_original">Original</string>
     <string name="library_arrange_zoom">Zoom</string>
     <string name="library_arrange_zoom_value">%1$.1f×</string>
-    <!-- The Unsorted tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
+    <!-- The Moments tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
     <string name="feed_source_camera">Camera</string>
     <string name="feed_source_whatsapp">WhatsApp</string>
     <string name="feed_source_screenshots">Screenshots</string>

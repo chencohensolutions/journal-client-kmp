@@ -1,10 +1,9 @@
 # Journal (home)
 
-The main screen, with two tabs. **Journal** is the timeline of **stories** (a trip, a birthday, a person, anything
-worth naming), newest first; a story sits at its newest photo's day. **Unsorted** holds the photos that have no place
-yet, as **unsorted moments**: one row per day, or with the [grouping setting](settings.md) one row per run of photos
-without a long break. A photo has a place once it is in a story **or has a tag**. Unsorted photos never show on the
-Journal tab.
+The main screen, with two tabs (renamed on Oct 19, 2026 from Journal / Unsorted). **Stories** is the timeline of
+**stories** (a trip, a birthday, a person, anything worth naming), newest first; a story sits at its newest photo's
+day. **Moments** holds **every photo**, in rows: one row per day, or with the [grouping setting](settings.md) one row
+per run of photos without a long break. Photos never show on the Stories tab outside their story card.
 
 ## Layout
 
@@ -24,9 +23,10 @@ Photos fill the screen on the page background (light or dark with the system); t
   them a mosaic of the story's **main photos**: its first six tiles in the story's order, a group as its cover. One
   photo is full width, two sit side by side, three to five are a large one with two beside it, and six add a row of
   three under them. The last photo shows "+N" for the rest of the story. Tapping opens the [story](story-page.md).
-- **Unsorted (Android):** a feed that groups itself, full-width photos split by time, place, source and looks; see
-  [unsorted.md](unsorted.md). iOS still shows the unsorted moments below.
-- **Unsorted moments (iOS).** Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
+- **Moments (Android):** a feed of every photo that groups itself, full-width photos split by time, place, source and
+  looks; see [moments.md](moments.md). iOS still shows the older unsorted moments below.
+- **Unsorted moments (iOS, Moments tab).** Only the photos in no story and without tags (a photo has a place once it
+  is in a story **or has a tag**). Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
   scroll sideways. Tapping a photo opens the [viewer](viewer.md) on that moment's unsorted photos. Headings:
   - By day: "Today", "Yesterday", "Tue, Oct 7", with the year for other years.
   - By breaks, within one day: the day and the times, "Today · 9:14 – 21:40" (one time for a single photo).
@@ -35,11 +35,10 @@ Photos fill the screen on the page background (light or dark with the system); t
   from the story page.
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
-  - **Journal / Unsorted N** switch: Journal shows only story cards, Unsorted only the unsorted moments; N counts
-    the photos in no story.
+  - **Stories / Moments** switch: Stories shows only story cards, Moments the photos. No counts.
 
 Empty, loading and error states show a single line of text in place of the days. With photos but no stories yet,
-the Journal tab says "No stories yet. Make one from a day in Unsorted."
+the Stories tab says "No stories yet. Make one from a day in Moments."
 
 ## Behavior
 

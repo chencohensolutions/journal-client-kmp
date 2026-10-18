@@ -1596,6 +1596,16 @@
         }
       }
     },
+    "Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רגעים"
+          }
+        }
+      }
+    },
     "More" : {
       "localizations" : {
         "he" : {
@@ -1676,12 +1686,12 @@
         }
       }
     },
-    "No stories yet. Make one from a day in Unsorted." : {
+    "No stories yet. Make one from a day in Moments." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״לא ממוינות״."
+            "value" : "אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״רגעים״."
           }
         }
       }
@@ -2042,6 +2052,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "איפוס ל־%lld%%"
+          }
+        }
+      }
+    },
+    "Rows in Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורות בלשונית ״רגעים״"
           }
         }
       }
@@ -2560,26 +2580,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פירוק הקבוצה"
-          }
-        }
-      }
-    },
-    "Unsorted %lld" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא ממוינות %lld"
-          }
-        }
-      }
-    },
-    "Unsorted photos on the Journal" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "תמונות לא ממוינות ביומן"
           }
         }
       }

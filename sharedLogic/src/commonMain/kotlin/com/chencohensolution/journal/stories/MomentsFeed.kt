@@ -11,7 +11,7 @@ import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoLooks
 
 /*
- * Unsorted photos read like a story that arranged itself: each row of the journal (a day, or a run of photos; see
+ * The Moments tab: every photo reads like a story that arranged itself: each row of the journal (a day, or a run of photos; see
  * the grouping setting) split into moments by time, place and source, with near-duplicates shown as one photo you
  * swipe. Nothing here is saved: it is worked out again from the library, and only "+ Story" makes a story of it.
  */
@@ -75,10 +75,10 @@ sealed interface FeedEntry {
     data class Trip(val trip: FeedTrip) : FeedEntry
 }
 
-/** The Unsorted tab: the unsorted photos of the [shown] sources, newest first. */
-data class UnsortedFeed(
+/** The Moments tab: every photo and video of the [shown] sources, newest first. */
+data class MomentsFeed(
     val entries: List<FeedEntry> = emptyList(),
-    /** Unsorted photos per source, shown or not. */
+    /** Photos per source, shown or not. */
     val counts: Map<MediaSource, Int> = emptyMap(),
     val shown: Set<MediaSource> = DEFAULT_SOURCES,
 ) {
@@ -126,21 +126,22 @@ internal const val TRIP_MIN_DAYS = 2
 internal const val HOME_MIN_PHOTOS = 20
 
 /**
- * The feed of [unsorted] (newest first): only the [shown] sources, split into rows like the journal ([grouping]),
+ * The feed of [items] (the whole library, newest first): only the [shown] sources, split into rows ([grouping]),
  * each into moments ([splitMoments]) of blocks ([blocksOf]). Trips are found among the rows using every located
- * photo of [library] to tell where home is; [dismissedTrips] are left out.
+ * photo to tell where home is; [dismissedTrips], and trips whose photos are all [sorted] already (in a story or
+ * tagged, as when the trip was saved), are left out.
  */
 internal fun buildFeed(
-    unsorted: List<MediaItem>,
-    library: List<MediaItem>,
+    items: List<MediaItem>,
     shown: Set<MediaSource>,
     grouping: TimelineGrouping,
     places: Places = Places.NONE,
     looks: PhotoLooks = PhotoLooks.NONE,
     dismissedTrips: Set<String> = emptySet(),
-): UnsortedFeed {
-    val counts = unsorted.groupingBy { it.source }.eachCount()
-    val sections = groupMoments(unsorted.filter { it.source in shown }, grouping).map { span ->
+    sorted: Set<String> = emptySet(),
+): MomentsFeed {
+    val counts = items.groupingBy { it.source }.eachCount()
+    val sections = groupMoments(items.filter { it.source in shown }, grouping).map { span ->
         val moments = span.items.groupBy { it.source }
             .flatMap { (source, items) -> splitMoments(source, items.reversed(), places) }
             .map { items -> FeedMoment(items.first().source, blocksOf(items, looks), mostCommon(items) { places.nameOf(it)?.label }) }
@@ -151,10 +152,11 @@ internal fun buildFeed(
         FeedSection(span, moments, towns.distinct())
     }
     // A trip comes just above the newest row of its last day.
-    val trips = findTrips(sections, home(library, places), places).filter { it.key !in dismissedTrips }
+    val trips = findTrips(sections, home(items, places), places)
+        .filter { trip -> trip.key !in dismissedTrips && trip.items.any { it.id !in sorted } }
     val tripAbove = trips.associateBy { trip -> sections.indexOfFirst { section -> section.items.any { it.day == trip.lastDay } } }
     val entries = sections.flatMapIndexed { i, section -> listOfNotNull(tripAbove[i]?.let(FeedEntry::Trip), FeedEntry.Section(section)) }
-    return UnsortedFeed(entries, counts, shown)
+    return MomentsFeed(entries, counts, shown)
 }
 
 private fun Places.nameOf(item: MediaItem) = location(item)?.let(::name)
@@ -224,7 +226,7 @@ internal fun home(library: List<MediaItem>, places: Places): GeoPoint? {
 
 /**
  * Runs of [TRIP_MIN_DAYS] or more days in a row whose located camera photos were mostly taken [TRIP_AWAY_METERS]
- * from [home]. Days without unsorted photos break a run; days without located photos don't.
+ * from [home]. Days without photos of the shown sources break a run; days without located photos don't.
  */
 internal fun findTrips(sections: List<FeedSection>, home: GeoPoint?, places: Places): List<FeedTrip> {
     if (home == null) return emptyList()

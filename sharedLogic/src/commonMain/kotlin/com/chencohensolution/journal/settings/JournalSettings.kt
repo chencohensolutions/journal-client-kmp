@@ -1,7 +1,7 @@
 package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.library.MediaSource
-import com.chencohensolution.journal.stories.UnsortedFeed
+import com.chencohensolution.journal.stories.MomentsFeed
 
 /** Minimal persistent string storage: SharedPreferences on Android, NSUserDefaults on iOS. */
 internal interface KeyValueStore {
@@ -29,7 +29,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_LAST_STORY_ID_MILLIS)?.toLongOrNull()
         set(value) = store.putString(KEY_LAST_STORY_ID_MILLIS, value?.toString())
 
-    /** How the journal splits unsorted photos into rows; see [TimelineGrouping]. */
+    /** How the Moments tab splits photos into rows; see [TimelineGrouping]. */
     var grouping: TimelineGrouping
         get() = TimelineGrouping(
             mode = store.getString(KEY_GROUPING_MODE)?.let { name -> GroupingMode.entries.firstOrNull { it.name == name } }
@@ -47,13 +47,13 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SIMILARITY_PERCENT)?.toIntOrNull()
         set(value) = store.putString(KEY_SIMILARITY_PERCENT, value?.toString())
 
-    /** The sources the Unsorted tab shows (its filter bar). */
+    /** The sources the Moments tab shows (its filter bar). */
     var feedSources: Set<MediaSource>
         get() = store.getString(KEY_FEED_SOURCES)
             ?.split(",")
             ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
             ?.toSet()
-            ?: UnsortedFeed.DEFAULT_SOURCES
+            ?: MomentsFeed.DEFAULT_SOURCES
         set(value) = store.putString(KEY_FEED_SOURCES, value.joinToString(",") { it.name })
 
     /** Trips the user answered "Not now" to, by key ("trip-2026-10-04"). */

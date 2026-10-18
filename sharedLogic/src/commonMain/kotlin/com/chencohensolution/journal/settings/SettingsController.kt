@@ -2,7 +2,7 @@ package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.MediaSource
-import com.chencohensolution.journal.stories.UnsortedFeed
+import com.chencohensolution.journal.stories.MomentsFeed
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,7 @@ enum class GroupingMode {
     BY_GAP,
 }
 
-/** How the journal splits unsorted photos into rows (see `Moment`). */
+/** How the Moments tab splits photos into rows (see `Moment`). */
 data class TimelineGrouping(
     val mode: GroupingMode = GroupingMode.BY_DAY,
     /** Used by [GroupingMode.BY_GAP]; kept while [GroupingMode.BY_DAY] is chosen, so switching back keeps it. */
@@ -56,11 +56,11 @@ data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPe
     }
 }
 
-/** The user's choices on the Settings screen, and the Unsorted tab's filter bar and trip answers. */
+/** The user's choices on the Settings screen, and the Moments tab's filter bar and trip answers. */
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
     val similarity: SimilarityThreshold = SimilarityThreshold(),
-    val feedSources: Set<MediaSource> = UnsortedFeed.DEFAULT_SOURCES,
+    val feedSources: Set<MediaSource> = MomentsFeed.DEFAULT_SOURCES,
     val dismissedTrips: Set<String> = emptySet(),
 )
 
@@ -101,7 +101,7 @@ class SettingsController internal constructor(
         _state.update { it.copy(similarity = similarity(percent)) }
     }
 
-    /** Turns a source on or off in the Unsorted tab's filter bar. */
+    /** Turns a source on or off in the Moments tab's filter bar. */
     fun toggleFeedSource(source: MediaSource) {
         val current = _state.value.feedSources
         val sources = if (source in current) current - source else current + source

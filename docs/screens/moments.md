@@ -1,13 +1,13 @@
-# Unsorted (feed)
+# Moments (feed)
 
-The **Unsorted** tab of the [Journal](journal-home.md): the photos in no story and without tags, read like a story
-that arranged itself. Nothing is saved for it. The feed is worked out again from the library each time, and only
+The **Moments** tab of the [Journal](journal-home.md) (called Unsorted until Oct 19, 2026): **every photo and video**,
+also those already in a story or tagged, read like a story that arranged itself. Nothing is saved for it. The feed is worked out again from the library each time, and only
 **+ Story** or **Save as story** turns part of it into a real story. Android only; iOS still shows the earlier
 rows of small photos.
 
 ## Layout
 
-- **Filter bar** under the title: one toggle per source with its unsorted count: **Camera**, **WhatsApp**,
+- **Filter bar** under the title: one toggle per source with its count of photos: **Camera**, **WhatsApp**,
   **Screenshots**, **Other** (downloads, other apps). On means filled, with a ✓. Any mix can be on; Camera and
   WhatsApp are on at first. A source with no photos is hidden unless it is on. The choice is kept
   (`feed_sources` in settings).
@@ -36,7 +36,7 @@ feed scrolls to that photo, and a near-duplicate set turns to it.
 
 ## How it is grouped
 
-Shared logic in [UnsortedFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/UnsortedFeed.kt)
+Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/MomentsFeed.kt)
 (`buildFeed`, tested in `FeedTest`):
 
 - **Source** comes from the folder: `DCIM/` is Camera; a path containing "screenshot" or "screen record" is
@@ -53,7 +53,9 @@ Shared logic in [UnsortedFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/ch
 - **Trips:** home is the 10 km square where most located photos were taken (with 20 or more). Two or more days in a
   row with most located camera photos more than 50 km from home are a trip. A day without located photos in the
   middle doesn't break it.
-- **+ Story / Save as story** make a story of those photos, with each near-duplicate set already a group.
+- **+ Story / Save as story** make a story of all those photos (a photo can be in many stories), with each
+  near-duplicate set already a group.
+- A trip is offered only while some of its photos are in no story and untagged, so a saved trip isn't offered again.
 
 ## Where locations come from
 
@@ -65,6 +67,8 @@ cache can be deleted at any time.
   (`MediaStore.setRequireOriginal`). Both are read-only. The owner allowed them on Oct 18, 2026, and
   `PhotoSafetyTest` permits them only in the files that need them. The permission is asked for with photo access,
   and once on launch for users who allowed photos before. Place names come from `Geocoder` (needs a network
-  connection; names it can't get are asked again next launch).
-- **iOS:** PhotoKit gives each photo's location with the library; names come from `CLGeocoder`, about one a second.
+  connection; names it can't get are asked again next launch). Photos are read from EXIF, videos from their metadata
+  (`MediaMetadataRetriever`, the ISO 6709 location cameras write); until Oct 19, 2026 videos weren't read, so they
+  took the place of the photos around them.
+- **iOS:** PhotoKit gives each photo's and video's location with the library; names come from `CLGeocoder`, about one a second.
 - Names are looked up once per ~500 m square.

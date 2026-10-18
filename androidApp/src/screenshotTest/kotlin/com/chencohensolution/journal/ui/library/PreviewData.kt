@@ -21,7 +21,7 @@ import com.chencohensolution.journal.stories.StoryGroup
 import com.chencohensolution.journal.stories.StoryMember
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.TimelineEntry
-import com.chencohensolution.journal.stories.UnsortedFeed
+import com.chencohensolution.journal.stories.MomentsFeed
 import java.time.Instant
 import java.time.ZoneId
 
@@ -156,8 +156,8 @@ internal object PreviewData {
     /** A first launch: access granted, but no stories yet. */
     val noStories = stories.copy(stories = emptyList(), timeline = stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>())
 
-    /** The Unsorted tab as a feed: rows split into moments by time, place and source, near-duplicates as one photo. */
-    val feed: UnsortedFeed = run {
+    /** The Moments tab as a feed: rows split into moments by time, place and source, near-duplicates as one photo. */
+    val feed: MomentsFeed = run {
         fun shot(daysAgo: Int, hour: Int, ratio: Float, source: MediaSource = MediaSource.CAMERA, video: Int? = null) =
             photo(daysAgo, hour = hour, ratio = ratio, videoSeconds = video).copy(source = source)
         fun similar(daysAgo: Int, hour: Int, ratio: Float, count: Int) = FeedBlock.Similar(List(count) { shot(daysAgo, hour, ratio) })
@@ -183,13 +183,13 @@ internal object PreviewData {
         )
         val tripDay = section(listOf(FeedMoment(MediaSource.CAMERA, listOf(single(tripCover), similar(14, 12, 3f / 4f, 3)), "Bahá’í Gardens")), "Haifa")
         val trip = FeedTrip("trip", "Haifa", LocalDay.fromEpochDay(tripCover.day.toEpochDay() - 2), tripCover.day, tripDay.items)
-        UnsortedFeed(
+        MomentsFeed(
             entries = listOf(FeedEntry.Section(today), FeedEntry.Section(yesterday), FeedEntry.Trip(trip), FeedEntry.Section(tripDay)),
             counts = mapOf(MediaSource.CAMERA to 168, MediaSource.WHATSAPP to 19, MediaSource.SCREENSHOTS to 23, MediaSource.OTHER to 4),
             shown = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS),
         )
     }
 
-    /** The journal with the feed in its Unsorted tab. */
+    /** The journal with the feed in its Moments tab. */
     val feedStories: StoriesState = stories.copy(feed = feed)
 }
