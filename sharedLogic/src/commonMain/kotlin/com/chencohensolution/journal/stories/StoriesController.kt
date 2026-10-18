@@ -9,6 +9,9 @@ import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.network.describe
+import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.SettingsController
+import com.chencohensolution.journal.settings.TimelineGrouping
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -178,19 +181,50 @@ internal fun findBursts(items: List<MediaItem>, dismissed: Set<String>): List<Bu
     return runs.filter { it.size >= BURST_MIN_PHOTOS && it.first().id !in dismissed }.map(::BurstSuggestion)
 }
 
+/**
+ * Photos and videos in no story, shown as one row of the journal, newest first: one day's photos, or with
+ * [GroupingMode.BY_GAP] a run of photos without a long gap between them, which can cross midnight.
+ */
+data class Moment(val items: List<MediaItem>, val mode: GroupingMode) {
+    /** Its oldest item's id: stays the same when newer photos join it. */
+    val key: String get() = items.last().id
+    val newestDay: LocalDay get() = items.first().day
+    val oldestDay: LocalDay get() = items.last().day
+    val startMillis: Long get() = items.last().takenAtMillis
+    val endMillis: Long get() = items.first().takenAtMillis
+}
+
+/**
+ * Splits [items] (newest first) into moments: by day, or wherever more than [TimelineGrouping.gapHours] pass
+ * without a photo.
+ */
+internal fun groupMoments(items: List<MediaItem>, grouping: TimelineGrouping): List<Moment> = when (grouping.mode) {
+    GroupingMode.BY_DAY -> items.groupBy { it.day }.values.map { Moment(it, grouping.mode) }
+    GroupingMode.BY_GAP -> {
+        val runs = mutableListOf<MutableList<MediaItem>>()
+        items.forEach { item ->
+            val newer = runs.lastOrNull()?.last()
+            if (newer != null && newer.takenAtMillis - item.takenAtMillis <= grouping.gapMillis) runs.last() += item else runs += mutableListOf(item)
+        }
+        runs.map { Moment(it, grouping.mode) }
+    }
+}
+
 /** One row of the journal timeline. */
 sealed interface TimelineEntry {
     data class StoryEntry(val story: StoryView) : TimelineEntry
-    data class DayEntry(val day: DayGroup) : TimelineEntry
+    data class MomentEntry(val moment: Moment) : TimelineEntry
 }
 
 data class StoriesState(
     /** Newest first, by [StoryView.timelineDay]. */
     val stories: List<StoryView> = emptyList(),
-    /** Stories and unsorted days, newest first; a story sits at its newest photo's day. */
+    /** Stories and unsorted moments, newest first; a story sits at its newest photo's day. */
     val timeline: List<TimelineEntry> = emptyList(),
     /** Photos and videos in no story and without tags, by day, newest first. */
     val unsortedDays: List<DayGroup> = emptyList(),
+    /** The same photos as [unsortedDays], split as the grouping setting says; what the journal shows. */
+    val moments: List<Moment> = emptyList(),
     /** Captions and tags, by device id. */
     val notes: Map<String, PhotoNote> = emptyMap(),
     /** Every tag in use, most recently used first. */
@@ -203,6 +237,8 @@ data class StoriesState(
     val unsortedCount: Int = unsortedDays.sumOf { it.items.size }
 
     fun story(id: String): StoryView? = stories.firstOrNull { it.id == id }
+
+    fun moment(key: String): Moment? = moments.firstOrNull { it.key == key }
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
@@ -303,6 +339,8 @@ class StoriesController internal constructor(
     private val store: StoryStore,
     private val noteStore: PhotoNoteStore,
     library: LibraryController,
+    /** The grouping setting decides how unsorted photos are split into moments. */
+    settings: SettingsController,
     /** New story ids; see [StoryIds]. */
     private val newId: () -> String,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
@@ -310,16 +348,18 @@ class StoriesController internal constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
+    private val settingsState = settings.state
     private var stories = loadStories()
     private var notes = loadNotes()
     private var error: String? = null
 
     // Rebuilt right away on every change here, so a screen opened just after `createStory` already sees the story.
-    private val _state = MutableStateFlow(buildState(libraryState.value, stories, notes, error))
+    private val _state = MutableStateFlow(buildState(libraryState.value, stories, notes, error, settingsState.value.grouping))
     val state: StateFlow<StoriesState> = _state.asStateFlow()
 
     init {
         scope.launch { libraryState.collect { publish() } }
+        scope.launch { settingsState.collect { publish() } }
     }
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -342,6 +382,10 @@ class StoriesController internal constructor(
 
     /** Creates a story from the unsorted photos and videos of [day]. */
     fun createStoryFromDay(title: String, day: LocalDay): String? = createStory(title, unsortedIdsOf(day))
+
+    /** Creates a story from a moment of the journal ([Moment.key]). */
+    fun createStoryFromMoment(title: String, key: String): String? =
+        createStory(title, state.value.moment(key)?.items?.map { it.id }.orEmpty())
 
     fun addItems(storyId: String, itemIds: List<String>) = change(storyId) { story ->
         val known = story.members.map { it.deviceId }.toSet()
@@ -427,6 +471,7 @@ class StoriesController internal constructor(
 
     /** Dissolves the group; its photos stay in the story and its text moves to the story's opening text. */
     fun ungroup(storyId: String, groupId: String) = changeGroup(storyId, groupId) { it.copy(memberIds = emptyList()) }
+
 
     /** Callback-style observation for Swift; Android collects [state] directly. */
     fun observe(onChange: (StoriesState) -> Unit): ObservationHandle {
@@ -543,7 +588,7 @@ class StoriesController internal constructor(
     }
 
     private fun publish() {
-        _state.value = buildState(libraryState.value, stories, notes, error)
+        _state.value = buildState(libraryState.value, stories, notes, error, settingsState.value.grouping)
     }
 
     private fun itemsById(ids: List<String>): List<MediaItem> {
@@ -557,7 +602,13 @@ class StoriesController internal constructor(
 
 private fun MediaItem.toMember() = StoryMember(deviceId = id, fileName = fileName, takenAtMillis = takenAtMillis)
 
-internal fun buildState(library: LibraryState, stories: List<Story>, notes: Map<String, PhotoNote>, error: String?): StoriesState {
+internal fun buildState(
+    library: LibraryState,
+    stories: List<Story>,
+    notes: Map<String, PhotoNote>,
+    error: String?,
+    grouping: TimelineGrouping,
+): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     val views = stories
         .map { story -> StoryView(story, story.members.mapNotNull { itemsById[it.deviceId] }.sortedBy { it.takenAtMillis }) }
@@ -568,8 +619,10 @@ internal fun buildState(library: LibraryState, stories: List<Story>, notes: Map<
     val unsorted = library.days.mapNotNull { day ->
         day.items.filter { it.id !in sorted }.takeIf { it.isNotEmpty() }?.let { DayGroup(day.day, it) }
     }
-    // Newest first; on the same day the story comes before the unsorted photos.
-    val timeline = (views.map { it.timelineDay to TimelineEntry.StoryEntry(it) } + unsorted.map { it.day to TimelineEntry.DayEntry(it) })
+    val moments = groupMoments(unsorted.flatMap { it.items }, grouping)
+    // Newest first; on the same day the story comes before the unsorted photos. The sort is stable, so moments of
+    // one day keep their order.
+    val timeline = (views.map { it.timelineDay to TimelineEntry.StoryEntry(it) } + moments.map { it.newestDay to TimelineEntry.MomentEntry(it) })
         .sortedWith(compareByDescending<Pair<LocalDay, TimelineEntry>> { it.first }.thenBy { if (it.second is TimelineEntry.StoryEntry) 0 else 1 })
         .map { it.second }
     val tags = notes.values
@@ -589,6 +642,7 @@ internal fun buildState(library: LibraryState, stories: List<Story>, notes: Map<
         stories = views,
         timeline = timeline,
         unsortedDays = unsorted,
+        moments = moments,
         notes = notes,
         tags = tags,
         itemsById = itemsById,

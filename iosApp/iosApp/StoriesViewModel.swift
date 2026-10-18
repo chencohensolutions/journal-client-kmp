@@ -8,8 +8,8 @@ final class StoriesViewModel: ObservableObject {
     private let controller: StoriesController
     private var observation: ObservationHandle?
 
-    init(library: LibraryViewModel) {
-        controller = IosJournal.shared.createStoriesController(library: library.controller)
+    init(library: LibraryViewModel, settings: SettingsViewModel) {
+        controller = IosJournal.shared.createStoriesController(library: library.controller, settings: settings.controller)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in
@@ -24,7 +24,7 @@ final class StoriesViewModel: ObservableObject {
 
     /// Returns the new story's id, or nil when the title is blank.
     @discardableResult
-    func createStory(title: String, day: LocalDay) -> String? { controller.createStoryFromDay(title: title, day: day) }
+    func createStory(title: String, momentKey: String) -> String? { controller.createStoryFromMoment(title: title, key: momentKey) }
 
     @discardableResult
     func createStory(title: String, itemIds: [String]) -> String? { controller.createStory(title: title, itemIds: itemIds) }

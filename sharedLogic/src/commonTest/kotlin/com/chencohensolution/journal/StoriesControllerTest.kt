@@ -4,6 +4,9 @@ import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.TimelineEntry
+import com.chencohensolution.journal.stories.groupMoments
+import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -11,6 +14,7 @@ import com.chencohensolution.journal.library.MediaLibrary
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.KeyValueStore
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -71,30 +75,35 @@ class StoriesControllerTest {
         photo("e", OCT_16, 20),
     )
 
-    private class Setup(val stories: StoriesController, val fileSystem: FakeFileSystem)
+    private class Setup(val stories: StoriesController, val fileSystem: FakeFileSystem, val settings: SettingsController)
 
-    private fun TestScope.setup(fileSystem: FakeFileSystem = FakeFileSystem()): Setup {
+    private fun TestScope.setup(
+        fileSystem: FakeFileSystem = FakeFileSystem(),
+        settingsStore: KeyValueStore = StoriesTestStore(),
+    ): Setup {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val library = LibraryController(StoriesTestLibrary(items), JournalSettings(StoriesTestStore()), dispatcher)
         library.refresh()
         var id = 0
+        val settings = SettingsController(JournalSettings(settingsStore), dispatcher)
         val stories = StoriesController(
             store = FileStoryStore(fileSystem, ROOT),
             noteStore = FilePhotoNoteStore(fileSystem, ROOT),
             library = library,
+            settings = settings,
             dispatcher = dispatcher,
             now = { "2026-10-17T12:00:00Z" },
             newId = { "story-${++id}" },
         )
         advanceUntilIdle()
-        return Setup(stories, fileSystem)
+        return Setup(stories, fileSystem, settings)
     }
 
     @Test
     fun everythingStartsUnsorted() = runTest {
         val state = setup().stories.currentState
         assertEquals(5, state.unsortedCount)
-        assertEquals(listOf(OCT_16, OCT_9, OCT_8, OCT_7), state.timeline.map { (it as TimelineEntry.DayEntry).day.day })
+        assertEquals(listOf(OCT_16, OCT_9, OCT_8, OCT_7), state.timeline.map { (it as TimelineEntry.MomentEntry).moment.newestDay })
     }
 
     @Test
@@ -112,7 +121,7 @@ class StoriesControllerTest {
         // Newest first: Oct 16, Oct 9, the story (Oct 8), Oct 7.
         val entries = state.timeline
         assertIs<TimelineEntry.StoryEntry>(entries[2])
-        assertEquals(OCT_7, (entries[3] as TimelineEntry.DayEntry).day.day)
+        assertEquals(OCT_7, (entries[3] as TimelineEntry.MomentEntry).moment.newestDay)
     }
 
     @Test
@@ -132,6 +141,51 @@ class StoriesControllerTest {
         assertEquals(3, trip.dayCount)
         assertEquals(listOf("a", "b", "c", "d"), trip.items.map { it.id })
         assertEquals(listOf(OCT_7, OCT_8, OCT_9), trip.tileDays.map { it.day })
+    }
+
+    @Test
+    fun byGapAMomentRunsUntilALongPause() = runTest {
+        val setup = setup()
+        setup.settings.setGroupingMode(GroupingMode.BY_GAP)
+        advanceUntilIdle()
+
+        // Gaps: a 9:00 → b 10:00 next day is 25 h; b → c 2 h; c 12:00 → d 8:00 next day is 20 h; d → e a week.
+        val moments = setup.stories.currentState.moments
+        assertEquals(listOf(listOf("e"), listOf("d"), listOf("c", "b"), listOf("a")), moments.map { m -> m.items.map { it.id } })
+
+        setup.settings.setGapHours(24)
+        advanceUntilIdle()
+        // c → d (20 h) now joins: one moment from Oct 8 to Oct 9.
+        val trip = setup.stories.currentState.moments[1]
+        assertEquals(listOf("d", "c", "b"), trip.items.map { it.id })
+        assertEquals(OCT_8, trip.oldestDay)
+        assertEquals(OCT_9, trip.newestDay)
+
+        val id = assertNotNull(setup.stories.createStoryFromMoment("Weekend", trip.key))
+        advanceUntilIdle()
+        assertEquals(listOf("b", "c", "d"), setup.stories.currentState.story(id)?.items?.map { it.id })
+        assertEquals(2, setup.stories.currentState.unsortedCount)
+    }
+
+    @Test
+    fun aMomentCanCrossMidnight() = runTest {
+        val late = MediaItem("late", MediaType.IMAGE, OCT_8.toEpochDay() * 86_400_000 + 23 * 3_600_000L, OCT_8, null, 10, 10, 100, "late.jpg")
+        val early = MediaItem("early", MediaType.IMAGE, OCT_9.toEpochDay() * 86_400_000 + 3_600_000L, OCT_9, null, 10, 10, 100, "early.jpg")
+        val moments = groupMoments(listOf(early, late), TimelineGrouping(GroupingMode.BY_GAP, 12))
+        assertEquals(listOf(listOf("early", "late")), moments.map { m -> m.items.map { it.id } })
+        assertEquals(2, groupMoments(listOf(early, late), TimelineGrouping()).size)
+    }
+
+    @Test
+    fun theGroupingSettingIsKept() = runTest {
+        val store = StoriesTestStore()
+        val first = setup(settingsStore = store).settings
+        assertEquals(TimelineGrouping(GroupingMode.BY_DAY, 12), first.currentState.grouping)
+        first.setGroupingMode(GroupingMode.BY_GAP)
+        first.setGapHours(6)
+        first.setGapHours(0)
+
+        assertEquals(TimelineGrouping(GroupingMode.BY_GAP, 6), setup(settingsStore = store).settings.currentState.grouping)
     }
 
     @Test

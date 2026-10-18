@@ -1,16 +1,17 @@
 # Journal (home)
 
 The main screen: the journal as a timeline, newest first. It holds **stories** (a trip, a birthday, a person, anything
-worth naming), with the photos that have no place yet shown between them as **unsorted days**. A photo has a
-place once it is in a story **or has a tag**. A story sits at its newest photo's day; on the same day the story comes
-before the unsorted photos.
+worth naming), with the photos that have no place yet shown between them as **unsorted moments**: one row per day,
+or with the [grouping setting](settings.md) one row per run of photos without a long break. A photo has a place once
+it is in a story **or has a tag**. A story sits at its newest photo's day; on the same day the story comes before the
+unsorted photos.
 
 ## Layout
 
 Photos fill the screen on the page background (light or dark with the system); the controls float on top.
 
 - **Top bar:** "Journal", the **Offline** pill (only when the server can't be reached), a **Tags** button
-  ([tags.md](tags.md)) and a **⋯** menu with **All photos**.
+  ([tags.md](tags.md)) and a **⋯** menu with **All photos** and **Settings** ([settings.md](settings.md)).
 - **Cards above the timeline**, when they apply:
   - **This device isn't registered with the server · Register again**: the server answered 401, or there is no
     identity. Opens the enrollment wizard.
@@ -22,10 +23,12 @@ Photos fill the screen on the page background (light or dark with the system); t
   smaller ones around it), the first day as a calendar block, the title, and "Oct 8 – 16 · 9 days · 142 photos".
   "N not backed up" sits in the corner while any of its photos isn't on the server. Tapping opens the
   [story](story-page.md).
-- **Unsorted days.** Each has a heading ("Today", "Yesterday", "Tue, Oct 7", with the year for other years),
-  "N unsorted", a **+ Story** button, and a row of 76 pt photos you can scroll sideways. Tapping a photo opens the
-  [viewer](viewer.md) on that day's unsorted photos.
-- **+ Story** asks for a title, creates a story from that day's unsorted photos and opens it. More days are added
+- **Unsorted moments.** Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
+  scroll sideways. Tapping a photo opens the [viewer](viewer.md) on that moment's unsorted photos. Headings:
+  - By day: "Today", "Yesterday", "Tue, Oct 7", with the year for other years.
+  - By breaks, within one day: the day and the times, "Today · 9:14 – 21:40" (one time for a single photo).
+  - By breaks, across days: "Sat, Oct 4 – Mon, Oct 6".
+- **+ Story** asks for a title, creates a story from that moment's unsorted photos and opens it. More days are added
   from the story page.
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
@@ -37,7 +40,9 @@ Empty, loading and error states show a single line of text in place of the days.
 
 - Connects to the server when it opens; the result only shows as the Offline pill or the Register again card.
 - Re-reads the library whenever the app comes to the foreground, so new photos and permission changes show up.
-- Day headings use the device's locale and time zone.
+- Headings use the device's locale and time zone.
+- Moments are keyed by their oldest photo's id, so a moment keeps its place (and an open "+ Story" dialog its
+  target) when newer photos join it.
 
 ## Not built yet
 
@@ -46,7 +51,6 @@ These are in the design but wait for features that don't exist:
 - **Sub-stories.** They will only show inside a story, with an option in Settings later.
 - **Selecting several photos** to put them in a story at once.
 - **Month scrubber** on the right edge for fast scrolling.
-- **Settings** in the ⋯ menu.
 
 ## Code
 

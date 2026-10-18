@@ -15,6 +15,7 @@ import com.chencohensolution.journal.library.MediaLibrary
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.KeyValueStore
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -130,6 +131,7 @@ class GroupsTest {
             store = FileStoryStore(fileSystem, GROUPS_ROOT),
             noteStore = FilePhotoNoteStore(fileSystem, GROUPS_ROOT),
             library = library,
+            settings = SettingsController(JournalSettings(GroupsTestStore()), dispatcher),
             newId = { "story-${++id}" },
             dispatcher = dispatcher,
             now = { "2026-10-17T12:00:00Z" },

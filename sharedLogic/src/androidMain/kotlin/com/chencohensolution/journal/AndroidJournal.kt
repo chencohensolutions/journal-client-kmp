@@ -13,6 +13,7 @@ import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
@@ -41,11 +42,16 @@ fun createLibraryController(context: Context): LibraryController =
         settings = JournalSettings(SharedPreferencesStore(context)),
     )
 
+/** The user's choices on the Settings screen. */
+fun createSettingsController(context: Context): SettingsController =
+    SettingsController(JournalSettings(SharedPreferencesStore(context)))
+
 /** Stories kept on this device, in the app's private files folder (`files/journal/stories`). */
-fun createStoriesController(context: Context, library: LibraryController): StoriesController =
+fun createStoriesController(context: Context, library: LibraryController, settings: SettingsController): StoriesController =
     StoriesController(
         store = FileStoryStore(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "journal"),
         noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "journal"),
         library = library,
+        settings = settings,
         newId = StoryIds(JournalSettings(SharedPreferencesStore(context)), System::currentTimeMillis)::next,
     )

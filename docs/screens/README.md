@@ -12,10 +12,11 @@ The mockups are in the design canvas: https://claude.ai/artifact/QKsfaEgFs3bCC4Q
 | Group | Tapping a group tile in a story | [group.md](group.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
 | All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
+| Settings | ⋯ menu → Settings | [settings.md](settings.md) |
 | Viewer | Tapping any photo or video | [viewer.md](viewer.md) |
 
 ```
-Enrollment ──► Photo access ──► Journal ──► All photos
+Enrollment ──► Photo access ──► Journal ──► All photos, Settings
                 (once)            │  │           │
                                   │  └─► Story ─► Group
                                   │        │     │    │
@@ -42,8 +43,8 @@ Thumbnails and full images are loaded by the UIs, by item id.
 Stories come from `StoriesController`
 ([stories/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/)): it keeps stories on the
 device, along with each photo's caption and tags (`PhotoNote`), and combines them with the library into
-`StoriesState.timeline` (stories and unsorted days, newest first), `unsortedDays` (photos in no story and without
-tags) and `tags`. See [story page](story-page.md) for the file format.
+`StoriesState.timeline` (stories and unsorted moments, newest first), `unsortedDays` (photos in no story and without
+tags), `moments` (the same photos split as the grouping setting says, see [settings.md](settings.md)) and `tags`. See [story page](story-page.md) for the file format.
 
 Server state comes from `JournalState.health`:
 

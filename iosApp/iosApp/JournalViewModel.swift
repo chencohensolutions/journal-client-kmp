@@ -11,6 +11,7 @@ final class JournalViewModel: ObservableObject {
     /// The device photo library, and the stories built on it.
     let library: LibraryViewModel
     let stories: StoriesViewModel
+    let settings: SettingsViewModel
 
     private let controller: JournalController
     private var observation: ObservationHandle?
@@ -19,7 +20,8 @@ final class JournalViewModel: ObservableObject {
         controller = IosJournal.shared.createController()
         enrollment = EnrollmentViewModel(journal: controller)
         library = LibraryViewModel()
-        stories = StoriesViewModel(library: library)
+        settings = SettingsViewModel()
+        stories = StoriesViewModel(library: library, settings: settings)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in

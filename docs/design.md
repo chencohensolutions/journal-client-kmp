@@ -30,7 +30,9 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 - Home is the **Journal timeline**, newest first: story cards and unsorted days. A story sits at its **newest
   photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
   or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
-- Top bar: **Tags** button and a **⋯** menu with **All photos**. Bottom bar: Journal / Unsorted, plus "N not backed up".
+- Unsorted photos on the timeline are **by day** by default; Settings can switch to **by breaks between photos**
+  (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
+- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Journal / Unsorted, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 - Sub-stories (stories inside stories) were agreed in principle; when built, they show only inside their parent
   (with a Settings option later), never on the home timeline.
@@ -111,7 +113,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
   choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
 - Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).
-- Renaming/merging tags; grouping by visual similarity (perceptual hash); month scrubber; Settings.
+- Renaming/merging tags; grouping by visual similarity (perceptual hash); month scrubber.
 
 ## Next: upload and sync
 

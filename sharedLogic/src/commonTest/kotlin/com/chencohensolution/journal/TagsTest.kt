@@ -7,6 +7,7 @@ import com.chencohensolution.journal.library.MediaLibrary
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.FileStoryStore
@@ -73,6 +74,7 @@ class TagsTest {
             store = FileStoryStore(fileSystem, TAGS_ROOT),
             noteStore = FilePhotoNoteStore(fileSystem, TAGS_ROOT),
             library = library,
+            settings = SettingsController(JournalSettings(TagsTestStore()), dispatcher),
             newId = { "story-${++id}" },
             dispatcher = dispatcher,
             now = { "2026-10-17T12:${(minute++).toString().padStart(2, '0')}:00Z" },

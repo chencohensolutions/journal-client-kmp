@@ -26,11 +26,26 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_LAST_STORY_ID_MILLIS)?.toLongOrNull()
         set(value) = store.putString(KEY_LAST_STORY_ID_MILLIS, value?.toString())
 
+    /** How the journal splits unsorted photos into rows; see [TimelineGrouping]. */
+    var grouping: TimelineGrouping
+        get() = TimelineGrouping(
+            mode = store.getString(KEY_GROUPING_MODE)?.let { name -> GroupingMode.entries.firstOrNull { it.name == name } }
+                ?: GroupingMode.BY_DAY,
+            gapHours = store.getString(KEY_GROUPING_GAP_HOURS)?.toIntOrNull()?.takeIf { it in TimelineGrouping.GAP_HOURS_RANGE }
+                ?: TimelineGrouping.DEFAULT_GAP_HOURS,
+        )
+        set(value) {
+            store.putString(KEY_GROUPING_MODE, value.mode.name)
+            store.putString(KEY_GROUPING_GAP_HOURS, value.gapHours.toString())
+        }
+
     companion object {
         const val DEFAULT_SERVER_URL = "https://192.168.50.150:8080/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"
         private const val KEY_LAST_STORY_ID_MILLIS = "last_story_id_millis"
+        private const val KEY_GROUPING_MODE = "grouping_mode"
+        private const val KEY_GROUPING_GAP_HOURS = "grouping_gap_hours"
     }
 }

@@ -9,7 +9,7 @@ whenever a screen changes.
 
 - `sharedLogic/` — all logic, shared. `commonMain`: controllers with a `StateFlow` state
   (`JournalController` connection, `EnrollmentController`, `LibraryController` photo library, `StoriesController`
-  stories/groups/tags/notes). `androidMain` / `iosMain`: platform pieces (mTLS client, key store, MediaStore /
+  stories/groups/tags/notes and the journal's moments, `SettingsController` the Settings screen). `androidMain` / `iosMain`: platform pieces (mTLS client, key store, MediaStore /
   PhotoKit readers) and the factories (`AndroidJournal.kt`, `IosJournal.kt`).
 - `androidApp/` — Jetpack Compose UI; library screens in `ui/library/`. Strings in `res/values/strings.xml`
   (Hebrew in `values-iw/`).

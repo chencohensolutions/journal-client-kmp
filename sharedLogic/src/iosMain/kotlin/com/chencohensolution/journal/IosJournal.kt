@@ -11,6 +11,7 @@ import com.chencohensolution.journal.library.IosMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.UserDefaultsStore
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
@@ -49,13 +50,17 @@ object IosJournal {
             settings = JournalSettings(UserDefaultsStore()),
         )
 
+    /** The user's choices on the Settings screen. */
+    fun createSettingsController(): SettingsController = SettingsController(JournalSettings(UserDefaultsStore()))
+
     /** Stories kept on this device, in Application Support (`journal/stories`). */
-    fun createStoriesController(library: LibraryController): StoriesController {
+    fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
         val support = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
         return StoriesController(
             store = FileStoryStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             library = library,
+            settings = settings,
             newId = StoryIds(JournalSettings(UserDefaultsStore())) { (NSDate().timeIntervalSince1970 * 1000).toLong() }::next,
         )
     }

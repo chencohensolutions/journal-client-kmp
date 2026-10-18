@@ -134,6 +134,7 @@ internal object LibraryIcons {
     val Tag = icon("Tag", false, "M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z", "M7.5 7.5h0.01")
     val Close = icon("Close", false, "M6 6l12 12", "M18 6L6 18")
     val Stack = icon("Stack", false, "M9 7h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "M4 16V5a1 1 0 0 1 1-1h11")
+    val Settings = icon("Settings", false, "M4 7h9", "M17 7h3", "M15 5v4", "M4 17h3", "M11 17h9", "M9 15v4")
     val Photo = icon("Photo", false, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0.01 0", "M21 15l-5-5L5 21")
 }
 

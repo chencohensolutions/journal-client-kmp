@@ -121,7 +121,7 @@ internal fun TagScreen(tag: String, stories: StoriesState, onOpenItem: (MediaIte
 }
 
 @Composable
-private fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .fillMaxWidth()

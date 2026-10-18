@@ -4,17 +4,18 @@ import SharedLogic
 
 /// What the home screen can ask its parent to do.
 struct HomeActions {
-    var openItem: (DayGroup, MediaItem) -> Void
+    var openItem: (Moment, MediaItem) -> Void
     var openStory: (String) -> Void
-    var createStory: (_ title: String, _ day: LocalDay) -> Void
+    var createStory: (_ title: String, _ momentKey: String) -> Void
     var openAllPhotos: () -> Void
+    var openSettings: () -> Void
     var openTags: () -> Void
     var allowAccess: () -> Void
     var registerAgain: () -> Void
 }
 
 /// The home screen: the journal as a timeline, newest first: stories, with the photos in no story between them as
-/// "unsorted" days. See docs/screens/journal-home.md.
+/// "unsorted" moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
 struct JournalHomeView: View {
     let library: LibraryState
     let stories: StoriesState
@@ -23,7 +24,8 @@ struct JournalHomeView: View {
 
     private enum Tab { case journal, unsorted }
     @State private var tab = Tab.journal
-    @State private var newStoryDay: LocalDay?
+    /// The key of the moment whose "+ Story" was tapped.
+    @State private var newStoryMoment: String?
     @State private var newTitle = ""
 
     var body: some View {
@@ -54,11 +56,11 @@ struct JournalHomeView: View {
                         case let storyEntry as TimelineEntryStoryEntry:
                             StoryCardView(story: storyEntry.story, width: geometry.size.width)
                                 .onTapGesture { actions.openStory(storyEntry.story.id) }
-                        case let dayEntry as TimelineEntryDayEntry:
-                            UnsortedDay(
-                                day: dayEntry.day,
-                                onOpen: { actions.openItem(dayEntry.day, $0) },
-                                onNewStory: { newStoryDay = dayEntry.day.day }
+                        case let momentEntry as TimelineEntryMomentEntry:
+                            UnsortedMoment(
+                                moment: momentEntry.moment,
+                                onOpen: { actions.openItem(momentEntry.moment, $0) },
+                                onNewStory: { newStoryMoment = momentEntry.moment.key }
                             )
                         default:
                             EmptyView()
@@ -70,10 +72,10 @@ struct JournalHomeView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .alert("New story", isPresented: Binding(get: { newStoryDay != nil }, set: { if !$0 { newStoryDay = nil } })) {
+        .alert("New story", isPresented: Binding(get: { newStoryMoment != nil }, set: { if !$0 { newStoryMoment = nil } })) {
             TextField("Japan trip, Noa's birthday…", text: $newTitle)
             Button("Create") {
-                if let day = newStoryDay { actions.createStory(newTitle, day) }
+                if let key = newStoryMoment { actions.createStory(newTitle, key) }
                 newTitle = ""
             }
             .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -94,7 +96,7 @@ struct JournalHomeView: View {
     private var canRead: Bool { library.access == .full || library.access == .limited }
 
     private var entries: [TimelineRow] {
-        let entries = tab == .unsorted ? stories.timeline.filter { $0 is TimelineEntryDayEntry } : stories.timeline
+        let entries = tab == .unsorted ? stories.timeline.filter { $0 is TimelineEntryMomentEntry } : stories.timeline
         return entries.map(TimelineRow.init)
     }
 
@@ -117,6 +119,9 @@ struct JournalHomeView: View {
                 Button(action: actions.openAllPhotos) {
                     Label("All photos", systemImage: "square.grid.2x2")
                 }
+                Button(action: actions.openSettings) {
+                    Label("Settings", systemImage: "gearshape")
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18, weight: .semibold))
@@ -132,9 +137,9 @@ struct JournalHomeView: View {
     }
 }
 
-/// One day of photos that are in no story: a heading, "+ Story", and a row of small photos.
-private struct UnsortedDay: View {
-    let day: DayGroup
+/// Photos that are in no story, taken on one day or close together: a heading, "+ Story", and a row of small photos.
+private struct UnsortedMoment: View {
+    let moment: Moment
     let onOpen: (MediaItem) -> Void
     let onNewStory: () -> Void
 
@@ -142,11 +147,11 @@ private struct UnsortedDay: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(day.day.label)
+                    Text(moment.label)
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(LibraryColors.onBackground)
                         .accessibilityAddTraits(.isHeader)
-                    Text("\(day.items.count) unsorted")
+                    Text("\(moment.items.count) unsorted")
                         .font(.footnote)
                         .foregroundStyle(LibraryColors.muted)
                 }
@@ -159,12 +164,12 @@ private struct UnsortedDay: View {
                         .frame(height: 34)
                         .overlay(Capsule().stroke(LibraryColors.onBackground.opacity(0.28)))
                 }
-                .accessibilityLabel("New story from \(day.day.label)")
+                .accessibilityLabel("New story from \(moment.label)")
             }
             .padding(.horizontal, 16)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 2) {
-                    ForEach(day.items, id: \.id) { item in
+                    ForEach(moment.items, id: \.id) { item in
                         MediaTileView(item: item, badgeSize: 18)
                             .frame(width: 76, height: 76)
                             .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -273,8 +278,24 @@ private struct TimelineRow {
     var id: String {
         switch entry {
         case let story as TimelineEntryStoryEntry: return "story-\(story.story.id)"
-        case let day as TimelineEntryDayEntry: return "day-\(day.day.day)"
+        case let moment as TimelineEntryMomentEntry: return "moment-\(moment.moment.key)"
         default: return ""
         }
+    }
+}
+
+extension Moment {
+    /// "Today", or by breaks between photos "Today · 9:14 – 21:40" and "Sat, Oct 4 – Mon, Oct 6" for one that spans
+    /// days.
+    var label: String {
+        let day = newestDay.label
+        if mode == .byDay { return day }
+        if oldestDay != newestDay { return String(localized: "\(oldestDay.label) – \(day)") }
+        let start = Moment.time(startMillis), end = Moment.time(endMillis)
+        return start == end ? String(localized: "\(day) · \(start)") : String(localized: "\(day) · \(start) – \(end)")
+    }
+
+    private static func time(_ millis: Int64) -> String {
+        Date(timeIntervalSince1970: TimeInterval(millis) / 1000).formatted(date: .omitted, time: .shortened)
     }
 }

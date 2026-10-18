@@ -16,7 +16,7 @@ struct ContentView: View {
             }
             .onAppear { showWizard = showWizard ?? true }
         } else {
-            LibraryRootView(journal: viewModel, library: viewModel.library, stories: viewModel.stories) {
+            LibraryRootView(journal: viewModel, library: viewModel.library, stories: viewModel.stories, settings: viewModel.settings) {
                 viewModel.enrollment.reset()
                 showWizard = true
             }

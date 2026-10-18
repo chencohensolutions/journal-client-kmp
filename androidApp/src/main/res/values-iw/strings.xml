@@ -241,4 +241,20 @@
     <string name="enroll_error_unreachable">אין גישה לשרת: %s</string>
     <string name="enroll_error_key_store">שגיאה במאגר המפתחות של המכשיר: %s</string>
     <string name="enroll_error_connection_test">התעודה הונפקה, אבל ההתחברות איתה נכשלה: %s</string>
+    <!-- Settings; see docs/screens/settings.md -->
+    <string name="library_settings">הגדרות</string>
+    <string name="settings_grouping_title">תמונות לא ממוינות ביומן</string>
+    <string name="settings_grouping_by_day">לפי יום</string>
+    <string name="settings_grouping_by_day_body">שורה אחת לכל יום בלוח השנה.</string>
+    <string name="settings_grouping_by_gap">לפי הפסקות בין תמונות</string>
+    <string name="settings_grouping_by_gap_body">שורה חדשה מתחילה אחרי הפסקה בלי תמונות, כך שערב שנמשך אחרי חצות נשאר בשורה אחת.</string>
+    <string name="settings_gap_title">שורה חדשה אחרי הפסקה של</string>
+    <plurals name="settings_gap_hours">
+        <item quantity="one">שעה אחת</item>
+        <item quantity="two">שעתיים</item>
+        <item quantity="other">%d שעות</item>
+    </plurals>
+    <string name="library_moment_times">%1$s · %2$s – %3$s</string>
+    <string name="library_moment_time">%1$s · %2$s</string>
+    <string name="library_moment_days">%1$s – %2$s</string>
 </resources>

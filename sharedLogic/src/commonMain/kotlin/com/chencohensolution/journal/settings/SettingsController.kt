@@ -1,0 +1,81 @@
+package com.chencohensolution.journal.settings
+
+import com.chencohensolution.journal.connection.ObservationHandle
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+enum class GroupingMode {
+    /** One row per calendar day (device time zone). */
+    BY_DAY,
+
+    /** A new row starts after [TimelineGrouping.gapHours] without photos; a row can cross midnight. */
+    BY_GAP,
+}
+
+/** How the journal splits unsorted photos into rows (see `Moment`). */
+data class TimelineGrouping(
+    val mode: GroupingMode = GroupingMode.BY_DAY,
+    /** Used by [GroupingMode.BY_GAP]; kept while [GroupingMode.BY_DAY] is chosen, so switching back keeps it. */
+    val gapHours: Int = DEFAULT_GAP_HOURS,
+) {
+    val gapMillis: Long get() = gapHours * 3_600_000L
+
+    companion object {
+        const val DEFAULT_GAP_HOURS = 12
+
+        /** What the Settings screen offers. */
+        val GAP_HOURS_OPTIONS: List<Int> = listOf(2, 4, 6, 8, 12, 24, 48)
+
+        /** Anything stored outside this falls back to [DEFAULT_GAP_HOURS]. */
+        val GAP_HOURS_RANGE: IntRange = 1..72
+    }
+}
+
+/** The user's choices on the Settings screen. */
+data class SettingsState(val grouping: TimelineGrouping = TimelineGrouping())
+
+/** The Settings screen's logic: reads and saves the user's choices on this device. */
+class SettingsController internal constructor(
+    private val settings: JournalSettings,
+    dispatcher: CoroutineDispatcher = Dispatchers.Main,
+) {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+
+    private val _state = MutableStateFlow(SettingsState(grouping = settings.grouping))
+    val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
+    val currentState: SettingsState get() = _state.value
+
+    fun setGroupingMode(mode: GroupingMode) = changeGrouping { it.copy(mode = mode) }
+
+    /** Values outside [TimelineGrouping.GAP_HOURS_RANGE] are ignored. */
+    fun setGapHours(hours: Int) {
+        if (hours !in TimelineGrouping.GAP_HOURS_RANGE) return
+        changeGrouping { it.copy(gapHours = hours) }
+    }
+
+    /** Callback-style observation for Swift; Android collects [state] directly. */
+    fun observe(onChange: (SettingsState) -> Unit): ObservationHandle {
+        val job = scope.launch { state.collect(onChange) }
+        return ObservationHandle { job.cancel() }
+    }
+
+    fun close() {
+        scope.cancel()
+    }
+
+    private fun changeGrouping(transform: (TimelineGrouping) -> TimelineGrouping) {
+        val grouping = transform(_state.value.grouping)
+        settings.grouping = grouping
+        _state.update { it.copy(grouping = grouping) }
+    }
+}

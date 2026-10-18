@@ -49,21 +49,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
+import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.TimelineEntry
-import com.chencohensolution.journal.library.DayGroup
-import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.settings.GroupingMode
+import java.time.Instant
+import java.time.ZoneId
 
 private enum class HomeTab { JOURNAL, UNSORTED }
 
 internal class HomeActions(
-    val openItem: (DayGroup, MediaItem) -> Unit = { _, _ -> },
+    val openItem: (Moment, MediaItem) -> Unit = { _, _ -> },
     val openStory: (String) -> Unit = {},
-    val createStory: (title: String, day: LocalDay) -> Unit = { _, _ -> },
+    val createStory: (title: String, momentKey: String) -> Unit = { _, _ -> },
     val openAllPhotos: () -> Unit = {},
+    val openSettings: () -> Unit = {},
     val openTags: () -> Unit = {},
     val allowAccess: () -> Unit = {},
     val changeSelection: () -> Unit = {},
@@ -72,13 +75,13 @@ internal class HomeActions(
 
 /**
  * The home screen: the journal as a timeline, newest first: stories, with the photos in no story between them as
- * "unsorted" days. See docs/screens/journal-home.md.
+ * "unsorted" moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
  */
 @Composable
 internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, health: ServerHealth, actions: HomeActions) {
     var tab by rememberSaveable { mutableStateOf(HomeTab.JOURNAL) }
-    // The day whose "+ Story" was tapped, as yyyy-mm-dd so it survives rotation.
-    var newStoryDay by rememberSaveable { mutableStateOf<String?>(null) }
+    // The key of the moment whose "+ Story" was tapped.
+    var newStoryMoment by rememberSaveable { mutableStateOf<String?>(null) }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -110,23 +113,23 @@ internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, hea
                     item(key = "empty") { Message(stringResource(R.string.library_empty)) }
             }
             val entries = if (tab == HomeTab.UNSORTED) {
-                stories.timeline.filterIsInstance<TimelineEntry.DayEntry>()
+                stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>()
             } else {
                 stories.timeline
             }
             items(entries, key = { it.key }) { entry ->
                 when (entry) {
                     is TimelineEntry.StoryEntry -> StoryCard(entry.story, onOpen = { actions.openStory(entry.story.id) })
-                    is TimelineEntry.DayEntry -> UnsortedDay(
-                        entry.day,
-                        onOpen = { actions.openItem(entry.day, it) },
-                        onNewStory = { newStoryDay = entry.day.day.toString() },
+                    is TimelineEntry.MomentEntry -> UnsortedMoment(
+                        entry.moment,
+                        onOpen = { actions.openItem(entry.moment, it) },
+                        onNewStory = { newStoryMoment = entry.moment.key },
                     )
                 }
             }
         }
 
-        TopBar(health, actions.openAllPhotos, actions.openTags, Modifier.align(Alignment.TopCenter))
+        TopBar(health, actions, Modifier.align(Alignment.TopCenter))
 
         BottomControls(
             summary = library.notBackedUpCount.takeIf { it > 0 }?.let {
@@ -145,15 +148,15 @@ internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, hea
         }
     }
 
-    newStoryDay?.let(LocalDay::parse)?.let { day ->
+    newStoryMoment?.let { key ->
         StoryTitleDialog(
             title = stringResource(R.string.library_new_story),
             confirmLabel = stringResource(R.string.library_create),
             onConfirm = {
-                newStoryDay = null
-                actions.createStory(it, day)
+                newStoryMoment = null
+                actions.createStory(it, key)
             },
-            onDismiss = { newStoryDay = null },
+            onDismiss = { newStoryMoment = null },
         )
     }
 }
@@ -161,11 +164,11 @@ internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, hea
 private val TimelineEntry.key: String
     get() = when (this) {
         is TimelineEntry.StoryEntry -> "story-${story.id}"
-        is TimelineEntry.DayEntry -> "day-${day.day}"
+        is TimelineEntry.MomentEntry -> "moment-${moment.key}"
     }
 
 @Composable
-private fun TopBar(health: ServerHealth, onAllPhotos: () -> Unit, onTags: () -> Unit, modifier: Modifier = Modifier) {
+private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifier = Modifier) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier
@@ -183,7 +186,7 @@ private fun TopBar(health: ServerHealth, onAllPhotos: () -> Unit, onTags: () -> 
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (health == ServerHealth.OFFLINE) OfflinePill()
-        IconButton(onClick = onTags) {
+        IconButton(onClick = actions.openTags) {
             Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
         }
         Box {
@@ -196,7 +199,15 @@ private fun TopBar(health: ServerHealth, onAllPhotos: () -> Unit, onTags: () -> 
                     leadingIcon = { Icon(LibraryIcons.Grid, null) },
                     onClick = {
                         menuOpen = false
-                        onAllPhotos()
+                        actions.openAllPhotos()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_settings)) },
+                    leadingIcon = { Icon(LibraryIcons.Settings, null) },
+                    onClick = {
+                        menuOpen = false
+                        actions.openSettings()
                     },
                 )
             }
@@ -204,9 +215,25 @@ private fun TopBar(health: ServerHealth, onAllPhotos: () -> Unit, onTags: () -> 
     }
 }
 
-/** One day of photos that are in no story: a heading, "+ Story", and a row of small photos. */
+/**
+ * "Today", or by breaks between photos "Today · 9:14 – 21:40" and "Sat, Oct 4 – Mon, Oct 6" for one that spans days.
+ */
 @Composable
-private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: () -> Unit) {
+private fun momentLabel(moment: Moment): String {
+    val day = dayLabel(moment.newestDay)
+    if (moment.mode == GroupingMode.BY_DAY) return day
+    if (moment.oldestDay != moment.newestDay) return stringResource(R.string.library_moment_days, dayLabel(moment.oldestDay), day)
+    val start = timeLabel(moment.startMillis)
+    val end = timeLabel(moment.endMillis)
+    return if (start == end) stringResource(R.string.library_moment_time, day, start) else stringResource(R.string.library_moment_times, day, start, end)
+}
+
+/** "9:14" or "9:14 AM", as the locale writes it. */
+private fun timeLabel(millis: Long): String = formatDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()), "jmm")
+
+/** Photos that are in no story, taken on one day or close together: a heading, "+ Story", and a row of small photos. */
+@Composable
+private fun UnsortedMoment(moment: Moment, onOpen: (MediaItem) -> Unit, onNewStory: () -> Unit) {
     Column(Modifier.padding(top = 14.dp, bottom = 16.dp)) {
         Row(
             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
@@ -214,14 +241,14 @@ private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: 
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    dayLabel(day.day),
+                    momentLabel(moment),
                     color = LibraryColors.OnBackground,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.semantics { heading() },
                 )
                 Text(
-                    pluralStringResource(R.plurals.library_unsorted_count, day.items.size, day.items.size),
+                    pluralStringResource(R.plurals.library_unsorted_count, moment.items.size, moment.items.size),
                     color = LibraryColors.Muted,
                     fontSize = 13.sp,
                 )
@@ -245,7 +272,7 @@ private fun UnsortedDay(day: DayGroup, onOpen: (MediaItem) -> Unit, onNewStory: 
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            items(day.items, key = { it.id }) { item ->
+            items(moment.items, key = { it.id }) { item ->
                 MediaTile(
                     item,
                     onClick = { onOpen(item) },

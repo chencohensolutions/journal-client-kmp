@@ -7,6 +7,7 @@ struct LibraryRootView: View {
 
     @ObservedObject var library: LibraryViewModel
     @ObservedObject var stories: StoriesViewModel
+    @ObservedObject var settings: SettingsViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -20,14 +21,15 @@ struct LibraryRootView: View {
         case group(storyId: String, groupId: String)
         case tags
         case tag(String)
+        case settings
     }
 
-    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), one day of the journal
-    /// (`day`), or All photos with `filter`.
+    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), one moment of the journal
+    /// (`moment`, its key), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         let storyId: String?
         var groupId: String? = nil
-        let day: LocalDay?
+        var moment: String? = nil
         let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
@@ -53,12 +55,13 @@ struct LibraryRootView: View {
                         stories: stories.state,
                         health: journal.state.health,
                         actions: HomeActions(
-                            openItem: { day, item in openViewer(ViewerRequest(storyId: nil, day: day.day, filter: .all, itemId: item.id)) },
+                            openItem: { moment, item in openViewer(ViewerRequest(storyId: nil, moment: moment.key, filter: .all, itemId: item.id)) },
                             openStory: { path.append(.story($0)) },
-                            createStory: { title, day in
-                                if let id = stories.createStory(title: title, day: day) { path.append(.story(id)) }
+                            createStory: { title, momentKey in
+                                if let id = stories.createStory(title: title, momentKey: momentKey) { path.append(.story(id)) }
                             },
                             openAllPhotos: { path.append(.allPhotos) },
+                            openSettings: { path.append(.settings) },
                             openTags: { path.append(.tags) },
                             allowAccess: requestOrOpenSettings,
                             registerAgain: onRegisterAgain
@@ -69,13 +72,15 @@ struct LibraryRootView: View {
                         switch route {
                         case .allPhotos:
                             AllPhotosView(library: library.state, health: journal.state.health, filter: $filter) { item in
-                                openViewer(ViewerRequest(storyId: nil, day: nil, filter: filter, itemId: item.id))
+                                openViewer(ViewerRequest(storyId: nil, filter: filter, itemId: item.id))
                             }
+                        case .settings:
+                            SettingsView(settings: settings)
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
                             TagView(tag: name, stories: stories.state) { item in
-                                openViewer(ViewerRequest(storyId: nil, day: nil, filter: .all, itemId: item.id, tag: name))
+                                openViewer(ViewerRequest(storyId: nil, filter: .all, itemId: item.id, tag: name))
                             }
                         case .story(let id):
                             StoryPageView(
@@ -83,7 +88,7 @@ struct LibraryRootView: View {
                                 neighborDays: stories.state.neighborDays(storyId: id),
                                 health: journal.state.health,
                                 actions: StoryPageActions(
-                                    openItem: { openViewer(ViewerRequest(storyId: id, day: nil, filter: .all, itemId: $0.id)) },
+                                    openItem: { openViewer(ViewerRequest(storyId: id, filter: .all, itemId: $0.id)) },
                                     openGroup: { path.append(.group(storyId: id, groupId: $0.id)) },
                                     addDay: { stories.addDay($0, to: id) },
                                     rename: { stories.rename(id, to: $0) },
@@ -104,7 +109,7 @@ struct LibraryRootView: View {
                                 story: stories.state.story(id: storyId),
                                 group: stories.state.story(id: storyId)?.group(id: groupId),
                                 onOpen: {
-                                    openViewer(ViewerRequest(storyId: storyId, groupId: groupId, day: nil, filter: .all, itemId: $0.id))
+                                    openViewer(ViewerRequest(storyId: storyId, groupId: groupId, filter: .all, itemId: $0.id))
                                 },
                                 onRename: { stories.renameGroup(groupId, in: storyId, to: $0) },
                                 onSetText: { stories.setText($0, ofGroup: groupId, in: storyId) },
@@ -169,7 +174,7 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its
-    /// cover), the day of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
+    /// cover), the moment of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
         if let tag = request.tag {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
@@ -180,8 +185,8 @@ struct LibraryRootView: View {
         if let storyId = request.storyId {
             return stories.state.story(id: storyId)?.viewerItems ?? []
         }
-        if let day = request.day {
-            return stories.state.unsortedDays.first { $0.day == day }?.items ?? []
+        if let moment = request.moment {
+            return stories.state.moment(key: moment)?.items ?? []
         }
         return library.state.days(filter: request.filter).flatMap { $0.items }
     }

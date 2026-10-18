@@ -7,6 +7,26 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@ – %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ – %3$@"
+          }
+        }
+      }
+    },
     "%@ · taken within %lld seconds" : {
       "localizations" : {
         "en" : {
@@ -75,6 +95,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%@ – %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ – %2$@"
           }
         }
       }
@@ -182,6 +212,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld groups"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld hours" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hour"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hours"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שעה אחת"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שעתיים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שעות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שעות"
                 }
               }
             }
@@ -527,6 +609,16 @@
         }
       }
     },
+    "A new row starts after a break without photos, so an evening that runs past midnight stays in one row." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורה חדשה מתחילה אחרי הפסקה בלי תמונות, כך שערב שנמשך אחרי חצות נשאר בשורה אחת."
+          }
+        }
+      }
+    },
     "Account" : {
       "localizations" : {
         "he" : {
@@ -705,6 +797,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מגובה בשרת שלך"
+          }
+        }
+      }
+    },
+    "By breaks between photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לפי הפסקות בין תמונות"
+          }
+        }
+      }
+    },
+    "By day" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לפי יום"
           }
         }
       }
@@ -1171,6 +1283,16 @@
         }
       }
     },
+    "Grouping" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קיבוץ"
+          }
+        }
+      }
+    },
     "Issued by journal-server-ca" : {
       "localizations" : {
         "he" : {
@@ -1306,6 +1428,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בקרבת מקום"
+          }
+        }
+      }
+    },
+    "New row after a break of" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורה חדשה אחרי הפסקה של"
           }
         }
       }
@@ -1476,6 +1608,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בשרת שלך, הריצו `journal-server enroll-code` והקלידו את הכתובת והקוד שהוא מדפיס."
+          }
+        }
+      }
+    },
+    "One row for each calendar day." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורה אחת לכל יום בלוח השנה."
           }
         }
       }
@@ -1796,6 +1938,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרה כשער"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדרות"
           }
         }
       }
@@ -2174,6 +2326,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא ממוינות %lld"
+          }
+        }
+      }
+    },
+    "Unsorted photos on the Journal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות לא ממוינות ביומן"
           }
         }
       }

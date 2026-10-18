@@ -20,6 +20,7 @@ import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.ui.EnrollmentWizard
 import com.chencohensolution.journal.ui.JournalTheme
 import com.chencohensolution.journal.ui.library.LibraryApp
@@ -29,10 +30,12 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val controller: JournalController = createJournalController(application)
     val enrollment: EnrollmentController = createEnrollmentController(application, controller)
     val library: LibraryController = createLibraryController(application)
-    val stories: StoriesController = createStoriesController(application, library)
+    val settings: SettingsController = createSettingsController(application)
+    val stories: StoriesController = createStoriesController(application, library, settings)
 
     override fun onCleared() {
         stories.close()
+        settings.close()
         library.close()
         enrollment.close()
         controller.close()
@@ -70,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         journal = viewModel.controller,
                         library = viewModel.library,
                         stories = viewModel.stories,
+                        settings = viewModel.settings,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true

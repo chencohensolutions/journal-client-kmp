@@ -31,9 +31,9 @@ import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
-import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.settings.SettingsController
 
 private val PHOTO_PERMISSIONS = arrayOf(
     Manifest.permission.READ_MEDIA_IMAGES,
@@ -49,21 +49,22 @@ private sealed interface Route {
     data class Group(val storyId: String, val groupId: String) : Route
     data object Tags : Route
     data class Tag(val name: String) : Route
+    data object Settings : Route
 
     /**
-     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one day of the journal
-     * ([day]), or All photos with [filter].
+     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one moment of the journal
+     * ([moment], its key), or All photos with [filter].
      */
     data class Viewer(
         val storyId: String?,
         val groupId: String?,
-        val day: LocalDay?,
+        val moment: String?,
         val filter: LibraryFilter,
         val itemId: String,
         val tag: String? = null,
     ) : Route
 
-    // Tags are free text, so they are URL-encoded to keep "|" out.
+    // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
     fun encode(): String = when (this) {
         Journal -> "journal"
         is AllPhotos -> "all|$filter"
@@ -71,7 +72,8 @@ private sealed interface Route {
         is Group -> "group|$storyId|$groupId"
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
-        is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${day ?: ""}|$filter|${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
+        Settings -> "settings"
+        is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
 
     companion object {
@@ -83,10 +85,11 @@ private sealed interface Route {
                 "group" -> Group(parts[1], parts[2])
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
+                "settings" -> Settings
                 "viewer" -> Viewer(
                     storyId = parts[1].ifEmpty { null },
                     groupId = parts[2].ifEmpty { null },
-                    day = LocalDay.parse(parts[3]),
+                    moment = parts[3].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     filter = LibraryFilter.valueOf(parts[4]),
                     tag = parts[5].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     itemId = parts.drop(6).joinToString("|"),
@@ -104,8 +107,15 @@ private val BackStackSaver = listSaver<List<Route>, String>(
 
 /** Everything after enrollment: photo access, then the journal and its screens. */
 @Composable
-fun LibraryApp(journal: JournalController, library: LibraryController, stories: StoriesController, onRegisterAgain: () -> Unit) {
+fun LibraryApp(
+    journal: JournalController,
+    library: LibraryController,
+    stories: StoriesController,
+    settings: SettingsController,
+    onRegisterAgain: () -> Unit,
+) {
     val journalState by journal.state.collectAsStateWithLifecycle()
+    val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
     val storiesState by stories.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
@@ -155,11 +165,12 @@ fun LibraryApp(journal: JournalController, library: LibraryController, stories: 
                 stories = storiesState,
                 health = journalState.health,
                 actions = HomeActions(
-                    openItem = { day, item -> push(Route.Viewer(null, null, day.day, LibraryFilter.ALL, item.id)) },
+                    openItem = { moment, item -> push(Route.Viewer(null, null, moment.key, LibraryFilter.ALL, item.id)) },
                     openTags = { push(Route.Tags) },
                     openStory = { push(Route.Story(it)) },
-                    createStory = { title, day -> stories.createStoryFromDay(title, day)?.let { push(Route.Story(it)) } },
+                    createStory = { title, key -> stories.createStoryFromMoment(title, key)?.let { push(Route.Story(it)) } },
                     openAllPhotos = { push(Route.AllPhotos(LibraryFilter.ALL)) },
+                    openSettings = { push(Route.Settings) },
                     allowAccess = requestAccess,
                     changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
                     registerAgain = onRegisterAgain,
@@ -206,6 +217,14 @@ fun LibraryApp(journal: JournalController, library: LibraryController, stories: 
                     back = pop,
                 ),
             )
+            Route.Settings -> SettingsScreen(
+                settings = settingsState,
+                actions = SettingsActions(
+                    setGroupingMode = settings::setGroupingMode,
+                    setGapHours = settings::setGapHours,
+                    back = pop,
+                ),
+            )
             Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
             is Route.Tag -> TagScreen(
                 tag = route.name,
@@ -244,13 +263,13 @@ fun LibraryApp(journal: JournalController, library: LibraryController, stories: 
 
 /**
  * The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its cover),
- * the day of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
+ * the moment of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
  */
 private fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
     route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.items.orEmpty()
     route.storyId != null -> stories.story(route.storyId)?.viewerItems.orEmpty()
-    route.day != null -> stories.unsortedDays.firstOrNull { it.day == route.day }?.items.orEmpty()
+    route.moment != null -> stories.moment(route.moment)?.items.orEmpty()
     else -> library.days(route.filter).flatMap { it.items }
 }
 
