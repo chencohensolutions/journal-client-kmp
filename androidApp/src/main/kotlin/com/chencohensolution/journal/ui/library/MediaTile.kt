@@ -53,6 +53,7 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
+import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -61,33 +62,83 @@ internal const val THUMB_SMALL = 256
 internal const val THUMB_LARGE = 640
 internal const val THUMB_FULL = 1280
 
-/** Thumbnail sizes a cropped photo asks for, rounded up to one of these so screens share the cache. */
-private val COVER_SIZES = listOf(256, 384, 512, 768, 1024, 1536, 2048)
+/** MediaStore hands out thumbnails no larger than this on their longer side, whatever size is asked for. */
+private const val STORE_THUMBNAIL_MAX = 512
 
 /**
- * The thumbnail size that lets [item], cropped to fill [width] × [height] pixels and zoomed by [zoom], draw at full
- * resolution. A thumbnail comes fitted inside a square of its size, so its longer side must be the photo's longer side
- * once scaled to cover the box: a 4:3 photo in a square tile needs a third more than the tile.
+ * The longer side [item] has once scaled to cover [width] × [height] pixels: a 4:3 photo in a square tile is a third
+ * longer than the tile.
  */
-internal fun coverSize(item: MediaItem, width: Int, height: Int, zoom: Float = 1f): Int {
+private fun coverLonger(item: MediaItem, width: Int, height: Int): Float {
     val ratio = if (item.width > 0 && item.height > 0) item.width.toFloat() / item.height else 4f / 3f
-    val longer = maxOf(ratio, 1f) * maxOf(width / ratio, height.toFloat()) * maxOf(zoom, 1f)
-    return COVER_SIZES.firstOrNull { it >= longer } ?: COVER_SIZES.last()
+    return maxOf(ratio, 1f) * maxOf(width / ratio, height.toFloat())
 }
 
-/** [item] cropped to fill this box, loaded at the box's size in pixels; empty while it loads. */
+/**
+ * The size of a [sourceWidth] × [sourceHeight] image scaled down to exactly cover [width] × [height]: the side that fits
+ * the box matches it, the other is rounded up so it still covers. Null when the image is no larger than that already.
+ */
+private fun coverDimensions(sourceWidth: Int, sourceHeight: Int, width: Int, height: Int): Pair<Int, Int>? {
+    val byWidth = width.toFloat() / sourceWidth
+    val byHeight = height.toFloat() / sourceHeight
+    return when {
+        maxOf(byWidth, byHeight) >= 1f -> null
+        byWidth >= byHeight -> width to maxOf(ceil(sourceHeight * byWidth).toInt(), height)
+        else -> maxOf(ceil(sourceWidth * byHeight).toInt(), width) to height
+    }
+}
+
+/**
+ * [item] cropped to fill this box, at exactly the box's size in pixels so it is drawn without scaling (times the
+ * crop's zoom, which then enlarges it); empty while it loads.
+ */
 @Composable
 internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier, crop: TileCrop = TileCrop.NONE) {
     BoxWithConstraints(modifier) {
-        val size = if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
-            coverSize(item, constraints.maxWidth, constraints.maxHeight, crop.zoom)
+        val thumbnail = if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
+            val zoom = maxOf(crop.zoom, 1f)
+            rememberCoverThumbnail(item, (constraints.maxWidth * zoom).toInt(), (constraints.maxHeight * zoom).toInt())
         } else {
-            THUMB_SMALL
+            rememberThumbnail(item, THUMB_SMALL)
         }
-        rememberThumbnail(item, size)?.let {
+        thumbnail?.let {
             Image(it, contentDescription = null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
         }
     }
+}
+
+/**
+ * [item] scaled to exactly cover [width] × [height] pixels, to be cropped to it. Up to MediaStore's thumbnail size it is
+ * that thumbnail scaled down; larger, the photo itself decoded straight to that size (a video has only its thumbnail).
+ * Only the result is cached.
+ */
+@Composable
+private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): ImageBitmap? {
+    if (width <= 0 || height <= 0) return null
+    LocalThumbnailSource.current?.let { source ->
+        return remember(source, item, width, height) { source.thumbnail(item, maxOf(width, height)) }
+    }
+    val resolver = LocalContext.current.contentResolver
+    val key = "${item.id}@${width}x$height"
+    val bitmap by produceState(thumbnailCache.get(key), key) {
+        value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
+            if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
+                val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
+                runCatching { resolver.loadThumbnail(item.contentUri(), size, null) }.getOrNull()?.let { loaded ->
+                    coverDimensions(loaded.width, loaded.height, width, height)
+                        ?.let { (w, h) -> Bitmap.createScaledBitmap(loaded, w, h, true) }
+                        ?: loaded
+                }
+            } else {
+                runCatching {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
+                        coverDimensions(info.size.width, info.size.height, width, height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
+                    }
+                }.getOrNull()
+            }
+        }?.also { thumbnailCache.put(key, it) }
+    }
+    return bitmap?.asImageBitmap()
 }
 
 /** The gap between photo tiles in a grid. */
