@@ -26,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -250,6 +251,9 @@ data class StorySuggestions(
     }
 }
 
+/** Fingerprints and places found in the background are shown at most this often. */
+internal const val BACKGROUND_REBUILD_MILLIS = 3_000L
+
 /** A new burst starts after a gap longer than this between two photos. */
 internal const val BURST_GAP_MILLIS = 10_000L
 
@@ -348,6 +352,12 @@ data class StoriesState(
     /** The last save or delete that failed. */
     val error: String? = null,
 ) {
+    // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
+    // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
+    override fun equals(other: Any?): Boolean = this === other
+
+    override fun hashCode(): Int = super.hashCode()
+
     val unsortedCount: Int = unsortedDays.sumOf { it.items.size }
 
     fun story(id: String): StoryView? = stories.firstOrNull { it.id == id }
@@ -490,11 +500,21 @@ class StoriesController internal constructor(
     // Bumped for each change from outside; collecting it skips to the latest, so a burst of changes is one rebuild.
     private val outsideChanges = MutableStateFlow(0)
 
+    // Fingerprints and places arrive in small batches for as long as a large library is being read: they rebuild the
+    // state at most every BACKGROUND_REBUILD_MILLIS, so the screens don't redraw several times a second meanwhile.
+    private val backgroundChanges = MutableStateFlow(0)
+
     init {
         scope.launch { libraryState.collect { outsideChanges.value++ } }
         scope.launch { settingsState.collect { outsideChanges.value++ } }
-        similarity?.let { scope.launch { it.looks.collect { outsideChanges.value++ } } }
-        places?.let { scope.launch { it.places.collect { outsideChanges.value++ } } }
+        similarity?.let { scope.launch { it.looks.collect { backgroundChanges.value++ } } }
+        places?.let { scope.launch { it.places.collect { backgroundChanges.value++ } } }
+        scope.launch {
+            backgroundChanges.collect {
+                outsideChanges.value++
+                delay(BACKGROUND_REBUILD_MILLIS)
+            }
+        }
         scope.launch {
             outsideChanges.collect {
                 val startedAt = version

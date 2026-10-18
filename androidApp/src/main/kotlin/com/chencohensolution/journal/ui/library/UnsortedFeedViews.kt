@@ -29,15 +29,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -242,38 +248,49 @@ private fun momentHeading(moment: FeedMoment): String {
     return what?.let { stringResource(R.string.feed_place_time, it, time) } ?: time
 }
 
-/** A photo at its own shape, the width of the screen; a video plays in it, muted at first, while [video] says so. */
+/**
+ * A photo at its own shape, the width of the screen; a video plays in it, muted at first, while [video] says so. The
+ * photo stays composed on top of the video and only turns transparent once the video shows, so starting and stopping
+ * a video doesn't rebuild it.
+ */
 @Composable
 private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, modifier: Modifier = Modifier) {
-    val playing = item.id == video.playingId
+    val playing = video.isPlaying(item)
+    // Start over each time it starts playing.
+    var showing by remember(item.id, playing) { mutableStateOf(false) }
+    var failed by remember(item.id, playing) { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().aspectRatio(item.ratio).background(LibraryColors.Raised).shared(SharedKey.item(item.id))) {
         if (playing) {
             InlineVideo(
                 item,
                 video.muted,
                 onMute = { if (!video.muted) video.toggleMute() },
-                poster = { SharpPhoto(item, Modifier.fillMaxSize()) },
-            ) {
-                Box(Modifier.fillMaxSize()) { MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp)) }
-            }
-        } else {
-            SharpPhoto(item, Modifier.fillMaxSize())
+                onFirstFrame = { showing = true },
+                onFailed = { failed = true },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
+        SharpPhoto(item, feedWidth(), Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
+        if (playing && !failed) MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
     }
 }
 
 /**
- * [item] filling this box, which has its shape: MediaStore's thumbnail at once (at most 512 px, blurry at full width),
- * then the photo itself decoded at the box's size in pixels on top, sharp on any screen.
+ * [item] filling this box, which has its shape and is [width] wide in pixels: MediaStore's thumbnail at once (at most
+ * 512 px, blurry at full width), then the photo itself decoded at the box's size on top, sharp on any screen.
  */
 @Composable
-private fun SharpPhoto(item: MediaItem, modifier: Modifier = Modifier) {
+private fun SharpPhoto(item: MediaItem, width: Int, modifier: Modifier = Modifier) {
     Box(modifier) {
         rememberThumbnail(item, THUMB_LARGE)?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-        CroppedThumbnail(item, Modifier.fillMaxSize())
+        SizedThumbnail(item, width, (width / item.ratio).toInt(), Modifier.fillMaxSize())
     }
 }
+
+/** The feed is the width of the window: its photos' size in pixels is known without measuring them. */
+@Composable
+private fun feedWidth(): Int = LocalWindowInfo.current.containerSize.width
 
 /**
  * Near-duplicates as one photo at the first one's shape; swipe for the others ("2 / 4" and dots). Turns to the photo
@@ -287,12 +304,16 @@ private fun SimilarPhotos(block: FeedBlock.Similar, landing: String?, modifier: 
         val page = block.items.indexOfFirst { it.id == landing }
         if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
     }
+    val pageWidth = feedWidth()
     Box(modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
         HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP) { page ->
             val item = block.items[page]
             Box(Modifier.fillMaxSize().background(Color.Black).clickable { onOpen(item) }, contentAlignment = Alignment.Center) {
                 // A photo of another shape than the set's first fits inside, at its own shape.
-                SharpPhoto(item, Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id)))
+                // Narrower than the set's first: as tall as the page, so as wide as its shape makes it.
+                val first = block.items.first().ratio
+                val width = if (item.ratio >= first) pageWidth else (pageWidth / first * item.ratio).toInt()
+                SharpPhoto(item, width, Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id)))
             }
         }
         Row(

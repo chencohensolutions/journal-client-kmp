@@ -82,6 +82,11 @@ data class UnsortedFeed(
     val counts: Map<MediaSource, Int> = emptyMap(),
     val shown: Set<MediaSource> = DEFAULT_SOURCES,
 ) {
+    // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
+    override fun equals(other: Any?): Boolean = this === other
+
+    override fun hashCode(): Int = super.hashCode()
+
     fun section(key: String): FeedSection? =
         entries.firstNotNullOfOrNull { (it as? FeedEntry.Section)?.section?.takeIf { section -> section.key == key } }
 

@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -34,10 +36,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +72,11 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.GroupingMode
 import java.time.Instant
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
 
 internal enum class HomeTab { JOURNAL, UNSORTED }
@@ -92,6 +102,7 @@ internal class HomeActions(
  * as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
  * docs/screens/journal-home.md and docs/screens/unsorted.md.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun JournalHomeScreen(
     library: LibraryState,
@@ -112,27 +123,54 @@ internal fun JournalHomeScreen(
     // Journal shows only stories; photos in no story are in the Unsorted tab, as the feed.
     val unsorted = tab == HomeTab.UNSORTED
     val entries = if (unsorted) emptyList() else stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
-    val feedRows = remember(stories.feed) { stories.feed.rows() }
-    val list = rememberLazyListState()
+    // Composes items about two screens ahead in spare time between frames, not in the frame they scroll into view.
+    val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
+    // A feed that changes mid-scroll (fingerprints and places keep arriving while a library is read) is shown once the
+    // scroll stops, and its list items are worked out off the main thread.
+    var shownFeed by remember { mutableStateOf(stories.feed) }
+    LaunchedEffect(stories.feed) {
+        snapshotFlow { list.isScrollInProgress }.first { !it }
+        shownFeed = stories.feed
+    }
+    val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
+        value = withContext(Dispatchers.Default) { shownFeed.rows() }
+    }
     list.LandOn(landing, feedRows.size) { id -> if (unsorted) feedRows.rowOf(id) else -1 }
     // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val canPlay = unsorted && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
-    val playingId by remember(feedRows, list) { derivedStateOf { list.videoToPlay(feedRows) } }
-    var muted by rememberSaveable { mutableStateOf(true) }
-    val video = FeedVideo(playingId?.takeIf { canPlay }, muted, toggleMute = { muted = !muted })
-    val feedActions = FeedActions(
-        openItem = actions.openItem,
-        newStory = { key ->
-            newStoryTitle = ""
-            newStoryKey = key
-        },
-        saveTrip = { trip ->
-            newStoryTitle = trip.place.orEmpty()
-            newStoryKey = trip.key
-        },
-        dismissTrip = actions.dismissTrip,
-    )
+    // Watched in a coroutine, not read here: a change redraws only the videos, not the whole screen (which took 20 ms).
+    val playingId = remember { mutableStateOf<String?>(null) }
+    val currentRows by rememberUpdatedState(feedRows)
+    LaunchedEffect(list, canPlay) {
+        if (!canPlay) {
+            playingId.value = null
+            return@LaunchedEffect
+        }
+        snapshotFlow { list.videoToPlay(currentRows) }.collectLatest { inView ->
+            // Stops at once; starts only once the scroll has settled on it.
+            if (inView != null) delay(VIDEO_SETTLE_MILLIS)
+            playingId.value = inView
+        }
+    }
+    val muted = rememberSaveable { mutableStateOf(true) }
+    val video = remember { FeedVideo(playingId = { playingId.value }, isMuted = { muted.value }, toggleMute = { muted.value = !muted.value }) }
+    // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
+    val currentActions by rememberUpdatedState(actions)
+    val feedActions = remember {
+        FeedActions(
+            openItem = { section, item -> currentActions.openItem(section, item) },
+            newStory = { key ->
+                newStoryTitle = ""
+                newStoryKey = key
+            },
+            saveTrip = { trip ->
+                newStoryTitle = trip.place.orEmpty()
+                newStoryKey = trip.key
+            },
+            dismissTrip = { currentActions.dismissTrip(it) },
+        )
+    }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(

@@ -109,6 +109,18 @@ internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier, cr
 }
 
 /**
+ * [item] cropped to fill this box, which the caller knows to be [width] × [height] pixels: like [CroppedThumbnail]
+ * without measuring the box first (BoxWithConstraints composes its content a second time, which costs a frame in a
+ * fast scroll).
+ */
+@Composable
+internal fun SizedThumbnail(item: MediaItem, width: Int, height: Int, modifier: Modifier = Modifier) {
+    rememberCoverThumbnail(item, width, height)?.let {
+        Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
+    }
+}
+
+/**
  * [item] scaled to exactly cover [width] × [height] pixels, to be cropped to it. Up to MediaStore's thumbnail size it is
  * that thumbnail scaled down; larger, the photo itself decoded straight to that size (a video has only its thumbnail).
  * Only the result is cached.
