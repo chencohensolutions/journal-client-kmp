@@ -71,12 +71,11 @@ private val thumbnailCache = object : LruCache<String, Bitmap>((Runtime.getRunti
 internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
     val resolver = LocalContext.current.contentResolver
     val key = "${item.id}@$sizePx"
+    // The state outlives a change of item, so each new key replaces the value, even with null when it can't be read.
     val bitmap by produceState(thumbnailCache.get(key), key) {
-        if (value == null) {
-            value = withContext(Dispatchers.IO) {
-                runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
-            }?.also { thumbnailCache.put(key, it) }
-        }
+        value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
+            runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
+        }?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
 }
@@ -106,6 +105,8 @@ internal fun MediaTile(
     badgeSize: Dp = 22.dp,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean? = null,
+    /** Which part of the photo stays in view when it is cropped. */
+    alignment: Alignment = Alignment.Center,
 ) {
     val thumbnail = rememberThumbnail(item, thumbnailSize)
     val description = itemDescription(item)
@@ -119,7 +120,7 @@ internal fun MediaTile(
             },
     ) {
         if (thumbnail != null) {
-            Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, alignment = alignment, modifier = Modifier.fillMaxSize())
         }
         if (item.type == MediaType.VIDEO) {
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))

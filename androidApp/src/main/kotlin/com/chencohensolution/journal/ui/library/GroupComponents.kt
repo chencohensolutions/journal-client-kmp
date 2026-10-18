@@ -6,11 +6,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,11 +31,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAbsoluteAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,6 +55,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.BurstSuggestion
+import com.chencohensolution.journal.stories.FocusPoint
+import com.chencohensolution.journal.stories.GRID_COLUMNS
+import com.chencohensolution.journal.stories.PlacedTile
+import com.chencohensolution.journal.stories.StoryBand
 import com.chencohensolution.journal.stories.StoryDay
 import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.GroupView
@@ -77,9 +81,13 @@ internal fun timeRange(items: List<MediaItem>): String {
 /** Selection mode of a story's grid: which photos are picked, and how to change that. */
 internal class GridSelection(val ids: Set<String>, val toggle: (String) -> Unit)
 
+/** Arrange mode of a story's grid: tapping a tile picks it ([StoryTile.key]) to change its size or place. */
+internal class GridArranging(val selectedKey: String?, val select: (String) -> Unit)
+
 /**
- * A story's grid, day by day: a group is a large tile; the first tile of a day with three or more tiles is large
- * too; the rest fill rows of three. With [selection], tapping a photo toggles it; groups can't be picked.
+ * A story's grid, day by day, each day packed onto the 6-column grid ([StoryDay.bands]): tiles are as large as the
+ * owner arranged them, or automatic (groups and a day's first tile large, the rest small). With [selection],
+ * tapping a photo toggles it and groups can't be picked; with [arranging], tapping any tile picks it.
  */
 internal fun LazyListScope.storyGrids(
     days: List<StoryDay>,
@@ -88,84 +96,83 @@ internal fun LazyListScope.storyGrids(
     onOpenGroup: (GroupView) -> Unit,
     onLongPress: (MediaItem) -> Unit,
     selection: GridSelection?,
+    arranging: GridArranging? = null,
 ) {
     days.forEach { day ->
-        val rows = storyRows(day.tiles)
-        items(rows, key = { row -> "${day.day}-${row.key}" }) { row ->
+        items(day.bands, key = { band -> "${day.day}-${band.key}" }) { band ->
             Box {
-                val tile: @Composable (StoryTile, Modifier, Boolean) -> Unit = { tile, modifier, large ->
-                    when (tile) {
-                        is StoryTile.Group -> GroupTile(tile.group, modifier, large) { if (selection == null) onOpenGroup(tile.group) }
-                        is StoryTile.Media -> MediaTile(
-                            tile.item,
-                            onClick = { if (selection != null) selection.toggle(tile.item.id) else onOpenItem(tile.item) },
-                            modifier = modifier,
-                            thumbnailSize = if (large) THUMB_LARGE else THUMB_SMALL,
-                            onLongClick = { onLongPress(tile.item) },
-                            selected = selection?.let { tile.item.id in it.ids },
-                        )
-                    }
-                }
-                when (row) {
-                    is StoryRow.Hero -> Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-                        tile(row.large, Modifier.weight(2f).fillMaxHeight(), true)
-                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(GAP)) {
-                            row.side.forEach { tile(it, Modifier.weight(1f).fillMaxWidth(), false) }
-                            repeat(2 - row.side.size) { Spacer(Modifier.weight(1f)) }
+                BandGrid(band) { placed, modifier ->
+                    val tile = placed.tile
+                    val large = placed.size.columns >= 3
+                    val alignment = placed.focus.alignment()
+                    val picked = arranging?.selectedKey == tile.key
+                    Box(modifier) {
+                        when (tile) {
+                            is StoryTile.Group -> GroupTile(tile.group, Modifier.fillMaxSize(), large, alignment) {
+                                when {
+                                    arranging != null -> arranging.select(tile.key)
+                                    selection == null -> onOpenGroup(tile.group)
+                                }
+                            }
+                            is StoryTile.Media -> MediaTile(
+                                tile.item,
+                                onClick = {
+                                    when {
+                                        arranging != null -> arranging.select(tile.key)
+                                        selection != null -> selection.toggle(tile.item.id)
+                                        else -> onOpenItem(tile.item)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                                thumbnailSize = if (large) THUMB_LARGE else THUMB_SMALL,
+                                onLongClick = if (arranging == null) ({ onLongPress(tile.item) }) else null,
+                                selected = selection?.let { tile.item.id in it.ids },
+                                alignment = alignment,
+                            )
                         }
-                    }
-                    is StoryRow.Regular -> Row(Modifier.fillMaxWidth().aspectRatio(3f), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-                        row.tiles.forEach { tile(it, Modifier.weight(1f).fillMaxHeight(), false) }
-                        repeat(3 - row.tiles.size) { Spacer(Modifier.weight(1f)) }
+                        if (picked) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.Warning))
                     }
                 }
-                if (row === rows.first()) DayLabelOverlay(label(day), Modifier.fillMaxWidth())
+                if (band === day.bands.first()) DayLabelOverlay(label(day), Modifier.fillMaxWidth())
             }
         }
     }
 }
 
-private sealed interface StoryRow {
-    val key: String
-
-    data class Hero(val large: StoryTile, val side: List<StoryTile>) : StoryRow {
-        override val key get() = "hero-${large.key}"
-    }
-
-    data class Regular(val tiles: List<StoryTile>) : StoryRow {
-        override val key get() = "row-${tiles.first().key}"
-    }
-}
-
-private val StoryTile.key: String
-    get() = when (this) {
-        is StoryTile.Media -> item.id
-        is StoryTile.Group -> "group-${group.id}"
-    }
-
-private fun storyRows(tiles: List<StoryTile>): List<StoryRow> {
-    val rows = mutableListOf<StoryRow>()
-    var index = 0
-    while (index < tiles.size) {
-        val tile = tiles[index]
-        val large = tile is StoryTile.Group || (index == 0 && tiles.size >= 3)
-        if (large) {
-            // Up to two photos beside it; another group starts its own row.
-            val side = tiles.drop(index + 1).take(2).takeWhile { it is StoryTile.Media }
-            rows += StoryRow.Hero(tile, side)
-            index += 1 + side.size
-        } else {
-            val run = tiles.drop(index).take(3).takeWhile { it is StoryTile.Media }
-            rows += StoryRow.Regular(run)
-            index += run.size
+/** One band of a day: square cells [GRID_COLUMNS] across, each tile spanning its size in cells. */
+@Composable
+private fun BandGrid(band: StoryBand, tile: @Composable (PlacedTile, Modifier) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val cell = (maxWidth - GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
+        fun span(cells: Int) = cell * cells + GAP * (cells - 1)
+        Box(Modifier.fillMaxWidth().height(span(band.rows))) {
+            band.tiles.forEach { placed ->
+                key(placed.tile.key) {
+                    // offset follows the layout direction, so the grid mirrors in Hebrew like the rest of the screen.
+                    tile(
+                        placed,
+                        Modifier
+                            .offset(x = (cell + GAP) * placed.column, y = (cell + GAP) * placed.row)
+                            .size(span(placed.size.columns), span(placed.size.rows)),
+                    )
+                }
+            }
         }
     }
-    return rows
 }
+
+/** Where a cropped photo is anchored. Absolute: the point is in the photo's own coordinates, not mirrored in RTL. */
+internal fun FocusPoint.alignment(): Alignment = BiasAbsoluteAlignment(x * 2 - 1, y * 2 - 1)
 
 /** A group in its story: the cover with a stack behind it, the title or time, and "⧉ 13". */
 @Composable
-internal fun GroupTile(group: GroupView, modifier: Modifier = Modifier, large: Boolean = true, onClick: () -> Unit) {
+internal fun GroupTile(
+    group: GroupView,
+    modifier: Modifier = Modifier,
+    large: Boolean = true,
+    alignment: Alignment = Alignment.Center,
+    onClick: () -> Unit,
+) {
     val thumbnail = rememberThumbnail(group.cover, if (large) THUMB_LARGE else THUMB_SMALL)
     val description = stringResource(R.string.library_group_description, group.title ?: timeRange(group.items), group.itemCount)
     Box(modifier.clickable(onClick = onClick).semantics { contentDescription = description }) {
@@ -179,7 +186,7 @@ internal fun GroupTile(group: GroupView, modifier: Modifier = Modifier, large: B
                 .background(LibraryColors.Raised, RoundedCornerShape(3.dp)),
         ) {
             if (thumbnail != null) {
-                Image(thumbnail, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                Image(thumbnail, null, contentScale = ContentScale.Crop, alignment = alignment, modifier = Modifier.fillMaxSize())
             }
             Row(
                 Modifier

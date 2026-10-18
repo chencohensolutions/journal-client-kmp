@@ -104,7 +104,8 @@ private fun textOf(story: Story) = StoryText(
 
 /**
  * story.json, format version 1. Unknown fields (added by later versions, or the dates events used to have) are
- * ignored when reading.
+ * ignored when reading. Tiles are listed in the story's order; a tile's optional `size` and `focus` are how the
+ * owner arranged it.
  */
 @Serializable
 private data class StoryFile(
@@ -118,7 +119,8 @@ private data class StoryFile(
 ) {
     /**
      * A "media" tile is one photo or video; a "group" tile holds media tiles shown as one, its text in story.md
-     * under `<!-- group:<id> -->`.
+     * under `<!-- group:<id> -->`. On the story's grid a tile is [size] ([TileSize.fileName]; automatic when
+     * missing), cropped around [focus] (a group: its cover). Inside a group the media tiles carry neither.
      */
     @Serializable
     data class Tile(
@@ -130,14 +132,33 @@ private data class StoryFile(
         val title: String? = null,
         val cover: String? = null,
         val tiles: List<Tile>? = null,
+        val size: String? = null,
+        val focus: Focus? = null,
     ) {
         fun toMember(): StoryMember? = deviceId?.let { StoryMember(it, fileName, takenAt ?: 0) }
+
+        /** The key of this tile in [Story.layout]; null for a tile that can't be read. */
+        val key: String?
+            get() = when (type) {
+                "media" -> deviceId
+                "group" -> id?.let(::groupTileKey)
+                else -> null
+            }
+
+        val layout: TileLayout
+            get() = TileLayout(TileSize.parse(size), focus?.let { FocusPoint.of(it.x, it.y) })
+
+        fun withLayout(layout: TileLayout?) = copy(size = layout?.size?.fileName, focus = layout?.focus?.let { Focus(it.x, it.y) })
 
         companion object {
             fun media(member: StoryMember) =
                 Tile(type = "media", deviceId = member.deviceId, fileName = member.fileName, takenAt = member.takenAtMillis)
         }
     }
+
+    /** 0..1 from the left and from the top of the photo. */
+    @Serializable
+    data class Focus(val x: Float, val y: Float)
 
     fun toStory(text: StoryText?): Story {
         val members = mutableListOf<StoryMember>()
@@ -170,16 +191,21 @@ private data class StoryFile(
             intro = text?.intro.orEmpty(),
             dismissedSuggestions = dismissedSuggestions,
             textExtras = text?.sections.orEmpty().filterKeys { id -> groups.none { it.id == id } },
+            layout = tiles.mapNotNull { tile -> tile.key?.let { it to tile.layout } }.filter { !it.second.isEmpty }.toMap(),
+            tileOrder = tiles.mapNotNull { it.key },
         )
     }
 
     companion object {
-        /** Loose members are media tiles; a group's tile sits where its first member would be. */
+        /**
+         * Loose members are media tiles; a group's tile sits where its first member would be, unless the owner
+         * arranged the tiles.
+         */
         fun of(story: Story): StoryFile {
             val groupOf = story.groups.flatMap { group -> group.memberIds.map { it to group } }.toMap()
             val byId = story.members.associateBy { it.deviceId }
             val written = mutableSetOf<String>()
-            val tiles = story.members.mapNotNull { member ->
+            val byTime = story.members.mapNotNull { member ->
                 val group = groupOf[member.deviceId] ?: return@mapNotNull Tile.media(member)
                 if (!written.add(group.id)) return@mapNotNull null
                 Tile(
@@ -190,6 +216,8 @@ private data class StoryFile(
                     tiles = group.memberIds.mapNotNull { byId[it] }.map(Tile::media),
                 )
             }
+            val tiles = arrangeTiles(byTime, story.tileOrder, key = { it.key.orEmpty() }, time = { it.takenAt ?: it.tiles?.firstOrNull()?.takenAt ?: 0 })
+                .map { tile -> tile.withLayout(story.layout[tile.key]) }
             return StoryFile(
                 id = story.id,
                 title = story.title,

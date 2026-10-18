@@ -49,6 +49,14 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
   remembered per story.
 - Ungrouping keeps the photos and moves the group's text into the story's opening text, so no text is lost.
 
+**Layout**
+- A story's days are grids **6 square cells wide**; tiles take size presets (Small 2×2, Wide 4×2, Tall 2×4, Half
+  3×3, Large 4×4, Full 6×4) and are placed by **dense packing** in the story's order. A group is one tile in its
+  story's layout; the group page itself stays automatic.
+- Arranging stores only what the owner chose (size, focus point, order) in story.json; everything else stays
+  automatic, and the automatic layout is the one stories had before arranging existed.
+- Order changes only **within a day**, so a story still reads oldest day first.
+
 **Photos are never modified**
 - The app must never change, move or delete a photo. Enforced by `PhotoSafetyTest` (scans all sources for
   MediaStore/PhotoKit write APIs and write permissions) and by the platforms (read-only permissions on Android;
@@ -66,7 +74,8 @@ folder alone is a complete, portable journal if the server is ever lost.
 journal/
   stories/
     2026-10-17T12-52-22.257Z/     ← id = UTC creation time; folder never renamed
-      story.json                  ← title, members (tiles), groups, dismissed suggestions; format v1
+      story.json                  ← title, tiles in order (with size/focus when arranged), groups,
+                                    dismissed suggestions; format v1
       story.md                    ← "# Title", opening text, then <!-- group:g1 --> sections
   media/
     22.json                       ← one note per photo: caption, tags (device id; "/" etc. become "_")
@@ -94,9 +103,11 @@ disposable `.cache/` index rebuilt from the files.
 - Backup status model and badges (everything shows "Only on this device": uploads don't exist).
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
 - Groups: burst suggestions, select-and-group with Undo, group page, set cover, remove, ungroup, group text.
+- Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point, reset. iOS
+  shows the automatic layout and doesn't read the arrangement yet.
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
 - Search pickers for stories and tags.
-- Screen docs in `docs/screens/`; shared tests (67 on the JVM host, 65 on the iOS simulator).
+- Screen docs in `docs/screens/`; shared tests (79 on the JVM host, 77 on the iOS simulator).
 
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the
@@ -109,8 +120,8 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 
 **Not built yet**
 - Upload and sync (next topic, see below), and with it event/story sync to the server.
-- Sub-stories; arranging a story's layout (6-column grid with size presets, crop focus, templates; designed);
-  choosing a story's cover.
+- Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
+  reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
 - Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).
 - Renaming/merging tags; grouping by visual similarity (perceptual hash); month scrubber.

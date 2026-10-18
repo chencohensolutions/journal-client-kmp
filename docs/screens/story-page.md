@@ -5,8 +5,8 @@ after creating a story.
 
 ## Layout
 
-- **Top bar:** back, the Offline pill when the server can't be reached, and **⋯** with **Rename** and
-  **Delete story**.
+- **Top bar:** back, the Offline pill when the server can't be reached, and **⋯** with **Rename**,
+  **Arrange layout** and **Delete story**.
 - **Header:** the first day as a calendar block (OCT / 8), the title, and a summary such as
   "Oct 8 – 16 · 9 days · 142 photos · 2 groups". One-day stories leave out the day count.
 - **Story:** the story's opening text from story.md, in a serif, with **Edit**. Empty stories prompt "Write about
@@ -17,15 +17,32 @@ after creating a story.
   [group.md](group.md).
 - **Notes**, when they apply: "N photos of this story aren't on this device" (deleted, or hidden by limited access),
   or "None of this story's photos are on this device".
-- **Photos and groups, day by day, oldest first**, so the story reads like a story. A [group](group.md) is a large
-  tile where its first photo would be; the first tile of a day with three or more tiles is large too; the rest fill
-  rows of three. In stories longer than a day each day is labeled "Day 2 · Fri, Oct 9".
+- **Photos and groups, day by day, oldest first**, so the story reads like a story. Each day is a grid six square
+  cells wide. A [group](group.md) is one tile where its first photo would be. Unless the story was arranged, groups
+  and the first tile of a day with three or more tiles are **Large** (4×4 cells) and the rest **Small** (2×2), so a
+  day reads as a large tile with two beside it, then rows of three. In stories longer than a day each day is labeled
+  "Day 2 · Fri, Oct 9".
 
 Tapping a photo opens the [viewer](viewer.md), swiping through this story's photos, with each group as one stop
 (its cover). From there a photo can be removed from the story or added to others.
 
 **Long-press** a photo to select: the top bar shows "4 selected" with ✕, tiles get check circles, and the bottom
 bar offers **Group** (two or more) and **Remove** (from the story).
+
+**⋯ › Arrange layout** switches to arrange mode: the top bar shows **Arrange** with **Reset** and **Done**, the
+story's text, neighboring days and suggestions are hidden, and tapping a photo or group picks it (orange outline;
+tap again to drop it). The bottom panel then offers:
+
+- **Sizes**, each drawn as its shape on the grid: **Auto** (the automatic size above, drawn as what it resolves to),
+  **Small** 2×2, **Wide** 4×2, **Tall** 2×4, **Half** 3×3, **Large** 4×4, **Full** 6×4 cells.
+- **Earlier / Later**: moves the tile one place among its day's tiles. Tiles never move to another day.
+- **Focus**: the whole photo (a group's cover), full screen; tap the part that must stay in view when the tile crops
+  it, with a preview of the tile below. Changing a group's cover resets its focus.
+
+Tiles are placed in order, each at the first spot from the top where it fits, so a later small tile fills a hole a
+large one left (dense packing); a hole stays empty only when nothing after it fits. Every change is saved right
+away. **Reset** (after a confirmation) puts sizes, order and focus back to automatic. Photos added after arranging
+fall in by time, right after the last tile taken no later than them. The group page keeps its automatic grid.
 
 ## Actions
 
@@ -38,6 +55,8 @@ bar offers **Group** (two or more) and **Remove** (from the story).
 | Group them / Group | Makes a group; "Grouped N photos · Undo" for a few seconds |
 | Not now | Hides that burst suggestion for good |
 | Remove (selection) | Takes the photos out of the story and its groups |
+| Arrange: size, Earlier/Later, Focus | Saved to story.json at once; a photo that joins a group loses its own size and focus |
+| Arrange: Reset | Confirmation; back to the automatic layout |
 
 ## No dates of their own
 
@@ -75,10 +94,16 @@ refuse to overwrite an id with different content. Stories created before this ch
   "createdAt": "2026-10-17T12:52:22Z",
   "updatedAt": "2026-10-17T12:52:22Z",
   "tiles": [
-    { "type": "media", "deviceId": "49", "fileName": "20261008_190157.heic", "takenAt": 1791475317937 }
+    { "type": "media", "deviceId": "49", "fileName": "20261008_190157.heic", "takenAt": 1791475317937 },
+    { "type": "media", "deviceId": "44", "fileName": "20261008_182059.mp4", "takenAt": 1791472871000,
+      "size": "wide", "focus": { "x": 0.66, "y": 0.2 } }
   ]
 }
 ```
+
+**Tiles are listed in the story's order**, oldest first unless arranged. A tile may carry `size` (`small`, `wide`,
+`tall`, `half`, `large`, `full`; automatic when missing) and `focus` (0–1 from the left and from the top of the photo;
+the center when missing). Both are optional, so older files read as automatic layouts and older readers ignore them.
 
 Groups are `group` tiles holding `media` tiles; see [group.md](group.md). `dismissedSuggestions` lists burst
 suggestions answered "Not now".
@@ -95,8 +120,8 @@ Uninstalling the app deletes these files.
 
 ## Not built yet
 
-Sub-stories, arranging the layout, choosing the story's cover, and grouping by visual
-similarity (today bursts are found by time and the camera's burst id only).
+Sub-stories, layout templates, drag-and-drop reordering, arranging on iOS (iOS still shows the automatic layout,
+see below), choosing the story's cover, and grouping by visual similarity (today bursts are found by time and the camera's burst id only).
 
 ## Code
 
@@ -104,6 +129,10 @@ similarity (today bursts are found by time and the camera's burst id only).
   (`StoriesController`, `FileStoryStore`)
 - Android: [StoryScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/StoryScreen.kt),
   cards, dialogs and the Add to story sheet in
-  [StoryComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/StoryComponents.kt)
+  [StoryComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/StoryComponents.kt),
+  the grid in [GroupComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/GroupComponents.kt)
+  (`storyGrids`), arrange mode in
+  [ArrangeComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ArrangeComponents.kt)
+- Layout logic (sizes, packing into bands, order): [StoryLayout.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoryLayout.kt)
 - iOS: [StoryPageView.swift](../../iosApp/iosApp/StoryPageView.swift),
   [StoryComponents.swift](../../iosApp/iosApp/StoryComponents.swift)

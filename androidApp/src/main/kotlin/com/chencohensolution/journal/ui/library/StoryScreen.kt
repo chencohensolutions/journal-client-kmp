@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.StoryView
+import com.chencohensolution.journal.stories.FocusPoint
 import com.chencohensolution.journal.stories.GroupView
+import com.chencohensolution.journal.stories.TileSize
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -74,12 +76,18 @@ internal class StoryActions(
     val dismissSuggestion: (key: String) -> Unit = {},
     val ungroup: (groupId: String) -> Unit = {},
     val removeItems: (itemIds: List<String>) -> Unit = {},
+    /** Layout, by tile key ([StoryTile.key]); a null size is automatic. */
+    val setTileSize: (tileKey: String, size: TileSize?) -> Unit = { _, _ -> },
+    val setTileFocus: (tileKey: String, focus: FocusPoint) -> Unit = { _, _ -> },
+    val moveTile: (tileKey: String, offset: Int) -> Unit = { _, _ -> },
+    val resetLayout: () -> Unit = {},
     val back: () -> Unit = {},
 )
 
 /**
  * One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
- * Long-press a photo to select photos and group them. See docs/screens/story.md.
+ * Long-press a photo to select photos and group them; ⋯ › Arrange to size, reorder and crop the tiles. See
+ * docs/screens/story-page.md.
  */
 @Composable
 internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health: ServerHealth, actions: StoryActions) {
@@ -93,6 +101,13 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     var editingIntro by rememberSaveable { mutableStateOf(false) }
     var selecting by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var arranging by rememberSaveable { mutableStateOf(false) }
+    var arrangeKey by rememberSaveable { mutableStateOf<String?>(null) }
+    /** The tile whose focus is being chosen; kept apart from [arrangeKey] so the editor stays on it. */
+    var focusKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmingReset by rememberSaveable { mutableStateOf(false) }
+    fun placed(key: String?) = key?.let { story.tileDays.asSequence().flatMap { it.bands }.flatMap { it.tiles }.firstOrNull { it.tile.key == key } }
+    val arranged = placed(arrangeKey)
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val insets = WindowInsets.systemBars.asPaddingValues()
@@ -110,21 +125,31 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
         selecting = false
         selected = emptyList()
     }
+    fun endArranging() {
+        arranging = false
+        arrangeKey = null
+    }
     BackHandler(enabled = selecting, onBack = ::endSelection)
+    BackHandler(enabled = arranging, onBack = ::endArranging)
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
-            contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 110.dp),
+            contentPadding = PaddingValues(
+                top = insets.calculateTopPadding() + 64.dp,
+                bottom = insets.calculateBottomPadding() + if (arranging) 200.dp else 110.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             item(key = "header") { Header(story) }
-            item(key = "intro") {
-                WritingBlock(story.intro, stringResource(R.string.library_writing_story_prompt)) { editingIntro = true }
+            if (!arranging) {
+                item(key = "intro") {
+                    WritingBlock(story.intro, stringResource(R.string.library_writing_story_prompt)) { editingIntro = true }
+                }
             }
-            if (neighborDays.isNotEmpty() && !selecting) {
+            if (neighborDays.isNotEmpty() && !selecting && !arranging) {
                 item(key = "neighbors") { NeighborDays(neighborDays, actions.addDay) }
             }
-            if (!selecting) {
+            if (!selecting && !arranging) {
                 items(story.suggestions, key = { "suggestion-${it.key}" }) { suggestion ->
                     BurstSuggestionCard(
                         suggestion,
@@ -165,10 +190,20 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
                 } else {
                     null
                 },
+                arranging = if (arranging) GridArranging(arrangeKey) { key -> arrangeKey = key.takeIf { it != arrangeKey } } else null,
             )
         }
 
-        if (selecting) {
+        if (arranging) {
+            ArrangeTopBar(onReset = { confirmingReset = true }, onDone = ::endArranging, modifier = Modifier.align(Alignment.TopCenter))
+            ArrangePanel(
+                tile = arranged,
+                onSize = { size -> arranged?.let { actions.setTileSize(it.tile.key, size) } },
+                onMove = { offset -> arranged?.let { actions.moveTile(it.tile.key, offset) } },
+                onFocus = { focusKey = arrangeKey },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        } else if (selecting) {
             SelectionTopBar(selected.size, onClose = ::endSelection, modifier = Modifier.align(Alignment.TopCenter))
             SelectionBottomBar(
                 canGroup = selected.size >= 2,
@@ -188,6 +223,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
                 health = health,
                 onBack = actions.back,
                 onRename = { renaming = true },
+                onArrange = { arranging = true },
                 onDelete = { confirmingDelete = true },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
@@ -195,6 +231,33 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (selecting) 96.dp else 16.dp))
     }
 
+    placed(focusKey)?.let { tile ->
+        FocusEditor(
+            tile = tile,
+            onSave = { focus ->
+                focusKey = null
+                actions.setTileFocus(tile.tile.key, focus)
+            },
+            onDismiss = { focusKey = null },
+        )
+    }
+    if (confirmingReset) {
+        AlertDialog(
+            onDismissRequest = { confirmingReset = false },
+            title = { Text(stringResource(R.string.library_arrange_reset_title)) },
+            text = { Text(stringResource(R.string.library_arrange_reset_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingReset = false
+                    arrangeKey = null
+                    actions.resetLayout()
+                }) { Text(stringResource(R.string.library_arrange_reset)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingReset = false }) { Text(stringResource(R.string.library_cancel)) }
+            },
+        )
+    }
     if (editingIntro) {
         WritingEditor(
             title = story.title,
@@ -237,7 +300,14 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
 }
 
 @Composable
-private fun StoryTopBar(health: ServerHealth, onBack: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun StoryTopBar(
+    health: ServerHealth,
+    onBack: () -> Unit,
+    onRename: () -> Unit,
+    onArrange: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier
@@ -263,6 +333,14 @@ private fun StoryTopBar(health: ServerHealth, onBack: () -> Unit, onRename: () -
                     onClick = {
                         menuOpen = false
                         onRename()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.library_arrange)) },
+                    leadingIcon = { Icon(LibraryIcons.Grid, null) },
+                    onClick = {
+                        menuOpen = false
+                        onArrange()
                     },
                 )
                 DropdownMenuItem(

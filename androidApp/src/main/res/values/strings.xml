@@ -246,4 +246,22 @@
     <string name="library_moment_times">%1$s · %2$s – %3$s</string>
     <string name="library_moment_time">%1$s · %2$s</string>
     <string name="library_moment_days">%1$s – %2$s</string>
+    <string name="library_arrange">Arrange layout</string>
+    <string name="library_arrange_title">Arrange</string>
+    <string name="library_arrange_done">Done</string>
+    <string name="library_arrange_reset">Reset</string>
+    <string name="library_arrange_reset_title">Reset the layout?</string>
+    <string name="library_arrange_reset_body">Sizes, order and focus go back to automatic. Photos and text stay.</string>
+    <string name="library_arrange_hint">Tap a photo or group to change its size, place or focus.</string>
+    <string name="library_arrange_earlier">Earlier</string>
+    <string name="library_arrange_later">Later</string>
+    <string name="library_arrange_focus">Focus</string>
+    <string name="library_arrange_focus_hint">Tap the part that should stay in view when the photo is cropped.</string>
+    <string name="library_size_auto">Auto</string>
+    <string name="library_size_small">Small</string>
+    <string name="library_size_wide">Wide</string>
+    <string name="library_size_tall">Tall</string>
+    <string name="library_size_half">Half</string>
+    <string name="library_size_large">Large</string>
+    <string name="library_size_full">Full</string>
 </resources>

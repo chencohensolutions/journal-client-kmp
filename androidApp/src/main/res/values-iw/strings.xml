@@ -257,4 +257,22 @@
     <string name="library_moment_times">%1$s · %2$s – %3$s</string>
     <string name="library_moment_time">%1$s · %2$s</string>
     <string name="library_moment_days">%1$s – %2$s</string>
+    <string name="library_arrange">סידור הפריסה</string>
+    <string name="library_arrange_title">סידור</string>
+    <string name="library_arrange_done">סיום</string>
+    <string name="library_arrange_reset">איפוס</string>
+    <string name="library_arrange_reset_title">לאפס את הפריסה?</string>
+    <string name="library_arrange_reset_body">הגדלים, הסדר והמיקוד יחזרו לאוטומטי. התמונות והטקסט יישארו.</string>
+    <string name="library_arrange_hint">הקישו על תמונה או קבוצה כדי לשנות את הגודל, המקום או המיקוד שלה.</string>
+    <string name="library_arrange_earlier">לפני</string>
+    <string name="library_arrange_later">אחרי</string>
+    <string name="library_arrange_focus">מיקוד</string>
+    <string name="library_arrange_focus_hint">הקישו על החלק שצריך להישאר גלוי כשהתמונה נחתכת.</string>
+    <string name="library_size_auto">אוטומטי</string>
+    <string name="library_size_small">קטן</string>
+    <string name="library_size_wide">רחב</string>
+    <string name="library_size_tall">גבוה</string>
+    <string name="library_size_half">חצי</string>
+    <string name="library_size_large">גדול</string>
+    <string name="library_size_full">מלא</string>
 </resources>

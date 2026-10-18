@@ -37,12 +37,20 @@ data class GroupView(val group: StoryGroup, val items: List<MediaItem>) {
 
 /** What a story shows in its grid: a photo or video, or a group as one tile. */
 sealed interface StoryTile {
-    data class Media(val item: MediaItem) : StoryTile
-    data class Group(val group: GroupView) : StoryTile
+    /** Names the tile in the story's layout: the photo's device id, or [groupTileKey]. */
+    val key: String
+
+    data class Media(val item: MediaItem) : StoryTile {
+        override val key: String get() = item.id
+    }
+
+    data class Group(val group: GroupView) : StoryTile {
+        override val key: String get() = groupTileKey(group.id)
+    }
 }
 
-/** One day of a story's grid. A group sits on the day of its first photo. */
-data class StoryDay(val day: LocalDay, val tiles: List<StoryTile>)
+/** One day of a story's grid, packed into [bands]. A group sits on the day of its first photo. */
+data class StoryDay(val day: LocalDay, val tiles: List<StoryTile>, val bands: List<StoryBand>)
 
 /** Photos taken in quick succession that could become a group. */
 data class BurstSuggestion(val items: List<MediaItem>) {
@@ -92,20 +100,26 @@ data class StoryView(
         }
     }
 
-    /** The grid, oldest first: loose photos, and each group where its first photo would be. */
+    /**
+     * The grid: loose photos, and each group where its first photo would be, oldest first unless the owner
+     * arranged them ([Story.tileOrder]).
+     */
     val tiles: List<StoryTile> = run {
         val groupOf = groups.flatMap { group -> group.items.map { it.id to group } }.toMap()
         val placed = mutableSetOf<String>()
-        items.mapNotNull { item ->
+        val byTime = items.mapNotNull { item ->
             val group = groupOf[item.id] ?: return@mapNotNull StoryTile.Media(item)
             if (placed.add(group.id)) StoryTile.Group(group) else null
         }
+        arrangeTiles(byTime, story.tileOrder, key = { it.key }, time = { it.firstItem().takenAtMillis })
     }
 
-    /** [tiles] by day, oldest day first: a story reads like a story. */
+    /** [tiles] by day, oldest day first: a story reads like a story. Within a day, in the story's order. */
     val tileDays: List<StoryDay> = tiles
         .groupBy { tile -> tile.firstItem().day }
-        .map { (day, dayTiles) -> StoryDay(day, dayTiles) }
+        .toList()
+        .sortedBy { (day, _) -> day }
+        .map { (day, dayTiles) -> StoryDay(day, dayTiles, packDay(dayTiles, story.layout)) }
 
     /** What the viewer swipes through: loose photos, and each group as its cover. */
     val viewerItems: List<MediaItem> = tiles.map { it.firstItem(cover = true) }
@@ -460,8 +474,15 @@ class StoriesController internal constructor(
         it.copy(text = text.trim())
     }
 
-    fun setCover(storyId: String, groupId: String, itemId: String) = changeGroup(storyId, groupId) { group ->
-        if (itemId in group.memberIds) group.copy(coverId = itemId) else group
+    /** A focus point chosen for the old cover doesn't fit the new one, so it goes back to the center. */
+    fun setCover(storyId: String, groupId: String, itemId: String) = change(storyId) { story ->
+        val group = story.groups.firstOrNull { it.id == groupId }
+        if (group == null || itemId !in group.memberIds || itemId == group.coverId) return@change story
+        val key = groupTileKey(groupId)
+        story.copy(
+            groups = story.groups.map { if (it.id == groupId) it.copy(coverId = itemId) else it },
+            layout = story.layout + (key to (story.layout[key] ?: TileLayout()).copy(focus = null)),
+        )
     }
 
     /** Back to loose photos in the story; a group left with one photo goes away. */
@@ -472,6 +493,30 @@ class StoriesController internal constructor(
     /** Dissolves the group; its photos stay in the story and its text moves to the story's opening text. */
     fun ungroup(storyId: String, groupId: String) = changeGroup(storyId, groupId) { it.copy(memberIds = emptyList()) }
 
+    // MARK: Layout
+
+    /** The tile's size on the story's grid ([StoryTile.key]); null goes back to the automatic size. */
+    fun setTileSize(storyId: String, tileKey: String, size: TileSize?) = changeLayout(storyId, tileKey) { it.copy(size = size) }
+
+    /** The point of the tile's photo (a group's cover) that stays in view when the tile crops it. */
+    fun setTileFocus(storyId: String, tileKey: String, x: Float, y: Float) =
+        changeLayout(storyId, tileKey) { it.copy(focus = FocusPoint.of(x, y)) }
+
+    /** Moves the tile [offset] places later (negative: earlier) among the tiles of its day. */
+    fun moveTile(storyId: String, tileKey: String, offset: Int) {
+        val view = currentState.story(storyId) ?: return
+        val dayKeys = view.tileDays.firstOrNull { day -> day.tiles.any { it.key == tileKey } }?.tiles?.map { it.key } ?: return
+        val from = dayKeys.indexOf(tileKey)
+        val to = (from + offset).coerceIn(dayKeys.indices)
+        if (to == from) return
+        val moved = dayKeys.toMutableList().apply { add(to, removeAt(from)) }.iterator()
+        // The day's tiles take their new order in the same slots; other days stay as they are.
+        val order = view.tiles.map { tile -> if (tile.key in dayKeys) moved.next() else tile.key }
+        change(storyId) { it.copy(tileOrder = order) }
+    }
+
+    /** Back to the automatic layout: sizes, focus points and order. */
+    fun resetLayout(storyId: String) = change(storyId) { it.copy(layout = emptyMap(), tileOrder = emptyList()) }
 
     /** Callback-style observation for Swift; Android collects [state] directly. */
     fun observe(onChange: (StoriesState) -> Unit): ObservationHandle {
@@ -544,9 +589,25 @@ class StoriesController internal constructor(
         story.copy(groups = story.groups.map { if (it.id == groupId) transform(it) else it })
     }
 
+    private fun changeLayout(storyId: String, tileKey: String, transform: (TileLayout) -> TileLayout) = change(storyId) { story ->
+        story.copy(layout = story.layout + (tileKey to transform(story.layout[tileKey] ?: TileLayout())))
+    }
+
     private fun change(storyId: String, transform: (Story) -> Story) {
         val current = stories.firstOrNull { it.id == storyId } ?: return
-        save(normalizeGroups(transform(current)).copy(updatedAt = now()))
+        val changed = normalizeLayout(normalizeGroups(transform(current)))
+        if (changed == current) return
+        save(changed.copy(updatedAt = now()))
+    }
+
+    /** Layout entries only for tiles the story has: a photo that joined a group, or left, loses its own. */
+    private fun normalizeLayout(story: Story): Story {
+        val grouped = story.groups.flatMap { it.memberIds }.toSet()
+        val keys = story.members.map { it.deviceId }.filter { it !in grouped }.toSet() + story.groups.map { groupTileKey(it.id) }
+        return story.copy(
+            layout = story.layout.filter { (key, layout) -> key in keys && !layout.isEmpty },
+            tileOrder = story.tileOrder.filter { it in keys }.distinct(),
+        )
     }
 
     /**

@@ -203,6 +203,10 @@ fun LibraryApp(
                     dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
                     ungroup = { stories.ungroup(route.id, it) },
                     removeItems = { stories.removeItems(route.id, it) },
+                    setTileSize = { key, size -> stories.setTileSize(route.id, key, size) },
+                    setTileFocus = { key, focus -> stories.setTileFocus(route.id, key, focus.x, focus.y) },
+                    moveTile = { key, offset -> stories.moveTile(route.id, key, offset) },
+                    resetLayout = { stories.resetLayout(route.id) },
                     back = pop,
                 ),
             )

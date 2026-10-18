@@ -45,4 +45,8 @@ data class Story(
     val dismissedSuggestions: List<String> = emptyList(),
     /** Sections of story.md whose group no longer exists, kept so no text is lost. */
     val textExtras: Map<String, String> = emptyMap(),
+    /** Sizes and focus points the owner chose, by tile key (device id, or [groupTileKey]). */
+    val layout: Map<String, TileLayout> = emptyMap(),
+    /** Tile keys in the order the owner arranged them; tiles not listed fall in by time. Empty: by time. */
+    val tileOrder: List<String> = emptyList(),
 )
