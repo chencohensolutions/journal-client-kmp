@@ -51,7 +51,8 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
   photos that look alike are suggested together however far apart they were taken, and quick shots of different
   things are split; two are enough. Time (10 s, 3+) is only the fallback for photos not read yet. Looks: a dHash for
   near-duplicates plus each platform's own image embedding for the same scene (Vision feature print on iOS,
-  MediaPipe MobileNet-V3 on Android); a new story or group is read first. The owner chose native per platform for this, and **one shared open model**
+  MediaPipe MobileNet-V3 large on Android), zoom-aware (each photo's zoomed centers are compared with the other's
+  whole frame); a new story or group is read first. The owner chose native per platform for this, and **one shared open model**
   (commercial use allowed, e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) later for
   search across the library, to be decided with upload and sync. Fingerprints are a per-device cache, never synced.
 - **Group** puts the selected tiles (photos and groups) in a new group, in the story or, from a group's page, as a

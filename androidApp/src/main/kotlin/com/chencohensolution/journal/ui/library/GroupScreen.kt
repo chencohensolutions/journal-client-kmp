@@ -165,9 +165,8 @@ internal fun GroupScreen(
             verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             item(key = "cover", span = { GridItemSpan(maxLineSpan) }) {
-                val cover = rememberThumbnail(group.cover, THUMB_LARGE)
                 Box(Modifier.fillMaxWidth().height(300.dp).shared(SharedKey.group(group.id)).background(LibraryColors.Raised)) {
-                    if (cover != null) Image(cover, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    CroppedThumbnail(group.cover, Modifier.fillMaxSize())
                     Box(
                         Modifier
                             .align(Alignment.BottomCenter)
@@ -228,7 +227,6 @@ internal fun GroupScreen(
                         is StoryTile.Group -> GroupTile(
                             tile.group,
                             Modifier.fillMaxSize(),
-                            thumbnailSize = THUMB_SMALL,
                             onLongClick = { startSelecting(tile.key) },
                             selected = isSelected,
                         ) { if (selecting) toggle(tile.key) else actions.openGroup(tile.group) }

@@ -72,7 +72,7 @@ class PhotoSimilarity internal constructor(
                 failed += next.id
                 continue
             }
-            known[next.id] = PhotoFingerprint(dHash(analysis.gray), analysis.embedding?.let(::quantize))
+            known[next.id] = PhotoFingerprint(dHashes(analysis.gray), analysis.embeddings.mapNotNull(::quantize))
             if (++added % PUBLISH_EVERY == 0) publish(known)
         }
         if (added > 0) {
@@ -92,7 +92,8 @@ class PhotoSimilarity internal constructor(
 }
 
 /**
- * `<dir>/fingerprints.json`: device photo id → dHash (16 hex digits) and embedding (base64 bytes), for one model.
+ * `<dir>/fingerprints.json`: device photo id → dHashes (16 hex digits each) and embeddings (base64 bytes each), the
+ * whole photo first, for one model.
  * A cache in the platform's caches folder, rebuilt when it's missing, damaged, or from another model.
  */
 internal class FingerprintCache(private val fileSystem: FileSystem, private val dir: Path) {
@@ -104,7 +105,7 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
             emptyMap()
         } else {
             saved.photos.mapValues { (_, photo) ->
-                PhotoFingerprint(photo.d.toULong(16).toLong(), photo.e?.let { Base64.decode(it) })
+                PhotoFingerprint(photo.d.map { it.toULong(16).toLong() }.toLongArray(), photo.e.map { Base64.decode(it) })
             }
         }
     } catch (e: Exception) {
@@ -114,7 +115,10 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
     fun save(modelId: String, fingerprints: Map<String, PhotoFingerprint>) {
         try {
             val photos = fingerprints.mapValues { (_, it) ->
-                CachedPhoto(it.dHash.toULong().toString(16).padStart(16, '0'), it.embedding?.let { bytes -> Base64.encode(bytes) })
+                CachedPhoto(
+                    it.dHashes.map { hash -> hash.toULong().toString(16).padStart(16, '0') },
+                    it.embeddings.map { bytes -> Base64.encode(bytes) },
+                )
             }
             fileSystem.createDirectories(dir)
             val temp = dir / "fingerprints.json.tmp"
@@ -129,10 +133,11 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
     private class CacheFile(val v: Int, val model: String, val photos: Map<String, CachedPhoto>)
 
     @Serializable
-    private class CachedPhoto(val d: String, val e: String? = null)
+    private class CachedPhoto(val d: List<String>, val e: List<String> = emptyList())
 
     private companion object {
-        const val VERSION = 1
+        // 2: dHashes and embeddings of zoomed centers too.
+        const val VERSION = 2
         val json = Json { ignoreUnknownKeys = true }
     }
 }

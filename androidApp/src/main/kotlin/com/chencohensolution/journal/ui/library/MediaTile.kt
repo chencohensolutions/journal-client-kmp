@@ -16,6 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -59,6 +60,35 @@ import kotlinx.coroutines.withContext
 internal const val THUMB_SMALL = 256
 internal const val THUMB_LARGE = 640
 internal const val THUMB_FULL = 1280
+
+/** Thumbnail sizes a cropped photo asks for, rounded up to one of these so screens share the cache. */
+private val COVER_SIZES = listOf(256, 384, 512, 768, 1024, 1536, 2048)
+
+/**
+ * The thumbnail size that lets [item], cropped to fill [width] × [height] pixels and zoomed by [zoom], draw at full
+ * resolution. A thumbnail comes fitted inside a square of its size, so its longer side must be the photo's longer side
+ * once scaled to cover the box: a 4:3 photo in a square tile needs a third more than the tile.
+ */
+internal fun coverSize(item: MediaItem, width: Int, height: Int, zoom: Float = 1f): Int {
+    val ratio = if (item.width > 0 && item.height > 0) item.width.toFloat() / item.height else 4f / 3f
+    val longer = maxOf(ratio, 1f) * maxOf(width / ratio, height.toFloat()) * maxOf(zoom, 1f)
+    return COVER_SIZES.firstOrNull { it >= longer } ?: COVER_SIZES.last()
+}
+
+/** [item] cropped to fill this box, loaded at the box's size in pixels; empty while it loads. */
+@Composable
+internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier, crop: TileCrop = TileCrop.NONE) {
+    BoxWithConstraints(modifier) {
+        val size = if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
+            coverSize(item, constraints.maxWidth, constraints.maxHeight, crop.zoom)
+        } else {
+            THUMB_SMALL
+        }
+        rememberThumbnail(item, size)?.let {
+            Image(it, contentDescription = null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
+        }
+    }
+}
 
 /** The gap between photo tiles in a grid. */
 internal val TILE_GAP = 2.dp
@@ -119,14 +149,12 @@ internal fun MediaTile(
     item: MediaItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    thumbnailSize: Int = THUMB_SMALL,
     badgeSize: Dp = 22.dp,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean? = null,
     /** Which part of the photo stays in view when it is cropped, and how closely. */
     crop: TileCrop = TileCrop.NONE,
 ) {
-    val thumbnail = rememberThumbnail(item, thumbnailSize)
     val description = itemDescription(item)
     Box(
         modifier
@@ -139,9 +167,7 @@ internal fun MediaTile(
                 if (selected != null) this.selected = selected
             },
     ) {
-        if (thumbnail != null) {
-            Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
-        }
+        CroppedThumbnail(item, Modifier.fillMaxSize(), crop)
         if (item.type == MediaType.VIDEO) {
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))
         }

@@ -17,9 +17,11 @@ import platform.CoreGraphics.CGColorSpaceRelease
 import platform.CoreGraphics.CGContextDrawImage
 import platform.CoreGraphics.CGContextRelease
 import platform.CoreGraphics.CGImageAlphaInfo
+import platform.CoreGraphics.CGImageCreateWithImageInRect
 import platform.CoreGraphics.CGImageGetHeight
 import platform.CoreGraphics.CGImageGetWidth
 import platform.CoreGraphics.CGImageRef
+import platform.CoreGraphics.CGImageRelease
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Photos.PHAsset
@@ -36,8 +38,9 @@ import platform.Vision.VNGenerateImageFeaturePrintRequest
 import platform.Vision.VNImageRequestHandler
 
 /**
- * Asks PhotoKit for a small copy of a photo (never from iCloud) and runs Vision's image feature print on it, which
- * uses the Neural Engine. The simulator may not run the feature print; then only dHashes are compared.
+ * Asks PhotoKit for a small copy of a photo (never from iCloud) and runs Vision's image feature print on it and on
+ * its center zoomed in ([EMBEDDING_ZOOMS]); Vision uses the Neural Engine. The simulator may not run the feature
+ * print; then the photo is grouped by time.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class IosPhotoAnalyzer : PhotoAnalyzer {
@@ -63,7 +66,10 @@ internal class IosPhotoAnalyzer : PhotoAnalyzer {
             options,
         ) { result, _ -> image = result }
         val cgImage = image?.CGImage ?: return@withContext null
-        PhotoAnalysis(gray(cgImage) ?: return@withContext null, featurePrint(cgImage))
+        // The whole photo comes first; without its feature print the zoomed ones can't be compared.
+        val whole = featurePrint(cgImage)
+        val embeddings = if (whole == null) emptyList() else listOf(whole) + EMBEDDING_ZOOMS.drop(1).mapNotNull { zoomed(cgImage, it) }
+        PhotoAnalysis(gray(cgImage) ?: return@withContext null, embeddings)
     }
 
     private fun gray(image: CGImageRef): GrayImage? {
@@ -87,6 +93,20 @@ internal class IosPhotoAnalyzer : PhotoAnalyzer {
         return GrayImage(width, height, IntArray(bytes.size) { bytes[it].toInt() and 0xFF })
     }
 
+    /** The feature print of [image]'s center zoomed in by [zoom]. */
+    private fun zoomed(image: CGImageRef, zoom: Float): FloatArray? {
+        val width = CGImageGetWidth(image).toDouble()
+        val height = CGImageGetHeight(image).toDouble()
+        val w = width / zoom
+        val h = height / zoom
+        val center = CGImageCreateWithImageInRect(image, CGRectMake((width - w) / 2, (height - h) / 2, w, h)) ?: return null
+        try {
+            return featurePrint(center)
+        } finally {
+            CGImageRelease(center)
+        }
+    }
+
     private fun featurePrint(image: CGImageRef): FloatArray? {
         val request = VNGenerateImageFeaturePrintRequest()
         val handler = VNImageRequestHandler(cGImage = image, options = emptyMap<Any?, Any?>())
@@ -104,6 +124,7 @@ internal class IosPhotoAnalyzer : PhotoAnalyzer {
     companion object {
         /** A starting point, not yet checked on real photos; the owner can change it in Settings. */
         const val DEFAULT_SAME_SCENE_PERCENT = 80
-        private const val THUMBNAIL_SIZE = 256.0
+        // Big enough that a 2× center still has detail.
+        private const val THUMBNAIL_SIZE = 512.0
     }
 }

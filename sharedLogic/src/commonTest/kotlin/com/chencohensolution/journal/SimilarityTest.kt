@@ -17,6 +17,9 @@ import com.chencohensolution.journal.similarity.PhotoFingerprint
 import com.chencohensolution.journal.similarity.PhotoLooks
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.similarity.cosine
+import com.chencohensolution.journal.similarity.dHashes
+import com.chencohensolution.journal.similarity.center
+import com.chencohensolution.journal.similarity.DHASH_ZOOMS
 import com.chencohensolution.journal.similarity.dHash
 import com.chencohensolution.journal.similarity.hammingDistance
 import com.chencohensolution.journal.similarity.quantize
@@ -49,8 +52,12 @@ private fun photo(id: String, second: Int, type: MediaType = MediaType.IMAGE) =
 private fun picture(pattern: (x: Int, y: Int) -> Int) =
     GrayImage(90, 80, IntArray(90 * 80) { pattern(it % 90, it / 90).coerceIn(0, 255) })
 
+/** A fingerprint of the whole photo only. */
+private fun fingerprint(dHash: Long, embedding: ByteArray?) = PhotoFingerprint(longArrayOf(dHash), listOfNotNull(embedding))
+
 private val diagonal = picture { x, y -> (x * 2 + y) % 256 }
-private val waves = picture { x, y -> if ((x / 10 + y / 10) % 2 == 0) 40 else 200 }
+// Darkening to the right in bands: never like [diagonal], whole or zoomed.
+private val waves = picture { x, y -> 230 - x * 2 + if ((y / 8) % 2 == 1) 40 else 0 }
 
 class DHashTest {
     @Test
@@ -76,6 +83,46 @@ class DHashTest {
     fun shrinkAveragesEachCell() {
         val image = GrayImage(4, 2, intArrayOf(0, 10, 100, 110, 20, 30, 120, 130))
         assertEquals(listOf(15.0, 115.0), shrink(image, 2, 1).toList())
+    }
+}
+
+class ZoomTest {
+    /** [image]'s center zoomed in by [zoom] and scaled back up, as a camera's digital zoom would show it. */
+    private fun zoomed(image: GrayImage, zoom: Float): GrayImage {
+        val center = image.center(zoom)
+        return GrayImage(image.width, image.height, IntArray(image.pixels.size) {
+            center.pixels[(it / image.width) * center.height / image.height * center.width + (it % image.width) * center.width / image.width]
+        })
+    }
+
+    @Test
+    fun aZoomedShotMatchesTheOthersCenter() {
+        val photo = picture { x, y -> ((x - 45) * (x - 45) + (y - 40) * (y - 40) * 2) % 256 }
+        val shot = zoomed(photo, 2f)
+        assertTrue(hammingDistance(dHash(photo), dHash(shot)) > 10)
+        assertTrue(hammingDistance(dHashes(photo)[DHASH_ZOOMS.indexOf(2f)], dHash(shot)) <= 4)
+    }
+
+    @Test
+    fun eitherPhotoCanBeTheZoomedOne() {
+        val wide = quantize(FloatArray(64) { it.toFloat() })!!
+        val center = quantize(FloatArray(64) { if (it % 2 == 0) 1f else -1f })!!
+        val unrelated = quantize(FloatArray(64) { if (it < 32) -1f else 2f })!!
+        // "w" is the wide shot: its 2× center looks like "z", the zoomed one.
+        val looks = PhotoLooks(
+            mapOf(
+                "w" to PhotoFingerprint(longArrayOf(0L, 0x5555_5555_5555_5555L), listOf(wide, center)),
+                "z" to PhotoFingerprint(longArrayOf(-1L, 0x3333_3333_3333_3333L), listOf(center, unrelated)),
+                "u" to PhotoFingerprint(longArrayOf(0x0F0F_0F0F_0F0F_0F0FL), listOf(unrelated)),
+            ),
+            0.9f,
+        )
+        assertTrue(looks.similar(photo("w", 0), photo("z", 1)))
+        assertTrue(looks.similar(photo("z", 1), photo("w", 0)))
+        // Two zoomed centers are never compared with each other: "z"'s center is "u"'s whole frame, which counts...
+        assertTrue(looks.similar(photo("z", 1), photo("u", 2)))
+        // ...but "w" and "u" share nothing: their wholes differ and neither's center is the other's whole.
+        assertTrue(!looks.similar(photo("w", 0), photo("u", 2)))
     }
 }
 
@@ -117,10 +164,10 @@ class SimilarSuggestionRulesTest {
         // Hours apart, with another scene in between.
         val items = listOf(photo("a", 0), photo("x", 600), photo("b", 7_200), photo("c", 80_000))
         val looks = looks(
-            "a" to PhotoFingerprint(0L, scene),
-            "x" to PhotoFingerprint(-1L, other),
-            "b" to PhotoFingerprint(0x5555_5555_5555_5555L, alsoScene),
-            "c" to PhotoFingerprint(0x3333_3333_3333_3333L, scene),
+            "a" to fingerprint(0L, scene),
+            "x" to fingerprint(-1L, other),
+            "b" to fingerprint(0x5555_5555_5555_5555L, alsoScene),
+            "c" to fingerprint(0x3333_3333_3333_3333L, scene),
         )
         val suggestions = findSuggestions(items, emptySet(), looks)
         assertEquals(listOf(listOf("a", "b", "c")), ids(suggestions))
@@ -132,10 +179,10 @@ class SimilarSuggestionRulesTest {
         // One second apart, two different scenes.
         val items = listOf(photo("a", 0), photo("x", 1), photo("b", 2), photo("y", 3))
         val looks = looks(
-            "a" to PhotoFingerprint(0L, scene),
-            "x" to PhotoFingerprint(-1L, other),
-            "b" to PhotoFingerprint(0x5555_5555_5555_5555L, alsoScene),
-            "y" to PhotoFingerprint(0x0F0F_0F0F_0F0F_0F0FL, other),
+            "a" to fingerprint(0L, scene),
+            "x" to fingerprint(-1L, other),
+            "b" to fingerprint(0x5555_5555_5555_5555L, alsoScene),
+            "y" to fingerprint(0x0F0F_0F0F_0F0F_0F0FL, other),
         )
         assertEquals(listOf(listOf("a", "b"), listOf("x", "y")), ids(findSuggestions(items, emptySet(), looks)))
         assertEquals(listOf(listOf("a", "x", "b", "y")), ids(findSuggestions(items, emptySet())))
@@ -146,9 +193,9 @@ class SimilarSuggestionRulesTest {
         // "b" looks like "a" by dHash, "c" like "b" only: a chain, not a set.
         val items = listOf(photo("a", 0), photo("b", 100), photo("c", 200))
         val looks = looks(
-            "a" to PhotoFingerprint(0L, scene),
-            "b" to PhotoFingerprint(0xFFL, other),
-            "c" to PhotoFingerprint(0xFFFFL, third),
+            "a" to fingerprint(0L, scene),
+            "b" to fingerprint(0xFFL, other),
+            "c" to fingerprint(0xFFFFL, third),
         )
         assertEquals(listOf(listOf("a", "b")), ids(findSuggestions(items, emptySet(), looks)))
     }
@@ -156,7 +203,7 @@ class SimilarSuggestionRulesTest {
     @Test
     fun photosNotReadYetGoByTime() {
         val items = listOf(photo("a", 0), photo("b", 3), photo("c", 6), photo("d", 500), photo("e", 900))
-        val looks = looks("d" to PhotoFingerprint(0L, scene), "e" to PhotoFingerprint(-1L, alsoScene))
+        val looks = looks("d" to fingerprint(0L, scene), "e" to fingerprint(-1L, alsoScene))
         val suggestions = findSuggestions(items, emptySet(), looks)
         assertEquals(listOf(listOf("a", "b", "c"), listOf("d", "e")), ids(suggestions))
         assertEquals(listOf(false, true), suggestions.map { it.byLooks })
@@ -165,7 +212,7 @@ class SimilarSuggestionRulesTest {
     @Test
     fun aSetWithADismissedPhotoStaysDismissed() {
         val items = listOf(photo("a", 0), photo("b", 5_000))
-        val looks = looks("a" to PhotoFingerprint(0L, scene), "b" to PhotoFingerprint(0L, scene))
+        val looks = looks("a" to fingerprint(0L, scene), "b" to fingerprint(0L, scene))
         assertTrue(findSuggestions(items, setOf("b"), looks).isEmpty())
     }
 }
@@ -178,9 +225,9 @@ private class FakeAnalyzer(override val modelId: String = "fake-1") : PhotoAnaly
         analyzed += item.id
         if (item.id.startsWith("broken")) return null
         return if (item.id.startsWith("w")) {
-            PhotoAnalysis(waves, floatArrayOf(-3f, 2f, -1f))
+            PhotoAnalysis(waves, listOf(floatArrayOf(-3f, 2f, -1f)))
         } else {
-            PhotoAnalysis(diagonal, floatArrayOf(1f, 2f, 3f))
+            PhotoAnalysis(diagonal, listOf(floatArrayOf(1f, 2f, 3f)))
         }
     }
 }
@@ -202,7 +249,7 @@ class PhotoSimilarityTest {
         advanceUntilIdle()
         assertEquals(listOf("a", "w", "broken"), analyzer.analyzed)
         assertEquals(setOf("a", "w"), similarity.looks.value.fingerprints.keys)
-        assertNotNull(similarity.looks.value.fingerprints["a"]?.embedding)
+        assertNotNull(similarity.looks.value.fingerprints["a"]?.embeddings?.singleOrNull())
 
         val again = FakeAnalyzer()
         val reloaded = similarity(fileSystem, again)
@@ -327,8 +374,8 @@ class SimilaritySettingTest {
             override val modelId = "fake"
             override val sameScene = 0.9f
             override suspend fun analyze(item: MediaItem) = when (item.id) {
-                "a" -> PhotoAnalysis(diagonal, floatArrayOf(1f, 0f))
-                else -> PhotoAnalysis(waves, floatArrayOf(0.8f, 0.6f))
+                "a" -> PhotoAnalysis(diagonal, listOf(floatArrayOf(1f, 0f)))
+                else -> PhotoAnalysis(waves, listOf(floatArrayOf(0.8f, 0.6f)))
             }
         }
         val items = listOf(photo("a", 0), photo("b", 3_000))

@@ -12,8 +12,22 @@ internal class GrayImage(val width: Int, val height: Int, val pixels: IntArray) 
     }
 }
 
-/** What the platform reads from a photo: a small grayscale copy, and its image model's embedding (null if it failed). */
-internal class PhotoAnalysis(val gray: GrayImage, val embedding: FloatArray?)
+/**
+ * What the platform reads from a photo: a small grayscale copy, and its image model's embeddings of the whole photo
+ * and of its center zoomed in by each of [EMBEDDING_ZOOMS] after the first (empty if the model failed; the whole
+ * photo first).
+ */
+internal class PhotoAnalysis(val gray: GrayImage, val embeddings: List<FloatArray>)
+
+/**
+ * Zooms into the center that the platform embeds besides the whole photo (1). A camera's zoom is a center crop, so
+ * a zoomed shot looks like the other photo's center: comparing one photo's centers with the other's whole frame
+ * catches zoom up to about 2.5×.
+ */
+internal val EMBEDDING_ZOOMS = listOf(1f, 1.4f, 2f)
+
+/** The same for dHashes, which are cheap: closer steps, so a zoomed near-duplicate matches a crop almost exactly. */
+internal val DHASH_ZOOMS = listOf(1f, 1.15f, 1.3f, 1.5f, 1.7f, 2f, 2.3f, 2.6f, 3f)
 
 /** Reads photos for [PhotoSimilarity]: Vision feature prints on iOS, a MediaPipe image embedder on Android. */
 internal interface PhotoAnalyzer {
@@ -28,28 +42,33 @@ internal interface PhotoAnalyzer {
 }
 
 /**
- * What a photo looks like: its [dHash], and the platform model's embedding scaled to bytes. Equality is identity:
- * [PhotoSimilarity] keeps one per photo, so states built from the same fingerprints stay equal.
+ * What a photo looks like: dHashes of the whole photo and of its center zoomed in ([DHASH_ZOOMS]), and the platform
+ * model's embeddings the same way ([EMBEDDING_ZOOMS]) scaled to bytes; the whole photo first in both. Equality is
+ * identity: [PhotoSimilarity] keeps one per photo, so states built from the same fingerprints stay equal.
  */
-class PhotoFingerprint internal constructor(val dHash: Long, internal val embedding: ByteArray?)
+class PhotoFingerprint internal constructor(internal val dHashes: LongArray, internal val embeddings: List<ByteArray>) {
+    /** The whole photo's dHash. */
+    val dHash: Long get() = dHashes.first()
+}
 
 /** Fingerprints of photos, and when two of them look alike; what [com.chencohensolution.journal.stories.StoryView] groups with. */
 class PhotoLooks internal constructor(
     internal val fingerprints: Map<String, PhotoFingerprint>,
     private val sameScene: Float,
 ) {
-    /** Near-duplicates (dHash within [NEAR_DUPLICATE_BITS]), or the same scene by their embeddings. */
+    /**
+     * Near-duplicates (dHash within [NEAR_DUPLICATE_BITS]), or the same scene by their embeddings, either one possibly
+     * zoomed in: one photo's whole frame is compared with the other's whole frame and zoomed centers, both ways.
+     */
     internal fun similar(a: MediaItem, b: MediaItem): Boolean {
         val first = fingerprints[a.id] ?: return false
         val second = fingerprints[b.id] ?: return false
-        if (hammingDistance(first.dHash, second.dHash) <= NEAR_DUPLICATE_BITS) return true
-        val e1 = first.embedding ?: return false
-        val e2 = second.embedding ?: return false
-        return cosine(e1, e2) >= sameScene
+        if (zoomedPairs(first.dHashes, second.dHashes).any { (x, y) -> hammingDistance(x, y) <= NEAR_DUPLICATE_BITS }) return true
+        return zoomedPairs(first.embeddings, second.embeddings).any { (x, y) -> cosine(x, y) >= sameScene }
     }
 
     /** Whether [item] has been read with an embedding; photos without one are grouped by time instead. */
-    internal fun canCompare(item: MediaItem): Boolean = fingerprints[item.id]?.embedding != null
+    internal fun canCompare(item: MediaItem): Boolean = fingerprints[item.id]?.embeddings?.isNotEmpty() == true
 
     /** The same fingerprints compared with another threshold ([PhotoAnalyzer.sameScene]). */
     internal fun withSameScene(threshold: Float): PhotoLooks =
@@ -68,6 +87,29 @@ class PhotoLooks internal constructor(
         val NONE = PhotoLooks(emptyMap(), Float.MAX_VALUE)
     }
 }
+
+/** Each whole frame (index 0) with every view of the other photo: both whole frames, and each against the other's centers. */
+private fun <T> zoomedPairs(a: List<T>, b: List<T>): Sequence<Pair<T, T>> = sequence {
+    val wholeA = a.firstOrNull() ?: return@sequence
+    val wholeB = b.firstOrNull() ?: return@sequence
+    b.forEach { yield(wholeA to it) }
+    a.drop(1).forEach { yield(it to wholeB) }
+}
+
+private fun zoomedPairs(a: LongArray, b: LongArray) = zoomedPairs(a.asList(), b.asList())
+
+/** The center of [image] zoomed in by [zoom] (1 is the whole image). */
+internal fun GrayImage.center(zoom: Float): GrayImage {
+    if (zoom <= 1f) return this
+    val w = (width / zoom).toInt().coerceAtLeast(9)
+    val h = (height / zoom).toInt().coerceAtLeast(8)
+    val left = (width - w) / 2
+    val top = (height - h) / 2
+    return GrayImage(w, h, IntArray(w * h) { pixels[(top + it / w) * width + left + it % w] })
+}
+
+/** [dHash] of the whole image and of its center at each of [DHASH_ZOOMS]. */
+internal fun dHashes(image: GrayImage): LongArray = LongArray(DHASH_ZOOMS.size) { dHash(image.center(DHASH_ZOOMS[it])) }
 
 /** dHashes this many bits apart or fewer are the same shot: a burst, a re-save, a small change in exposure. */
 internal const val NEAR_DUPLICATE_BITS = 10

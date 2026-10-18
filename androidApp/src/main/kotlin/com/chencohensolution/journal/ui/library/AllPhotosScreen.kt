@@ -178,7 +178,7 @@ internal fun LazyListScope.dayGrids(
 @Composable
 private fun HeroRow(row: GridRow.Hero, onOpen: (MediaItem) -> Unit) {
     Row(Modifier.fillMaxWidth().aspectRatio(1.5f), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
-        MediaTile(row.large, { onOpen(row.large) }, Modifier.weight(2f).fillMaxHeight(), thumbnailSize = THUMB_LARGE)
+        MediaTile(row.large, { onOpen(row.large) }, Modifier.weight(2f).fillMaxHeight())
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
             row.side.forEach { item ->
                 MediaTile(item, { onOpen(item) }, Modifier.weight(1f).fillMaxWidth())

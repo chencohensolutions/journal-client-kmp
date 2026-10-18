@@ -13,7 +13,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 - **Suggestions for similar photos:** **How alike** a slider from 50% to 99%, with the value shown: the cosine
   similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
   suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
-  own (**70%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
+  own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 
 ## Behavior
 

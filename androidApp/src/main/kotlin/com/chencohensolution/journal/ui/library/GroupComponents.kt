@@ -114,14 +114,12 @@ internal fun LazyListScope.storyGrids(
                 BandGrid(band) { placed, modifier ->
                     val tile = placed.tile
                     val crop = TileCrop(placed.focus, placed.zoom)
-                    val thumbnailSize = thumbnailSizeFor(placed)
                     val picked = arranging?.selectedKey == tile.key
                     Box(modifier) {
                         when (tile) {
                             is StoryTile.Group -> GroupTile(
                                 tile.group,
                                 Modifier.fillMaxSize(),
-                                thumbnailSize,
                                 crop,
                                 onLongClick = if (arranging == null) ({ onLongPress(tile.key) }) else null,
                                 selected = selection?.let { tile.key in it.keys },
@@ -142,7 +140,6 @@ internal fun LazyListScope.storyGrids(
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize(),
-                                thumbnailSize = thumbnailSize,
                                 onLongClick = if (arranging == null) ({ onLongPress(tile.key) }) else null,
                                 selected = selection?.let { tile.key in it.keys },
                                 crop = crop,
@@ -155,13 +152,6 @@ internal fun LazyListScope.storyGrids(
             }
         }
     }
-}
-
-/** Enough pixels for the tile: small tiles share the small thumbnails; full-width or zoomed tiles need more. */
-private fun thumbnailSizeFor(tile: PlacedTile): Int = when {
-    tile.size.columns >= GRID_COLUMNS || tile.zoom > 1.25f -> THUMB_FULL
-    tile.size.columns >= 3 -> THUMB_LARGE
-    else -> THUMB_SMALL
 }
 
 /**
@@ -227,13 +217,11 @@ internal fun Modifier.zoomAround(crop: TileCrop): Modifier = if (crop.zoom <= 1f
 internal fun GroupTile(
     group: GroupView,
     modifier: Modifier = Modifier,
-    thumbnailSize: Int = THUMB_LARGE,
     crop: TileCrop = TileCrop.NONE,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean? = null,
     onClick: () -> Unit,
 ) {
-    val thumbnail = rememberThumbnail(group.cover, thumbnailSize)
     val description = stringResource(R.string.library_group_description, group.title ?: timeRange(group.items), group.itemCount)
     Box(
         modifier
@@ -246,9 +234,7 @@ internal fun GroupTile(
                 if (selected != null) this.selected = selected
             },
     ) {
-        if (thumbnail != null) {
-            Image(thumbnail, null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
-        }
+        CroppedThumbnail(group.cover, Modifier.fillMaxSize(), crop)
         Text(
             group.itemCount.toString(),
             color = LibraryColors.PhotoText,

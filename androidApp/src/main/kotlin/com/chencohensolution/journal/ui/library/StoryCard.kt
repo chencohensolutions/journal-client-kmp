@@ -133,9 +133,8 @@ private fun HighlightMosaic(items: List<MediaItem>, more: Int) {
 /** A photo cropped to its tile; with [more], "+12" over it. */
 @Composable
 private fun Highlight(item: MediaItem, modifier: Modifier, more: Int) {
-    val thumbnail = rememberThumbnail(item, THUMB_LARGE)
     Box(modifier.background(LibraryColors.Raised)) {
-        if (thumbnail != null) Image(thumbnail, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        CroppedThumbnail(item, Modifier.fillMaxSize())
         if (more > 0) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.38f)), contentAlignment = Alignment.Center) {
                 Text("+$more", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)

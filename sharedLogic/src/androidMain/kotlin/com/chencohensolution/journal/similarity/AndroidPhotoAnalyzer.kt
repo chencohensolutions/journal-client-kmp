@@ -15,13 +15,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Reads MediaStore's thumbnail of a photo and runs MediaPipe's image embedder on it (MobileNet-V3 small, Apache 2.0,
- * bundled as an asset, on the CPU: a few milliseconds a photo).
+ * Reads MediaStore's thumbnail of a photo and runs MediaPipe's image embedder (MobileNet-V3 large, Apache 2.0,
+ * bundled as an asset) on it and on its center zoomed in ([EMBEDDING_ZOOMS]). On the CPU, which MediaPipe runs with
+ * XNNPACK: Google measures about 10 ms a run on a Pixel 6, and the GPU isn't faster for this model.
  */
 internal class AndroidPhotoAnalyzer(context: Context) : PhotoAnalyzer {
     private val context = context.applicationContext
 
-    override val modelId = "mediapipe-mobilenet_v3_small-float32"
+    override val modelId = "mediapipe-mobilenet_v3_large-float32"
 
     override val sameScene = DEFAULT_SAME_SCENE_PERCENT / 100f
 
@@ -54,18 +55,30 @@ internal class AndroidPhotoAnalyzer(context: Context) : PhotoAnalyzer {
         // Pixels can't be read from a hardware bitmap.
         val bitmap = if (thumbnail.config == Bitmap.Config.ARGB_8888) thumbnail else thumbnail.copy(Bitmap.Config.ARGB_8888, false)
         try {
-            val embedding = embedder?.let { model ->
+            val embeddings = embedder?.let { model ->
                 try {
-                    model.embed(BitmapImageBuilder(bitmap).build()).embeddingResult().embeddings().firstOrNull()?.floatEmbedding()
+                    EMBEDDING_ZOOMS.mapNotNull { zoom -> model.embed(bitmap, zoom) }
                 } catch (e: Exception) {
                     Log.w(TAG, "embedding failed for ${item.fileName ?: item.id}", e)
                     null
                 }
-            }
-            PhotoAnalysis(bitmap.toGray(), embedding)
+            }.orEmpty()
+            PhotoAnalysis(bitmap.toGray(), embeddings)
         } finally {
             if (bitmap !== thumbnail) bitmap.recycle()
             thumbnail.recycle()
+        }
+    }
+
+    /** The embedding of [bitmap]'s center zoomed in by [zoom] (1 is the whole photo); MediaPipe scales it to 224 px. */
+    private fun ImageEmbedder.embed(bitmap: Bitmap, zoom: Float): FloatArray? {
+        val w = (bitmap.width / zoom).toInt()
+        val h = (bitmap.height / zoom).toInt()
+        val center = if (zoom <= 1f) bitmap else Bitmap.createBitmap(bitmap, (bitmap.width - w) / 2, (bitmap.height - h) / 2, w, h)
+        try {
+            return embed(BitmapImageBuilder(center).build()).embeddingResult().embeddings().firstOrNull()?.floatEmbedding()
+        } finally {
+            if (center !== bitmap) center.recycle()
         }
     }
 
@@ -81,12 +94,14 @@ internal class AndroidPhotoAnalyzer(context: Context) : PhotoAnalyzer {
 
     companion object {
         /**
-         * Checked on the owner's photos: unrelated ones score up to about 0.2, the same scene 0.7–0.75, shots taken
-         * the same second 0.85 and up (85% only ever matched those). The owner can change it in Settings.
+         * Checked on the owner's 1,217 story photos with this model and zoom-aware comparison: the same scene scores
+         * 0.61–0.90; of photos taken days apart, 0.2% reach 0.60 (median 0.06). The owner can change it in Settings.
          */
-        const val DEFAULT_SAME_SCENE_PERCENT = 70
+        const val DEFAULT_SAME_SCENE_PERCENT = 60
         private const val TAG = "PhotoSimilarity"
-        private const val MODEL_ASSET = "mobilenet_v3_small.tflite"
-        private const val THUMBNAIL_SIZE = 256
+        private const val MODEL_ASSET = "mobilenet_v3_large.tflite"
+
+        // Big enough that a 2× center still fills the model's 224 px input.
+        private const val THUMBNAIL_SIZE = 512
     }
 }

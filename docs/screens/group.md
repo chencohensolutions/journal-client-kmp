@@ -28,11 +28,18 @@ button that opens the group.
      platform's image embedding reaches its threshold, or when they share the camera's burst id (iOS
      `burstIdentifier`; Samsung `20261008_140901_092.jpg` names). Looks also **split** quick shots of different
      things that time alone would have joined.
+   - **Zoom-aware.** A camera's zoom is a center crop, so each photo is also fingerprinted at its center zoomed in:
+     embeddings at 1.4× and 2×, dHashes at nine steps from 1.15× to 3×. Two photos are compared whole to whole, and
+     each one's whole frame against the other's zoomed centers (never two centers), so either can be the zoomed
+     shot. Measured on test photos, this lifts a 1.8× zoom from about 0.6 to 0.9 similarity and leaves unrelated
+     photos where they were.
    - **By time, until read.** Photos without a fingerprint yet (or that can't have one, like iCloud-only photos on
      iOS) go by the old rule: taken within **10 seconds** of the previous one or the same burst id, runs of **3+**.
-   - Embeddings: **Vision feature print** on iOS (threshold 0.80), **MediaPipe image embedder** with MobileNet-V3
-     small on Android (0.70, model bundled in `sharedLogic/src/androidMain/assets`). These are the
-     defaults; **How alike** in Settings changes the threshold (see [settings.md](settings.md)).
+   - Embeddings: **Vision feature print** on iOS (threshold 0.80, on the Neural Engine), **MediaPipe image
+     embedder** with **MobileNet-V3 large** on Android (Apache 2.0, 10.9 MB, bundled in
+     `sharedLogic/src/androidMain/assets`; on the CPU, about 10 ms a run, since the GPU isn't faster for it). Read
+     from a 512 px copy so a 2× center keeps detail. **How alike** in Settings changes the threshold (see
+     [settings.md](settings.md)).
    - Every photo of every story is read, one at a time in the background, the story changed last first (so a new
      story or group is ready first); cards update as fingerprints arrive. Fingerprints are cached per device and
      model in the caches folder (`similarity/fingerprints.json`), never synced: the two platforms' embeddings can't
