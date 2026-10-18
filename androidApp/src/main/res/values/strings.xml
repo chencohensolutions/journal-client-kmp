@@ -125,6 +125,7 @@
     <string name="library_is_cover">This is the cover</string>
     <string name="library_set_cover">Set as cover</string>
     <string name="library_remove_from_group">Remove from group</string>
+    <string name="library_take_out">Take out</string>
     <string name="library_info_group">Group</string>
     <string name="library_ungroup">Ungroup</string>
     <string name="library_rename_group">Rename group</string>

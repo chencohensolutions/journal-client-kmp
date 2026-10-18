@@ -27,8 +27,9 @@ Tapping a photo opens the [viewer](viewer.md), swiping through this story's phot
 (its cover). From there a photo can be removed from the story or added to others.
 
 **Long-press** a photo or a group to select: the top bar shows "4 selected" with ✕, tiles get check circles, and the
-bottom bar offers **Group** (two or more tiles; it reads **Merge** when a group is among them) and **Remove** (the
-photos, and the photos of selected groups, from the story). See [group.md](group.md) for merging.
+bottom bar offers **Group** (two or more tiles, into a new group; selected groups become its subgroups), **Merge**
+(when a group is among them: everything joins the first selected group) and **Remove** (the photos, and the photos of
+selected groups, from the story). See [group.md](group.md).
 
 **⋯ › Arrange layout** switches to arrange mode: the top bar shows **Arrange** with **Reset** and **Done**, the
 story's text, neighboring days and suggestions are hidden, and tapping a photo or group picks it (orange outline;
@@ -56,7 +57,7 @@ fall in by time, right after the last tile taken no later than them. The group p
 | Delete story | Confirmation; deletes the story file only. Its photos go back to unsorted and stay on the device |
 | + Add day | Adds that day's unsorted photos (trip-like stories only) |
 | Edit story | Full-screen editor; saved to story.md |
-| Group them / Group / Merge | Makes or merges a group; "Grouped N photos · Undo" for a few seconds |
+| Group them / Group / Merge | Makes a group (nesting selected groups) or merges into one; "Grouped N photos · Undo" for a few seconds |
 | Not now | Hides that burst suggestion for good |
 | Remove (selection) | Takes the photos out of the story and its groups |
 | Arrange: size, Earlier/Later, Focus | Saved to story.json at once; a photo that joins a group loses its own size and focus |

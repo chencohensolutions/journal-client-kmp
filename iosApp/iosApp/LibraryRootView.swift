@@ -99,6 +99,7 @@ struct LibraryRootView: View {
                                     setIntro: { stories.setIntro($0, of: id) },
                                     acceptSuggestion: { stories.acceptSuggestion($0, in: id) },
                                     groupTiles: { stories.groupTiles($0, in: id) },
+                                    mergeTiles: { stories.mergeTiles($0, in: id) },
                                     restore: { stories.restore($0) },
                                     dismissSuggestion: { stories.dismissSuggestion($0, in: id) },
                                     ungroup: { stories.ungroup($0, in: id) },
@@ -109,12 +110,19 @@ struct LibraryRootView: View {
                             GroupPageView(
                                 story: stories.state.story(id: storyId),
                                 group: stories.state.story(id: storyId)?.group(id: groupId),
-                                onOpen: {
-                                    openViewer(ViewerRequest(storyId: storyId, groupId: groupId, filter: .all, itemId: $0.id))
-                                },
-                                onRename: { stories.renameGroup(groupId, in: storyId, to: $0) },
-                                onSetText: { stories.setText($0, ofGroup: groupId, in: storyId) },
-                                onUngroup: { stories.ungroup(groupId, in: storyId) }
+                                actions: GroupPageActions(
+                                    openItem: {
+                                        openViewer(ViewerRequest(storyId: storyId, groupId: groupId, filter: .all, itemId: $0.id))
+                                    },
+                                    openGroup: { path.append(.group(storyId: storyId, groupId: $0.id)) },
+                                    rename: { stories.renameGroup(groupId, in: storyId, to: $0) },
+                                    setText: { stories.setText($0, ofGroup: groupId, in: storyId) },
+                                    ungroup: { stories.ungroup(groupId, in: storyId) },
+                                    groupTiles: { stories.groupTiles($0, in: storyId, parent: groupId) },
+                                    mergeTiles: { stories.mergeTiles($0, in: storyId, parent: groupId) },
+                                    restore: { stories.restore($0) },
+                                    takeOut: { stories.removeFromGroup($0, groupId: groupId, in: storyId) }
+                                )
                             )
                         }
                     }
@@ -181,7 +189,7 @@ struct LibraryRootView: View {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
         }
         if let storyId = request.storyId, let groupId = request.groupId {
-            return stories.state.story(id: storyId)?.group(id: groupId)?.items ?? []
+            return stories.state.story(id: storyId)?.group(id: groupId)?.viewerItems ?? []
         }
         if let storyId = request.storyId {
             return stories.state.story(id: storyId)?.viewerItems ?? []

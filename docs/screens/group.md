@@ -1,7 +1,8 @@
 # Group
 
 Photos of one moment shown as a single tile in their story: a burst of near-identical shots, or any photos you
-picked. Opened by tapping a group tile on the [story page](story-page.md).
+picked. Groups nest: a group can hold other groups (**subgroups**), each one tile on its page, to any depth. Opened by
+tapping a group tile on the [story page](story-page.md), or a subgroup's tile on its group's page.
 
 ## In the story
 
@@ -25,21 +26,28 @@ button that opens the group.
    - Constants: `BURST_GAP_MILLIS` and `BURST_MIN_PHOTOS` in
      [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).
 2. **Select, then Group.** Long-press a photo or group in the story to start selecting; tap others; **Group**
-   (needs two or more tiles). The bar also has **Remove** (from the story).
-3. **Merge.** Select a group with photos, or two or more groups: the button reads **Merge**. Everything joins the
-   selected group that comes first in the story, which keeps its title, cover, layout and text; the other groups'
-   text is added after its own (and the first other title is taken if it had none), so no text is lost. The other
-   groups go away.
+   (needs two or more tiles) makes a new group of them in their place. Selected groups become its **subgroups**. The
+   bar also has **Remove** (from the story).
+3. **Subgroups.** The same on a group's page: long-press its photos or subgroups, then **Group**, and they become a
+   subgroup of it. Selecting every tile of the group can't be grouped (it would only wrap the group again).
+4. **Merge.** When a group is among the selected tiles the bar also offers **Merge**: everything joins the selected
+   group that comes first, which keeps its title, cover, layout and text; the other groups' photos and subgroups move
+   into it and their text is added after its own (the first other title is taken if it had none), so no text is lost.
+   The other groups go away.
 
 After grouping or merging, *"Grouped 14 photos · Undo"* shows for a few seconds; Undo puts the story back exactly as
 it was (`StoriesController.restore`).
 
 ## The group page
 
-- The cover across the top, the story's name above the group's title (or its time when untitled), and
-  "Oct 8 · 2:09 – 2:10 PM · 14 photos".
+- The cover across the top, the story's name (and the groups around this one: "JAPAN TRIP › DAY AT THE SEA") above
+  the group's title (or its time when untitled), and "Oct 8 · 2:09 – 2:10 PM · 14 photos", counting subgroups' photos.
 - **Story text** in a serif, with **Edit** (full-screen editor). Empty groups prompt "Write about this moment…".
-- All its photos, oldest first, the cover marked **Cover**. Tapping one opens the viewer on the group's photos.
+- Its photos and subgroups, oldest first, three across; a subgroup is its cover with the photo count, like a group in
+  the story. The tile holding the cover is marked **Cover**. Tapping a photo opens the viewer on the group's photos
+  (each subgroup one stop); tapping a subgroup opens its page.
+- **Long-press** to select: **Group** (into a subgroup), **Merge** (when a subgroup is selected) and **Take out**
+  (the photos move to the level above: the group around this one, or the story). Undo as in the story.
 - **⋯:** **Rename** (a blank title removes it) and **Ungroup**.
 
 In the viewer opened from a group, the details panel shows **Set as cover** and **Remove from group** instead of
@@ -47,25 +55,31 @@ the story list.
 
 ## Rules
 
-- Within one story a photo is in at most one group; grouping photos that are already in another group moves them.
-  Another story can group the same photo differently.
-- A group needs two photos. Removing photos until one is left, or removing them from the story, dissolves it.
-- **Ungrouping** (or dissolving) keeps the photos in the story and moves the group's text to the end of the story's
-  opening text, so no text is lost.
-- The cover is the first photo until you choose another; if the cover leaves the group, the first photo takes over.
+- Within one story a photo is directly in at most one group (and so in that group's parents too); grouping photos
+  that are already in another group moves them. Another story can group the same photo differently.
+- A group needs two tiles (photos or subgroups). Removing photos until one tile is left, or removing them from the
+  story, dissolves it.
+- **Ungrouping** (or dissolving) moves the group's photos and subgroups one level up, into the group around it or
+  the story, and its text to the end of that group's text or the story's opening text, so no text is lost.
+- The cover is the oldest photo until you choose another, which can be any photo of the group or its subgroups; if
+  the cover leaves the group, the oldest photo takes over.
+- Only the story's own tiles can be arranged; a group's page, at any depth, keeps its automatic grid.
 
 ## How it's saved
 
 In the story's folder (see [story page](story-page.md)):
 
-- **story.json:** a `group` tile where the group's first photo would be, holding its photos as `media` tiles:
+- **story.json:** a `group` tile where the group's first photo would be, holding its photos as `media` tiles and
+  its subgroups as `group` tiles, oldest first:
 
 ```json
 { "type": "group", "id": "g1", "title": "Fixing the car", "cover": "27",
-  "tiles": [ { "type": "media", "deviceId": "27", "fileName": "20261008_140901_092.jpg", "takenAt": 1791457746123 }, … ] }
+  "tiles": [ { "type": "media", "deviceId": "27", "fileName": "20261008_140901_092.jpg", "takenAt": 1791457746123 },
+             { "type": "group", "id": "g2", "title": "The engine", "cover": "29", "tiles": [ … ] }, … ] }
 ```
 
-- **story.md:** the group's text under its marker, which Markdown viewers hide:
+- **story.md:** the group's text under its marker, which Markdown viewers hide; each group's section is followed by
+  its subgroups':
 
 ```markdown
 # Walk with the dog

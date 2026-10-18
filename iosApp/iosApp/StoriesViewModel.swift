@@ -42,10 +42,16 @@ final class StoriesViewModel: ObservableObject {
     @discardableResult
     func acceptSuggestion(_ key: String, in storyId: String) -> String? { controller.acceptSuggestion(storyId: storyId, key: key) }
 
-    /// Photos and groups (tile keys) into one group.
+    /// Photos and groups (tile keys) of the story, or of group `parentId`, into a new group inside it.
     @discardableResult
-    func groupTiles(_ tileKeys: [String], in storyId: String) -> String? {
-        controller.groupTiles(storyId: storyId, tileKeys: tileKeys)
+    func groupTiles(_ tileKeys: [String], in storyId: String, parent parentId: String? = nil) -> String? {
+        controller.groupTiles(storyId: storyId, tileKeys: tileKeys, parentId: parentId)
+    }
+
+    /// Photos and groups (tile keys) of the story, or of group `parentId`, into the first picked group.
+    @discardableResult
+    func mergeTiles(_ tileKeys: [String], in storyId: String, parent parentId: String? = nil) -> String? {
+        controller.mergeTiles(storyId: storyId, tileKeys: tileKeys, parentId: parentId)
     }
 
     /// Puts a story back as it was, to undo grouping.

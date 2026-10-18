@@ -1,8 +1,9 @@
 import SwiftUI
 import SharedLogic
 
-/// What the story page can ask its parent to do. `acceptSuggestion` and `groupTiles` return the group's id;
-/// `groupTiles` takes tile keys (photos and groups) and merges them into one group, and `restore` undoes that.
+/// What the story page can ask its parent to do. `acceptSuggestion`, `groupTiles` and `mergeTiles` return the group's
+/// id; `groupTiles` takes tile keys (photos and groups) and puts them in a new group (groups nest), `mergeTiles` joins
+/// them into the first picked group, and `restore` undoes either.
 struct StoryPageActions {
     var openItem: (MediaItem) -> Void
     var openGroup: (GroupView) -> Void
@@ -12,6 +13,7 @@ struct StoryPageActions {
     var setIntro: (String) -> Void
     var acceptSuggestion: (String) -> String?
     var groupTiles: ([String]) -> String?
+    var mergeTiles: ([String]) -> String?
     var restore: (Story) -> Void
     var dismissSuggestion: (String) -> Void
     var ungroup: (String) -> Void
@@ -19,7 +21,7 @@ struct StoryPageActions {
 }
 
 /// One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
-/// Long-press a photo or group to select tiles and group or merge them. See docs/screens/story.md.
+/// Long-press a photo or group to select tiles and group them (groups nest) or merge them. See docs/screens/story.md.
 struct StoryPageView: View {
     let story: StoryView?
     let neighborDays: [DayGroup]
@@ -95,61 +97,36 @@ struct StoryPageView: View {
         }
     }
 
-    /// Group / Remove while selecting; otherwise the "Grouped · Undo" message after grouping.
+    /// Group / Merge / Remove while selecting; otherwise the "Grouped · Undo" message after grouping.
     @ViewBuilder
     private var bottomBar: some View {
         if let selection, let story {
             let tiles = story.tiles.filter { selection.contains($0.key) }
-            let itemIds = tiles.flatMap { tile -> [String] in
-                if let group = tile as? StoryTileGroup { return group.group.items.map(\.id) }
-                return (tile as? StoryTileMedia).map { [$0.item.id] } ?? []
-            }
-            let merging = tiles.contains { $0 is StoryTileGroup }
-            HStack(spacing: 8) {
-                Button {
+            let ids = itemIds(of: tiles)
+            SelectionBar(
+                canGroup: tiles.count >= 2,
+                canMerge: tiles.count >= 2 && tiles.contains { $0 is StoryTileGroup },
+                removeLabel: "Remove",
+                onGroup: {
                     let before = story.story
                     self.selection = nil
-                    showUndo(actions.groupTiles(Array(selection)), count: itemIds.count, before: before)
-                } label: {
-                    Label(merging ? LocalizedStringKey("Merge") : LocalizedStringKey("Group"), systemImage: "square.on.square")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .foregroundStyle(LibraryColors.onInverse)
-                        .background(LibraryColors.inverse.opacity(tiles.count >= 2 ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
-                }
-                .disabled(tiles.count < 2)
-                Button {
-                    actions.removeItems(itemIds)
+                    showUndo(actions.groupTiles(Array(selection)), count: ids.count, before: before)
+                },
+                onMerge: {
+                    let before = story.story
                     self.selection = nil
-                } label: {
-                    Label("Remove", systemImage: "minus")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .foregroundStyle(LibraryColors.warning)
+                    showUndo(actions.mergeTiles(Array(selection)), count: ids.count, before: before)
+                },
+                onRemove: {
+                    actions.removeItems(ids)
+                    self.selection = nil
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(LibraryColors.raised.ignoresSafeArea())
+            )
         } else if let undo {
-            HStack {
-                Text("Grouped \(undo.count) photos").font(.subheadline)
-                Spacer()
-                Button("Undo") {
-                    actions.restore(undo.before)
-                    self.undo = nil
-                }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(LibraryColors.accent)
+            UndoBar(count: undo.count) {
+                actions.restore(undo.before)
+                self.undo = nil
             }
-            .foregroundStyle(LibraryColors.onInverse)
-            .padding(.horizontal, 16)
-            .frame(height: 52)
-            .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 14))
-            .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 

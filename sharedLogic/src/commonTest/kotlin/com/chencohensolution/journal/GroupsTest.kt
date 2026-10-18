@@ -202,7 +202,7 @@ class GroupsTest {
         val groupId = assertNotNull(stories.createGroup(storyId, listOf("b", "c"), "Car"))
         stories.setCover(storyId, groupId, "c")
 
-        assertEquals(groupId, stories.groupTiles(storyId, listOf("a", groupTileKey(groupId), "f")))
+        assertEquals(groupId, stories.mergeTiles(storyId, listOf("a", groupTileKey(groupId), "f")))
         val story = stories.currentState.story(storyId)!!
         val group = story.groups.single()
         assertEquals(listOf("a", "b", "c", "f"), group.items.map { it.id })
@@ -220,7 +220,7 @@ class GroupsTest {
         stories.setGroupText(storyId, first, "Morning.")
         stories.setGroupText(storyId, second, "Noon.")
 
-        assertEquals(first, stories.groupTiles(storyId, listOf(groupTileKey(second), groupTileKey(first))))
+        assertEquals(first, stories.mergeTiles(storyId, listOf(groupTileKey(second), groupTileKey(first))))
         val group = stories.currentState.story(storyId)!!.groups.single()
         assertEquals(first, group.id)
         assertEquals(listOf("a", "b", "e", "f"), group.items.map { it.id })
@@ -236,7 +236,7 @@ class GroupsTest {
         val first = assertNotNull(stories.createGroup(storyId, listOf("a", "b")))
         val second = assertNotNull(stories.createGroup(storyId, listOf("e", "f")))
         val before = stories.currentState.story(storyId)!!.story
-        stories.groupTiles(storyId, listOf(groupTileKey(first), groupTileKey(second)))
+        stories.mergeTiles(storyId, listOf(groupTileKey(first), groupTileKey(second)))
         stories.restore(before)
         assertEquals(listOf(first, second), stories.currentState.story(storyId)!!.groups.map { it.id })
     }
@@ -281,5 +281,144 @@ class GroupsTest {
         assertEquals(listOf("a", "b"), story.group(first)!!.items.map { it.id })
         assertEquals(listOf("c", "d"), story.group(second)!!.items.map { it.id })
         assertNull(stories.createGroup(storyId, listOf("e")))
+    }
+
+    @Test
+    fun groupingTilesOfAGroupMakesASubgroup() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d"), "Morning"))
+
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("b", "c"), parentId = outer))
+        val story = stories.currentState.story(storyId)!!
+        assertEquals(listOf(groupTileKey(outer), "e", "f"), story.tiles.map { it.key })
+        val group = story.group(outer)!!
+        assertEquals(listOf("a", groupTileKey(inner), "d"), group.tiles.map { it.key })
+        assertEquals(listOf("a", "b", "c", "d"), group.items.map { it.id })
+        assertEquals(listOf("a", "b", "d"), group.viewerItems.map { it.id })
+        assertEquals(inner, group.coverStop("b")?.id)
+        assertEquals(outer, story.group(inner)!!.parentId)
+        assertEquals(listOf(outer), story.parentsOf(inner).map { it.id })
+        // Wrapping every tile of a group again would change nothing worth having.
+        assertNull(stories.groupTiles(storyId, listOf("a", groupTileKey(inner), "d"), parentId = outer))
+    }
+
+    @Test
+    fun groupingGroupsNestsThem() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val first = assertNotNull(stories.createGroup(storyId, listOf("a", "b")))
+        val second = assertNotNull(stories.createGroup(storyId, listOf("c", "d")))
+
+        val outer = assertNotNull(stories.groupTiles(storyId, listOf(groupTileKey(first), groupTileKey(second), "e")))
+        val story = stories.currentState.story(storyId)!!
+        assertEquals(listOf(groupTileKey(outer), "f"), story.tiles.map { it.key })
+        assertEquals(listOf(groupTileKey(first), groupTileKey(second), "e"), story.group(outer)!!.tiles.map { it.key })
+        assertEquals("a", story.group(outer)!!.cover.id)
+        assertEquals(listOf(outer, first, second), story.groups.map { it.id })
+    }
+
+    @Test
+    fun nestedGroupsAndTheirTextSurviveAReload() = runTest {
+        val fileSystem = FakeFileSystem()
+        val stories = setup(fileSystem).stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d"), "Morning"))
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("c", "d"), parentId = outer))
+        stories.renameGroup(storyId, inner, "Car")
+        stories.setCover(storyId, outer, "d")
+        stories.setGroupText(storyId, outer, "Outer.")
+        stories.setGroupText(storyId, inner, "Inner.")
+
+        val markdown = fileSystem.read(GROUPS_ROOT / "stories" / storyId / "story.md") { readUtf8() }
+        assertEquals("# Walk\n\n<!-- group:g1 -->\nOuter.\n\n<!-- group:g2 -->\nInner.\n", markdown)
+
+        val reloaded = setup(fileSystem).stories.currentState.story(storyId)!!
+        val group = reloaded.group(outer)!!
+        assertEquals("d", group.cover.id)
+        assertEquals(listOf("a", "b", groupTileKey(inner)), group.tiles.map { it.key })
+        val sub = reloaded.group(inner)!!
+        assertEquals("Car", sub.title)
+        assertEquals("Inner.", sub.text)
+        assertEquals(outer, sub.parentId)
+        assertEquals(6, reloaded.itemCount)
+    }
+
+    @Test
+    fun ungroupingASubgroupMovesItsPhotosAndTextUpOneLevel() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d")))
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("c", "d"), parentId = outer))
+        stories.setGroupText(storyId, outer, "Outer.")
+        stories.setGroupText(storyId, inner, "Inner.")
+
+        stories.ungroup(storyId, inner)
+        val story = stories.currentState.story(storyId)!!
+        assertNull(story.group(inner))
+        assertEquals(listOf("a", "b", "c", "d"), story.group(outer)!!.tiles.map { it.key })
+        assertEquals("Outer.\n\nInner.", story.group(outer)!!.text)
+        assertEquals("", story.intro)
+    }
+
+    @Test
+    fun ungroupingAParentKeepsItsSubgroups() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d")))
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("c", "d"), parentId = outer))
+
+        stories.ungroup(storyId, outer)
+        val story = stories.currentState.story(storyId)!!
+        assertNull(story.group(outer))
+        assertNull(story.group(inner)!!.parentId)
+        assertEquals(listOf("a", "b", groupTileKey(inner), "e", "f"), story.tiles.map { it.key })
+    }
+
+    @Test
+    fun takingPhotosOutOfASubgroupPutsThemInTheGroupAround() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d")))
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("b", "c", "d"), parentId = outer))
+
+        stories.removeFromGroup(storyId, inner, listOf("d"))
+        var story = stories.currentState.story(storyId)!!
+        assertEquals(listOf("a", groupTileKey(inner), "d"), story.group(outer)!!.tiles.map { it.key })
+
+        // Left with one photo, the subgroup goes; its last photo stays in the group around it.
+        stories.removeFromGroup(storyId, inner, listOf("c"))
+        story = stories.currentState.story(storyId)!!
+        assertNull(story.group(inner))
+        assertEquals(listOf("a", "b", "c", "d"), story.group(outer)!!.tiles.map { it.key })
+    }
+
+    @Test
+    fun aGroupLeftWithOnlyASubgroupGoesAway() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c")))
+        val inner = assertNotNull(stories.groupTiles(storyId, listOf("b", "c"), parentId = outer))
+
+        stories.removeFromGroup(storyId, outer, listOf("a"))
+        val story = stories.currentState.story(storyId)!!
+        assertNull(story.group(outer))
+        assertNull(story.group(inner)!!.parentId)
+        assertEquals(listOf("a", groupTileKey(inner), "d", "e", "f"), story.tiles.map { it.key })
+    }
+
+    @Test
+    fun subgroupsMergeInsideTheirGroup() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val outer = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "d", "e")))
+        val first = assertNotNull(stories.groupTiles(storyId, listOf("a", "b"), parentId = outer))
+        val second = assertNotNull(stories.groupTiles(storyId, listOf("c", "d"), parentId = outer))
+
+        assertEquals(first, stories.mergeTiles(storyId, listOf(groupTileKey(first), groupTileKey(second)), parentId = outer))
+        val story = stories.currentState.story(storyId)!!
+        assertNull(story.group(second))
+        assertEquals(listOf(groupTileKey(first), "e"), story.group(outer)!!.tiles.map { it.key })
+        assertEquals(listOf("a", "b", "c", "d"), story.group(first)!!.items.map { it.id })
     }
 }

@@ -96,10 +96,11 @@ internal class FileStoryStore(private val fileSystem: FileSystem, private val ro
     }
 }
 
-/** Groups' sections in tile order, then sections whose group is gone. */
+/** Groups' sections, each followed by its subgroups', then sections whose group is gone. */
 private fun textOf(story: Story) = StoryText(
     intro = story.intro,
-    sections = story.groups.associate { it.id to it.text } + story.textExtras.filterKeys { id -> story.groups.none { it.id == id } },
+    sections = story.groups.inTreeOrder().associate { it.id to it.text } +
+        story.textExtras.filterKeys { id -> story.groups.none { it.id == id } },
 )
 
 /**
@@ -118,10 +119,10 @@ private data class StoryFile(
     val dismissedSuggestions: List<String> = emptyList(),
 ) {
     /**
-     * A "media" tile is one photo or video; a "group" tile holds media tiles shown as one, its text in story.md
-     * under `<!-- group:<id> -->`. On the story's grid a tile is [size] ([TileSize.fileName]; automatic when
-     * missing), cropped around [focus] (a group: its cover), [zoom] times closer than filling the tile. Inside a
-     * group the media tiles carry none of these.
+     * A "media" tile is one photo or video; a "group" tile holds media tiles, and the group tiles of its subgroups,
+     * shown as one, its text in story.md under `<!-- group:<id> -->`. On the story's grid a tile is [size]
+     * ([TileSize.fileName]; automatic when missing), cropped around [focus] (a group: its cover), [zoom] times
+     * closer than filling the tile. Inside a group the tiles carry none of these.
      */
     @Serializable
     data class Tile(
@@ -150,6 +151,9 @@ private data class StoryFile(
         val layout: TileLayout
             get() = TileLayout(TileSize.parse(size), focus?.let { FocusPoint.of(it.x, it.y) }, cleanZoom(zoom))
 
+        /** When its photo was taken; a group's oldest photo, subgroups included. */
+        val time: Long get() = takenAt ?: tiles.orEmpty().minOfOrNull { it.time } ?: 0
+
         fun withLayout(layout: TileLayout?) =
             copy(size = layout?.size?.fileName, focus = layout?.focus?.let { Focus(it.x, it.y) }, zoom = layout?.zoom)
 
@@ -166,24 +170,28 @@ private data class StoryFile(
     fun toStory(text: StoryText?): Story {
         val members = mutableListOf<StoryMember>()
         val groups = mutableListOf<StoryGroup>()
+
+        /** Adds the group and its subgroups (after it); returns all their photos. */
+        fun readGroup(tile: Tile, parentId: String?): List<StoryMember> {
+            val groupId = tile.id ?: return emptyList()
+            val own = tile.tiles.orEmpty().filter { it.type == "media" }.mapNotNull { it.toMember() }
+            members += own
+            val slot = groups.size
+            groups += StoryGroup(groupId, tile.title, "", own.map { it.deviceId }, text?.sections?.get(groupId).orEmpty(), parentId)
+            val all = own + tile.tiles.orEmpty().filter { it.type == "group" }.flatMap { readGroup(it, groupId) }
+            val cover = tile.cover?.takeIf { cover -> all.any { it.deviceId == cover } } ?: all.minByOrNull { it.takenAtMillis }?.deviceId
+            groups[slot] = groups[slot].copy(coverId = cover.orEmpty())
+            return all
+        }
+
         tiles.forEach { tile ->
             when (tile.type) {
                 "media" -> tile.toMember()?.let(members::add)
-                "group" -> {
-                    val groupMembers = tile.tiles.orEmpty().filter { it.type == "media" }.mapNotNull { it.toMember() }
-                    val groupId = tile.id ?: return@forEach
-                    if (groupMembers.isEmpty()) return@forEach
-                    members += groupMembers
-                    groups += StoryGroup(
-                        id = groupId,
-                        title = tile.title,
-                        coverId = tile.cover?.takeIf { cover -> groupMembers.any { it.deviceId == cover } } ?: groupMembers.first().deviceId,
-                        memberIds = groupMembers.map { it.deviceId },
-                        text = text?.sections?.get(groupId).orEmpty(),
-                    )
-                }
+                "group" -> readGroup(tile, null)
             }
         }
+        // A group without photos (a damaged file) would have nothing to show.
+        groups.removeAll { group -> group.coverId.isEmpty() }
         return Story(
             id = id,
             title = title,
@@ -201,25 +209,22 @@ private data class StoryFile(
 
     companion object {
         /**
-         * Loose members are media tiles; a group's tile sits where its first member would be, unless the owner
-         * arranged the tiles.
+         * Loose members are media tiles; a group's tile sits where its first photo would be, unless the owner
+         * arranged the tiles. Inside a group, its photos and subgroups are in time order.
          */
         fun of(story: Story): StoryFile {
-            val groupOf = story.groups.flatMap { group -> group.memberIds.map { it to group } }.toMap()
             val byId = story.members.associateBy { it.deviceId }
-            val written = mutableSetOf<String>()
-            val byTime = story.members.mapNotNull { member ->
-                val group = groupOf[member.deviceId] ?: return@mapNotNull Tile.media(member)
-                if (!written.add(group.id)) return@mapNotNull null
-                Tile(
-                    type = "group",
-                    id = group.id,
-                    title = group.title,
-                    cover = group.coverId,
-                    tiles = group.memberIds.mapNotNull { byId[it] }.map(Tile::media),
-                )
+            val childrenOf = story.groups.groupBy { it.parentId }
+            val visited = mutableSetOf<String>()
+            fun groupTile(group: StoryGroup): Tile? {
+                if (!visited.add(group.id)) return null
+                val inner = group.memberIds.mapNotNull { byId[it] }.map(Tile::media) + childrenOf[group.id].orEmpty().mapNotNull(::groupTile)
+                return Tile(type = "group", id = group.id, title = group.title, cover = group.coverId, tiles = inner.sortedBy { it.time })
             }
-            val tiles = arrangeTiles(byTime, story.tileOrder, key = { it.key.orEmpty() }, time = { it.takenAt ?: it.tiles?.firstOrNull()?.takenAt ?: 0 })
+            val grouped = story.groups.flatMap { it.memberIds }.toSet()
+            val roots = story.groups.inTreeOrder().filter { group -> story.groups.none { it.id == group.parentId } }
+            val byTime = story.members.filter { it.deviceId !in grouped }.map(Tile::media) + roots.mapNotNull(::groupTile)
+            val tiles = arrangeTiles(byTime, story.tileOrder, key = { it.key.orEmpty() }, time = { it.time })
                 .map { tile -> tile.withLayout(story.layout[tile.key]) }
             return StoryFile(
                 id = story.id,

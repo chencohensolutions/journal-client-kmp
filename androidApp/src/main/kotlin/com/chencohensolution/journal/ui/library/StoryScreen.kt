@@ -74,9 +74,11 @@ internal class StoryActions(
     val setIntro: (String) -> Unit = {},
     /** Each returns the new group's id. */
     val acceptSuggestion: (key: String) -> String? = { null },
-    /** Photos and groups ([StoryTile.key]s) into one group; returns its id. */
+    /** Photos and groups ([StoryTile.key]s) into a new group; returns its id. */
     val groupTiles: (tileKeys: List<String>) -> String? = { null },
-    /** Puts the story back as it was before a [groupTiles]. */
+    /** Photos and groups ([StoryTile.key]s) into the first picked group; returns its id. */
+    val mergeTiles: (tileKeys: List<String>) -> String? = { null },
+    /** Puts the story back as it was before a [groupTiles] or [mergeTiles]. */
     val restore: (Story) -> Unit = {},
     val dismissSuggestion: (key: String) -> Unit = {},
     val ungroup: (groupId: String) -> Unit = {},
@@ -91,7 +93,7 @@ internal class StoryActions(
 
 /**
  * One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
- * Long-press a photo or group to select tiles and group or merge them; ⋯ › Arrange to size, reorder and crop the tiles. See
+ * Long-press a photo or group to select tiles and group them (groups nest) or merge them; ⋯ › Arrange to size, reorder and crop the tiles. See
  * docs/screens/story-page.md.
  */
 @Composable
@@ -220,12 +222,18 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
             SelectionTopBar(selected.size, onClose = ::endSelection, modifier = Modifier.align(Alignment.TopCenter))
             SelectionBottomBar(
                 canGroup = selectedTiles.size >= 2,
-                merging = selectedTiles.any { it is StoryTile.Group },
+                canMerge = selectedTiles.size >= 2 && selectedTiles.any { it is StoryTile.Group },
                 onGroup = {
                     val before = story.story
                     offerUndo(actions.groupTiles(selected), selectedItemIds.size) { actions.restore(before) }
                     endSelection()
                 },
+                onMerge = {
+                    val before = story.story
+                    offerUndo(actions.mergeTiles(selected), selectedItemIds.size) { actions.restore(before) }
+                    endSelection()
+                },
+                removeLabel = stringResource(R.string.library_remove),
                 onRemove = {
                     actions.removeItems(selectedItemIds)
                     endSelection()
@@ -372,7 +380,7 @@ private fun StoryTopBar(
 
 /** "4 selected" with ✕ to leave selection mode. */
 @Composable
-private fun SelectionTopBar(count: Int, onClose: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SelectionTopBar(count: Int, onClose: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .fillMaxWidth()
@@ -393,8 +401,20 @@ private fun SelectionTopBar(count: Int, onClose: () -> Unit, modifier: Modifier 
     }
 }
 
+/**
+ * The bar under a selection: **Group** puts the picked tiles in a new group, **Merge** (when a group is picked)
+ * joins them into the first picked group, and [removeLabel] takes them out.
+ */
 @Composable
-private fun SelectionBottomBar(canGroup: Boolean, merging: Boolean, onGroup: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SelectionBottomBar(
+    canGroup: Boolean,
+    canMerge: Boolean,
+    onGroup: () -> Unit,
+    onMerge: () -> Unit,
+    removeLabel: String,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -411,11 +431,16 @@ private fun SelectionBottomBar(canGroup: Boolean, merging: Boolean, onGroup: () 
             modifier = Modifier.weight(1f).height(52.dp),
         ) {
             Icon(LibraryIcons.Stack, null, modifier = Modifier.size(20.dp))
-            Text(stringResource(if (merging) R.string.library_merge_action else R.string.library_group_action), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.library_group_action), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+        }
+        if (canMerge) {
+            TextButton(onClick = onMerge, modifier = Modifier.weight(1f).height(52.dp)) {
+                Text(stringResource(R.string.library_merge_action), color = LibraryColors.Accent, fontWeight = FontWeight.SemiBold)
+            }
         }
         TextButton(onClick = onRemove, modifier = Modifier.weight(1f).height(52.dp)) {
             Icon(LibraryIcons.Minus, null, tint = LibraryColors.Warning, modifier = Modifier.size(20.dp))
-            Text(stringResource(R.string.library_remove), color = LibraryColors.Warning, modifier = Modifier.padding(start = 8.dp))
+            Text(removeLabel, color = LibraryColors.Warning, modifier = Modifier.padding(start = 8.dp))
         }
     }
 }

@@ -134,8 +134,8 @@ internal fun ViewerScreen(
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f),
             )
-            // In a story a group is one stop, shown as its cover; this opens the rest of it.
-            val coverOf = openedFrom?.takeIf { group == null }?.groupOf(current.id)?.takeIf { it.cover.id == current.id }
+            // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
+            val coverOf = if (group != null) group.coverStop(current.id) else openedFrom?.coverStop(current.id)
             if (coverOf != null) {
                 TextButton(onClick = { actions.openGroup(coverOf.id) }) {
                     Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(16.dp))

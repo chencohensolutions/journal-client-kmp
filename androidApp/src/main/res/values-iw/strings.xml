@@ -134,6 +134,7 @@
     <string name="library_is_cover">זו תמונת השער</string>
     <string name="library_set_cover">הגדרה כשער</string>
     <string name="library_remove_from_group">הסרה מהקבוצה</string>
+    <string name="library_take_out">הוצאה</string>
     <string name="library_info_group">קבוצה</string>
     <string name="library_ungroup">פירוק הקבוצה</string>
     <string name="library_rename_group">שינוי שם הקבוצה</string>

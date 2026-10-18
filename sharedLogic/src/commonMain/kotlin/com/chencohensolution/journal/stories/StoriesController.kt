@@ -25,15 +25,33 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /** A group with its photos as they are on this device. */
-data class GroupView(val group: StoryGroup, val items: List<MediaItem>) {
+data class GroupView(
+    val group: StoryGroup,
+    /** Its photos and its subgroups' photos, oldest first. */
+    val items: List<MediaItem>,
+    /** What its page shows: its own photos, and each subgroup as one tile, oldest first. */
+    val tiles: List<StoryTile> = items.map { StoryTile.Media(it) },
+) {
     val id: String get() = group.id
     val title: String? get() = group.title
     val text: String get() = group.text
     val itemCount: Int get() = items.size
 
+    /** The group this one is a tile of; null when it is a tile of the story. */
+    val parentId: String? get() = group.parentId
+
     /** The photo on the group's tile. */
     val cover: MediaItem = items.firstOrNull { it.id == group.coverId } ?: items.first()
+
+    /** What the viewer swipes through from the group's page: its photos, and each subgroup as its cover. */
+    val viewerItems: List<MediaItem> get() = tiles.map { it.firstItem(cover = true) }
+
+    /** The subgroup shown as [itemId] in [viewerItems], if that photo stands for one. */
+    fun coverStop(itemId: String): GroupView? = tiles.coverStop(itemId)
 }
+
+private fun List<StoryTile>.coverStop(itemId: String): GroupView? =
+    filterIsInstance<StoryTile.Group>().firstOrNull { it.group.cover.id == itemId }?.group
 
 /** What a story shows in its grid: a photo or video, or a group as one tile. */
 sealed interface StoryTile {
@@ -92,25 +110,39 @@ data class StoryView(
     /** Members that are no longer on this device (deleted, or not visible with limited access). */
     val missingCount: Int = story.members.size - items.size
 
-    /** Groups with at least one photo on this device. */
-    val groups: List<GroupView> = run {
+    /** The story's own groups (not nested in another) with at least one photo on this device. */
+    private val rootGroups: List<GroupView>
+
+    /** Groups with at least one photo on this device, nested ones included: each followed by its subgroups. */
+    val groups: List<GroupView>
+
+    init {
         val byId = items.associateBy { it.id }
-        story.groups.mapNotNull { group ->
-            group.memberIds.mapNotNull { byId[it] }.takeIf { it.isNotEmpty() }?.let { GroupView(group, it) }
+        val known = story.groups.map { it.id }.toSet()
+        val childrenOf = story.groups.groupBy { it.parentId }
+        val visited = mutableSetOf<String>()
+        val all = mutableListOf<GroupView?>()
+        fun view(group: StoryGroup): GroupView? {
+            if (!visited.add(group.id)) return null
+            val slot = all.size
+            all += null
+            val own = group.memberIds.mapNotNull { byId[it] }.map { StoryTile.Media(it) }
+            val subgroups = childrenOf[group.id].orEmpty().mapNotNull(::view).map { StoryTile.Group(it) }
+            val tiles = (own + subgroups).sortedBy { it.firstItem().takenAtMillis }
+            if (tiles.isEmpty()) return null
+            return GroupView(group, tiles.flatMap { it.allItems() }.sortedBy { it.takenAtMillis }, tiles).also { all[slot] = it }
         }
+        rootGroups = story.groups.filter { it.parentId == null || it.parentId !in known }.mapNotNull(::view)
+        groups = all.filterNotNull()
     }
 
     /**
-     * The grid: loose photos, and each group where its first photo would be, oldest first unless the owner
-     * arranged them ([Story.tileOrder]).
+     * The grid: loose photos, and each of the story's own groups where its first photo would be, oldest first unless
+     * the owner arranged them ([Story.tileOrder]).
      */
     val tiles: List<StoryTile> = run {
-        val groupOf = groups.flatMap { group -> group.items.map { it.id to group } }.toMap()
-        val placed = mutableSetOf<String>()
-        val byTime = items.mapNotNull { item ->
-            val group = groupOf[item.id] ?: return@mapNotNull StoryTile.Media(item)
-            if (placed.add(group.id)) StoryTile.Group(group) else null
-        }
+        val grouped = story.groups.flatMap { it.memberIds }.toSet()
+        val byTime = items.filter { it.id !in grouped }.map { StoryTile.Media(it) } + rootGroups.map { StoryTile.Group(it) }
         arrangeTiles(byTime, story.tileOrder, key = { it.key }, time = { it.firstItem().takenAtMillis })
     }
 
@@ -132,13 +164,29 @@ data class StoryView(
 
     fun group(id: String): GroupView? = groups.firstOrNull { it.id == id }
 
-    /** The group [itemId] is in within this story, if any. */
-    fun groupOf(itemId: String): GroupView? = groups.firstOrNull { group -> group.items.any { it.id == itemId } }
+    /** The group a page of the story shows as [itemId] in [viewerItems], if that photo stands for one. */
+    fun coverStop(itemId: String): GroupView? = tiles.coverStop(itemId)
+
+    /** The groups around [groupId], the story's own first; for the group page's heading. */
+    fun parentsOf(groupId: String): List<GroupView> {
+        val parents = mutableListOf<GroupView>()
+        var parent = group(groupId)?.parentId?.let(::group)
+        while (parent != null && parent !in parents) {
+            parents.add(0, parent)
+            parent = parent.parentId?.let(::group)
+        }
+        return parents
+    }
 }
 
 private fun StoryTile.firstItem(cover: Boolean = false): MediaItem = when (this) {
     is StoryTile.Media -> item
     is StoryTile.Group -> if (cover) group.cover else group.items.first()
+}
+
+private fun StoryTile.allItems(): List<MediaItem> = when (this) {
+    is StoryTile.Media -> listOf(item)
+    is StoryTile.Group -> group.items
 }
 
 /** A story whose photos span at most this many days is trip-like; see [StoryView.isShortSpan]. */
@@ -436,8 +484,8 @@ class StoriesController internal constructor(
     }
 
     /**
-     * Groups [itemIds] (at least two members of the story) into one tile; photos already in another group of this
-     * story move to the new one. Returns the group's id.
+     * Groups [itemIds] (at least two members of the story) into one tile of the story; photos already in another
+     * group of this story move to the new one. Returns the group's id.
      */
     fun createGroup(storyId: String, itemIds: List<String>, title: String? = null): String? {
         val story = stories.firstOrNull { it.id == storyId } ?: return null
@@ -454,34 +502,73 @@ class StoriesController internal constructor(
     }
 
     /**
-     * Makes the picked tiles ([StoryTile.key]s: photos and groups, at least two) one group. With no group among them
-     * it is [createGroup]; otherwise everything joins the group that comes first in the story, which keeps its id,
-     * title, cover and layout, and the other groups' text is added to its own (a missing title is taken from them).
-     * Returns the group's id.
+     * Puts the picked tiles ([StoryTile.key]s: photos and groups, at least two) into a new group, which takes their
+     * place: in the story, or with [parentId] in that group, as a subgroup. Picked groups become its subgroups.
+     * Picking every tile of a group would only wrap it again, so it does nothing. Returns the new group's id.
      */
-    fun groupTiles(storyId: String, tileKeys: List<String>): String? {
-        val view = currentState.story(storyId) ?: return null
-        val picked = view.tiles.filter { it.key in tileKeys }
+    fun groupTiles(storyId: String, tileKeys: List<String>, parentId: String? = null): String? {
+        val story = stories.firstOrNull { it.id == storyId } ?: return null
+        val container = containerTiles(storyId, parentId) ?: return null
+        val picked = container.filter { it.key in tileKeys }
+        if (picked.size < 2 || (parentId != null && picked.size == container.size)) return null
+        val photos = picked.filterIsInstance<StoryTile.Media>().map { it.item.id }.toSet()
+        val subgroups = picked.filterIsInstance<StoryTile.Group>().map { it.group.id }.toSet()
+        val groupId = nextGroupId(story)
+        val cover = picked.minBy { it.firstItem().takenAtMillis }.firstItem().id
+        change(storyId) {
+            it.copy(
+                groups = it.groups.map { group ->
+                    when {
+                        group.id in subgroups -> group.copy(parentId = groupId)
+                        group.id == parentId -> group.copy(memberIds = group.memberIds - photos)
+                        else -> group
+                    }
+                } + StoryGroup(groupId, null, cover, photos.toList(), parentId = parentId),
+            )
+        }
+        return groupId
+    }
+
+    /**
+     * Makes the picked tiles ([StoryTile.key]s, at least two, of the story or with [parentId] of that group) one
+     * group by merging: everything joins the group that comes first among them, which keeps its id, title, cover and
+     * layout; the other groups' photos and subgroups move into it, and their text is added to its own (a missing
+     * title is taken from them). With no group among them it is [groupTiles]. Returns the group's id.
+     */
+    fun mergeTiles(storyId: String, tileKeys: List<String>, parentId: String? = null): String? {
+        val container = containerTiles(storyId, parentId) ?: return null
+        val picked = container.filter { it.key in tileKeys }
         if (picked.size < 2) return null
         val groups = picked.filterIsInstance<StoryTile.Group>().map { it.group.group }
-        val loose = picked.filterIsInstance<StoryTile.Media>().map { it.item.id }
-        val target = groups.firstOrNull() ?: return createGroup(storyId, loose)
+        val target = groups.firstOrNull() ?: return groupTiles(storyId, tileKeys, parentId)
         val others = groups.drop(1)
-        val joined = (others.flatMap { it.memberIds } + loose).toSet()
+        val otherIds = others.map { it.id }.toSet()
+        val loose = picked.filterIsInstance<StoryTile.Media>().map { it.item.id }.toSet()
+        val joined = others.flatMap { it.memberIds } + loose
         change(storyId) { story ->
             val byTime = story.members.associate { it.deviceId to it.takenAtMillis }
             story.copy(
-                groups = story.groups.filter { group -> others.none { it.id == group.id } }.map { group ->
-                    if (group.id != target.id) return@map group
-                    group.copy(
-                        title = group.title ?: others.firstNotNullOfOrNull { it.title },
-                        memberIds = (group.memberIds + joined).distinct().sortedBy { byTime[it] },
-                        text = (listOf(group) + others).map { it.text }.filter { it.isNotBlank() }.joinToString("\n\n"),
-                    )
+                groups = story.groups.filter { it.id !in otherIds }.map { group ->
+                    when {
+                        group.id == target.id -> group.copy(
+                            title = group.title ?: others.firstNotNullOfOrNull { it.title },
+                            memberIds = (group.memberIds + joined).distinct().sortedBy { byTime[it] },
+                            text = (listOf(group) + others).map { it.text }.filter { it.isNotBlank() }.joinToString("\n\n"),
+                        )
+                        group.parentId in otherIds -> group.copy(parentId = target.id)
+                        group.id == parentId -> group.copy(memberIds = group.memberIds - loose)
+                        else -> group
+                    }
                 },
             )
         }
         return target.id
+    }
+
+    /** The tiles of the story's grid, or with [groupId] of that group's page. */
+    private fun containerTiles(storyId: String, groupId: String?): List<StoryTile>? {
+        val view = currentState.story(storyId) ?: return null
+        return if (groupId == null) view.tiles else view.group(groupId)?.tiles
     }
 
     /** Puts a story back as it was, e.g. to undo [groupTiles]: [snapshot] is the [StoryView.story] from before. */
@@ -508,10 +595,13 @@ class StoriesController internal constructor(
         it.copy(text = text.trim())
     }
 
-    /** A focus point and zoom chosen for the old cover don't fit the new one, so they go back to automatic. */
+    /**
+     * Any photo of the group or of its subgroups. A focus point and zoom chosen for the old cover don't fit the new
+     * one, so they go back to automatic.
+     */
     fun setCover(storyId: String, groupId: String, itemId: String) = change(storyId) { story ->
         val group = story.groups.firstOrNull { it.id == groupId }
-        if (group == null || itemId !in group.memberIds || itemId == group.coverId) return@change story
+        if (group == null || itemId !in story.photosIn(groupId) || itemId == group.coverId) return@change story
         val key = groupTileKey(groupId)
         story.copy(
             groups = story.groups.map { if (it.id == groupId) it.copy(coverId = itemId) else it },
@@ -519,13 +609,26 @@ class StoriesController internal constructor(
         )
     }
 
-    /** Back to loose photos in the story; a group left with one photo goes away. */
-    fun removeFromGroup(storyId: String, groupId: String, itemIds: List<String>) = changeGroup(storyId, groupId) {
-        it.copy(memberIds = it.memberIds - itemIds.toSet())
+    /**
+     * Takes photos out of the group (from any of its subgroups too) into the level above: the group around it, or
+     * the story's loose photos. A group left with one tile goes away.
+     */
+    fun removeFromGroup(storyId: String, groupId: String, itemIds: List<String>) = change(storyId) { story ->
+        val group = story.groups.firstOrNull { it.id == groupId } ?: return@change story
+        val moving = story.photosIn(groupId).intersect(itemIds.toSet())
+        story.copy(
+            groups = story.groups.map {
+                val kept = it.copy(memberIds = it.memberIds - moving)
+                if (it.id == group.parentId) kept.copy(memberIds = kept.memberIds + moving) else kept
+            },
+        )
     }
 
-    /** Dissolves the group; its photos stay in the story and its text moves to the story's opening text. */
-    fun ungroup(storyId: String, groupId: String) = changeGroup(storyId, groupId) { it.copy(memberIds = emptyList()) }
+    /**
+     * Dissolves the group: its photos and subgroups move to the level above (the group around it, or the story), and
+     * so does its text, added to that group's text or the story's opening text.
+     */
+    fun ungroup(storyId: String, groupId: String) = change(storyId) { dissolve(it, groupId) }
 
     // MARK: Layout
 
@@ -637,10 +740,14 @@ class StoriesController internal constructor(
         save(changed.copy(updatedAt = now()))
     }
 
-    /** Layout entries only for tiles the story has: a photo that joined a group, or left, loses its own. */
+    /**
+     * Layout entries only for tiles of the story's grid: a photo that joined a group, or left, loses its own, and so
+     * does a group that became a subgroup.
+     */
     private fun normalizeLayout(story: Story): Story {
         val grouped = story.groups.flatMap { it.memberIds }.toSet()
-        val keys = story.members.map { it.deviceId }.filter { it !in grouped }.toSet() + story.groups.map { groupTileKey(it.id) }
+        val keys = story.members.map { it.deviceId }.filter { it !in grouped }.toSet() +
+            story.groups.filter { it.parentId == null }.map { groupTileKey(it.id) }
         return story.copy(
             layout = story.layout.filter { (key, layout) -> key in keys && !layout.isEmpty },
             tileOrder = story.tileOrder.filter { it in keys }.distinct(),
@@ -648,22 +755,61 @@ class StoriesController internal constructor(
     }
 
     /**
-     * Keeps groups consistent after any change: members must be in the story, a group needs two photos, the cover
-     * must be a member. A group that goes away hands its text to the story's opening text.
+     * Keeps groups consistent after any change: members must be in the story, a parent must exist (and not be the
+     * group itself or inside it), a group needs two tiles (photos and subgroups), the cover must be one of its photos.
+     * A group that goes away is [dissolve]d, so no photo or text is lost.
      */
     private fun normalizeGroups(story: Story): Story {
         val inStory = story.members.map { it.deviceId }.toSet()
-        var intro = story.intro
-        val groups = story.groups.mapNotNull { group ->
-            val memberIds = group.memberIds.filter { it in inStory }.distinct()
-            if (memberIds.size < 2) {
-                if (group.text.isNotBlank()) intro = listOf(intro, group.text).filter { it.isNotBlank() }.joinToString("\n\n")
-                null
-            } else {
-                group.copy(memberIds = memberIds, coverId = group.coverId.takeIf { it in memberIds } ?: memberIds.first())
+        val ids = story.groups.map { it.id }.toSet()
+        val groups = story.groups.map { group ->
+            group.copy(memberIds = group.memberIds.filter { it in inStory }.distinct(), parentId = group.parentId?.takeIf { it in ids })
+        }.toMutableList()
+        // A loop of parents would hide its groups; the first group found in one becomes the story's own.
+        groups.indices.forEach { index ->
+            val seen = mutableSetOf(groups[index].id)
+            var parent = groups[index].parentId
+            while (parent != null) {
+                if (!seen.add(parent)) {
+                    groups[index] = groups[index].copy(parentId = null)
+                    break
+                }
+                parent = groups.first { it.id == parent }.parentId
             }
         }
-        return story.copy(groups = groups, intro = intro)
+        var normalized = story.copy(groups = groups)
+        while (true) {
+            val small = normalized.groups.firstOrNull { group ->
+                group.memberIds.size + normalized.groups.count { it.parentId == group.id } < 2
+            } ?: break
+            normalized = dissolve(normalized, small.id)
+        }
+        val byTime = story.members.associate { it.deviceId to it.takenAtMillis }
+        return normalized.copy(
+            groups = normalized.groups.map { group ->
+                val photos = normalized.photosIn(group.id)
+                group.copy(coverId = group.coverId.takeIf { it in photos } ?: photos.minByOrNull { byTime[it] ?: 0 } ?: group.coverId)
+            },
+        )
+    }
+
+    /**
+     * Removes group [groupId]; its photos, subgroups and text move to the group around it, or to the story (loose
+     * photos, and the opening text).
+     */
+    private fun dissolve(story: Story, groupId: String): Story {
+        val group = story.groups.firstOrNull { it.id == groupId } ?: return story
+        fun joinText(a: String) = listOf(a, group.text).filter { it.isNotBlank() }.joinToString("\n\n")
+        return story.copy(
+            groups = story.groups.filter { it.id != groupId }.map {
+                when {
+                    it.id == group.parentId -> it.copy(memberIds = it.memberIds + group.memberIds, text = joinText(it.text))
+                    it.parentId == groupId -> it.copy(parentId = group.parentId)
+                    else -> it
+                }
+            },
+            intro = if (group.parentId == null) joinText(story.intro) else story.intro,
+        )
     }
 
     private fun nextGroupId(story: Story): String {

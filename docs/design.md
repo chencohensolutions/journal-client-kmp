@@ -17,7 +17,7 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 |---|---|
 | **Photo library** | Every photo and video on the device, read through MediaStore (Android) / PhotoKit (iOS). Read only, always. |
 | **Story** | A title over a set of photos, with text: a trip, a birthday, "Our dog". **No dates of its own**; the span shown comes from its photos. A photo can be in many stories. Was called "event" until it was renamed. |
-| **Group** | Photos of one moment shown as one tile inside a story (a burst, or picked by hand), with its own text. Within a story a photo is in at most one group. |
+| **Group** | Photos of one moment shown as one tile inside a story (a burst, or picked by hand), with its own text. Groups nest: a group's tiles are its photos and its subgroups. Within a story a photo is directly in at most one group. |
 | **Tag** | A label on a photo, for photos that belong somewhere but don't deserve a story. Free text, compared ignoring case. |
 | **Note** | A photo's own text (caption), shown wherever the photo appears. |
 | **Unsorted** | Photos in no story **and** without tags. A note alone doesn't sort a photo. |
@@ -47,9 +47,12 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 - **Burst suggestions** are automatic: photos within **10 s** of each other, or sharing the camera's burst id (iOS
   `burstIdentifier`; Samsung `20261008_140901_092.jpg` names), runs of **3+** photos, videos excluded. "Not now" is
   remembered per story.
-- Ungrouping keeps the photos and moves the group's text into the story's opening text, so no text is lost.
-- Selecting groups with photos, or several groups, **merges** them into the first selected group in the story; the
-  others' text is appended to its own. Undo restores the story as it was.
+- **Group** puts the selected tiles (photos and groups) in a new group, in the story or, from a group's page, as a
+  subgroup: **groups nest**, to any depth. Undo restores the story as it was.
+- **Merge** (offered when a group is selected) joins the selected tiles into the first selected group instead; the
+  others' photos, subgroups and text move into it.
+- Ungrouping, or a group left with one tile, moves its photos, subgroups and text one level up: into the group around
+  it, or the story (its opening text), so nothing is lost.
 
 **Layout**
 - A story's days are grids **6 square cells wide**; tiles take size presets (Small 2×2, Wide 4×2, Tall 2×4, Half
@@ -108,7 +111,7 @@ disposable `.cache/` index rebuilt from the files.
 - Backup status model and badges (everything shows "Only on this device": uploads don't exist).
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
 - Groups: burst suggestions, select-and-group with Undo, merging groups (with photos or each other), group page,
-  set cover, remove, ungroup, group text.
+  set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
 - Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point and zoom,
   reset. iOS
   shows the automatic layout (every tile full width at its ratio) and doesn't read the arrangement yet.

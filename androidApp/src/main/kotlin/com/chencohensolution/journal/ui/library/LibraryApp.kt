@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -200,6 +201,7 @@ fun LibraryApp(
                     setIntro = { stories.setIntro(route.id, it) },
                     acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
                     groupTiles = { stories.groupTiles(route.id, it) },
+                    mergeTiles = { stories.mergeTiles(route.id, it) },
                     restore = stories::restore,
                     dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
                     ungroup = { stories.ungroup(route.id, it) },
@@ -211,17 +213,25 @@ fun LibraryApp(
                     back = pop,
                 ),
             )
-            is Route.Group -> GroupScreen(
-                story = storiesState.story(route.storyId),
-                group = storiesState.story(route.storyId)?.group(route.groupId),
-                actions = GroupActions(
-                    openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
-                    rename = { stories.renameGroup(route.storyId, route.groupId, it) },
-                    setText = { stories.setGroupText(route.storyId, route.groupId, it) },
-                    ungroup = { stories.ungroup(route.storyId, route.groupId) },
-                    back = pop,
-                ),
-            )
+            // Keyed by group: opening a subgroup from its group's page must not keep that page's selection or messages.
+            is Route.Group -> key(route.storyId, route.groupId) {
+                GroupScreen(
+                    story = storiesState.story(route.storyId),
+                    group = storiesState.story(route.storyId)?.group(route.groupId),
+                    actions = GroupActions(
+                        openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
+                        openGroup = { push(Route.Group(route.storyId, it.id)) },
+                        rename = { stories.renameGroup(route.storyId, route.groupId, it) },
+                        setText = { stories.setGroupText(route.storyId, route.groupId, it) },
+                        ungroup = { stories.ungroup(route.storyId, route.groupId) },
+                        groupTiles = { stories.groupTiles(route.storyId, it, parentId = route.groupId) },
+                        mergeTiles = { stories.mergeTiles(route.storyId, it, parentId = route.groupId) },
+                        restore = stories::restore,
+                        takeOut = { stories.removeFromGroup(route.storyId, route.groupId, it) },
+                        back = pop,
+                    ),
+                )
+            }
             Route.Settings -> SettingsScreen(
                 settings = settingsState,
                 actions = SettingsActions(
@@ -272,7 +282,7 @@ fun LibraryApp(
  */
 private fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
-    route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.items.orEmpty()
+    route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.viewerItems.orEmpty()
     route.storyId != null -> stories.story(route.storyId)?.viewerItems.orEmpty()
     route.moment != null -> stories.moment(route.moment)?.items.orEmpty()
     else -> library.days(route.filter).flatMap { it.items }

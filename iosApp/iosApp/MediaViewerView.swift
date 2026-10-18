@@ -76,9 +76,9 @@ struct MediaViewerView: View {
                         .foregroundStyle(Color(white: 0.75))
                 }
                 Spacer()
-                // In a story a group is one stop, shown as its cover; this opens the rest of it.
-                if group == nil, let item = items[safe: index], let coverOf = openedFrom?.groupOf(itemId: item.id),
-                   coverOf.cover.id == item.id {
+                // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
+                if let item = items[safe: index],
+                   let coverOf = group.map({ $0.coverStop(itemId: item.id) }) ?? openedFrom?.coverStop(itemId: item.id) {
                     Button { actions.openGroup(coverOf.id) } label: {
                         Label("\(Int(coverOf.itemCount)) · Open", systemImage: "square.on.square")
                             .font(.subheadline.weight(.semibold))

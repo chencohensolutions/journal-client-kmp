@@ -86,7 +86,7 @@ struct StoryGrid: View {
 }
 
 /// Check circle and outline over a photo in selection mode.
-private struct SelectionOverlay: View {
+struct SelectionOverlay: View {
     let selected: Bool
 
     var body: some View {
@@ -101,6 +101,79 @@ private struct SelectionOverlay: View {
             .padding(7)
         }
         .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+/// The photos of the picked tiles: a photo itself, or all of a group's.
+func itemIds(of tiles: [StoryTile]) -> [String] {
+    tiles.flatMap { tile -> [String] in
+        if let group = tile as? StoryTileGroup { return group.group.items.map(\.id) }
+        return (tile as? StoryTileMedia).map { [$0.item.id] } ?? []
+    }
+}
+
+/// The bar under a selection: Group puts the picked tiles in a new group, Merge (when a group is picked) joins them
+/// into the first picked group, and the last button takes them out.
+struct SelectionBar: View {
+    let canGroup: Bool
+    let canMerge: Bool
+    let removeLabel: LocalizedStringKey
+    let onGroup: () -> Void
+    let onMerge: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onGroup) {
+                Label("Group", systemImage: "square.on.square")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .foregroundStyle(LibraryColors.onInverse)
+                    .background(LibraryColors.inverse.opacity(canGroup ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
+            }
+            .disabled(!canGroup)
+            if canMerge {
+                Button(action: onMerge) {
+                    Text("Merge")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .foregroundStyle(LibraryColors.accent)
+                }
+            }
+            Button(action: onRemove) {
+                Label(removeLabel, systemImage: "minus")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .foregroundStyle(LibraryColors.warning)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(LibraryColors.raised.ignoresSafeArea())
+    }
+}
+
+/// "Grouped 14 photos · Undo", for a few seconds after grouping.
+struct UndoBar: View {
+    let count: Int
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("Grouped \(count) photos").font(.subheadline)
+            Spacer()
+            Button("Undo", action: onUndo)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(LibraryColors.accent)
+        }
+        .foregroundStyle(LibraryColors.onInverse)
+        .padding(.horizontal, 16)
+        .frame(height: 52)
+        .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 

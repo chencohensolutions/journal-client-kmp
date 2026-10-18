@@ -5,7 +5,7 @@ One photo or video at a time, full screen on black.
 ## What it swipes through
 
 - Opened from a tag: the photos with that tag.
-- Opened from a group: that group's photos.
+- Opened from a group: that group's photos, with each subgroup as one stop (its cover) and the same **Open** button.
 - Opened from a story: that story's photos, with each group as one stop (its cover) and a **⧉ 14 · Open** button
   in the top bar that opens the group.
 - Opened from a day on the Journal: that day's unsorted items.
@@ -34,7 +34,7 @@ doesn't pull it out from under you. If the open item is deleted from the device,
     by title (anywhere in the word, one typo allowed for 4+ letters), closest in time first, with
     **Create "…"** at the top. A check marks the stories the item is in; tapping one adds or removes it.
   - **Group** instead of Stories when opened from a group: its name, **Set as cover** (or "This is the cover"),
-    and **− Remove from group**.
+    and **− Remove from group** (the photo moves to the level above the group, even from a subgroup).
   - File name, size (Android only), dimensions, and length for videos.
 
 ## Platform notes
