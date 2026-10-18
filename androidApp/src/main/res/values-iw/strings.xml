@@ -22,6 +22,7 @@
     <string name="library_yesterday">אתמול</string>
     <string name="library_tab_journal">יומן</string>
     <string name="library_tab_unsorted">לא ממוינות %d</string>
+    <string name="library_no_stories">אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״לא ממוינות״.</string>
     <plurals name="library_unsorted_count">
         <item quantity="one">תמונה אחת לא ממוינת</item>
         <item quantity="two">%d לא ממוינות</item>
@@ -103,6 +104,7 @@
 
     <!-- Groups -->
     <string name="library_group_action">קיבוץ</string>
+    <string name="library_merge_action">מיזוג</string>
     <string name="library_remove">הסרה</string>
     <string name="library_cancel_selection">ביטול הבחירה</string>
     <plurals name="library_selected">
@@ -267,7 +269,7 @@
     <string name="library_arrange_earlier">לפני</string>
     <string name="library_arrange_later">אחרי</string>
     <string name="library_arrange_focus">מיקוד</string>
-    <string name="library_arrange_focus_hint">הקישו על החלק שצריך להישאר גלוי כשהתמונה נחתכת.</string>
+    <string name="library_arrange_focus_hint">הקישו על החלק שצריך להישאר גלוי; המסגרת מראה מה יוצג באריח.</string>
     <string name="library_size_auto">אוטומטי</string>
     <string name="library_size_small">קטן</string>
     <string name="library_size_wide">רחב</string>
@@ -275,4 +277,7 @@
     <string name="library_size_half">חצי</string>
     <string name="library_size_large">גדול</string>
     <string name="library_size_full">מלא</string>
+    <string name="library_size_original">מקורי</string>
+    <string name="library_arrange_zoom">זום</string>
+    <string name="library_arrange_zoom_value">%1$.1f×</string>
 </resources>

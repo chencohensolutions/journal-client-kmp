@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
+import com.chencohensolution.journal.stories.Story
+import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.FocusPoint
 import com.chencohensolution.journal.stories.GroupView
@@ -72,13 +74,16 @@ internal class StoryActions(
     val setIntro: (String) -> Unit = {},
     /** Each returns the new group's id. */
     val acceptSuggestion: (key: String) -> String? = { null },
-    val createGroup: (itemIds: List<String>) -> String? = { null },
+    /** Photos and groups ([StoryTile.key]s) into one group; returns its id. */
+    val groupTiles: (tileKeys: List<String>) -> String? = { null },
+    /** Puts the story back as it was before a [groupTiles]. */
+    val restore: (Story) -> Unit = {},
     val dismissSuggestion: (key: String) -> Unit = {},
     val ungroup: (groupId: String) -> Unit = {},
     val removeItems: (itemIds: List<String>) -> Unit = {},
     /** Layout, by tile key ([StoryTile.key]); a null size is automatic. */
     val setTileSize: (tileKey: String, size: TileSize?) -> Unit = { _, _ -> },
-    val setTileFocus: (tileKey: String, focus: FocusPoint) -> Unit = { _, _ -> },
+    val setTileFocus: (tileKey: String, focus: FocusPoint, zoom: Float) -> Unit = { _, _, _ -> },
     val moveTile: (tileKey: String, offset: Int) -> Unit = { _, _ -> },
     val resetLayout: () -> Unit = {},
     val back: () -> Unit = {},
@@ -86,7 +91,7 @@ internal class StoryActions(
 
 /**
  * One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
- * Long-press a photo to select photos and group them; ⋯ › Arrange to size, reorder and crop the tiles. See
+ * Long-press a photo or group to select tiles and group or merge them; ⋯ › Arrange to size, reorder and crop the tiles. See
  * docs/screens/story-page.md.
  */
 @Composable
@@ -100,7 +105,15 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var editingIntro by rememberSaveable { mutableStateOf(false) }
     var selecting by rememberSaveable { mutableStateOf(false) }
+    /** Tile keys ([StoryTile.key]): photos' device ids and groups' keys. */
     var selected by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val selectedTiles = story.tiles.filter { it.key in selected }
+    val selectedItemIds = selectedTiles.flatMap { tile ->
+        when (tile) {
+            is StoryTile.Media -> listOf(tile.item.id)
+            is StoryTile.Group -> tile.group.items.map { it.id }
+        }
+    }
     var arranging by rememberSaveable { mutableStateOf(false) }
     var arrangeKey by rememberSaveable { mutableStateOf<String?>(null) }
     /** The tile whose focus is being chosen; kept apart from [arrangeKey] so the editor stays on it. */
@@ -114,11 +127,11 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
 
     val groupedMessage = stringResource(R.string.library_grouped)
     val undoLabel = stringResource(R.string.library_undo)
-    fun offerUndo(groupId: String?, count: Int) {
+    fun offerUndo(groupId: String?, count: Int, undo: () -> Unit = { groupId?.let(actions.ungroup) }) {
         groupId ?: return
         scope.launch {
             val result = snackbar.showSnackbar(groupedMessage.format(count), actionLabel = undoLabel, withDismissAction = false)
-            if (result == SnackbarResult.ActionPerformed) actions.ungroup(groupId)
+            if (result == SnackbarResult.ActionPerformed) undo()
         }
     }
     fun endSelection() {
@@ -181,9 +194,9 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
                 },
                 onOpenItem = actions.openItem,
                 onOpenGroup = actions.openGroup,
-                onLongPress = { item ->
+                onLongPress = { key ->
                     selecting = true
-                    if (item.id !in selected) selected = selected + item.id
+                    if (key !in selected) selected = selected + key
                 },
                 selection = if (selecting) {
                     GridSelection(selected.toSet()) { id -> selected = if (id in selected) selected - id else selected + id }
@@ -206,14 +219,15 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
         } else if (selecting) {
             SelectionTopBar(selected.size, onClose = ::endSelection, modifier = Modifier.align(Alignment.TopCenter))
             SelectionBottomBar(
-                canGroup = selected.size >= 2,
+                canGroup = selectedTiles.size >= 2,
+                merging = selectedTiles.any { it is StoryTile.Group },
                 onGroup = {
-                    val count = selected.size
-                    offerUndo(actions.createGroup(selected), count)
+                    val before = story.story
+                    offerUndo(actions.groupTiles(selected), selectedItemIds.size) { actions.restore(before) }
                     endSelection()
                 },
                 onRemove = {
-                    actions.removeItems(selected)
+                    actions.removeItems(selectedItemIds)
                     endSelection()
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -234,9 +248,9 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     placed(focusKey)?.let { tile ->
         FocusEditor(
             tile = tile,
-            onSave = { focus ->
+            onSave = { focus, zoom ->
                 focusKey = null
-                actions.setTileFocus(tile.tile.key, focus)
+                actions.setTileFocus(tile.tile.key, focus, zoom)
             },
             onDismiss = { focusKey = null },
         )
@@ -380,7 +394,7 @@ private fun SelectionTopBar(count: Int, onClose: () -> Unit, modifier: Modifier 
 }
 
 @Composable
-private fun SelectionBottomBar(canGroup: Boolean, onGroup: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+private fun SelectionBottomBar(canGroup: Boolean, merging: Boolean, onGroup: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .fillMaxWidth()
@@ -397,7 +411,7 @@ private fun SelectionBottomBar(canGroup: Boolean, onGroup: () -> Unit, onRemove:
             modifier = Modifier.weight(1f).height(52.dp),
         ) {
             Icon(LibraryIcons.Stack, null, modifier = Modifier.size(20.dp))
-            Text(stringResource(R.string.library_group_action), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(if (merging) R.string.library_merge_action else R.string.library_group_action), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
         }
         TextButton(onClick = onRemove, modifier = Modifier.weight(1f).height(52.dp)) {
             Icon(LibraryIcons.Minus, null, tint = LibraryColors.Warning, modifier = Modifier.size(20.dp))

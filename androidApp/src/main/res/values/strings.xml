@@ -22,6 +22,7 @@
     <string name="library_yesterday">Yesterday</string>
     <string name="library_tab_journal">Journal</string>
     <string name="library_tab_unsorted">Unsorted %d</string>
+    <string name="library_no_stories">No stories yet. Make one from a day in Unsorted.</string>
     <plurals name="library_unsorted_count">
         <item quantity="one">%d unsorted</item>
         <item quantity="other">%d unsorted</item>
@@ -97,6 +98,7 @@
 
     <!-- Groups -->
     <string name="library_group_action">Group</string>
+    <string name="library_merge_action">Merge</string>
     <string name="library_remove">Remove</string>
     <string name="library_cancel_selection">Cancel selection</string>
     <plurals name="library_selected">
@@ -256,7 +258,7 @@
     <string name="library_arrange_earlier">Earlier</string>
     <string name="library_arrange_later">Later</string>
     <string name="library_arrange_focus">Focus</string>
-    <string name="library_arrange_focus_hint">Tap the part that should stay in view when the photo is cropped.</string>
+    <string name="library_arrange_focus_hint">Tap the part that should stay in view; the frame shows what the tile will show.</string>
     <string name="library_size_auto">Auto</string>
     <string name="library_size_small">Small</string>
     <string name="library_size_wide">Wide</string>
@@ -264,4 +266,7 @@
     <string name="library_size_half">Half</string>
     <string name="library_size_large">Large</string>
     <string name="library_size_full">Full</string>
+    <string name="library_size_original">Original</string>
+    <string name="library_arrange_zoom">Zoom</string>
+    <string name="library_arrange_zoom_value">%1$.1f×</string>
 </resources>

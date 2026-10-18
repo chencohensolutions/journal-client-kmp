@@ -453,6 +453,40 @@ class StoriesController internal constructor(
         return groupId
     }
 
+    /**
+     * Makes the picked tiles ([StoryTile.key]s: photos and groups, at least two) one group. With no group among them
+     * it is [createGroup]; otherwise everything joins the group that comes first in the story, which keeps its id,
+     * title, cover and layout, and the other groups' text is added to its own (a missing title is taken from them).
+     * Returns the group's id.
+     */
+    fun groupTiles(storyId: String, tileKeys: List<String>): String? {
+        val view = currentState.story(storyId) ?: return null
+        val picked = view.tiles.filter { it.key in tileKeys }
+        if (picked.size < 2) return null
+        val groups = picked.filterIsInstance<StoryTile.Group>().map { it.group.group }
+        val loose = picked.filterIsInstance<StoryTile.Media>().map { it.item.id }
+        val target = groups.firstOrNull() ?: return createGroup(storyId, loose)
+        val others = groups.drop(1)
+        val joined = (others.flatMap { it.memberIds } + loose).toSet()
+        change(storyId) { story ->
+            val byTime = story.members.associate { it.deviceId to it.takenAtMillis }
+            story.copy(
+                groups = story.groups.filter { group -> others.none { it.id == group.id } }.map { group ->
+                    if (group.id != target.id) return@map group
+                    group.copy(
+                        title = group.title ?: others.firstNotNullOfOrNull { it.title },
+                        memberIds = (group.memberIds + joined).distinct().sortedBy { byTime[it] },
+                        text = (listOf(group) + others).map { it.text }.filter { it.isNotBlank() }.joinToString("\n\n"),
+                    )
+                },
+            )
+        }
+        return target.id
+    }
+
+    /** Puts a story back as it was, e.g. to undo [groupTiles]: [snapshot] is the [StoryView.story] from before. */
+    fun restore(snapshot: Story) = change(snapshot.id) { snapshot }
+
     /** "Group them" on a burst suggestion. */
     fun acceptSuggestion(storyId: String, key: String): String? {
         val suggestion = currentState.story(storyId)?.suggestions?.firstOrNull { it.key == key } ?: return null
@@ -474,14 +508,14 @@ class StoriesController internal constructor(
         it.copy(text = text.trim())
     }
 
-    /** A focus point chosen for the old cover doesn't fit the new one, so it goes back to the center. */
+    /** A focus point and zoom chosen for the old cover don't fit the new one, so they go back to automatic. */
     fun setCover(storyId: String, groupId: String, itemId: String) = change(storyId) { story ->
         val group = story.groups.firstOrNull { it.id == groupId }
         if (group == null || itemId !in group.memberIds || itemId == group.coverId) return@change story
         val key = groupTileKey(groupId)
         story.copy(
             groups = story.groups.map { if (it.id == groupId) it.copy(coverId = itemId) else it },
-            layout = story.layout + (key to (story.layout[key] ?: TileLayout()).copy(focus = null)),
+            layout = story.layout + (key to (story.layout[key] ?: TileLayout()).copy(focus = null, zoom = null)),
         )
     }
 
@@ -498,9 +532,12 @@ class StoriesController internal constructor(
     /** The tile's size on the story's grid ([StoryTile.key]); null goes back to the automatic size. */
     fun setTileSize(storyId: String, tileKey: String, size: TileSize?) = changeLayout(storyId, tileKey) { it.copy(size = size) }
 
-    /** The point of the tile's photo (a group's cover) that stays in view when the tile crops it. */
-    fun setTileFocus(storyId: String, tileKey: String, x: Float, y: Float) =
-        changeLayout(storyId, tileKey) { it.copy(focus = FocusPoint.of(x, y)) }
+    /**
+     * The point of the tile's photo (a group's cover) that stays in view when the tile crops it, and how much closer
+     * than filling the tile to show it: 1 to [MAX_ZOOM].
+     */
+    fun setTileFocus(storyId: String, tileKey: String, x: Float, y: Float, zoom: Float) =
+        changeLayout(storyId, tileKey) { it.copy(focus = FocusPoint.of(x, y), zoom = cleanZoom(zoom)) }
 
     /** Moves the tile [offset] places later (negative: earlier) among the tiles of its day. */
     fun moveTile(storyId: String, tileKey: String, offset: Int) {

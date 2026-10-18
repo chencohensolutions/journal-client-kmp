@@ -42,10 +42,14 @@ final class StoriesViewModel: ObservableObject {
     @discardableResult
     func acceptSuggestion(_ key: String, in storyId: String) -> String? { controller.acceptSuggestion(storyId: storyId, key: key) }
 
+    /// Photos and groups (tile keys) into one group.
     @discardableResult
-    func createGroup(_ itemIds: [String], in storyId: String) -> String? {
-        controller.createGroup(storyId: storyId, itemIds: itemIds, title: nil)
+    func groupTiles(_ tileKeys: [String], in storyId: String) -> String? {
+        controller.groupTiles(storyId: storyId, tileKeys: tileKeys)
     }
+
+    /// Puts a story back as it was, to undo grouping.
+    func restore(_ story: Story) { controller.restore(snapshot: story) }
 
     func dismissSuggestion(_ key: String, in storyId: String) { controller.dismissSuggestion(storyId: storyId, key: key) }
     func renameGroup(_ groupId: String, in storyId: String, to title: String) {

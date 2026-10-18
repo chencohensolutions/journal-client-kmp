@@ -14,8 +14,8 @@ struct HomeActions {
     var registerAgain: () -> Void
 }
 
-/// The home screen: the journal as a timeline, newest first: stories, with the photos in no story between them as
-/// "unsorted" moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
+/// The home screen: the journal's stories as a timeline, newest first, and in the Unsorted tab the photos in no story
+/// as moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
 struct JournalHomeView: View {
     let library: LibraryState
     let stories: StoriesState
@@ -50,6 +50,9 @@ struct JournalHomeView: View {
                         ProgressView().tint(LibraryColors.onBackground).frame(maxWidth: .infinity).padding(48)
                     } else if canRead && library.days.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
+                    }
+                    if tab == .journal && entries.isEmpty && !library.days.isEmpty {
+                        Message(text: "No stories yet. Make one from a day in Unsorted.")
                     }
                     ForEach(entries, id: \.id) { row in
                         switch row.entry {
@@ -96,7 +99,8 @@ struct JournalHomeView: View {
     private var canRead: Bool { library.access == .full || library.access == .limited }
 
     private var entries: [TimelineRow] {
-        let entries = tab == .unsorted ? stories.timeline.filter { $0 is TimelineEntryMomentEntry } : stories.timeline
+        // Journal shows only stories; photos in no story are in the Unsorted tab.
+        let entries = stories.timeline.filter { tab == .unsorted ? $0 is TimelineEntryMomentEntry : $0 is TimelineEntryStoryEntry }
         return entries.map(TimelineRow.init)
     }
 

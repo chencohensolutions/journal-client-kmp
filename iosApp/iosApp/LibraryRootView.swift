@@ -98,7 +98,8 @@ struct LibraryRootView: View {
                                     },
                                     setIntro: { stories.setIntro($0, of: id) },
                                     acceptSuggestion: { stories.acceptSuggestion($0, in: id) },
-                                    createGroup: { stories.createGroup($0, in: id) },
+                                    groupTiles: { stories.groupTiles($0, in: id) },
+                                    restore: { stories.restore($0) },
                                     dismissSuggestion: { stories.dismissSuggestion($0, in: id) },
                                     ungroup: { stories.ungroup($0, in: id) },
                                     removeItems: { stories.remove($0, from: id) }

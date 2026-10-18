@@ -60,22 +60,24 @@ private fun describe(bands: List<com.chencohensolution.journal.stories.StoryBand
 
 class PackingTest {
     @Test
-    fun automaticLayoutIsALargeTileThenRowsOfThree() {
-        val bands = packDay(tiles("a", "b", "c", "d", "e", "f"), emptyMap())
-        assertEquals(
-            listOf(
-                4 to listOf("a@0,0:large", "b@4,0:small", "c@4,2:small"),
-                2 to listOf("d@0,0:small", "e@2,0:small", "f@4,0:small"),
-            ),
-            describe(bands),
-        )
+    fun automaticLayoutIsEachPhotoFullWidthAtItsOwnRatio() {
+        val tall = StoryTile.Media(photo("t", 9).copy(width = 3000, height = 4000))
+        val bands = packDay(tiles("a", "b") + tall, emptyMap())
+        assertEquals(listOf(listOf("a"), listOf("b"), listOf("t")), bands.map { band -> band.tiles.map { it.tile.key } })
+        assertEquals(listOf(1f, 1f, 0.75f), bands.map { it.aspectRatio })
+        assertTrue(bands.flatMap { it.tiles }.all { it.size == TileSize.ORIGINAL && !it.sized })
     }
 
     @Test
     fun aSmallTileFillsTheHoleALargeOneLeft() {
-        val layout = mapOf("b" to TileLayout(TileSize.LARGE))
+        val layout = mapOf(
+            "a" to TileLayout(TileSize.LARGE),
+            "b" to TileLayout(TileSize.LARGE),
+            "c" to TileLayout(TileSize.SMALL),
+            "d" to TileLayout(TileSize.SMALL),
+        )
         val bands = packDay(tiles("a", "b", "c", "d"), layout)
-        // "a" is large automatically (first of 3+); "b" doesn't fit beside it and starts below.
+        // "b" doesn't fit beside "a" and starts below; "c" and "d" fill the hole beside "a".
         assertEquals(
             listOf(
                 4 to listOf("a@0,0:large", "c@4,0:small", "d@4,2:small"),
@@ -87,9 +89,25 @@ class PackingTest {
 
     @Test
     fun bandsNeverCutThroughATile() {
-        val layout = mapOf("a" to TileLayout(TileSize.TALL), "b" to TileLayout(TileSize.WIDE), "c" to TileLayout(TileSize.WIDE))
+        val layout = mapOf(
+            "a" to TileLayout(TileSize.TALL),
+            "b" to TileLayout(TileSize.WIDE),
+            "c" to TileLayout(TileSize.WIDE),
+            "d" to TileLayout(TileSize.SMALL),
+        )
         val bands = packDay(tiles("a", "b", "c", "d"), layout)
         assertEquals(listOf(4 to listOf("a@0,0:tall", "b@2,0:wide", "c@2,2:wide"), 2 to listOf("d@0,0:small")), describe(bands))
+    }
+
+    @Test
+    fun anOriginalTileIsItsOwnBandWithThePhotosRatio() {
+        val wide = StoryTile.Media(photo("w", 9).copy(width = 4000, height = 2000))
+        val small = TileLayout(TileSize.SMALL)
+        val layout = mapOf("a" to small, "b" to small, "c" to small, "w" to TileLayout(TileSize.ORIGINAL))
+        val bands = packDay(tiles("a", "b") + wide + tiles("c"), layout)
+        assertEquals(listOf(null, 2f, null), bands.map { it.aspectRatio })
+        assertEquals(listOf(listOf("a", "b"), listOf("w"), listOf("c")), bands.map { band -> band.tiles.map { it.tile.key } })
+        assertEquals(2f, bands[1].tiles.single().aspectRatio)
     }
 
     @Test
@@ -130,12 +148,13 @@ class LayoutTest {
         val stories = setup(fileSystem)
         val id = stories.newStory()
         stories.setTileSize(id, "b", TileSize.WIDE)
-        stories.setTileFocus(id, "b", 0.2f, 1.5f)
+        stories.setTileFocus(id, "b", 0.2f, 1.5f, 2.5f)
         stories.moveTile(id, "d", -2)
 
         val json = fileSystem.read(ROOT / "stories" / id / "story.json") { readUtf8() }
         assertTrue("\"size\": \"wide\"" in json, json)
         assertTrue("\"y\": 1.0" in json, json)
+        assertTrue("\"zoom\": 2.5" in json, json)
 
         val story = setup(fileSystem).currentState.story(id)!!
         assertEquals(listOf("a", "d", "b", "c"), story.tileDays.first().tiles.map { it.key })
@@ -143,6 +162,7 @@ class LayoutTest {
         val b = story.tileDays.first().bands.flatMap { it.tiles }.first { it.tile.key == "b" }
         assertEquals(TileSize.WIDE, b.size)
         assertEquals(FocusPoint(0.2f, 1f), b.focus)
+        assertEquals(2.5f, b.zoom)
         assertTrue(b.sized)
     }
 
@@ -175,7 +195,7 @@ class LayoutTest {
         val story = stories.currentState.story(id)!!
         assertEquals(listOf("a", "b", "c", "d", "e"), story.tiles.map { it.key })
         assertTrue(story.story.layout.isEmpty())
-        assertEquals(TileSize.LARGE, story.tileDays.first().bands.first().tiles.first().size)
+        assertEquals(TileSize.ORIGINAL, story.tileDays.first().bands.first().tiles.first().size)
     }
 
     @Test
@@ -188,9 +208,12 @@ class LayoutTest {
 
         val key = groupTileKey(groupId)
         stories.setTileSize(id, key, TileSize.HALF)
-        stories.setTileFocus(id, key, 0.1f, 0.1f)
+        stories.setTileFocus(id, key, 0.1f, 0.1f, 3f)
         stories.setCover(id, groupId, "c")
         assertEquals(TileLayout(TileSize.HALF), stories.currentState.story(id)!!.story.layout[key])
+
+        stories.setTileFocus(id, key, 0.5f, 0.5f, 1f)
+        assertEquals(TileLayout(TileSize.HALF, FocusPoint.CENTER), stories.currentState.story(id)!!.story.layout[key])
 
         stories.ungroup(id, groupId)
         assertNull(stories.currentState.story(id)!!.story.layout[key])

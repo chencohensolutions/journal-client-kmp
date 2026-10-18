@@ -1,7 +1,8 @@
 import SwiftUI
 import SharedLogic
 
-/// What the story page can ask its parent to do. `acceptSuggestion` and `createGroup` return the new group's id.
+/// What the story page can ask its parent to do. `acceptSuggestion` and `groupTiles` return the group's id;
+/// `groupTiles` takes tile keys (photos and groups) and merges them into one group, and `restore` undoes that.
 struct StoryPageActions {
     var openItem: (MediaItem) -> Void
     var openGroup: (GroupView) -> Void
@@ -10,14 +11,15 @@ struct StoryPageActions {
     var delete: () -> Void
     var setIntro: (String) -> Void
     var acceptSuggestion: (String) -> String?
-    var createGroup: ([String]) -> String?
+    var groupTiles: ([String]) -> String?
+    var restore: (Story) -> Void
     var dismissSuggestion: (String) -> Void
     var ungroup: (String) -> Void
     var removeItems: ([String]) -> Void
 }
 
 /// One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
-/// Long-press a photo to select photos and group them. See docs/screens/story.md.
+/// Long-press a photo or group to select tiles and group or merge them. See docs/screens/story.md.
 struct StoryPageView: View {
     let story: StoryView?
     let neighborDays: [DayGroup]
@@ -30,7 +32,8 @@ struct StoryPageView: View {
     @State private var confirmingDelete = false
     @State private var editingIntro = false
     @State private var selection: Set<String>?
-    @State private var undo: (groupId: String, count: Int)?
+    /// The story as it was before grouping, to put back on Undo.
+    @State private var undo: (groupId: String, count: Int, before: Story)?
 
     var body: some View {
         Group {
@@ -95,22 +98,28 @@ struct StoryPageView: View {
     /// Group / Remove while selecting; otherwise the "Grouped · Undo" message after grouping.
     @ViewBuilder
     private var bottomBar: some View {
-        if let selection {
+        if let selection, let story {
+            let tiles = story.tiles.filter { selection.contains($0.key) }
+            let itemIds = tiles.flatMap { tile -> [String] in
+                if let group = tile as? StoryTileGroup { return group.group.items.map(\.id) }
+                return (tile as? StoryTileMedia).map { [$0.item.id] } ?? []
+            }
+            let merging = tiles.contains { $0 is StoryTileGroup }
             HStack(spacing: 8) {
                 Button {
-                    let ids = Array(selection)
+                    let before = story.story
                     self.selection = nil
-                    showUndo(actions.createGroup(ids), count: ids.count)
+                    showUndo(actions.groupTiles(Array(selection)), count: itemIds.count, before: before)
                 } label: {
-                    Label("Group", systemImage: "square.on.square")
+                    Label(merging ? LocalizedStringKey("Merge") : LocalizedStringKey("Group"), systemImage: "square.on.square")
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 52)
                         .foregroundStyle(LibraryColors.onInverse)
-                        .background(LibraryColors.inverse.opacity(selection.count >= 2 ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
+                        .background(LibraryColors.inverse.opacity(tiles.count >= 2 ? 1 : 0.4), in: RoundedRectangle(cornerRadius: 14))
                 }
-                .disabled(selection.count < 2)
+                .disabled(tiles.count < 2)
                 Button {
-                    actions.removeItems(Array(selection))
+                    actions.removeItems(itemIds)
                     self.selection = nil
                 } label: {
                     Label("Remove", systemImage: "minus")
@@ -127,7 +136,7 @@ struct StoryPageView: View {
                 Text("Grouped \(undo.count) photos").font(.subheadline)
                 Spacer()
                 Button("Undo") {
-                    actions.ungroup(undo.groupId)
+                    actions.restore(undo.before)
                     self.undo = nil
                 }
                 .font(.subheadline.weight(.bold))
@@ -144,9 +153,9 @@ struct StoryPageView: View {
         }
     }
 
-    private func showUndo(_ groupId: String?, count: Int) {
+    private func showUndo(_ groupId: String?, count: Int, before: Story) {
         guard let groupId else { return }
-        withAnimation { undo = (groupId, count) }
+        withAnimation { undo = (groupId, count, before) }
         Task {
             try? await Task.sleep(for: .seconds(5))
             if undo?.groupId == groupId { withAnimation { undo = nil } }
@@ -155,7 +164,6 @@ struct StoryPageView: View {
 
     private func content(_ story: StoryView) -> some View {
         GeometryReader { geometry in
-            let cell = (geometry.size.width - 4) / 3
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     header(story)
@@ -165,7 +173,10 @@ struct StoryPageView: View {
                         ForEach(story.suggestions, id: \.key) { suggestion in
                             BurstSuggestionCard(
                                 suggestion: suggestion,
-                                onGroup: { showUndo(actions.acceptSuggestion(suggestion.key), count: Int(suggestion.count)) },
+                                onGroup: {
+                                    let before = story.story
+                                    showUndo(actions.acceptSuggestion(suggestion.key), count: Int(suggestion.count), before: before)
+                                },
                                 onDismiss: { actions.dismissSuggestion(suggestion.key) }
                             )
                         }
@@ -179,16 +190,16 @@ struct StoryPageView: View {
                     StoryGrid(
                         days: story.tileDays,
                         label: { label(for: $0, in: story) },
-                        cell: cell,
+                        width: geometry.size.width,
                         selection: selection,
                         onOpenItem: actions.openItem,
                         onOpenGroup: actions.openGroup,
-                        onToggle: { item in
-                            if selection?.contains(item.id) == true { selection?.remove(item.id) } else { selection?.insert(item.id) }
+                        onToggle: { key in
+                            if selection?.contains(key) == true { selection?.remove(key) } else { selection?.insert(key) }
                         },
-                        onLongPress: { item in
+                        onLongPress: { key in
                             if selection == nil { selection = [] }
-                            selection?.insert(item.id)
+                            selection?.insert(key)
                         }
                     )
                     .padding(.top, 8)

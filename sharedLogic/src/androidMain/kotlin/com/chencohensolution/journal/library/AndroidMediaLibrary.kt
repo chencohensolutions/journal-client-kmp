@@ -39,6 +39,7 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             val duration = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DURATION)
             val width = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
             val height = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
+            val orientation = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.ORIENTATION)
             val size = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val name = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             while (cursor.moveToNext()) {
@@ -46,14 +47,16 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
                 // DATE_TAKEN is missing for files without EXIF; DATE_MODIFIED is in seconds.
                 val takenAt = cursor.getLong(dateTaken).takeIf { it > 0 } ?: (cursor.getLong(dateModified) * 1000)
                 val date = Instant.ofEpochMilli(takenAt).atZone(zone).toLocalDate()
+                // WIDTH and HEIGHT are the stored pixels; a photo turned a quarter is shown the other way round.
+                val turned = cursor.getInt(orientation) % 180 == 90
                 items += MediaItem(
                     id = cursor.getLong(id).toString(),
                     type = if (isVideo) MediaType.VIDEO else MediaType.IMAGE,
                     takenAtMillis = takenAt,
                     day = LocalDay(date.year, date.monthValue, date.dayOfMonth),
                     durationMillis = if (isVideo) cursor.getLong(duration).takeIf { it > 0 } else null,
-                    width = cursor.getInt(width),
-                    height = cursor.getInt(height),
+                    width = cursor.getInt(if (turned) height else width),
+                    height = cursor.getInt(if (turned) width else height),
                     sizeBytes = cursor.getLong(size).takeIf { it > 0 },
                     fileName = cursor.getString(name),
                     burstId = cursor.getString(name)?.let(::samsungBurstId),
@@ -80,6 +83,7 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             MediaStore.MediaColumns.DURATION,
             MediaStore.MediaColumns.WIDTH,
             MediaStore.MediaColumns.HEIGHT,
+            MediaStore.MediaColumns.ORIENTATION,
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DISPLAY_NAME,
         )

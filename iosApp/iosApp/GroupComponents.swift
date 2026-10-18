@@ -14,40 +14,28 @@ extension GroupView {
     var name: String { title ?? timeRange(items) }
 }
 
-/// A story's grid, day by day: a group is a large tile; the first tile of a day with three or more tiles is large
-/// too; the rest fill rows of three. With `selection`, tapping a photo toggles it; groups can't be picked.
+/// A story's grid, day by day: each photo, and each group as its cover, full width at the photo's own ratio (the
+/// automatic layout; sizes arranged on Android aren't read here yet). With `selection` (tile keys), tapping a photo
+/// or group toggles it.
 struct StoryGrid: View {
     let days: [StoryDay]
     let label: (StoryDay) -> String
-    let cell: CGFloat
+    let width: CGFloat
     let selection: Set<String>?
     let onOpenItem: (MediaItem) -> Void
     let onOpenGroup: (GroupView) -> Void
-    let onToggle: (MediaItem) -> Void
-    let onLongPress: (MediaItem) -> Void
+    let onToggle: (String) -> Void
+    let onLongPress: (String) -> Void
 
     private let gap: CGFloat = 2
 
     var body: some View {
         ForEach(days, id: \.day) { day in
             VStack(spacing: gap) {
-                ForEach(rows(day.tiles), id: \.id) { row in
-                    switch row.kind {
-                    case .hero(let large, let side):
-                        HStack(spacing: gap) {
-                            tile(large, large: true).frame(width: cell * 2 + gap, height: cell * 2 + gap)
-                            VStack(spacing: gap) {
-                                ForEach(side.indices, id: \.self) { tile(side[$0], large: false).frame(width: cell, height: cell) }
-                                if side.count < 2 { Spacer(minLength: 0) }
-                            }
-                            .frame(width: cell, height: cell * 2 + gap)
-                        }
-                    case .regular(let tiles):
-                        HStack(spacing: gap) {
-                            ForEach(tiles.indices, id: \.self) { tile(tiles[$0], large: false).frame(width: cell, height: cell) }
-                            Spacer(minLength: 0)
-                        }
-                    }
+                ForEach(day.tiles, id: \.key) { tile in
+                    self.tile(tile)
+                        .frame(width: width, height: width / ratio(tile))
+                        .clipped()
                 }
             }
             .overlay(alignment: .topLeading) {
@@ -65,59 +53,35 @@ struct StoryGrid: View {
     }
 
     @ViewBuilder
-    private func tile(_ tile: StoryTile, large: Bool) -> some View {
-        switch tile {
-        case let group as StoryTileGroup:
-            GroupTileView(group: group.group, large: large)
-                .onTapGesture { if selection == nil { onOpenGroup(group.group) } }
-        case let media as StoryTileMedia:
-            MediaTileView(item: media.item)
-                .overlay {
-                    if let selection {
-                        SelectionOverlay(selected: selection.contains(media.item.id))
-                    }
-                }
-                .onTapGesture { selection == nil ? onOpenItem(media.item) : onToggle(media.item) }
-                .onLongPressGesture { onLongPress(media.item) }
-        default:
-            EmptyView()
-        }
-    }
-
-    private struct Row {
-        enum Kind {
-            case hero(StoryTile, [StoryTile])
-            case regular([StoryTile])
-        }
-        let id: String
-        let kind: Kind
-    }
-
-    private func key(_ tile: StoryTile) -> String {
-        switch tile {
-        case let group as StoryTileGroup: return "group-\(group.group.id)"
-        case let media as StoryTileMedia: return media.item.id
-        default: return ""
-        }
-    }
-
-    private func rows(_ tiles: [StoryTile]) -> [Row] {
-        var rows: [Row] = []
-        var index = 0
-        while index < tiles.count {
-            let tile = tiles[index]
-            if tile is StoryTileGroup || (index == 0 && tiles.count >= 3) {
-                // Up to two photos beside it; another group starts its own row.
-                let side = Array(tiles[(index + 1)...].prefix(2).prefix { $0 is StoryTileMedia })
-                rows.append(Row(id: "hero-\(key(tile))", kind: .hero(tile, side)))
-                index += 1 + side.count
-            } else {
-                let run = Array(tiles[index...].prefix(3).prefix { $0 is StoryTileMedia })
-                rows.append(Row(id: "row-\(key(tile))", kind: .regular(run)))
-                index += run.count
+    private func tile(_ tile: StoryTile) -> some View {
+        let key = tile.key
+        Group {
+            switch tile {
+            case let group as StoryTileGroup:
+                GroupTileView(group: group.group, large: true)
+                    .onTapGesture { selection == nil ? onOpenGroup(group.group) : onToggle(key) }
+            case let media as StoryTileMedia:
+                MediaTileView(item: media.item)
+                    .onTapGesture { selection == nil ? onOpenItem(media.item) : onToggle(key) }
+            default:
+                EmptyView()
             }
         }
-        return rows
+        .overlay {
+            if let selection { SelectionOverlay(selected: selection.contains(key)) }
+        }
+        .onLongPressGesture { onLongPress(key) }
+    }
+
+    /// Width over height of the tile's photo (a group's cover); 1.5 when the library doesn't know its size.
+    private func ratio(_ tile: StoryTile) -> CGFloat {
+        let item: MediaItem
+        switch tile {
+        case let group as StoryTileGroup: item = group.group.cover
+        case let media as StoryTileMedia: item = media.item
+        default: return 1.5
+        }
+        return item.width > 0 && item.height > 0 ? CGFloat(item.width) / CGFloat(item.height) : 1.5
     }
 }
 
@@ -140,44 +104,22 @@ private struct SelectionOverlay: View {
     }
 }
 
-/// A group in its story: the cover with a stack behind it, the title or time, and "⧉ 13".
+/// A group in its story: just its cover, with the number of photos in it.
 struct GroupTileView: View {
     let group: GroupView
     let large: Bool
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 3).fill(LibraryColors.muted.opacity(0.35))
-                .padding(EdgeInsets(top: -4, leading: 8, bottom: 8, trailing: -2))
-            RoundedRectangle(cornerRadius: 3).fill(LibraryColors.muted.opacity(0.55))
-                .padding(EdgeInsets(top: 0, leading: 4, bottom: 4, trailing: 2))
-            MediaTileView(item: group.cover)
-                .overlay(alignment: .bottomLeading) {
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            if let title = group.title {
-                                Text(title).font(.system(size: large ? 17 : 13, weight: .bold)).lineLimit(2)
-                            }
-                            if large || group.title == nil {
-                                Text(timeRange(group.items)).font(.caption)
-                            }
-                        }
-                        Spacer(minLength: 4)
-                        Label("\(group.itemCount)", systemImage: "square.on.square")
-                            .font(.caption.weight(.bold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(LibraryColors.pillScrim, in: Capsule())
-                    }
+        MediaTileView(item: group.cover, badgeSize: 0)
+            .overlay(alignment: .bottomTrailing) {
+                Text("\(group.itemCount)")
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 32)
-                    .padding(.bottom, 8)
-                    .background(LibraryColors.photoFade)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-                .padding(EdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 6))
-        }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 3)
+                    .background(LibraryColors.pillScrim, in: Capsule())
+                    .padding(6)
+            }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Group: \(group.name), \(Int(group.itemCount)) photos")

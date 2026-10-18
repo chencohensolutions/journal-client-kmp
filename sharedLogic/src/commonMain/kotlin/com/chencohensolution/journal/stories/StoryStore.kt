@@ -120,7 +120,8 @@ private data class StoryFile(
     /**
      * A "media" tile is one photo or video; a "group" tile holds media tiles shown as one, its text in story.md
      * under `<!-- group:<id> -->`. On the story's grid a tile is [size] ([TileSize.fileName]; automatic when
-     * missing), cropped around [focus] (a group: its cover). Inside a group the media tiles carry neither.
+     * missing), cropped around [focus] (a group: its cover), [zoom] times closer than filling the tile. Inside a
+     * group the media tiles carry none of these.
      */
     @Serializable
     data class Tile(
@@ -134,6 +135,7 @@ private data class StoryFile(
         val tiles: List<Tile>? = null,
         val size: String? = null,
         val focus: Focus? = null,
+        val zoom: Float? = null,
     ) {
         fun toMember(): StoryMember? = deviceId?.let { StoryMember(it, fileName, takenAt ?: 0) }
 
@@ -146,9 +148,10 @@ private data class StoryFile(
             }
 
         val layout: TileLayout
-            get() = TileLayout(TileSize.parse(size), focus?.let { FocusPoint.of(it.x, it.y) })
+            get() = TileLayout(TileSize.parse(size), focus?.let { FocusPoint.of(it.x, it.y) }, cleanZoom(zoom))
 
-        fun withLayout(layout: TileLayout?) = copy(size = layout?.size?.fileName, focus = layout?.focus?.let { Focus(it.x, it.y) })
+        fun withLayout(layout: TileLayout?) =
+            copy(size = layout?.size?.fileName, focus = layout?.focus?.let { Focus(it.x, it.y) }, zoom = layout?.zoom)
 
         companion object {
             fun media(member: StoryMember) =

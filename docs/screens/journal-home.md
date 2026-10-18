@@ -1,10 +1,10 @@
 # Journal (home)
 
-The main screen: the journal as a timeline, newest first. It holds **stories** (a trip, a birthday, a person, anything
-worth naming), with the photos that have no place yet shown between them as **unsorted moments**: one row per day,
-or with the [grouping setting](settings.md) one row per run of photos without a long break. A photo has a place once
-it is in a story **or has a tag**. A story sits at its newest photo's day; on the same day the story comes before the
-unsorted photos.
+The main screen, with two tabs. **Journal** is the timeline of **stories** (a trip, a birthday, a person, anything
+worth naming), newest first; a story sits at its newest photo's day. **Unsorted** holds the photos that have no place
+yet, as **unsorted moments**: one row per day, or with the [grouping setting](settings.md) one row per run of photos
+without a long break. A photo has a place once it is in a story **or has a tag**. Unsorted photos never show on the
+Journal tab.
 
 ## Layout
 
@@ -32,9 +32,11 @@ Photos fill the screen on the page background (light or dark with the system); t
   from the story page.
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
-  - **Journal / Unsorted N** switch. Unsorted hides the story cards and counts the photos in no story.
+  - **Journal / Unsorted N** switch: Journal shows only story cards, Unsorted only the unsorted moments; N counts
+    the photos in no story.
 
-Empty, loading and error states show a single line of text in place of the days.
+Empty, loading and error states show a single line of text in place of the days. With photos but no stories yet,
+the Journal tab says "No stories yet. Make one from a day in Unsorted."
 
 ## Behavior
 

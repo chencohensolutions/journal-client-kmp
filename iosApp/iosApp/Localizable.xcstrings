@@ -1412,6 +1412,16 @@
         }
       }
     },
+    "Merge" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיזוג"
+          }
+        }
+      }
+    },
     "More" : {
       "localizations" : {
         "he" : {
@@ -1488,6 +1498,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עדיין אין תמונות או סרטונים במכשיר הזה."
+          }
+        }
+      }
+    },
+    "No stories yet. Make one from a day in Unsorted." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״לא ממוינות״."
           }
         }
       }

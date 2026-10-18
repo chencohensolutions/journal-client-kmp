@@ -18,26 +18,30 @@ after creating a story.
 - **Notes**, when they apply: "N photos of this story aren't on this device" (deleted, or hidden by limited access),
   or "None of this story's photos are on this device".
 - **Photos and groups, day by day, oldest first**, so the story reads like a story. Each day is a grid six square
-  cells wide. A [group](group.md) is one tile where its first photo would be. Unless the story was arranged, groups
-  and the first tile of a day with three or more tiles are **Large** (4×4 cells) and the rest **Small** (2×2), so a
-  day reads as a large tile with two beside it, then rows of three. In stories longer than a day each day is labeled
+  cells wide. A [group](group.md) is one tile where its first photo would be. Unless the story was arranged, every
+  tile is **Original**: full width at its photo's own aspect ratio (a group's cover), one under the other, so nothing
+  is cropped. In stories longer than a day each day is labeled
   "Day 2 · Fri, Oct 9".
 
 Tapping a photo opens the [viewer](viewer.md), swiping through this story's photos, with each group as one stop
 (its cover). From there a photo can be removed from the story or added to others.
 
-**Long-press** a photo to select: the top bar shows "4 selected" with ✕, tiles get check circles, and the bottom
-bar offers **Group** (two or more) and **Remove** (from the story).
+**Long-press** a photo or a group to select: the top bar shows "4 selected" with ✕, tiles get check circles, and the
+bottom bar offers **Group** (two or more tiles; it reads **Merge** when a group is among them) and **Remove** (the
+photos, and the photos of selected groups, from the story). See [group.md](group.md) for merging.
 
 **⋯ › Arrange layout** switches to arrange mode: the top bar shows **Arrange** with **Reset** and **Done**, the
 story's text, neighboring days and suggestions are hidden, and tapping a photo or group picks it (orange outline;
 tap again to drop it). The bottom panel then offers:
 
 - **Sizes**, each drawn as its shape on the grid: **Auto** (the automatic size above, drawn as what it resolves to),
-  **Small** 2×2, **Wide** 4×2, **Tall** 2×4, **Half** 3×3, **Large** 4×4, **Full** 6×4 cells.
+  **Small** 2×2, **Wide** 4×2, **Tall** 2×4, **Half** 3×3, **Large** 4×4, **Full** 6×4 cells, and **Original**: full
+  width at the photo's own aspect ratio, so nothing is cropped. An Original tile stands on its own below the tiles
+  before it; tiles after it continue under it.
 - **Earlier / Later**: moves the tile one place among its day's tiles. Tiles never move to another day.
-- **Focus**: the whole photo (a group's cover), full screen; tap the part that must stay in view when the tile crops
-  it, with a preview of the tile below. Changing a group's cover resets its focus.
+- **Focus**: the whole photo (a group's cover), full screen, with a frame around what the tile will show. Tap the
+  part that must stay in view, and **Zoom** (1×–4×) to show it closer; the tile as it will look is below. Zoom
+  works with every size, Original included. Changing a group's cover resets its focus and zoom.
 
 Tiles are placed in order, each at the first spot from the top where it fits, so a later small tile fills a hole a
 large one left (dense packing); a hole stays empty only when nothing after it fits. Every change is saved right
@@ -52,7 +56,7 @@ fall in by time, right after the last tile taken no later than them. The group p
 | Delete story | Confirmation; deletes the story file only. Its photos go back to unsorted and stay on the device |
 | + Add day | Adds that day's unsorted photos (trip-like stories only) |
 | Edit story | Full-screen editor; saved to story.md |
-| Group them / Group | Makes a group; "Grouped N photos · Undo" for a few seconds |
+| Group them / Group / Merge | Makes or merges a group; "Grouped N photos · Undo" for a few seconds |
 | Not now | Hides that burst suggestion for good |
 | Remove (selection) | Takes the photos out of the story and its groups |
 | Arrange: size, Earlier/Later, Focus | Saved to story.json at once; a photo that joins a group loses its own size and focus |
@@ -102,8 +106,9 @@ refuse to overwrite an id with different content. Stories created before this ch
 ```
 
 **Tiles are listed in the story's order**, oldest first unless arranged. A tile may carry `size` (`small`, `wide`,
-`tall`, `half`, `large`, `full`; automatic when missing) and `focus` (0–1 from the left and from the top of the photo;
-the center when missing). Both are optional, so older files read as automatic layouts and older readers ignore them.
+`tall`, `half`, `large`, `full`, `original`; automatic when missing), `focus` (0–1 from the left and from the top of
+the photo; the center when missing) and `zoom` (above 1, up to 4; none when missing). All are optional, so older files
+read as automatic layouts and older readers ignore them.
 
 Groups are `group` tiles holding `media` tiles; see [group.md](group.md). `dismissedSuggestions` lists burst
 suggestions answered "Not now".

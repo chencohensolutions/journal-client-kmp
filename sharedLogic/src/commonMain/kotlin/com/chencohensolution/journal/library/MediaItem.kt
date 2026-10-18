@@ -72,6 +72,7 @@ data class MediaItem(
     val day: LocalDay,
     /** Length of a video; null for photos and for videos whose length is unknown. */
     val durationMillis: Long?,
+    /** In pixels as it is shown, after the camera's rotation; 0 when unknown. */
     val width: Int,
     val height: Int,
     /** Null when the platform does not report it cheaply (iOS). */

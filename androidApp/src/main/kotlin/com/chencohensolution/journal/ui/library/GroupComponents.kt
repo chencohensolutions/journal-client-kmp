@@ -3,10 +3,13 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAbsoluteAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -46,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -78,23 +85,24 @@ internal fun timeRange(items: List<MediaItem>): String {
     return if (start == end) start else "$start – $end"
 }
 
-/** Selection mode of a story's grid: which photos are picked, and how to change that. */
-internal class GridSelection(val ids: Set<String>, val toggle: (String) -> Unit)
+/** Selection mode of a story's grid: which tiles are picked ([StoryTile.key]), and how to change that. */
+internal class GridSelection(val keys: Set<String>, val toggle: (String) -> Unit)
 
 /** Arrange mode of a story's grid: tapping a tile picks it ([StoryTile.key]) to change its size or place. */
 internal class GridArranging(val selectedKey: String?, val select: (String) -> Unit)
 
 /**
  * A story's grid, day by day, each day packed onto the 6-column grid ([StoryDay.bands]): tiles are as large as the
- * owner arranged them, or automatic (groups and a day's first tile large, the rest small). With [selection],
- * tapping a photo toggles it and groups can't be picked; with [arranging], tapping any tile picks it.
+ * owner arranged them, or automatic (full width at the photo's own ratio). With [selection], tapping a photo or
+ * group toggles it; with [arranging], tapping any tile picks it. Long-pressing a tile ([StoryTile.key]) calls
+ * [onLongPress].
  */
 internal fun LazyListScope.storyGrids(
     days: List<StoryDay>,
     label: @Composable (StoryDay) -> String,
     onOpenItem: (MediaItem) -> Unit,
     onOpenGroup: (GroupView) -> Unit,
-    onLongPress: (MediaItem) -> Unit,
+    onLongPress: (tileKey: String) -> Unit,
     selection: GridSelection?,
     arranging: GridArranging? = null,
 ) {
@@ -103,15 +111,23 @@ internal fun LazyListScope.storyGrids(
             Box {
                 BandGrid(band) { placed, modifier ->
                     val tile = placed.tile
-                    val large = placed.size.columns >= 3
-                    val alignment = placed.focus.alignment()
+                    val crop = TileCrop(placed.focus, placed.zoom)
+                    val thumbnailSize = thumbnailSizeFor(placed)
                     val picked = arranging?.selectedKey == tile.key
                     Box(modifier) {
                         when (tile) {
-                            is StoryTile.Group -> GroupTile(tile.group, Modifier.fillMaxSize(), large, alignment) {
+                            is StoryTile.Group -> GroupTile(
+                                tile.group,
+                                Modifier.fillMaxSize(),
+                                thumbnailSize,
+                                crop,
+                                onLongClick = if (arranging == null) ({ onLongPress(tile.key) }) else null,
+                                selected = selection?.let { tile.key in it.keys },
+                            ) {
                                 when {
                                     arranging != null -> arranging.select(tile.key)
-                                    selection == null -> onOpenGroup(tile.group)
+                                    selection != null -> selection.toggle(tile.key)
+                                    else -> onOpenGroup(tile.group)
                                 }
                             }
                             is StoryTile.Media -> MediaTile(
@@ -119,15 +135,15 @@ internal fun LazyListScope.storyGrids(
                                 onClick = {
                                     when {
                                         arranging != null -> arranging.select(tile.key)
-                                        selection != null -> selection.toggle(tile.item.id)
+                                        selection != null -> selection.toggle(tile.key)
                                         else -> onOpenItem(tile.item)
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize(),
-                                thumbnailSize = if (large) THUMB_LARGE else THUMB_SMALL,
-                                onLongClick = if (arranging == null) ({ onLongPress(tile.item) }) else null,
-                                selected = selection?.let { tile.item.id in it.ids },
-                                alignment = alignment,
+                                thumbnailSize = thumbnailSize,
+                                onLongClick = if (arranging == null) ({ onLongPress(tile.key) }) else null,
+                                selected = selection?.let { tile.key in it.keys },
+                                crop = crop,
                             )
                         }
                         if (picked) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.Warning))
@@ -139,9 +155,24 @@ internal fun LazyListScope.storyGrids(
     }
 }
 
-/** One band of a day: square cells [GRID_COLUMNS] across, each tile spanning its size in cells. */
+/** Enough pixels for the tile: small tiles share the small thumbnails; full-width or zoomed tiles need more. */
+private fun thumbnailSizeFor(tile: PlacedTile): Int = when {
+    tile.size.columns >= GRID_COLUMNS || tile.zoom > 1.25f -> THUMB_FULL
+    tile.size.columns >= 3 -> THUMB_LARGE
+    else -> THUMB_SMALL
+}
+
+/**
+ * One band of a day: square cells [GRID_COLUMNS] across, each tile spanning its size in cells; or one full-width
+ * tile at its photo's own ratio ([StoryBand.aspectRatio]).
+ */
 @Composable
 private fun BandGrid(band: StoryBand, tile: @Composable (PlacedTile, Modifier) -> Unit) {
+    band.aspectRatio?.let { ratio ->
+        val placed = band.tiles.single()
+        key(placed.tile.key) { tile(placed, Modifier.fillMaxWidth().aspectRatio(ratio)) }
+        return
+    }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val cell = (maxWidth - GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
         fun span(cells: Int) = cell * cells + GAP * (cells - 1)
@@ -161,66 +192,75 @@ private fun BandGrid(band: StoryBand, tile: @Composable (PlacedTile, Modifier) -
     }
 }
 
-/** Where a cropped photo is anchored. Absolute: the point is in the photo's own coordinates, not mirrored in RTL. */
-internal fun FocusPoint.alignment(): Alignment = BiasAbsoluteAlignment(x * 2 - 1, y * 2 - 1)
+/**
+ * How a tile crops its photo: anchored at [focus], [zoom] times closer than filling the tile. With the photo anchored
+ * there, the focus point sits at the same fraction of the tile, so zooming around that fraction keeps it in view.
+ */
+internal class TileCrop(val focus: FocusPoint = FocusPoint.CENTER, val zoom: Float = 1f) {
+    /** Absolute: the point is in the photo's own coordinates, not mirrored in RTL. */
+    val alignment: Alignment get() = BiasAbsoluteAlignment(focus.x * 2 - 1, focus.y * 2 - 1)
 
-/** A group in its story: the cover with a stack behind it, the title or time, and "⧉ 13". */
+    companion object {
+        val NONE = TileCrop()
+    }
+}
+
+/** For the cropped image itself; its container must clip. */
+internal fun Modifier.zoomAround(crop: TileCrop): Modifier = if (crop.zoom <= 1f) {
+    this
+} else {
+    graphicsLayer {
+        scaleX = crop.zoom
+        scaleY = crop.zoom
+        transformOrigin = TransformOrigin(crop.focus.x, crop.focus.y)
+    }
+}
+
+/**
+ * A group in its story: just its cover, with the number of photos in it. [selected] is null outside selection mode;
+ * in it the tile shows a check circle.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun GroupTile(
     group: GroupView,
     modifier: Modifier = Modifier,
-    large: Boolean = true,
-    alignment: Alignment = Alignment.Center,
+    thumbnailSize: Int = THUMB_LARGE,
+    crop: TileCrop = TileCrop.NONE,
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean? = null,
     onClick: () -> Unit,
 ) {
-    val thumbnail = rememberThumbnail(group.cover, if (large) THUMB_LARGE else THUMB_SMALL)
+    val thumbnail = rememberThumbnail(group.cover, thumbnailSize)
     val description = stringResource(R.string.library_group_description, group.title ?: timeRange(group.items), group.itemCount)
-    Box(modifier.clickable(onClick = onClick).semantics { contentDescription = description }) {
-        // The stack: two cards peeking out behind the cover.
-        Box(Modifier.fillMaxSize().padding(start = 8.dp, bottom = 8.dp).offset(x = 2.dp, y = (-4).dp).background(LibraryColors.Muted.copy(alpha = 0.35f), RoundedCornerShape(3.dp)))
-        Box(Modifier.fillMaxSize().padding(start = 4.dp, bottom = 4.dp, end = 2.dp).background(LibraryColors.Muted.copy(alpha = 0.55f), RoundedCornerShape(3.dp)))
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(top = 4.dp, end = 6.dp)
-                .background(LibraryColors.Raised, RoundedCornerShape(3.dp)),
-        ) {
-            if (thumbnail != null) {
-                Image(thumbnail, null, contentScale = ContentScale.Crop, alignment = alignment, modifier = Modifier.fillMaxSize())
-            }
-            Row(
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .background(LibraryColors.PhotoFade)
-                    .padding(start = 10.dp, end = 8.dp, top = 32.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    group.title?.let {
-                        Text(it, color = LibraryColors.PhotoText, fontSize = if (large) 17.sp else 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                    }
-                    if (large || group.title == null) {
-                        Text(timeRange(group.items), color = LibraryColors.PhotoTextMuted, fontSize = 12.sp)
-                    }
-                }
-                StackCount(group.itemCount)
-            }
-        }
-    }
-}
-
-@Composable
-private fun StackCount(count: Int) {
-    Row(
-        Modifier
-            .background(LibraryColors.PillScrim, RoundedCornerShape(50))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier
+            .background(LibraryColors.Raised)
+            .clipToBounds()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .semantics {
+                contentDescription = description
+                if (selected != null) this.selected = selected
+            },
     ) {
-        Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
-        Text(count.toString(), color = LibraryColors.PhotoText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        if (thumbnail != null) {
+            Image(thumbnail, null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
+        }
+        Text(
+            group.itemCount.toString(),
+            color = LibraryColors.PhotoText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp)
+                .background(LibraryColors.PillScrim, RoundedCornerShape(50))
+                .padding(horizontal = 9.dp, vertical = 3.dp),
+        )
+        if (selected != null) {
+            if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.PhotoText))
+            SelectionCheck(selected, Modifier.align(Alignment.TopStart).padding(7.dp))
+        }
     }
 }
 

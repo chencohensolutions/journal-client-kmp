@@ -5,11 +5,9 @@ picked. Opened by tapping a group tile on the [story page](story-page.md).
 
 ## In the story
 
-A group is a large tile where its first photo would be:
-
-- the **cover** photo, with two cards peeking out behind it (a stack);
-- its **title** if it has one, and its time ("2:09 PM", or "2:09 – 2:10 PM");
-- a **⧉ 14** count.
+A group is one tile where its first photo would be (full width at its cover's ratio unless the story was arranged): just its **cover**
+photo with the **number of photos** in a corner pill ("14"). No stack, title or time on the tile; the title and
+time show on the group page, and screen readers hear "Group: <title or time>, 14 photos".
 
 In the [viewer](viewer.md), swiping through a story, a group is **one stop**: its cover, with a **⧉ 14 · Open**
 button that opens the group.
@@ -26,10 +24,15 @@ button that opens the group.
      again.
    - Constants: `BURST_GAP_MILLIS` and `BURST_MIN_PHOTOS` in
      [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).
-2. **Select, then Group.** Long-press a photo in the story to start selecting; tap others; **Group** (needs two or
-   more). The bar also has **Remove** (from the story). Groups themselves can't be selected.
+2. **Select, then Group.** Long-press a photo or group in the story to start selecting; tap others; **Group**
+   (needs two or more tiles). The bar also has **Remove** (from the story).
+3. **Merge.** Select a group with photos, or two or more groups: the button reads **Merge**. Everything joins the
+   selected group that comes first in the story, which keeps its title, cover, layout and text; the other groups'
+   text is added after its own (and the first other title is taken if it had none), so no text is lost. The other
+   groups go away.
 
-After grouping, *"Grouped 14 photos · Undo"* shows for a few seconds.
+After grouping or merging, *"Grouped 14 photos · Undo"* shows for a few seconds; Undo puts the story back exactly as
+it was (`StoriesController.restore`).
 
 ## The group page
 

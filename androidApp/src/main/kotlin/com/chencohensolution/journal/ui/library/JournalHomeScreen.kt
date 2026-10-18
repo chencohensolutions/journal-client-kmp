@@ -74,8 +74,8 @@ internal class HomeActions(
 )
 
 /**
- * The home screen: the journal as a timeline, newest first: stories, with the photos in no story between them as
- * "unsorted" moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
+ * The home screen: the journal's stories as a timeline, newest first, and in the Unsorted tab the photos in no story
+ * as moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
  */
 @Composable
 internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, health: ServerHealth, actions: HomeActions) {
@@ -112,10 +112,14 @@ internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, hea
                 canRead && library.days.isEmpty() && library.loadError == null ->
                     item(key = "empty") { Message(stringResource(R.string.library_empty)) }
             }
+            // Journal shows only stories; photos in no story are in the Unsorted tab.
             val entries = if (tab == HomeTab.UNSORTED) {
                 stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>()
             } else {
-                stories.timeline
+                stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
+            }
+            if (tab == HomeTab.JOURNAL && entries.isEmpty() && library.days.isNotEmpty()) {
+                item(key = "no-stories") { Message(stringResource(R.string.library_no_stories)) }
             }
             items(entries, key = { it.key }) { entry ->
                 when (entry) {

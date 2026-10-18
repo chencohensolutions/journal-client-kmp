@@ -27,10 +27,10 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 **Look and navigation**
 - The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
   light or dark theme; the photo viewer is always dark.
-- Home is the **Journal timeline**, newest first: story cards and unsorted days. A story sits at its **newest
-  photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
+- Home is the **Journal timeline**, newest first, with **only story cards**; unsorted photos are only in the
+  **Unsorted** tab. A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
   or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
-- Unsorted photos on the timeline are **by day** by default; Settings can switch to **by breaks between photos**
+- Unsorted photos are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
 - Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Journal / Unsorted, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
@@ -48,13 +48,18 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
   `burstIdentifier`; Samsung `20261008_140901_092.jpg` names), runs of **3+** photos, videos excluded. "Not now" is
   remembered per story.
 - Ungrouping keeps the photos and moves the group's text into the story's opening text, so no text is lost.
+- Selecting groups with photos, or several groups, **merges** them into the first selected group in the story; the
+  others' text is appended to its own. Undo restores the story as it was.
 
 **Layout**
 - A story's days are grids **6 square cells wide**; tiles take size presets (Small 2×2, Wide 4×2, Tall 2×4, Half
-  3×3, Large 4×4, Full 6×4) and are placed by **dense packing** in the story's order. A group is one tile in its
+  3×3, Large 4×4, Full 6×4, or Original: full width at the photo's own ratio) and are placed by **dense packing** in
+  the story's order. Any tile can be zoomed (up to 4×) around its focus point. **The automatic size is Original**,
+  so an unarranged story is its photos full width, uncropped, one under the other. A group is one tile in its
   story's layout; the group page itself stays automatic.
-- Arranging stores only what the owner chose (size, focus point, order) in story.json; everything else stays
-  automatic, and the automatic layout is the one stories had before arranging existed.
+- Arranging stores only what the owner chose (size, focus point, zoom, order) in story.json; everything else stays
+  automatic. (Before Oct 18, 2026 the automatic layout was a large tile and rows of small ones; unarranged stories
+  now show as Original.)
 - Order changes only **within a day**, so a story still reads oldest day first.
 
 **Photos are never modified**
@@ -102,12 +107,14 @@ disposable `.cache/` index rebuilt from the files.
 - Photo access screen, Journal timeline, All photos (2×2 hero per day, filters), viewer (photos, video, details).
 - Backup status model and badges (everything shows "Only on this device": uploads don't exist).
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
-- Groups: burst suggestions, select-and-group with Undo, group page, set cover, remove, ungroup, group text.
-- Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point, reset. iOS
-  shows the automatic layout and doesn't read the arrangement yet.
+- Groups: burst suggestions, select-and-group with Undo, merging groups (with photos or each other), group page,
+  set cover, remove, ungroup, group text.
+- Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point and zoom,
+  reset. iOS
+  shows the automatic layout (every tile full width at its ratio) and doesn't read the arrangement yet.
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
 - Search pickers for stories and tags.
-- Screen docs in `docs/screens/`; shared tests (79 on the JVM host, 77 on the iOS simulator).
+- Screen docs in `docs/screens/`; shared tests (83 on the JVM host, 81 on the iOS simulator).
 
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the

@@ -7,6 +7,7 @@ import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.StoryText
 import com.chencohensolution.journal.stories.findBursts
+import com.chencohensolution.journal.stories.groupTileKey
 import com.chencohensolution.journal.stories.formatStoryId
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LocalDay
@@ -192,6 +193,52 @@ class GroupsTest {
         assertEquals("The car wouldn't start.", group.text)
         assertEquals("A slow morning.", reloaded.intro)
         assertEquals(6, reloaded.itemCount)
+    }
+
+    @Test
+    fun aGroupAndPhotosMergeIntoThatGroup() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val groupId = assertNotNull(stories.createGroup(storyId, listOf("b", "c"), "Car"))
+        stories.setCover(storyId, groupId, "c")
+
+        assertEquals(groupId, stories.groupTiles(storyId, listOf("a", groupTileKey(groupId), "f")))
+        val story = stories.currentState.story(storyId)!!
+        val group = story.groups.single()
+        assertEquals(listOf("a", "b", "c", "f"), group.items.map { it.id })
+        assertEquals("Car", group.title)
+        assertEquals("c", group.cover.id)
+        assertEquals(listOf(groupTileKey(groupId), "d", "e"), story.tiles.map { it.key })
+    }
+
+    @Test
+    fun twoGroupsMergeIntoTheFirstWithBothTexts() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val first = assertNotNull(stories.createGroup(storyId, listOf("a", "b")))
+        val second = assertNotNull(stories.createGroup(storyId, listOf("e", "f"), "Lunch"))
+        stories.setGroupText(storyId, first, "Morning.")
+        stories.setGroupText(storyId, second, "Noon.")
+
+        assertEquals(first, stories.groupTiles(storyId, listOf(groupTileKey(second), groupTileKey(first))))
+        val group = stories.currentState.story(storyId)!!.groups.single()
+        assertEquals(first, group.id)
+        assertEquals(listOf("a", "b", "e", "f"), group.items.map { it.id })
+        assertEquals("Lunch", group.title)
+        assertEquals("Morning.\n\nNoon.", group.text)
+        assertEquals("", stories.currentState.story(storyId)!!.intro)
+    }
+
+    @Test
+    fun restoreUndoesAMerge() = runTest {
+        val stories = setup().stories
+        val storyId = assertNotNull(stories.createStoryFromDay("Walk", DAY))
+        val first = assertNotNull(stories.createGroup(storyId, listOf("a", "b")))
+        val second = assertNotNull(stories.createGroup(storyId, listOf("e", "f")))
+        val before = stories.currentState.story(storyId)!!.story
+        stories.groupTiles(storyId, listOf(groupTileKey(first), groupTileKey(second)))
+        stories.restore(before)
+        assertEquals(listOf(first, second), stories.currentState.story(storyId)!!.groups.map { it.id })
     }
 
     @Test

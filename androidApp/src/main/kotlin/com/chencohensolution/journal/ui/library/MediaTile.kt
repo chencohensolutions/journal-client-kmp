@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
@@ -55,6 +56,7 @@ import kotlinx.coroutines.withContext
 /** Thumbnail sizes in pixels; few sizes so the cache is shared between screens. */
 internal const val THUMB_SMALL = 256
 internal const val THUMB_LARGE = 640
+internal const val THUMB_FULL = 1280
 
 internal fun MediaItem.contentUri(): Uri = ContentUris.withAppendedId(
     if (type == MediaType.VIDEO) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -105,14 +107,15 @@ internal fun MediaTile(
     badgeSize: Dp = 22.dp,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean? = null,
-    /** Which part of the photo stays in view when it is cropped. */
-    alignment: Alignment = Alignment.Center,
+    /** Which part of the photo stays in view when it is cropped, and how closely. */
+    crop: TileCrop = TileCrop.NONE,
 ) {
     val thumbnail = rememberThumbnail(item, thumbnailSize)
     val description = itemDescription(item)
     Box(
         modifier
             .background(LibraryColors.Raised)
+            .clipToBounds()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics {
                 contentDescription = description
@@ -120,7 +123,7 @@ internal fun MediaTile(
             },
     ) {
         if (thumbnail != null) {
-            Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, alignment = alignment, modifier = Modifier.fillMaxSize())
+            Image(thumbnail, contentDescription = null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
         }
         if (item.type == MediaType.VIDEO) {
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))
@@ -135,7 +138,7 @@ internal fun MediaTile(
 }
 
 @Composable
-private fun SelectionCheck(selected: Boolean, modifier: Modifier = Modifier) {
+internal fun SelectionCheck(selected: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(24.dp)
