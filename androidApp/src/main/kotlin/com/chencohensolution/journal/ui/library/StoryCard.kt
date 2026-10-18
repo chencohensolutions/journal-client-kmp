@@ -55,9 +55,9 @@ internal fun cardState(story: StoryView, count: Int = 6) = StoryCardState(
 
 /** A story on the journal: its title (when it has one) and dates above a mosaic of its main photos. */
 @Composable
-internal fun StoryCard(card: StoryCardState, onOpen: () -> Unit) {
+internal fun StoryCard(card: StoryCardState, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(onClickLabel = card.title ?: card.summary, onClick = onOpen)
             .padding(bottom = 22.dp),

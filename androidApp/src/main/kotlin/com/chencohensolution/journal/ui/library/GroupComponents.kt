@@ -237,6 +237,7 @@ internal fun GroupTile(
     val description = stringResource(R.string.library_group_description, group.title ?: timeRange(group.items), group.itemCount)
     Box(
         modifier
+            .shared(SharedKey.group(group.id))
             .background(LibraryColors.Raised)
             .clipToBounds()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)

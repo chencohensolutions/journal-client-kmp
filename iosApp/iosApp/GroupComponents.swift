@@ -17,6 +17,23 @@ extension GroupView {
 /// A story's grid, day by day: each photo, and each group as its cover, full width at the photo's own ratio (the
 /// automatic layout; sizes arranged on Android aren't read here yet). With `selection` (tile keys), tapping a photo
 /// or group toggles it.
+/// Where a `StoryGrid` shows a photo: in its day, as its own tile or as the cover of a group's.
+func storyPlace(of itemId: String, in days: [StoryDay]) -> PhotoPlace? {
+    for day in days {
+        if let tile = tilePlace(of: itemId, in: day.tiles) { return PhotoPlace(section: day.day, tile: tile) }
+    }
+    return nil
+}
+
+/// The zoom id of the tile showing a photo: its own, or that of the group it is the cover of.
+func tilePlace(of itemId: String, in tiles: [StoryTile]) -> String? {
+    for tile in tiles {
+        if let media = tile as? StoryTileMedia, media.item.id == itemId { return ZoomID.item(itemId) }
+        if let group = (tile as? StoryTileGroup)?.group, group.cover.id == itemId { return ZoomID.group(group.id) }
+    }
+    return nil
+}
+
 struct StoryGrid: View {
     let days: [StoryDay]
     let label: (StoryDay) -> String

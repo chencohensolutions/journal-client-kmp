@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,6 +63,7 @@ import com.chencohensolution.journal.stories.TileSize
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.stories.photo
 import kotlinx.coroutines.launch
 
 internal class StoryActions(
@@ -98,7 +100,14 @@ internal class StoryActions(
  * docs/screens/story-page.md.
  */
 @Composable
-internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health: ServerHealth, actions: StoryActions) {
+internal fun StoryScreen(
+    story: StoryView?,
+    neighborDays: List<DayGroup>,
+    health: ServerHealth,
+    actions: StoryActions,
+    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
+    landing: String? = null,
+) {
     if (story == null) {
         // Deleted, here or on another screen.
         LaunchedEffect(Unit) { actions.back() }
@@ -148,8 +157,14 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     BackHandler(enabled = selecting, onBack = ::endSelection)
     BackHandler(enabled = arranging, onBack = ::endArranging)
 
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
+    val list = rememberLazyListState()
+    // A group stands in the viewer as its cover.
+    val bands = story.tileDays.flatMap { it.bands }
+    list.LandOn(landing, bands.size) { id -> bands.indexOfFirst { band -> band.tiles.any { it.tile.photo.id == id } } }
+
+    Box(Modifier.fillMaxSize().sharedContainer(SharedKey.story(story.id)).background(LibraryColors.Background)) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(
                 top = insets.calculateTopPadding() + 64.dp,
                 bottom = insets.calculateBottomPadding() + if (arranging) 200.dp else 110.dp,

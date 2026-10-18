@@ -73,6 +73,13 @@ struct JournalHomeView: View {
                 }
                 .padding(.top, 72)
                 .padding(.bottom, 150)
+                .followsViewer { id in
+                    entries.lazy.compactMap { row -> PhotoPlace? in
+                        guard let moment = (row.entry as? TimelineEntryMomentEntry)?.moment,
+                              moment.items.contains(where: { $0.id == id }) else { return nil }
+                        return PhotoPlace(section: row.id, tile: ZoomID.item(id))
+                    }.first
+                }
             }
             .scrollIndicators(.hidden)
         }

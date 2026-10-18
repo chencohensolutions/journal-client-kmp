@@ -14,6 +14,8 @@ struct LibraryRootView: View {
     @State private var path: [Route] = []
     @State private var filter = LibraryFilter.all
     @State private var viewer: ViewerRequest?
+    /// The photo the viewer shows; the screen under it keeps that photo's tile in view to zoom back into.
+    @State private var showing: ViewerShowing?
     /// Photos, story cards and group tiles mark themselves in it; the screens they open zoom out of them.
     @Namespace private var zoom
 
@@ -43,7 +45,18 @@ struct LibraryRootView: View {
     private func openViewer(_ request: ViewerRequest) {
         var request = request
         request.itemIds = items(for: request).map(\.id)
+        showing = ViewerShowing(session: UUID(), itemId: request.itemId)
         viewer = request
+    }
+
+    /// The tile the viewer zooms back into on closing: the photo it shows, or the group whose cover that is (a group
+    /// is one stop in the viewer, its cover).
+    private func zoomSource(_ request: ViewerRequest) -> String {
+        let itemId = showing?.itemId ?? request.itemId
+        let story = request.storyId.flatMap { stories.state.story(id: $0) }
+        let tiles = request.groupId.flatMap { story?.group(id: $0)?.tiles } ?? story?.tiles ?? []
+        let group = tiles.lazy.compactMap { ($0 as? StoryTileGroup)?.group }.first { $0.cover.id == itemId }
+        return group.map { ZoomID.group($0.id) } ?? ZoomID.item(itemId)
     }
 
     var body: some View {
@@ -135,6 +148,7 @@ struct LibraryRootView: View {
                     }
                 }
                 .environment(\.zoomNamespace, zoom)
+                .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
                         items: request.itemIds.compactMap { stories.state.itemsById[$0] },
@@ -166,12 +180,15 @@ struct LibraryRootView: View {
                             setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
+                            },
+                            showing: { itemId in
+                                showing = ViewerShowing(session: showing?.session ?? UUID(), itemId: itemId)
                             }
                         )
                     )
                     // The viewer is always dark, like a photo app; the rest follows the system.
                     .preferredColorScheme(.dark)
-                    .navigationTransition(.zoom(sourceID: ZoomID.item(request.itemId), in: zoom))
+                    .navigationTransition(.zoom(sourceID: zoomSource(request), in: zoom))
                 }
             }
         }

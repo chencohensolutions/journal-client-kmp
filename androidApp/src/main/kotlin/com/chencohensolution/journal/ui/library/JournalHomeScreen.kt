@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -85,14 +86,28 @@ internal fun JournalHomeScreen(
     actions: HomeActions,
     /** The tab shown first; previews use it to show Unsorted. */
     initialTab: HomeTab = HomeTab.JOURNAL,
+    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
+    landing: String? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     // The key of the moment whose "+ Story" was tapped.
     var newStoryMoment by rememberSaveable { mutableStateOf<String?>(null) }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
+    // Journal shows only stories; photos in no story are in the Unsorted tab.
+    val entries = if (tab == HomeTab.UNSORTED) {
+        stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>()
+    } else {
+        stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
+    }
+    val list = rememberLazyListState()
+    list.LandOn(landing, entries.size) { id ->
+        entries.indexOfFirst { it is TimelineEntry.MomentEntry && it.moment.items.any { item -> item.id == id } }
+    }
+
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(
                 top = insets.calculateTopPadding() + 72.dp,
                 bottom = insets.calculateBottomPadding() + 150.dp,
@@ -119,22 +134,22 @@ internal fun JournalHomeScreen(
                 canRead && library.days.isEmpty() && library.loadError == null ->
                     item(key = "empty") { Message(stringResource(R.string.library_empty)) }
             }
-            // Journal shows only stories; photos in no story are in the Unsorted tab.
-            val entries = if (tab == HomeTab.UNSORTED) {
-                stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>()
-            } else {
-                stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
-            }
             if (tab == HomeTab.JOURNAL && entries.isEmpty() && library.days.isNotEmpty()) {
                 item(key = "no-stories") { Message(stringResource(R.string.library_no_stories)) }
             }
             items(entries, key = { it.key }) { entry ->
                 when (entry) {
-                    is TimelineEntry.StoryEntry -> StoryCard(cardState(entry.story), onOpen = { actions.openStory(entry.story.id) })
+                    is TimelineEntry.StoryEntry -> StoryCard(
+                        cardState(entry.story),
+                        onOpen = { actions.openStory(entry.story.id) },
+                        // The card grows into the story's page.
+                        modifier = Modifier.sharedContainer(SharedKey.story(entry.story.id)),
+                    )
                     is TimelineEntry.MomentEntry -> UnsortedMoment(
                         entry.moment,
                         onOpen = { actions.openItem(entry.moment, it) },
                         onNewStory = { newStoryMoment = entry.moment.key },
+                        landing = landing,
                     )
                 }
             }
@@ -244,7 +259,9 @@ private fun timeLabel(millis: Long): String = formatDate(Instant.ofEpochMilli(mi
 
 /** Photos that are in no story, taken on one day or close together: a heading, "+ Story", and a row of small photos. */
 @Composable
-private fun UnsortedMoment(moment: Moment, onOpen: (MediaItem) -> Unit, onNewStory: () -> Unit) {
+private fun UnsortedMoment(moment: Moment, onOpen: (MediaItem) -> Unit, onNewStory: () -> Unit, landing: String?) {
+    val strip = rememberLazyListState()
+    strip.LandOn(landing, moment.items.size) { id -> moment.items.indexOfFirst { it.id == id } }
     Column(Modifier.padding(top = 14.dp, bottom = 16.dp)) {
         Row(
             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
@@ -280,6 +297,7 @@ private fun UnsortedMoment(moment: Moment, onOpen: (MediaItem) -> Unit, onNewSto
             }
         }
         LazyRow(
+            state = strip,
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {

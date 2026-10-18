@@ -130,6 +130,7 @@ internal fun MediaTile(
     val description = itemDescription(item)
     Box(
         modifier
+            .shared(SharedKey.item(item.id))
             .background(LibraryColors.Raised)
             .clipToBounds()
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)

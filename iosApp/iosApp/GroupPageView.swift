@@ -180,6 +180,9 @@ struct GroupPageView: View {
                     }
                 }
                 .padding(.bottom, 32)
+                .followsViewer { id in
+                    group.tiles.lazy.compactMap { tile in tilePlace(of: id, in: [tile]).map { PhotoPlace(section: tile.key, tile: $0) } }.first
+                }
             }
             .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)

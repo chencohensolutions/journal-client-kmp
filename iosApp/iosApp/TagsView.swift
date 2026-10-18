@@ -69,6 +69,7 @@ struct TagView: View {
                     }
                 }
                 .padding(.bottom, 32)
+                .followsViewer { id in dayPlace(of: id, in: days) }
             }
         }
         .background(LibraryColors.background.ignoresSafeArea())

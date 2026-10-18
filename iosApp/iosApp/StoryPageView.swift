@@ -210,6 +210,7 @@ struct StoryPageView: View {
                     .padding(.top, 8)
                 }
                 .padding(.bottom, 32)
+                .followsViewer { id in storyPlace(of: id, in: story.tileDays) }
             }
             .scrollIndicators(.hidden)
         }

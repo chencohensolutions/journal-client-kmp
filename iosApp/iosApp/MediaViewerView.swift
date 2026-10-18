@@ -12,6 +12,8 @@ struct ViewerActions {
     var createStory: (_ title: String, _ itemId: String) -> Void
     var setCaption: (_ itemId: String, _ text: String) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
+    /// The photo now shown, on opening and on each swipe: the one that zooms back into its tile on closing.
+    var showing: (_ itemId: String) -> Void
 }
 
 /// One photo or video at a time, swiping through `items`. `openedFrom` is the story the viewer was opened from, if
@@ -115,6 +117,7 @@ struct MediaViewerView: View {
                 )
             }
         }
+        .onChange(of: currentId, initial: true) { actions.showing(currentId) }
         .sheet(isPresented: $choosingStory) {
             if let item = items[safe: index] {
                 AddToStorySheet(

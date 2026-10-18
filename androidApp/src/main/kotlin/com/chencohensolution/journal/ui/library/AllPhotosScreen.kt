@@ -20,10 +20,12 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,12 +47,14 @@ import com.chencohensolution.journal.library.MediaItem
 /** One row of the grid: a large photo with two small ones beside it, or up to three small ones. */
 private sealed interface GridRow {
     val key: String
+    val items: List<MediaItem>
 
     data class Hero(val day: LocalDay, val large: MediaItem, val side: List<MediaItem>) : GridRow {
         override val key get() = "hero-${large.id}"
+        override val items get() = listOf(large) + side
     }
 
-    data class Regular(val day: LocalDay, val items: List<MediaItem>) : GridRow {
+    data class Regular(val day: LocalDay, override val items: List<MediaItem>) : GridRow {
         override val key get() = "row-${items.first().id}"
     }
 }
@@ -72,12 +76,18 @@ internal fun AllPhotosScreen(
     onFilter: (LibraryFilter) -> Unit,
     onOpenItem: (MediaItem) -> Unit,
     onBack: () -> Unit,
+    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
+    landing: String? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val days = library.days(filter)
+    val list = rememberLazyListState()
+    val rows = remember(days) { dayGridRows(days) }
+    list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(
                 top = insets.calculateTopPadding() + 64.dp,
                 bottom = insets.calculateBottomPadding() + 150.dp,
@@ -137,6 +147,10 @@ internal fun AllPhotosScreen(
         }
     }
 }
+
+/** The ids in each row of [dayGrids], in order. */
+internal fun dayGridRows(days: List<DayGroup>): List<Set<String>> =
+    days.flatMap(::gridRows).map { row -> row.items.mapTo(mutableSetOf()) { it.id } }
 
 /**
  * The photo grid of [days], each day under its name: used by All photos and the story page.

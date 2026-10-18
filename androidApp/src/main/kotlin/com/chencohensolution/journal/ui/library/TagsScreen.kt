@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -94,11 +96,22 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
 
 /** The photos with one tag, by day, newest first; tapping opens the viewer on them. */
 @Composable
-internal fun TagScreen(tag: String, stories: StoriesState, onOpenItem: (MediaItem) -> Unit, onBack: () -> Unit) {
+internal fun TagScreen(
+    tag: String,
+    stories: StoriesState,
+    onOpenItem: (MediaItem) -> Unit,
+    onBack: () -> Unit,
+    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
+    landing: String? = null,
+) {
     val days = stories.tagged(tag)
     val insets = WindowInsets.systemBars.asPaddingValues()
+    val list = rememberLazyListState()
+    val rows = remember(days) { dayGridRows(days) }
+    list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(
+            state = list,
             contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
             verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {

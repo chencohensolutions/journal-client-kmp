@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,6 +59,7 @@ import com.chencohensolution.journal.stories.Story
 import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.stories.photo
 import kotlinx.coroutines.launch
 
 internal class GroupActions(
@@ -85,7 +87,13 @@ internal class GroupActions(
  * group them into a subgroup, merge them, or take them out. See docs/screens/group.md.
  */
 @Composable
-internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupActions) {
+internal fun GroupScreen(
+    story: StoryView?,
+    group: GroupView?,
+    actions: GroupActions,
+    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
+    landing: String? = null,
+) {
     if (story == null || group == null) {
         // Ungrouped or deleted.
         LaunchedEffect(Unit) { actions.back() }
@@ -144,16 +152,21 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
     }
     BackHandler(enabled = selecting, onBack = ::endSelection)
 
+    val grid = rememberLazyGridState()
+    // A subgroup stands in the viewer as its cover.
+    grid.LandOn(landing, group.tiles.size) { id -> group.tiles.indexOfFirst { it.photo.id == id } }
+
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
+            state = grid,
             contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + if (selecting) 110.dp else 32.dp),
             horizontalArrangement = Arrangement.spacedBy(TILE_GAP),
             verticalArrangement = Arrangement.spacedBy(TILE_GAP),
         ) {
             item(key = "cover", span = { GridItemSpan(maxLineSpan) }) {
                 val cover = rememberThumbnail(group.cover, THUMB_LARGE)
-                Box(Modifier.fillMaxWidth().height(300.dp).background(LibraryColors.Raised)) {
+                Box(Modifier.fillMaxWidth().height(300.dp).shared(SharedKey.group(group.id)).background(LibraryColors.Raised)) {
                     if (cover != null) Image(cover, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     Box(
                         Modifier

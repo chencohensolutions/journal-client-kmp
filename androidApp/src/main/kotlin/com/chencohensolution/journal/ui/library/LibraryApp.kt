@@ -14,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,10 +24,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -160,7 +163,12 @@ fun LibraryApp(
     }
 
     var stack by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(listOf<Route>(Route.Journal)) }
-    val push: (Route) -> Unit = { stack = stack + it }
+    // The photo the viewer shows, for the screen under it: that screen scrolls its tile into view to land on.
+    var landing by remember { mutableStateOf<Landing?>(null) }
+    val push: (Route) -> Unit = {
+        landing = null
+        stack = stack + it
+    }
     val pop: () -> Unit = { stack = stack.dropLast(1) }
 
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
@@ -168,139 +176,155 @@ fun LibraryApp(
     val systemDark = isSystemInDarkTheme()
     SystemBars(activity as? ComponentActivity, stack.last() is Route.Viewer || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
-    NavDisplay(
-        backStack = stack.mapIndexed(::StackEntry),
-        onBack = pop,
-        transitionSpec = { sharedAxis(forward = true) },
-        popTransitionSpec = { sharedAxis(forward = false) },
-        predictivePopTransitionSpec = { sharedAxis(forward = false) },
-        entryProvider = { entry ->
-            NavEntry(entry, contentKey = entry.contentKey) {
-                val route = entry.route
-                LibraryTheme(dark = route is Route.Viewer || systemDark) {
-                    when (route) {
-                        Route.Journal -> JournalHomeScreen(
-                            library = libraryState,
-                            stories = storiesState,
-                            health = journalState.health,
-                            actions = HomeActions(
-                                openItem = { moment, item -> push(Route.Viewer(null, null, moment.key, LibraryFilter.ALL, item.id)) },
-                                openTags = { push(Route.Tags) },
-                                openStory = { push(Route.Story(it)) },
-                                createStory = { title, key -> stories.createStoryFromMoment(title, key)?.let { push(Route.Story(it)) } },
-                                openAllPhotos = { push(Route.AllPhotos) },
-                                openSettings = { push(Route.Settings) },
-                                allowAccess = requestAccess,
-                                changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
-                                registerAgain = onRegisterAgain,
-                            ),
-                        )
-                        Route.AllPhotos -> {
-                            var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
-                            AllPhotosScreen(
-                                library = libraryState,
-                                health = journalState.health,
-                                filter = filter,
-                                onFilter = { filter = it },
-                                onOpenItem = { push(Route.Viewer(null, null, null, filter, it.id)) },
-                                onBack = pop,
-                            )
+    SharedTransitionLayout {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            NavDisplay(
+                backStack = stack.mapIndexed(::StackEntry),
+                onBack = pop,
+                sharedTransitionScope = this,
+                transitionSpec = { sharedAxis(forward = true) },
+                popTransitionSpec = { sharedAxis(forward = false) },
+                predictivePopTransitionSpec = { sharedAxis(forward = false) },
+                entryProvider = { entry ->
+                    val opensFromTile = entry.route is Route.Viewer || entry.route is Route.Story || entry.route is Route.Group
+                    NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
+                        val route = entry.route
+                        val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
+                        LibraryTheme(dark = route is Route.Viewer || systemDark) {
+                            when (route) {
+                                Route.Journal -> JournalHomeScreen(
+                                    library = libraryState,
+                                    stories = storiesState,
+                                    health = journalState.health,
+                                    actions = HomeActions(
+                                        openItem = { moment, item -> push(Route.Viewer(null, null, moment.key, LibraryFilter.ALL, item.id)) },
+                                        openTags = { push(Route.Tags) },
+                                        openStory = { push(Route.Story(it)) },
+                                        createStory = { title, key -> stories.createStoryFromMoment(title, key)?.let { push(Route.Story(it)) } },
+                                        openAllPhotos = { push(Route.AllPhotos) },
+                                        openSettings = { push(Route.Settings) },
+                                        allowAccess = requestAccess,
+                                        changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
+                                        registerAgain = onRegisterAgain,
+                                    ),
+                                    landing = landingHere,
+                                )
+                                Route.AllPhotos -> {
+                                    var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
+                                    AllPhotosScreen(
+                                        library = libraryState,
+                                        health = journalState.health,
+                                        filter = filter,
+                                        onFilter = { filter = it },
+                                        onOpenItem = { push(Route.Viewer(null, null, null, filter, it.id)) },
+                                        onBack = pop,
+                                        landing = landingHere,
+                                    )
+                                }
+                                is Route.Story -> StoryScreen(
+                                    story = storiesState.story(route.id),
+                                    neighborDays = storiesState.neighborDays(route.id),
+                                    health = journalState.health,
+                                    actions = StoryActions(
+                                        openItem = { push(Route.Viewer(route.id, null, null, LibraryFilter.ALL, it.id)) },
+                                        openGroup = { push(Route.Group(route.id, it.id)) },
+                                        addDay = { stories.addDay(route.id, it) },
+                                        rename = { stories.rename(route.id, it) },
+                                        delete = {
+                                            stories.delete(route.id)
+                                            pop()
+                                        },
+                                        setIntro = { stories.setIntro(route.id, it) },
+                                        acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
+                                        groupTiles = { stories.groupTiles(route.id, it) },
+                                        mergeTiles = { stories.mergeTiles(route.id, it) },
+                                        restore = stories::restore,
+                                        dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
+                                        ungroup = { stories.ungroup(route.id, it) },
+                                        removeItems = { stories.removeItems(route.id, it) },
+                                        setTileSize = { key, size -> stories.setTileSize(route.id, key, size) },
+                                        setTileFocus = { key, focus, zoom -> stories.setTileFocus(route.id, key, focus.x, focus.y, zoom) },
+                                        moveTile = { key, offset -> stories.moveTile(route.id, key, offset) },
+                                        resetLayout = { stories.resetLayout(route.id) },
+                                        resetGroups = { stories.resetGroups(route.id) },
+                                        back = pop,
+                                    ),
+                                    landing = landingHere,
+                                )
+                                is Route.Group -> GroupScreen(
+                                    story = storiesState.story(route.storyId),
+                                    group = storiesState.story(route.storyId)?.group(route.groupId),
+                                    actions = GroupActions(
+                                        openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
+                                        openGroup = { push(Route.Group(route.storyId, it.id)) },
+                                        rename = { stories.renameGroup(route.storyId, route.groupId, it) },
+                                        setText = { stories.setGroupText(route.storyId, route.groupId, it) },
+                                        ungroup = { stories.ungroup(route.storyId, route.groupId) },
+                                        groupTiles = { stories.groupTiles(route.storyId, it, parentId = route.groupId) },
+                                        mergeTiles = { stories.mergeTiles(route.storyId, it, parentId = route.groupId) },
+                                        restore = stories::restore,
+                                        takeOut = { stories.removeFromGroup(route.storyId, route.groupId, it) },
+                                        acceptSuggestion = { stories.acceptGroupSuggestion(route.storyId, route.groupId, it) },
+                                        dismissSuggestion = { stories.dismissSuggestion(route.storyId, it) },
+                                        back = pop,
+                                    ),
+                                    landing = landingHere,
+                                )
+                                Route.Settings -> SettingsScreen(
+                                    settings = settingsState,
+                                    actions = SettingsActions(
+                                        setGroupingMode = settings::setGroupingMode,
+                                        setGapHours = settings::setGapHours,
+                                        setSimilarityPercent = settings::setSimilarityPercent,
+                                        resetSimilarity = settings::resetSimilarity,
+                                        back = pop,
+                                    ),
+                                )
+                                Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
+                                is Route.Tag -> TagScreen(
+                                    tag = route.name,
+                                    stories = storiesState,
+                                    onOpenItem = { push(Route.Viewer(null, null, null, LibraryFilter.ALL, it.id, tag = route.name)) },
+                                    onBack = pop,
+                                    landing = landingHere,
+                                )
+                                is Route.Viewer -> ViewerScreen(
+                                    // Fixed when opened: tagging or grouping a photo must not pull it out from under the viewer.
+                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
+                                        .mapNotNull { storiesState.itemsById[it] },
+                                    startId = route.itemId,
+                                    stories = storiesState,
+                                    openedFrom = route.storyId?.let(storiesState::story),
+                                    group = route.groupId?.let { route.storyId?.let(storiesState::story)?.group(it) },
+                                    actions = ViewerActions(
+                                        back = pop,
+                                        openGroup = { groupId -> route.storyId?.let { push(Route.Group(it, groupId)) } },
+                                        setCover = { itemId -> if (route.storyId != null && route.groupId != null) stories.setCover(route.storyId, route.groupId, itemId) },
+                                        removeFromGroup = { itemId ->
+                                            if (route.storyId != null && route.groupId != null) stories.removeFromGroup(route.storyId, route.groupId, listOf(itemId))
+                                        },
+                                        toggleStory = { storyId, itemId, add ->
+                                            if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
+                                        },
+                                        createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
+                                        setCaption = { itemId, text -> stories.setCaption(itemId, text) },
+                                        toggleTag = { itemId, tag, add ->
+                                            if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
+                                        },
+                                        showing = { landing = Landing(entry.depth - 1, it) },
+                                    ),
+                                )
+                            }
                         }
-                        is Route.Story -> StoryScreen(
-                            story = storiesState.story(route.id),
-                            neighborDays = storiesState.neighborDays(route.id),
-                            health = journalState.health,
-                            actions = StoryActions(
-                                openItem = { push(Route.Viewer(route.id, null, null, LibraryFilter.ALL, it.id)) },
-                                openGroup = { push(Route.Group(route.id, it.id)) },
-                                addDay = { stories.addDay(route.id, it) },
-                                rename = { stories.rename(route.id, it) },
-                                delete = {
-                                    stories.delete(route.id)
-                                    pop()
-                                },
-                                setIntro = { stories.setIntro(route.id, it) },
-                                acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
-                                groupTiles = { stories.groupTiles(route.id, it) },
-                                mergeTiles = { stories.mergeTiles(route.id, it) },
-                                restore = stories::restore,
-                                dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
-                                ungroup = { stories.ungroup(route.id, it) },
-                                removeItems = { stories.removeItems(route.id, it) },
-                                setTileSize = { key, size -> stories.setTileSize(route.id, key, size) },
-                                setTileFocus = { key, focus, zoom -> stories.setTileFocus(route.id, key, focus.x, focus.y, zoom) },
-                                moveTile = { key, offset -> stories.moveTile(route.id, key, offset) },
-                                resetLayout = { stories.resetLayout(route.id) },
-                                resetGroups = { stories.resetGroups(route.id) },
-                                back = pop,
-                            ),
-                        )
-                        is Route.Group -> GroupScreen(
-                            story = storiesState.story(route.storyId),
-                            group = storiesState.story(route.storyId)?.group(route.groupId),
-                            actions = GroupActions(
-                                openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
-                                openGroup = { push(Route.Group(route.storyId, it.id)) },
-                                rename = { stories.renameGroup(route.storyId, route.groupId, it) },
-                                setText = { stories.setGroupText(route.storyId, route.groupId, it) },
-                                ungroup = { stories.ungroup(route.storyId, route.groupId) },
-                                groupTiles = { stories.groupTiles(route.storyId, it, parentId = route.groupId) },
-                                mergeTiles = { stories.mergeTiles(route.storyId, it, parentId = route.groupId) },
-                                restore = stories::restore,
-                                takeOut = { stories.removeFromGroup(route.storyId, route.groupId, it) },
-                                acceptSuggestion = { stories.acceptGroupSuggestion(route.storyId, route.groupId, it) },
-                                dismissSuggestion = { stories.dismissSuggestion(route.storyId, it) },
-                                back = pop,
-                            ),
-                        )
-                        Route.Settings -> SettingsScreen(
-                            settings = settingsState,
-                            actions = SettingsActions(
-                                setGroupingMode = settings::setGroupingMode,
-                                setGapHours = settings::setGapHours,
-                                setSimilarityPercent = settings::setSimilarityPercent,
-                                resetSimilarity = settings::resetSimilarity,
-                                back = pop,
-                            ),
-                        )
-                        Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
-                        is Route.Tag -> TagScreen(
-                            tag = route.name,
-                            stories = storiesState,
-                            onOpenItem = { push(Route.Viewer(null, null, null, LibraryFilter.ALL, it.id, tag = route.name)) },
-                            onBack = pop,
-                        )
-                        is Route.Viewer -> ViewerScreen(
-                            // Fixed when opened: tagging or grouping a photo must not pull it out from under the viewer.
-                            items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
-                                .mapNotNull { storiesState.itemsById[it] },
-                            startId = route.itemId,
-                            stories = storiesState,
-                            openedFrom = route.storyId?.let(storiesState::story),
-                            group = route.groupId?.let { route.storyId?.let(storiesState::story)?.group(it) },
-                            actions = ViewerActions(
-                                back = pop,
-                                openGroup = { groupId -> route.storyId?.let { push(Route.Group(it, groupId)) } },
-                                setCover = { itemId -> if (route.storyId != null && route.groupId != null) stories.setCover(route.storyId, route.groupId, itemId) },
-                                removeFromGroup = { itemId ->
-                                    if (route.storyId != null && route.groupId != null) stories.removeFromGroup(route.storyId, route.groupId, listOf(itemId))
-                                },
-                                toggleStory = { storyId, itemId, add ->
-                                    if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
-                                },
-                                createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
-                                setCaption = { itemId, text -> stories.setCaption(itemId, text) },
-                                toggleTag = { itemId, tag, add ->
-                                    if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
-                                },
-                            ),
-                        )
                     }
-                }
-            }
-        },
-    )
+                },
+            )
+        }
+    }
 }
+
+/** The photo the viewer shows, for the entry at [depth] under it. */
+private data class Landing(val depth: Int, val itemId: String)
 
 /** A back stack entry; its depth tells apart a group opened twice, from its parent and from the viewer. */
 private data class StackEntry(val depth: Int, val route: Route) {

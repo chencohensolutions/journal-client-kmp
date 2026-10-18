@@ -27,6 +27,7 @@ struct AllPhotosView: View {
                     }
                 }
                 .padding(.bottom, 150)
+                .followsViewer { id in dayPlace(of: id, in: days) }
             }
             .scrollIndicators(.hidden)
         }
@@ -48,6 +49,11 @@ struct AllPhotosView: View {
             }
         }
     }
+}
+
+/// Where `DayGrid`s show a photo: in its day.
+func dayPlace(of itemId: String, in days: [DayGroup]) -> PhotoPlace? {
+    days.first { $0.items.contains { $0.id == itemId } }.map { PhotoPlace(section: $0.day, tile: ZoomID.item(itemId)) }
 }
 
 /// One day's photos under its name, for All photos and the story page. Days with three or more items open with a

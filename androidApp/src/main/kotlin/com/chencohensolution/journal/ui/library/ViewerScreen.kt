@@ -5,6 +5,7 @@ import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -53,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.GroupView
@@ -78,6 +82,8 @@ internal class ViewerActions(
     val createStory: (title: String, itemId: String) -> Unit = { _, _ -> },
     val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
+    /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
+    val showing: (itemId: String) -> Unit = {},
 )
 
 /**
@@ -105,14 +111,20 @@ internal fun ViewerScreen(
     var choosingTag by rememberSaveable { mutableStateOf(false) }
     var editingCaption by rememberSaveable { mutableStateOf(false) }
     val current = items[pager.currentPage.coerceIn(items.indices)]
+    LaunchedEffect(current.id) { actions.showing(current.id) }
+    // A group is one stop here, its cover: that photo is shared with the group's tile, so closing on it lands there.
+    val groupOfCover = remember(openedFrom, group) {
+        (group?.tiles ?: openedFrom?.tiles).orEmpty().filterIsInstance<StoryTile.Group>().associate { it.group.cover.id to it.group.id }
+    }
+    fun sharedKey(item: MediaItem) = groupOfCover[item.id]?.let(SharedKey::group) ?: SharedKey.item(item.id)
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(pager, key = { items[it].id }, modifier = Modifier.fillMaxSize()) { page ->
             val item = items[page]
             if (item.type == MediaType.VIDEO) {
-                VideoPage(item, isCurrent = page == pager.currentPage)
+                VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
             } else {
-                PhotoPage(item)
+                PhotoPage(item, sharedKey(item))
             }
         }
 
@@ -211,21 +223,35 @@ internal fun ViewerScreen(
 }
 
 @Composable
-private fun PhotoPage(item: MediaItem) {
+private fun PhotoPage(item: MediaItem, sharedKey: String) {
     val resolver = LocalContext.current.contentResolver
     val preview = rememberThumbnail(item, THUMB_LARGE)
     val full by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { loadImage(resolver, item, VIEWER_MAX_SIDE) }
     }
     val image = full?.asImageBitmap() ?: preview
-    if (image != null) {
-        Image(image, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+    if (image != null) ViewerImage(image, sharedKey)
+}
+
+/**
+ * The photo at its own shape, centred: it looks fitted, and it is shared with the tile it was opened from, so its crop
+ * opens up as the tile grows into it.
+ */
+@Composable
+private fun ViewerImage(image: ImageBitmap, sharedKey: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Image(
+            image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.aspectRatio(image.width.toFloat() / image.height).shared(sharedKey),
+        )
     }
 }
 
 /** Shows the poster frame until Play is tapped; stops when swiped away. */
 @Composable
-private fun VideoPage(item: MediaItem, isCurrent: Boolean) {
+private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
     var playing by rememberSaveable(item.id) { mutableStateOf(false) }
     LaunchedEffect(isCurrent) { if (!isCurrent) playing = false }
 
@@ -243,9 +269,7 @@ private fun VideoPage(item: MediaItem, isCurrent: Boolean) {
         )
     } else {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            rememberThumbnail(item, THUMB_LARGE)?.let {
-                Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-            }
+            rememberThumbnail(item, THUMB_LARGE)?.let { ViewerImage(it, sharedKey) }
             IconButton(
                 onClick = { playing = true },
                 colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),
