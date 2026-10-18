@@ -282,7 +282,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     }
     if (editingIntro) {
         WritingEditor(
-            title = story.title,
+            title = storyName(story),
             initial = story.intro,
             onSave = {
                 editingIntro = false
@@ -306,7 +306,7 @@ internal fun StoryScreen(story: StoryView?, neighborDays: List<DayGroup>, health
     if (confirmingDelete) {
         AlertDialog(
             onDismissRequest = { confirmingDelete = false },
-            title = { Text(stringResource(R.string.library_delete_story_title, story.title)) },
+            title = { Text(stringResource(R.string.library_delete_story_title, storyName(story))) },
             text = { Text(stringResource(R.string.library_delete_story_body)) },
             confirmButton = {
                 TextButton(onClick = {
@@ -454,20 +454,24 @@ private fun Header(story: StoryView) {
     ) {
         story.firstDay?.let { DateBlock(it) }
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                story.title,
-                color = LibraryColors.OnBackground,
-                fontSize = 28.sp,
-                lineHeight = 32.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() },
-            )
+            if (story.hasTitle) {
+                Text(
+                    story.title,
+                    color = LibraryColors.OnBackground,
+                    fontSize = 28.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
             val groups = story.groups.size
             val summary = storySummary(story)
+            // Untitled, the dates are the heading.
             Text(
                 if (groups > 0) summary + " · " + pluralStringResource(R.plurals.library_story_groups, groups, groups) else summary,
-                color = LibraryColors.Muted,
-                fontSize = 14.sp,
+                color = if (story.hasTitle) LibraryColors.Muted else LibraryColors.OnBackground,
+                fontSize = if (story.hasTitle) 14.sp else 18.sp,
+                fontWeight = if (story.hasTitle) null else FontWeight.SemiBold,
             )
         }
     }

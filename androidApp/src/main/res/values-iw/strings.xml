@@ -68,7 +68,7 @@
     <!-- Stories -->
     <string name="library_story">סיפור</string>
     <string name="library_new_story">סיפור חדש</string>
-    <string name="library_story_title_hint">טיול ליפן, יום ההולדת של נועה…</string>
+    <string name="library_story_title_hint">כותרת (לא חובה)</string>
     <string name="library_create">יצירה</string>
     <string name="library_cancel">ביטול</string>
     <string name="library_save">שמירה</string>
@@ -135,6 +135,7 @@
     <string name="library_set_cover">הגדרה כשער</string>
     <string name="library_remove_from_group">הסרה מהקבוצה</string>
     <string name="library_take_out">הוצאה</string>
+    <string name="library_untitled_story">סיפור ללא כותרת</string>
     <string name="library_info_group">קבוצה</string>
     <string name="library_ungroup">פירוק הקבוצה</string>
     <string name="library_rename_group">שינוי שם הקבוצה</string>

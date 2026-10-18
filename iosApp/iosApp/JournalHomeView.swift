@@ -76,12 +76,11 @@ struct JournalHomeView: View {
             .scrollIndicators(.hidden)
         }
         .alert("New story", isPresented: Binding(get: { newStoryMoment != nil }, set: { if !$0 { newStoryMoment = nil } })) {
-            TextField("Japan trip, Noa's birthday…", text: $newTitle)
+            TextField("Title (optional)", text: $newTitle)
             Button("Create") {
                 if let key = newStoryMoment { actions.createStory(newTitle, key) }
                 newTitle = ""
             }
-            .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
             Button("Cancel", role: .cancel) { newTitle = "" }
         }
         .background(LibraryColors.background.ignoresSafeArea())

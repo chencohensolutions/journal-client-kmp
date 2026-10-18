@@ -78,6 +78,10 @@ internal object PreviewData {
     val birthday = story("Noa’s birthday", day(15, 6) { photo(15, hour = 16 + it % 4, backup = BackupStatus.BackedUp) })
     val weekend = story("Weekend in the north", day(22, 5) { photo(22, ratio = 16f / 9f, backup = BackupStatus.BackedUp) } + day(23, 4) { photo(23, backup = BackupStatus.BackedUp) })
 
+    /** A story without a title: only its dates and count show above its photos. */
+    val untitled = story("", day(12, 8) { photo(12, hour = 10 + it, ratio = ratios[it % 4], backup = BackupStatus.BackedUp) })
+    val dinner = story("Dinner at Maya’s", day(18, 2) { photo(18, hour = 20 + it, backup = BackupStatus.BackedUp) })
+
     val today = day(0, 7) {
         when (it) {
             0 -> photo(0, hour = 21, backup = BackupStatus.Uploading(0.43f))
@@ -94,7 +98,7 @@ internal object PreviewData {
 
     val library = LibraryState(
         access = PhotoAccess.FULL,
-        days = (unsorted + listOf(japan.items, birthday.items, weekend.items))
+        days = (unsorted + listOf(japan.items, untitled.items, birthday.items, dinner.items, weekend.items))
             .flatten()
             .sortedByDescending { it.takenAtMillis }
             .groupBy { it.day }
@@ -113,6 +117,18 @@ internal object PreviewData {
         ),
         unsortedDays = unsorted.map { DayGroup(it.first().day, it) },
         moments = unsorted.map { Moment(it, GroupingMode.BY_DAY) },
+    )
+
+    /** The journal with an untitled story and a two-photo one too, for the story card designs. */
+    val moreStories = stories.copy(
+        stories = listOf(japan, untitled, birthday, dinner, weekend),
+        timeline = listOf(
+            TimelineEntry.StoryEntry(japan),
+            TimelineEntry.StoryEntry(untitled),
+            TimelineEntry.StoryEntry(birthday),
+            TimelineEntry.StoryEntry(dinner),
+            TimelineEntry.StoryEntry(weekend),
+        ),
     )
 
     /** A first launch: access granted, but no stories yet. */

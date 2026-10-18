@@ -59,6 +59,7 @@ internal fun Story.photosIn(groupId: String): Set<String> {
 data class Story(
     /** UTC creation time, e.g. "2026-10-17T12-52-22.257Z"; also the folder name. Never changes. */
     val id: String,
+    /** "" when it has none: titles are optional. */
     val title: String,
     /** Oldest first. */
     val members: List<StoryMember>,

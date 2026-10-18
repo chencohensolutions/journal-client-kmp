@@ -135,7 +135,7 @@ struct GroupPageView: View {
                         }
                     VStack(alignment: .leading, spacing: 4) {
                         // "JAPAN TRIP › DAY AT THE SEA": the story, then the groups around this one.
-                        Text(([story.title] + story.parentsOf(groupId: group.id).map(\.name)).joined(separator: " › ").uppercased())
+                        Text(([story.name] + story.parentsOf(groupId: group.id).map(\.name)).joined(separator: " › ").uppercased())
                             .font(.caption.weight(.semibold))
                             .tracking(0.7)
                             .foregroundStyle(LibraryColors.muted)

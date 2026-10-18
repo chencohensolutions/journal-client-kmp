@@ -76,7 +76,7 @@ internal fun AddToStorySheet(
             items(list, key = { "story-${it.id}" }) { story ->
                 val isMember = contains(story)
                 PickerRow(
-                    title = story.title,
+                    title = storyName(story),
                     detail = storySummary(story),
                     leading = { story.firstDay?.let { DateBlock(it) } },
                     checked = isMember,

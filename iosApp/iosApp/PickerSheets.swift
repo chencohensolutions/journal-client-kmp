@@ -39,7 +39,7 @@ struct AddToStorySheet: View {
             Section(title) {
                 ForEach(list, id: \.id) { story in
                     let isMember = itemIds.allSatisfy { id in story.story.members.contains { $0.deviceId == id } }
-                    PickerRow(title: story.title, detail: story.summary, checked: isMember) {
+                    PickerRow(title: story.name, detail: story.summary, checked: isMember) {
                         onToggle(story.id, !isMember)
                     } leading: {
                         if let first = story.firstDay { DateBlock(day: first) }

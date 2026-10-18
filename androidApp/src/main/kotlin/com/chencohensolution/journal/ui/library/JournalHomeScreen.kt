@@ -130,7 +130,7 @@ internal fun JournalHomeScreen(
             }
             items(entries, key = { it.key }) { entry ->
                 when (entry) {
-                    is TimelineEntry.StoryEntry -> StoryCard(entry.story, onOpen = { actions.openStory(entry.story.id) })
+                    is TimelineEntry.StoryEntry -> StoryCard(cardState(entry.story), onOpen = { actions.openStory(entry.story.id) })
                     is TimelineEntry.MomentEntry -> UnsortedMoment(
                         entry.moment,
                         onOpen = { actions.openItem(entry.moment, it) },

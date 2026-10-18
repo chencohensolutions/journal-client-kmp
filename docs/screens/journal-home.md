@@ -19,16 +19,17 @@ Photos fill the screen on the page background (light or dark with the system); t
     [photo-access.md](photo-access.md).
   - **Journal can see N photos and videos · Change**: limited access. Opens the system picker to change the
     selection.
-- **Story cards:** a mosaic of the story's first photos (one full width, two side by side, or a large one with
-  smaller ones around it), the first day as a calendar block, the title, and "Oct 8 – 16 · 9 days · 142 photos".
-  "N not backed up" sits in the corner while any of its photos isn't on the server. Tapping opens the
-  [story](story-page.md).
+- **Story cards:** the title above, then "Oct 8 – 16 · 9 days · 142 photos" (an untitled story shows only that line,
+  in bold, as its heading), with a cloud-off icon and count at the right while any photo isn't on the server. Under
+  them a mosaic of the story's **main photos**: its first six tiles in the story's order, a group as its cover. One
+  photo is full width, two sit side by side, three to five are a large one with two beside it, and six add a row of
+  three under them. The last photo shows "+N" for the rest of the story. Tapping opens the [story](story-page.md).
 - **Unsorted moments.** Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
   scroll sideways. Tapping a photo opens the [viewer](viewer.md) on that moment's unsorted photos. Headings:
   - By day: "Today", "Yesterday", "Tue, Oct 7", with the year for other years.
   - By breaks, within one day: the day and the times, "Today · 9:14 – 21:40" (one time for a single photo).
   - By breaks, across days: "Sat, Oct 4 – Mon, Oct 6".
-- **+ Story** asks for a title, creates a story from that moment's unsorted photos and opens it. More days are added
+- **+ Story** asks for a title (optional), creates a story from that moment's unsorted photos and opens it. More days are added
   from the story page.
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.

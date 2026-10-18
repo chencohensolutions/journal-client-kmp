@@ -106,7 +106,7 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
     val insets = WindowInsets.systemBars.asPaddingValues()
     val name = group.title ?: timeRange(group.items)
     // "JAPAN TRIP › DAY AT THE SEA": the story, then the groups around this one.
-    val path = (listOf(story.title) + story.parentsOf(group.id).map { it.title ?: timeRange(it.items) }).joinToString(" › ")
+    val path = (listOf(storyName(story)) + story.parentsOf(group.id).map { it.title ?: timeRange(it.items) }).joinToString(" › ")
 
     val groupedMessage = stringResource(R.string.library_grouped)
     val undoLabel = stringResource(R.string.library_undo)
@@ -297,7 +297,6 @@ internal fun GroupScreen(story: StoryView?, group: GroupView?, actions: GroupAct
             title = stringResource(R.string.library_rename_group),
             initial = group.title.orEmpty(),
             confirmLabel = stringResource(R.string.library_save),
-            allowBlank = true,
             onConfirm = {
                 renaming = false
                 actions.rename(it)

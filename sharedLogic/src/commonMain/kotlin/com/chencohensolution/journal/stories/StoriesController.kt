@@ -86,7 +86,9 @@ data class StoryView(
     val items: List<MediaItem>,
 ) {
     val id: String get() = story.id
+    /** "" when the story has no title. */
     val title: String get() = story.title
+    val hasTitle: Boolean get() = story.title.isNotBlank()
     val intro: String get() = story.intro
 
     /** Day of its oldest photo on this device; null when none is. */
@@ -427,9 +429,12 @@ class StoriesController internal constructor(
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: StoriesState get() = state.value
 
-    /** Creates a story holding [itemIds]; returns its id, or null when [title] is blank or no item is on the device. */
+    /**
+     * Creates a story holding [itemIds]; returns its id, or null when no item is on the device. The title is optional:
+     * a blank one is saved as "" and the story shows its dates instead.
+     */
     fun createStory(title: String, itemIds: List<String>): String? {
-        val name = title.trim().ifEmpty { return null }
+        val name = title.trim()
         val items = itemsById(itemIds).ifEmpty { return null }
         val time = now()
         val story = Story(
@@ -463,10 +468,8 @@ class StoriesController internal constructor(
         story.copy(members = story.members.filter { it.deviceId !in itemIds })
     }
 
-    fun rename(storyId: String, title: String) {
-        val name = title.trim().ifEmpty { return }
-        change(storyId) { it.copy(title = name) }
-    }
+    /** A blank title removes it. */
+    fun rename(storyId: String, title: String) = change(storyId) { it.copy(title = title.trim()) }
 
     /** The story's opening text in story.md. */
     fun setIntro(storyId: String, text: String) = change(storyId) { it.copy(intro = text.trim()) }

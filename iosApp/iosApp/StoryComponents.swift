@@ -13,6 +13,9 @@ extension StoryView {
         return formatter.string(from: first.date, to: last.date)
     }
 
+    /// The title, or for an untitled story its dates ("Oct 8 – 16").
+    var name: String { hasTitle ? title : (dateRange ?? String(localized: "Untitled story")) }
+
     /// "Oct 8 – 16 · 9 days · 142 photos". The day count shows only for trip-like stories of more than one day.
     var summary: String {
         var parts = [dateRange].compactMap { $0 }
@@ -43,52 +46,59 @@ struct DateBlock: View {
     }
 }
 
-/// A story on the journal timeline: a mosaic of its first photos with the title over it.
+/// A story on the journal: its title (when it has one) and dates above a mosaic of its main photos.
 struct StoryCardView: View {
     let story: StoryView
     let width: CGFloat
 
+    /// A story's main photos are its first tiles, in its order, a group as its cover.
+    private var highlights: [MediaItem] {
+        story.tiles.prefix(6).compactMap { tile in
+            (tile as? StoryTileGroup)?.group.cover ?? (tile as? StoryTileMedia)?.item
+        }
+    }
+
     var body: some View {
-        CoverMosaic(items: Array(story.items.prefix(5)), width: width)
-            .overlay(alignment: .topTrailing) {
-                if story.notBackedUpCount > 0 {
-                    Label("\(Int(story.notBackedUpCount)) not backed up", systemImage: "icloud.slash")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
-                        .background(LibraryColors.pillScrim, in: Capsule())
-                        .padding(10)
-                }
-            }
-            .overlay(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: 12) {
-                    if let first = story.firstDay { DateBlock(day: first) }
-                    VStack(alignment: .leading, spacing: 3) {
+        let items = highlights
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if story.hasTitle {
                         Text(story.title)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(.white)
-                        Text(story.summary)
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(LibraryColors.photoTextMuted)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(LibraryColors.onBackground)
+                            .lineLimit(2)
+                            .accessibilityAddTraits(.isHeader)
                     }
+                    // Untitled, the dates are the heading.
+                    Text(story.summary)
+                        .font(story.hasTitle ? .footnote.weight(.medium) : .subheadline.weight(.semibold))
+                        .foregroundStyle(story.hasTitle ? LibraryColors.muted : LibraryColors.onBackground)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 56)
-                .padding(.bottom, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LibraryColors.photoFade)
+                Spacer()
+                if story.notBackedUpCount > 0 {
+                    Label("\(Int(story.notBackedUpCount))", systemImage: "icloud.slash")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(LibraryColors.muted)
+                        .accessibilityLabel("\(Int(story.notBackedUpCount)) not backed up")
+                }
             }
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-            .padding(.bottom, 6)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            HighlightMosaic(items: items, more: Int(story.itemCount) - items.count, width: width)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .padding(.bottom, 22)
     }
 }
 
-/// The cover: one photo full width, two side by side, or a large photo with smaller ones around it.
-private struct CoverMosaic: View {
+/// One photo full width; two side by side; a large one with two beside it; with six, a row of three under them. The
+/// last tile says how many more photos the story has.
+private struct HighlightMosaic: View {
     let items: [MediaItem]
+    let more: Int
     let width: CGFloat
     private let gap: CGFloat = 2
 
@@ -98,25 +108,36 @@ private struct CoverMosaic: View {
         case 0:
             LibraryColors.raised.frame(width: width, height: width / 3)
         case 1:
-            CoverTile(item: items[0]).frame(width: width, height: width / 1.5)
+            tile(items[0]).frame(width: width, height: width / 1.5)
         case 2:
             HStack(spacing: gap) {
-                ForEach(items, id: \.id) { CoverTile(item: $0).frame(width: (width - gap) / 2, height: width / 2) }
+                ForEach(items, id: \.id) { tile($0).frame(width: (width - gap) / 2, height: width / 2) }
             }
         default:
             VStack(spacing: gap) {
                 HStack(spacing: gap) {
-                    CoverTile(item: items[0]).frame(width: third * 2 + gap, height: third * 2 + gap)
+                    tile(items[0]).frame(width: third * 2 + gap, height: third * 2 + gap)
                     VStack(spacing: gap) {
-                        CoverTile(item: items[1]).frame(width: third, height: third)
-                        CoverTile(item: items[2]).frame(width: third, height: third)
+                        tile(items[1]).frame(width: third, height: third)
+                        tile(items[2]).frame(width: third, height: third)
                     }
                 }
-                if items.count >= 5 {
+                if items.count >= 6 {
                     HStack(spacing: gap) {
-                        CoverTile(item: items[3]).frame(width: third * 2 + gap, height: third)
-                        CoverTile(item: items[4]).frame(width: third, height: third)
+                        ForEach(items[3..<6], id: \.id) { tile($0).frame(width: third, height: third) }
                     }
+                }
+            }
+        }
+    }
+
+    /// "+12" over the last photo shown.
+    private func tile(_ item: MediaItem) -> some View {
+        CoverTile(item: item).overlay {
+            if more > 0, item.id == items.last?.id {
+                ZStack {
+                    Color.black.opacity(0.38)
+                    Text("+\(more)").font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
                 }
             }
         }

@@ -401,7 +401,7 @@ private fun StoriesRow(memberOf: List<StoryView>, removable: StoryView?, onAdd: 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(stringResource(R.string.library_info_stories), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
         Text(
-            if (memberOf.isEmpty()) stringResource(R.string.library_info_no_stories) else memberOf.joinToString { it.title },
+            if (memberOf.isEmpty()) stringResource(R.string.library_info_no_stories) else memberOf.map { storyName(it) }.joinToString(),
             color = LibraryColors.OnInverse,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
@@ -415,7 +415,7 @@ private fun StoriesRow(memberOf: List<StoryView>, removable: StoryView?, onAdd: 
                 TextButton(onClick = { onRemove(removable) }) {
                     Icon(LibraryIcons.Minus, null, tint = LibraryColors.Error, modifier = Modifier.size(16.dp))
                     Text(
-                        stringResource(R.string.library_remove_from_story, removable.title),
+                        stringResource(R.string.library_remove_from_story, storyName(removable)),
                         color = LibraryColors.Error,
                         modifier = Modifier.padding(start = 4.dp),
                     )

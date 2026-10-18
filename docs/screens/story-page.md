@@ -8,7 +8,8 @@ after creating a story.
 - **Top bar:** back, the Offline pill when the server can't be reached, and **⋯** with **Rename**,
   **Arrange layout** and **Delete story**.
 - **Header:** the first day as a calendar block (OCT / 8), the title, and a summary such as
-  "Oct 8 – 16 · 9 days · 142 photos · 2 groups". One-day stories leave out the day count.
+  "Oct 8 – 16 · 9 days · 142 photos · 2 groups". One-day stories leave out the day count. An untitled story has no
+  title line; the summary is its heading.
 - **Story:** the story's opening text from story.md, in a serif, with **Edit**. Empty stories prompt "Write about
   this story…".
 - **Neighboring days:** buttons such as **+ Add Tue, Oct 7 · 6 photos** for unsorted days up to two days before
@@ -53,7 +54,7 @@ fall in by time, right after the last tile taken no later than them. The group p
 
 | Action | Result |
 |---|---|
-| Rename | Title dialog; blank titles can't be saved |
+| Rename | Title dialog; a blank title removes it (titles are optional) |
 | Delete story | Confirmation; deletes the story file only. Its photos go back to unsorted and stay on the device |
 | + Add day | Adds that day's unsorted photos (trip-like stories only) |
 | Edit story | Full-screen editor; saved to story.md |

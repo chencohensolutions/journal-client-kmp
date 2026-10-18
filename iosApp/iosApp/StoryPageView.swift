@@ -54,18 +54,18 @@ struct StoryPageView: View {
         .toolbar { toolbar }
         .safeAreaInset(edge: .bottom) { bottomBar }
         .alert("Rename story", isPresented: $renaming) {
-            TextField("Title", text: $newTitle)
+            TextField("Title (optional)", text: $newTitle)
+            // Titles are optional: a blank one removes it.
             Button("Save") { actions.rename(newTitle) }
-                .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
             Button("Cancel", role: .cancel) {}
         }
-        .confirmationDialog("Delete \"\(story?.title ?? "")\"?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+        .confirmationDialog("Delete \"\(story?.name ?? "")\"?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive, action: actions.delete)
         } message: {
             Text("The story and its title go away. Its photos and videos stay on this device.")
         }
         .sheet(isPresented: $editingIntro) {
-            WritingEditor(title: story?.title ?? "", initial: story?.intro ?? "", onSave: actions.setIntro)
+            WritingEditor(title: story?.name ?? "", initial: story?.intro ?? "", onSave: actions.setIntro)
         }
     }
 
@@ -191,14 +191,17 @@ struct StoryPageView: View {
         HStack(spacing: 14) {
             if let first = story.firstDay { DateBlock(day: first) }
             VStack(alignment: .leading, spacing: 3) {
-                Text(story.title)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(LibraryColors.onBackground)
-                    .accessibilityAddTraits(.isHeader)
+                if story.hasTitle {
+                    Text(story.title)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(LibraryColors.onBackground)
+                        .accessibilityAddTraits(.isHeader)
+                }
                 let groups = story.groups.count
+                // Untitled, the dates are the heading.
                 Text(groups > 0 ? "\(story.summary) · \(String(localized: "\(groups) groups"))" : story.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(LibraryColors.muted)
+                    .font(story.hasTitle ? .subheadline : .title3.weight(.semibold))
+                    .foregroundStyle(story.hasTitle ? LibraryColors.muted : LibraryColors.onBackground)
             }
         }
         .padding(.horizontal, 16)

@@ -312,13 +312,13 @@ private struct InfoPanel: View {
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Stories").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
-                        Text(memberOf.isEmpty ? String(localized: "Not in any story") : memberOf.map(\.title).joined(separator: ", "))
+                        Text(memberOf.isEmpty ? String(localized: "Not in any story") : memberOf.map(\.name).joined(separator: ", "))
                             .font(.subheadline.weight(.medium))
                         HStack(spacing: 16) {
                             Button(action: onAddToStory) { Label("Add to story", systemImage: "plus") }
                                 .foregroundStyle(LibraryColors.accent)
                             if let removable {
-                                Button { onRemove(removable) } label: { Label("Remove from \(removable.title)", systemImage: "minus") }
+                                Button { onRemove(removable) } label: { Label("Remove from \(removable.name)", systemImage: "minus") }
                                     .foregroundStyle(LibraryColors.error)
                             }
                         }

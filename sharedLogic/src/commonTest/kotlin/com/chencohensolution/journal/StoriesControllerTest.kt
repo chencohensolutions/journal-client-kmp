@@ -24,6 +24,7 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -202,11 +203,27 @@ class StoriesControllerTest {
     }
 
     @Test
-    fun blankTitlesAndEmptyStoriesAreRefused() = runTest {
+    fun emptyStoriesAreRefused() = runTest {
         val stories = setup().stories
-        assertNull(stories.createStory("  ", listOf("a")))
         assertNull(stories.createStory("Nothing", listOf("not-on-device")))
         assertTrue(stories.currentState.stories.isEmpty())
+    }
+
+    @Test
+    fun titlesAreOptional() = runTest {
+        val fileSystem = FakeFileSystem()
+        val stories = setup(fileSystem).stories
+        val id = assertNotNull(stories.createStory("  ", listOf("a")))
+        assertEquals("", stories.currentState.story(id)!!.title)
+        assertFalse(stories.currentState.story(id)!!.hasTitle)
+
+        stories.rename(id, "Dinner")
+        assertTrue(stories.currentState.story(id)!!.hasTitle)
+        stories.rename(id, " ")
+        stories.setIntro(id, "Just us.")
+        val reloaded = setup(fileSystem).stories.currentState.story(id)!!
+        assertEquals("", reloaded.title)
+        assertEquals("Just us.", reloaded.intro)
     }
 
     @Test
