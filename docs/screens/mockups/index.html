@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journal screens</title>
+<style>
+  :root { --bg: #E9ECEA; --text: #17201F; --muted: #5E6866; --line: #C9D0CD; --accent: #1F5F5B; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161B1A; --text: #F2F4F3; --muted: #A9B4B1; --line: #34403D; --accent: #7FC3BB; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "DM Sans", system-ui, -apple-system, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 20px; flex: 1; min-width: 160px; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .seg button { border: none; background: transparent; color: var(--text); padding: 6px 12px; font: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: var(--bg); }
+  main { padding: 24px; display: flex; flex-direction: column; gap: 36px; }
+  section h2 { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .frame { width: calc(390px * var(--s)); height: calc(844px * var(--s)); border-radius: calc(36px * var(--s)); overflow: hidden; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25); background: #000; }
+  iframe { width: 390px; height: 844px; border: 0; transform: scale(var(--s)); transform-origin: 0 0; display: block; }
+  figcaption { font-size: 14px; display: flex; gap: 10px; align-items: baseline; max-width: calc(390px * var(--s)); flex-wrap: wrap; }
+  figcaption b { font-weight: 600; }
+  figcaption a { color: var(--accent); font-size: 13px; }
+  @media (max-width: 500px) { main, header { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body style="--s: 0.75">
+<header>
+  <h1>Journal screens</h1>
+  <div class="controls">
+    <div class="seg" id="theme" aria-label="Theme">
+      <button data-v="" class="on">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+    </div>
+    <div class="seg" id="scale" aria-label="Size">
+      <button data-v="0.5">50%</button><button data-v="0.75" class="on">75%</button><button data-v="1">100%</button>
+    </div>
+  </div>
+</header>
+<main id="main"></main>
+<script>
+  // Each screen: [page with query, caption, spec]. Specs live one folder up.
+  const SECTIONS = [
+    ['Start', [
+      ['photo-access.html', 'Photo access', 'photo-access.md'],
+      ['journal-home.html', 'Journal', 'journal-home.md'],
+      ['journal-home.html?tab=unsorted', 'Journal · Unsorted', 'journal-home.md'],
+      ['journal-home.html?offline&card=register', 'Journal · offline, not registered', 'journal-home.md'],
+    ]],
+    ['Stories', [
+      ['story.html', 'Story', 'story-page.md'],
+      ['group.html', 'Group', 'group.md'],
+    ]],
+    ['Photos', [
+      ['viewer.html?from=story&info', 'Viewer · details', 'viewer.md'],
+      ['viewer.html?from=group&info', 'Viewer · from a group', 'viewer.md'],
+      ['all-photos.html', 'All photos', 'all-photos.md'],
+      ['tags.html', 'Tags', 'tags.md'],
+      ['settings.html', 'Settings', 'settings.md'],
+    ]],
+  ];
+
+  let theme = '';
+  function src(page) { return theme ? page + (page.includes('?') ? '&' : '?') + 'theme=' + theme : page; }
+  function render() {
+    document.getElementById('main').innerHTML = SECTIONS.map(([title, screens]) => `
+      <section><h2>${title}</h2><div class="row">${screens.map(([page, caption, spec]) => `
+        <figure>
+          <div class="frame"><iframe src="${src(page)}" title="${caption}" loading="lazy"></iframe></div>
+          <figcaption><b>${caption}</b><a href="${src(page)}" target="_blank">Open</a><a href="../${spec}">Spec</a></figcaption>
+        </figure>`).join('')}</div></section>`).join('');
+  }
+  function seg(id, onPick) {
+    const el = document.getElementById(id);
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      onPick(b.dataset.v);
+    });
+  }
+  seg('theme', v => { theme = v; render(); });
+  seg('scale', v => document.body.style.setProperty('--s', v));
+  render();
+</script>
+</body>
+</html>

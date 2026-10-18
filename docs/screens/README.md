@@ -1,7 +1,9 @@
 # Screens
 
 One page per screen: what it's for, what it shows, how it behaves, and where the code is on each platform.
-The mockups are in the design canvas: https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf
+Clickable mockups of every screen are in [mockups/](mockups/README.md): open `mockups/index.html` in a browser.
+The earlier design canvas (https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf) predates stories and is no longer
+updated.
 
 | Screen | Shown when | Doc |
 |---|---|---|

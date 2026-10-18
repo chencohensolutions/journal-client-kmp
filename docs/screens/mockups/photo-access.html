@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo access</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .art { position: relative; height: 250px; margin-top: 48px; }
+  .art > div { position: absolute; width: 150px; height: 190px; border-radius: 16px; overflow: hidden; left: 50%; top: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); border: 4px solid var(--surface); }
+  .art > div .photo { height: 100%; }
+  .point { display: flex; gap: 14px; align-items: flex-start; }
+  .point .ico { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .point .ico svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<div class="phone" v-scope v-cloak>
+  <div class="art" aria-hidden="true">
+    <div style="transform: translateX(-120%) rotate(-10deg)" v-scope="Photo({ p: photo(3), fill: true, badges: false })"></div>
+    <div style="transform: translateX(20%) rotate(9deg)" v-scope="Photo({ p: photo(8), fill: true, badges: false })"></div>
+    <div style="transform: translateX(-50%) translateY(-8px)" v-scope="Photo({ p: photo(5, { status: 'uploading', pct: 60 }), fill: true })"></div>
+  </div>
+  <div style="padding: 8px 28px; display:flex; flex-direction:column; gap:22px; flex:1">
+    <div>
+      <h1 style="margin:0 0 8px;font-size:28px;line-height:1.15;letter-spacing:-0.02em">Your journal starts with your photos and videos</h1>
+      <div class="muted">Journal reads your library to show your moments. Nothing leaves this device until you turn on backup.</div>
+    </div>
+    <div class="point">
+      <div class="ico" v-html="icon('photos')"></div>
+      <div><b>Your moments, day by day</b><div class="small muted">Photos and videos, grouped like a diary.</div></div>
+    </div>
+    <div class="point">
+      <div class="ico" v-html="icon('upload')"></div>
+      <div><b>Backed up to your server</b><div class="small muted">Nothing is uploaded until backup is turned on.</div></div>
+    </div>
+  </div>
+  <div style="padding: 0 28px 32px; display:flex; flex-direction:column; gap:8px">
+    <button class="btn primary" style="height:52px;font-size:16px" @click="go('journal-home.html')">Allow access</button>
+    <button class="btn text" style="height:48px" @click="go('journal-home.html?card=denied')">Not now</button>
+    <div class="small muted" style="text-align:center">You can share only some photos if you prefer.</div>
+  </div>
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  mount({ photo });
+</script>
+</body>
+</html>

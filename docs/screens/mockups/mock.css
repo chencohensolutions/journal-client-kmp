@@ -1,0 +1,177 @@
+/* Shared look for the screen mockups. Colors follow the system theme; ?theme=light|dark forces one. */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap");
+
+:root {
+  --bg: #F5F6F4;
+  --surface: #FFFFFF;
+  --text: #17201F;
+  --muted: #5E6866;
+  --line: #D3DAD7;
+  --accent: #1F5F5B;
+  --accent-soft: #E1ECE8;
+  --warn-bg: #FBE9D6;
+  --warn: #8A3B07;
+  --pick: #E8792B;
+  --scrim: rgba(15, 20, 19, 0.6);
+  --float: rgba(36, 44, 42, 0.92);
+  --sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --serif: "Newsreader", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1413; --surface: #1C2422; --text: #F2F4F3; --muted: #A9B4B1; --line: #34403D;
+    --accent: #7FC3BB; --accent-soft: #23403C; --warn-bg: #4A2A12; --warn: #F2B84B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1413; --surface: #1C2422; --text: #F2F4F3; --muted: #A9B4B1; --line: #34403D;
+  --accent: #7FC3BB; --accent-soft: #23403C; --warn-bg: #4A2A12; --warn: #F2B84B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #2A302F; font-family: var(--sans); color: var(--text); }
+button { font-family: inherit; color: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+[v-cloak] { display: none; }
+
+/* One phone screen. Standalone it sits in a frame; in the gallery's 390px iframe it fills the frame. */
+.phone {
+  width: 390px; height: 844px; margin: 0 auto; position: relative; overflow: hidden;
+  background: var(--bg); display: flex; flex-direction: column;
+}
+.phone.black { background: #000; color: #FFF; }
+@media (min-width: 430px) {
+  body { padding: 32px 16px; }
+  .phone { border-radius: 36px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45); }
+}
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* Bars */
+.topbar { display: flex; align-items: center; gap: 4px; padding: 28px 8px 8px; min-height: 84px; }
+.topbar h1 { margin: 0 0 0 8px; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; flex: 1; }
+.topbar .title { flex: 1; font-size: 18px; font-weight: 600; margin-left: 4px; }
+.floating-top {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 5;
+  background: linear-gradient(var(--bg) 55%, transparent);
+}
+.icon-btn {
+  width: 44px; height: 44px; border: none; border-radius: 50%; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+.icon-btn:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.icon-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 10px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.pill.offline { background: var(--warn-bg); color: var(--warn); }
+.pill svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Menus and sheets */
+.menu {
+  position: absolute; right: 12px; top: 76px; z-index: 20; min-width: 210px; padding: 6px; border-radius: 16px;
+  background: var(--surface); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column;
+}
+.menu > * {
+  display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 12px; border: none; border-radius: 10px;
+  background: transparent; font-size: 15px; font-weight: 500; text-align: left;
+}
+.menu > *:hover { background: var(--accent-soft); }
+.menu .danger { color: #C2410C; }
+.backdrop { position: absolute; inset: 0; z-index: 15; background: transparent; border: none; }
+.backdrop.dim { background: rgba(0, 0, 0, 0.4); }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; max-height: 78%; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text); border-radius: 24px 24px 0 0; padding: 10px 16px 24px; gap: 12px;
+}
+.sheet .grip { align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
+.dialog {
+  position: absolute; left: 24px; right: 24px; top: 30%; z-index: 30; padding: 20px; border-radius: 24px;
+  background: var(--surface); display: flex; flex-direction: column; gap: 14px;
+}
+.dialog h3 { margin: 0; font-size: 20px; }
+.row-end { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Controls */
+.btn {
+  height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.btn.text { border-color: transparent; color: var(--accent); }
+.btn.small { height: 34px; padding: 0 12px; font-size: 13px; }
+.btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; }
+.field {
+  height: 46px; width: 100%; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 16px;
+}
+.field:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.card { background: var(--surface); border-radius: 16px; padding: 14px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* Bottom floating controls (Journal, All photos) */
+.bottom-float {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 40px 16px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--bg) 92%, transparent) 60%);
+  pointer-events: none;
+}
+.bottom-float > * { pointer-events: auto; }
+.segmented { display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--float); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+.segmented button { height: 40px; padding: 0 16px; border: none; border-radius: 999px; background: transparent; color: #FFF; font-size: 14px; font-weight: 600; }
+.segmented button.on { background: #F5F6F4; color: #17201F; }
+.backup-chip { height: 34px; padding: 0 14px; border: none; border-radius: 999px; background: var(--float); color: #FFF; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.backup-chip svg { width: 16px; height: 16px; stroke: #FFF; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Photos are flat color placeholders */
+.photo { position: relative; display: block; overflow: hidden; border: none; padding: 0; width: 100%; }
+.photo .ph-sun { position: absolute; width: 22%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.45); right: 14%; top: 14%; }
+.photo .ph-hill { position: absolute; width: 140%; height: 60%; border-radius: 50%; background: rgba(0, 0, 0, 0.12); left: -20%; top: 62%; }
+.video-chip {
+  position: absolute; left: 6px; top: 6px; display: flex; align-items: center; gap: 2px; padding: 2px 6px 2px 4px;
+  border-radius: 999px; background: var(--scrim); color: #FFF; font-size: 11px; font-weight: 600;
+}
+.video-chip svg { width: 9px; height: 9px; fill: #FFF; }
+.badge {
+  position: absolute; right: 6px; bottom: 6px; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: var(--scrim); color: #FFF;
+}
+.badge.done { background: rgba(31, 95, 91, 0.85); }
+.badge.uploading { background: #1F5F5B; }
+.badge.failed { background: #C2410C; font-size: 14px; font-weight: 700; }
+.badge svg { width: 13px; height: 13px; stroke: #FFF; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.count-pill { position: absolute; right: 8px; top: 8px; padding: 3px 9px; border-radius: 999px; background: var(--scrim); color: #FFF; font-size: 12px; font-weight: 700; display: flex; gap: 4px; align-items: center; }
+.count-pill svg { width: 12px; height: 12px; stroke: #FFF; fill: none; stroke-width: 2.4; }
+.check {
+  position: absolute; left: 8px; top: 8px; width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid #FFF; background: rgba(0, 0, 0, 0.25);
+}
+.check.on { background: var(--accent); border-color: var(--accent); }
+.check.on::after { content: ""; position: absolute; left: 6px; top: 2px; width: 6px; height: 11px; border: solid #FFF; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+
+/* Story text */
+.serif { font-family: var(--serif); font-size: 19px; line-height: 1.45; }
+.calendar {
+  flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; padding: 6px 0 7px;
+  border-radius: 12px; background: var(--surface); color: var(--text);
+}
+.calendar .m { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); }
+.calendar .d { font-size: 24px; font-weight: 700; line-height: 1; }
+.chip-tag {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 6px 0 12px; border-radius: 999px;
+  background: var(--accent-soft); font-size: 14px; font-weight: 600;
+}
+.chip-tag button { border: none; background: transparent; width: 24px; height: 24px; border-radius: 50%; font-size: 16px; line-height: 1; color: var(--muted); }
+.toast {
+  position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 25; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 8px 0 16px; height: 52px; border-radius: 14px; background: #2D3634; color: #FFF; font-size: 14px;
+}
+.toast button { border: none; background: transparent; color: #9ED8D0; font-weight: 700; height: 40px; padding: 0 12px; }
+.contents { display: contents; }

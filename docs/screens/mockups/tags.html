@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tags</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .tag-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 8px 16px; border: none; background: transparent; text-align: left; }
+  .tag-row:hover { background: var(--accent-soft); }
+  .tag-row .thumb { flex: none; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; }
+  .day-head { padding: 16px 16px 8px; font-weight: 700; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .grid button { border: none; padding: 0; }
+</style>
+</head>
+<body>
+<div class="phone" v-scope v-cloak>
+  <div class="topbar" style="min-height:76px">
+    <button class="icon-btn" aria-label="Back" @click="open ? open = null : go('journal-home.html')" v-html="icon('back')"></button>
+    <span class="title">{{ open ? open.name : 'Tags' }}</span>
+  </div>
+
+  <div class="contents" v-if="!open">
+    <div style="padding:0 16px 8px">
+      <input class="field" placeholder="Search tags" v-model="query" aria-label="Search tags">
+    </div>
+    <div class="scroll">
+      <button v-for="t in SAMPLE.tags.filter(t => t.name.toLowerCase().includes(query.trim().toLowerCase()))" class="tag-row" @click="open = t">
+        <div class="thumb" v-scope="Photo({ p: photo(t.n), fill: true, badges: false })"></div>
+        <div style="flex:1"><b style="font-size:16px">{{ t.name }}</b><div class="small muted">{{ t.count }} photos</div></div>
+      </button>
+      <p v-if="!SAMPLE.tags.some(t => t.name.toLowerCase().includes(query.trim().toLowerCase()))" class="muted" style="padding:24px;text-align:center">No tags match.</p>
+    </div>
+  </div>
+
+  <div class="scroll" v-if="open">
+    <div v-for="(d, di) in ['Yesterday', 'Sun, Oct 12', 'Mon, Sep 1']">
+      <div class="day-head">{{ d }}</div>
+      <div class="grid">
+        <button v-for="p in photos(open.n * 3 + di * 7, [2, 4, 3][di])" @click="go('viewer.html?from=tag')" aria-label="Photo" v-scope="Photo({ p })"></button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  mount({ photo, photos, query: '', open: null });
+</script>
+</body>
+</html>

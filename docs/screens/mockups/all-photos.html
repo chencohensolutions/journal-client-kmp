@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>All photos</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .day { position: relative; margin-bottom: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+  .grid button { border: none; padding: 0; }
+  .grid button.big { grid-column: span 2; grid-row: span 2; }
+  .grid button.big .photo { height: 100%; }
+  .day-name { position: absolute; left: 0; right: 0; top: 0; padding: 12px 14px 28px; color: #FFF; font-weight: 700; font-size: 15px; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); background: linear-gradient(rgba(15, 20, 19, 0.55), transparent); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="phone" v-scope v-cloak>
+  <div class="scroll" style="padding: 84px 0 140px">
+    <div v-for="d in shown()" class="day">
+      <div class="grid">
+        <button v-for="(p, i) in d.items" :class="{ big: i === 0 && d.items.length >= 3 }" @click="go('viewer.html?from=all')" :aria-label="(p.video ? 'Video, ' : 'Photo, ') + statusName(p)" v-scope="Photo({ p })"></button>
+      </div>
+      <div class="day-name">{{ d.label }}</div>
+    </div>
+    <p v-if="!shown().length" class="muted" style="text-align:center;padding:40px">Nothing here.</p>
+  </div>
+
+  <div class="floating-top topbar" style="min-height:76px">
+    <button class="icon-btn" aria-label="Back" @click="go('journal-home.html')" v-html="icon('back')"></button>
+    <span class="title">All photos</span>
+    <span v-if="offline" class="pill offline"><span v-html="icon('offline')"></span>Offline</span>
+  </div>
+
+  <div class="bottom-float">
+    <button class="backup-chip"><span v-html="icon('offline')"></span>1,248 not backed up</button>
+    <div class="segmented">
+      <button v-for="f in [['all', 'All'], ['local', 'Not backed up'], ['video', 'Videos']]" :class="{ on: filter === f[0] }" @click="filter = f[0]">{{ f[1] }}</button>
+    </div>
+  </div>
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  const status = ['uploading', 'queued', 'local', 'local', 'done', 'done', 'failed', 'local'];
+  mount({
+    offline: param('offline') !== null,
+    filter: 'all',
+    days: [
+      { label: 'Today', items: photos(40, 7, i => ({ status: status[i], pct: 43, video: i === 2 ? '0:42' : '' })) },
+      { label: 'Yesterday', items: photos(47, 5, i => ({ status: i < 2 ? 'done' : i === 2 ? 'failed' : 'local', video: i === 3 ? '0:15' : '' })) },
+      { label: 'Wed, Oct 15', items: photos(52, 9, i => ({ video: i === 1 ? '2:31' : '' })) },
+      { label: 'Sun, Oct 12', items: photos(61, 2) },
+      { label: 'Sat, Oct 11', items: photos(63, 6, i => ({ status: 'done' })) },
+    ],
+    shown() {
+      return this.days.map(d => ({ label: d.label, items: d.items.filter(p =>
+        this.filter === 'local' ? p.status !== 'done' : this.filter === 'video' ? !!p.video : true) }))
+        .filter(d => d.items.length);
+    },
+  });
+</script>
+</body>
+</html>

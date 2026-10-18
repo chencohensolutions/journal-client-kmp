@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journal (home)</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .story-card { position: relative; display: block; width: 100%; border: none; padding: 0; margin-bottom: 4px; text-align: left; color: #FFF; }
+  .mosaic { display: grid; gap: 2px; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 64px; }
+  .story-card .shade {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 56px 16px 14px;
+    background: linear-gradient(transparent, rgba(15, 20, 19, 0.82)); display: flex; align-items: flex-end; gap: 12px;
+  }
+  .story-card h2 { margin: 0; font-size: 24px; line-height: 1.15; letter-spacing: -0.02em; text-shadow: 0 1px 6px rgba(0,0,0,.35); }
+  .story-card .meta { font-size: 13px; font-weight: 500; color: #E3E8E6; }
+  .story-card .calendar { background: rgba(245, 246, 244, 0.94); color: #17201F; }
+  .story-card .calendar .m { color: #1F5F5B; }
+  .pending { position: absolute; right: 10px; top: 10px; }
+  .pending.pill { background: rgba(15, 20, 19, 0.65); color: #FFF; height: 26px; font-size: 12px; }
+  .moment { padding: 14px 0 16px; }
+  .moment-head { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; }
+  .strip { display: flex; gap: 2px; overflow-x: auto; padding: 0 16px; }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip > button { flex: none; width: 76px; height: 76px; border: none; padding: 0; border-radius: 4px; overflow: hidden; }
+  .notice { margin: 4px 16px 10px; display: flex; gap: 12px; align-items: center; }
+  .notice .ico { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .notice .ico svg { width: 20px; height: 20px; }
+  .empty { padding: 40px 24px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="phone" v-scope v-cloak>
+
+  <div class="scroll" style="padding: 88px 0 140px">
+    <div v-if="card === 'register'" class="card notice">
+      <div class="ico" v-html="icon('offline')"></div>
+      <div style="flex:1"><b>This device isn't registered with the server</b></div>
+      <button class="btn small primary">Register again</button>
+    </div>
+    <div v-if="card === 'denied'" class="card notice">
+      <div class="ico" v-html="icon('photos')"></div>
+      <div style="flex:1"><b>Journal can't see your photos</b></div>
+      <button class="btn small primary">Allow access</button>
+    </div>
+    <div v-if="card === 'limited'" class="card notice">
+      <div class="ico" v-html="icon('photos')"></div>
+      <div style="flex:1">Journal can see <b>48 photos and videos</b></div>
+      <button class="btn small">Change</button>
+    </div>
+
+    <div class="contents" v-if="tab === 'journal'">
+      <button v-for="s in SAMPLE.stories" class="story-card" @click="go('story.html')" :aria-label="s.title + ', ' + s.meta">
+        <div class="mosaic">
+          <div class="contents" v-if="s.mosaic === 'big'">
+            <div style="grid-column: span 4; grid-row: span 4" v-scope="Photo({ p: photo(s.cover[0]), fill: true, badges: false })"></div>
+            <div style="grid-column: span 2; grid-row: span 2" v-scope="Photo({ p: photo(s.cover[1]), fill: true, badges: false })"></div>
+            <div style="grid-column: span 2; grid-row: span 2" v-scope="Photo({ p: photo(s.cover[2]), fill: true, badges: false })"></div>
+          </div>
+          <div class="contents" v-if="s.mosaic === 'two'">
+            <div style="grid-column: span 3; grid-row: span 4" v-scope="Photo({ p: photo(s.cover[0]), fill: true, badges: false })"></div>
+            <div style="grid-column: span 3; grid-row: span 4" v-scope="Photo({ p: photo(s.cover[1]), fill: true, badges: false })"></div>
+          </div>
+          <div v-if="s.mosaic === 'one'" style="grid-column: span 6; grid-row: span 4" v-scope="Photo({ p: photo(s.cover[0]), fill: true, badges: false })"></div>
+        </div>
+        <span v-if="s.pending" class="pill pending"><span v-html="icon('offline')"></span>{{ s.pending }} not backed up</span>
+        <div class="shade">
+          <div class="calendar"><span class="m">{{ s.month }}</span><span class="d">{{ s.day }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+            <h2>{{ s.title }}</h2>
+            <span class="meta">{{ s.meta }}</span>
+          </div>
+        </div>
+      </button>
+      <p v-if="!SAMPLE.stories.length" class="empty">No stories yet. Make one from a day in Unsorted.</p>
+    </div>
+
+    <div class="contents" v-if="tab === 'unsorted'">
+      <div v-for="m in moments" class="moment">
+        <div class="moment-head">
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <b style="font-size:15px">{{ grouping === 'breaks' ? m.breaks : m.label }}</b>
+            <span class="small muted">{{ m.items.length }} unsorted</span>
+          </div>
+          <button class="btn small" @click="newStory = m"><span v-html="icon('plus')"></span>Story</button>
+        </div>
+        <div class="strip">
+          <button v-for="p in m.items" @click="go('viewer.html')" :aria-label="'Photo, ' + statusName(p)" v-scope="Photo({ p, fill: true })"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="floating-top topbar">
+    <h1>Journal</h1>
+    <span v-if="offline" class="pill offline"><span v-html="icon('offline')"></span>Offline</span>
+    <button class="icon-btn" aria-label="Tags" @click="go('tags.html')" v-html="icon('tag')"></button>
+    <button class="icon-btn" aria-label="More" @click="menu = !menu" v-html="icon('more')"></button>
+  </div>
+
+  <div class="contents" v-if="menu">
+    <button class="backdrop" aria-label="Close menu" @click="menu = false"></button>
+    <div class="menu">
+      <button @click="go('all-photos.html')"><span class="icon-btn" style="width:auto;height:auto" v-html="icon('grid')"></span>All photos</button>
+      <button @click="go('settings.html')"><span class="icon-btn" style="width:auto;height:auto" v-html="icon('gear')"></span>Settings</button>
+    </div>
+  </div>
+
+  <div class="bottom-float">
+    <button class="backup-chip"><span v-html="icon('offline')"></span>1,248 not backed up</button>
+    <div class="segmented" role="tablist">
+      <button :class="{ on: tab === 'journal' }" @click="tab = 'journal'">Journal</button>
+      <button :class="{ on: tab === 'unsorted' }" @click="tab = 'unsorted'">Unsorted {{ moments.reduce((a, m) => a + m.items.length, 0) }}</button>
+    </div>
+  </div>
+
+  <div class="contents" v-if="newStory">
+    <button class="backdrop dim" aria-label="Cancel" @click="newStory = null"></button>
+    <div class="dialog">
+      <h3>New story</h3>
+      <span class="small muted">From {{ newStory.items.length }} unsorted photos · {{ newStory.label }}</span>
+      <input class="field" placeholder="Title" aria-label="Story title" v-model="title" autofocus>
+      <div class="row-end">
+        <button class="btn text" @click="newStory = null">Cancel</button>
+        <button class="btn primary" :disabled="!title.trim()" @click="go('story.html')">Create</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  mount({
+    photo,
+    tab: param('tab') || 'journal',
+    offline: param('offline') !== null,
+    card: param('card'),           // register | denied | limited
+    grouping: param('grouping') || 'day',
+    menu: false,
+    newStory: null,
+    title: '',
+    moments: [
+      { label: 'Today', breaks: 'Today · 9:14 – 21:40', items: photos(40, 7, i => ({ status: ['uploading', 'queued', 'queued', 'local'][Math.min(i, 3)], pct: 43, video: i === 2 ? '0:42' : '' })) },
+      { label: 'Yesterday', breaks: 'Yesterday · 18:02 – 23:51', items: photos(47, 5, i => ({ status: i < 2 ? 'done' : i === 2 ? 'failed' : 'local' })) },
+      { label: 'Tue, Oct 7', breaks: 'Tue, Oct 7 · 11:30', items: photos(52, 6) },
+      { label: 'Sat, Oct 4', breaks: 'Sat, Oct 4 – Mon, Oct 6', items: photos(58, 9, i => ({ video: i === 4 ? '1:08' : '' })) },
+    ],
+  });
+</script>
+</body>
+</html>

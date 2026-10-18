@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viewer</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .phone.black .icon-btn:hover { background: rgba(255, 255, 255, 0.12); }
+  .stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; }
+  .stage .photo { width: 390px; }
+  .play { position: absolute; width: 64px; height: 64px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.5); color: #FFF; display: flex; align-items: center; justify-content: center; }
+  .play svg { width: 28px; height: 28px; }
+  .open-group { height: 34px; padding: 0 12px; border: none; border-radius: 999px; background: rgba(255, 255, 255, 0.16); color: #FFF; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .open-group svg { width: 15px; height: 15px; }
+  .details { background: var(--bg); color: var(--text); border-radius: 24px 24px 0 0; padding: 10px 20px 28px; display: flex; flex-direction: column; gap: 16px; max-height: 62%; overflow-y: auto; }
+  .details .grip { align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); flex: none; }
+  .label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .progress { height: 6px; border-radius: 3px; background: var(--accent-soft); overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--accent); }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .facts span { display: block; }
+  .row-btn { display: flex; align-items: center; gap: 12px; width: 100%; height: 48px; border: none; background: transparent; text-align: left; font-size: 15px; border-radius: 10px; padding: 0 4px; }
+  .row-btn:hover { background: var(--accent-soft); }
+  .row-btn .ck { margin-left: auto; color: var(--accent); }
+  .row-btn .ck svg { width: 20px; height: 20px; }
+  .group-head { font-size: 12px; font-weight: 600; color: var(--muted); padding: 10px 4px 2px; }
+</style>
+</head>
+<body>
+<div class="phone black" v-scope v-cloak>
+  <div class="topbar" style="min-height:76px">
+    <button class="icon-btn" aria-label="Back" @click="history.length > 1 ? history.back() : go('journal-home.html')" v-html="icon('back')"></button>
+    <span style="flex:1;font-size:14px;color:#B8C2BF;margin-left:4px">{{ position() }}</span>
+    <button v-if="from === 'story' && index === 1" class="open-group" @click="go('group.html')"><span v-html="icon('stack')"></span>14 · Open</button>
+    <button class="icon-btn" aria-label="Details" :style="{ background: info ? 'rgba(255,255,255,.16)' : '' }" @click="info = !info" v-html="icon('info')"></button>
+  </div>
+
+  <div class="stage" @click="info = false">
+    <button class="icon-btn" aria-label="Previous" style="position:absolute;left:4px;z-index:1;color:#FFF" @click.stop="index = Math.max(0, index - 1)" v-html="icon('back')"></button>
+    <div v-scope="Photo({ p: current(), badges: false })"></div>
+    <button v-if="current().video" class="play" aria-label="Play" v-html="icon('play')"></button>
+    <button class="icon-btn" aria-label="Next" style="position:absolute;right:4px;z-index:1;color:#FFF;transform:scaleX(-1)" @click.stop="index = Math.min(items.length - 1, index + 1)" v-html="icon('back')"></button>
+  </div>
+
+  <div class="details" v-if="info">
+    <div class="grip"></div>
+    <div>
+      <div style="font-size:20px;font-weight:700">Friday, October 16, 2026</div>
+      <div class="small muted">22:45</div>
+    </div>
+
+    <div>
+      <div class="label">Note</div>
+      <button class="serif" style="border:none;background:none;padding:0;text-align:left;width:100%" :class="{ muted: !note }" @click="editingNote = true">{{ note || 'Write about this photo…' }}</button>
+    </div>
+
+    <div>
+      <div class="label">Tags</div>
+      <div class="tags">
+        <span v-for="t in tags" class="chip-tag">{{ t }}<button :aria-label="'Remove ' + t" @click="toggleTag(t)">×</button></span>
+        <button class="btn small" @click="sheet = 'tag'; query = ''"><span v-html="icon('plus')"></span>Tag</button>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:var(--accent);width:20px;height:20px" v-html="icon('upload')"></span>
+        <b style="flex:1;font-size:15px">Uploading to your server</b>
+        <b style="color:var(--accent)">43%</b>
+      </div>
+      <div class="progress"><i style="width:43%"></i></div>
+    </div>
+
+    <div v-if="from !== 'group'">
+      <div class="label">Stories</div>
+      <div style="margin-bottom:8px">{{ stories.length ? stories.join(', ') : 'Not in any story' }}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" @click="sheet = 'story'; query = ''"><span v-html="icon('plus')"></span>Add to story</button>
+        <button v-if="from === 'story' && stories.includes('Japan trip')" class="btn small" @click="toggleStory('Japan trip')">− Remove from Japan trip</button>
+      </div>
+    </div>
+    <div v-if="from === 'group'">
+      <div class="label">Group</div>
+      <div style="margin-bottom:8px">Fixing the car</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" :disabled="cover === index" @click="cover = index">{{ cover === index ? 'This is the cover' : 'Set as cover' }}</button>
+        <button class="btn small">− Remove from group</button>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div><span class="small muted">File</span><span>20261016_224526.heic</span></div>
+      <div><span class="small muted">Size</span><span>3.2 MB</span></div>
+      <div><span class="small muted">Dimensions</span><span>4032 × 3024</span></div>
+      <div v-if="current().video"><span class="small muted">Length</span><span>{{ current().video }}</span></div>
+    </div>
+  </div>
+
+  <!-- Tag and story search sheets -->
+  <div class="contents" v-if="sheet">
+    <button class="backdrop dim" aria-label="Close" @click="sheet = null"></button>
+    <div class="sheet">
+      <div class="grip"></div>
+      <input class="field" :placeholder="sheet === 'tag' ? 'Find or create a tag' : 'Find or create a story'" v-model="query" autofocus :aria-label="sheet === 'tag' ? 'Tag name' : 'Story title'">
+      <div style="overflow-y:auto">
+        <button v-if="query.trim() && !exact()" class="row-btn" @click="create()"><span v-html="icon('plus')" style="width:20px;height:20px"></span>{{ sheet === 'tag' ? 'Create tag' : 'Create' }} “{{ query.trim() }}”</button>
+        <div class="contents" v-if="sheet === 'tag'">
+          <div class="group-head" v-if="!query">Recent</div>
+          <button v-for="t in matches(allTags)" class="row-btn" @click="toggleTag(t)">{{ t }}<span class="ck" v-if="tags.includes(t)" v-html="icon('check')"></span></button>
+        </div>
+        <div class="contents" v-if="sheet === 'story'">
+          <div class="contents" v-for="g in storyGroups()">
+            <div class="group-head">{{ g.head }}</div>
+            <button v-for="s in g.items" class="row-btn" @click="toggleStory(s)">{{ s }}<span class="ck" v-if="stories.includes(s)" v-html="icon('check')"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" v-if="editingNote" style="top:40px;max-height:none">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b>Note</b><button class="btn primary small" @click="editingNote = false">Done</button></div>
+    <textarea class="field serif" style="flex:1;padding:12px;height:auto;resize:none" v-model="note" placeholder="Write about this photo…" aria-label="Note"></textarea>
+  </div>
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  const from = param('from') || 'day';   // day | story | group | tag | all
+  mount({
+    from,
+    index: from === 'story' ? 3 : 0,
+    items: photos(60, 7, i => ({ ratio: [4 / 3, 3 / 4, 16 / 9][i % 3], video: i === 2 ? '0:24' : '' })),
+    info: param('info') !== null,
+    note: 'The band came on an hour late and nobody minded.',
+    tags: ['Concert'],
+    stories: from === 'story' ? ['Japan trip'] : [],
+    allTags: ['Concert', 'Receipts', 'Dog', 'Recipes', 'Car', 'Garden'],
+    allStories: { 'On these days': ['Japan trip'], 'Nearby': ['Noa’s birthday'], 'Recent': ['Our dog', 'Weekend in the north', 'Car trouble'] },
+    cover: 0,
+    sheet: null, query: '', editingNote: false,
+
+    current() { return this.items[this.index]; },
+    position() {
+      const where = { day: 'Yesterday', story: 'Japan trip', group: 'Fixing the car', tag: 'Concert', all: 'All photos' }[from];
+      return (this.index + 1) + ' of ' + (from === 'story' ? 29 : this.items.length) + ' · ' + where;
+    },
+    // Anywhere in the word; a real build also allows one typo for 4+ letters.
+    matches(list) { const q = this.query.trim().toLowerCase(); return list.filter(x => x.toLowerCase().includes(q)); },
+    exact() {
+      const q = this.query.trim().toLowerCase();
+      const all = this.sheet === 'tag' ? this.allTags : Object.values(this.allStories).flat();
+      return all.some(x => x.toLowerCase() === q);
+    },
+    storyGroups() {
+      if (!this.query.trim()) return Object.entries(this.allStories).map(([head, items]) => ({ head, items }));
+      return [{ head: 'Stories', items: this.matches(Object.values(this.allStories).flat()) }];
+    },
+    toggleTag(t) { const i = this.tags.indexOf(t); i >= 0 ? this.tags.splice(i, 1) : this.tags.push(t); },
+    toggleStory(s) { const i = this.stories.indexOf(s); i >= 0 ? this.stories.splice(i, 1) : this.stories.push(s); },
+    create() {
+      const name = this.query.trim().replace(/\s+/g, ' ');
+      if (this.sheet === 'tag') { this.allTags.unshift(name); this.tags.push(name); }
+      else { this.allStories['Recent'].unshift(name); this.stories.push(name); }
+      this.query = '';
+    },
+  });
+</script>
+</body>
+</html>

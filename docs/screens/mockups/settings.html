@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .group-title { padding: 8px 20px 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .option { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; cursor: pointer; }
+  .option input { margin: 3px 0 0; width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+  .hours { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 16px 16px 50px; }
+  .hours button.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+</style>
+</head>
+<body>
+<div class="phone" v-scope v-cloak>
+  <div class="topbar" style="min-height:76px">
+    <button class="icon-btn" aria-label="Back" @click="go('journal-home.html' + (grouping === 'breaks' ? '?tab=unsorted&grouping=breaks' : '?tab=unsorted'))" v-html="icon('back')"></button>
+    <span class="title">Settings</span>
+  </div>
+  <div class="scroll">
+    <div class="group-title">Unsorted photos on the Journal</div>
+    <div class="card" style="margin:0 16px;padding:0">
+      <label class="option">
+        <input type="radio" name="grouping" value="day" v-model="grouping">
+        <div><b>By day</b><div class="small muted">One row for each calendar day.</div></div>
+      </label>
+      <label class="option" style="border-top:1px solid var(--line)">
+        <input type="radio" name="grouping" value="breaks" v-model="grouping">
+        <div><b>By breaks between photos</b><div class="small muted">A new row starts after a break without photos, so an evening past midnight stays in one row.</div></div>
+      </label>
+      <div class="contents" v-if="grouping === 'breaks'">
+        <div class="small" style="padding:0 16px 0 50px">New row after a break of</div>
+        <div class="hours">
+          <button v-for="h in [2, 4, 6, 8, 12, 24, 48]" class="btn small" :class="{ on: hours === h }" @click="hours = h">{{ h }} h</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="vendor/petite-vue.iife.js"></script>
+<script src="mock.js"></script>
+<script>
+  mount({ grouping: 'day', hours: 12 });
+</script>
+</body>
+</html>

@@ -59,7 +59,7 @@ import com.chencohensolution.journal.settings.GroupingMode
 import java.time.Instant
 import java.time.ZoneId
 
-private enum class HomeTab { JOURNAL, UNSORTED }
+internal enum class HomeTab { JOURNAL, UNSORTED }
 
 internal class HomeActions(
     val openItem: (Moment, MediaItem) -> Unit = { _, _ -> },
@@ -78,8 +78,15 @@ internal class HomeActions(
  * as moments (a day, or a run of photos; see the grouping setting). See docs/screens/journal-home.md.
  */
 @Composable
-internal fun JournalHomeScreen(library: LibraryState, stories: StoriesState, health: ServerHealth, actions: HomeActions) {
-    var tab by rememberSaveable { mutableStateOf(HomeTab.JOURNAL) }
+internal fun JournalHomeScreen(
+    library: LibraryState,
+    stories: StoriesState,
+    health: ServerHealth,
+    actions: HomeActions,
+    /** The tab shown first; previews use it to show Unsorted. */
+    initialTab: HomeTab = HomeTab.JOURNAL,
+) {
+    var tab by rememberSaveable { mutableStateOf(initialTab) }
     // The key of the moment whose "+ Story" was tapped.
     var newStoryMoment by rememberSaveable { mutableStateOf<String?>(null) }
     val insets = WindowInsets.systemBars.asPaddingValues()
