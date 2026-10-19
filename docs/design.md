@@ -144,22 +144,56 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150:8080`.
 
 **Not built yet**
-- Upload and sync (next topic, see below), and with it event/story sync to the server.
+- Upload and sync on the client, and story/note sync on both sides (server upload is built, see below).
 - Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
 - Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).
 - Renaming/merging tags; month scrubber; similarity search across the library (shared model, see Groups).
 
-## Next: upload and sync
+## Upload and sync
 
-The owner wants to discuss the upload design before anything is built. Questions to settle:
-- What uploads: all photos and videos, or camera folders only (Android shows screenshots/downloads too).
-- When: automatic in the background (WorkManager / BGTaskScheduler), Wi-Fi only vs mobile data, charging.
-- How: content hash (sha256) for identity and dedupe; resumable uploads for large videos (some are 1–2 GB);
-  a GraphQL mutation vs a plain HTTP upload endpoint (mTLS either way).
-- Mapping device ids to server ids, then moving story/notes files to reference sha256.
-- "Keep only on the server / free up space": what deleting a local copy means, and how to do it without ever
-  risking a photo that isn't safely on the server (it would also need a deliberate, reviewed change to
-  `PhotoSafetyTest`).
-- Sync of stories and notes between devices: last write wins per file, the id collision rule above.
+Agreed with the owner Oct 19–20, 2026. **Server upload is built** (journal-server-go
+[docs/media.md](../../journal-server-go/docs/media.md)); nothing on the client yet.
+
+**Server and network**
+- A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
+  probably run **Windows** (as an application for now, a service later), so the server stays cross-platform: no cgo,
+  Windows-safe names, libvips/ffmpeg as separate programs. Backup to another machine and scrubbing come later.
+- The server's data folder is the truth: originals byte for byte under `media/YYYY/YYYY-MM/` (photo's local time) with
+  a sidecar each (`format`, `sha256`, `facts`, later `note`), `stories/<id>/`, and a rebuildable `.cache/`.
+
+**Uploading** (built on the server)
+- `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;
+  resumable (`HEAD`, or `startUpload` again), deduplicated by sha256, verified before the file is placed.
+- On Android the hash is of the **unredacted** original (`setRequireOriginal`), or GPS is missing from the bytes.
+- **Edits**: same device id with new content uploads as a new file with `versionOf` (iOS keeps the original and the
+  edit in one asset, so it always knows; on Android only in-place edits are known). Saved copies stay separate photos.
+- **Live Photos / RAW**: the second file is uploaded after the first with `pairedWith` naming it. Samsung motion
+  photos are one JPEG and upload as is.
+- **What uploads**: sources chosen in Settings, **default Camera only**. **When**: Settings conditions Wi-Fi only,
+  only listed Wi-Fi networks (needs location permission to read the network name), only while charging. **Order**:
+  oldest first by default, newest first as an option.
+- In the background with the app closed: Android WorkManager with a foreground progress notification; iOS a
+  background URLSession (stopped by iOS if the user force-quits the app), progress in the app. iOS users of this app
+  keep photos on the device (no iCloud Optimize Storage).
+
+**Viewing without originals**
+- The app's library becomes one list of device photos and server photos joined by sha256; a photo only on the server
+  shows a preview and fetches the original on demand. A new device downloads only the journal data (paged change
+  feed, gzip), then previews as you scroll (cache default **10 GB**).
+- **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
+  **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
+- Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
+  original.
+
+**Stories and notes** (not built)
+- File sync: `putFile(path, content, baseVersion)` (version = sha256 of the content; conflict returns the current
+  file), `changes(since: cursor)` pages of up to ~2,000 entries. story.json conflicts are merged by the client;
+  story.md and notes: newer wins, the other kept as a conflict copy. Notes sync as `notes/<sha256>` and are stored
+  inside the photo's sidecar. Files reference photos by sha256; a story syncs once its photos are uploaded.
+- Other devices check for changes on open and **every 15 minutes** (Android WorkManager's minimum; on iOS when the
+  system allows).
+- Deleted stories go to a server trash for **6 months**. Stories made before sync may simply be deleted rather than
+  migrated (never photos).
+- Later: Free up space (not now), removing a photo from the journal, certificate renewal, search with a shared model.
