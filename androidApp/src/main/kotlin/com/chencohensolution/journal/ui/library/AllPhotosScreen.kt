@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import com.chencohensolution.journal.backup.BackupProgress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +79,8 @@ internal fun AllPhotosScreen(
     onBack: () -> Unit,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
+    /** The backup run in progress, for the bottom pill. */
+    backupRunning: BackupProgress? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val days = library.days(filter)
@@ -130,9 +133,7 @@ internal fun AllPhotosScreen(
         }
 
         BottomControls(
-            summary = library.notBackedUpCount.takeIf { it > 0 }?.let {
-                pluralStringResource(R.plurals.library_not_backed_up, it, it)
-            },
+            summary = backupSummary(library, backupRunning),
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
         ) {
             SegmentedBar(

@@ -39,7 +39,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import androidx.compose.ui.unit.IntOffset
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.chencohensolution.journal.R
+import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupController
+import androidx.activity.result.IntentSenderRequest
+import com.chencohensolution.journal.library.BackupStatus
+import com.chencohensolution.journal.server.KeptOriginals
+import com.chencohensolution.journal.server.ServerLibrary
+import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.connection.JournalController
+import com.chencohensolution.journal.work.currentWifiName
+import kotlinx.coroutines.launch
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
 import com.chencohensolution.journal.stories.StoriesController
@@ -135,9 +148,29 @@ fun LibraryApp(
     library: LibraryController,
     stories: StoriesController,
     settings: SettingsController,
+    backup: BackupController,
+    server: ServerFiles,
+    onRegisterAgain: () -> Unit,
+) = CompositionLocalProvider(LocalServerPreviews provides server.previews) {
+    LibraryScreens(journal, library, stories, settings, backup, server, onRegisterAgain)
+}
+
+/** The server's copies: its list of photos, their previews kept here, and originals downloaded and kept. */
+class ServerFiles(val library: ServerLibrary, val previews: ServerPreviews, val originals: KeptOriginals)
+
+@Composable
+private fun LibraryScreens(
+    journal: JournalController,
+    library: LibraryController,
+    stories: StoriesController,
+    settings: SettingsController,
+    backup: BackupController,
+    server: ServerFiles,
     onRegisterAgain: () -> Unit,
 ) {
     val journalState by journal.state.collectAsStateWithLifecycle()
+    val backupState by backup.state.collectAsStateWithLifecycle()
+    val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
     val storiesState by stories.state.collectAsStateWithLifecycle()
@@ -177,6 +210,75 @@ fun LibraryApp(
             permissionLauncher.launch(PHOTO_PERMISSIONS)
         }
     }
+
+    // Backup: notifications for its progress, and location for "only on these Wi-Fi networks".
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    fun granted(permission: String) = context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    var backgroundLocation by remember { mutableStateOf(granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) }
+    LifecycleResumeEffect(Unit) {
+        backgroundLocation = granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        onPauseOrDispose {}
+    }
+    val addCurrentNetwork: () -> Unit = {
+        scope.launch {
+            val name = currentWifiName(context)
+            if (name != null) backup.addWifiNetwork(name) else Toast.makeText(context, R.string.settings_backup_no_wifi, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val networkLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) addCurrentNetwork()
+    }
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { backgroundLocation = it }
+
+    // "Delete from this phone": Android's own prompt moves a library photo to the gallery's trash.
+    val trashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { library.refresh() }
+    val downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean = { item, onProgress ->
+        val sha = item.sha256
+        sha != null && server.originals.download(sha, item.fileName ?: sha, onProgress)
+    }
+    val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = remove@{ item ->
+        val sha = item.sha256
+        if (sha == null || item.backup != BackupStatus.BackedUp) return@remove RemovalOutcome.NOT_ON_SERVER
+        // Never without the server confirming it has these bytes, and a preview kept to show instead.
+        when (server.library.confirms(sha)) {
+            ServerLibrary.Confirmation.UNREACHABLE -> return@remove RemovalOutcome.UNREACHABLE
+            ServerLibrary.Confirmation.MISSING -> {
+                backup.uploadAgain(item)
+                return@remove RemovalOutcome.NOT_ON_SERVER
+            }
+            ServerLibrary.Confirmation.HAS_IT -> Unit
+        }
+        if (!server.previews.keepForViewing(sha)) return@remove RemovalOutcome.UNREACHABLE
+        if (!item.isOnDevice) {
+            server.originals.delete(sha)
+            RemovalOutcome.DELETED
+        } else {
+            trashLauncher.launch(IntentSenderRequest.Builder(moveToTrashRequest(context, item)).build())
+            RemovalOutcome.ASKED
+        }
+    }
+    val backupActions = BackupActions(
+        setEnabled = { on ->
+            if (on && !granted(Manifest.permission.POST_NOTIFICATIONS)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            backup.setEnabled(on)
+        },
+        toggleSource = backup::toggleSource,
+        setWifiOnly = backup::setWifiOnly,
+        setChargingOnly = backup::setChargingOnly,
+        setOrder = backup::setOrder,
+        addCurrentNetwork = {
+            if (granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                addCurrentNetwork()
+            } else {
+                networkLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }
+        },
+        removeNetwork = backup::removeWifiNetwork,
+        allowBackgroundLocation = { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
+        backUpNow = backup::backUpNow,
+    )
 
     if (libraryState.access == PhotoAccess.NOT_DETERMINED) {
         PhotoAccessScreen(onAllow = requestAccess, onNotNow = library::skipAccess)
@@ -243,6 +345,7 @@ fun LibraryApp(
                                         },
                                     ),
                                     landing = landingHere,
+                                    backupRunning = backupRunning,
                                 )
                                 Route.AllPhotos -> {
                                     var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
@@ -254,6 +357,7 @@ fun LibraryApp(
                                         onOpenItem = { push(Route.Viewer(null, null, null, filter, it.id)) },
                                         onBack = pop,
                                         landing = landingHere,
+                                        backupRunning = backupRunning,
                                     )
                                 }
                                 is Route.Story -> StoryScreen(
@@ -314,6 +418,8 @@ fun LibraryApp(
                                         resetSimilarity = settings::resetSimilarity,
                                         back = pop,
                                     ),
+                                    backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation),
+                                    backupActions = backupActions,
                                 )
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
                                 is Route.Tag -> TagScreen(
@@ -348,6 +454,8 @@ fun LibraryApp(
                                         },
                                         showing = { landing = Landing(entry.depth - 1, it) },
                                         crop = { itemId, kind -> push(Route.Crop(itemId, kind)) },
+                                        downloadOriginal = downloadOriginal,
+                                        deleteFromPhone = deleteFromPhone,
                                     ),
                                 )
                                 is Route.Crop -> {

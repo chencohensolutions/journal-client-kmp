@@ -371,7 +371,12 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
         } else {
             SharpPhoto(item, width, Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
         }
-        if (playing && !failed) MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
+        if (playing && !failed) {
+            MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
+        } else {
+            // Where the original is, as on the grids: none for a photo only on the server.
+            BackupBadge(item.backup, 26.dp, Modifier.align(Alignment.BottomEnd).padding(10.dp), originalHere = item.hasOriginalHere)
+        }
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
     }
 }
@@ -424,8 +429,11 @@ private fun SimilarPhotos(
     Column(modifier) {
         PhotoNoteText(notes[block.items[pager.currentPage.coerceIn(block.items.indices)].id]?.caption)
         Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
-            HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP) { page ->
+            // The photos beside the one shown are ready before a swipe; one only on the server is fetched only once it
+            // is next to the one shown (the pager's own look-ahead gets an empty page instead), not the whole set.
+            HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP, beyondViewportPageCount = 1) { page ->
                 val item = block.items[page]
+                val fetchable = item.hasOriginalHere || kotlin.math.abs(page - pager.currentPage) <= 1
                 Box(
                     Modifier.fillMaxSize().background(Color.Black).combinedClickable(onLongClick = { onLongPress(item) }, onClick = { onOpen(item) }),
                     contentAlignment = Alignment.Center,
@@ -434,7 +442,9 @@ private fun SimilarPhotos(
                     // Narrower than the set's first: as tall as the page, so as wide as its shape makes it.
                     val first = block.items.first().ratio
                     val width = if (item.ratio >= first) pageWidth else (pageWidth / first * item.ratio).toInt()
-                    Box(Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id))) { PhotoOrVideo(item, video, width) }
+                    Box(Modifier.aspectRatio(item.ratio).shared(SharedKey.item(item.id))) {
+                        if (fetchable) PhotoOrVideo(item, video, width)
+                    }
                 }
             }
             Row(
@@ -648,7 +658,7 @@ private const val NOTE_LINES = 4
 private const val MAX_DOTS = 8
 
 @Composable
-private fun sourceName(source: MediaSource): String = stringResource(
+internal fun sourceName(source: MediaSource): String = stringResource(
     when (source) {
         MediaSource.CAMERA -> R.string.feed_source_camera
         MediaSource.WHATSAPP -> R.string.feed_source_whatsapp

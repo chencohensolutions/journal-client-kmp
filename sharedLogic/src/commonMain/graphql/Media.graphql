@@ -1,0 +1,51 @@
+query MissingMedia($hashes: [Sha256!]!) {
+  missingMedia(hashes: $hashes)
+}
+
+mutation StartUpload($input: StartUploadInput!) {
+  startUpload(input: $input) {
+    __typename
+    ... on UploadReady {
+      url
+      offset
+      chunkSize
+    }
+    ... on MediaExists {
+      media {
+        sha256
+      }
+    }
+    ... on UploadRejected {
+      reason
+    }
+  }
+}
+
+query Changes($since: String, $limit: Int) {
+  changes(since: $since, limit: $limit) {
+    cursor
+    hasMore
+    changes {
+      kind
+      path
+      deleted
+      media {
+        sha256
+        kind
+        fileName
+        mimeType
+        size
+        takenAt
+        width
+        height
+        durationMs
+        location {
+          lat
+          lon
+        }
+        source
+        uploadedAt
+      }
+    }
+  }
+}

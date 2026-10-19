@@ -49,7 +49,7 @@ data class LocalDay(val year: Int, val month: Int, val day: Int) : Comparable<Lo
     }
 }
 
-/** Where a photo or video is in the backup process. Uploads are not implemented yet, so everything is [NotBackedUp]. */
+/** Where a photo or video is in the backup process (see BackupController). */
 sealed interface BackupStatus {
     /** Only on this device. */
     data object NotBackedUp : BackupStatus
@@ -118,7 +118,20 @@ data class MediaItem(
      * (see [com.chencohensolution.journal.places.PhotoPlaces]).
      */
     val location: GeoPoint? = null,
-)
+    /** When the file last changed, in epoch milliseconds; an edit saved in place changes it. Null when unknown. */
+    val modifiedMillis: Long? = null,
+    /** "image/jpeg", "video/mp4", …; null when unknown. */
+    val mimeType: String? = null,
+    /** The sha256 of its bytes, once known (read by backup, or from the server). */
+    val sha256: String? = null,
+    /** False for a photo that isn't in the device's library: it is shown from the server, never read from the library. */
+    val isOnDevice: Boolean = true,
+    /** For a photo not in the library: the original downloaded from the server and kept in the app's storage. */
+    val keptOriginal: String? = null,
+) {
+    /** Whether its original is on this device, in the library or kept by the app: then nothing is fetched for it. */
+    val hasOriginalHere: Boolean get() = isOnDevice || keptOriginal != null
+}
 
 /** What the user allowed the app to read from the photo library. */
 enum class PhotoAccess {

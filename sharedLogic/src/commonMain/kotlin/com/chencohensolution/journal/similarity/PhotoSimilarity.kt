@@ -60,7 +60,8 @@ class PhotoSimilarity internal constructor(
         }
         var added = 0
         while (true) {
-            val next = wanted.firstOrNull { it.id !in known && it.id !in failed } ?: break
+            // A photo only on the server is never read here (its fingerprint, if any, was made while it was on the device).
+            val next = wanted.firstOrNull { it.isOnDevice && it.id !in known && it.id !in failed } ?: break
             val analysis = try {
                 analyzer.analyze(next)
             } catch (e: CancellationException) {

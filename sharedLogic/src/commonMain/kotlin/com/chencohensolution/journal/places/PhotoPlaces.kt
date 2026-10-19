@@ -113,7 +113,7 @@ class PhotoPlaces internal constructor(
         if (reader.canReadLocations) {
             while (true) {
                 val next = wanted.firstOrNull {
-                    it.location == null && it.id !in contents.located && it.id !in failedPhotos
+                    it.isOnDevice && it.location == null && it.id !in contents.located && it.id !in failedPhotos
                 } ?: break
                 try {
                     contents.located[next.id] = reader.location(next)

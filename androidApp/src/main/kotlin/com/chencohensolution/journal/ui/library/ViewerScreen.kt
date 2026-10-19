@@ -1,5 +1,14 @@
 package com.chencohensolution.journal.ui.library
 
+import android.graphics.BitmapFactory
+import android.widget.Toast
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.places.PlaceName
+import java.util.Locale
+import kotlinx.coroutines.launch
 import android.text.format.Formatter
 import android.widget.MediaController
 import android.widget.VideoView
@@ -89,7 +98,26 @@ internal class ViewerActions(
     val showing: (itemId: String) -> Unit = {},
     /** Opens the crop screen for the photo, on the crop for how the phone is held. */
     val crop: (itemId: String, kind: CropKind) -> Unit = { _, _ -> },
+    /** Downloads the original from the server and keeps it here; [onProgress] gets 0..1. False when it couldn't. */
+    val downloadOriginal: suspend (item: MediaItem, onProgress: (Float) -> Unit) -> Boolean = { _, _ -> false },
+    /** Removes the original from this phone, keeping it on the server and its preview here. */
+    val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = { RemovalOutcome.UNREACHABLE },
 )
+
+/** What "Delete from this phone" did. */
+internal enum class RemovalOutcome {
+    /** Removed (an original the app had kept). */
+    DELETED,
+
+    /** Android's prompt to move it to the gallery's trash is showing. */
+    ASKED,
+
+    /** Nothing removed: the server can't be reached, or its preview couldn't be kept. */
+    UNREACHABLE,
+
+    /** Nothing removed: the server answered and doesn't have this photo. */
+    NOT_ON_SERVER,
+}
 
 /**
  * One photo or video at a time, swiping through [items]. [openedFrom] is the story the viewer was opened from, if
@@ -216,6 +244,9 @@ internal fun ViewerScreen(
                 group = group,
                 onSetCover = { actions.setCover(current.id) },
                 onRemoveFromGroup = { actions.removeFromGroup(current.id) },
+                location = stories.places.location(current)?.let { point -> point to stories.places.name(point) },
+                downloadOriginal = actions.downloadOriginal,
+                deleteFromPhone = actions.deleteFromPhone,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -258,9 +289,10 @@ internal fun ViewerScreen(
 @Composable
 private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
     val resolver = LocalContext.current.contentResolver
+    val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
     val full by produceState<android.graphics.Bitmap?>(null, item.id) {
-        value = withContext(Dispatchers.IO) { loadImage(resolver, item, VIEWER_MAX_SIDE) }
+        value = withContext(Dispatchers.IO) { loadImage(resolver, previews, item, VIEWER_MAX_SIDE) }
     }
     val image = full?.asImageBitmap() ?: preview
     if (image != null) ViewerImage(image, sharedKey, crop)
@@ -334,12 +366,14 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
     var playing by rememberSaveable(item.id) { mutableStateOf(false) }
     LaunchedEffect(isCurrent) { if (!isCurrent) playing = false }
 
-    if (playing) {
+    // A video only on the server isn't played yet (streaming it comes later); its poster shows.
+    val uri = item.playableUri()
+    if (playing && uri != null) {
         AndroidView(
             factory = { context ->
                 VideoView(context).apply {
                     setMediaController(MediaController(context).also { it.setAnchorView(this) })
-                    setVideoURI(item.contentUri())
+                    setVideoURI(uri)
                     setOnPreparedListener { start() }
                 }
             },
@@ -375,9 +409,11 @@ private fun InfoPanel(
     group: GroupView?,
     onSetCover: () -> Unit,
     onRemoveFromGroup: () -> Unit,
+    location: Pair<GeoPoint, PlaceName?>?,
+    downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
+    deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val taken = Instant.ofEpochMilli(item.takenAtMillis).atZone(ZoneId.systemDefault())
     Column(
         modifier
@@ -400,24 +436,7 @@ private fun InfoPanel(
         } else {
             StoriesRow(memberOf, openedFrom?.takeIf { from -> memberOf.any { it.id == from.id } }, onAddToStory, onRemove)
         }
-        BackupCard(item.backup)
-        val details = buildList {
-            item.fileName?.let { add(stringResource(R.string.library_info_file) to it) }
-            item.sizeBytes?.let { add(stringResource(R.string.library_info_size) to Formatter.formatShortFileSize(context, it)) }
-            if (item.width > 0 && item.height > 0) add(stringResource(R.string.library_info_dimensions) to "${item.width} × ${item.height}")
-            item.durationMillis?.let { add(stringResource(R.string.library_info_length) to formatDuration(it)) }
-        }
-        details.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                pair.forEach { (label, value) ->
-                    Column(Modifier.weight(1f)) {
-                        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-                        Text(value, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-                if (pair.size == 1) Box(Modifier.weight(1f))
-            }
-        }
+        OriginalCard(item, location, downloadOriginal, deleteFromPhone)
     }
 }
 
@@ -528,20 +547,39 @@ private fun StoriesRow(memberOf: List<StoryView>, removable: StoryView?, onAdd: 
     }
 }
 
+/**
+ * Where the original is (this phone, the server, or both; upload progress), its facts (file, size, dimensions, length,
+ * type, source, where it was taken), the preview kept here for a photo only on the server, and "Download original" or
+ * "Delete from this phone".
+ */
 @Composable
-private fun BackupCard(status: BackupStatus) {
+private fun OriginalCard(
+    item: MediaItem,
+    location: Pair<GeoPoint, PlaceName?>?,
+    downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
+    deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val status = item.backup
+    var downloading by remember(item.id) { mutableStateOf<Float?>(null) }
+    var confirmingDelete by remember(item.id) { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
             .background(Color.White, RoundedCornerShape(16.dp))
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(28.dp).background(LibraryColors.Accent.copy(alpha = 0.12f), CircleShape), contentAlignment = Alignment.Center) {
-                BackupBadge(status, 22.dp)
+                if (item.hasOriginalHere || status != BackupStatus.BackedUp) {
+                    BackupBadge(status, 22.dp, originalHere = item.hasOriginalHere)
+                } else {
+                    Icon(LibraryIcons.CloudUp, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
+                }
             }
-            Text(backupLabel(status), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(originalLabel(item), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (status is BackupStatus.Uploading) {
                 Text("${(status.progress * 100).roundToInt()}%", color = LibraryColors.Accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -554,5 +592,110 @@ private fun BackupCard(status: BackupStatus) {
                 modifier = Modifier.fillMaxWidth().height(6.dp),
             )
         }
+
+        val details = buildList {
+            item.fileName?.let { add(stringResource(R.string.library_info_file) to it) }
+            item.sizeBytes?.let { add(stringResource(R.string.library_info_size) to Formatter.formatShortFileSize(context, it)) }
+            if (item.width > 0 && item.height > 0) add(stringResource(R.string.library_info_dimensions) to "${item.width} × ${item.height}")
+            item.durationMillis?.let { add(stringResource(R.string.library_info_length) to formatDuration(it)) }
+            item.mimeType?.let { add(stringResource(R.string.library_info_type) to it) }
+            add(stringResource(R.string.library_info_source) to sourceName(item.source))
+        }
+        details.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                pair.forEach { (label, value) -> InfoFact(label, value, Modifier.weight(1f)) }
+                if (pair.size == 1) Box(Modifier.weight(1f))
+            }
+        }
+        if (location != null) {
+            val (point, name) = location
+            val coordinates = String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude)
+            val place = listOfNotNull(name?.label, name?.city?.takeIf { it != name.label }).joinToString(", ")
+            InfoFact(stringResource(R.string.library_info_location), if (place.isEmpty()) coordinates else "$place\n$coordinates")
+        }
+        if (!item.hasOriginalHere) KeptPreviewFact(item)
+
+        downloading?.let { progress ->
+            Text(stringResource(R.string.library_original_downloading, (progress * 100).roundToInt()), color = LibraryColors.OnInverseMuted, fontSize = 13.sp)
+            LinearProgressIndicator(
+                progress = { progress },
+                color = LibraryColors.Accent,
+                trackColor = LibraryColors.Accent.copy(alpha = 0.15f),
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+            )
+        }
+        when {
+            !item.hasOriginalHere && item.sha256 != null && downloading == null ->
+                OriginalButton(LibraryIcons.Download, stringResource(R.string.library_original_download)) {
+                    downloading = 0f
+                    scope.launch {
+                        val ok = downloadOriginal(item) { downloading = it }
+                        downloading = null
+                        if (!ok) Toast.makeText(context, R.string.library_original_download_failed, Toast.LENGTH_LONG).show()
+                    }
+                }
+            item.hasOriginalHere && status == BackupStatus.BackedUp ->
+                OriginalButton(LibraryIcons.Trash, stringResource(R.string.library_original_delete)) { confirmingDelete = true }
+        }
+    }
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text(stringResource(R.string.library_original_delete_title)) },
+            text = {
+                Text(stringResource(if (item.isOnDevice) R.string.library_original_delete_body_gallery else R.string.library_original_delete_body))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDelete = false
+                    scope.launch {
+                        when (deleteFromPhone(item)) {
+                            RemovalOutcome.UNREACHABLE -> Toast.makeText(context, R.string.library_original_unreachable, Toast.LENGTH_LONG).show()
+                            RemovalOutcome.NOT_ON_SERVER -> Toast.makeText(context, R.string.library_original_not_on_server, Toast.LENGTH_LONG).show()
+                            RemovalOutcome.DELETED, RemovalOutcome.ASKED -> Unit
+                        }
+                    }
+                }) { Text(stringResource(R.string.library_original_delete_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(stringResource(R.string.library_cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun InfoFact(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
+        Text(value, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** The largest preview of a server-only photo kept on this phone: its pixels and size, or "None yet". */
+@Composable
+private fun KeptPreviewFact(item: MediaItem) {
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val kept by produceState<Pair<String, Long>?>(null, item.sha256) {
+        val sha = item.sha256 ?: return@produceState
+        value = withContext(Dispatchers.IO) {
+            previews?.kept(sha)?.firstOrNull()?.let { preview ->
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(preview.file, bounds)
+                "${bounds.outWidth} × ${bounds.outHeight}" to preview.bytes
+            }
+        }
+    }
+    InfoFact(
+        stringResource(R.string.library_info_preview),
+        kept?.let { (pixels, bytes) -> stringResource(R.string.library_info_preview_value, pixels, Formatter.formatShortFileSize(context, bytes)) }
+            ?: stringResource(R.string.library_info_preview_none),
+    )
+}
+
+@Composable
+private fun OriginalButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.height(40.dp)) {
+        Icon(icon, null, tint = LibraryColors.Accent, modifier = Modifier.size(18.dp))
+        Text(label, color = LibraryColors.Accent, modifier = Modifier.padding(start = 6.dp))
     }
 }

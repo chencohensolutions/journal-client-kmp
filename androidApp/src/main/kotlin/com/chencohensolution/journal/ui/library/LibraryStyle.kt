@@ -119,6 +119,8 @@ internal object LibraryIcons {
     val CloudOff = icon("CloudOff", false, "M17.5 19H7a5 5 0 0 1-2.7-9.2", "M8.6 5.6A6 6 0 0 1 19.5 11a4 4 0 0 1 1.6 6.3", "M2 2l20 20")
     val CloudUp = icon("CloudUp", false, "M17.5 19H7a5 5 0 1 1 1.1-9.9A6 6 0 0 1 19.5 11a4 4 0 0 1-2 8z", "M12 16v-5", "M9.5 13.5L12 11l2.5 2.5")
     val Check = icon("Check", false, "M5 12l5 5 9-10")
+    val Phone = icon("Phone", false, "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M11 18h2")
+    val Download = icon("Download", false, "M12 4v11", "M7.5 10.5L12 15l4.5-4.5", "M5 20h14")
     val Play = icon("Play", true, "M7 4v16l13-8z")
     val More = icon("More", true, "M12 3a2 2 0 1 0 0.01 0z", "M12 10a2 2 0 1 0 0.01 0z", "M12 17a2 2 0 1 0 0.01 0z")
     val Back = icon("Back", false, "M19 12H5", "M12 19l-7-7 7-7")

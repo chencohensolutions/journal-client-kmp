@@ -55,7 +55,8 @@ internal class FeedVideo(
     private val savedPage: (FeedBlock) -> String? = { null },
     private val savePage: (FeedBlock, itemId: String) -> Unit = { _, _ -> },
 ) {
-    fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && playingId() == item.id
+    /** Videos only on the server don't play in the feed yet (streaming them comes later). */
+    fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && item.hasOriginalHere && playingId() == item.id
 
     val muted: Boolean get() = isMuted()
 
@@ -185,7 +186,7 @@ private class InlinePlayer(
                 created.setAudioAttributes(
                     AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MOVIE).build(),
                 )
-                created.setDataSource(this.context, item.contentUri())
+                created.setDataSource(this.context, item.playableUri() ?: error("only on the server"))
                 created.isLooping = true
                 created.setVolume(0f, 0f)
                 created.setOnPreparedListener {

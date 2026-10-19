@@ -28,10 +28,15 @@ class PhotoSafetyTest {
     /**
      * Read-only exceptions, each only in the files named (allowed by the owner on Oct 18, 2026, to group the Unsorted
      * tab by where photos were taken): MediaStore hides a photo's GPS unless the app holds ACCESS_MEDIA_LOCATION and
-     * opens the original with setRequireOriginal, which returns a URI to read; neither can write.
+     * opens the original with setRequireOriginal, which returns a URI to read; neither can write. Backup reads the
+     * original the same way (agreed Oct 19, 2026: the server must get the file byte for byte, GPS included).
      */
     private val readOnlyExceptions = mapOf(
-        "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt"),
+        // Not read-only, and the only such exception: "Delete from this phone" (asked for by the owner on Oct 20, 2026)
+        // asks Android to move one photo to the gallery's trash, which Android confirms with its own prompt, and only
+        // after the server confirmed it holds the photo. Only in PhotoRemoval.kt.
+        "createTrashRequest" to setOf("PhotoRemoval.kt"),
+        "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt", "AndroidMediaFiles.kt"),
         "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryApp.kt"),
     )
 
@@ -66,6 +71,16 @@ class PhotoSafetyTest {
             "android.permission.ACCESS_MEDIA_LOCATION",
             // Not about photos: Android 17 needs it to reach the journal server on the local network.
             "android.permission.ACCESS_LOCAL_NETWORK",
+            // Not about photos: backup runs in the background with a progress notification, and checks the network.
+            "android.permission.FOREGROUND_SERVICE",
+            "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+            "android.permission.POST_NOTIFICATIONS",
+            "android.permission.ACCESS_NETWORK_STATE",
+            // Not about photos: Android only tells an app the Wi-Fi network's name ("only on these networks") with
+            // location permission, also in the background.
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.ACCESS_BACKGROUND_LOCATION",
         )
         assertTrue(permissions.isNotEmpty() && allowed.containsAll(permissions), "unexpected permissions: ${permissions - allowed}")
     }

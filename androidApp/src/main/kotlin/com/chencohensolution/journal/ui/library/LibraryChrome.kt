@@ -1,5 +1,8 @@
 package com.chencohensolution.journal.ui.library
 
+import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.backup.BackupProgress
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -110,4 +113,13 @@ internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
     Box(modifier.background(LibraryColors.LabelFade).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 24.dp)) {
         Text(text, color = LibraryColors.PhotoText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+/** The bottom pill's text: the running backup ("Backing up 3 of 120"), else how many photos aren't backed up. */
+@Composable
+internal fun backupSummary(library: LibraryState, running: BackupProgress?): String? = when {
+    running != null && running.total > 0 ->
+        stringResource(R.string.library_backing_up, (running.done + 1).coerceAtMost(running.total), running.total)
+    library.notBackedUpCount > 0 -> pluralStringResource(R.plurals.library_not_backed_up, library.notBackedUpCount, library.notBackedUpCount)
+    else -> null
 }

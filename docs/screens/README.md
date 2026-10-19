@@ -61,16 +61,17 @@ Server state comes from `JournalState.health`:
 
 ## Backup badges
 
-Every tile has a badge in its bottom-right corner. Uploads are not implemented yet, so today every item is
-**Only on this device**; the other states are drawn and ready.
+The bottom-right badge says where the original is (asked for Oct 20, 2026, Android; iOS still shows a check for
+backed up):
 
-| Badge | `BackupStatus` | Meaning |
+| Badge | State | Meaning |
 |---|---|---|
-| Cloud with a slash, dark | `NotBackedUp` | Only on this device |
+| Phone, green | `BackedUp`, original here | On this phone (in the gallery, or downloaded and kept) and on the server |
+| Cloud with a slash, dark | `NotBackedUp` | Only on this phone, not uploaded yet |
 | Dashed ring, dark | `Queued` | Waiting to upload (for example, for Wi-Fi) |
 | Ring filling up, green | `Uploading(progress)` | Uploading; exact % in the viewer |
-| Check, green | `BackedUp` | On the server |
 | `!`, orange | `Failed(reason)` | Upload failed; the viewer shows why |
+| none | `BackedUp`, not here (`MediaItem.hasOriginalHere` false) | Only on the server: shown from its preview |
 
 Videos also have a chip in the top-right corner: a play icon and the length, or only the play icon when the
 length is unknown.

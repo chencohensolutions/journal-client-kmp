@@ -30,6 +30,9 @@ rows of small photos.
   Saved in each photo's note file (`"set"`, `"apart"`); merged sets become groups in a story made with **+ Story**.
 - **Near-duplicates** are one photo at the first one's shape. Swipe sideways for the others; a "2 / 4" badge and
   dots show where you are, with no peek of the next one.
+  The photos beside the one shown are loaded ahead, so a swipe either way shows a ready photo; for photos only on the
+  server, only those two neighbours' previews are downloaded (never the rest of the set) until a swipe brings more
+  next to the one shown.
 - A set **opens on the photo it was last turned to**, also after scrolling away or restarting the app (kept on this
   device in settings, `feed_page|<first photo id>`; turning back to the first forgets it).
 - **Trip card** ("Looks like a trip · Haifa · Oct 4 – 6 · 3 days · 128 photos") above the newest day of a trip, with

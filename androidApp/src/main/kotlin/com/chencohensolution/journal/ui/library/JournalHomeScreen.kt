@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import com.chencohensolution.journal.backup.BackupProgress
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -126,6 +127,8 @@ internal fun JournalHomeScreen(
     initialTab: HomeTab = HomeTab.STORIES,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
+    /** The backup run in progress, for the bottom pill. */
+    backupRunning: BackupProgress? = null,
     /** The photo whose long-press menu is open at first; previews use it. */
     initialMenuItem: String? = null,
     /** Photos and sets picked at first (by first photo id); previews use it. */
@@ -259,9 +262,7 @@ internal fun JournalHomeScreen(
         }
 
         BottomControls(
-            summary = library.notBackedUpCount.takeIf { it > 0 && !selection.active }?.let {
-                pluralStringResource(R.plurals.library_not_backed_up, it, it)
-            },
+            summary = backupSummary(library, backupRunning).takeIf { !selection.active },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
         ) {
             if (selection.active && moments) {

@@ -3,7 +3,10 @@ package com.chencohensolution.journal.ui.library
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.media.ThumbnailUtils
+import java.io.File
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.LruCache
@@ -52,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.library.MediaType
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
@@ -132,10 +136,18 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
         return remember(source, item, width, height) { source.thumbnail(item, maxOf(width, height)) }
     }
     val resolver = LocalContext.current.contentResolver
+    val previews = LocalServerPreviews.current
     val key = "${item.id}@${width}x$height"
     val bitmap by produceState(thumbnailCache.get(key), key) {
         value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
-            if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
+            val kept = item.keptOriginal
+            if (kept != null) {
+                withContext(fullDecodes) { decodeKept(kept, item) { w, h -> coverDimensions(w, h, width, height) } }
+            } else if (!item.isOnDevice) {
+                // The server's preview at the size that covers the box, so the caller crops and zooms it as a local one.
+                val (w, h) = coverSize(item, width, height)
+                serverBitmap(previews, item, w, h)
+            } else if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
                 val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
                 runCatching { resolver.loadThumbnail(item.contentUri(), size, null) }.getOrNull()?.let { loaded ->
                     coverDimensions(loaded.width, loaded.height, width, height)
@@ -164,6 +176,27 @@ private val fullDecodes = Dispatchers.IO.limitedParallelism(3)
 /** The gap between photo tiles in a grid. */
 internal val TILE_GAP = 2.dp
 
+/** Where photos that are only on the server come from; null in screenshot tests. */
+internal val LocalServerPreviews = staticCompositionLocalOf<ServerPreviews?> { null }
+
+/**
+ * A server-only photo's preview, made by the server at exactly [width] × [height] pixels when the photo has that shape
+ * (fitted inside the box otherwise). Null offline.
+ */
+private suspend fun serverBitmap(previews: ServerPreviews?, item: MediaItem, width: Int, height: Int): Bitmap? {
+    val sha = item.sha256 ?: return null
+    val bytes = previews?.preview(sha, width, height, contain = true) ?: return null
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+}
+
+/** The photo's own shape scaled to cover [width] × [height]; the box itself when the shape is unknown. */
+private fun coverSize(item: MediaItem, width: Int, height: Int): Pair<Int, Int> {
+    if (item.width <= 0 || item.height <= 0) return width to height
+    val scale = maxOf(width.toFloat() / item.width, height.toFloat() / item.height)
+    return kotlin.math.ceil(item.width * scale).toInt() to kotlin.math.ceil(item.height * scale).toInt()
+}
+
+/** The MediaStore URI of a photo on this device; never call it for one that is only on the server. */
 internal fun MediaItem.contentUri(): Uri = ContentUris.withAppendedId(
     if (type == MediaType.VIDEO) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
     id.toLong(),
@@ -189,18 +222,66 @@ internal val LocalThumbnailSource = staticCompositionLocalOf<ThumbnailSource?> {
 internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
     LocalThumbnailSource.current?.let { source -> return remember(source, item, sizePx) { source.thumbnail(item, sizePx) } }
     val resolver = LocalContext.current.contentResolver
+    val previews = LocalServerPreviews.current
     val key = "${item.id}@$sizePx"
     // The state outlives a change of item, so each new key replaces the value, even with null when it can't be read.
     val bitmap by produceState(thumbnailCache.get(key), key) {
         value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
-            runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
+            val kept = item.keptOriginal
+            if (kept != null) {
+                decodeKept(kept, item) { w, h -> fitInside(w, h, sizePx) }
+            } else if (!item.isOnDevice) {
+                serverBitmap(previews, item, sizePx, sizePx)
+            } else {
+                runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
+            }
         }?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
 }
 
-/** The full image scaled so its longer side is at most [maxSide] pixels. */
-internal fun loadImage(resolver: ContentResolver, item: MediaItem, maxSide: Int): Bitmap? = runCatching {
+/** The full image scaled so its longer side is at most [maxSide] pixels; for a server-only photo, the server's preview. */
+internal suspend fun loadImage(resolver: ContentResolver, previews: ServerPreviews?, item: MediaItem, maxSide: Int): Bitmap? {
+    val kept = item.keptOriginal
+    return when {
+        item.isOnDevice -> loadImage(resolver, item, maxSide)
+        kept != null -> decodeKept(kept, item) { w, h -> fitInside(w, h, maxSide) }
+        else -> serverBitmap(previews, item, maxSide, maxSide)
+    }
+}
+
+/** An original the app downloaded and kept, decoded to the size [target] picks (null: as it is); a video's frame. */
+private fun decodeKept(path: String, item: MediaItem, target: (Int, Int) -> Pair<Int, Int>?): Bitmap? = runCatching {
+    val file = File(path)
+    if (item.type == MediaType.VIDEO) {
+        val size = target(item.width.coerceAtLeast(1), item.height.coerceAtLeast(1)) ?: (item.width to item.height)
+        ThumbnailUtils.createVideoThumbnail(file, Size(size.first.coerceAtLeast(1), size.second.coerceAtLeast(1)), null)
+    } else {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
+            target(info.size.width, info.size.height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
+        }
+    }
+}.getOrNull()
+
+/** Scaled so the longer side is at most [maxSide]; null when it already is. */
+private fun fitInside(width: Int, height: Int, maxSide: Int): Pair<Int, Int>? {
+    val longer = maxOf(width, height)
+    if (longer <= maxSide) return null
+    val scale = maxSide.toFloat() / longer
+    return (width * scale).toInt().coerceAtLeast(1) to (height * scale).toInt().coerceAtLeast(1)
+}
+
+/** What a player opens: the library's file, or the original the app kept; null for one only on the server. */
+internal fun MediaItem.playableUri(): Uri? {
+    val kept = keptOriginal
+    return when {
+        isOnDevice -> contentUri()
+        kept != null -> Uri.fromFile(File(kept))
+        else -> null
+    }
+}
+
+private fun loadImage(resolver: ContentResolver, item: MediaItem, maxSide: Int): Bitmap? = runCatching {
     ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
         val longer = maxOf(info.size.width, info.size.height)
         if (longer > maxSide) {
@@ -246,7 +327,7 @@ internal fun MediaTile(
             if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.PhotoText))
             SelectionCheck(selected, Modifier.align(Alignment.TopStart).padding(7.dp))
         } else {
-            BackupBadge(item.backup, badgeSize, Modifier.align(Alignment.BottomEnd).padding(5.dp))
+            BackupBadge(item.backup, badgeSize, Modifier.align(Alignment.BottomEnd).padding(5.dp), originalHere = item.hasOriginalHere)
         }
     }
 }
@@ -281,9 +362,13 @@ internal fun DurationChip(durationMillis: Long?, modifier: Modifier = Modifier) 
     }
 }
 
-/** The corner badge; see docs/screens/README.md for what each state means. */
+/**
+ * The corner badge: a phone when the original is on this phone and on the server, the upload state while it is only
+ * here, nothing when it is only on the server ([originalHere] false). See docs/screens/README.md.
+ */
 @Composable
-internal fun BackupBadge(status: BackupStatus, size: Dp, modifier: Modifier = Modifier) {
+internal fun BackupBadge(status: BackupStatus, size: Dp, modifier: Modifier = Modifier, originalHere: Boolean = true) {
+    if (!originalHere && status == BackupStatus.BackedUp) return
     val background = when (status) {
         is BackupStatus.Uploading -> LibraryColors.Accent
         BackupStatus.BackedUp -> LibraryColors.Accent.copy(alpha = 0.85f)
@@ -294,7 +379,7 @@ internal fun BackupBadge(status: BackupStatus, size: Dp, modifier: Modifier = Mo
         val inner = size * 0.6f
         when (status) {
             BackupStatus.NotBackedUp -> Icon(LibraryIcons.CloudOff, null, tint = Color.White, modifier = Modifier.size(inner))
-            BackupStatus.BackedUp -> Icon(LibraryIcons.Check, null, tint = Color.White, modifier = Modifier.size(inner))
+            BackupStatus.BackedUp -> Icon(LibraryIcons.Phone, null, tint = Color.White, modifier = Modifier.size(inner))
             BackupStatus.Queued -> Canvas(Modifier.size(inner)) {
                 drawCircle(
                     Color.White,
@@ -320,9 +405,18 @@ internal fun backupLabel(status: BackupStatus): String = when (status) {
     is BackupStatus.Failed -> stringResource(R.string.library_backup_failed, status.reason)
 }
 
+/** Where the original is: on this phone and the server, only on one of them, or on its way. */
+@Composable
+internal fun originalLabel(item: MediaItem): String = when {
+    item.backup != BackupStatus.BackedUp -> backupLabel(item.backup)
+    !item.hasOriginalHere -> stringResource(R.string.library_original_server_only)
+    !item.isOnDevice -> stringResource(R.string.library_original_kept)
+    else -> stringResource(R.string.library_original_both)
+}
+
 /** "Photo, only on this device" for screen readers. */
 @Composable
 private fun itemDescription(item: MediaItem): String = stringResource(
     if (item.type == MediaType.VIDEO) R.string.library_video_description else R.string.library_photo_description,
-    backupLabel(item.backup),
+    originalLabel(item),
 )

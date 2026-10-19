@@ -43,6 +43,7 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             val size = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val name = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val folder = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
+            val mime = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
             while (cursor.moveToNext()) {
                 val isVideo = cursor.getInt(mediaType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                 // DATE_TAKEN is missing for files without EXIF; DATE_MODIFIED is in seconds.
@@ -62,6 +63,8 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
                     fileName = cursor.getString(name),
                     burstId = cursor.getString(name)?.let(::samsungBurstId),
                     source = sourceOfFolder(cursor.getString(folder)),
+                    modifiedMillis = cursor.getLong(dateModified).takeIf { it > 0 }?.let { it * 1000 },
+                    mimeType = cursor.getString(mime),
                 )
             }
         }
@@ -89,6 +92,7 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.RELATIVE_PATH,
+            MediaStore.MediaColumns.MIME_TYPE,
         )
     }
 }

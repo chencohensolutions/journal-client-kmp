@@ -351,6 +351,8 @@ data class StoriesState(
     val feed: MomentsFeed = MomentsFeed(),
     /** The last save or delete that failed. */
     val error: String? = null,
+    /** Where photos were taken, and the places' names. */
+    val places: Places = Places.NONE,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -1101,6 +1103,7 @@ internal fun buildState(
         }
         .sortedByDescending { it.lastUsed }
     return StoriesState(
+        places = places,
         stories = views,
         timeline = timeline,
         unsortedDays = unsorted,

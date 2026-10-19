@@ -144,7 +144,8 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150:8080`.
 
 **Not built yet**
-- Upload and sync on the client, and story/note sync on both sides (server upload is built, see below).
+- On iOS: backup and server-only photos. Everywhere: playing server-only videos, downloading an original, story/note
+  sync (Android backup and server-only photos are built, see below).
 - Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
@@ -153,8 +154,17 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 
 ## Upload and sync
 
-Agreed with the owner Oct 19–20, 2026. **Server upload is built** (journal-server-go
-[docs/media.md](../../journal-server-go/docs/media.md)); nothing on the client yet.
+Agreed with the owner Oct 19–20, 2026. **Built:** server upload and previews (journal-server-go
+[docs/media.md](../../journal-server-go/docs/media.md)), and **Android backup** (Settings → Backup, WorkManager, progress
+notification; see [screens/settings.md](screens/settings.md)), and **photos only on the server** (Android): the
+library adds them from the server's change feed (`changes`, kept in `files/server/media.json`) and draws them from
+previews the server makes at the tile's exact size (cached in `cache/previews`, up to 10 GB). Previews and
+downloaded originals are in the app's private storage, which the gallery never scans, and both folders also hold a
+`.nomedia` file so they stay out of the gallery if they ever move to shared storage. Tested on the emulator,
+including a photo deleted from the device. A photo's details show where its original is, and offer **Download
+original** (kept in `files/originals`, never trimmed) and **Delete from this phone** (asked for Oct 20, 2026: only
+after the server confirms it and its preview is kept; a gallery photo goes to the phone's trash through Android's
+prompt). Not yet: iOS, playing server-only videos, story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -178,9 +188,11 @@ Agreed with the owner Oct 19–20, 2026. **Server upload is built** (journal-ser
   background URLSession (stopped by iOS if the user force-quits the app), progress in the app. iOS users of this app
   keep photos on the device (no iCloud Optimize Storage).
 
-**Viewing without originals**
-- The app's library becomes one list of device photos and server photos joined by sha256; a photo only on the server
-  shows a preview and fetches the original on demand. A new device downloads only the journal data (paged change
+**Viewing without originals** (built on Android, except videos and originals)
+- The app's library is one list of device photos and server photos joined by sha256 (or by file name and size before
+  backup has read a device photo, so a new device doesn't show each photo twice); a photo only on the server
+  (`MediaItem.isOnDevice` false; it keeps the device id it had, else `server:<sha256>`) shows the server's preview,
+  or its downloaded original. Playing a server-only video (streaming) is not built yet. A new device downloads only the journal data (paged change
   feed, gzip), then previews as you scroll (cache default **10 GB**).
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.

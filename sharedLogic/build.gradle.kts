@@ -70,6 +70,9 @@ apollo {
         packageName.set("com.chencohensolution.journal.graphql")
         // RFC 3339 timestamps from gqlgen's Time scalar.
         mapScalarToKotlinString("Time")
+        // Media ids (64 lowercase hex characters) and file sizes.
+        mapScalarToKotlinString("Sha256")
+        mapScalarToKotlinLong("Int64")
         // Keep generated models out of the public API (and the iOS framework header).
         generateAsInternal.set(true)
     }
