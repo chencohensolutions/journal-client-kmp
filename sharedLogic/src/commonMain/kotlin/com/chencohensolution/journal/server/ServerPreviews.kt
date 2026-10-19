@@ -37,7 +37,7 @@ class ServerPreviews internal constructor(
      * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it). Offline, the
      * largest preview of it kept here (the platform scales it); null when there is none. Encoded (WebP).
      */
-    suspend fun preview(sha256: String, width: Int, height: Int, contain: Boolean): ByteArray? {
+    suspend fun preview(sha256: String, width: Int, height: Int, contain: Boolean, fetch: Boolean = true): ByteArray? {
         if (width <= 0 || height <= 0) return null
         val w = width.coerceAtMost(MAX_SIDE)
         val h = height.coerceAtMost(MAX_SIDE)
@@ -49,7 +49,7 @@ class ServerPreviews internal constructor(
         }
         withContext(Dispatchers.IO) { if (fileSystem.exists(path)) return@withContext fileSystem.read(path) { readByteArray() } else null }
             ?.let { return it }
-        val fetched = try {
+        val fetched = if (!fetch) null else try {
             downloads.withPermit {
                 val client = http.client() ?: return@withPermit null
                 val response = client.get(http.url("/media/$sha256/preview", "w=$w&h=$h&fit=$fit"))
@@ -61,6 +61,14 @@ class ServerPreviews internal constructor(
             null
         }
         return fetched ?: largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
+    }
+
+    /**
+     * Keeps [webp], a picture made on this device, as [sha256]'s preview: a video's frame, while the server makes no
+     * posters for videos.
+     */
+    suspend fun keepPoster(sha256: String, webp: ByteArray, width: Int, height: Int) {
+        store(directory / sha256.take(2) / sha256 / "${width}x$height-poster.webp", webp)
     }
 
     /** A preview kept on this device: its file and size. */

@@ -117,6 +117,9 @@ internal enum class RemovalOutcome {
 
     /** Nothing removed: the server answered and doesn't have this photo. */
     NOT_ON_SERVER,
+
+    /** Nothing removed: no preview could be kept to show it by (a video whose frame can't be read). */
+    NO_PREVIEW,
 }
 
 /**
@@ -643,7 +646,8 @@ private fun OriginalCard(
             onDismissRequest = { confirmingDelete = false },
             title = { Text(stringResource(R.string.library_original_delete_title)) },
             text = {
-                Text(stringResource(if (item.isOnDevice) R.string.library_original_delete_body_gallery else R.string.library_original_delete_body))
+                val body = stringResource(if (item.isOnDevice) R.string.library_original_delete_body_gallery else R.string.library_original_delete_body)
+                Text(if (item.type == MediaType.VIDEO) body + "\n\n" + stringResource(R.string.library_original_delete_video) else body)
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -652,6 +656,7 @@ private fun OriginalCard(
                         when (deleteFromPhone(item)) {
                             RemovalOutcome.UNREACHABLE -> Toast.makeText(context, R.string.library_original_unreachable, Toast.LENGTH_LONG).show()
                             RemovalOutcome.NOT_ON_SERVER -> Toast.makeText(context, R.string.library_original_not_on_server, Toast.LENGTH_LONG).show()
+                            RemovalOutcome.NO_PREVIEW -> Toast.makeText(context, R.string.library_original_no_preview, Toast.LENGTH_LONG).show()
                             RemovalOutcome.DELETED, RemovalOutcome.ASKED -> Unit
                         }
                     }

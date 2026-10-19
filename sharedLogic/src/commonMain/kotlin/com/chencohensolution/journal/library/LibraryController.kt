@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -91,6 +92,19 @@ class LibraryController internal constructor(
 
     private val _state = MutableStateFlow(LibraryState(access = currentAccess()))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
+
+    // Photos taken, received or removed while the app is open: read again once they settle (a burst is one read).
+    private var changeJob: Job? = null
+    private val stopWatching = library.watch {
+        scope.launch {
+            changeJob?.cancel()
+            changeJob = scope.launch {
+                delay(CHANGE_SETTLE_MILLIS)
+                val access = currentAccess()
+                if (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED) load()
+            }
+        }
+    }
 
     init {
         backup?.let { flow ->
@@ -165,6 +179,7 @@ class LibraryController internal constructor(
     }
 
     fun close() {
+        stopWatching()
         scope.cancel()
     }
 
@@ -217,6 +232,9 @@ internal fun mergeWithServer(
         media.toMediaItem(id = formerIds[media.sha256] ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
     }
 }
+
+/** How long the library must be quiet after a change before it is read again. */
+private const val CHANGE_SETTLE_MILLIS = 1_000L
 
 /** Groups [items] by day, newest day first and newest item first within a day. */
 internal fun groupByDay(items: List<MediaItem>): List<DayGroup> =

@@ -382,6 +382,8 @@
     <string name="library_original_delete_body_gallery">The photo moves to this phone’s trash. The original stays on your server, and the photo keeps showing here, in its stories, from its preview.</string>
     <string name="library_original_delete_confirm">Delete</string>
     <string name="library_original_unreachable">Not deleted: can’t reach your server. Try again when connected to it.</string>
+    <string name="library_original_no_preview">Not deleted: couldn’t keep a picture of it to show here.</string>
+    <string name="library_original_delete_video">A video only on your server doesn’t play in the app yet; it shows a frame of it. Download the original to play it again.</string>
     <string name="library_original_not_on_server">Not deleted: your server doesn’t have this photo. It uploads again with the next backup.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>

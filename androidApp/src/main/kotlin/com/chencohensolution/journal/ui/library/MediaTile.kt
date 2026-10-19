@@ -185,7 +185,8 @@ internal val LocalServerPreviews = staticCompositionLocalOf<ServerPreviews?> { n
  */
 private suspend fun serverBitmap(previews: ServerPreviews?, item: MediaItem, width: Int, height: Int): Bitmap? {
     val sha = item.sha256 ?: return null
-    val bytes = previews?.preview(sha, width, height, contain = true) ?: return null
+    // The server makes no video posters yet: a video shows the frame kept when it left the phone.
+    val bytes = previews?.preview(sha, width, height, contain = true, fetch = item.type != MediaType.VIDEO) ?: return null
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }
 
@@ -270,6 +271,21 @@ private fun fitInside(width: Int, height: Int, maxSide: Int): Pair<Int, Int>? {
     val scale = maxSide.toFloat() / longer
     return (width * scale).toInt().coerceAtLeast(1) to (height * scale).toInt().coerceAtLeast(1)
 }
+
+/**
+ * A frame of [item] (a video on this device, or its kept original) up to [maxSide] pixels, as WebP: what it shows once
+ * it is only on the server. Null when it can't be read.
+ */
+internal fun videoPoster(resolver: ContentResolver, item: MediaItem, maxSide: Int): Triple<ByteArray, Int, Int>? = runCatching {
+    val kept = item.keptOriginal
+    val frame = when {
+        item.isOnDevice -> resolver.loadThumbnail(item.contentUri(), Size(maxSide, maxSide), null)
+        kept != null -> ThumbnailUtils.createVideoThumbnail(File(kept), Size(maxSide, maxSide), null)
+        else -> return null
+    }
+    val bytes = java.io.ByteArrayOutputStream().also { frame.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, it) }.toByteArray()
+    Triple(bytes, frame.width, frame.height)
+}.getOrNull()
 
 /** What a player opens: the library's file, or the original the app kept; null for one only on the server. */
 internal fun MediaItem.playableUri(): Uri? {

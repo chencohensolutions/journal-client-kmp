@@ -28,6 +28,9 @@ rows of small photos.
   oldest photo is, wherever the others were. **Take out of this set** removes a photo from a set (made by hand or by
   itself) and it isn't put in one by itself again. A [cropped](crop.md) photo is never put in a set by itself either.
   Saved in each photo's note file (`"set"`, `"apart"`); merged sets become groups in a story made with **+ Story**.
+- Each photo has the **backup badge** in its bottom-right corner, as on the grids (see [README.md](README.md)): a phone
+  when it is on this phone and on the server, a crossed-out cloud while it isn't uploaded, nothing when it is only on
+  the server; a set shows the badge of the photo it is turned to. A playing video shows its sound button there instead.
 - **Near-duplicates** are one photo at the first one's shape. Swipe sideways for the others; a "2 / 4" badge and
   dots show where you are, with no peek of the next one.
   The photos beside the one shown are loaded ahead, so a swipe either way shows a ready photo; for photos only on the

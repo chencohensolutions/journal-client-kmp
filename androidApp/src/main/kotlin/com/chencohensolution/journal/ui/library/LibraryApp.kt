@@ -52,6 +52,9 @@ import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.work.currentWifiName
+import com.chencohensolution.journal.library.MediaType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
@@ -155,6 +158,9 @@ fun LibraryApp(
     LibraryScreens(journal, library, stories, settings, backup, server, onRegisterAgain)
 }
 
+/** The longer side of the frame kept for a video that leaves the phone. */
+private const val VIDEO_POSTER_SIDE = 1920
+
 /** The server's copies: its list of photos, their previews kept here, and originals downloaded and kept. */
 class ServerFiles(val library: ServerLibrary, val previews: ServerPreviews, val originals: KeptOriginals)
 
@@ -250,7 +256,14 @@ private fun LibraryScreens(
             }
             ServerLibrary.Confirmation.HAS_IT -> Unit
         }
-        if (!server.previews.keepForViewing(sha)) return@remove RemovalOutcome.UNREACHABLE
+        val previewKept = if (item.type == MediaType.VIDEO) {
+            // The server makes no video posters yet: keep a frame of it, made here from the video itself.
+            withContext(Dispatchers.IO) { videoPoster(context.contentResolver, item, VIDEO_POSTER_SIDE) }
+                ?.let { (bytes, width, height) -> server.previews.keepPoster(sha, bytes, width, height); true } ?: false
+        } else {
+            server.previews.keepForViewing(sha)
+        }
+        if (!previewKept) return@remove RemovalOutcome.NO_PREVIEW
         if (!item.isOnDevice) {
             server.originals.delete(sha)
             RemovalOutcome.DELETED

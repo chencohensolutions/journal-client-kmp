@@ -151,4 +151,7 @@ internal interface MediaLibrary {
 
     /** All photos and videos the app can read, in any order. Called off the main thread by the implementation itself. */
     suspend fun loadItems(): List<MediaItem>
+
+    /** Calls [onChange] when photos are added, changed or removed; returns how to stop. Platforms without it never call. */
+    fun watch(onChange: () -> Unit): () -> Unit = {}
 }

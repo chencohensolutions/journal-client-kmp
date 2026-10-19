@@ -3,6 +3,9 @@ package com.chencohensolution.journal.library
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -69,6 +72,15 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             }
         }
         items
+    }
+
+    override fun watch(onChange: () -> Unit): () -> Unit {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = onChange()
+        }
+        val resolver = context.contentResolver
+        resolver.registerContentObserver(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), true, observer)
+        return { resolver.unregisterContentObserver(observer) }
     }
 
     private fun granted(permission: String) =
