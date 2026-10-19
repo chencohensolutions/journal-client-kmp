@@ -334,11 +334,13 @@ class FeedStoryTest {
         advanceUntilIdle()
         assertEquals(5, stories.currentState.feed.sections().single().items.size)
 
-        // The photo a set was turned to is remembered; turning it back to its first forgets it.
-        settings.setFeedPage("a", "b")
-        assertEquals("b", settings.feedPage("a"))
-        settings.setFeedPage("a", "a")
-        assertEquals(null, settings.feedPage("a"))
+        // The photo a set was turned to is kept in its note file, so it syncs; turning back to its first forgets it.
+        stories.turnSet(listOf("a", "b"), "b")
+        assertEquals(true, stories.currentState.note("b")?.front)
+        assertEquals(true, FilePhotoNoteStore(fileSystem, "/data/journal".toPath()).loadAll().single { it.deviceId == "b" }.front)
+        stories.turnSet(listOf("a", "b"), "a")
+        assertEquals(null, stories.currentState.note("b"))
+        assertEquals(null, stories.currentState.note("a"))
 
         val storyId = assertNotNull(stories.createStoryFromFeed("", stories.currentState.feed.sections().single().key))
         advanceUntilIdle()

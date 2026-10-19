@@ -233,8 +233,7 @@ fun LibraryApp(
                                         crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
                                         merge = stories::mergeInFeed,
                                         takeOutOfSet = stories::takeOutOfSet,
-                                        savedFeedPage = settings::feedPage,
-                                        saveFeedPage = settings::setFeedPage,
+                                        turnSet = stories::turnSet,
                                         toggleStory = { storyId, itemId, add ->
                                             if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
                                         },

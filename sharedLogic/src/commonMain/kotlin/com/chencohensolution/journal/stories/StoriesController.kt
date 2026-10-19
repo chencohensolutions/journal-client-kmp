@@ -819,6 +819,13 @@ class StoriesController internal constructor(
     /** Moments: the photo leaves its set (made by hand or by itself) and isn't put in one by itself again. */
     fun takeOutOfSet(itemId: String) = changeNotes(listOf(itemId)) { it.copy(feedSet = null, apart = true) }
 
+    /**
+     * Moments: the set of [itemIds] (in its order) was turned to [itemId], so it opens there next time, also on another
+     * device once notes are synced. Kept in the photo's note; turning back to the first photo clears it.
+     */
+    fun turnSet(itemIds: List<String>, itemId: String) =
+        changeNotes(itemIds, rebuild = false) { it.copy(front = it.deviceId == itemId && itemId != itemIds.first()) }
+
     /** The photo's crops, for looking only (the photo isn't changed); empty crops remove them. */
     fun setCrops(itemId: String, crops: PhotoCrops) = changeNotes(listOf(itemId)) { it.copy(crops = crops) }
 
@@ -839,7 +846,11 @@ class StoriesController internal constructor(
         note.copy(tags = note.tags.filterNot { it.equals(tag, ignoreCase = true) })
     }
 
-    private fun changeNotes(itemIds: List<String>, transform: (PhotoNote) -> PhotoNote) {
+    /**
+     * Saves the notes [transform] changes. Without [rebuild] (for what changes nothing else on screen, done on each
+     * swipe) only the state's notes are updated, as rebuilding the whole state can take longer than a frame.
+     */
+    private fun changeNotes(itemIds: List<String>, rebuild: Boolean = true, transform: (PhotoNote) -> PhotoNote) {
         val time = now()
         try {
             itemsById(itemIds).forEach { item ->
@@ -859,7 +870,7 @@ class StoriesController internal constructor(
         } catch (e: Exception) {
             error = e.describe()
         }
-        publish()
+        if (rebuild || error != null) publish() else _state.value = _state.value.copy(notes = notes)
     }
 
     private fun loadStories(): List<Story> = try {

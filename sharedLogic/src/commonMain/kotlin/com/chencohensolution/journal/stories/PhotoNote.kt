@@ -27,8 +27,10 @@ data class PhotoNote(
     val feedSet: String? = null,
     /** Taken out of a set in Moments: never put in one by itself again. */
     val apart: Boolean = false,
+    /** The photo its set in Moments opens on: the one it was last turned to (never its first, where it opens anyway). */
+    val front: Boolean = false,
 ) {
-    val isEmpty: Boolean get() = caption.isBlank() && tags.isEmpty() && crops.isEmpty && feedSet == null && !apart
+    val isEmpty: Boolean get() = caption.isBlank() && tags.isEmpty() && crops.isEmpty && feedSet == null && !apart && !front
 }
 
 /** Where photo notes are kept until they can be synced to the server. */
@@ -86,7 +88,7 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
 
     private companion object {
         /** The fields this version writes; everything else in a file is kept as it was. */
-        val NOTE_KEYS = setOf("v", "deviceId", "fileName", "takenAt", "caption", "tags", "crops", "set", "apart", "updatedAt")
+        val NOTE_KEYS = setOf("v", "deviceId", "fileName", "takenAt", "caption", "tags", "crops", "set", "apart", "front", "updatedAt")
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
 
         /** [file] over [previous], keeping [previous]'s unknown fields, also inside "crops". */
@@ -107,7 +109,7 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
     }
 }
 
-/** media/<id>.json, format version 2 (version 1 had no crops, sets or apart). */
+/** media/<id>.json, format version 2 (version 1 had no crops, sets, apart or front). */
 @Serializable
 private data class NoteFile(
     val v: Int = 2,
@@ -120,9 +122,11 @@ private data class NoteFile(
     /** The set merged by hand in Moments; "apart": taken out of one. */
     val set: String? = null,
     val apart: Boolean? = null,
+    /** The photo its set opens on. */
+    val front: Boolean? = null,
     val updatedAt: String = "",
 ) {
-    fun toNote() = PhotoNote(deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true)
+    fun toNote() = PhotoNote(deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true, front == true)
 
     companion object {
         fun of(note: PhotoNote) = NoteFile(
@@ -134,6 +138,7 @@ private data class NoteFile(
             crops = note.crops.takeIf { !it.isEmpty }?.let(CropsFile::of),
             set = note.feedSet,
             apart = note.apart.takeIf { it },
+            front = note.front.takeIf { it },
             updatedAt = note.updatedAt,
         )
     }

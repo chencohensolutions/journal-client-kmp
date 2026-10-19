@@ -51,9 +51,9 @@ internal class FeedVideo(
     private val playingId: () -> String? = { null },
     private val isMuted: () -> Boolean = { true },
     val toggleMute: () -> Unit = {},
-    /** The photo a set was last turned to, kept across launches (by the set's key), and remembering it. */
-    private val savedPage: (setKey: String) -> String? = { null },
-    private val savePage: (setKey: String, itemId: String) -> Unit = { _, _ -> },
+    /** The photo a set was last turned to, kept in its note across launches, and remembering it. */
+    private val savedPage: (FeedBlock) -> String? = { null },
+    private val savePage: (FeedBlock, itemId: String) -> Unit = { _, _ -> },
 ) {
     fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && playingId() == item.id
 
@@ -62,15 +62,15 @@ internal class FeedVideo(
     /** The item each swipe set shows, by the set's key: a set plays the video it is turned to. */
     private val pages = mutableStateMapOf<String, String>()
 
-    fun showPage(setKey: String, itemId: String) {
-        if (pages[setKey] == itemId) return
-        pages[setKey] = itemId
-        savePage(setKey, itemId)
+    fun showPage(block: FeedBlock, itemId: String) {
+        if (pages[block.key] == itemId) return
+        pages[block.key] = itemId
+        savePage(block, itemId)
     }
 
     /** The page [block] opens on: the one it was last turned to, else its first. */
     fun startPage(block: FeedBlock): Int =
-        (pages[block.key] ?: savedPage(block.key))?.let { id -> block.items.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
+        (pages[block.key] ?: savedPage(block))?.let { id -> block.items.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
 
     /** The item [block] shows now: its page, or the only item. */
     fun shownIn(block: FeedBlock): MediaItem = pages[block.key]?.let { id -> block.items.firstOrNull { it.id == id } } ?: block.items.first()

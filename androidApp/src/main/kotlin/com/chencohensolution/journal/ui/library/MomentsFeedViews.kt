@@ -418,7 +418,7 @@ private fun SimilarPhotos(
     }
     // The page shown is the one that plays, when it is a video.
     LaunchedEffect(pager.currentPage, block) {
-        video.showPage(block.key, block.items[pager.currentPage.coerceIn(block.items.indices)].id)
+        video.showPage(block, block.items[pager.currentPage.coerceIn(block.items.indices)].id)
     }
     val pageWidth = feedWidth()
     Column(modifier) {

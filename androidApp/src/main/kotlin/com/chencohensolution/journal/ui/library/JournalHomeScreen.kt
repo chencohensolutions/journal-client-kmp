@@ -100,9 +100,8 @@ internal class HomeActions(
     /** Moments: the photos of the sets and photos picked become one set; a photo leaves its set. */
     val merge: (itemIds: List<String>) -> Unit = {},
     val takeOutOfSet: (itemId: String) -> Unit = {},
-    /** The photo a swipe set was last turned to (by the set's key), kept across launches. */
-    val savedFeedPage: (setKey: String) -> String? = { null },
-    val saveFeedPage: (setKey: String, itemId: String) -> Unit = { _, _ -> },
+    /** A swipe set (its photos, in order) was turned to a photo: it opens there next time. */
+    val turnSet: (itemIds: List<String>, itemId: String) -> Unit = { _, _ -> },
     /** From a photo's long-press menu in Moments, by item id. */
     val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
     val crop: (itemId: String) -> Unit = {},
@@ -171,13 +170,14 @@ internal fun JournalHomeScreen(
     val muted = rememberSaveable { mutableStateOf(true) }
     // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
     val currentActions by rememberUpdatedState(actions)
+    val currentNotes by rememberUpdatedState(stories.notes)
     val video = remember {
         FeedVideo(
             playingId = { playingId.value },
             isMuted = { muted.value },
             toggleMute = { muted.value = !muted.value },
-            savedPage = { currentActions.savedFeedPage(it) },
-            savePage = { key, id -> currentActions.saveFeedPage(key, id) },
+            savedPage = { block -> block.items.firstOrNull { currentNotes[it.id]?.front == true }?.id },
+            savePage = { block, id -> currentActions.turnSet(block.items.map { it.id }, id) },
         )
     }
     LaunchedEffect(list, canPlay) {
