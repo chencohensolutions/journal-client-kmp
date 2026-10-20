@@ -89,7 +89,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         }
 
     companion object {
-        const val DEFAULT_SERVER_URL = "https://192.168.50.150:8080/query"
+        const val DEFAULT_SERVER_URL = "https://192.168.50.2:8080/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"

@@ -205,7 +205,7 @@
     <string name="enroll_code_title">הזנת קוד רישום</string>
     <string name="enroll_code_body">בשרת שלך, הריצו journal-server enroll-code והקלידו את הכתובת והקוד שהוא מדפיס.</string>
     <string name="enroll_server_address">כתובת השרת</string>
-    <string name="enroll_server_address_help">לדוגמה 192.168.50.150:8080</string>
+    <string name="enroll_server_address_help">לדוגמה 192.168.50.2:8080</string>
     <string name="enroll_code">קוד רישום</string>
     <string name="enroll_code_help">8 אותיות וספרות. עובד פעם אחת, ותוקפו פג 10 דקות אחרי שנוצר.</string>
     <string name="enroll_continue">המשך</string>
