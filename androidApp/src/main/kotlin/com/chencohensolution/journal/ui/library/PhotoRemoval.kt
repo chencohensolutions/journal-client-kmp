@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentSender
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
 import com.chencohensolution.journal.library.MediaItem
@@ -44,8 +45,8 @@ internal class AndroidPhotoTrash(context: Context) : PhotoTrash {
 
     override fun canTrashWithoutAsking(): Boolean = MediaStore.canManageMedia(context)
 
-    override suspend fun trash(items: List<MediaItem>): Boolean {
-        if (items.isEmpty() || !canTrashWithoutAsking() || !items.all { it.isOnDevice }) return false
+    override suspend fun trash(items: List<MediaItem>): Set<String> {
+        if (items.isEmpty() || !canTrashWithoutAsking() || !items.all { it.isOnDevice }) return emptySet()
         val request = MediaStore.createTrashRequest(context.contentResolver, items.map { it.contentUri() }, true)
         val mode = if (Build.VERSION.SDK_INT >= 36) {
             ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
@@ -57,23 +58,32 @@ internal class AndroidPhotoTrash(context: Context) : PhotoTrash {
         try {
             request.send(context, 0, null, null, null, null, options)
         } catch (_: PendingIntent.CanceledException) {
-            return false
+            return emptySet()
         }
         // Granted without a prompt, but asynchronously: wait until the photos have left the library.
-        repeat(TRASH_CHECKS) {
-            if (items.none { inLibrary(it) }) return true
+        val deadline = System.currentTimeMillis() + TRASH_WAIT_MILLIS + items.size * TRASH_WAIT_PER_FILE_MILLIS
+        var gone = emptySet<String>()
+        while (true) {
+            gone = items.filterNot { inLibrary(it) }.mapTo(mutableSetOf()) { it.id }
+            if (gone.size == items.size || System.currentTimeMillis() > deadline) return gone
             delay(TRASH_CHECK_MILLIS)
         }
-        return false
     }
 
-    /** Whether [item] is still in the library (a trashed photo isn't listed). */
+    /**
+     * Whether [item] is still in the library, not trashed. Asked by its own URI, MediaStore still returns a trashed
+     * photo, so its trash flag is read.
+     */
     private suspend fun inLibrary(item: MediaItem): Boolean = withContext(Dispatchers.IO) {
-        context.contentResolver.query(item.contentUri(), arrayOf(MediaStore.MediaColumns._ID), null, null)?.use { it.count > 0 } ?: false
+        val args = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
+        context.contentResolver.query(item.contentUri(), arrayOf(MediaStore.MediaColumns.IS_TRASHED), args, null)?.use { cursor ->
+            cursor.moveToFirst() && cursor.getInt(0) == 0
+        } ?: false
     }
 
     private companion object {
-        const val TRASH_CHECKS = 50
+        const val TRASH_WAIT_MILLIS = 5_000L
+        const val TRASH_WAIT_PER_FILE_MILLIS = 100L
         const val TRASH_CHECK_MILLIS = 100L
     }
 }

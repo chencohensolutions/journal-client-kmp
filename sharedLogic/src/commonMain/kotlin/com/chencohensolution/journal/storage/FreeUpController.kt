@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,8 +42,8 @@ interface PhotoTrash {
     /** Whether [trash] works now without the user's prompt (Android: the app has "Media management" access). */
     fun canTrashWithoutAsking(): Boolean
 
-    /** Moves [items] to the trash without asking; true when every one of them left the library. */
-    suspend fun trash(items: List<MediaItem>): Boolean
+    /** Moves [items] to the trash without asking, all in one request; the ids of those that left the library. */
+    suspend fun trash(items: List<MediaItem>): Set<String>
 }
 
 /** Where a run is: [done] of [total] groups checked. */
@@ -171,6 +172,25 @@ class FreeUpController internal constructor(
             onProgress(progress)
         }
         report()
+        // Groups that passed, trashed together: one system request per batch instead of one per photo.
+        val passed = mutableListOf<FreeUpGroup>()
+        suspend fun flush() {
+            if (passed.isEmpty()) return
+            val gone = if (trash.canTrashWithoutAsking()) trash.trash(passed.flatMap { it.items }) else emptySet()
+            for (group in passed) {
+                // A pair leaves together: what the batch left behind of it waits for the prompt.
+                val left = group.items.filter { it.id !in gone }
+                removed += group.items.size - left.size
+                removedBytes += group.items.filter { it.id in gone }.sumOf { it.sizeBytes ?: 0 }
+                if (left.isEmpty()) continue
+                val number = (waiting.maxOfOrNull { it.group } ?: 0) + 1
+                waiting = waiting + left.map { item ->
+                    WaitingFile(item.id, item.type == MediaType.VIDEO, item.sizeBytes ?: 0, item.modifiedMillis, ledger.entry(item.id)!!.sha256, number)
+                }
+            }
+            passed.clear()
+            writeWaiting(waiting)
+        }
         try {
             for (group in plan.groups) {
                 if (waiting.any { w -> group.items.any { it.id == w.id } }) {
@@ -180,36 +200,32 @@ class FreeUpController internal constructor(
                 progress = progress.copy(currentName = group.items.first().fileName)
                 report()
                 val reason = checker.check(group)
-                when {
-                    reason != null -> {
-                        kept[reason] = (kept[reason] ?: 0) + group.items.size
-                        if (reason != KeptReason.DAMAGED_ON_SERVER) onLedgerChanged()
-                    }
-                    trash.canTrashWithoutAsking() && trash.trash(group.items) -> {
-                        removed += group.items.size
-                        removedBytes += group.bytes
-                    }
-                    else -> {
-                        val number = (waiting.maxOfOrNull { it.group } ?: 0) + 1
-                        waiting = waiting + group.items.map { item ->
-                            WaitingFile(item.id, item.type == MediaType.VIDEO, item.sizeBytes ?: 0, item.modifiedMillis, ledger.entry(item.id)!!.sha256, number)
-                        }
-                        writeWaiting(waiting)
-                    }
+                if (reason != null) {
+                    kept[reason] = (kept[reason] ?: 0) + group.items.size
+                    if (reason != KeptReason.DAMAGED_ON_SERVER) onLedgerChanged()
+                } else {
+                    passed += group
+                    if (passed.sumOf { it.items.size } >= TRASH_BATCH) flush()
                 }
                 progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + group.bytes, currentName = null)
                 report()
             }
+            flush()
         } catch (e: CancellationException) {
+            // Stopped: what passed so far still goes (it was checked); the rest stays.
+            withContext(NonCancellable) { runCatching { flush() } }
             _state.update { it.copy(activity = FreeUpActivity.Idle) }
             throw e
         } catch (e: Exception) {
+            runCatching { flush() }
             _state.update { it.copy(activity = FreeUpActivity.Stopped(e.describe())) }
             refreshPlan()
             return null
         }
         val result = FreeUpResult(removed, removedBytes, waiting.size - waitingBefore, kept)
-        _state.update { it.copy(activity = FreeUpActivity.Idle, lastResult = result) }
+        _state.update {
+            it.copy(activity = FreeUpActivity.Idle, lastResult = result, waitingCount = waiting.size, waitingBytes = waiting.sumOf { w -> w.size })
+        }
         refreshPlan()
         result
     }
@@ -267,6 +283,8 @@ class FreeUpController internal constructor(
     }
 
     private companion object {
+        /** Files moved to the trash in one request. */
+        const val TRASH_BATCH = 50
         val json = Json { ignoreUnknownKeys = true }
         val WAITING = ListSerializer(WaitingFile.serializer())
     }

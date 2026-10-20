@@ -76,9 +76,11 @@ private class Store : KeyValueStore {
 private class Trash(var allowed: Boolean) : PhotoTrash {
     val trashed = mutableListOf<String>()
     override fun canTrashWithoutAsking() = allowed
-    override suspend fun trash(items: List<MediaItem>): Boolean {
+    val requests = mutableListOf<Int>()
+    override suspend fun trash(items: List<MediaItem>): Set<String> {
+        requests += items.size
         trashed += items.map { it.id }
-        return true
+        return items.mapTo(mutableSetOf()) { it.id }
     }
 }
 
@@ -198,6 +200,7 @@ class FreeUpTest {
         val result = run.controller.runOnce(run.trash)!!
 
         assertEquals(listOf("a", "b"), run.trash.trashed)
+        assertEquals(listOf(2), run.trash.requests, "one request for the batch")
         assertEquals(2, result.removed)
         assertEquals(mapOf(KeptReason.CHANGED_ON_PHONE to 1), result.kept)
         assertEquals(1, run.ledgerChanges)
