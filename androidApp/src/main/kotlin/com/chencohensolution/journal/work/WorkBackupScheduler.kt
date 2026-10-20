@@ -2,7 +2,6 @@ package com.chencohensolution.journal.work
 
 import android.content.Context
 import android.provider.MediaStore
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -10,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.chencohensolution.journal.BackupScheduler
 import com.chencohensolution.journal.backup.BackupSettings
@@ -29,7 +29,6 @@ class WorkBackupScheduler(context: Context) : BackupScheduler {
         }
         val periodic = PeriodicWorkRequestBuilder<BackupWorker>(15, TimeUnit.MINUTES)
             .setConstraints(constraints(settings))
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
             .build()
         workManager.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, periodic)
         watchForNewPhotos(settings, ExistingWorkPolicy.REPLACE)
@@ -41,7 +40,9 @@ class WorkBackupScheduler(context: Context) : BackupScheduler {
             .setConstraints(Constraints.Builder().setRequiredNetworkType(networkType(settings)).build())
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-        workManager.enqueueUniqueWork(NOW, ExistingWorkPolicy.KEEP, now)
+        // Replaces a run that is waiting (for example out its retry delay after the server was down), so the tap always
+        // starts one; the button isn't shown while a run uploads.
+        workManager.enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, now)
     }
 
     /**
@@ -58,6 +59,22 @@ class WorkBackupScheduler(context: Context) : BackupScheduler {
             .setTriggerContentUpdateDelay(10, TimeUnit.SECONDS)
             .build()
         workManager.enqueueUniqueWork(NEW_PHOTOS, policy, OneTimeWorkRequestBuilder<BackupWorker>().setConstraints(trigger).addTag(NEW_PHOTOS_TAG).build())
+    }
+
+    /**
+     * Clears retry delays older versions left (they asked WorkManager to retry failed runs, which waits up to 5 hours):
+     * a waiting run that already failed is queued again at once. Blocks; call off the main thread.
+     */
+    fun clearRetryDelays(settings: BackupSettings) {
+        if (!settings.enabled) return
+        val periodicStuck = workManager.getWorkInfosForUniqueWork(PERIODIC).get().any { it.state == WorkInfo.State.ENQUEUED && it.runAttemptCount > 0 }
+        if (periodicStuck) {
+            val periodic = PeriodicWorkRequestBuilder<BackupWorker>(15, TimeUnit.MINUTES).setConstraints(constraints(settings)).build()
+            workManager.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, periodic)
+        }
+        if (workManager.getWorkInfosForUniqueWork(NOW).get().any { it.state == WorkInfo.State.ENQUEUED && it.runAttemptCount > 0 }) {
+            backUpNow(settings)
+        }
     }
 
     private fun constraints(settings: BackupSettings) = Constraints.Builder()

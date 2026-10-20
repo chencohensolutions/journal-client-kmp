@@ -14,6 +14,7 @@ import java.net.Socket
 import java.security.Principal
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.X509ExtendedKeyManager
@@ -38,6 +39,10 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
             }
             val okHttp = OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.socketFactory, trust.trustManager)
+                // OkHttp waits 10 s by default; the server answers an upload piece only after writing and syncing it,
+                // and the last one only after hashing the whole file, which takes longer for a large video.
+                .readTimeout(2, TimeUnit.MINUTES)
+                .writeTimeout(2, TimeUnit.MINUTES)
                 .build()
 
             HttpClient(OkHttp) { engine { preconfigured = okHttp } }

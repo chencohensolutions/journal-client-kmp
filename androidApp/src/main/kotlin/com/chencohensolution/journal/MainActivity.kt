@@ -34,7 +34,9 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val enrollment: EnrollmentController = createEnrollmentController(application, controller)
     val backup: BackupController = backupController(application, WorkBackupScheduler(application)).also {
         // Makes sure WorkManager has the runs the settings ask for (also after an update of the app).
-        WorkBackupScheduler(application).settingsChanged(it.currentState.settings)
+        val scheduler = WorkBackupScheduler(application)
+        scheduler.settingsChanged(it.currentState.settings)
+        Thread { runCatching { scheduler.clearRetryDelays(it.currentState.settings) } }.start()
     }
     val server = ServerFiles(serverLibrary(application), serverPreviews(application), keptOriginals(application))
     val library: LibraryController = createLibraryController(application, backup, server.library, server.originals)

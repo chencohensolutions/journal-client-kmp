@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.Manifest
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -18,7 +19,6 @@ import androidx.work.WorkerParameters
 import com.chencohensolution.journal.MainActivity
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.backup.BackupProgress
-import com.chencohensolution.journal.backup.RunOutcome
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.backupController
 import com.chencohensolution.journal.ui.library.transferRate
@@ -46,8 +46,10 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         createChannel(applicationContext)
         runCatching { setForeground(foregroundInfo(null)) } // Refused when started in the background on Android 12+.
-        val outcome = try {
-            backup.runOnce(::showProgress)
+        try {
+            val outcome = backup.runOnce(::showProgress)
+            // Why a run ended, for `adb logcat -s BackupWorker` (the screens show the same in Settings → Backup).
+            Log.i(TAG, "run ended: $outcome, ${backup.currentState.activity}")
         } finally {
             notifications.cancel(NOTIFICATION_ID)
             val startedByNewPhotos = WorkBackupScheduler.NEW_PHOTOS_TAG in tags
@@ -56,10 +58,9 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 if (startedByNewPhotos) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
             )
         }
-        return when (outcome) {
-            is RunOutcome.Done, RunOutcome.Skipped -> Result.success()
-            is RunOutcome.Retry -> Result.retry()
-        }
+        // Never Result.retry(): WorkManager's retry delay doubles up to 5 hours, so a server that was down for a while
+        // kept backup waiting long after it was back. The next 15-minute run or new photo tries again instead.
+        return Result.success()
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -109,6 +110,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     }
 
     companion object {
+        private const val TAG = "BackupWorker"
         private const val CHANNEL_ID = "backup"
         private const val NOTIFICATION_ID = 1001
         private const val NOTIFY_EVERY_MILLIS = 1_000L
