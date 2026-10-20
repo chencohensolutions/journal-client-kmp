@@ -10,6 +10,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     "Backing up 3 of 120", "12 photos waiting to upload", "Everything chosen is backed up", "Waiting: …" (Wi-Fi network
     not on the list, location needed to check it, register again, photo access), or "Stopped: … It tries again
     later." **Back up now** beside it while not running.
+  - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
+    `storageUsage`), also with backup off. Asked when Settings opens and again when a backup run ends; "Can't reach the
+    server right now" until it answers.
   - With backup on: **What to back up**, a toggle per source (**Camera** on by default, WhatsApp, Screenshots, Other);
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging**, and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is

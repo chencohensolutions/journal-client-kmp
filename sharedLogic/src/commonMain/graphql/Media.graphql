@@ -49,3 +49,11 @@ query Changes($since: String, $limit: Int) {
     }
   }
 }
+
+query StorageUsage {
+  storageUsage {
+    photos
+    videos
+    bytes
+  }
+}

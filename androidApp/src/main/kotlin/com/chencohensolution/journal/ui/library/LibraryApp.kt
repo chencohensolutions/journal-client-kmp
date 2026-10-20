@@ -176,6 +176,7 @@ private fun LibraryScreens(
 ) {
     val journalState by journal.state.collectAsStateWithLifecycle()
     val backupState by backup.state.collectAsStateWithLifecycle()
+    val serverUsage by server.library.usage.collectAsStateWithLifecycle()
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
@@ -422,18 +423,24 @@ private fun LibraryScreens(
                                     ),
                                     landing = landingHere,
                                 )
-                                Route.Settings -> SettingsScreen(
-                                    settings = settingsState,
-                                    actions = SettingsActions(
-                                        setGroupingMode = settings::setGroupingMode,
-                                        setGapHours = settings::setGapHours,
-                                        setSimilarityPercent = settings::setSimilarityPercent,
-                                        resetSimilarity = settings::resetSimilarity,
-                                        back = pop,
-                                    ),
-                                    backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation),
-                                    backupActions = backupActions,
-                                )
+                                Route.Settings -> {
+                                    // Asked on open, and again when a backup run ends, so it follows the uploads.
+                                    LaunchedEffect(backupState.activity is BackupActivity.Running) {
+                                        if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
+                                    }
+                                    SettingsScreen(
+                                        settings = settingsState,
+                                        actions = SettingsActions(
+                                            setGroupingMode = settings::setGroupingMode,
+                                            setGapHours = settings::setGapHours,
+                                            setSimilarityPercent = settings::setSimilarityPercent,
+                                            resetSimilarity = settings::resetSimilarity,
+                                            back = pop,
+                                        ),
+                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation, serverUsage),
+                                        backupActions = backupActions,
+                                    )
+                                }
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,

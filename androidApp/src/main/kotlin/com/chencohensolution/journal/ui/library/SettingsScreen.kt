@@ -57,6 +57,7 @@ import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.server.StorageUsage
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
@@ -77,6 +78,8 @@ internal data class BackupUi(
     val waitingCount: Int,
     /** "Allow all the time" location: needed to check the Wi-Fi network while the app is closed. */
     val canCheckNetworkInBackground: Boolean,
+    /** What the user's originals take up on the server; null until it answered. */
+    val serverUsage: StorageUsage? = null,
 )
 
 internal class BackupActions(
@@ -179,6 +182,11 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
                 TextButton(onClick = actions.backUpNow) { Text(stringResource(R.string.settings_backup_now), color = LibraryColors.OnBackground) }
             }
         }
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(stringResource(R.string.settings_backup_server_usage), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(serverUsageText(ui.serverUsage), color = LibraryColors.Muted, fontSize = 13.sp)
+        }
     }
     if (!settings.enabled) return
 
@@ -256,6 +264,16 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
             onSelect = { actions.setOrder(UploadOrder.NEWEST_FIRST) },
         )
     }
+}
+
+/** "4.2 GB · 1,234 photos, 56 videos". */
+@Composable
+private fun serverUsageText(usage: StorageUsage?): String {
+    if (usage == null) return stringResource(R.string.settings_backup_server_usage_unknown)
+    val size = Formatter.formatShortFileSize(LocalContext.current, usage.bytes)
+    val photos = pluralStringResource(R.plurals.settings_backup_server_photos, usage.photos, usage.photos)
+    if (usage.videos == 0) return "$size · $photos"
+    return "$size · $photos, " + pluralStringResource(R.plurals.settings_backup_server_videos, usage.videos, usage.videos)
 }
 
 @Composable

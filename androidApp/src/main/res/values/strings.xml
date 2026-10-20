@@ -336,6 +336,16 @@
     <string name="settings_backup_switch">Back up to your server</string>
     <string name="settings_backup_switch_body">Photos upload in the background, also when the app is closed.</string>
     <string name="settings_backup_now">Back up now</string>
+    <string name="settings_backup_server_usage">On your server</string>
+    <string name="settings_backup_server_usage_unknown">Can’t reach the server right now</string>
+    <plurals name="settings_backup_server_photos">
+        <item quantity="one">%,d photo</item>
+        <item quantity="other">%,d photos</item>
+    </plurals>
+    <plurals name="settings_backup_server_videos">
+        <item quantity="one">%,d video</item>
+        <item quantity="other">%,d videos</item>
+    </plurals>
     <string name="settings_backup_status_running">Backing up %1$d of %2$d</string>
     <string name="settings_backup_status_done">Everything chosen is backed up</string>
     <plurals name="settings_backup_status_waiting">

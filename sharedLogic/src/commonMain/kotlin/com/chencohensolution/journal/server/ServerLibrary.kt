@@ -2,6 +2,7 @@ package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.StorageUsageQuery
 import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.GeoPoint
@@ -103,6 +104,9 @@ internal fun parseTimestamp(text: String): Timestamp? {
     return Timestamp(local - offsetMinutes * 60_000L, day)
 }
 
+/** What the user's originals take up on the server. */
+data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
+
 @Serializable
 private data class ServerMediaFile(val v: Int = 1, val cursor: String? = null, val media: List<ServerMedia> = emptyList())
 
@@ -169,6 +173,32 @@ class ServerLibrary internal constructor(
 
         /** Offline, or the server didn't answer. */
         UNREACHABLE,
+    }
+
+    private val _usage = MutableStateFlow<StorageUsage?>(null)
+
+    /** The last answer of [refreshUsage]; null until the server answered once. */
+    val usage: StateFlow<StorageUsage?> = _usage.asStateFlow()
+
+    /** Asks the server how much the user's originals take up; offline, [usage] keeps its last value. */
+    fun refreshUsage() {
+        scope.launch {
+            try {
+                _usage.value = fetchUsage() ?: return@launch
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun fetchUsage(): StorageUsage? {
+        val alias = settings.identityAlias ?: return null
+        return createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+            val response = apollo.query(StorageUsageQuery()).execute()
+            response.exception?.let { throw it }
+            response.data?.storageUsage?.let { StorageUsage(it.photos, it.videos, it.bytes) }
+        }
     }
 
     /** One sync: every page since the saved cursor. */
