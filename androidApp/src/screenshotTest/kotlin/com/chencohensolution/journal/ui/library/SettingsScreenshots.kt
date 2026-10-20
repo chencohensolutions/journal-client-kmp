@@ -8,6 +8,9 @@ import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.server.PreviewFormat
+import com.chencohensolution.journal.server.PreviewOptions
+import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.storage.FreeUpGroup
@@ -53,6 +56,7 @@ fun SettingsStorage() = Screen {
                 lastResult = FreeUpResult(removed = 0, removedBytes = 0, waiting = 120, kept = mapOf(KeptReason.CHANGED_ON_PHONE to 2)),
             ),
             canTrashWithoutAsking = false,
+            previewOptions = PreviewOptions(format = PreviewFormat.AVIF, quality = PreviewQuality.HIGH),
         ),
     )
 }

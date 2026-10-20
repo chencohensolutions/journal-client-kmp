@@ -19,9 +19,17 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
 - **Storage on this phone** (Android; asked for Oct 20, 2026):
-  - **Previews from your server**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and
-    **Clear previews**. Previews of photos that are only on the server are kept up to the limit (the oldest go first)
-    and fetched again when scrolled to; none are pinned, also for photos removed from the phone.
+  - **Previews from your server** switch (on by default; asked for Oct 20, 2026). On: the server makes each photo at
+    the exact pixels it is drawn at, in a **Format** (WebP default, HEIF, AVIF, JPEG XL, JPEG; a line says what each is
+    good for) and **Quality** (Low, Medium, **High**, Max), and every size is kept as its own file: a size the phone
+    has, or a photo whose original it has, is never asked for again, and a smaller preview is never scaled up instead.
+    Off: the original files are downloaded (checked against their sha256) into the same space and decoded on the
+    phone at the size shown; a file the phone can't decode (Samsung's DNG 1.7) still gets a preview, and videos are
+    not downloaded (posters and streaming come later). JPEG XL is decoded by a library the app ships
+    (`io.github.awxkee:jxl-coder`, about 6 MB of native code per CPU type), since Android has no decoder of its own.
+  - **Kept on this phone**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and **Clear**.
+    Previews and downloaded originals of server photos are kept up to the limit (the oldest go first) and fetched
+    again when scrolled to; none are pinned, also for photos removed from the phone.
   - **Free up space**: takes originals the server has off the phone. A rule: **Older than** 1, 3, 6 months, **1 year**
     (default) or 2 years (by date taken), or **Keep the newest** 1, 2, 5, **10**, 20 or 50 GB (by date taken; everything
     on the phone counts toward what is kept, backed up or not). Then what it would remove, "Removes 14 GB from this

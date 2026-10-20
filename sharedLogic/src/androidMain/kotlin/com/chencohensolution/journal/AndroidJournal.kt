@@ -96,9 +96,13 @@ fun serverLibrary(context: Context): ServerLibrary =
 @Synchronized
 fun serverPreviews(context: Context): ServerPreviews =
     serverPreviews ?: JournalSettings(SharedPreferencesStore(context)).let { settings ->
-        ServerPreviews(serverHttp(context), FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "previews") {
-            settings.previewCacheGigabytes.toLong() shl 30
-        }
+        ServerPreviews(
+            http = serverHttp(context),
+            fileSystem = FileSystem.SYSTEM,
+            directory = context.cacheDir.toOkioPath() / "previews",
+            maxBytes = { settings.previewCacheGigabytes.toLong() shl 30 },
+            options = { settings.previewOptions },
+        )
     }.also { serverPreviews = it }
 
 /** Originals downloaded from the server and kept in `files/originals`. One per process. */

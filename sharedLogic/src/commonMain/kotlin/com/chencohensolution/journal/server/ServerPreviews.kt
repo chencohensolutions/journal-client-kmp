@@ -1,8 +1,11 @@
 package com.chencohensolution.journal.server
 
 import io.ktor.client.request.get
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.sync.Semaphore
@@ -11,22 +14,30 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okio.FileSystem
+import okio.HashingSink
 import okio.Path
 import okio.Path.Companion.toPath
+import okio.buffer
+import okio.use
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Previews of photos that are only on the server, made by the server at exactly the pixels they are drawn at
- * (journal-server-go docs/media.md), and kept on this device up to [maxBytes] (Settings → Storage on this phone, 10 GB by
- * default; the oldest go first).
+ * Photos that are only on the server, as this device shows them: previews the server makes at exactly the pixels they
+ * are drawn at (journal-server-go docs/media.md), in the format and quality of [options], each size kept as its own
+ * file; or, with previews off, their originals. Both are kept on this device up to [maxBytes] (Settings → Storage on
+ * this phone, 10 GB by default; the oldest go first).
  */
 class ServerPreviews internal constructor(
     private val http: ServerHttp,
     private val fileSystem: FileSystem,
     private val directory: Path,
     private val maxBytes: () -> Long = { DEFAULT_MAX_BYTES },
+    private val options: () -> PreviewOptions = { PreviewOptions() },
 ) {
     private val downloads = Semaphore(PARALLEL_DOWNLOADS)
+    private val originalDownloads = Semaphore(PARALLEL_ORIGINALS)
+    private val originalLocks = mutableMapOf<String, Mutex>()
+    private val locksMutex = Mutex()
     private val cacheMutex = Mutex()
     /** Bytes in the cache; counted on first use. */
     private var cachedBytes: Long? = null
@@ -34,26 +45,29 @@ class ServerPreviews internal constructor(
     /** Whether [NO_MEDIA] was checked this launch. */
     private var marked = false
 
+    /** Whether photos are shown from previews (else from their originals, downloaded). */
+    val usesPreviews: Boolean get() = options().enabled
+
     /**
-     * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it). Offline, the
-     * largest preview of it kept here (the platform scales it); null when there is none. Encoded (WebP).
+     * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it), in the format
+     * and quality of [options]: the one kept here, else made by the server now (unless not [fetch]). Offline (with
+     * [orLargest]), the largest preview of it kept here (the platform scales it); null when there is none. Encoded.
      */
-    suspend fun preview(sha256: String, width: Int, height: Int, contain: Boolean, fetch: Boolean = true): ByteArray? {
+    suspend fun preview(sha256: String, width: Int, height: Int, contain: Boolean, fetch: Boolean = true, orLargest: Boolean = true): ByteArray? {
         if (width <= 0 || height <= 0) return null
         val w = width.coerceAtMost(MAX_SIDE)
         val h = height.coerceAtMost(MAX_SIDE)
         val fit = if (contain) "contain" else "cover"
-        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit.webp"
-        if (!marked) {
-            marked = true
-            withContext(Dispatchers.IO) { if (fileSystem.exists(directory)) markNoMedia(fileSystem, directory) }
-        }
+        val (_, format, quality) = options()
+        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit-${quality.query}.${format.extension}"
+        markOnce()
         withContext(Dispatchers.IO) { if (fileSystem.exists(path)) return@withContext fileSystem.read(path) { readByteArray() } else null }
             ?.let { return it }
         val fetched = if (!fetch) null else try {
             downloads.withPermit {
                 val client = http.client() ?: return@withPermit null
-                val response = client.get(http.url("/media/$sha256/preview", "w=$w&h=$h&fit=$fit"))
+                val query = "w=$w&h=$h&fit=$fit&fmt=${format.query}&q=${quality.query}"
+                val response = client.get(http.url("/media/$sha256/preview", query))
                 if (response.status != HttpStatusCode.OK) null else response.readRawBytes().also { store(path, it) }
             }
         } catch (e: CancellationException) {
@@ -61,7 +75,76 @@ class ServerPreviews internal constructor(
         } catch (_: Exception) {
             null
         }
-        return fetched ?: largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
+        if (fetched != null || !orLargest) return fetched
+        return largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
+    }
+
+    /** The original of [sha256] when it is kept in this cache (downloaded while previews were off); never fetched. */
+    suspend fun cachedOriginal(sha256: String): String? = withContext(Dispatchers.IO) {
+        val dir = directory / sha256.take(2) / sha256
+        if (!fileSystem.exists(dir)) return@withContext null
+        fileSystem.list(dir).firstOrNull { it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") }?.toString()
+    }
+
+    /**
+     * The original of [sha256], downloaded into this cache now when it is not here yet (checked against its sha256),
+     * to show it with previews off. Null offline, or when the server does not have it.
+     */
+    suspend fun original(sha256: String, fileName: String): String? {
+        cachedOriginal(sha256)?.let { return it }
+        val lock = locksMutex.withLock { originalLocks.getOrPut(sha256) { Mutex() } }
+        val found = lock.withLock {
+            cachedOriginal(sha256) ?: try {
+                originalDownloads.withPermit { download(sha256, fileName) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        }
+        locksMutex.withLock { if (!lock.isLocked) originalLocks.remove(sha256) }
+        return found
+    }
+
+    private suspend fun download(sha256: String, fileName: String): String? = withContext(Dispatchers.IO) {
+        val client = http.client() ?: return@withContext null
+        markOnce()
+        val dir = directory / sha256.take(2) / sha256
+        fileSystem.createDirectories(dir)
+        val extension = fileName.substringAfterLast('.', "").lowercase().filter { it.isLetterOrDigit() }.take(8)
+        val target = dir / (if (extension.isEmpty()) ORIGINAL else "$ORIGINAL.$extension")
+        val temp = dir / "$ORIGINAL.tmp"
+        val ok = client.prepareGet(http.url("/media/$sha256")).execute { response ->
+            if (response.status != HttpStatusCode.OK) return@execute false
+            val hashing = HashingSink.sha256(fileSystem.sink(temp))
+            hashing.buffer().use { sink ->
+                val channel = response.bodyAsChannel()
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val n = channel.readAvailable(buffer)
+                    if (n == -1) break
+                    sink.write(buffer, 0, n)
+                }
+            }
+            hashing.hash.hex() == sha256
+        }
+        if (!ok) {
+            fileSystem.delete(temp, mustExist = false)
+            return@withContext null
+        }
+        fileSystem.atomicMove(temp, target)
+        cacheMutex.withLock {
+            val total = cachedBytes ?: countBytes()
+            cachedBytes = total + (fileSystem.metadataOrNull(target)?.size ?: 0)
+            if (cachedBytes!! > maxBytes()) trim()
+        }
+        target.takeIf { fileSystem.exists(it) }?.toString()
+    }
+
+    private suspend fun markOnce() {
+        if (marked) return
+        marked = true
+        withContext(Dispatchers.IO) { if (fileSystem.exists(directory)) markNoMedia(fileSystem, directory) }
     }
 
     /**
@@ -79,7 +162,7 @@ class ServerPreviews internal constructor(
     suspend fun kept(sha256: String): List<Kept> = withContext(Dispatchers.IO) {
         val dir = directory / sha256.take(2) / sha256
         if (!fileSystem.exists(dir)) return@withContext emptyList()
-        fileSystem.list(dir).filter { it.name.endsWith(".webp") }
+        fileSystem.list(dir).filter { !it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") }
             .map { Kept(it.toString(), fileSystem.metadataOrNull(it)?.size ?: 0) }
             .sortedByDescending { it.bytes }
     }
@@ -156,6 +239,10 @@ class ServerPreviews internal constructor(
         const val DEFAULT_MAX_BYTES = 10L shl 30
         private const val MAX_SIDE = 4096
         private const val PARALLEL_DOWNLOADS = 6
+        private const val PARALLEL_ORIGINALS = 2
+
+        /** The name (before its extension) of an original kept in this cache. */
+        private const val ORIGINAL = "original"
 
         /** What the viewer and the tiles ask for (androidApp VIEWER_MAX_SIDE and THUMB_LARGE). */
         private const val VIEWER_SIDE = 2560

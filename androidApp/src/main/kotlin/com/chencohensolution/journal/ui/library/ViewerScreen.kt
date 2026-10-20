@@ -684,9 +684,15 @@ private fun KeptPreviewFact(item: MediaItem) {
         val sha = item.sha256 ?: return@produceState
         value = withContext(Dispatchers.IO) {
             previews?.kept(sha)?.firstOrNull()?.let { preview ->
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(preview.file, bounds)
-                "${bounds.outWidth} × ${bounds.outHeight}" to preview.bytes
+                val size = if (preview.file.endsWith(".jxl")) {
+                    runCatching { com.awxkee.jxlcoder.JxlCoder.getSize(java.io.File(preview.file).readBytes()) }.getOrNull()
+                        ?.let { it.width to it.height }
+                } else {
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(preview.file, bounds)
+                    bounds.outWidth to bounds.outHeight
+                }
+                size?.let { (w, h) -> "$w × $h" to preview.bytes }
             }
         }
     }

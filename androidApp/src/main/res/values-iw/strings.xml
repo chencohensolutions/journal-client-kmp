@@ -421,10 +421,10 @@
     </plurals>
     <string name="settings_storage_title">אחסון בטלפון הזה</string>
     <string name="settings_storage_previews">תצוגות מקדימות מהשרת</string>
-    <string name="settings_storage_previews_used">%1$s מתוך %2$s בשימוש. תצוגות מקדימות נטענות שוב כשגוללים אליהן.</string>
+    <string name="settings_storage_previews_used">%1$s מתוך %2$s בשימוש. תמונות מהשרת נטענות שוב כשגוללים אליהן.</string>
     <string name="settings_storage_counting">סופר…</string>
     <string name="settings_storage_gigabytes">%d GB</string>
-    <string name="settings_storage_clear_previews">מחיקת התצוגות המקדימות</string>
+    <string name="settings_storage_clear_previews">ניקוי</string>
     <string name="settings_free_up_title">פינוי מקום</string>
     <string name="settings_free_up_older">ישנים מ־</string>
     <string name="settings_free_up_older_body">מסיר תמונות וסרטונים שצולמו לפני כן.</string>
@@ -485,4 +485,23 @@
         <item quantity="other">%,d קבצים נבדקו: הקישו כדי להעביר לאשפה</item>
     </plurals>
     <string name="free_up_notification_confirm_body">אפשר לפנות %1$s מהטלפון. כולם נמצאים בשרת שלך.</string>
+    <string name="settings_storage_previews_on">השרת מכין כל תמונה בגודל שבו היא מוצגת, בפורמט ובאיכות שלמטה.</string>
+    <string name="settings_storage_previews_off">הקבצים המקוריים יורדים ונשמרים במקום שלמטה. סרטונים לא יורדים.</string>
+    <string name="settings_storage_format">פורמט</string>
+    <string name="settings_storage_format_webp">WebP</string>
+    <string name="settings_storage_format_heif">HEIF</string>
+    <string name="settings_storage_format_avif">AVIF</string>
+    <string name="settings_storage_format_jxl">JPEG XL</string>
+    <string name="settings_storage_format_jpeg">JPEG</string>
+    <string name="settings_storage_format_webp_hint">מהיר להכנה ולהצגה.</string>
+    <string name="settings_storage_format_heif_hint">קטן בכשליש מ־WebP באותה איכות.</string>
+    <string name="settings_storage_format_avif_hint">הקבצים הקטנים ביותר; לשרת לוקח יותר זמן להכין אותם.</string>
+    <string name="settings_storage_format_jxl_hint">הכי הרבה פרטים ביחס לגודל; האפליקציה מפענחת אותו בעצמה.</string>
+    <string name="settings_storage_format_jpeg_hint">עובד בכל מקום; הקבצים הגדולים ביותר.</string>
+    <string name="settings_storage_quality">איכות</string>
+    <string name="settings_storage_quality_low">נמוכה</string>
+    <string name="settings_storage_quality_medium">בינונית</string>
+    <string name="settings_storage_quality_high">גבוהה</string>
+    <string name="settings_storage_quality_max">מרבית</string>
+    <string name="settings_storage_kept">שמור בטלפון</string>
 </resources>

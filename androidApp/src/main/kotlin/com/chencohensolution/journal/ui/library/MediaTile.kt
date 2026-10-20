@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.awxkee.jxlcoder.JxlCoder
 import android.graphics.ImageDecoder
 import android.media.ThumbnailUtils
 import java.io.File
@@ -146,7 +147,7 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
             } else if (!item.isOnDevice) {
                 // The server's preview at the size that covers the box, so the caller crops and zooms it as a local one.
                 val (w, h) = coverSize(item, width, height)
-                serverBitmap(previews, item, w, h)
+                serverBitmap(previews, item, w, h) { ow, oh -> coverDimensions(ow, oh, width, height) }
             } else if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
                 val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
                 runCatching { resolver.loadThumbnail(item.contentUri(), size, null) }.getOrNull()?.let { loaded ->
@@ -180,15 +181,36 @@ internal val TILE_GAP = 2.dp
 internal val LocalServerPreviews = staticCompositionLocalOf<ServerPreviews?> { null }
 
 /**
- * A server-only photo's preview, made by the server at exactly [width] × [height] pixels when the photo has that shape
- * (fitted inside the box otherwise). Null offline.
+ * A server-only photo. Its original when one is here (downloaded while previews were off), decoded to the size
+ * [fromOriginal] picks; else its preview at exactly [width] × [height] pixels (fitted inside the box), kept here or
+ * made by the server now. With previews off, the original is downloaded instead, and a preview is asked for only when
+ * this phone can't decode it (Samsung's DNG 1.7). Null offline when nothing of it is here.
  */
-private suspend fun serverBitmap(previews: ServerPreviews?, item: MediaItem, width: Int, height: Int): Bitmap? {
+private suspend fun serverBitmap(
+    previews: ServerPreviews?,
+    item: MediaItem,
+    width: Int,
+    height: Int,
+    fromOriginal: (Int, Int) -> Pair<Int, Int>?,
+): Bitmap? {
     val sha = item.sha256 ?: return null
-    // The server makes no video posters yet: a video shows the frame kept when it left the phone.
-    val bytes = previews?.preview(sha, width, height, contain = true, fetch = item.type != MediaType.VIDEO) ?: return null
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    previews ?: return null
+    // The server makes no video posters yet, and videos aren't downloaded to be shown: a video shows the frame kept
+    // when it left the phone.
+    if (item.type == MediaType.VIDEO) return previews.preview(sha, width, height, contain = true, fetch = false)?.let(::decodePreview)
+    suspend fun decode(original: String?) = original?.let { withContext(fullDecodes) { decodeKept(it, item, fromOriginal) } }
+    decode(previews.cachedOriginal(sha))?.let { return it }
+    if (!previews.usesPreviews) {
+        previews.preview(sha, width, height, contain = true, fetch = false, orLargest = false)?.let(::decodePreview)?.let { return it }
+        decode(previews.original(sha, item.fileName ?: sha))?.let { return it }
+    }
+    return previews.preview(sha, width, height, contain = true)?.let(::decodePreview)
 }
+
+/** A preview from the server, in any format it makes; JPEG XL with the app's own decoder (Android has none). */
+internal fun decodePreview(bytes: ByteArray): Bitmap? = runCatching {
+    if (JxlCoder.isJXL(bytes)) JxlCoder.decode(bytes) else BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+}.getOrNull()
 
 /** The photo's own shape scaled to cover [width] × [height]; the box itself when the shape is unknown. */
 private fun coverSize(item: MediaItem, width: Int, height: Int): Pair<Int, Int> {
@@ -232,7 +254,7 @@ internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
             if (kept != null) {
                 decodeKept(kept, item) { w, h -> fitInside(w, h, sizePx) }
             } else if (!item.isOnDevice) {
-                serverBitmap(previews, item, sizePx, sizePx)
+                serverBitmap(previews, item, sizePx, sizePx) { w, h -> fitInside(w, h, sizePx) }
             } else {
                 runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
             }
@@ -247,7 +269,7 @@ internal suspend fun loadImage(resolver: ContentResolver, previews: ServerPrevie
     return when {
         item.isOnDevice -> loadImage(resolver, item, maxSide)
         kept != null -> decodeKept(kept, item) { w, h -> fitInside(w, h, maxSide) }
-        else -> serverBitmap(previews, item, maxSide, maxSide)
+        else -> serverBitmap(previews, item, maxSide, maxSide) { w, h -> fitInside(w, h, maxSide) }
     }
 }
 

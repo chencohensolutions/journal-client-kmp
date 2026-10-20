@@ -319,6 +319,9 @@ private fun LibraryScreens(
     }
     var previewBytes by remember { mutableStateOf<Long?>(null) }
     val storageActions = StorageActions(
+        setPreviewsEnabled = settings::setPreviewsEnabled,
+        setPreviewFormat = settings::setPreviewFormat,
+        setPreviewQuality = settings::setPreviewQuality,
         setPreviewLimit = settings::setPreviewCacheGigabytes,
         clearPreviews = {
             scope.launch {
@@ -502,7 +505,7 @@ private fun LibraryScreens(
                                         ),
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation, serverUsage),
                                         backupActions = backupActions,
-                                        storage = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, canTrashWithoutAsking),
+                                        storage = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, canTrashWithoutAsking, settingsState.previewOptions),
                                         storageActions = storageActions,
                                     )
                                 }

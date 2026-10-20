@@ -59,6 +59,9 @@ import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.server.PreviewFormat
+import com.chencohensolution.journal.server.PreviewOptions
+import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.server.StorageUsage
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsState
@@ -109,9 +112,14 @@ internal data class StorageUi(
     val freeUp: FreeUpState,
     /** "Media management" access: files go to the trash without a prompt each time. */
     val canTrashWithoutAsking: Boolean,
+    /** Previews from the server (format, quality), or originals. */
+    val previewOptions: PreviewOptions = PreviewOptions(),
 )
 
 internal class StorageActions(
+    val setPreviewsEnabled: (Boolean) -> Unit = {},
+    val setPreviewFormat: (PreviewFormat) -> Unit = {},
+    val setPreviewQuality: (PreviewQuality) -> Unit = {},
     val setPreviewLimit: (Int) -> Unit = {},
     val clearPreviews: () -> Unit = {},
     val setRule: (FreeUpRule) -> Unit = {},
@@ -297,15 +305,49 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
     }
 }
 
-/** The previews' limit, and "Free up space": a rule, what it would remove, and the last run. */
+/**
+ * How server photos are shown (previews in a format and quality, or originals) and the space they may take here, and
+ * "Free up space": a rule, what it would remove, and the last run.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StorageSection(ui: StorageUi, actions: StorageActions) {
     val context = LocalContext.current
+    val options = ui.previewOptions
     SectionTitle(stringResource(R.string.settings_storage_title))
     Card {
+        SwitchRow(
+            title = stringResource(R.string.settings_storage_previews),
+            body = stringResource(if (options.enabled) R.string.settings_storage_previews_on else R.string.settings_storage_previews_off),
+            checked = options.enabled,
+            onChange = actions.setPreviewsEnabled,
+        )
+        if (options.enabled) {
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 4.dp)) {
+                Text(stringResource(R.string.settings_storage_format), color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewFormat.entries.forEach { format ->
+                        Chip(formatName(format), options.format == format) { actions.setPreviewFormat(format) }
+                    }
+                }
+                Text(formatHint(options.format), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(
+                    stringResource(R.string.settings_storage_quality),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewQuality.entries.forEach { quality ->
+                        Chip(qualityName(quality), options.quality == quality) { actions.setPreviewQuality(quality) }
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Text(stringResource(R.string.settings_storage_previews), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_storage_kept), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 ui.previewBytes?.let {
                     stringResource(
@@ -414,6 +456,39 @@ private fun StorageSection(ui: StorageUi, actions: StorageActions) {
 }
 
 private const val DEFAULT_KEEP_GIGABYTES = 10
+
+@Composable
+private fun formatName(format: PreviewFormat): String = stringResource(
+    when (format) {
+        PreviewFormat.WEBP -> R.string.settings_storage_format_webp
+        PreviewFormat.HEIF -> R.string.settings_storage_format_heif
+        PreviewFormat.AVIF -> R.string.settings_storage_format_avif
+        PreviewFormat.JPEG_XL -> R.string.settings_storage_format_jxl
+        PreviewFormat.JPEG -> R.string.settings_storage_format_jpeg
+    },
+)
+
+/** What a format is good for. */
+@Composable
+private fun formatHint(format: PreviewFormat): String = stringResource(
+    when (format) {
+        PreviewFormat.WEBP -> R.string.settings_storage_format_webp_hint
+        PreviewFormat.HEIF -> R.string.settings_storage_format_heif_hint
+        PreviewFormat.AVIF -> R.string.settings_storage_format_avif_hint
+        PreviewFormat.JPEG_XL -> R.string.settings_storage_format_jxl_hint
+        PreviewFormat.JPEG -> R.string.settings_storage_format_jpeg_hint
+    },
+)
+
+@Composable
+private fun qualityName(quality: PreviewQuality): String = stringResource(
+    when (quality) {
+        PreviewQuality.LOW -> R.string.settings_storage_quality_low
+        PreviewQuality.MEDIUM -> R.string.settings_storage_quality_medium
+        PreviewQuality.HIGH -> R.string.settings_storage_quality_high
+        PreviewQuality.MAX -> R.string.settings_storage_quality_max
+    },
+)
 
 /** "3 months", "1 year". */
 @Composable

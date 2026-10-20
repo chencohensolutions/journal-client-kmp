@@ -2,6 +2,9 @@ package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.server.PreviewFormat
+import com.chencohensolution.journal.server.PreviewOptions
+import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.stories.MomentsFeed
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +67,8 @@ data class SettingsState(
     val dismissedTrips: Set<String> = emptySet(),
     /** How much the previews of server photos may take up on this device (Settings → Storage on this phone). */
     val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
+    /** How server photos are shown: previews (format, quality) or their originals. */
+    val previewOptions: PreviewOptions = PreviewOptions(),
 ) {
     companion object {
         /** What the Settings screen offers for [previewCacheGigabytes]. */
@@ -87,6 +92,7 @@ class SettingsController internal constructor(
             feedSources = settings.feedSources,
             dismissedTrips = settings.dismissedTrips,
             previewCacheGigabytes = settings.previewCacheGigabytes,
+            previewOptions = settings.previewOptions,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -129,6 +135,19 @@ class SettingsController internal constructor(
         if (gigabytes < 1) return
         settings.previewCacheGigabytes = gigabytes
         _state.update { it.copy(previewCacheGigabytes = gigabytes) }
+    }
+
+    /** Previews from the server on, or off (originals are downloaded instead). */
+    fun setPreviewsEnabled(enabled: Boolean) = changePreviews { it.copy(enabled = enabled) }
+
+    fun setPreviewFormat(format: PreviewFormat) = changePreviews { it.copy(format = format) }
+
+    fun setPreviewQuality(quality: PreviewQuality) = changePreviews { it.copy(quality = quality) }
+
+    private fun changePreviews(transform: (PreviewOptions) -> PreviewOptions) {
+        val options = transform(_state.value.previewOptions)
+        settings.previewOptions = options
+        _state.update { it.copy(previewOptions = options) }
     }
 
     /** Back to the platform's own threshold. */

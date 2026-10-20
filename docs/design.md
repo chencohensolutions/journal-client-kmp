@@ -200,7 +200,10 @@ Not yet: iOS, playing server-only videos, story/note sync.
   backup has read a device photo, so a new device doesn't show each photo twice); a photo only on the server
   (`MediaItem.isOnDevice` false; it keeps the device id it had, else `server:<sha256>`) shows the server's preview,
   or its downloaded original. Playing a server-only video (streaming) is not built yet. A new device downloads only the journal data (paged change
-  feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings).
+  feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings). Previews are optional (Oct 20,
+  2026): off, the originals are downloaded into the same cache instead; on, their format (WebP, HEIF, AVIF, JPEG XL,
+  JPEG) and quality (Low–Max) are chosen in Settings. The server keeps no previews unless the user's `preview_cache`
+  is on in its config.json.
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no

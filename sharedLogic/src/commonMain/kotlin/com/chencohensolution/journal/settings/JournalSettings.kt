@@ -3,6 +3,9 @@ package com.chencohensolution.journal.settings
 import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.server.PreviewFormat
+import com.chencohensolution.journal.server.PreviewOptions
+import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.storage.FreeUpRule
 import com.chencohensolution.journal.stories.MomentsFeed
 
@@ -94,6 +97,21 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
         set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
 
+    /** How server photos are shown: previews (format, quality) or their originals (Settings → Storage on this phone). */
+    var previewOptions: PreviewOptions
+        get() = PreviewOptions(
+            enabled = store.getString(KEY_PREVIEWS_ENABLED) != "false",
+            format = store.getString(KEY_PREVIEW_FORMAT)?.let { name -> PreviewFormat.entries.firstOrNull { it.name == name } }
+                ?: PreviewFormat.WEBP,
+            quality = store.getString(KEY_PREVIEW_QUALITY)?.let { name -> PreviewQuality.entries.firstOrNull { it.name == name } }
+                ?: PreviewQuality.HIGH,
+        )
+        set(value) {
+            store.putString(KEY_PREVIEWS_ENABLED, value.enabled.toString())
+            store.putString(KEY_PREVIEW_FORMAT, value.format.name)
+            store.putString(KEY_PREVIEW_QUALITY, value.quality.name)
+        }
+
     /** The rule "Free up space" used last ("days:365" or "keep:10"). */
     var freeUpRule: FreeUpRule
         get() {
@@ -133,5 +151,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_ORDER = "backup_order"
         private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
+        private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
+        private const val KEY_PREVIEW_FORMAT = "preview_format"
+        private const val KEY_PREVIEW_QUALITY = "preview_quality"
     }
 }

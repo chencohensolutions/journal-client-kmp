@@ -405,10 +405,10 @@
     <string name="library_info_preview_none">None yet</string>
     <string name="settings_storage_title">Storage on this phone</string>
     <string name="settings_storage_previews">Previews from your server</string>
-    <string name="settings_storage_previews_used">%1$s of %2$s used. Previews are fetched again when you scroll to them.</string>
+    <string name="settings_storage_previews_used">%1$s of %2$s used. Photos from your server are fetched again when you scroll to them.</string>
     <string name="settings_storage_counting">Counting…</string>
     <string name="settings_storage_gigabytes">%d GB</string>
-    <string name="settings_storage_clear_previews">Clear previews</string>
+    <string name="settings_storage_clear_previews">Clear</string>
     <string name="settings_free_up_title">Free up space</string>
     <string name="settings_free_up_older">Older than</string>
     <string name="settings_free_up_older_body">Removes photos and videos taken before then.</string>
@@ -461,4 +461,23 @@
         <item quantity="other">%,d files checked: tap to move them to the trash</item>
     </plurals>
     <string name="free_up_notification_confirm_body">%1$s can leave this phone. Your server has every one of them.</string>
+    <string name="settings_storage_previews_on">The server makes each photo at the size it is shown, in the format and quality below.</string>
+    <string name="settings_storage_previews_off">The original files are downloaded and kept in the space below. Videos are not downloaded.</string>
+    <string name="settings_storage_format">Format</string>
+    <string name="settings_storage_format_webp">WebP</string>
+    <string name="settings_storage_format_heif">HEIF</string>
+    <string name="settings_storage_format_avif">AVIF</string>
+    <string name="settings_storage_format_jxl">JPEG XL</string>
+    <string name="settings_storage_format_jpeg">JPEG</string>
+    <string name="settings_storage_format_webp_hint">Quick to make and to show.</string>
+    <string name="settings_storage_format_heif_hint">About a third smaller than WebP at the same quality.</string>
+    <string name="settings_storage_format_avif_hint">The smallest files; the server takes longer to make them.</string>
+    <string name="settings_storage_format_jxl_hint">The most detail for its size; the app decodes it itself.</string>
+    <string name="settings_storage_format_jpeg_hint">Works everywhere; the largest files.</string>
+    <string name="settings_storage_quality">Quality</string>
+    <string name="settings_storage_quality_low">Low</string>
+    <string name="settings_storage_quality_medium">Medium</string>
+    <string name="settings_storage_quality_high">High</string>
+    <string name="settings_storage_quality_max">Max</string>
+    <string name="settings_storage_kept">Kept on this phone</string>
 </resources>
