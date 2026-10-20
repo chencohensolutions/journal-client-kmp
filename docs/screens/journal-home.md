@@ -1,6 +1,7 @@
 # Journal (home)
 
-The main screen, with two tabs (renamed on Oct 19, 2026 from Journal / Unsorted). **Stories** is the timeline of
+The main screen, with three tabs (renamed on Oct 19, 2026 from Journal / Unsorted; **Explore** added Oct 20, 2026,
+Android only). **Stories** is the timeline of
 **stories** (a trip, a birthday, a person, anything worth naming), newest first; a story sits at its newest photo's
 day. **Moments** holds **every photo**, in rows: one row per day, or with the [grouping setting](settings.md) one row
 per run of photos without a long break. Photos never show on the Stories tab outside their story card.
@@ -35,7 +36,8 @@ Photos fill the screen on the page background (light or dark with the system); t
   from the story page.
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
-  - **Stories / Moments** switch: Stories shows only story cards, Moments the photos. No counts.
+  - **Stories / Moments / Explore** switch: Stories shows only story cards, Moments the photos, Explore the photos by
+    town and year and the map ([explore.md](explore.md)). No counts.
 
 Empty, loading and error states show a single line of text in place of the days. With photos but no stories yet,
 the Stories tab says "No stories yet. Make one from a day in Moments."

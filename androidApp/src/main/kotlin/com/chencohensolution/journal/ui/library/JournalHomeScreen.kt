@@ -82,7 +82,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
 
-internal enum class HomeTab { STORIES, MOMENTS }
+internal enum class HomeTab { STORIES, MOMENTS, EXPLORE }
 
 internal class HomeActions(
     /** A photo of the Moments tab; the viewer swipes through its row. */
@@ -109,6 +109,8 @@ internal class HomeActions(
     val toggleStory: (storyId: String, itemId: String, add: Boolean) -> Unit = { _, _, _ -> },
     val createStoryWith: (title: String, itemId: String) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
+    /** The Explore tab's towns, years and map. */
+    val explore: ExploreActions = ExploreActions(),
 )
 
 /**
@@ -135,6 +137,7 @@ internal fun JournalHomeScreen(
     initialSelection: Set<String> = emptySet(),
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var exploreView by rememberSaveable { mutableStateOf(ExploreView.PLACES) }
     // The row or trip whose "+ Story" or "Save as story" was tapped, and the title to start with.
     var newStoryKey by rememberSaveable { mutableStateOf<String?>(null) }
     var newStoryTitle by rememberSaveable { mutableStateOf("") }
@@ -207,7 +210,15 @@ internal fun JournalHomeScreen(
     }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        LazyColumn(
+        if (tab == HomeTab.EXPLORE) {
+            ExploreContent(
+                library,
+                stories,
+                exploreView,
+                actions.explore,
+                PaddingValues(top = insets.calculateTopPadding() + 118.dp, bottom = insets.calculateBottomPadding() + 150.dp),
+            )
+        } else LazyColumn(
             state = list,
             contentPadding = PaddingValues(
                 top = insets.calculateTopPadding() + if (moments) 118.dp else 72.dp,
@@ -255,6 +266,7 @@ internal fun JournalHomeScreen(
 
         TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
             if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
+            if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp))
         }
 
         BottomControls(
@@ -276,6 +288,7 @@ internal fun JournalHomeScreen(
                     options = listOf(
                         HomeTab.STORIES to stringResource(R.string.library_tab_stories),
                         HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                        HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
                     ),
                     selected = tab,
                     onSelect = {

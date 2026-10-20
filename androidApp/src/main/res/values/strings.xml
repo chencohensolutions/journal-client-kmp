@@ -506,4 +506,22 @@
     <string name="library_info_kept_video_of">Video · %1$s of %2$s cached</string>
     <string name="library_info_kept_nothing">Nothing yet</string>
     <string name="library_info_kept_total">%1$s in all</string>
+
+    <!-- Explore: photos by place and year, and the map -->
+    <string name="library_tab_explore">Explore</string>
+    <string name="explore_places">Places</string>
+    <string name="explore_years">Years</string>
+    <string name="explore_map">Map</string>
+    <string name="explore_home">Home</string>
+    <string name="explore_year_range">%1$d – %2$d</string>
+    <string name="explore_all_years">All years</string>
+    <string name="explore_whole_year">Whole year</string>
+    <string name="explore_finding_places">Finding where your photos were taken…</string>
+    <string name="explore_no_places">None of these photos has a location.</string>
+    <plurals name="map_photos_here">
+        <item quantity="one">%d photo here</item>
+        <item quantity="other">%d photos here</item>
+    </plurals>
+    <string name="map_show">Show</string>
+    <string name="map_no_photos">No photos with a location yet.</string>
 </resources>

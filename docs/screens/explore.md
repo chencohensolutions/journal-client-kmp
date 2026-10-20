@@ -1,0 +1,55 @@
+# Explore (places, years, map)
+
+The **Explore** tab of the [Journal](journal-home.md) (asked Oct 20, 2026): every photo by the **town** it was taken
+in or by **year**, and on a **map**. Like [Moments](moments.md) nothing is saved for it: it is worked out again from
+the library and the places found so far, and it shows the same sources as the Moments filter bar. Android only.
+
+## Layout
+
+- **Bar under the title:** **Places** / **Years** (filled when chosen), and **Map** at the right.
+- **Places:** the home town across the top, its photo with "HOME", the name and "4,812 photos · 2017 – 2026" written
+  over it; then the other towns two to a row, most photos first: a photo, the name and "312 · 2019 – 2026". Until a
+  place is named it reads "Finding where your photos were taken…" ("None of these photos has a location." when none
+  has one). Tapping a town opens its page.
+- **Years**, newest first: the year, its count, the towns most of it was taken in ("Tel Aviv · Jaffa · Haifa"), four
+  photos spread across the year, and its months. Tapping the year opens its page; a month opens it on that month.
+- **A town's or a year's page:** its photo across the top with the name and "312 photos · 2019 – 2026" (a year:
+  "1,284 photos · Tel Aviv · Jaffa · Haifa"), a back button over it, then a row of choices that narrow it: **All
+  years**, "2026 · 21", "2024 · 88"… for a town, **Whole year**, Oct, Sep… for a year. Under them its photos exactly
+  as in the Moments tab (day dividers, moments, near-duplicate sets, notes), without trip cards. Tapping a photo opens
+  the [viewer](viewer.md) on its row; the choice is kept while the viewer is open. Videos don't play in the list here.
+- **Map:** every located photo as a pin; pins near each other are one circle with their count, bigger for more.
+  Tapping a circle zooms in until it splits; a circle left at the closest zoom (photos taken in one spot), or a pin,
+  opens the viewer on the photos in view. A sheet at the bottom shows the years ("All years", "2019 – 2024"), "312
+  photos here" with **Show** (the viewer on them), and a slider over the years with photos to narrow them. The map
+  opens fitted to all pins, keeps where it was while the viewer is open, and follows the system theme. No rotating or
+  tilting.
+
+## Where it comes from
+
+Shared logic in [Explore.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/Explore.kt)
+(tested in `ExploreTest`):
+
+- `placesOf` groups photos by their place's town (`PlaceName.town`, see [moments.md](moments.md#where-locations-come-from)).
+  The **home town** is the town most photos within 10 km of home were taken in, home being the one the Moments tab
+  finds trips with (20 located photos or more). A town's photo is its newest photo (not a video).
+- `yearsOf`: per year its towns (most photos first, up to four) and four photos evenly spread across it.
+- `ExploreScope` is what a page or the viewer shows: a town, a year and month, a range of years, an area of the map.
+- `StoriesState.feedOf(items)` is the Moments feed of only those photos, with the same grouping, look-alike sets and
+  hand-made sets, and no trips.
+- Places are looked up for the whole library in the background (unsorted photos first), so towns and pins fill in
+  while that runs. Countries aren't known: towns are the widest grouping.
+
+## The map's tiles
+
+Drawn with [MapLibre](https://maplibre.org) (`org.maplibre.gl:android-sdk`), with map tiles from
+[OpenFreeMap](https://openfreemap.org) (styles `liberty` and `dark`, no account or key; chosen by the owner on
+Oct 20, 2026). OpenFreeMap sees which areas are looked at and the phone's address, never the photos or where they
+were taken: the pins are drawn on the phone. The map needs a network connection; © OpenStreetMap is credited at its
+top right.
+
+## Code
+
+Android: [ExploreViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ExploreViews.kt)
+(the tab, a town's and a year's page) and
+[MapScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MapScreen.kt).

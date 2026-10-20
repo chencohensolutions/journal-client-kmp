@@ -530,4 +530,23 @@
     <string name="library_info_kept_video_of">סרטון · %1$s מתוך %2$s במטמון</string>
     <string name="library_info_kept_nothing">עדיין כלום</string>
     <string name="library_info_kept_total">%1$s בסך הכל</string>
+
+    <!-- Explore: photos by place and year, and the map -->
+    <string name="library_tab_explore">גילוי</string>
+    <string name="explore_places">מקומות</string>
+    <string name="explore_years">שנים</string>
+    <string name="explore_map">מפה</string>
+    <string name="explore_home">בית</string>
+    <string name="explore_year_range">%1$d – %2$d</string>
+    <string name="explore_all_years">כל השנים</string>
+    <string name="explore_whole_year">כל השנה</string>
+    <string name="explore_finding_places">מאתרים איפה צולמו התמונות…</string>
+    <string name="explore_no_places">לאף אחת מהתמונות האלה אין מיקום.</string>
+    <plurals name="map_photos_here">
+        <item quantity="one">תמונה אחת כאן</item>
+        <item quantity="two">שתי תמונות כאן</item>
+        <item quantity="other">%d תמונות כאן</item>
+    </plurals>
+    <string name="map_show">הצגה</string>
+    <string name="map_no_photos">עדיין אין תמונות עם מיקום.</string>
 </resources>

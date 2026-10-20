@@ -353,6 +353,9 @@ data class StoriesState(
     val error: String? = null,
     /** Where photos were taken, and the places' names. */
     val places: Places = Places.NONE,
+    /** What the feed was built with, for [feedOf]. */
+    val grouping: TimelineGrouping = TimelineGrouping(),
+    val looks: PhotoLooks = PhotoLooks.NONE,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -363,6 +366,15 @@ data class StoriesState(
     val unsortedCount: Int = unsortedDays.sumOf { it.items.size }
 
     fun story(id: String): StoryView? = stories.firstOrNull { it.id == id }
+
+    /**
+     * A Moments feed of only [items] (newest first), of the sources the Moments tab shows and without trips: a place's
+     * or a year's page in Explore.
+     */
+    fun feedOf(items: List<MediaItem>): MomentsFeed {
+        val built = buildFeed(items, feed.shown, grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
+        return built.copy(entries = built.entries.filterIsInstance<FeedEntry.Section>())
+    }
 
     fun moment(key: String): Moment? = moments.firstOrNull { it.key == key }
 
@@ -1104,6 +1116,8 @@ internal fun buildState(
         .sortedByDescending { it.lastUsed }
     return StoriesState(
         places = places,
+        grouping = grouping,
+        looks = looks,
         stories = views,
         timeline = timeline,
         unsortedDays = unsorted,
@@ -1113,10 +1127,17 @@ internal fun buildState(
         itemsById = itemsById,
         feed = buildFeed(
             library.days.flatMap { it.items }, feedSources, grouping, places, looks, dismissedTrips, sorted,
-            // A cropped photo is shown on its own, out of its near-duplicate set, and so is one taken out of a set.
-            alone = notes.values.filter { !it.crops.isEmpty || it.apart }.map { it.deviceId }.toSet(),
-            sets = notes.values.mapNotNull { note -> note.feedSet?.let { note.deviceId to it } }.toMap(),
+            alone = aloneIn(notes),
+            sets = setsIn(notes),
         ),
         error = error,
     )
 }
+
+/** A cropped photo is shown on its own, out of its near-duplicate set, and so is one taken out of a set. */
+private fun aloneIn(notes: Map<String, PhotoNote>): Set<String> =
+    notes.values.filter { !it.crops.isEmpty || it.apart }.map { it.deviceId }.toSet()
+
+/** Photos merged by hand in the feed: photo id to set id. */
+private fun setsIn(notes: Map<String, PhotoNote>): Map<String, String> =
+    notes.values.mapNotNull { note -> note.feedSet?.let { note.deviceId to it } }.toMap()
