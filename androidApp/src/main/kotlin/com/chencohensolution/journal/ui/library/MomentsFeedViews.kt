@@ -69,7 +69,6 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
-import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
@@ -283,12 +282,16 @@ private fun DayDivider(section: FeedSection) {
     }
 }
 
-/** The row's heading; "Today" and "Yesterday" get their date too ("Today · Tue, Oct 20"), as older days show only it. */
+/**
+ * The row's days, never its times: "Sat, Oct 4", or "Oct 3 – Oct 4" for a row over two days. "Today" and "Yesterday"
+ * get their date too ("Today · Tue, Oct 20"), as older days show only it.
+ */
 @Composable
 private fun dividerLabel(span: Moment): String {
-    val label = momentLabel(span)
+    if (span.oldestDay != span.newestDay) return stringResource(R.string.library_moment_days, dayLabel(span.oldestDay), dayLabel(span.newestDay))
+    val label = dayLabel(span.newestDay)
     val date = span.newestDay.toLocalDate()
-    val recent = span.mode == GroupingMode.BY_DAY && !date.isBefore(LocalDate.now().minusDays(1))
+    val recent = !date.isBefore(LocalDate.now().minusDays(1))
     return if (recent) stringResource(R.string.feed_place_time, label, formatDate(date, "EEEMMMd")) else label
 }
 

@@ -14,8 +14,8 @@ rows of small photos.
 - **A timeline, newest first all the way down (asked Oct 20, 2026):** rows, the moments in a row and the photos in a
   moment are all newest first. Only a near-duplicate set keeps its photos oldest first, to swipe through.
 - **Rows**: the grouping setting splits them, by day or by breaks between photos, as before. Each row starts with a
-  divider: a line with its heading on a pill in the middle ("Today · Tue, Oct 20", "Sat, Oct 4", or with breaks
-  "Today · 9:14 – 21:40"), and under it the towns visited in order and a count ("Tel Aviv → Jaffa · 21 photos").
+  divider: a line with its heading on a pill in the middle ("Today · Tue, Oct 20", "Sat, Oct 4", or "Oct 3 – Oct 4" for a row over two days;
+  never times), and under it the towns visited in order and a count ("Tel Aviv → Jaffa · 21 photos").
   There is no **+ Story** on rows any more (removed Oct 20, 2026).
 - **Moments** within a row, each with a label and then its photos:
   - Camera: the place in bold ("📍 Jaffa Port") only where it differs from the camera moment above it in the row (the
