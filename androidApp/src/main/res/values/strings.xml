@@ -499,8 +499,12 @@
     <string name="library_info_format">Format</string>
     <string name="library_info_pixels">Pixels</string>
     <string name="library_info_of_original">%1$s · %2$s of the original</string>
-    <string name="library_info_kept_sizes">Sizes kept here</string>
-    <string name="library_info_kept_sizes_value">%1$d · %2$s</string>
     <string name="library_info_made_here">made on this phone</string>
     <string name="library_info_original_cached">Original downloaded here</string>
+    <string name="library_info_kept_title">Kept on this phone</string>
+    <string name="library_info_kept_original">Original · %1$s</string>
+    <string name="library_info_kept_video">Video · %1$s cached</string>
+    <string name="library_info_kept_video_of">Video · %1$s of %2$s cached</string>
+    <string name="library_info_kept_nothing">Nothing yet</string>
+    <string name="library_info_kept_total">%1$s in all</string>
 </resources>

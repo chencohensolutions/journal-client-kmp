@@ -523,8 +523,12 @@
     <string name="library_info_format">פורמט</string>
     <string name="library_info_pixels">פיקסלים</string>
     <string name="library_info_of_original">%1$s · %2$s מהמקור</string>
-    <string name="library_info_kept_sizes">גדלים שמורים כאן</string>
-    <string name="library_info_kept_sizes_value">%1$d · %2$s</string>
     <string name="library_info_made_here">נוצר בטלפון הזה</string>
     <string name="library_info_original_cached">המקור הורד לכאן</string>
+    <string name="library_info_kept_title">שמור בטלפון הזה</string>
+    <string name="library_info_kept_original">המקור · %1$s</string>
+    <string name="library_info_kept_video">סרטון · %1$s במטמון</string>
+    <string name="library_info_kept_video_of">סרטון · %1$s מתוך %2$s במטמון</string>
+    <string name="library_info_kept_nothing">עדיין כלום</string>
+    <string name="library_info_kept_total">%1$s בסך הכל</string>
 </resources>

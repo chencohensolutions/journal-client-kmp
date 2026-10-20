@@ -383,12 +383,15 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
 
 /**
  * [item] filling this box, which has its shape and is [width] wide in pixels: MediaStore's thumbnail at once (at most
- * 512 px, blurry at full width), then the photo itself decoded at the box's size on top, sharp on any screen.
+ * 512 px, blurry at full width), then the photo itself decoded at the box's size on top, sharp on any screen. A photo
+ * only on the server gets only the box's size: the thumbnail under it would be one more preview to ask for and keep.
  */
 @Composable
 private fun SharpPhoto(item: MediaItem, width: Int, modifier: Modifier = Modifier) {
     Box(modifier) {
-        rememberThumbnail(item, THUMB_LARGE)?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        if (item.hasOriginalHere) {
+            rememberThumbnail(item, THUMB_LARGE)?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        }
         SizedThumbnail(item, width, (width / item.ratio).toInt(), Modifier.fillMaxSize())
     }
 }

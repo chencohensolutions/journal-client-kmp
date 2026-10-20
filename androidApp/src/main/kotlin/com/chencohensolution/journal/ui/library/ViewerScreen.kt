@@ -18,6 +18,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.Image
@@ -299,6 +303,7 @@ internal fun ViewerScreen(
 
 @Composable
 private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
+    if (!item.hasOriginalHere) return ServerPhotoPage(item, sharedKey, crop)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
@@ -310,24 +315,58 @@ private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
 }
 
 /**
+ * A photo only on the server: the best image of it already on this phone shows at once (asking the server for nothing),
+ * while its original downloads into the cache (kept there); the original then fades in over it. A small spinner shows
+ * while it downloads. When this phone can't decode the original (Samsung's DNG 1.7), a preview at screen size is asked
+ * for instead; offline, the cached image stays.
+ */
+@Composable
+private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
+    val previews = LocalServerPreviews.current
+    val cached by produceState<android.graphics.Bitmap?>(null, item.id) {
+        value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) }
+    }
+    var downloading by remember(item.id) { mutableStateOf(true) }
+    val original by produceState<android.graphics.Bitmap?>(null, item.id) {
+        value = withContext(Dispatchers.IO) { serverOriginal(previews, item, VIEWER_MAX_SIDE) }
+        downloading = false
+    }
+    val fade by animateFloatAsState(if (original != null) 1f else 0f, tween(ORIGINAL_FADE_MILLIS), label = "original")
+    Box(Modifier.fillMaxSize()) {
+        val base = cached ?: original
+        if (base != null) {
+            ViewerImage(base.asImageBitmap(), sharedKey, crop, over = original?.takeIf { cached != null }?.asImageBitmap(), overAlpha = fade)
+        }
+        if (downloading) {
+            CircularProgressIndicator(
+                color = Color.White.copy(alpha = 0.8f),
+                strokeWidth = 2.dp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 16.dp).size(18.dp),
+            )
+        }
+    }
+}
+
+private const val ORIGINAL_FADE_MILLIS = 250
+
+/**
  * The photo at its own shape (or its [crop]'s), centred: it looks fitted, and it is shared with the tile it was opened
  * from, so its crop opens up as the tile grows into it.
  */
 @Composable
-private fun ViewerImage(image: ImageBitmap, sharedKey: String, crop: CropRect? = null) {
+private fun ViewerImage(image: ImageBitmap, sharedKey: String, crop: CropRect? = null, over: ImageBitmap? = null, overAlpha: Float = 1f) {
     val ratio = image.width.toFloat() / image.height
+    // [over] (the original, once downloaded) is drawn on top of [image] in the same place, fading in.
+    @Composable
+    fun Pictures(scale: ContentScale) {
+        Image(image, contentDescription = null, contentScale = scale, modifier = Modifier.fillMaxSize())
+        over?.let { Image(it, contentDescription = null, contentScale = scale, modifier = Modifier.fillMaxSize().alpha(overAlpha)) }
+    }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (crop != null) {
-            CropBox(crop, Modifier.aspectRatio(ratio * crop.w / crop.h).shared(sharedKey)) {
-                Image(image, contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
-            }
+            CropBox(crop, Modifier.aspectRatio(ratio * crop.w / crop.h).shared(sharedKey)) { Pictures(ContentScale.FillBounds) }
         } else {
-            Image(
-                image,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.aspectRatio(ratio).shared(sharedKey),
-            )
+            Box(Modifier.aspectRatio(ratio).shared(sharedKey)) { Pictures(ContentScale.Crop) }
         }
     }
 }
@@ -385,7 +424,9 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
         VideoPlayer(item, startAt = position, onStopped = { position = it })
     } else {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            rememberThumbnail(item, THUMB_LARGE)?.let { ViewerImage(it, sharedKey) }
+            // A video only on the server shows the poster already kept (the feed's or a grid's), asking for no new size.
+            val poster = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
+            poster?.let { ViewerImage(it, sharedKey) }
             IconButton(
                 onClick = { playing = true },
                 colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),
@@ -791,43 +832,95 @@ private fun keptFile(kept: ServerPreviews.Kept): KeptFile {
     )
 }
 
+/** What this phone keeps of a server photo or video: its previews (largest first), a downloaded original, cached video. */
+private class KeptHere(val previews: List<KeptFile>, val originalBytes: Long?, val videoBytes: Long?)
+
 /**
- * A photo only on the server, as this phone has it: the preview the viewer shows (its format, quality, pixels and size
- * against the original's), how many sizes of it are kept, and the original when it was downloaded into the cache.
+ * A photo or video only on the server, as this phone has it. "Shown on this phone": what the viewer shows, the original
+ * when it was downloaded into the cache (it is used before any preview), else the largest preview (format, quality,
+ * pixels, and size against the original's). "Kept on this phone": every size and format kept, the original, and how
+ * much of a video is cached.
  */
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun ShownHereFacts(item: MediaItem) {
     val context = LocalContext.current
     val previews = LocalServerPreviews.current
-    val state by produceState<Triple<KeptFile?, Pair<Int, Long>, Long?>?>(null, item.sha256) {
+    val state by produceState<KeptHere?>(null, item.sha256) {
         val sha = item.sha256 ?: return@produceState
         value = withContext(Dispatchers.IO) {
-            val kept = previews?.kept(sha).orEmpty()
-            val original = previews?.cachedOriginal(sha)?.let { java.io.File(it).length() }
-            Triple(kept.firstOrNull()?.let(::keptFile), kept.size to kept.sumOf { it.bytes }, original)
+            KeptHere(
+                previews = previews?.kept(sha).orEmpty().map(::keptFile),
+                originalBytes = previews?.cachedOriginal(sha)?.let { java.io.File(it).length() },
+                videoBytes = if (item.type == MediaType.VIDEO && previews != null) {
+                    runCatching { ServerVideos.cache(context).getCachedSpans(sha).sumOf { it.length } }.getOrNull()?.takeIf { it > 0 }
+                } else {
+                    null
+                },
+            )
         }
     }
+    val kept = state ?: return
+    val original = item.sizeBytes?.takeIf { it > 0 }
+    fun sizeText(bytes: Long): String {
+        val size = Formatter.formatShortFileSize(context, bytes)
+        return original?.let { context.getString(R.string.library_info_of_original, size, percentText(bytes * 100.0 / it)) } ?: size
+    }
+
     InfoHeading(stringResource(R.string.library_info_shown_title))
-    val (shown, kept, original) = state ?: return
-    val facts = buildList {
-        if (shown == null) {
-            add(stringResource(R.string.library_info_preview) to stringResource(R.string.library_info_preview_none))
-        } else {
-            val quality = when {
-                shown.madeHere -> stringResource(R.string.library_info_made_here)
-                shown.quality != null -> qualityLabel(shown.quality)
-                else -> null
+    val shown = kept.previews.firstOrNull()
+    FactGrid(
+        buildList {
+            when {
+                item.type == MediaType.IMAGE && kept.originalBytes != null ->
+                    add(stringResource(R.string.library_info_format) to stringResource(R.string.library_info_original_title))
+                shown == null -> add(stringResource(R.string.library_info_preview) to stringResource(R.string.library_info_preview_none))
+                else -> {
+                    add(stringResource(R.string.library_info_format) to keptFormat(shown))
+                    shown.pixels?.let { (w, h) -> add(stringResource(R.string.library_info_pixels) to pixelsText(w, h)) }
+                    add(stringResource(R.string.library_info_size) to sizeText(shown.bytes))
+                }
             }
-            add(stringResource(R.string.library_info_format) to listOfNotNull(shown.format, quality).joinToString(" · "))
-            shown.pixels?.let { (w, h) -> add(stringResource(R.string.library_info_pixels) to pixelsText(w, h)) }
-            val size = Formatter.formatShortFileSize(context, shown.bytes)
-            val ratio = item.sizeBytes?.takeIf { it > 0 }?.let { percentText(shown.bytes * 100.0 / it) }
-            add(stringResource(R.string.library_info_size) to (ratio?.let { stringResource(R.string.library_info_of_original, size, it) } ?: size))
-            add(stringResource(R.string.library_info_kept_sizes) to stringResource(R.string.library_info_kept_sizes_value, kept.first, Formatter.formatShortFileSize(context, kept.second)))
+        },
+    )
+
+    InfoHeading(stringResource(R.string.library_info_kept_title))
+    val lines = buildList {
+        kept.previews.forEach { file ->
+            add(listOfNotNull(file.pixels?.let { (w, h) -> "$w × $h" }, keptFormat(file), Formatter.formatShortFileSize(context, file.bytes)).joinToString(" · "))
         }
-        original?.let { add(stringResource(R.string.library_info_original_cached) to Formatter.formatShortFileSize(context, it)) }
+        kept.originalBytes?.let { add(stringResource(R.string.library_info_kept_original, sizeText(it))) }
+        kept.videoBytes?.let { bytes ->
+            val total = original?.let { Formatter.formatShortFileSize(context, it) }
+            val cached = Formatter.formatShortFileSize(context, bytes)
+            add(if (total != null) stringResource(R.string.library_info_kept_video_of, cached, total) else stringResource(R.string.library_info_kept_video, cached))
+        }
     }
-    FactGrid(facts)
+    if (lines.isEmpty()) {
+        Text(stringResource(R.string.library_info_kept_nothing), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            lines.forEach { Text(it, color = LibraryColors.OnInverse, fontSize = 14.sp) }
+            val total = kept.previews.sumOf { it.bytes } + (kept.originalBytes ?: 0) + (kept.videoBytes ?: 0)
+            Text(
+                stringResource(R.string.library_info_kept_total, Formatter.formatShortFileSize(context, total)),
+                color = LibraryColors.OnInverseMuted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+/** "JPEG XL · High", "WebP · made on this phone". */
+@Composable
+private fun keptFormat(file: KeptFile): String {
+    val quality = when {
+        file.madeHere -> stringResource(R.string.library_info_made_here)
+        file.quality != null -> qualityLabel(file.quality)
+        else -> null
+    }
+    return listOfNotNull(file.format, quality).joinToString(" · ")
 }
 
 /** "3%", "0.4%". */

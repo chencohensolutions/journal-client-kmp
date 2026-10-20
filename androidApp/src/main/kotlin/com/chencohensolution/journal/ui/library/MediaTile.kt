@@ -207,6 +207,38 @@ private suspend fun serverBitmap(
     return previews.preview(sha, width, height, contain = true)?.let(::decodePreview)
 }
 
+/**
+ * The best image of a server-only photo already on this phone, asking the server for nothing: the largest one decoded
+ * in memory (a tile just seen), else its original or the largest preview kept on disk.
+ */
+internal suspend fun cachedServerImage(previews: ServerPreviews?, item: MediaItem): Bitmap? {
+    val inMemory = thumbnailCache.snapshot().filterKeys { it.startsWith("${item.id}@") }.values.maxByOrNull { it.width.toLong() * it.height }
+    if (inMemory != null) return inMemory
+    val sha = item.sha256 ?: return null
+    previews ?: return null
+    return previews.preview(sha, THUMB_LARGE, THUMB_LARGE, contain = true, fetch = false)?.let(::decodePreview)
+}
+
+/** [cachedServerImage] for a composable: what is already on this phone, never fetched. */
+@Composable
+internal fun rememberCachedServerImage(item: MediaItem): ImageBitmap? {
+    val previews = LocalServerPreviews.current
+    val bitmap by produceState<Bitmap?>(null, item.id) { value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) } }
+    return bitmap?.asImageBitmap()
+}
+
+/**
+ * A server-only photo's original, downloaded into the cache if it isn't there (and kept), decoded to fit [maxSide]. When
+ * this phone can't decode it (Samsung's DNG 1.7), the server's preview at that size. Null offline.
+ */
+internal suspend fun serverOriginal(previews: ServerPreviews?, item: MediaItem, maxSide: Int): Bitmap? {
+    val sha = item.sha256 ?: return null
+    previews ?: return null
+    val path = previews.original(sha, item.fileName ?: sha) ?: return null
+    return withContext(fullDecodes) { decodeKept(path, item) { w, h -> fitInside(w, h, maxSide) } }
+        ?: previews.preview(sha, maxSide, maxSide, contain = true, orLargest = false)?.let(::decodePreview)
+}
+
 /** A preview from the server, in any format it makes; JPEG XL with the app's own decoder (Android has none). */
 internal fun decodePreview(bytes: ByteArray): Bitmap? = runCatching {
     if (JxlCoder.isJXL(bytes)) JxlCoder.decode(bytes) else BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
