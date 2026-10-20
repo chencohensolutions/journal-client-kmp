@@ -180,11 +180,18 @@ internal val TILE_GAP = 2.dp
 /** Where photos that are only on the server come from; null in screenshot tests. */
 internal val LocalServerPreviews = staticCompositionLocalOf<ServerPreviews?> { null }
 
+/** Previews, originals and videos of server photos kept on this phone, under one limit; null in screenshot tests. */
+internal val LocalPhoneStorage = staticCompositionLocalOf<com.chencohensolution.journal.storage.PhoneStorage?> { null }
+
+/** Android's decoders for what [ServerPreviews] keeps: an original fitted by [fromOriginal], or preview bytes. */
+private fun decoders(item: MediaItem, fromOriginal: (Int, Int) -> Pair<Int, Int>?) = ServerPreviews.Decoders(
+    original = { path -> withContext(fullDecodes) { decodeKept(path, item, fromOriginal) } },
+    preview = { bytes -> decodePreview(bytes) },
+)
+
 /**
- * A server-only photo. Its original when one is here (downloaded while previews were off), decoded to the size
- * [fromOriginal] picks; else its preview at exactly [width] × [height] pixels (fitted inside the box), kept here or
- * made by the server now. With previews off, the original is downloaded instead, and a preview is asked for only when
- * this phone can't decode it (Samsung's DNG 1.7). Null offline when nothing of it is here.
+ * A server-only photo or video at [width] × [height] pixels, chosen by [ServerPreviews.tile] (original, exact preview,
+ * or the original downloaded with previews off); an original is decoded to the size [fromOriginal] picks.
  */
 private suspend fun serverBitmap(
     previews: ServerPreviews?,
@@ -194,29 +201,18 @@ private suspend fun serverBitmap(
     fromOriginal: (Int, Int) -> Pair<Int, Int>?,
 ): Bitmap? {
     val sha = item.sha256 ?: return null
-    previews ?: return null
-    // A video's tile is the server's poster frame at this size, also with previews off: a video isn't downloaded just
-    // to show its tile. Offline, the largest kept stands in (also the frame kept when it left the phone).
-    if (item.type == MediaType.VIDEO) return previews.preview(sha, width, height, contain = true)?.let(::decodePreview)
-    suspend fun decode(original: String?) = original?.let { withContext(fullDecodes) { decodeKept(it, item, fromOriginal) } }
-    decode(previews.cachedOriginal(sha))?.let { return it }
-    if (!previews.usesPreviews) {
-        previews.preview(sha, width, height, contain = true, fetch = false, orLargest = false)?.let(::decodePreview)?.let { return it }
-        decode(previews.original(sha, item.fileName ?: sha))?.let { return it }
-    }
-    return previews.preview(sha, width, height, contain = true)?.let(::decodePreview)
+    return previews?.tile(sha, item.type == MediaType.VIDEO, item.fileName, width, height, decoders(item, fromOriginal))
 }
 
 /**
  * The best image of a server-only photo already on this phone, asking the server for nothing: the largest one decoded
- * in memory (a tile just seen), else its original or the largest preview kept on disk.
+ * in memory (a tile just seen), else the largest preview kept on disk.
  */
 internal suspend fun cachedServerImage(previews: ServerPreviews?, item: MediaItem): Bitmap? {
     val inMemory = thumbnailCache.snapshot().filterKeys { it.startsWith("${item.id}@") }.values.maxByOrNull { it.width.toLong() * it.height }
     if (inMemory != null) return inMemory
     val sha = item.sha256 ?: return null
-    previews ?: return null
-    return previews.preview(sha, THUMB_LARGE, THUMB_LARGE, contain = true, fetch = false)?.let(::decodePreview)
+    return previews?.largestPreview(sha)?.let(::decodePreview)
 }
 
 /** [cachedServerImage] for a composable: what is already on this phone, never fetched. */
@@ -227,16 +223,10 @@ internal fun rememberCachedServerImage(item: MediaItem): ImageBitmap? {
     return bitmap?.asImageBitmap()
 }
 
-/**
- * A server-only photo's original, downloaded into the cache if it isn't there (and kept), decoded to fit [maxSide]. When
- * this phone can't decode it (Samsung's DNG 1.7), the server's preview at that size. Null offline.
- */
+/** A server-only photo opened on its own, fitted in [maxSide]: [ServerPreviews.viewer] (its original, downloaded). */
 internal suspend fun serverOriginal(previews: ServerPreviews?, item: MediaItem, maxSide: Int): Bitmap? {
     val sha = item.sha256 ?: return null
-    previews ?: return null
-    val path = previews.original(sha, item.fileName ?: sha) ?: return null
-    return withContext(fullDecodes) { decodeKept(path, item) { w, h -> fitInside(w, h, maxSide) } }
-        ?: previews.preview(sha, maxSide, maxSide, contain = true, orLargest = false)?.let(::decodePreview)
+    return previews?.viewer(sha, item.fileName, maxSide, decoders(item) { w, h -> fitInside(w, h, maxSide) })
 }
 
 /** A preview from the server, in any format it makes; JPEG XL with the app's own decoder (Android has none). */

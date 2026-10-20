@@ -60,6 +60,57 @@ class ServerPreviews internal constructor(
     /** Whether photos are shown from previews (else from their originals, downloaded). */
     val usesPreviews: Boolean get() = options().enabled
 
+    /** How a platform turns what is kept into a picture: an original file, or encoded preview bytes. Null: it can't. */
+    class Decoders<T : Any>(
+        val original: suspend (path: String) -> T?,
+        val preview: suspend (bytes: ByteArray) -> T?,
+    )
+
+    /**
+     * A server-only photo or video drawn at [width] × [height] pixels (a tile). A video: its poster at that size (videos
+     * aren't downloaded to be shown). A photo: its original when one is in this cache; else, with previews on, the
+     * preview at exactly that size (kept, or made by the server now); with previews off, the exact preview when one is
+     * kept, else the original downloaded now, and a preview after all when this device can't decode it (Samsung's DNG
+     * 1.7). Offline, the largest preview kept stands in. Null when nothing of it can be had.
+     */
+    suspend fun <T : Any> tile(sha256: String, isVideo: Boolean, fileName: String?, width: Int, height: Int, decode: Decoders<T>): T? {
+        if (isVideo) return preview(sha256, width, height, contain = true)?.let { decode.preview(it) }
+        cachedOriginal(sha256)?.let { decode.original(it) }?.let { return it }
+        if (!usesPreviews) {
+            preview(sha256, width, height, contain = true, fetch = false, orLargest = false)?.let { decode.preview(it) }?.let { return it }
+            original(sha256, fileName ?: sha256)?.let { decode.original(it) }?.let { return it }
+        }
+        return preview(sha256, width, height, contain = true)?.let { decode.preview(it) }
+    }
+
+    /**
+     * A server-only photo opened on its own, fitted in [maxSide]: its original, downloaded into this cache now if it
+     * isn't here (and kept). A preview at that size only when this device can't decode the original. Null offline; the
+     * caller keeps showing what it had ([largestPreview]).
+     */
+    suspend fun <T : Any> viewer(sha256: String, fileName: String?, maxSide: Int, decode: Decoders<T>): T? {
+        original(sha256, fileName ?: sha256)?.let { decode.original(it) }?.let { return it }
+        return preview(sha256, maxSide, maxSide, contain = true, orLargest = false)?.let { decode.preview(it) }
+    }
+
+    /** The largest preview of [sha256] kept here, never fetched: what shows while the original downloads. */
+    suspend fun largestPreview(sha256: String): ByteArray? =
+        largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
+
+    /** Where the original of [sha256] is streamed from (`GET /media/{sha256}`, with Range). */
+    fun mediaUrl(sha256: String): String = http.url("/media/$sha256")
+
+    /**
+     * What is kept here of [sha256]: each preview (its pixels, format and quality, read from its name, largest first)
+     * and the original when it was downloaded. [photoWidth] × [photoHeight] is the photo's own size, which a preview
+     * fitted inside its box takes the shape of.
+     */
+    suspend fun keptHere(sha256: String, photoWidth: Int, photoHeight: Int): KeptHere {
+        val previews = kept(sha256).mapNotNull { keptPreview(it, photoWidth, photoHeight) }
+        val original = cachedOriginal(sha256)?.let { withContext(Dispatchers.IO) { fileSystem.metadataOrNull(it.toPath())?.size } }
+        return KeptHere(previews, original)
+    }
+
     /**
      * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it), in the format
      * and quality of [options]: the one kept here, else made by the server now (unless not [fetch]). Offline (with

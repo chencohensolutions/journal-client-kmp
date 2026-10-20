@@ -27,6 +27,7 @@ import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
 import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.storage.PhoneStorage
 import com.chencohensolution.journal.storage.ServerVerifyApi
 import com.chencohensolution.journal.similarity.AndroidPhotoAnalyzer
 import com.chencohensolution.journal.similarity.FingerprintCache
@@ -119,12 +120,20 @@ fun serverStream(context: Context, sha256: String): ServerStream? {
             ?: AndroidMtlsHttpClientFactory(context).okHttpClient(alias, decodePemCertificates(SERVER_CA_PEM))
                 .also { streamClient = alias to it }
     }
-    return ServerStream(serverHttp(context).url("/media/$sha256"), client)
+    return ServerStream(serverPreviews(context).mediaUrl(sha256), client)
 }
 
-/** What server photos and videos may take up on this device together (Settings → Storage on this phone). */
-fun keptOnPhoneLimitBytes(context: Context): Long =
-    JournalSettings(SharedPreferencesStore(context)).previewCacheGigabytes.toLong() shl 30
+private var phoneStorage: PhoneStorage? = null
+
+/**
+ * Settings → Storage on this phone: previews, downloaded originals and streamed videos of server photos under one
+ * limit. One per process; the app attaches its video cache.
+ */
+@Synchronized
+fun phoneStorage(context: Context): PhoneStorage =
+    phoneStorage ?: JournalSettings(SharedPreferencesStore(context)).let { settings ->
+        PhoneStorage(serverPreviews(context)) { settings.previewCacheGigabytes.toLong() shl 30 }
+    }.also { phoneStorage = it }
 
 /** Originals downloaded from the server and kept in `files/originals`. One per process. */
 @Synchronized

@@ -14,10 +14,11 @@ import androidx.media3.datasource.cache.CacheEvictor
 import androidx.media3.datasource.cache.CacheSpan
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import com.chencohensolution.journal.keptOnPhoneLimitBytes
 import com.chencohensolution.journal.library.MediaItem
-import com.chencohensolution.journal.serverPreviews
+import com.chencohensolution.journal.phoneStorage
 import com.chencohensolution.journal.serverStream
+import com.chencohensolution.journal.storage.PhoneStorage
+import com.chencohensolution.journal.storage.VideoCache
 import java.io.File
 import java.util.TreeSet
 
@@ -27,8 +28,8 @@ internal class PlayableVideo(val dataSource: DataSource.Factory, val item: Playe
 /**
  * Videos only on the server, streamed from their original (`GET /media/{sha256}` with Range) into `cache/videos`: the
  * parts played or buffered are kept, keyed by sha256, so a video swiped away after a few seconds keeps them, and
- * playing it again reads them here and fetches only what is missing. The cache shares the "Kept on this phone" limit
- * with the previews and originals of server photos (least recently used first).
+ * playing it again reads them here and fetches only what is missing. It is [PhoneStorage]'s video cache: it shares the
+ * "Kept on this phone" limit with the previews and originals of server photos (least recently used first).
  */
 @OptIn(UnstableApi::class)
 internal object ServerVideos {
@@ -39,21 +40,16 @@ internal object ServerVideos {
     fun cache(context: Context): SimpleCache {
         cache?.let { return it }
         val app = context.applicationContext
-        val previews = serverPreviews(app)
-        val evictor = SharedLimitEvictor { keptOnPhoneLimitBytes(app) - previews.knownBytes }
+        val storage = phoneStorage(app)
+        val evictor = SharedLimitEvictor(storage::videoBudget)
         return SimpleCache(File(app.cacheDir, "videos"), evictor, StandaloneDatabaseProvider(app)).also { videos ->
             cache = videos
-            previews.otherBytes = { videos.cacheSpace }
+            storage.attachVideos(object : VideoCache {
+                override fun usedBytes() = videos.cacheSpace
+                override fun cachedBytes(sha256: String) = videos.getCachedSpans(sha256).sumOf { it.length }
+                override fun clear() = videos.keys.toList().forEach(videos::removeResource)
+            })
         }
-    }
-
-    /** Bytes the cached videos take up. */
-    fun usedBytes(context: Context): Long = cache(context).cacheSpace
-
-    /** Deletes every cached video; they stream again when played. Blocks. */
-    fun clear(context: Context) {
-        val videos = cache(context)
-        videos.keys.toList().forEach(videos::removeResource)
     }
 
     /**
@@ -111,12 +107,7 @@ private class SharedLimitEvictor(private val maxBytes: () -> Long) : CacheEvicto
     }
 
     private fun evict(cache: Cache, required: Long) {
-        val limit = maxBytes().coerceAtLeast(MIN_VIDEO_BYTES)
+        val limit = maxBytes()
         while (size + required > limit && spans.isNotEmpty()) cache.removeSpan(spans.first())
-    }
-
-    private companion object {
-        /** Enough for a video being played, however much the previews take. */
-        const val MIN_VIDEO_BYTES = 512L shl 20
     }
 }

@@ -200,11 +200,24 @@ fetched, and their tiles show the poster frame the server makes. Not yet: iOS, s
 - The app's library is one list of device photos and server photos joined by sha256 (or by file name and size before
   backup has read a device photo, so a new device doesn't show each photo twice); a photo only on the server
   (`MediaItem.isOnDevice` false; it keeps the device id it had, else `server:<sha256>`) shows the server's preview,
-  or its downloaded original. Playing a server-only video (streaming) is not built yet. A new device downloads only the journal data (paged change
+  or its downloaded original. Videos stream (see Upload and sync above). A new device downloads only the journal data (paged change
   feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings). Previews are optional (Oct 20,
   2026): off, the originals are downloaded into the same cache instead; on, their format (WebP, HEIF, AVIF, JPEG XL,
   JPEG) and quality (Low–Max) are chosen in Settings. The server keeps no previews unless the user's `preview_cache`
   is on in its config.json.
+- **Shared, for both apps** (the platforms only decode, play and draw):
+  - What to show for a server photo: `ServerPreviews.tile` (a tile: the original here, else the exact preview, or the
+    original downloaded with previews off, a preview when the device can't decode it; a video's poster),
+    `ServerPreviews.viewer` (opened alone: the original, downloaded and kept) and `largestPreview` (what shows meanwhile).
+    The platform passes its decoders (`ServerPreviews.Decoders`); Android's JPEG XL decoder is a library, iOS 17+ has one.
+  - What is kept of a photo (info panel): `PhoneStorage.keptHere` (each preview's pixels, format and quality, the
+    original, a video's cached bytes); `mediaKind`, `megapixels` and `percentOf` for its wording.
+  - Storage on this phone: `PhoneStorage` (one limit for previews, originals and videos; usage, Clear, the videos'
+    share). The platform's video cache implements `VideoCache` (Android: Media3's cache, keyed by sha256); a video
+    streams from `ServerPreviews.mediaUrl` with the device's mTLS client.
+  - Free up space: `FreeUpController` (rules, sources, checks, batches, waiting files) with `FreeUpState.summary`,
+    `statusLines` and `needsConfirmation`; the platform implements `PhotoTrash` (iOS: PhotoKit, which PhotoSafetyTest must
+    allow) and runs it in the background.
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no

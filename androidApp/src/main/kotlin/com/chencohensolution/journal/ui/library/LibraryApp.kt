@@ -53,6 +53,7 @@ import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.storage.FreeUpActivity
 import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.storage.PhoneStorage
 import com.chencohensolution.journal.work.FreeUpWorker
 import com.chencohensolution.journal.work.currentWifiName
 import com.chencohensolution.journal.library.MediaType
@@ -161,15 +162,18 @@ fun LibraryApp(
     server: ServerFiles,
     freeUp: FreeUpController,
     onRegisterAgain: () -> Unit,
-) = CompositionLocalProvider(LocalServerPreviews provides server.previews) {
+) = CompositionLocalProvider(LocalServerPreviews provides server.previews, LocalPhoneStorage provides server.storage) {
     LibraryScreens(journal, library, stories, settings, backup, server, freeUp, onRegisterAgain)
 }
 
 /** The longer side of the frame kept for a video that leaves the phone. */
 private const val VIDEO_POSTER_SIDE = 1920
 
-/** The server's copies: its list of photos, their previews kept here, and originals downloaded and kept. */
-class ServerFiles(val library: ServerLibrary, val previews: ServerPreviews, val originals: KeptOriginals)
+/**
+ * The server's copies: its list of photos, their previews kept here, originals downloaded and kept, and what is kept
+ * on this phone in all (previews, originals and videos under one limit).
+ */
+class ServerFiles(val library: ServerLibrary, val previews: ServerPreviews, val originals: KeptOriginals, val storage: PhoneStorage)
 
 @Composable
 private fun LibraryScreens(
@@ -303,8 +307,7 @@ private fun LibraryScreens(
         freeUp.refreshPlan()
         onPauseOrDispose {}
     }
-    val freeUpWaiting = freeUpState.waitingCount > 0 && freeUpState.activity !is FreeUpActivity.Running
-    LaunchedEffect(freeUpWaiting) { if (freeUpWaiting) moveWaitingToTrash() }
+    LaunchedEffect(freeUpState.needsConfirmation) { if (freeUpState.needsConfirmation) moveWaitingToTrash() }
     val photoTrash = remember { AndroidPhotoTrash(context) }
     var canTrashWithoutAsking by remember { mutableStateOf(photoTrash.canTrashWithoutAsking()) }
     LifecycleResumeEffect(Unit) {
@@ -330,9 +333,8 @@ private fun LibraryScreens(
         setPreviewLimit = settings::setPreviewCacheGigabytes,
         clearPreviews = {
             scope.launch {
-                server.previews.clear()
-                withContext(Dispatchers.IO) { ServerVideos.clear(context) }
-                previewBytes = server.previews.usedBytes() + withContext(Dispatchers.IO) { ServerVideos.usedBytes(context) }
+                server.storage.clear()
+                previewBytes = server.storage.usedBytes()
             }
         },
         setRule = freeUp::setRule,
@@ -500,8 +502,8 @@ private fun LibraryScreens(
                                     }
                                     // Counted on open, and again (after trimming) when the limit changes.
                                     LaunchedEffect(settingsState.previewCacheGigabytes) {
-                                        server.previews.trimToLimit()
-                                        previewBytes = server.previews.usedBytes() + withContext(Dispatchers.IO) { ServerVideos.usedBytes(context) }
+                                        server.storage.trimToLimit()
+                                        previewBytes = server.storage.usedBytes()
                                     }
                                     SettingsScreen(
                                         settings = settingsState,

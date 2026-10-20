@@ -86,7 +86,53 @@ data class FreeUpState(
     val waitingCount: Int = 0,
     val waitingBytes: Long = 0,
     val lastResult: FreeUpResult? = null,
-)
+) {
+    /** Checked files wait and no run is going: the platform shows its one prompt for them (once). */
+    val needsConfirmation: Boolean get() = waitingCount > 0 && activity !is FreeUpActivity.Running
+
+    /** One line for the Settings row. */
+    val summary: FreeUpSummary get() {
+        val running = (activity as? FreeUpActivity.Running)?.progress
+        return when {
+            running != null -> FreeUpSummary.Checking((running.done + 1).coerceAtMost(running.total), running.total)
+            waitingCount > 0 -> FreeUpSummary.Waiting(waitingCount, waitingBytes)
+            plan == null -> FreeUpSummary.Counting
+            plan.groups.isEmpty() -> FreeUpSummary.Nothing
+            else -> FreeUpSummary.CanFree(plan.bytes)
+        }
+    }
+
+    /** What the run is doing, why it stopped or what the last one did, and what waits: one line each. */
+    val statusLines: List<FreeUpLine> get() = buildList {
+        when (val a = activity) {
+            is FreeUpActivity.Running -> add(FreeUpLine.Checking((a.progress.done + 1).coerceAtMost(a.progress.total), a.progress.total, a.progress.currentName))
+            is FreeUpActivity.Stopped -> add(FreeUpLine.Stopped(a.message))
+            FreeUpActivity.Idle -> lastResult?.let { result ->
+                if (result.removed > 0) add(FreeUpLine.Removed(result.removed, result.removedBytes))
+                result.kept.forEach { (reason, count) -> add(FreeUpLine.Kept(reason, count)) }
+            }
+        }
+        if (waitingCount > 0) add(FreeUpLine.Waiting(waitingCount, waitingBytes))
+    }
+}
+
+/** The Free up space row in Settings. */
+sealed interface FreeUpSummary {
+    data class Checking(val number: Int, val total: Int) : FreeUpSummary
+    data class Waiting(val count: Int, val bytes: Long) : FreeUpSummary
+    data object Counting : FreeUpSummary
+    data object Nothing : FreeUpSummary
+    data class CanFree(val bytes: Long) : FreeUpSummary
+}
+
+/** One line of Free up space's status. */
+sealed interface FreeUpLine {
+    data class Checking(val number: Int, val total: Int, val fileName: String?) : FreeUpLine
+    data class Stopped(val message: String) : FreeUpLine
+    data class Removed(val count: Int, val bytes: Long) : FreeUpLine
+    data class Kept(val reason: KeptReason, val count: Int) : FreeUpLine
+    data class Waiting(val count: Int, val bytes: Long) : FreeUpLine
+}
 
 /** A checked file waiting for the user's confirmation, as it was when checked. */
 @Serializable

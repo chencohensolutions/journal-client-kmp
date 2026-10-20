@@ -8,7 +8,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.places.PlaceName
 import java.util.Locale
-import com.chencohensolution.journal.server.ServerPreviews
+import com.chencohensolution.journal.server.KeptHere
+import com.chencohensolution.journal.server.KeptPreview
+import com.chencohensolution.journal.server.PreviewFormat
+import com.chencohensolution.journal.server.PreviewQuality
+import com.chencohensolution.journal.storage.mediaKind
+import com.chencohensolution.journal.storage.megapixels
+import com.chencohensolution.journal.storage.percentOf
 import kotlinx.coroutines.launch
 import android.text.format.Formatter
 import androidx.media3.common.PlaybackException
@@ -781,103 +787,52 @@ private fun FactGrid(facts: List<Pair<String, String>>) {
 }
 
 /** "4000 × 3000 (12 MP)". */
-private fun pixelsText(width: Int, height: Int): String {
-    val megapixels = width.toLong() * height / 1_000_000.0
-    return if (megapixels < 1) "$width × $height" else "$width × $height (${"%.0f".format(Locale.ROOT, megapixels)} MP)"
-}
+private fun pixelsText(width: Int, height: Int): String =
+    megapixels(width, height)?.let { "$width × $height ($it MP)" } ?: "$width × $height"
 
 /** "HEIC", "JPEG", "DNG (RAW)", "MP4 video"; the MIME type itself for others. */
 @Composable
-private fun typeName(mimeType: String): String = when (mimeType.lowercase()) {
-    "image/heic", "image/heif" -> "HEIC"
-    "image/jpeg" -> "JPEG"
-    "image/png" -> "PNG"
-    "image/webp" -> "WebP"
-    "image/x-adobe-dng" -> "DNG (RAW)"
-    "video/mp4" -> stringResource(R.string.library_info_type_video, "MP4")
-    "video/quicktime" -> stringResource(R.string.library_info_type_video, "MOV")
-    else -> mimeType
-}
-
-/** What a kept preview file is, from its name ("2560x2560-contain-high.jxl", "1920x1080-poster.webp"). */
-private class KeptFile(val format: String, val quality: String?, val madeHere: Boolean, val bytes: Long, val pixels: Pair<Int, Int>?)
-
-private fun keptFile(kept: ServerPreviews.Kept): KeptFile {
-    val name = java.io.File(kept.file).name
-    val extension = name.substringAfterLast('.', "").lowercase()
-    val parts = name.substringBeforeLast('.').split('-')
-    val format = when (extension) {
-        "jxl" -> "JPEG XL"
-        "heif" -> "HEIF"
-        "avif" -> "AVIF"
-        "jpg", "jpeg" -> "JPEG"
-        "webp" -> "WebP"
-        else -> extension.uppercase()
+private fun typeName(mimeType: String): String {
+    val kind = mediaKind(mimeType) ?: return mimeType
+    return when {
+        kind.video -> stringResource(R.string.library_info_type_video, kind.name)
+        kind.raw -> "${kind.name} (RAW)"
+        else -> kind.name
     }
-    val pixels = runCatching {
-        if (extension == "jxl") {
-            com.awxkee.jxlcoder.JxlCoder.getSize(java.io.File(kept.file).readBytes())?.let { it.width to it.height }
-        } else {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(kept.file, bounds)
-            (bounds.outWidth to bounds.outHeight).takeIf { it.first > 0 }
-        }
-    }.getOrNull()
-    return KeptFile(
-        format = format,
-        quality = parts.getOrNull(2)?.takeIf { it in setOf("low", "medium", "high", "max") },
-        madeHere = parts.getOrNull(1) == "poster",
-        bytes = kept.bytes,
-        pixels = pixels,
-    )
 }
-
-/** What this phone keeps of a server photo or video: its previews (largest first), a downloaded original, cached video. */
-private class KeptHere(val previews: List<KeptFile>, val originalBytes: Long?, val videoBytes: Long?)
 
 /**
- * A photo or video only on the server, as this phone has it. "Shown on this phone": what the viewer shows, the original
- * when it was downloaded into the cache (it is used before any preview), else the largest preview (format, quality,
- * pixels, and size against the original's). "Kept on this phone": every size and format kept, the original, and how
- * much of a video is cached.
+ * A photo or video only on the server, as this phone has it ([PhoneStorage.keptHere]). "Shown on this phone": what the
+ * viewer shows, the original when it was downloaded (it is used before any preview), else the largest preview, with its
+ * size against the original's. "Kept on this phone": every size and format kept, the original, and how much of a video
+ * is cached.
  */
-@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun ShownHereFacts(item: MediaItem) {
     val context = LocalContext.current
-    val previews = LocalServerPreviews.current
-    val state by produceState<KeptHere?>(null, item.sha256) {
+    val storage = LocalPhoneStorage.current
+    val kept by produceState<KeptHere?>(null, item.sha256) {
         val sha = item.sha256 ?: return@produceState
-        value = withContext(Dispatchers.IO) {
-            KeptHere(
-                previews = previews?.kept(sha).orEmpty().map(::keptFile),
-                originalBytes = previews?.cachedOriginal(sha)?.let { java.io.File(it).length() },
-                videoBytes = if (item.type == MediaType.VIDEO && previews != null) {
-                    runCatching { ServerVideos.cache(context).getCachedSpans(sha).sumOf { it.length } }.getOrNull()?.takeIf { it > 0 }
-                } else {
-                    null
-                },
-            )
-        }
+        value = storage?.keptHere(sha, item.type == MediaType.VIDEO, item.width, item.height)
     }
-    val kept = state ?: return
-    val original = item.sizeBytes?.takeIf { it > 0 }
+    val here = kept ?: return
+    val original = item.sizeBytes ?: 0
     fun sizeText(bytes: Long): String {
         val size = Formatter.formatShortFileSize(context, bytes)
-        return original?.let { context.getString(R.string.library_info_of_original, size, percentText(bytes * 100.0 / it)) } ?: size
+        return percentOf(bytes, original)?.let { context.getString(R.string.library_info_of_original, size, it) } ?: size
     }
 
     InfoHeading(stringResource(R.string.library_info_shown_title))
-    val shown = kept.previews.firstOrNull()
+    val shown = here.previews.firstOrNull()
     FactGrid(
         buildList {
             when {
-                item.type == MediaType.IMAGE && kept.originalBytes != null ->
+                item.type == MediaType.IMAGE && here.originalBytes != null ->
                     add(stringResource(R.string.library_info_format) to stringResource(R.string.library_info_original_title))
                 shown == null -> add(stringResource(R.string.library_info_preview) to stringResource(R.string.library_info_preview_none))
                 else -> {
                     add(stringResource(R.string.library_info_format) to keptFormat(shown))
-                    shown.pixels?.let { (w, h) -> add(stringResource(R.string.library_info_pixels) to pixelsText(w, h)) }
+                    add(stringResource(R.string.library_info_pixels) to pixelsText(shown.width, shown.height))
                     add(stringResource(R.string.library_info_size) to sizeText(shown.bytes))
                 }
             }
@@ -885,57 +840,60 @@ private fun ShownHereFacts(item: MediaItem) {
     )
 
     InfoHeading(stringResource(R.string.library_info_kept_title))
-    val lines = buildList {
-        kept.previews.forEach { file ->
-            add(listOfNotNull(file.pixels?.let { (w, h) -> "$w × $h" }, keptFormat(file), Formatter.formatShortFileSize(context, file.bytes)).joinToString(" · "))
-        }
-        kept.originalBytes?.let { add(stringResource(R.string.library_info_kept_original, sizeText(it))) }
-        kept.videoBytes?.let { bytes ->
-            val total = original?.let { Formatter.formatShortFileSize(context, it) }
-            val cached = Formatter.formatShortFileSize(context, bytes)
-            add(if (total != null) stringResource(R.string.library_info_kept_video_of, cached, total) else stringResource(R.string.library_info_kept_video, cached))
-        }
-    }
-    if (lines.isEmpty()) {
+    if (here.isEmpty) {
         Text(stringResource(R.string.library_info_kept_nothing), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            lines.forEach { Text(it, color = LibraryColors.OnInverse, fontSize = 14.sp) }
-            val total = kept.previews.sumOf { it.bytes } + (kept.originalBytes ?: 0) + (kept.videoBytes ?: 0)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        here.previews.forEach { preview ->
             Text(
-                stringResource(R.string.library_info_kept_total, Formatter.formatShortFileSize(context, total)),
-                color = LibraryColors.OnInverseMuted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 2.dp),
+                "${preview.width} × ${preview.height} · ${keptFormat(preview)} · ${Formatter.formatShortFileSize(context, preview.bytes)}",
+                color = LibraryColors.OnInverse,
+                fontSize = 14.sp,
             )
         }
+        here.originalBytes?.let { Text(stringResource(R.string.library_info_kept_original, sizeText(it)), color = LibraryColors.OnInverse, fontSize = 14.sp) }
+        here.videoBytes?.let { bytes ->
+            val cached = Formatter.formatShortFileSize(context, bytes)
+            val text = if (original > 0) {
+                stringResource(R.string.library_info_kept_video_of, cached, Formatter.formatShortFileSize(context, original))
+            } else {
+                stringResource(R.string.library_info_kept_video, cached)
+            }
+            Text(text, color = LibraryColors.OnInverse, fontSize = 14.sp)
+        }
+        Text(
+            stringResource(R.string.library_info_kept_total, Formatter.formatShortFileSize(context, here.totalBytes)),
+            color = LibraryColors.OnInverseMuted,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 
 /** "JPEG XL · High", "WebP · made on this phone". */
 @Composable
-private fun keptFormat(file: KeptFile): String {
-    val quality = when {
-        file.madeHere -> stringResource(R.string.library_info_made_here)
-        file.quality != null -> qualityLabel(file.quality)
-        else -> null
+private fun keptFormat(preview: KeptPreview): String {
+    val format = when (preview.format) {
+        PreviewFormat.WEBP -> R.string.settings_storage_format_webp
+        PreviewFormat.HEIF -> R.string.settings_storage_format_heif
+        PreviewFormat.AVIF -> R.string.settings_storage_format_avif
+        PreviewFormat.JPEG_XL -> R.string.settings_storage_format_jxl
+        PreviewFormat.JPEG -> R.string.settings_storage_format_jpeg
+        null -> null
     }
-    return listOfNotNull(file.format, quality).joinToString(" · ")
+    val quality = when {
+        preview.madeHere -> R.string.library_info_made_here
+        else -> when (preview.quality) {
+            PreviewQuality.LOW -> R.string.settings_storage_quality_low
+            PreviewQuality.MEDIUM -> R.string.settings_storage_quality_medium
+            PreviewQuality.HIGH -> R.string.settings_storage_quality_high
+            PreviewQuality.MAX -> R.string.settings_storage_quality_max
+            null -> null
+        }
+    }
+    return listOfNotNull(format, quality).map { stringResource(it) }.joinToString(" · ")
 }
-
-/** "3%", "0.4%". */
-private fun percentText(percent: Double): String =
-    if (percent >= 10 || percent == 0.0) "${percent.roundToInt()}%" else "%.1f%%".format(Locale.ROOT, percent)
-
-@Composable
-private fun qualityLabel(quality: String): String = stringResource(
-    when (quality) {
-        "low" -> R.string.settings_storage_quality_low
-        "medium" -> R.string.settings_storage_quality_medium
-        "max" -> R.string.settings_storage_quality_max
-        else -> R.string.settings_storage_quality_high
-    },
-)
 
 @Composable
 private fun OriginalButton(icon: ImageVector, label: String, onClick: () -> Unit) {

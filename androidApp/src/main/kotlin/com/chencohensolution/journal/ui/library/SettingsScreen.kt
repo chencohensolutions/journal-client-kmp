@@ -69,6 +69,8 @@ import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.storage.FreeUpActivity
+import com.chencohensolution.journal.storage.FreeUpLine
+import com.chencohensolution.journal.storage.FreeUpSummary
 import com.chencohensolution.journal.storage.FreeUpRule
 import com.chencohensolution.journal.storage.FreeUpState
 import com.chencohensolution.journal.storage.KeptReason
@@ -391,20 +393,18 @@ private fun StorageSection(ui: StorageUi, actions: StorageActions) {
 
 internal const val DEFAULT_KEEP_GIGABYTES = 10
 
-/** The Settings row: what Free up space would free, or what it is doing. */
+/** The Settings row ([FreeUpState.summary]): what Free up space would free, or what it is doing. */
 @Composable
 private fun freeUpRowText(state: FreeUpState): String {
     val context = LocalContext.current
-    val running = (state.activity as? FreeUpActivity.Running)?.progress
-    val plan = state.plan
-    return when {
-        running != null -> stringResource(R.string.settings_free_up_running, (running.done + 1).coerceAtMost(running.total), running.total)
-        state.waitingCount > 0 -> pluralStringResource(
-            R.plurals.settings_free_up_waiting, state.waitingCount, state.waitingCount, Formatter.formatShortFileSize(context, state.waitingBytes),
+    return when (val summary = state.summary) {
+        is FreeUpSummary.Checking -> stringResource(R.string.settings_free_up_running, summary.number, summary.total)
+        is FreeUpSummary.Waiting -> pluralStringResource(
+            R.plurals.settings_free_up_waiting, summary.count, summary.count, Formatter.formatShortFileSize(context, summary.bytes),
         )
-        plan == null -> stringResource(R.string.settings_storage_counting)
-        plan.groups.isEmpty() -> stringResource(R.string.settings_free_up_row_none)
-        else -> stringResource(R.string.settings_free_up_row_amount, Formatter.formatShortFileSize(context, plan.bytes))
+        FreeUpSummary.Counting -> stringResource(R.string.settings_storage_counting)
+        FreeUpSummary.Nothing -> stringResource(R.string.settings_free_up_row_none)
+        is FreeUpSummary.CanFree -> stringResource(R.string.settings_free_up_row_amount, Formatter.formatShortFileSize(context, summary.bytes))
     }
 }
 
@@ -457,38 +457,27 @@ internal fun photosAndVideos(photos: Int, videos: Int): String = listOfNotNull(
     pluralStringResource(R.plurals.settings_backup_server_videos, videos, videos).takeIf { videos > 0 },
 ).joinToString(", ")
 
-/** The run going on, why it stopped, or what the last one did; and what waits for the user. */
+/** [FreeUpState.statusLines] as text: the run going on, why it stopped, or what the last one did; and what waits. */
 @Composable
 internal fun freeUpStatus(state: FreeUpState): String? {
     val context = LocalContext.current
-    val lines = mutableListOf<String>()
-    when (val activity = state.activity) {
-        is FreeUpActivity.Running -> {
-            val progress = activity.progress
-            lines += stringResource(R.string.settings_free_up_running, (progress.done + 1).coerceAtMost(progress.total), progress.total) +
-                (progress.currentName?.let { " · $it" } ?: "")
-        }
-        is FreeUpActivity.Stopped -> lines += stringResource(R.string.settings_free_up_stopped, activity.message)
-        FreeUpActivity.Idle -> state.lastResult?.let { result ->
-            if (result.removed > 0) {
-                lines += pluralStringResource(
-                    R.plurals.settings_free_up_removed, result.removed, result.removed, Formatter.formatShortFileSize(context, result.removedBytes),
-                )
-            }
-            result.kept.forEach { (reason, count) ->
-                val text = when (reason) {
+    fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
+    val lines = state.statusLines.map { line ->
+        when (line) {
+            is FreeUpLine.Checking -> stringResource(R.string.settings_free_up_running, line.number, line.total) + (line.fileName?.let { " · $it" } ?: "")
+            is FreeUpLine.Stopped -> stringResource(R.string.settings_free_up_stopped, line.message)
+            is FreeUpLine.Removed -> pluralStringResource(R.plurals.settings_free_up_removed, line.count, line.count, size(line.bytes))
+            is FreeUpLine.Kept -> pluralStringResource(
+                when (line.reason) {
                     KeptReason.CHANGED_ON_PHONE -> R.plurals.settings_free_up_kept_changed
                     KeptReason.MISSING_ON_SERVER -> R.plurals.settings_free_up_kept_missing
                     KeptReason.DAMAGED_ON_SERVER -> R.plurals.settings_free_up_kept_damaged
-                }
-                lines += pluralStringResource(text, count, count)
-            }
+                },
+                line.count,
+                line.count,
+            )
+            is FreeUpLine.Waiting -> pluralStringResource(R.plurals.settings_free_up_waiting, line.count, line.count, size(line.bytes))
         }
-    }
-    if (state.waitingCount > 0) {
-        lines += pluralStringResource(
-            R.plurals.settings_free_up_waiting, state.waitingCount, state.waitingCount, Formatter.formatShortFileSize(context, state.waitingBytes),
-        )
     }
     return lines.takeIf { it.isNotEmpty() }?.joinToString("\n")
 }
