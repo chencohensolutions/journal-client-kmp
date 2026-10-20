@@ -103,6 +103,14 @@ class FeedTest {
     }
 
     @Test
+    fun rowsReadBackInTimeAllTheWayDown() {
+        // Two moments of the day; the near-duplicates stay oldest first inside their set.
+        val section = feed(pic("a", 0), pic("b", 30), pic("c", 300), pic("d1", 330, burst = "x"), pic("d2", 330, burst = "x", second = 1)).sections().single()
+        assertEquals(listOf("d1", "d2", "c", "b", "a"), section.items.map { it.id })
+        assertEquals(listOf(listOf("d1", "d2"), listOf("c")), section.moments.first().shownBlocks.map { block -> block.items.map { it.id } })
+    }
+
+    @Test
     fun appPhotosAreOneMomentPerRowAndHiddenSourcesAreLeftOut() {
         val items = arrayOf(
             pic("cam", 0),

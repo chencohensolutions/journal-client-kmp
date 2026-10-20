@@ -68,7 +68,6 @@
     <string name="library_info_length">אורך</string>
 
     <!-- Stories -->
-    <string name="library_story">סיפור</string>
     <string name="library_new_story">סיפור חדש</string>
     <string name="library_story_title_hint">כותרת (לא חובה)</string>
     <string name="library_create">יצירה</string>

@@ -62,28 +62,30 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.FeedTrip
+import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
+import java.time.LocalDate
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
 // Photos are full width at their own shape; near-duplicates are one photo you swipe. See docs/screens/moments.md.
 
 internal class FeedActions(
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
-    /** "+ Story" on a row: asks for a title, then makes the story. */
-    val newStory: (sectionKey: String) -> Unit = {},
     val saveTrip: (FeedTrip) -> Unit = {},
     val dismissTrip: (key: String) -> Unit = {},
     /** Long press on a photo: Write about it, Crop, Add to story, Tag. */
@@ -91,7 +93,7 @@ internal class FeedActions(
 )
 
 /**
- * One item of the feed's list: a trip card, a row's heading, a moment's label, or one photo or near-duplicate set.
+ * One item of the feed's list: a trip card, a row's divider, a moment's label, or one photo or near-duplicate set.
  * A photo per item keeps the list lazy: a moment of a hundred photos lays out only the ones in view.
  */
 internal sealed interface FeedRow {
@@ -105,7 +107,8 @@ internal sealed interface FeedRow {
         override val key get() = "heading-${section.key}"
     }
 
-    data class Label(val moment: FeedMoment) : FeedRow {
+    /** [showPlace]: a camera moment whose place differs from the camera moment above it in its row. */
+    data class Label(val moment: FeedMoment, val showPlace: Boolean) : FeedRow {
         override val key get() = "label-${moment.key}"
     }
 
@@ -137,8 +140,14 @@ internal val FeedBlock.key: String get() = items.first().id
 internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
         is FeedEntry.Trip -> listOf(FeedRow.Trip(entry.trip))
-        is FeedEntry.Section -> listOf(FeedRow.Heading(entry.section)) + entry.section.moments.flatMap { moment ->
-            listOf(FeedRow.Label(moment)) + moment.blocks.map { FeedRow.Photo(entry.section, it) }
+        is FeedEntry.Section -> {
+            var place: String? = null
+            listOf(FeedRow.Heading(entry.section)) + entry.section.moments.flatMap { moment ->
+                val camera = moment.source == MediaSource.CAMERA
+                val showPlace = camera && moment.place != null && moment.place != place
+                if (camera) place = moment.place
+                listOf(FeedRow.Label(moment, showPlace)) + moment.shownBlocks.map { FeedRow.Photo(entry.section, it) }
+            }
         }
     }
 }
@@ -162,8 +171,8 @@ internal fun LazyListScope.feedItems(
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
             is FeedRow.Trip -> TripCard(row.trip, actions)
-            is FeedRow.Heading -> SectionHeading(row.section) { actions.newStory(row.section.key) }
-            is FeedRow.Label -> MomentLabel(row.moment)
+            is FeedRow.Heading -> DayDivider(row.section)
+            is FeedRow.Label -> MomentLabel(row.moment, row.showPlace)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
                     PhotoNoteText(notes[block.item.id]?.caption)
@@ -235,76 +244,94 @@ internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, m
     }
 }
 
-/** "Today", the towns visited ("Tel Aviv → Jaffa · 21 photos") and "+ Story". */
+/** The line between rows, "Today · Tue, Oct 20" on it, then the towns visited and the count ("Tel Aviv → Jaffa · 21 photos"). */
 @Composable
-private fun SectionHeading(section: FeedSection, onNewStory: () -> Unit) {
-    val count = section.moments.sumOf { it.items.size }
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+private fun DayDivider(section: FeedSection) {
+    val count = section.items.size
+    val line = LibraryColors.Muted.copy(alpha = 0.3f)
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f).height(1.dp).background(line))
             Text(
-                momentLabel(section.span),
+                dividerLabel(section.span),
                 color = LibraryColors.OnBackground,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                (section.places.take(MAX_TOWNS).joinToString(" → ").ifEmpty { null }?.let { "$it · " }.orEmpty()) +
-                    pluralStringResource(R.plurals.library_story_items, count, count),
-                color = LibraryColors.Muted,
                 fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .background(LibraryColors.Raised, RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .semantics { heading() },
             )
+            Box(Modifier.weight(1f).height(1.dp).background(line))
         }
-        TextButton(
-            onClick = onNewStory,
-            shape = RoundedCornerShape(50),
-            modifier = Modifier.height(36.dp).border(1.dp, LibraryColors.OnBackground.copy(alpha = 0.28f), RoundedCornerShape(50)),
-        ) {
-            Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
-            Text(
-                stringResource(R.string.library_story),
-                color = LibraryColors.OnBackground,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-    }
-}
-
-/** A moment's label above its photos: "Jaffa Port · 18:10 – 19:05", or "WhatsApp · 6 · 14:02 – 17:30". */
-@Composable
-private fun MomentLabel(moment: FeedMoment) {
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(if (moment.source == MediaSource.CAMERA) FeedIcons.Pin else moment.source.icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(6.dp))
         Text(
-            momentHeading(moment),
+            (section.places.take(MAX_TOWNS).joinToString(" → ").ifEmpty { null }?.let { "$it · " }.orEmpty()) +
+                pluralStringResource(R.plurals.library_story_items, count, count),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }
 
+/** The row's heading; "Today" and "Yesterday" get their date too ("Today · Tue, Oct 20"), as older days show only it. */
 @Composable
-private fun momentHeading(moment: FeedMoment): String {
+private fun dividerLabel(span: Moment): String {
+    val label = momentLabel(span)
+    val date = span.newestDay.toLocalDate()
+    val recent = span.mode == GroupingMode.BY_DAY && !date.isBefore(LocalDate.now().minusDays(1))
+    return if (recent) stringResource(R.string.feed_place_time, label, formatDate(date, "EEEMMMd")) else label
+}
+
+/**
+ * A moment's label above its photos. Camera: its place ("📍 Jaffa Port") where it differs from the camera moment above
+ * ([showPlace]), then the time ("18:10 – 19:05"). Other sources: "WhatsApp · 6 · 14:02 – 17:30".
+ */
+@Composable
+private fun MomentLabel(moment: FeedMoment, showPlace: Boolean) {
+    val time = momentTime(moment)
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 8.dp)) {
+        if (moment.source == MediaSource.CAMERA) {
+            moment.place?.takeIf { showPlace }?.let { place ->
+                Row(Modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(FeedIcons.Pin, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(place, color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Text(time, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 22.dp))
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(moment.source.icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    stringResource(R.string.feed_place_time, stringResource(R.string.feed_source_count, sourceName(moment.source), moment.items.size), time),
+                    color = LibraryColors.Muted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** "18:10 – 19:05", or "18:10" when it starts and ends in one minute. */
+@Composable
+private fun momentTime(moment: FeedMoment): String {
     val start = timeLabel(moment.startMillis)
     val end = timeLabel(moment.endMillis)
-    val time = if (start == end) start else stringResource(R.string.feed_time_range, start, end)
-    val what = if (moment.source == MediaSource.CAMERA) {
-        moment.place
-    } else {
-        stringResource(R.string.feed_source_count, sourceName(moment.source), moment.items.size)
-    }
-    return what?.let { stringResource(R.string.feed_place_time, it, time) } ?: time
+    return if (start == end) start else stringResource(R.string.feed_time_range, start, end)
 }
 
 /**

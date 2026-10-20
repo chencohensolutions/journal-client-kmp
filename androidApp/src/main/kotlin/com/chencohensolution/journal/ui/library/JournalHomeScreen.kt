@@ -197,10 +197,6 @@ internal fun JournalHomeScreen(
     val feedActions = remember {
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
-            newStory = { key ->
-                newStoryTitle = ""
-                newStoryKey = key
-            },
             saveTrip = { trip ->
                 newStoryTitle = trip.place.orEmpty()
                 newStoryKey = trip.key

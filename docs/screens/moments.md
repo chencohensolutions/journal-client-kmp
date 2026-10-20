@@ -2,7 +2,7 @@
 
 The **Moments** tab of the [Journal](journal-home.md) (called Unsorted until Oct 19, 2026): **every photo and video**,
 also those already in a story or tagged, read like a story that arranged itself. Nothing is saved for it. The feed is worked out again from the library each time, and only
-**+ Story** or **Save as story** turns part of it into a real story. Android only; iOS still shows the earlier
+**Save as story** on a trip turns part of it into a real story. Android only; iOS still shows the earlier
 rows of small photos.
 
 ## Layout
@@ -11,11 +11,15 @@ rows of small photos.
   **Screenshots**, **Other** (downloads, other apps). On means filled, with a ✓. Any mix can be on; Camera and
   WhatsApp are on at first. A source with no photos is hidden unless it is on. The choice is kept
   (`feed_sources` in settings).
-- **Rows**, newest first. The grouping setting splits them, by day or by breaks between photos, as before. Each row
-  has a heading ("Today", "Sat, Oct 4", or with breaks "Today · 9:14 – 21:40"), the towns visited in order and a
-  count ("Tel Aviv → Jaffa · 21 photos"), and **+ Story**.
-- **Moments** within a row, newest first, each with a small label and then its photos, oldest first:
-  - Camera: "📍 Jaffa Port · 18:10 – 19:05" (place · time; only the time until the place is known).
+- **A timeline, newest first all the way down (asked Oct 20, 2026):** rows, the moments in a row and the photos in a
+  moment are all newest first. Only a near-duplicate set keeps its photos oldest first, to swipe through.
+- **Rows**: the grouping setting splits them, by day or by breaks between photos, as before. Each row starts with a
+  divider: a line with its heading on a pill in the middle ("Today · Tue, Oct 20", "Sat, Oct 4", or with breaks
+  "Today · 9:14 – 21:40"), and under it the towns visited in order and a count ("Tel Aviv → Jaffa · 21 photos").
+  There is no **+ Story** on rows any more (removed Oct 20, 2026).
+- **Moments** within a row, each with a label and then its photos:
+  - Camera: the place in bold ("📍 Jaffa Port") only where it differs from the camera moment above it in the row (the
+    first one always shows it), then the time ("18:10 – 19:05"). Only the time until the place is known.
   - Other sources: "WhatsApp · 6 · 14:02 – 17:30": one moment per source per row.
 - **Photos** are edge to edge and full width, at their own shape (never cropped to squares), or at their Moments
   [crop](crop.md). A video shows its length.
@@ -27,7 +31,7 @@ rows of small photos.
   corner), back or **Cancel** stops. **Merge**, with two or more picked, makes them one set you swipe, shown where its
   oldest photo is, wherever the others were. **Take out of this set** removes a photo from a set (made by hand or by
   itself) and it isn't put in one by itself again. A [cropped](crop.md) photo is never put in a set by itself either.
-  Saved in each photo's note file (`"set"`, `"apart"`); merged sets become groups in a story made with **+ Story**.
+  Saved in each photo's note file (`"set"`, `"apart"`); merged sets become groups in a story made with **Save as story**.
 - Each photo has the **backup badge** in its bottom-right corner, as on the grids (see [README.md](README.md)): a phone
   when it is on this phone and on the server, a crossed-out cloud while it isn't uploaded, nothing when it is only on
   the server; a set shows the badge of the photo it is turned to. A playing video shows its sound button there instead.
@@ -74,7 +78,7 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
 - **Trips:** home is the 10 km square where most located photos were taken (with 20 or more). Two or more days in a
   row with most located camera photos more than 50 km from home are a trip. A day without located photos in the
   middle doesn't break it.
-- **+ Story / Save as story** make a story of all those photos (a photo can be in many stories), with each
+- **Save as story** makes a story of all the trip's photos (a photo can be in many stories), with each
   near-duplicate set already a group.
 - A trip is offered only while some of its photos are in no story and untagged, so a saved trip isn't offered again.
 

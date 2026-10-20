@@ -13,7 +13,8 @@ import com.chencohensolution.journal.similarity.PhotoLooks
 /*
  * The Moments tab: every photo reads like a story that arranged itself: each row of the journal (a day, or a run of photos; see
  * the grouping setting) split into moments by time, place and source, with near-duplicates shown as one photo you
- * swipe. Nothing here is saved: it is worked out again from the library, and only "+ Story" makes a story of it.
+ * swipe. Nothing here is saved: it is worked out again from the library, and only "Save as story" on a trip makes a
+ * story of it.
  */
 
 /** One photo, or near-duplicates (a burst, or photos that look alike) shown as one photo you swipe through. */
@@ -38,6 +39,9 @@ data class FeedMoment(
     val key: String get() = blocks.first().items.first().id
     val startMillis: Long get() = blocks.first().items.first().takenAtMillis
     val endMillis: Long get() = blocks.last().items.last().takenAtMillis
+
+    /** Its blocks newest first, as shown: the feed reads back in time all the way down. */
+    val shownBlocks: List<FeedBlock> get() = blocks.asReversed()
 }
 
 /** One row of the journal ([span]: a day, or a run of photos), its moments newest first. */
@@ -49,8 +53,8 @@ data class FeedSection(
 ) {
     val key: String get() = span.key
 
-    /** In the order shown: moments newest first, each oldest first. */
-    val items: List<MediaItem> get() = moments.flatMap { it.items }
+    /** In the order shown: moments newest first, each newest first ([FeedMoment.shownBlocks]). */
+    val items: List<MediaItem> get() = moments.flatMap { moment -> moment.shownBlocks.flatMap { it.items } }
 }
 
 /**

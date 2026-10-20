@@ -65,7 +65,6 @@
     <string name="library_info_length">Length</string>
 
     <!-- Stories -->
-    <string name="library_story">Story</string>
     <string name="library_new_story">New story</string>
     <string name="library_story_title_hint">Title (optional)</string>
     <string name="library_create">Create</string>

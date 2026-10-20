@@ -552,7 +552,7 @@ class StoriesController internal constructor(
     fun createStoryFromDay(title: String, day: LocalDay): String? = createStory(title, unsortedIdsOf(day))
 
     /**
-     * "+ Story" on a row of the Moments tab ([FeedSection.key]), or "Save as story" on a trip ([FeedTrip.key]): a story
+     * A row of the Moments tab ([FeedSection.key]), or "Save as story" on a trip ([FeedTrip.key]): a story
      * of all its photos (also those in other stories already), with each set of near-duplicates already a group. Returns the story's id.
      */
     fun createStoryFromFeed(title: String, key: String): String? {
