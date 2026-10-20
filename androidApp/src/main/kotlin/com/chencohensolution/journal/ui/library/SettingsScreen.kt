@@ -3,6 +3,7 @@ package com.chencohensolution.journal.ui.library
 import android.text.format.Formatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,6 +130,10 @@ internal class StorageActions(
     val allowTrashWithoutAsking: () -> Unit = {},
     /** One system prompt for the checked files that wait. */
     val moveWaitingToTrash: () -> Unit = {},
+    /** Lets a source's photos leave the phone, or keeps them. */
+    val toggleSource: (MediaSource) -> Unit = {},
+    /** Opens the Free up space screen. */
+    val openFreeUp: () -> Unit = {},
 )
 
 /** The user's choices, kept on this device. See docs/screens/settings.md. */
@@ -369,93 +374,39 @@ private fun StorageSection(ui: StorageUi, actions: StorageActions) {
         }
     }
 
-    val freeUp = ui.freeUp
-    val rule = freeUp.rule
-    val running = freeUp.activity is FreeUpActivity.Running
-    var askAccess by remember { mutableStateOf(false) }
     SectionTitle(stringResource(R.string.settings_free_up_title))
     Card {
-        Column(Modifier.fillMaxWidth().selectableGroup()) {
-            ModeOption(
-                title = stringResource(R.string.settings_free_up_older),
-                body = stringResource(R.string.settings_free_up_older_body),
-                selected = rule is FreeUpRule.OlderThan,
-                onSelect = { if (rule !is FreeUpRule.OlderThan) actions.setRule(FreeUpRule.DEFAULT) },
-            )
-            ModeOption(
-                title = stringResource(R.string.settings_free_up_keep),
-                body = stringResource(R.string.settings_free_up_keep_body),
-                selected = rule is FreeUpRule.KeepNewest,
-                onSelect = { if (rule !is FreeUpRule.KeepNewest) actions.setRule(FreeUpRule.KeepNewest(DEFAULT_KEEP_GIGABYTES)) },
-            )
-        }
-        FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (rule) {
-                is FreeUpRule.OlderThan -> FreeUpRule.DAYS_OPTIONS.forEach { days ->
-                    Chip(ageText(days), rule.days == days) { actions.setRule(FreeUpRule.OlderThan(days)) }
-                }
-                is FreeUpRule.KeepNewest -> FreeUpRule.GIGABYTES_OPTIONS.forEach { gigabytes ->
-                    Chip(stringResource(R.string.settings_storage_gigabytes, gigabytes), rule.gigabytes == gigabytes) {
-                        actions.setRule(FreeUpRule.KeepNewest(gigabytes))
-                    }
-                }
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = actions.openFreeUp).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_free_up_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(freeUpRowText(ui.freeUp), color = LibraryColors.Muted, fontSize = 13.sp)
             }
+            Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         }
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
-        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            val plan = freeUp.plan
-            Text(
-                when {
-                    plan == null -> stringResource(R.string.settings_storage_counting)
-                    plan.groups.isEmpty() -> stringResource(R.string.settings_free_up_plan_none)
-                    else -> stringResource(
-                        R.string.settings_free_up_plan,
-                        Formatter.formatShortFileSize(context, plan.bytes),
-                        photosAndVideos(plan.photos, plan.videos),
-                    )
-                },
-                color = LibraryColors.OnBackground,
-                fontSize = 15.sp,
-                modifier = Modifier.padding(end = 8.dp),
-            )
-            Text(stringResource(R.string.settings_free_up_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
-            freeUpStatus(freeUp)?.let { Text(it, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp, end = 8.dp)) }
-            Row {
-                if (!running && plan != null && plan.groups.isNotEmpty()) {
-                    TextButton(onClick = { if (ui.canTrashWithoutAsking) actions.freeUp() else askAccess = true }) {
-                        Text(stringResource(R.string.settings_free_up_button), color = LibraryColors.OnBackground)
-                    }
-                }
-                if (!running && freeUp.waitingCount > 0) {
-                    TextButton(onClick = actions.moveWaitingToTrash) {
-                        Text(stringResource(R.string.settings_free_up_move_waiting), color = LibraryColors.OnBackground)
-                    }
-                }
-            }
-        }
-    }
-    if (askAccess) {
-        AlertDialog(
-            onDismissRequest = { askAccess = false },
-            title = { Text(stringResource(R.string.settings_free_up_access_title)) },
-            text = { Text(stringResource(R.string.settings_free_up_access_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askAccess = false
-                    actions.allowTrashWithoutAsking()
-                }) { Text(stringResource(R.string.settings_free_up_access_allow)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    askAccess = false
-                    actions.freeUp()
-                }) { Text(stringResource(R.string.settings_free_up_access_later)) }
-            },
-        )
     }
 }
 
-private const val DEFAULT_KEEP_GIGABYTES = 10
+internal const val DEFAULT_KEEP_GIGABYTES = 10
+
+/** The Settings row: what Free up space would free, or what it is doing. */
+@Composable
+private fun freeUpRowText(state: FreeUpState): String {
+    val context = LocalContext.current
+    val running = (state.activity as? FreeUpActivity.Running)?.progress
+    val plan = state.plan
+    return when {
+        running != null -> stringResource(R.string.settings_free_up_running, (running.done + 1).coerceAtMost(running.total), running.total)
+        state.waitingCount > 0 -> pluralStringResource(
+            R.plurals.settings_free_up_waiting, state.waitingCount, state.waitingCount, Formatter.formatShortFileSize(context, state.waitingBytes),
+        )
+        plan == null -> stringResource(R.string.settings_storage_counting)
+        plan.groups.isEmpty() -> stringResource(R.string.settings_free_up_row_none)
+        else -> stringResource(R.string.settings_free_up_row_amount, Formatter.formatShortFileSize(context, plan.bytes))
+    }
+}
 
 @Composable
 private fun formatName(format: PreviewFormat): String = stringResource(
@@ -492,7 +443,7 @@ private fun qualityName(quality: PreviewQuality): String = stringResource(
 
 /** "3 months", "1 year". */
 @Composable
-private fun ageText(days: Int): String =
+internal fun ageText(days: Int): String =
     if (days % 365 == 0) {
         pluralStringResource(R.plurals.settings_free_up_years, days / 365, days / 365)
     } else {
@@ -501,14 +452,14 @@ private fun ageText(days: Int): String =
 
 /** "1,240 photos, 38 videos". */
 @Composable
-private fun photosAndVideos(photos: Int, videos: Int): String = listOfNotNull(
+internal fun photosAndVideos(photos: Int, videos: Int): String = listOfNotNull(
     pluralStringResource(R.plurals.settings_backup_server_photos, photos, photos).takeIf { photos > 0 },
     pluralStringResource(R.plurals.settings_backup_server_videos, videos, videos).takeIf { videos > 0 },
 ).joinToString(", ")
 
 /** The run going on, why it stopped, or what the last one did; and what waits for the user. */
 @Composable
-private fun freeUpStatus(state: FreeUpState): String? {
+internal fun freeUpStatus(state: FreeUpState): String? {
     val context = LocalContext.current
     val lines = mutableListOf<String>()
     when (val activity = state.activity) {
@@ -543,7 +494,7 @@ private fun freeUpStatus(state: FreeUpState): String? {
 }
 
 @Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,
@@ -596,6 +547,10 @@ private fun backupStatus(ui: BackupUi): String {
         }
     }
 }
+
+/** A Settings card, for the screens opened from Settings. */
+@Composable
+internal fun SettingsCard(content: @Composable () -> Unit) = Card(content)
 
 @Composable
 private fun Card(content: @Composable () -> Unit) {
@@ -675,7 +630,7 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text,
         color = LibraryColors.Muted,
@@ -686,7 +641,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ModeOption(title: String, body: String, selected: Boolean, onSelect: () -> Unit) {
+internal fun ModeOption(title: String, body: String, selected: Boolean, onSelect: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()

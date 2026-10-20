@@ -5,12 +5,16 @@ import com.chencohensolution.journal.backup.MediaFiles
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.backup.sha256
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
-/** Which originals "Free up space" takes off this phone (Settings → Storage on this phone). */
+/** Which originals "Free up space" takes off this phone (Settings → Free up space). */
 sealed interface FreeUpRule {
+    /** Every photo and video this phone backed up. */
+    data object Everything : FreeUpRule
+
     /** Photos and videos taken more than [days] days ago. */
     data class OlderThan(val days: Int) : FreeUpRule
 
@@ -18,7 +22,7 @@ sealed interface FreeUpRule {
     data class KeepNewest(val gigabytes: Int) : FreeUpRule
 
     companion object {
-        val DEFAULT: FreeUpRule = OlderThan(365)
+        val DEFAULT: FreeUpRule = Everything
         val DAYS_OPTIONS = listOf(30, 90, 180, 365, 730)
         val GIGABYTES_OPTIONS = listOf(1, 2, 5, 10, 20, 50)
     }
@@ -38,6 +42,10 @@ data class FreeUpPlan(val groups: List<FreeUpGroup>) {
     val photos: Int get() = groups.sumOf { g -> g.items.count { it.type == MediaType.IMAGE } }
     val videos: Int get() = groups.sumOf { g -> g.items.count { it.type == MediaType.VIDEO } }
     val bytes: Long get() = groups.sumOf { it.bytes }
+
+    /** When the oldest and the newest of them were taken; null when there are none. */
+    val takenRange: Pair<Long, Long>? get() =
+        groups.flatMap { it.items }.map { it.takenAtMillis }.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
 }
 
 private const val PAIR_MILLIS = 2_000L
@@ -62,14 +70,21 @@ internal fun freeUpGroups(items: List<MediaItem>): List<FreeUpGroup> {
 }
 
 /**
- * What [rule] takes off the phone: of the photos in the library, the groups whose every file this device uploaded as
- * it is now ([entries], the backup ledger). The newest that "keep newest" keeps count all photos on the phone, backed up
- * or not.
+ * What [rule] takes off the phone: of the photos in the library from [sources], the groups whose every file this
+ * device uploaded as it is now ([entries], the backup ledger). The newest that "keep newest" keeps count all photos on
+ * the phone, backed up or not, of any source.
  */
-internal fun freeUpPlan(items: List<MediaItem>, entries: Map<String, LedgerEntry>, rule: FreeUpRule, nowMillis: Long): FreeUpPlan {
+internal fun freeUpPlan(
+    items: List<MediaItem>,
+    entries: Map<String, LedgerEntry>,
+    rule: FreeUpRule,
+    nowMillis: Long,
+    sources: Set<MediaSource> = MediaSource.entries.toSet(),
+): FreeUpPlan {
     fun backedUp(item: MediaItem) = entries[item.id]?.let { it.uploaded && it.matches(item) } == true
     val groups = freeUpGroups(items.filter { it.isOnDevice })
     val chosen = when (rule) {
+        FreeUpRule.Everything -> groups
         is FreeUpRule.OlderThan -> {
             val before = nowMillis - rule.days * DAY_MILLIS
             groups.filter { it.takenAtMillis < before }
@@ -80,7 +95,7 @@ internal fun freeUpPlan(items: List<MediaItem>, entries: Map<String, LedgerEntry
             groups.dropWhile { group -> (kept + group.bytes <= keep).also { if (it) kept += group.bytes } }
         }
     }
-    return FreeUpPlan(chosen.filter { group -> group.items.all(::backedUp) })
+    return FreeUpPlan(chosen.filter { group -> group.items.all { backedUp(it) && it.source in sources } })
 }
 
 /** What the server found when it read its copy again (journal-server-go `POST /media/{sha256}/verify`). */

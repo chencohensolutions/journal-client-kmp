@@ -482,4 +482,25 @@
     <string name="settings_storage_quality_high">High</string>
     <string name="settings_storage_quality_max">Max</string>
     <string name="settings_storage_kept">Kept on this phone</string>
+    <string name="settings_free_up_row_amount">%1$s can be freed</string>
+    <string name="settings_free_up_row_none">Nothing to free up right now</string>
+    <string name="free_up_nothing">Nothing to free up</string>
+    <string name="free_up_button_amount">Free up %1$s</string>
+    <string name="free_up_sources">From</string>
+    <string name="free_up_more">More options</string>
+    <string name="free_up_rule_everything">Everything backed up</string>
+    <string name="free_up_rule_everything_body">Every photo and video this phone backed up to your server.</string>
+    <string name="free_up_summary_everything">Photos and videos already on your server</string>
+    <string name="free_up_summary_older">Taken more than %1$s ago</string>
+    <string name="free_up_summary_keep">All but the newest %1$s</string>
+    <string name="library_info_original_title">Original</string>
+    <string name="library_info_shown_title">Shown on this phone</string>
+    <string name="library_info_type_video">%1$s video</string>
+    <string name="library_info_format">Format</string>
+    <string name="library_info_pixels">Pixels</string>
+    <string name="library_info_of_original">%1$s · %2$s of the original</string>
+    <string name="library_info_kept_sizes">Sizes kept here</string>
+    <string name="library_info_kept_sizes_value">%1$d · %2$s</string>
+    <string name="library_info_made_here">made on this phone</string>
+    <string name="library_info_original_cached">Original downloaded here</string>
 </resources>

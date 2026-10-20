@@ -36,6 +36,12 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.C
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
@@ -55,8 +61,8 @@ internal class FeedVideo(
     private val savedPage: (FeedBlock) -> String? = { null },
     private val savePage: (FeedBlock, itemId: String) -> Unit = { _, _ -> },
 ) {
-    /** Videos only on the server don't play in the feed yet (streaming them comes later). */
-    fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && item.hasOriginalHere && playingId() == item.id
+    /** Videos only on the server play too, streamed into the video cache ([ServerVideos]). */
+    fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && playingId() == item.id
 
     val muted: Boolean get() = isMuted()
 
@@ -154,11 +160,13 @@ internal fun MuteButton(muted: Boolean, onToggle: () -> Unit, modifier: Modifier
 }
 
 /**
- * A MediaPlayer drawing on a surface: prepared once the surface is there, then looped. Every call to the player
- * runs on [videoThread], never the main thread: opening a file takes 10–18 ms and releasing a player up to 110 ms on
- * a recent phone, which stopped the feed mid-scroll. Its callbacks come back on that thread too and are handed to the
- * main thread.
+ * A MediaPlayer drawing on a surface: prepared once the surface is there, then looped. A video only on the server
+ * plays with ExoPlayer instead, streamed from its original through the video cache, so what was fetched stays for the
+ * next time. Every call to the player runs on [videoThread], never the main thread: opening a file takes 10–18 ms and
+ * releasing a player up to 110 ms on a recent phone, which stopped the feed mid-scroll. Its callbacks come back on that
+ * thread too and are handed to the main thread.
  */
+@androidx.annotation.OptIn(UnstableApi::class)
 private class InlinePlayer(
     context: Context,
     item: MediaItem,
@@ -171,6 +179,7 @@ private class InlinePlayer(
 
     // Only touched on videoThread.
     private var player: MediaPlayer? = null
+    private var stream: ExoPlayer? = null
     private var prepared = false
     private var broken = false
 
@@ -180,6 +189,10 @@ private class InlinePlayer(
 
     init {
         videoThread.post {
+            if (item.playableUri() == null) {
+                openStream(item)
+                return@post
+            }
             try {
                 val created = MediaPlayer()
                 player = created
@@ -208,6 +221,36 @@ private class InlinePlayer(
         }
     }
 
+    /** A video only on the server: ExoPlayer on [videoThread], streaming through the video cache. */
+    private fun openStream(item: MediaItem) {
+        try {
+            val playable = ServerVideos.playable(context, item) ?: return fail()
+            val created = ExoPlayer.Builder(context)
+                .setLooper(videoThread.looper)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(playable.dataSource))
+                .build()
+            stream = created
+            // Audio focus is handled here (setMuted), as for the MediaPlayer.
+            created.setAudioAttributes(
+                androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+                false,
+            )
+            created.repeatMode = Player.REPEAT_MODE_ONE
+            created.volume = 0f
+            created.addListener(object : Player.Listener {
+                override fun onRenderedFirstFrame() {
+                    main.post(onFirstFrame)
+                }
+
+                // The poster stays (offline, say); the user can still open the viewer.
+                override fun onPlayerError(error: PlaybackException) = fail()
+            })
+            created.setMediaItem(playable.item)
+        } catch (e: Exception) {
+            fail()
+        }
+    }
+
     fun setMuted(muted: Boolean, onFocusLost: () -> Unit) {
         if (released) return
         if (muted) {
@@ -221,7 +264,12 @@ private class InlinePlayer(
             audio.requestAudioFocus(request)
         }
         val volume = if (muted) 0f else 1f
-        videoThread.post { if (!broken) runCatching { player?.setVolume(volume, volume) } }
+        videoThread.post {
+            if (!broken) {
+                runCatching { player?.setVolume(volume, volume) }
+                stream?.volume = volume
+            }
+        }
     }
 
     fun release() {
@@ -230,6 +278,8 @@ private class InlinePlayer(
         videoThread.post {
             player?.release()
             player = null
+            stream?.release()
+            stream = null
         }
     }
 
@@ -250,7 +300,15 @@ private class InlinePlayer(
             if (broken) return@post
             try {
                 player?.setSurface(surface)
-                if (!prepared) player?.prepareAsync()
+                stream?.setVideoSurface(surface)
+                if (!prepared) {
+                    prepared = stream != null
+                    player?.prepareAsync()
+                    stream?.run {
+                        prepare()
+                        playWhenReady = true
+                    }
+                }
             } catch (e: Exception) {
                 fail()
             }
@@ -258,7 +316,12 @@ private class InlinePlayer(
     }
 
     fun detach() {
-        videoThread.post { if (!broken) runCatching { player?.setSurface(null) } }
+        videoThread.post {
+            if (!broken) {
+                runCatching { player?.setSurface(null) }
+                stream?.setVideoSurface(null)
+            }
+        }
     }
 
     private companion object {

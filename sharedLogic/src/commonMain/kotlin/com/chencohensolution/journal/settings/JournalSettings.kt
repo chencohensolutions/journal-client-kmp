@@ -97,6 +97,16 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
         set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
 
+    /** The sources whose photos "Free up space" may take off the phone (all by default). */
+    var freeUpSources: Set<MediaSource>
+        get() = store.getString(KEY_FREE_UP_SOURCES)
+            ?.split(",")
+            ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
+            ?.toSet()
+            ?.takeIf { it.isNotEmpty() }
+            ?: MediaSource.entries.toSet()
+        set(value) = store.putString(KEY_FREE_UP_SOURCES, value.joinToString(",") { it.name })
+
     /** How server photos are shown: previews (format, quality) or their originals (Settings → Storage on this phone). */
     var previewOptions: PreviewOptions
         get() = PreviewOptions(
@@ -112,10 +122,12 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_PREVIEW_QUALITY, value.quality.name)
         }
 
-    /** The rule "Free up space" used last ("days:365" or "keep:10"). */
+    /** The rule "Free up space" used last ("all", "days:365" or "keep:10"). */
     var freeUpRule: FreeUpRule
         get() {
-            val (kind, number) = store.getString(KEY_FREE_UP_RULE)?.split(":")?.takeIf { it.size == 2 } ?: return FreeUpRule.DEFAULT
+            val stored = store.getString(KEY_FREE_UP_RULE)
+            if (stored == "all") return FreeUpRule.Everything
+            val (kind, number) = stored?.split(":")?.takeIf { it.size == 2 } ?: return FreeUpRule.DEFAULT
             val n = number.toIntOrNull()?.takeIf { it > 0 } ?: return FreeUpRule.DEFAULT
             return when (kind) {
                 "days" -> FreeUpRule.OlderThan(n)
@@ -126,6 +138,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         set(value) = store.putString(
             KEY_FREE_UP_RULE,
             when (value) {
+                FreeUpRule.Everything -> "all"
                 is FreeUpRule.OlderThan -> "days:${value.days}"
                 is FreeUpRule.KeepNewest -> "keep:${value.gigabytes}"
             },
@@ -151,6 +164,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_ORDER = "backup_order"
         private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
+        private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
         private const val KEY_PREVIEW_FORMAT = "preview_format"
         private const val KEY_PREVIEW_QUALITY = "preview_quality"

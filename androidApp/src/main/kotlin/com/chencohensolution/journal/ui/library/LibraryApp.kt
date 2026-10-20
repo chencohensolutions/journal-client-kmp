@@ -87,6 +87,7 @@ private sealed interface Route {
     data object Tags : Route
     data class Tag(val name: String) : Route
     data object Settings : Route
+    data object FreeUp : Route
 
     /** The crop screen for one photo, opened on [kind]. */
     data class Crop(val itemId: String, val kind: CropKind) : Route
@@ -113,6 +114,7 @@ private sealed interface Route {
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
+        FreeUp -> "free-up"
         is Crop -> "crop|$kind|$itemId"
         is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
@@ -127,6 +129,7 @@ private sealed interface Route {
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
+                "free-up" -> FreeUp
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
                 "viewer" -> Viewer(
                     storyId = parts[1].ifEmpty { null },
@@ -318,6 +321,8 @@ private fun LibraryScreens(
         startFreeUp()
     }
     var previewBytes by remember { mutableStateOf<Long?>(null) }
+    // Set once navigation exists, below.
+    var openFreeUp: () -> Unit = {}
     val storageActions = StorageActions(
         setPreviewsEnabled = settings::setPreviewsEnabled,
         setPreviewFormat = settings::setPreviewFormat,
@@ -334,6 +339,8 @@ private fun LibraryScreens(
         freeUp = startFreeUp,
         allowTrashWithoutAsking = { manageMediaLauncher.launch(manageMediaSettingsIntent(context)) },
         moveWaitingToTrash = moveWaitingToTrash,
+        toggleSource = freeUp::toggleSource,
+        openFreeUp = { openFreeUp() },
     )
     val backupActions = BackupActions(
         setEnabled = { on ->
@@ -369,6 +376,7 @@ private fun LibraryScreens(
         stack = stack + it
     }
     val pop: () -> Unit = { stack = stack.dropLast(1) }
+    openFreeUp = { push(Route.FreeUp) }
 
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
@@ -508,6 +516,14 @@ private fun LibraryScreens(
                                         backupActions = backupActions,
                                         storage = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, canTrashWithoutAsking, settingsState.previewOptions),
                                         storageActions = storageActions,
+                                    )
+                                }
+                                Route.FreeUp -> {
+                                    LaunchedEffect(Unit) { freeUp.refreshPlan() }
+                                    FreeUpScreen(
+                                        ui = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, canTrashWithoutAsking, settingsState.previewOptions),
+                                        actions = storageActions,
+                                        back = pop,
                                     )
                                 }
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)

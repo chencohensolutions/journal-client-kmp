@@ -506,4 +506,25 @@
     <string name="settings_storage_quality_high">גבוהה</string>
     <string name="settings_storage_quality_max">מרבית</string>
     <string name="settings_storage_kept">שמור בטלפון</string>
+    <string name="settings_free_up_row_amount">אפשר לפנות %1$s</string>
+    <string name="settings_free_up_row_none">אין מה לפנות כרגע</string>
+    <string name="free_up_nothing">אין מה לפנות</string>
+    <string name="free_up_button_amount">פינוי %1$s</string>
+    <string name="free_up_sources">מתוך</string>
+    <string name="free_up_more">אפשרויות נוספות</string>
+    <string name="free_up_rule_everything">כל מה שגובה</string>
+    <string name="free_up_rule_everything_body">כל התמונות והסרטונים שהטלפון הזה גיבה לשרת שלך.</string>
+    <string name="free_up_summary_everything">תמונות וסרטונים שכבר נמצאים בשרת שלך</string>
+    <string name="free_up_summary_older">צולמו לפני יותר מ־%1$s</string>
+    <string name="free_up_summary_keep">הכל חוץ מ־%1$s החדשים ביותר</string>
+    <string name="library_info_original_title">המקור</string>
+    <string name="library_info_shown_title">מוצג בטלפון הזה</string>
+    <string name="library_info_type_video">סרטון %1$s</string>
+    <string name="library_info_format">פורמט</string>
+    <string name="library_info_pixels">פיקסלים</string>
+    <string name="library_info_of_original">%1$s · %2$s מהמקור</string>
+    <string name="library_info_kept_sizes">גדלים שמורים כאן</string>
+    <string name="library_info_kept_sizes_value">%1$d · %2$s</string>
+    <string name="library_info_made_here">נוצר בטלפון הזה</string>
+    <string name="library_info_original_cached">המקור הורד לכאן</string>
 </resources>

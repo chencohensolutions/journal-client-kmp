@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.places.PlaceName
 import java.util.Locale
+import com.chencohensolution.journal.server.ServerPreviews
 import kotlinx.coroutines.launch
 import android.text.format.Formatter
 import androidx.media3.common.PlaybackException
@@ -646,27 +647,23 @@ private fun OriginalCard(
             )
         }
 
+        InfoHeading(stringResource(R.string.library_info_original_title))
         val details = buildList {
             item.fileName?.let { add(stringResource(R.string.library_info_file) to it) }
             item.sizeBytes?.let { add(stringResource(R.string.library_info_size) to Formatter.formatShortFileSize(context, it)) }
-            if (item.width > 0 && item.height > 0) add(stringResource(R.string.library_info_dimensions) to "${item.width} × ${item.height}")
+            if (item.width > 0 && item.height > 0) add(stringResource(R.string.library_info_dimensions) to pixelsText(item.width, item.height))
             item.durationMillis?.let { add(stringResource(R.string.library_info_length) to formatDuration(it)) }
-            item.mimeType?.let { add(stringResource(R.string.library_info_type) to it) }
+            item.mimeType?.let { add(stringResource(R.string.library_info_type) to typeName(it)) }
             add(stringResource(R.string.library_info_source) to sourceName(item.source))
         }
-        details.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                pair.forEach { (label, value) -> InfoFact(label, value, Modifier.weight(1f)) }
-                if (pair.size == 1) Box(Modifier.weight(1f))
-            }
-        }
+        FactGrid(details)
         if (location != null) {
             val (point, name) = location
             val coordinates = String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude)
             val place = listOfNotNull(name?.label, name?.city?.takeIf { it != name.label }).joinToString(", ")
             InfoFact(stringResource(R.string.library_info_location), if (place.isEmpty()) coordinates else "$place\n$coordinates")
         }
-        if (!item.hasOriginalHere) KeptPreviewFact(item)
+        if (!item.hasOriginalHere) ShownHereFacts(item)
 
         downloading?.let { progress ->
             Text(stringResource(R.string.library_original_downloading, (progress * 100).roundToInt()), color = LibraryColors.OnInverseMuted, fontSize = 13.sp)
@@ -725,33 +722,127 @@ private fun InfoFact(label: String, value: String, modifier: Modifier = Modifier
     }
 }
 
-/** The largest preview of a server-only photo kept on this phone: its pixels and size, or "None yet". */
+/** A section title in the info panel ("Original", "Shown on this phone"). */
 @Composable
-private fun KeptPreviewFact(item: MediaItem) {
-    val context = LocalContext.current
-    val previews = LocalServerPreviews.current
-    val kept by produceState<Pair<String, Long>?>(null, item.sha256) {
-        val sha = item.sha256 ?: return@produceState
-        value = withContext(Dispatchers.IO) {
-            previews?.kept(sha)?.firstOrNull()?.let { preview ->
-                val size = if (preview.file.endsWith(".jxl")) {
-                    runCatching { com.awxkee.jxlcoder.JxlCoder.getSize(java.io.File(preview.file).readBytes()) }.getOrNull()
-                        ?.let { it.width to it.height }
-                } else {
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeFile(preview.file, bounds)
-                    bounds.outWidth to bounds.outHeight
-                }
-                size?.let { (w, h) -> "$w × $h" to preview.bytes }
-            }
+private fun InfoHeading(text: String) {
+    Text(text, color = LibraryColors.OnInverse, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+}
+
+/** Facts two to a row. */
+@Composable
+private fun FactGrid(facts: List<Pair<String, String>>) {
+    facts.chunked(2).forEach { pair ->
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            pair.forEach { (label, value) -> InfoFact(label, value, Modifier.weight(1f)) }
+            if (pair.size == 1) Box(Modifier.weight(1f))
         }
     }
-    InfoFact(
-        stringResource(R.string.library_info_preview),
-        kept?.let { (pixels, bytes) -> stringResource(R.string.library_info_preview_value, pixels, Formatter.formatShortFileSize(context, bytes)) }
-            ?: stringResource(R.string.library_info_preview_none),
+}
+
+/** "4000 × 3000 (12 MP)". */
+private fun pixelsText(width: Int, height: Int): String {
+    val megapixels = width.toLong() * height / 1_000_000.0
+    return if (megapixels < 1) "$width × $height" else "$width × $height (${"%.0f".format(Locale.ROOT, megapixels)} MP)"
+}
+
+/** "HEIC", "JPEG", "DNG (RAW)", "MP4 video"; the MIME type itself for others. */
+@Composable
+private fun typeName(mimeType: String): String = when (mimeType.lowercase()) {
+    "image/heic", "image/heif" -> "HEIC"
+    "image/jpeg" -> "JPEG"
+    "image/png" -> "PNG"
+    "image/webp" -> "WebP"
+    "image/x-adobe-dng" -> "DNG (RAW)"
+    "video/mp4" -> stringResource(R.string.library_info_type_video, "MP4")
+    "video/quicktime" -> stringResource(R.string.library_info_type_video, "MOV")
+    else -> mimeType
+}
+
+/** What a kept preview file is, from its name ("2560x2560-contain-high.jxl", "1920x1080-poster.webp"). */
+private class KeptFile(val format: String, val quality: String?, val madeHere: Boolean, val bytes: Long, val pixels: Pair<Int, Int>?)
+
+private fun keptFile(kept: ServerPreviews.Kept): KeptFile {
+    val name = java.io.File(kept.file).name
+    val extension = name.substringAfterLast('.', "").lowercase()
+    val parts = name.substringBeforeLast('.').split('-')
+    val format = when (extension) {
+        "jxl" -> "JPEG XL"
+        "heif" -> "HEIF"
+        "avif" -> "AVIF"
+        "jpg", "jpeg" -> "JPEG"
+        "webp" -> "WebP"
+        else -> extension.uppercase()
+    }
+    val pixels = runCatching {
+        if (extension == "jxl") {
+            com.awxkee.jxlcoder.JxlCoder.getSize(java.io.File(kept.file).readBytes())?.let { it.width to it.height }
+        } else {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(kept.file, bounds)
+            (bounds.outWidth to bounds.outHeight).takeIf { it.first > 0 }
+        }
+    }.getOrNull()
+    return KeptFile(
+        format = format,
+        quality = parts.getOrNull(2)?.takeIf { it in setOf("low", "medium", "high", "max") },
+        madeHere = parts.getOrNull(1) == "poster",
+        bytes = kept.bytes,
+        pixels = pixels,
     )
 }
+
+/**
+ * A photo only on the server, as this phone has it: the preview the viewer shows (its format, quality, pixels and size
+ * against the original's), how many sizes of it are kept, and the original when it was downloaded into the cache.
+ */
+@Composable
+private fun ShownHereFacts(item: MediaItem) {
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val state by produceState<Triple<KeptFile?, Pair<Int, Long>, Long?>?>(null, item.sha256) {
+        val sha = item.sha256 ?: return@produceState
+        value = withContext(Dispatchers.IO) {
+            val kept = previews?.kept(sha).orEmpty()
+            val original = previews?.cachedOriginal(sha)?.let { java.io.File(it).length() }
+            Triple(kept.firstOrNull()?.let(::keptFile), kept.size to kept.sumOf { it.bytes }, original)
+        }
+    }
+    InfoHeading(stringResource(R.string.library_info_shown_title))
+    val (shown, kept, original) = state ?: return
+    val facts = buildList {
+        if (shown == null) {
+            add(stringResource(R.string.library_info_preview) to stringResource(R.string.library_info_preview_none))
+        } else {
+            val quality = when {
+                shown.madeHere -> stringResource(R.string.library_info_made_here)
+                shown.quality != null -> qualityLabel(shown.quality)
+                else -> null
+            }
+            add(stringResource(R.string.library_info_format) to listOfNotNull(shown.format, quality).joinToString(" · "))
+            shown.pixels?.let { (w, h) -> add(stringResource(R.string.library_info_pixels) to pixelsText(w, h)) }
+            val size = Formatter.formatShortFileSize(context, shown.bytes)
+            val ratio = item.sizeBytes?.takeIf { it > 0 }?.let { percentText(shown.bytes * 100.0 / it) }
+            add(stringResource(R.string.library_info_size) to (ratio?.let { stringResource(R.string.library_info_of_original, size, it) } ?: size))
+            add(stringResource(R.string.library_info_kept_sizes) to stringResource(R.string.library_info_kept_sizes_value, kept.first, Formatter.formatShortFileSize(context, kept.second)))
+        }
+        original?.let { add(stringResource(R.string.library_info_original_cached) to Formatter.formatShortFileSize(context, it)) }
+    }
+    FactGrid(facts)
+}
+
+/** "3%", "0.4%". */
+private fun percentText(percent: Double): String =
+    if (percent >= 10 || percent == 0.0) "${percent.roundToInt()}%" else "%.1f%%".format(Locale.ROOT, percent)
+
+@Composable
+private fun qualityLabel(quality: String): String = stringResource(
+    when (quality) {
+        "low" -> R.string.settings_storage_quality_low
+        "medium" -> R.string.settings_storage_quality_medium
+        "max" -> R.string.settings_storage_quality_max
+        else -> R.string.settings_storage_quality_high
+    },
+)
 
 @Composable
 private fun OriginalButton(icon: ImageVector, label: String, onClick: () -> Unit) {

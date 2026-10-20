@@ -109,6 +109,25 @@ class FreeUpTest {
     }
 
     @Test
+    fun everythingTakesAllThatIsBackedUpFromTheChosenSources() {
+        val camera = item("camera", ageDays = 1, size = 10)
+        val oldCamera = item("old", ageDays = 900, size = 20)
+        val whatsapp = item("wa", ageDays = 5, size = 30).copy(source = com.chencohensolution.journal.library.MediaSource.WHATSAPP)
+        val notBackedUp = item("mine", ageDays = 2, size = 40)
+        val entries = listOf(camera, oldCamera, whatsapp).associate { it.id to uploaded(it) }
+        val items = listOf(camera, oldCamera, whatsapp, notBackedUp)
+
+        val all = freeUpPlan(items, entries, FreeUpRule.Everything, NOW)
+        assertEquals(setOf("camera", "old", "wa"), all.groups.flatMap { g -> g.items.map { it.id } }.toSet())
+        assertEquals(60, all.bytes)
+        assertEquals(NOW - 900 * DAY to NOW - DAY, all.takenRange)
+
+        val onlyWhatsApp = freeUpPlan(items, entries, FreeUpRule.Everything, NOW, setOf(com.chencohensolution.journal.library.MediaSource.WHATSAPP))
+        assertEquals(listOf("wa"), onlyWhatsApp.groups.flatMap { g -> g.items.map { it.id } })
+        assertNull(freeUpPlan(items, emptyMap(), FreeUpRule.Everything, NOW).takenRange)
+    }
+
+    @Test
     fun keepNewestKeepsTheNewestUpToTheSizeCountingEverythingOnThePhone() {
         val newest = item("1", ageDays = 1, size = 3 * GB)
         val notBackedUp = item("2", ageDays = 2, size = 1 * GB)
@@ -196,6 +215,7 @@ class FreeUpTest {
         // Edited in place without its size or date changing: only the hash shows it.
         run.files.bytes[edited.id] = "THIRD".encodeToByteArray()
         run.photo("new", "taken last week", ageDays = 7)
+        run.controller.setRule(FreeUpRule.OlderThan(365))
 
         val result = run.controller.runOnce(run.trash)!!
 

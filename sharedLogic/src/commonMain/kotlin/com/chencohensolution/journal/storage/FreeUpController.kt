@@ -5,6 +5,7 @@ import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaLibrary
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.server.ServerHttp
@@ -76,6 +77,8 @@ data class FreeUpResult(
 
 data class FreeUpState(
     val rule: FreeUpRule = FreeUpRule.DEFAULT,
+    /** The sources whose photos may leave the phone (all by default). */
+    val sources: Set<MediaSource> = MediaSource.entries.toSet(),
     /** What [rule] would take off the phone now; null until counted. */
     val plan: FreeUpPlan? = null,
     val activity: FreeUpActivity = FreeUpActivity.Idle,
@@ -124,7 +127,7 @@ class FreeUpController internal constructor(
     private val checker = FreeUpChecker(files, ledger, server)
     private val waitingFile = directory / "waiting.json"
 
-    private val _state = MutableStateFlow(FreeUpState(rule = settings.freeUpRule))
+    private val _state = MutableStateFlow(FreeUpState(rule = settings.freeUpRule, sources = settings.freeUpSources))
     val state: StateFlow<FreeUpState> = _state.asStateFlow()
 
     /** Same as `state.value`, typed for Swift. */
@@ -136,15 +139,25 @@ class FreeUpController internal constructor(
         refreshPlan()
     }
 
+    /** Lets [source]'s photos leave the phone, or keeps them; the last source can't be turned off. */
+    fun toggleSource(source: MediaSource) {
+        val current = _state.value.sources
+        val sources = if (source in current) (current - source).ifEmpty { return } else current + source
+        settings.freeUpSources = sources
+        _state.update { it.copy(sources = sources, plan = null) }
+        refreshPlan()
+    }
+
     /** Counts what the rule would take off the phone now, and what waits for confirmation. */
     fun refreshPlan() {
         scope.launch {
             val rule = _state.value.rule
-            val plan = runCatching { freeUpPlan(library.loadItems(), ledger.all(), rule, now()) }.getOrNull()
+            val sources = _state.value.sources
+            val plan = runCatching { freeUpPlan(library.loadItems(), ledger.all(), rule, now(), sources) }.getOrNull()
             val waiting = readWaiting()
             _state.update { state ->
                 state.copy(
-                    plan = plan.takeIf { state.rule == rule },
+                    plan = plan.takeIf { state.rule == rule && state.sources == sources },
                     waitingCount = waiting.size,
                     waitingBytes = waiting.sumOf { it.size },
                 )
@@ -160,7 +173,7 @@ class FreeUpController internal constructor(
      * [FreeUpState.activity]).
      */
     suspend fun runOnce(trash: PhotoTrash, onProgress: (FreeUpProgress) -> Unit = {}): FreeUpResult? = runMutex.withLock {
-        val plan = freeUpPlan(library.loadItems(), ledger.all(), _state.value.rule, now())
+        val plan = freeUpPlan(library.loadItems(), ledger.all(), settings.freeUpRule, now(), settings.freeUpSources)
         var progress = FreeUpProgress(0, plan.groups.size, 0, plan.bytes)
         val kept = mutableMapOf<KeptReason, Int>()
         var removed = 0

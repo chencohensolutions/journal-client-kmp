@@ -140,6 +140,8 @@ internal object LibraryIcons {
     val Eye = icon("Eye", false, "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 9a3 3 0 1 0 0.01 0")
     val Clock = icon("Clock", false, "M12 3a9 9 0 1 0 0.01 0", "M12 7v5l3 2")
     val Crop = icon("Crop", false, "M6 2v14a2 2 0 0 0 2 2h14", "M18 22V8a2 2 0 0 0-2-2H2")
+    val ChevronRight = icon("ChevronRight", false, "M9 6l6 6-6 6")
+    val ChevronDown = icon("ChevronDown", false, "M6 9l6 6 6-6")
     val Photo = icon("Photo", false, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0.01 0", "M21 15l-5-5L5 21")
 }
 
