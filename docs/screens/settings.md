@@ -55,6 +55,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
   suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
+- **Private media** (Android; iOS doesn't show server photos yet): **Show private media**, a switch, **off** by
+  default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
+  server's scan must reach for a photo or video to be hidden.
 
 ## Behavior
 
@@ -88,11 +91,17 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     opens the app, which shows **one** system prompt for all of them (also on the next app open, or with **Move to
     trash**). A file changed since it was checked (size or date) is left out of the prompt, with its pair. Either
     answer clears the list.
+- Private media: the server scores files with NudeNet (`scripts/scan-nudity`, journal-server-go docs/media.md
+  "Nudity scan") and sends the score in the change feed (`Media.nudity`, null until scanned). While **Show private
+  media** is off, a file at or over the threshold is left out of the library (`mergeWithServer`), so no screen shows it
+  and no preview or original of it is downloaded; the phone's own copy (same sha256, or same name and size) is left
+  out too. It is never a tag. Turning the switch on, or moving the slider, applies at once. A file not scanned yet is
+  shown.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
 
 ## Code
 
-- Shared: `SettingsController`, `TimelineGrouping` and `SimilarityThreshold` in
+- Shared: `SettingsController`, `TimelineGrouping`, `SimilarityThreshold` and `PrivateMedia` in
   [settings/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/settings/SettingsController.kt);
   the rows are `StoriesState.moments`, built by `groupMoments` in
   [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).

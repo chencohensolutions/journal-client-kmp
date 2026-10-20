@@ -24,6 +24,7 @@ import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.places.PhotoPlaces
 import com.chencohensolution.journal.places.PlaceCache
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
 import com.chencohensolution.journal.storage.FreeUpController
@@ -34,6 +35,7 @@ import com.chencohensolution.journal.similarity.FingerprintCache
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.decodePemCertificates
+import kotlinx.coroutines.flow.StateFlow
 import okhttp3.OkHttpClient
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
@@ -57,13 +59,14 @@ fun createEnrollmentController(context: Context, journal: JournalController): En
 
 /**
  * The device photo library (MediaStore), with each photo's backup status from [backup], and the photos that are only on
- * the server from [server].
+ * the server from [server]; what [privateMedia] hides is left out.
  */
 fun createLibraryController(
     context: Context,
     backup: BackupController? = null,
     server: ServerLibrary? = null,
     originals: KeptOriginals? = null,
+    privateMedia: StateFlow<PrivateMedia>? = null,
 ): LibraryController =
     LibraryController(
         library = AndroidMediaLibrary(context),
@@ -71,6 +74,7 @@ fun createLibraryController(
         backup = backup?.state,
         server = server,
         originals = originals,
+        privateMedia = privateMedia,
     )
 
 private var serverLibrary: ServerLibrary? = null

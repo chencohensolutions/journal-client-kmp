@@ -588,6 +588,8 @@ private fun LibraryScreens(
                                             setGapHours = settings::setGapHours,
                                             setSimilarityPercent = settings::setSimilarityPercent,
                                             resetSimilarity = settings::resetSimilarity,
+                                            setShowPrivateMedia = settings::setShowPrivateMedia,
+                                            setPrivateThresholdPercent = settings::setPrivateThresholdPercent,
                                             back = pop,
                                         ),
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation, serverUsage),

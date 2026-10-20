@@ -122,6 +122,18 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_PREVIEW_QUALITY, value.quality.name)
         }
 
+    /** "Show private media" and its threshold (Settings → Private media); off by default. */
+    var privateMedia: PrivateMedia
+        get() = PrivateMedia(
+            show = store.getString(KEY_SHOW_PRIVATE_MEDIA) == "true",
+            thresholdPercent = store.getString(KEY_PRIVATE_THRESHOLD_PERCENT)?.toIntOrNull()?.takeIf { it in PrivateMedia.RANGE }
+                ?: PrivateMedia.DEFAULT_THRESHOLD_PERCENT,
+        )
+        set(value) {
+            store.putString(KEY_SHOW_PRIVATE_MEDIA, value.show.toString())
+            store.putString(KEY_PRIVATE_THRESHOLD_PERCENT, value.thresholdPercent.toString())
+        }
+
     /** The rule "Free up space" used last ("all", "days:365" or "keep:10"). */
     var freeUpRule: FreeUpRule
         get() {
@@ -168,5 +180,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
         private const val KEY_PREVIEW_FORMAT = "preview_format"
         private const val KEY_PREVIEW_QUALITY = "preview_quality"
+        private const val KEY_SHOW_PRIVATE_MEDIA = "show_private_media"
+        private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
     }
 }

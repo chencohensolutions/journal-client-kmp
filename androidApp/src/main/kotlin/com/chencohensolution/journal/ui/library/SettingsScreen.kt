@@ -65,6 +65,7 @@ import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.server.StorageUsage
 import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
@@ -80,6 +81,8 @@ internal class SettingsActions(
     val setGapHours: (Int) -> Unit = {},
     val setSimilarityPercent: (Int) -> Unit = {},
     val resetSimilarity: () -> Unit = {},
+    val setShowPrivateMedia: (Boolean) -> Unit = {},
+    val setPrivateThresholdPercent: (Int) -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -203,6 +206,8 @@ internal fun SettingsScreen(
             }
             SectionTitle(stringResource(R.string.settings_similarity_title))
             SimilarityCard(settings.similarity, actions)
+            SectionTitle(stringResource(R.string.settings_private_title))
+            PrivateMediaCard(settings.privateMedia, actions)
         }
         TitleBar(stringResource(R.string.library_settings), actions.back, Modifier.align(Alignment.TopCenter))
     }
@@ -614,6 +619,50 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
             TextButton(onClick = actions.resetSimilarity, modifier = Modifier.padding(top = 4.dp)) {
                 Text(stringResource(R.string.settings_similarity_reset, similarity.defaultPercent), color = LibraryColors.OnBackground)
             }
+        }
+    }
+}
+
+/** "Show private media" (off by default) and, while off, the score from which photos are hidden. */
+@Composable
+private fun PrivateMediaCard(privateMedia: PrivateMedia, actions: SettingsActions) {
+    Card {
+        SwitchRow(
+            title = stringResource(R.string.settings_private_switch),
+            body = stringResource(R.string.settings_private_switch_body),
+            checked = privateMedia.show,
+            onChange = actions.setShowPrivateMedia,
+        )
+        if (privateMedia.show) return@Card
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        var dragging by remember(privateMedia.thresholdPercent) { mutableFloatStateOf(privateMedia.thresholdPercent.toFloat()) }
+        val range = PrivateMedia.RANGE
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.settings_private_threshold),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Slider(
+                value = dragging,
+                onValueChange = { dragging = it },
+                onValueChangeFinished = { actions.setPrivateThresholdPercent(dragging.toInt()) },
+                valueRange = range.first.toFloat()..range.last.toFloat(),
+                steps = (range.last - range.first) / 5 - 1,
+                colors = SliderDefaults.colors(
+                    thumbColor = LibraryColors.OnBackground,
+                    activeTrackColor = LibraryColors.OnBackground,
+                    inactiveTrackColor = LibraryColors.Muted.copy(alpha = 0.3f),
+                    activeTickColor = Color.Transparent,
+                    inactiveTickColor = Color.Transparent,
+                ),
+            )
+            Text(stringResource(R.string.settings_private_threshold_body), color = LibraryColors.Muted, fontSize = 13.sp)
         }
     }
 }

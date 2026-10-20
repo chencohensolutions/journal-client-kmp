@@ -51,6 +51,8 @@ data class ServerMedia(
     /** camera, whatsapp, screenshots, other. */
     val source: String? = null,
     val uploadedAt: String,
+    /** The server's nudity scan, 0 to 1; null until scanned. Over the user's threshold it is hidden (see PrivateMedia). */
+    val nudity: Double? = null,
 ) {
     /**
      * The library's view of it, for a photo that isn't in the device's library: shown from the server's previews, or
@@ -264,4 +266,5 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     longitude = location?.lon,
     source = source,
     uploadedAt = uploadedAt,
+    nudity = nudity,
 )

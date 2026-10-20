@@ -59,6 +59,22 @@ data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPe
     }
 }
 
+/**
+ * Photos the server's nudity scan scored at [thresholdPercent] or more: unless [show], they are left out of the library
+ * everywhere, and nothing of them is fetched (no preview, no original). Device photos the server scored are left out too.
+ */
+data class PrivateMedia(val show: Boolean = false, val thresholdPercent: Int = DEFAULT_THRESHOLD_PERCENT) {
+    /** Whether a photo with this score is hidden; one not scanned yet ([nudity] null) never is. */
+    fun hides(nudity: Double?): Boolean = !show && nudity != null && nudity * 100 >= thresholdPercent
+
+    companion object {
+        const val DEFAULT_THRESHOLD_PERCENT = 50
+
+        /** What the Settings screen offers; anything stored outside falls back to the default. */
+        val RANGE: IntRange = 10..95
+    }
+}
+
 /** The user's choices on the Settings screen, and the Moments tab's filter bar and trip answers. */
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
@@ -69,6 +85,8 @@ data class SettingsState(
     val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
     /** How server photos are shown: previews (format, quality) or their originals. */
     val previewOptions: PreviewOptions = PreviewOptions(),
+    /** "Show private media" and its threshold. */
+    val privateMedia: PrivateMedia = PrivateMedia(),
 ) {
     companion object {
         /** What the Settings screen offers for [previewCacheGigabytes]. */
@@ -93,9 +111,15 @@ class SettingsController internal constructor(
             dismissedTrips = settings.dismissedTrips,
             previewCacheGigabytes = settings.previewCacheGigabytes,
             previewOptions = settings.previewOptions,
+            privateMedia = settings.privateMedia,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    private val _privateMedia = MutableStateFlow(_state.value.privateMedia)
+
+    /** [SettingsState.privateMedia] alone, for the library to follow. */
+    val privateMedia: StateFlow<PrivateMedia> = _privateMedia.asStateFlow()
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: SettingsState get() = _state.value
@@ -148,6 +172,22 @@ class SettingsController internal constructor(
         val options = transform(_state.value.previewOptions)
         settings.previewOptions = options
         _state.update { it.copy(previewOptions = options) }
+    }
+
+    /** "Show private media" on, or off (photos over the threshold are hidden). */
+    fun setShowPrivateMedia(show: Boolean) = changePrivateMedia { it.copy(show = show) }
+
+    /** Values outside [PrivateMedia.RANGE] are ignored. */
+    fun setPrivateThresholdPercent(percent: Int) {
+        if (percent !in PrivateMedia.RANGE) return
+        changePrivateMedia { it.copy(thresholdPercent = percent) }
+    }
+
+    private fun changePrivateMedia(transform: (PrivateMedia) -> PrivateMedia) {
+        val privateMedia = transform(_state.value.privateMedia)
+        settings.privateMedia = privateMedia
+        _state.update { it.copy(privateMedia = privateMedia) }
+        _privateMedia.value = privateMedia
     }
 
     /** Back to the platform's own threshold. */

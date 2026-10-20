@@ -9,16 +9,22 @@ import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.mergeWithServer
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.parseTimestamp
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.KeyValueStore
+import com.chencohensolution.journal.settings.PrivateMedia
+import com.chencohensolution.journal.settings.SettingsController
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class ServerLibraryTest {
-    private fun server(sha: Char, name: String, size: Long, takenAt: String? = "2026-10-08T19:01:57.937+03:00") = ServerMedia(
+    private fun server(sha: Char, name: String, size: Long, takenAt: String? = "2026-10-08T19:01:57.937+03:00", nudity: Double? = null) = ServerMedia(
         sha256 = sha.toString().repeat(64), isVideo = false, fileName = name, mimeType = "image/heic", size = size,
         takenAt = takenAt, width = 3000, height = 4000, source = "whatsapp", latitude = 32.8, longitude = 35.0,
-        uploadedAt = "2026-10-19T22:05:21.535868Z",
+        uploadedAt = "2026-10-19T22:05:21.535868Z", nudity = nudity,
     )
 
     private fun device(id: String, name: String, size: Long) =
@@ -73,5 +79,46 @@ class ServerLibraryTest {
         assertFalse(merged[0].hasOriginalHere)
         assertEquals("/files/originals/cccc.heic", merged[1].keptOriginal)
         assertEquals(true, merged[1].hasOriginalHere)
+    }
+
+    @Test
+    fun privateMediaIsLeftOutUnlessShown() {
+        val backedUp = device("22", "IMG_1.heic", 999)
+        val notReadYet = device("23", "IMG_2.heic", 555)
+        val entries = mapOf("22" to LedgerEntry("22", 999, 1, "b".repeat(64), uploaded = true))
+        val server = listOf(
+            server('b', "IMG_1.heic", 999, nudity = 0.9), // the device photo backup read (same sha256)
+            server('d', "IMG_2.heic", 555, nudity = 0.7), // a device photo matched by name and size
+            server('c', "only.heic", 123, nudity = 0.5), // only on the server, at the threshold
+            server('e', "beach.heic", 321, nudity = 0.49), // below it
+            server('f', "new.heic", 456), // not scanned yet
+        )
+        val hidden = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia())
+        assertEquals(listOf("server:" + "e".repeat(64), "server:" + "f".repeat(64)), hidden.map { it.id })
+
+        val stricter = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(thresholdPercent = 80))
+        assertEquals(listOf("23", "server:" + "c".repeat(64), "server:" + "e".repeat(64), "server:" + "f".repeat(64)), stricter.map { it.id })
+
+        val shown = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true))
+        assertEquals(5, shown.size)
+    }
+
+    @Test
+    fun showPrivateMediaIsOffByDefaultAndSaved() = runTest {
+        val values = mutableMapOf<String, String>()
+        val store = object : KeyValueStore {
+            override fun getString(key: String) = values[key]
+            override fun putString(key: String, value: String?) {
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = SettingsController(JournalSettings(store), dispatcher)
+        assertEquals(PrivateMedia(show = false, thresholdPercent = 50), settings.privateMedia.value)
+        settings.setShowPrivateMedia(true)
+        settings.setPrivateThresholdPercent(70)
+        settings.setPrivateThresholdPercent(100) // outside the range: ignored
+        assertEquals(PrivateMedia(show = true, thresholdPercent = 70), settings.currentState.privateMedia)
+        assertEquals(PrivateMedia(show = true, thresholdPercent = 70), SettingsController(JournalSettings(store), dispatcher).privateMedia.value)
     }
 }

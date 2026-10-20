@@ -42,8 +42,8 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
         Thread { runCatching { scheduler.clearRetryDelays(it.currentState.settings) } }.start()
     }
     val server = ServerFiles(serverLibrary(application), serverPreviews(application), keptOriginals(application), phoneStorage(application))
-    val library: LibraryController = createLibraryController(application, backup, server.library, server.originals)
     val settings: SettingsController = createSettingsController(application)
+    val library: LibraryController = createLibraryController(application, backup, server.library, server.originals, settings.privateMedia)
     val stories: StoriesController = createStoriesController(application, library, settings)
     val freeUp: FreeUpController = freeUp(application)
 

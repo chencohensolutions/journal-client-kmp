@@ -9,6 +9,7 @@ import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.PrivateMedia
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,9 +80,13 @@ class LibraryController internal constructor(
     private val server: ServerLibrary? = null,
     /** Originals downloaded from the server and kept; such photos are shown from them. */
     private val originals: KeptOriginals? = null,
+    /** "Show private media" (SettingsController.privateMedia); without it, as saved when the controller was made. */
+    private val privateMedia: StateFlow<PrivateMedia>? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loadJob: Job? = null
+
+    private val savedPrivateMedia = settings.privateMedia
 
     /** The device library as read. */
     private var readItems: List<MediaItem> = emptyList()
@@ -121,6 +126,7 @@ class LibraryController internal constructor(
         }
         server?.let { serverLibrary -> scope.launch { serverLibrary.media.collect { publish() } } }
         originals?.let { kept -> scope.launch { kept.load(); kept.kept.collect { publish() } } }
+        privateMedia?.let { flow -> scope.launch { flow.collect { publish() } } }
     }
 
     /** Puts the current device items, server-only items and backup statuses into [state]. */
@@ -128,9 +134,10 @@ class LibraryController internal constructor(
         val backupState = backup?.value
         val serverMedia = server?.media?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
-        val inputs = listOf(readItems, backupState?.entries, serverMedia, kept)
+        val private = privateMedia?.value ?: savedPrivateMedia
+        val inputs = listOf(readItems, backupState?.entries, serverMedia, kept, private)
         if (mergedFrom == null || mergedFrom!!.indices.any { mergedFrom!![it] !== inputs[it] }) {
-            merged = groupByDay(mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }))
+            merged = groupByDay(mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private))
             mergedFrom = inputs
         }
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
@@ -237,13 +244,15 @@ class LibraryController internal constructor(
  * device. A server photo is on the device when a device photo has its sha256, or, before backup read it, the same file
  * name and size (a new device whose photos are already on the server would otherwise show each one twice). A server
  * photo that was on this device (deleted from it since) keeps its device id, so its stories and note still find it;
- * [kept] are originals the app downloaded, by sha256.
+ * [kept] are originals the app downloaded, by sha256. What [privateMedia] hides is left out, the device's copies too
+ * (matched the same way), so nothing of it is shown or fetched.
  */
 internal fun mergeWithServer(
     device: List<MediaItem>,
     entries: Map<String, LedgerEntry>,
     server: List<ServerMedia>,
     kept: Map<String, String> = emptyMap(),
+    privateMedia: PrivateMedia = PrivateMedia(),
 ): List<MediaItem> {
     val items = device.map { item -> entries[item.id]?.takeIf { it.matches(item) }?.let { item.copy(sha256 = it.sha256) } ?: item }
     if (server.isEmpty()) return items
@@ -251,8 +260,17 @@ internal fun mergeWithServer(
     val namesAndSizes = items.mapNotNullTo(HashSet()) { item -> item.fileName?.lowercase()?.let { it to item.sizeBytes } }
     val deviceIds = device.mapTo(HashSet()) { it.id }
     val formerIds = entries.values.filter { it.uploaded && it.id !in deviceIds }.associate { it.sha256 to it.id }
-    val serverOnly = server.filter { it.sha256 !in shas && (it.fileName.lowercase() to it.size) !in namesAndSizes }
-    return items + serverOnly.map { media ->
+    val hidden = server.filter { privateMedia.hides(it.nudity) }
+    val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }
+    val hiddenNamesAndSizes = hidden.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
+    val shown = if (hidden.isEmpty()) items else items.filter { item ->
+        val sha = item.sha256
+        if (sha != null) sha !in hiddenShas else (item.fileName?.lowercase() to item.sizeBytes) !in hiddenNamesAndSizes
+    }
+    val serverOnly = server.filter {
+        it.sha256 !in shas && (it.fileName.lowercase() to it.size) !in namesAndSizes && it.sha256 !in hiddenShas
+    }
+    return shown + serverOnly.map { media ->
         media.toMediaItem(id = formerIds[media.sha256] ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
     }
 }

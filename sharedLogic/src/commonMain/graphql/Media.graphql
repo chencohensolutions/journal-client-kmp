@@ -45,6 +45,7 @@ query Changes($since: String, $limit: Int) {
         }
         source
         uploadedAt
+        nudity
       }
     }
   }

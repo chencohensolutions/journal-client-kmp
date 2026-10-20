@@ -253,6 +253,11 @@
     <string name="settings_similarity_label">How alike</string>
     <string name="settings_similarity_body">Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike.</string>
     <string name="settings_similarity_reset">Reset to %d%%</string>
+    <string name="settings_private_title">Private media</string>
+    <string name="settings_private_switch">Show private media</string>
+    <string name="settings_private_switch_body">When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone.</string>
+    <string name="settings_private_threshold">Hide from</string>
+    <string name="settings_private_threshold_body">How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.</string>
     <string name="settings_gap_title">New row after a break of</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">%d hour</item>
