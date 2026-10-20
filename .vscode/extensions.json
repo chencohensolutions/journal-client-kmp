@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "swiftlang.swift-vscode"
+        "swiftlang.swift-vscode",
+        "vscjava.vscode-gradle",
+        "jetbrains.kotlin-server"
     ]
 }
