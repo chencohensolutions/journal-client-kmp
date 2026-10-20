@@ -51,6 +51,9 @@ import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.connection.JournalController
+import com.chencohensolution.journal.storage.FreeUpActivity
+import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.work.FreeUpWorker
 import com.chencohensolution.journal.work.currentWifiName
 import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.Dispatchers
@@ -153,9 +156,10 @@ fun LibraryApp(
     settings: SettingsController,
     backup: BackupController,
     server: ServerFiles,
+    freeUp: FreeUpController,
     onRegisterAgain: () -> Unit,
 ) = CompositionLocalProvider(LocalServerPreviews provides server.previews) {
-    LibraryScreens(journal, library, stories, settings, backup, server, onRegisterAgain)
+    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, onRegisterAgain)
 }
 
 /** The longer side of the frame kept for a video that leaves the phone. */
@@ -172,9 +176,11 @@ private fun LibraryScreens(
     settings: SettingsController,
     backup: BackupController,
     server: ServerFiles,
+    freeUp: FreeUpController,
     onRegisterAgain: () -> Unit,
 ) {
     val journalState by journal.state.collectAsStateWithLifecycle()
+    val freeUpState by freeUp.state.collectAsStateWithLifecycle()
     val backupState by backup.state.collectAsStateWithLifecycle()
     val serverUsage by server.library.usage.collectAsStateWithLifecycle()
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
@@ -273,6 +279,58 @@ private fun LibraryScreens(
             RemovalOutcome.ASKED
         }
     }
+    // "Free up space": checked files that wait go to the trash with one system prompt, shown when a run has ended (the
+    // notification at its end opens the app), or from Settings.
+    val freeUpTrashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        freeUp.confirmationDone()
+        FreeUpWorker.dismissConfirmation(context)
+        library.refresh()
+    }
+    val moveWaitingToTrash: () -> Unit = {
+        scope.launch {
+            val items = freeUp.waitingItems()
+            if (items.isEmpty()) {
+                freeUp.confirmationDone()
+            } else {
+                freeUpTrashLauncher.launch(IntentSenderRequest.Builder(moveToTrashRequest(context, items)).build())
+            }
+        }
+    }
+    LifecycleResumeEffect(Unit) {
+        freeUp.refreshPlan()
+        onPauseOrDispose {}
+    }
+    val freeUpWaiting = freeUpState.waitingCount > 0 && freeUpState.activity !is FreeUpActivity.Running
+    LaunchedEffect(freeUpWaiting) { if (freeUpWaiting) moveWaitingToTrash() }
+    val photoTrash = remember { AndroidPhotoTrash(context) }
+    var canTrashWithoutAsking by remember { mutableStateOf(photoTrash.canTrashWithoutAsking()) }
+    LifecycleResumeEffect(Unit) {
+        canTrashWithoutAsking = photoTrash.canTrashWithoutAsking()
+        onPauseOrDispose {}
+    }
+    val startFreeUp: () -> Unit = {
+        if (!granted(Manifest.permission.POST_NOTIFICATIONS)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        freeUp.start()
+    }
+    // Back from the system page for "Media management" access, given or not: the run starts either way.
+    val manageMediaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        canTrashWithoutAsking = photoTrash.canTrashWithoutAsking()
+        startFreeUp()
+    }
+    var previewBytes by remember { mutableStateOf<Long?>(null) }
+    val storageActions = StorageActions(
+        setPreviewLimit = settings::setPreviewCacheGigabytes,
+        clearPreviews = {
+            scope.launch {
+                server.previews.clear()
+                previewBytes = server.previews.usedBytes()
+            }
+        },
+        setRule = freeUp::setRule,
+        freeUp = startFreeUp,
+        allowTrashWithoutAsking = { manageMediaLauncher.launch(manageMediaSettingsIntent(context)) },
+        moveWaitingToTrash = moveWaitingToTrash,
+    )
     val backupActions = BackupActions(
         setEnabled = { on ->
             if (on && !granted(Manifest.permission.POST_NOTIFICATIONS)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -428,6 +486,11 @@ private fun LibraryScreens(
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
                                     }
+                                    // Counted on open, and again (after trimming) when the limit changes.
+                                    LaunchedEffect(settingsState.previewCacheGigabytes) {
+                                        server.previews.trimToLimit()
+                                        previewBytes = server.previews.usedBytes()
+                                    }
                                     SettingsScreen(
                                         settings = settingsState,
                                         actions = SettingsActions(
@@ -439,6 +502,8 @@ private fun LibraryScreens(
                                         ),
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, backgroundLocation, serverUsage),
                                         backupActions = backupActions,
+                                        storage = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, canTrashWithoutAsking),
+                                        storageActions = storageActions,
                                     )
                                 }
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)

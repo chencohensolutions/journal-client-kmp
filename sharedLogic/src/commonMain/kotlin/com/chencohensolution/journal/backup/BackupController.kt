@@ -186,6 +186,17 @@ class BackupController internal constructor(
         }
     }
 
+    /**
+     * The ledger was changed elsewhere ("Free up space" found files changed on the phone or missing on the server): the
+     * statuses follow, and a run starts to send those files again.
+     */
+    fun ledgerChanged() {
+        scope.launch {
+            reloadLedger()
+            backUpNow()
+        }
+    }
+
     /** Set by the platform when it can't run now; cleared by the next run. */
     fun reportWaiting(reason: WaitReason) {
         _state.update { it.copy(activity = BackupActivity.Waiting(reason)) }

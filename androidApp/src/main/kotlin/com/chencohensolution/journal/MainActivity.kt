@@ -26,7 +26,9 @@ import com.chencohensolution.journal.ui.EnrollmentWizard
 import com.chencohensolution.journal.ui.JournalTheme
 import com.chencohensolution.journal.ui.library.LibraryApp
 import com.chencohensolution.journal.ui.library.ServerFiles
+import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.work.WorkBackupScheduler
+import com.chencohensolution.journal.work.freeUp
 
 /** Keeps the shared controllers alive across configuration changes. */
 class JournalViewModel(application: Application) : AndroidViewModel(application) {
@@ -42,6 +44,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val library: LibraryController = createLibraryController(application, backup, server.library, server.originals)
     val settings: SettingsController = createSettingsController(application)
     val stories: StoriesController = createStoriesController(application, library, settings)
+    val freeUp: FreeUpController = freeUp(application)
 
     override fun onCleared() {
         stories.close()
@@ -86,6 +89,7 @@ class MainActivity : ComponentActivity() {
                         settings = viewModel.settings,
                         backup = viewModel.backup,
                         server = viewModel.server,
+                        freeUp = viewModel.freeUp,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true

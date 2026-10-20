@@ -1,0 +1,244 @@
+package com.chencohensolution.journal
+
+import com.chencohensolution.journal.backup.LedgerEntry
+import com.chencohensolution.journal.backup.MediaFiles
+import com.chencohensolution.journal.backup.UploadLedger
+import com.chencohensolution.journal.library.LocalDay
+import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaLibrary
+import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.KeyValueStore
+import com.chencohensolution.journal.storage.FreeUpChecker
+import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.storage.FreeUpGroup
+import com.chencohensolution.journal.storage.FreeUpRule
+import com.chencohensolution.journal.storage.KeptReason
+import com.chencohensolution.journal.storage.PhotoTrash
+import com.chencohensolution.journal.storage.ServerCheck
+import com.chencohensolution.journal.storage.ServerVerdict
+import com.chencohensolution.journal.storage.freeUpPlan
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
+import okio.Buffer
+import okio.ByteString.Companion.toByteString
+import okio.Path.Companion.toPath
+import okio.Source
+import okio.fakefilesystem.FakeFileSystem
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+private const val DAY = 86_400_000L
+private const val NOW = 1_000 * DAY
+private const val GB = 1L shl 30
+
+private fun item(id: String, ageDays: Long, size: Long, name: String = "IMG_$id.jpg", type: MediaType = MediaType.IMAGE, plusMillis: Long = 0) =
+    MediaItem(id, type, NOW - ageDays * DAY + plusMillis, LocalDay(2026, 10, 20), null, 4000, 3000, size, name, modifiedMillis = 7)
+
+private fun uploaded(item: MediaItem, sha: String = "sha-${item.id}") =
+    LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha, uploaded = true)
+
+private class Files : MediaFiles {
+    val bytes = mutableMapOf<String, ByteArray>()
+    override fun open(item: MediaItem, offset: Long): Source = Buffer().write(bytes.getValue(item.id))
+    override fun takenAt(item: MediaItem) = "2026-10-20T10:00:00+03:00"
+}
+
+private class Server : ServerCheck {
+    val verdicts = mutableMapOf<String, ServerVerdict>()
+    val asked = mutableListOf<String>()
+    var offline = false
+    override suspend fun verify(sha256: String): ServerVerdict {
+        if (offline) throw okio.IOException("connection refused")
+        asked += sha256
+        return verdicts[sha256] ?: ServerVerdict.OK
+    }
+}
+
+private class Library(var items: List<MediaItem>) : MediaLibrary {
+    override fun access() = PhotoAccess.FULL
+    override suspend fun loadItems() = items
+}
+
+private class Store : KeyValueStore {
+    val values = mutableMapOf<String, String>()
+    override fun getString(key: String) = values[key]
+    override fun putString(key: String, value: String?) {
+        if (value == null) values.remove(key) else values[key] = value
+    }
+}
+
+private class Trash(var allowed: Boolean) : PhotoTrash {
+    val trashed = mutableListOf<String>()
+    override fun canTrashWithoutAsking() = allowed
+    override suspend fun trash(items: List<MediaItem>): Boolean {
+        trashed += items.map { it.id }
+        return true
+    }
+}
+
+class FreeUpTest {
+    @Test
+    fun olderThanTakesOnlyBackedUpPhotosTakenBeforeThenAndKeepsPairsTogether() {
+        val old = item("old", ageDays = 400, size = 10)
+        val recent = item("recent", ageDays = 10, size = 10)
+        val notBackedUp = item("mine", ageDays = 500, size = 10)
+        val changed = item("changed", ageDays = 500, size = 10)
+        // A RAW and its JPEG: only the JPEG is backed up, so neither leaves.
+        val raw = item("raw", ageDays = 600, size = 30, name = "PXL_1.dng")
+        val jpeg = item("jpeg", ageDays = 600, size = 5, name = "PXL_1.jpg", plusMillis = 800)
+        // Both backed up: they leave together.
+        val raw2 = item("raw2", ageDays = 700, size = 30, name = "PXL_2.DNG")
+        val jpeg2 = item("jpeg2", ageDays = 700, size = 5, name = "PXL_2.jpg", plusMillis = 500)
+        val serverOnly = item("server", ageDays = 800, size = 10).copy(isOnDevice = false)
+        val entries = listOf(old, recent, jpeg, raw2, jpeg2, serverOnly).associate { it.id to uploaded(it) } +
+            (changed.id to uploaded(changed).copy(modifiedMillis = 1))
+
+        val plan = freeUpPlan(listOf(old, recent, notBackedUp, changed, raw, jpeg, raw2, jpeg2, serverOnly), entries, FreeUpRule.OlderThan(365), NOW)
+
+        assertEquals(listOf(listOf("old"), listOf("raw2", "jpeg2")), plan.groups.map { g -> g.items.map { it.id } })
+        assertEquals(45, plan.bytes)
+        assertEquals(3, plan.photos)
+    }
+
+    @Test
+    fun keepNewestKeepsTheNewestUpToTheSizeCountingEverythingOnThePhone() {
+        val newest = item("1", ageDays = 1, size = 3 * GB)
+        val notBackedUp = item("2", ageDays = 2, size = 1 * GB)
+        val tooMuch = item("3", ageDays = 3, size = 2 * GB)
+        val oldest = item("4", ageDays = 4, size = GB)
+        val entries = listOf(newest, tooMuch, oldest).associate { it.id to uploaded(it) }
+
+        val plan = freeUpPlan(listOf(oldest, tooMuch, notBackedUp, newest), entries, FreeUpRule.KeepNewest(5), NOW)
+
+        // 3 + 1 GB fit in 5; the next 2 GB don't, so it and everything older goes.
+        assertEquals(listOf("3", "4"), plan.groups.flatMap { g -> g.items.map { it.id } })
+    }
+
+    @Test
+    fun checkerNeedsBothCopiesToHaveTheSha256() = runTest {
+        val fs = FakeFileSystem()
+        val ledger = UploadLedger(fs, "/backup".toPath())
+        val files = Files()
+        val server = Server()
+        val checker = FreeUpChecker(files, ledger, server)
+        fun add(id: String, content: String): MediaItem {
+            val bytes = content.encodeToByteArray()
+            files.bytes[id] = bytes
+            return item(id, 400, bytes.size.toLong())
+        }
+        val good = add("good", "photo one")
+        val edited = add("edited", "photo two")
+        val missing = add("missing", "photo three")
+        val damaged = add("damaged", "photo four")
+        for (it in listOf(good, missing, damaged)) ledger.record(uploaded(it, files.bytes.getValue(it.id).toByteString().sha256().hex()))
+        ledger.record(uploaded(edited, "a different sha256"))
+        server.verdicts[ledger.entry("missing")!!.sha256] = ServerVerdict.MISSING
+        server.verdicts[ledger.entry("damaged")!!.sha256] = ServerVerdict.MISMATCH
+
+        assertNull(checker.check(FreeUpGroup(listOf(good))))
+        assertEquals(KeptReason.CHANGED_ON_PHONE, checker.check(FreeUpGroup(listOf(edited))))
+        assertNull(ledger.entry("edited"), "read again by backup")
+        assertEquals(KeptReason.MISSING_ON_SERVER, checker.check(FreeUpGroup(listOf(missing))))
+        assertEquals(false, ledger.entry("missing")!!.uploaded)
+        assertEquals(KeptReason.DAMAGED_ON_SERVER, checker.check(FreeUpGroup(listOf(damaged))))
+        assertTrue(ledger.entry("damaged")!!.uploaded)
+        assertEquals(KeptReason.DAMAGED_ON_SERVER, checker.check(FreeUpGroup(listOf(good, damaged))), "a pair stays when one fails")
+
+        server.offline = true
+        assertFailsWith<okio.IOException> { checker.check(FreeUpGroup(listOf(good))) }
+    }
+
+    private class Run(allowed: Boolean, testDispatcher: kotlinx.coroutines.CoroutineDispatcher) {
+        val fs = FakeFileSystem()
+        val ledger = UploadLedger(fs, "/backup".toPath())
+        val files = Files()
+        val server = Server()
+        val trash = Trash(allowed)
+        val library = Library(emptyList())
+        var ledgerChanges = 0
+        val controller = FreeUpController(
+            settings = JournalSettings(Store()),
+            ledger = ledger,
+            library = library,
+            files = files,
+            server = server,
+            fileSystem = fs,
+            directory = "/freeup".toPath(),
+            now = { NOW },
+            onLedgerChanged = { ledgerChanges++ },
+            dispatcher = testDispatcher,
+        )
+
+        suspend fun photo(id: String, content: String, ageDays: Long = 400): MediaItem {
+            val bytes = content.encodeToByteArray()
+            files.bytes[id] = bytes
+            val it = item(id, ageDays, bytes.size.toLong())
+            ledger.record(uploaded(it, bytes.toByteString().sha256().hex()))
+            library.items += it
+            return it
+        }
+    }
+
+    @Test
+    fun withMediaManagementAccessEachCheckedPhotoGoesToTheTrashRightAway() = runTest {
+        val run = Run(allowed = true, StandardTestDispatcher(testScheduler))
+        run.photo("a", "first")
+        run.photo("b", "second")
+        val edited = run.photo("c", "third")
+        // Edited in place without its size or date changing: only the hash shows it.
+        run.files.bytes[edited.id] = "THIRD".encodeToByteArray()
+        run.photo("new", "taken last week", ageDays = 7)
+
+        val result = run.controller.runOnce(run.trash)!!
+
+        assertEquals(listOf("a", "b"), run.trash.trashed)
+        assertEquals(2, result.removed)
+        assertEquals(mapOf(KeptReason.CHANGED_ON_PHONE to 1), result.kept)
+        assertEquals(1, run.ledgerChanges)
+        assertEquals(0, result.waiting)
+    }
+
+    @Test
+    fun withoutAccessCheckedPhotosWaitForOnePromptAndChangedOnesAreLeftOut() = runTest {
+        val run = Run(allowed = false, StandardTestDispatcher(testScheduler))
+        val a = run.photo("a", "first")
+        val b = run.photo("b", "second")
+
+        val result = run.controller.runOnce(run.trash)!!
+
+        assertEquals(emptyList(), run.trash.trashed)
+        assertEquals(2, result.waiting)
+        assertEquals(2, run.controller.currentState.waitingCount)
+        assertEquals(listOf(a, b), run.controller.waitingItems())
+
+        // A second run doesn't check them again.
+        run.server.asked.clear()
+        run.controller.runOnce(run.trash)
+        assertEquals(emptyList(), run.server.asked)
+
+        // Changed after it was checked: left out of the prompt.
+        run.library.items = listOf(a, b.copy(modifiedMillis = 99))
+        assertEquals(listOf(a), run.controller.waitingItems())
+
+        run.controller.confirmationDone()
+        run.controller.state.first { it.waitingCount == 0 }
+        assertEquals(emptyList(), run.controller.waitingItems())
+    }
+
+    @Test
+    fun anUnreachableServerStopsTheRunAndRemovesNothing() = runTest {
+        val run = Run(allowed = true, StandardTestDispatcher(testScheduler))
+        run.photo("a", "first")
+        run.server.offline = true
+
+        assertNull(run.controller.runOnce(run.trash))
+        assertEquals(emptyList(), run.trash.trashed)
+        assertTrue(run.controller.currentState.activity is com.chencohensolution.journal.storage.FreeUpActivity.Stopped)
+    }
+}

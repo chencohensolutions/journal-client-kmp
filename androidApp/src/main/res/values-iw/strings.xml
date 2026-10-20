@@ -407,4 +407,82 @@
     <string name="library_info_preview">תצוגה מקדימה בטלפון</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">עדיין אין</string>
+    <string name="settings_backup_server_usage">בשרת שלך</string>
+    <string name="settings_backup_server_usage_unknown">אין כרגע חיבור לשרת</string>
+    <plurals name="settings_backup_server_photos">
+        <item quantity="one">תמונה אחת</item>
+        <item quantity="two">%,d תמונות</item>
+        <item quantity="other">%,d תמונות</item>
+    </plurals>
+    <plurals name="settings_backup_server_videos">
+        <item quantity="one">סרטון אחד</item>
+        <item quantity="two">%,d סרטונים</item>
+        <item quantity="other">%,d סרטונים</item>
+    </plurals>
+    <string name="settings_storage_title">אחסון בטלפון הזה</string>
+    <string name="settings_storage_previews">תצוגות מקדימות מהשרת</string>
+    <string name="settings_storage_previews_used">%1$s מתוך %2$s בשימוש. תצוגות מקדימות נטענות שוב כשגוללים אליהן.</string>
+    <string name="settings_storage_counting">סופר…</string>
+    <string name="settings_storage_gigabytes">%d GB</string>
+    <string name="settings_storage_clear_previews">מחיקת התצוגות המקדימות</string>
+    <string name="settings_free_up_title">פינוי מקום</string>
+    <string name="settings_free_up_older">ישנים מ־</string>
+    <string name="settings_free_up_older_body">מסיר תמונות וסרטונים שצולמו לפני כן.</string>
+    <string name="settings_free_up_keep">שמירת החדשים ביותר</string>
+    <string name="settings_free_up_keep_body">שומר את התמונות והסרטונים החדשים ביותר עד לגודל הזה ומסיר את הישנים יותר.</string>
+    <plurals name="settings_free_up_months">
+        <item quantity="one">חודש</item>
+        <item quantity="two">חודשיים</item>
+        <item quantity="other">%d חודשים</item>
+    </plurals>
+    <plurals name="settings_free_up_years">
+        <item quantity="one">שנה</item>
+        <item quantity="two">שנתיים</item>
+        <item quantity="other">%d שנים</item>
+    </plurals>
+    <string name="settings_free_up_plan">יוסרו %1$s מהטלפון: %2$s</string>
+    <string name="settings_free_up_plan_none">אין מה להסיר. מוסרות רק תמונות שכבר גובו.</string>
+    <string name="settings_free_up_body">כל קובץ מחושב שוב (sha256) בטלפון ובשרת לפני ההסרה. קבצים שהוסרו עוברים לאשפה של הטלפון ונשארים בה 30 יום.</string>
+    <string name="settings_free_up_button">פינוי מקום</string>
+    <string name="settings_free_up_running">בודק %1$d מתוך %2$d</string>
+    <string name="settings_free_up_stopped">נעצר: %1$s</string>
+    <plurals name="settings_free_up_removed">
+        <item quantity="one">קובץ אחד (%2$s) הועבר לאשפה</item>
+        <item quantity="two">%1$,d קבצים (%2$s) הועברו לאשפה</item>
+        <item quantity="other">%1$,d קבצים (%2$s) הועברו לאשפה</item>
+    </plurals>
+    <plurals name="settings_free_up_kept_changed">
+        <item quantity="one">אחד השתנה בטלפון: יגובה שוב</item>
+        <item quantity="two">%,d השתנו בטלפון: יגובו שוב</item>
+        <item quantity="other">%,d השתנו בטלפון: יגובו שוב</item>
+    </plurals>
+    <plurals name="settings_free_up_kept_missing">
+        <item quantity="one">אחד חסר בשרת: יגובה שוב</item>
+        <item quantity="two">%,d חסרים בשרת: יגובו שוב</item>
+        <item quantity="other">%,d חסרים בשרת: יגובו שוב</item>
+    </plurals>
+    <plurals name="settings_free_up_kept_damaged">
+        <item quantity="one">אחד פגום בשרת: נשאר בטלפון</item>
+        <item quantity="two">%,d פגומים בשרת: נשארים בטלפון</item>
+        <item quantity="other">%,d פגומים בשרת: נשארים בטלפון</item>
+    </plurals>
+    <plurals name="settings_free_up_waiting">
+        <item quantity="one">קובץ אחד (%2$s) נבדק ומחכה לאישורך</item>
+        <item quantity="two">%1$,d קבצים (%2$s) נבדקו ומחכים לאישורך</item>
+        <item quantity="other">%1$,d קבצים (%2$s) נבדקו ומחכים לאישורך</item>
+    </plurals>
+    <string name="settings_free_up_move_waiting">העברה לאשפה</string>
+    <string name="settings_free_up_access_title">להעביר לאשפה בלי לשאול?</string>
+    <string name="settings_free_up_access_body">Android שואל לפני שתמונות עוברות לאשפה. עם הרשאת „ניהול מדיה”, קבצים שעברו את שתי הבדיקות עוברים לאשפה תוך כדי, גם כשהאפליקציה סגורה. בלעדיה, מאשרים את כולם יחד בסוף.</string>
+    <string name="settings_free_up_access_allow">אישור</string>
+    <string name="settings_free_up_access_later">לשאול אותי בסוף</string>
+    <string name="free_up_notification_channel">פינוי מקום</string>
+    <string name="free_up_notification_starting">מתכונן לפנות מקום</string>
+    <string name="free_up_notification_title">בודק %1$d מתוך %2$d</string>
+    <plurals name="free_up_notification_confirm">
+        <item quantity="one">קובץ אחד נבדק: הקישו כדי להעביר לאשפה</item>
+        <item quantity="two">%,d קבצים נבדקו: הקישו כדי להעביר לאשפה</item>
+        <item quantity="other">%,d קבצים נבדקו: הקישו כדי להעביר לאשפה</item>
+    </plurals>
+    <string name="free_up_notification_confirm_body">אפשר לפנות %1$s מהטלפון. כולם נמצאים בשרת שלך.</string>
 </resources>

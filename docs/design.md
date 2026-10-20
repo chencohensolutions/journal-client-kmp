@@ -158,13 +158,20 @@ Agreed with the owner Oct 19–20, 2026. **Built:** server upload and previews (
 [docs/media.md](../../journal-server-go/docs/media.md)), and **Android backup** (Settings → Backup, WorkManager, progress
 notification; see [screens/settings.md](screens/settings.md)), and **photos only on the server** (Android): the
 library adds them from the server's change feed (`changes`, kept in `files/server/media.json`) and draws them from
-previews the server makes at the tile's exact size (cached in `cache/previews`, up to 10 GB). Previews and
+previews the server makes at the tile's exact size (cached in `cache/previews`, up to the limit in Settings, 10 GB by
+default). Previews and
 downloaded originals are in the app's private storage, which the gallery never scans, and both folders also hold a
 `.nomedia` file so they stay out of the gallery if they ever move to shared storage. Tested on the emulator,
 including a photo deleted from the device. A photo's details show where its original is, and offer **Download
 original** (kept in `files/originals`, never trimmed) and **Delete from this phone** (asked for Oct 20, 2026: only
 after the server confirms it and its preview is kept; a gallery photo goes to the phone's trash through Android's
-prompt). Not yet: iOS, playing server-only videos, story/note sync.
+prompt). **Free up space** (Settings → Storage on this phone, Android; agreed Oct 20, 2026): takes the originals the
+server has off the phone, older than X (by date taken) or all but the newest X GB, pairs together. In the background,
+one file at a time, the server hashes its copy again (`POST /media/{sha256}/verify`) while the phone hashes its own;
+only files where both match the sha256 backup uploaded go to the phone's **trash** (30 days), right away with
+"Media management" access (`MANAGE_MEDIA`), else with one system prompt at the end. No previews are kept for them on
+purpose: they are fetched as you scroll, like any server photo. See [screens/settings.md](screens/settings.md).
+Not yet: iOS, playing server-only videos, story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -193,7 +200,7 @@ prompt). Not yet: iOS, playing server-only videos, story/note sync.
   backup has read a device photo, so a new device doesn't show each photo twice); a photo only on the server
   (`MediaItem.isOnDevice` false; it keeps the device id it had, else `server:<sha256>`) shows the server's preview,
   or its downloaded original. Playing a server-only video (streaming) is not built yet. A new device downloads only the journal data (paged change
-  feed, gzip), then previews as you scroll (cache default **10 GB**).
+  feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings).
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
@@ -208,4 +215,4 @@ prompt). Not yet: iOS, playing server-only videos, story/note sync.
   system allows).
 - Deleted stories go to a server trash for **6 months**. Stories made before sync may simply be deleted rather than
   migrated (never photos).
-- Later: Free up space (not now), removing a photo from the journal, certificate renewal, search with a shared model.
+- Later: removing a photo from the journal, certificate renewal, search with a shared model.

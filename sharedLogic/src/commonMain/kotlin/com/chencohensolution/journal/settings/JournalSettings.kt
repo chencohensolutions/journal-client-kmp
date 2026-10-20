@@ -3,6 +3,7 @@ package com.chencohensolution.journal.settings
 import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.storage.FreeUpRule
 import com.chencohensolution.journal.stories.MomentsFeed
 
 /** Minimal persistent string storage: SharedPreferences on Android, NSUserDefaults on iOS. */
@@ -88,7 +89,32 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_BACKUP_ORDER, value.order.name)
         }
 
+    /** How much the previews of server photos may take up on this device, in GB (Settings → Storage on this phone). */
+    var previewCacheGigabytes: Int
+        get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
+        set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
+
+    /** The rule "Free up space" used last ("days:365" or "keep:10"). */
+    var freeUpRule: FreeUpRule
+        get() {
+            val (kind, number) = store.getString(KEY_FREE_UP_RULE)?.split(":")?.takeIf { it.size == 2 } ?: return FreeUpRule.DEFAULT
+            val n = number.toIntOrNull()?.takeIf { it > 0 } ?: return FreeUpRule.DEFAULT
+            return when (kind) {
+                "days" -> FreeUpRule.OlderThan(n)
+                "keep" -> FreeUpRule.KeepNewest(n)
+                else -> FreeUpRule.DEFAULT
+            }
+        }
+        set(value) = store.putString(
+            KEY_FREE_UP_RULE,
+            when (value) {
+                is FreeUpRule.OlderThan -> "days:${value.days}"
+                is FreeUpRule.KeepNewest -> "keep:${value.gigabytes}"
+            },
+        )
+
     companion object {
+        const val DEFAULT_PREVIEW_CACHE_GB = 10
         const val DEFAULT_SERVER_URL = "https://192.168.50.2:8080/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
@@ -105,5 +131,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_WIFI_NETWORKS = "backup_wifi_networks"
         private const val KEY_BACKUP_CHARGING_ONLY = "backup_charging_only"
         private const val KEY_BACKUP_ORDER = "backup_order"
+        private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
+        private const val KEY_FREE_UP_RULE = "free_up_rule"
     }
 }

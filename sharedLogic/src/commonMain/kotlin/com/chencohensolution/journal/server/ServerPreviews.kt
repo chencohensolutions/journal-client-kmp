@@ -17,13 +17,14 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Previews of photos that are only on the server, made by the server at exactly the pixels they are drawn at
- * (journal-server-go docs/media.md), and kept on this device up to [maxBytes] (10 GB by default; the oldest go first).
+ * (journal-server-go docs/media.md), and kept on this device up to [maxBytes] (Settings → Storage on this phone, 10 GB by
+ * default; the oldest go first).
  */
 class ServerPreviews internal constructor(
     private val http: ServerHttp,
     private val fileSystem: FileSystem,
     private val directory: Path,
-    private val maxBytes: Long = DEFAULT_MAX_BYTES,
+    private val maxBytes: () -> Long = { DEFAULT_MAX_BYTES },
 ) {
     private val downloads = Semaphore(PARALLEL_DOWNLOADS)
     private val cacheMutex = Mutex()
@@ -104,7 +105,30 @@ class ServerPreviews internal constructor(
             fileSystem.write(temp) { write(bytes) }
             fileSystem.atomicMove(temp, path)
             cachedBytes = total + bytes.size
-            if (cachedBytes!! > maxBytes) trim()
+            if (cachedBytes!! > maxBytes()) trim()
+        }
+    }
+
+    /** Bytes the previews take up on this device. */
+    suspend fun usedBytes(): Long = withContext(Dispatchers.IO) {
+        cacheMutex.withLock { (cachedBytes ?: countBytes()).also { cachedBytes = it } }
+    }
+
+    /** Applies a lowered limit now, instead of at the next preview kept. */
+    suspend fun trimToLimit() = withContext(Dispatchers.IO) {
+        cacheMutex.withLock {
+            val total = cachedBytes ?: countBytes()
+            cachedBytes = total
+            if (total > maxBytes()) trim()
+        }
+    }
+
+    /** Deletes every preview; they are fetched again as photos are shown. */
+    suspend fun clear() = withContext(Dispatchers.IO) {
+        cacheMutex.withLock {
+            if (fileSystem.exists(directory)) fileSystem.deleteRecursively(directory)
+            cachedBytes = 0
+            marked = false
         }
     }
 
@@ -113,6 +137,7 @@ class ServerPreviews internal constructor(
 
     /** Deletes the oldest previews until the cache is at 90% of its limit. */
     private fun trim() {
+        val limit = maxBytes()
         val files = fileSystem.listRecursively(directory)
             .filter { it.name != NO_MEDIA }
             .mapNotNull { path -> fileSystem.metadataOrNull(path)?.takeIf { it.isRegularFile }?.let { Triple(path, it.size ?: 0, it.lastModifiedAtMillis ?: 0) } }
@@ -120,21 +145,21 @@ class ServerPreviews internal constructor(
             .toList()
         var total = files.sumOf { it.second }
         for ((path, size) in files) {
-            if (total <= maxBytes / 10 * 9) break
+            if (total <= limit / 10 * 9) break
             fileSystem.delete(path)
             total -= size
         }
         cachedBytes = total
     }
 
-    private companion object {
+    companion object {
         const val DEFAULT_MAX_BYTES = 10L shl 30
-        const val MAX_SIDE = 4096
-        const val PARALLEL_DOWNLOADS = 6
+        private const val MAX_SIDE = 4096
+        private const val PARALLEL_DOWNLOADS = 6
 
         /** What the viewer and the tiles ask for (androidApp VIEWER_MAX_SIDE and THUMB_LARGE). */
-        const val VIEWER_SIDE = 2560
-        const val SMALL_SIDE = 640
+        private const val VIEWER_SIDE = 2560
+        private const val SMALL_SIDE = 640
     }
 }
 

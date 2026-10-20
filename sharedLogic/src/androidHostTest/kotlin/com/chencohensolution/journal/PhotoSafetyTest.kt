@@ -32,10 +32,12 @@ class PhotoSafetyTest {
      * original the same way (agreed Oct 19, 2026: the server must get the file byte for byte, GPS included).
      */
     private val readOnlyExceptions = mapOf(
-        // Not read-only, and the only such exception: "Delete from this phone" (asked for by the owner on Oct 20, 2026)
-        // asks Android to move one photo to the gallery's trash, which Android confirms with its own prompt, and only
-        // after the server confirmed it holds the photo. Only in PhotoRemoval.kt.
+        // Not read-only, and the only such exceptions: "Delete from this phone" and "Free up space" (asked for by the
+        // owner on Oct 20, 2026) ask Android to move photos to the gallery's trash, only after the server confirmed it
+        // holds them ("Free up space" also hashes both copies again). Android confirms with its own prompt, unless the
+        // user gave the app "Media management" access (MANAGE_MEDIA) in system settings. Only in PhotoRemoval.kt.
         "createTrashRequest" to setOf("PhotoRemoval.kt"),
+        "MANAGE_MEDIA" to setOf("PhotoRemoval.kt", "AndroidManifest.xml"),
         "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt", "AndroidMediaFiles.kt"),
         "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryApp.kt"),
     )
@@ -69,6 +71,9 @@ class PhotoSafetyTest {
             "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
             // Read-only: un-hides GPS in what the app reads (see readOnlyExceptions).
             "android.permission.ACCESS_MEDIA_LOCATION",
+            // Not read-only: "Free up space" moves photos the server has to the trash without a prompt each time,
+            // once the user turns on "Media management" access (see readOnlyExceptions).
+            "android.permission.MANAGE_MEDIA",
             // Not about photos: Android 17 needs it to reach the journal server on the local network.
             "android.permission.ACCESS_LOCAL_NETWORK",
             // Not about photos: backup runs in the background with a progress notification, and checks the network.

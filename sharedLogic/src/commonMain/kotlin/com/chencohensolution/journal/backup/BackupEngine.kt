@@ -133,17 +133,7 @@ internal class BackupEngine(
             .also { ledger.record(it) }
     }
 
-    private suspend fun sha256(item: MediaItem): String = withContext(Dispatchers.IO) {
-        val hashing = HashingSink.sha256(blackholeSink())
-        val buffer = Buffer()
-        files.open(item, 0).use { source ->
-            while (source.read(buffer, READ_SIZE) != -1L) {
-                hashing.write(buffer, buffer.size)
-                coroutineContext.ensureActive()
-            }
-        }
-        hashing.hash.hex()
-    }
+    private suspend fun sha256(item: MediaItem): String = files.sha256(item)
 
     private enum class Outcome { UPLOADED, ALREADY, FAILED }
 
@@ -229,7 +219,6 @@ internal class BackupEngine(
     private companion object {
         /** Hashes asked about in one missingMedia call (the server takes up to 1000). */
         const val BATCH = 100
-        const val READ_SIZE = 1L shl 20
         const val MIN_CHUNK = 256L shl 10
         const val MAX_CHUNK = 64L shl 20
 
@@ -237,6 +226,21 @@ internal class BackupEngine(
         const val MAX_STARTS = 3
     }
 }
+
+/** The sha256 of [item]'s bytes as they are now, read from the start. */
+internal suspend fun MediaFiles.sha256(item: MediaItem): String = withContext(Dispatchers.IO) {
+    val hashing = HashingSink.sha256(blackholeSink())
+    val buffer = Buffer()
+    open(item, 0).use { source ->
+        while (source.read(buffer, READ_SIZE) != -1L) {
+            hashing.write(buffer, buffer.size)
+            coroutineContext.ensureActive()
+        }
+    }
+    hashing.hash.hex()
+}
+
+private const val READ_SIZE = 1L shl 20
 
 /** How the server's sidecars name a source. */
 internal val MediaSource.serverName: String get() = name.lowercase()

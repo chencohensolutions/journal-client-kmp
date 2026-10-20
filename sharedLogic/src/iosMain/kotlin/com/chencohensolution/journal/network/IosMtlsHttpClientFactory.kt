@@ -7,6 +7,7 @@ import com.chencohensolution.journal.tls.secCertificateObject
 import com.chencohensolution.journal.tls.withCFBridge
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.reinterpret
 import platform.Foundation.NSURLAuthenticationChallenge
@@ -49,6 +50,8 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
                     }
                 }
             }
+            // No limits of its own: a request that needs longer than usual (verifying a large video) sets them.
+            install(HttpTimeout)
         }
     }
 

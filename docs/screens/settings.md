@@ -18,7 +18,19 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
-- **Rows in Moments:** how the Moments tab splits the photos into rows.
+- **Storage on this phone** (Android; asked for Oct 20, 2026):
+  - **Previews from your server**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and
+    **Clear previews**. Previews of photos that are only on the server are kept up to the limit (the oldest go first)
+    and fetched again when scrolled to; none are pinned, also for photos removed from the phone.
+  - **Free up space**: takes originals the server has off the phone. A rule: **Older than** 1, 3, 6 months, **1 year**
+    (default) or 2 years (by date taken), or **Keep the newest** 1, 2, 5, **10**, 20 or 50 GB (by date taken; everything
+    on the phone counts toward what is kept, backed up or not). Then what it would remove, "Removes 14 GB from this
+    phone: 1,240 photos, 38 videos", or "Nothing to remove", and **Free up space**. Only photos this phone backed up, as
+    they are now, are removed; a pair (same file name apart from the extension, taken within 2 s: a RAW and its JPEG)
+    leaves together or not at all. While it runs, "Checking 3 of 120 · IMG_1234.jpg"; afterwards what it did ("120
+    files (3.2 GB) moved to the trash", "2 changed on this phone: backed up again", "1 not on your server: backed up
+    again", "1 damaged on your server: kept on this phone"), and "120 files (3.2 GB) checked, waiting for you" with
+    **Move to trash** when files wait for the system prompt.
   - **By day** (default): one row for each calendar day.
   - **By breaks between photos:** a new row starts after a break without photos, so an evening that runs past
     midnight, or a day out that starts before dawn, stays in one row.
@@ -47,6 +59,21 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   read once and never sent twice; the server also deduplicates. An edit saved in place uploads as a new version
   (`versionOf`). Uploads resume where they stopped. See [design.md](../design.md) "Upload and sync".
 
+- **Free up space** runs in the background with WorkManager (`FreeUpWorker`, a progress notification with Stop), one
+  group of files at a time. For each file the server reads and hashes its copy again (`POST /media/{sha256}/verify`,
+  journal-server-go docs/media.md) while the phone hashes its own; both must have the sha256 backup uploaded, else
+  the file stays (changed on the phone or missing on the server: backup sends it again; damaged on the server: the
+  server logs it). An unreachable server stops the run; nothing unchecked is removed. Files that passed go to the
+  phone's trash (kept there 30 days):
+  - with **"Media management" access** (`MANAGE_MEDIA`, asked for when **Free up space** is tapped, in a dialog that
+    opens the system page; "Ask me at the end" skips it), right away as each group passes, without a prompt;
+  - without it (or when Android refuses to start the request from the background), they wait in
+    `files/freeup/waiting.json`; when the run ends a notification ("120 files checked: tap to move them to the trash")
+    opens the app, which shows **one** system prompt for all of them (also on the next app open, or with **Move to
+    trash**). A file changed since it was checked (size or date) is left out of the prompt, with its pair. Either
+    answer clears the list.
+- A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
+
 ## Code
 
 - Shared: `SettingsController`, `TimelineGrouping` and `SimilarityThreshold` in
@@ -57,5 +84,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   (`BackupController`, `BackupEngine`, `UploadLedger`, `ServerBackupApi`); Android reads originals in
   `AndroidMediaFiles.kt`, and runs it from [work/](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/BackupWorker.kt)
   (`BackupWorker`, `WorkBackupScheduler`, `currentWifiName`).
+- Storage: [storage/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/storage/FreeUpController.kt)
+  (`FreeUpController`, `freeUpPlan`, `FreeUpChecker`, `ServerVerifyApi`); previews in `ServerPreviews`. Android:
+  [FreeUpWorker.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/FreeUpWorker.kt), and the trash
+  only in [PhotoRemoval.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhotoRemoval.kt)
+  (`AndroidPhotoTrash`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
 - iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift).

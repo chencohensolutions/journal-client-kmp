@@ -6,6 +6,7 @@ import com.chencohensolution.journal.enrollment.androidKeyStore
 import com.chencohensolution.journal.tls.parseX509Certificate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -45,7 +46,11 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
                 .writeTimeout(2, TimeUnit.MINUTES)
                 .build()
 
-            HttpClient(OkHttp) { engine { preconfigured = okHttp } }
+            HttpClient(OkHttp) {
+                engine { preconfigured = okHttp }
+                // No limits of its own: a request that needs longer than OkHttp's (verifying a large video) sets them.
+                install(HttpTimeout)
+            }
         }
 
     /** Blocks (KeyChain and Keystore), so it must stay off the main thread. */

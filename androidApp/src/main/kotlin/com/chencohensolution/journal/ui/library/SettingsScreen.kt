@@ -20,6 +20,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.RadioButton
@@ -31,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +64,10 @@ import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
+import com.chencohensolution.journal.storage.FreeUpActivity
+import com.chencohensolution.journal.storage.FreeUpRule
+import com.chencohensolution.journal.storage.FreeUpState
+import com.chencohensolution.journal.storage.KeptReason
 
 internal class SettingsActions(
     val setGroupingMode: (GroupingMode) -> Unit = {},
@@ -95,6 +101,28 @@ internal class BackupActions(
     val backUpNow: () -> Unit = {},
 )
 
+/** What the Storage section shows. */
+internal data class StorageUi(
+    /** Bytes the previews of server photos take up here; null while counting. */
+    val previewBytes: Long?,
+    val previewLimitGigabytes: Int,
+    val freeUp: FreeUpState,
+    /** "Media management" access: files go to the trash without a prompt each time. */
+    val canTrashWithoutAsking: Boolean,
+)
+
+internal class StorageActions(
+    val setPreviewLimit: (Int) -> Unit = {},
+    val clearPreviews: () -> Unit = {},
+    val setRule: (FreeUpRule) -> Unit = {},
+    /** Starts "Free up space" in the background. */
+    val freeUp: () -> Unit = {},
+    /** Opens the system page for "Media management" access, then starts "Free up space". */
+    val allowTrashWithoutAsking: () -> Unit = {},
+    /** One system prompt for the checked files that wait. */
+    val moveWaitingToTrash: () -> Unit = {},
+)
+
 /** The user's choices, kept on this device. See docs/screens/settings.md. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -103,6 +131,8 @@ internal fun SettingsScreen(
     actions: SettingsActions,
     backup: BackupUi? = null,
     backupActions: BackupActions = BackupActions(),
+    storage: StorageUi? = null,
+    storageActions: StorageActions = StorageActions(),
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val grouping = settings.grouping
@@ -114,6 +144,7 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             if (backup != null) BackupSection(backup, backupActions)
+            if (storage != null) StorageSection(storage, storageActions)
             SectionTitle(stringResource(R.string.settings_grouping_title))
             Column(
                 Modifier
@@ -264,6 +295,190 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
             onSelect = { actions.setOrder(UploadOrder.NEWEST_FIRST) },
         )
     }
+}
+
+/** The previews' limit, and "Free up space": a rule, what it would remove, and the last run. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StorageSection(ui: StorageUi, actions: StorageActions) {
+    val context = LocalContext.current
+    SectionTitle(stringResource(R.string.settings_storage_title))
+    Card {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.settings_storage_previews), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                ui.previewBytes?.let {
+                    stringResource(
+                        R.string.settings_storage_previews_used,
+                        Formatter.formatShortFileSize(context, it),
+                        stringResource(R.string.settings_storage_gigabytes, ui.previewLimitGigabytes),
+                    )
+                } ?: stringResource(R.string.settings_storage_counting),
+                color = LibraryColors.Muted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            FlowRow(Modifier.padding(top = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsState.PREVIEW_CACHE_GB_OPTIONS.forEach { gigabytes ->
+                    Chip(stringResource(R.string.settings_storage_gigabytes, gigabytes), ui.previewLimitGigabytes == gigabytes) { actions.setPreviewLimit(gigabytes) }
+                }
+            }
+            TextButton(onClick = actions.clearPreviews) { Text(stringResource(R.string.settings_storage_clear_previews), color = LibraryColors.OnBackground) }
+        }
+    }
+
+    val freeUp = ui.freeUp
+    val rule = freeUp.rule
+    val running = freeUp.activity is FreeUpActivity.Running
+    var askAccess by remember { mutableStateOf(false) }
+    SectionTitle(stringResource(R.string.settings_free_up_title))
+    Card {
+        Column(Modifier.fillMaxWidth().selectableGroup()) {
+            ModeOption(
+                title = stringResource(R.string.settings_free_up_older),
+                body = stringResource(R.string.settings_free_up_older_body),
+                selected = rule is FreeUpRule.OlderThan,
+                onSelect = { if (rule !is FreeUpRule.OlderThan) actions.setRule(FreeUpRule.DEFAULT) },
+            )
+            ModeOption(
+                title = stringResource(R.string.settings_free_up_keep),
+                body = stringResource(R.string.settings_free_up_keep_body),
+                selected = rule is FreeUpRule.KeepNewest,
+                onSelect = { if (rule !is FreeUpRule.KeepNewest) actions.setRule(FreeUpRule.KeepNewest(DEFAULT_KEEP_GIGABYTES)) },
+            )
+        }
+        FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (rule) {
+                is FreeUpRule.OlderThan -> FreeUpRule.DAYS_OPTIONS.forEach { days ->
+                    Chip(ageText(days), rule.days == days) { actions.setRule(FreeUpRule.OlderThan(days)) }
+                }
+                is FreeUpRule.KeepNewest -> FreeUpRule.GIGABYTES_OPTIONS.forEach { gigabytes ->
+                    Chip(stringResource(R.string.settings_storage_gigabytes, gigabytes), rule.gigabytes == gigabytes) {
+                        actions.setRule(FreeUpRule.KeepNewest(gigabytes))
+                    }
+                }
+            }
+        }
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            val plan = freeUp.plan
+            Text(
+                when {
+                    plan == null -> stringResource(R.string.settings_storage_counting)
+                    plan.groups.isEmpty() -> stringResource(R.string.settings_free_up_plan_none)
+                    else -> stringResource(
+                        R.string.settings_free_up_plan,
+                        Formatter.formatShortFileSize(context, plan.bytes),
+                        photosAndVideos(plan.photos, plan.videos),
+                    )
+                },
+                color = LibraryColors.OnBackground,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            Text(stringResource(R.string.settings_free_up_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
+            freeUpStatus(freeUp)?.let { Text(it, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp, end = 8.dp)) }
+            Row {
+                if (!running && plan != null && plan.groups.isNotEmpty()) {
+                    TextButton(onClick = { if (ui.canTrashWithoutAsking) actions.freeUp() else askAccess = true }) {
+                        Text(stringResource(R.string.settings_free_up_button), color = LibraryColors.OnBackground)
+                    }
+                }
+                if (!running && freeUp.waitingCount > 0) {
+                    TextButton(onClick = actions.moveWaitingToTrash) {
+                        Text(stringResource(R.string.settings_free_up_move_waiting), color = LibraryColors.OnBackground)
+                    }
+                }
+            }
+        }
+    }
+    if (askAccess) {
+        AlertDialog(
+            onDismissRequest = { askAccess = false },
+            title = { Text(stringResource(R.string.settings_free_up_access_title)) },
+            text = { Text(stringResource(R.string.settings_free_up_access_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    askAccess = false
+                    actions.allowTrashWithoutAsking()
+                }) { Text(stringResource(R.string.settings_free_up_access_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    askAccess = false
+                    actions.freeUp()
+                }) { Text(stringResource(R.string.settings_free_up_access_later)) }
+            },
+        )
+    }
+}
+
+private const val DEFAULT_KEEP_GIGABYTES = 10
+
+/** "3 months", "1 year". */
+@Composable
+private fun ageText(days: Int): String =
+    if (days % 365 == 0) {
+        pluralStringResource(R.plurals.settings_free_up_years, days / 365, days / 365)
+    } else {
+        pluralStringResource(R.plurals.settings_free_up_months, days / 30, days / 30)
+    }
+
+/** "1,240 photos, 38 videos". */
+@Composable
+private fun photosAndVideos(photos: Int, videos: Int): String = listOfNotNull(
+    pluralStringResource(R.plurals.settings_backup_server_photos, photos, photos).takeIf { photos > 0 },
+    pluralStringResource(R.plurals.settings_backup_server_videos, videos, videos).takeIf { videos > 0 },
+).joinToString(", ")
+
+/** The run going on, why it stopped, or what the last one did; and what waits for the user. */
+@Composable
+private fun freeUpStatus(state: FreeUpState): String? {
+    val context = LocalContext.current
+    val lines = mutableListOf<String>()
+    when (val activity = state.activity) {
+        is FreeUpActivity.Running -> {
+            val progress = activity.progress
+            lines += stringResource(R.string.settings_free_up_running, (progress.done + 1).coerceAtMost(progress.total), progress.total) +
+                (progress.currentName?.let { " · $it" } ?: "")
+        }
+        is FreeUpActivity.Stopped -> lines += stringResource(R.string.settings_free_up_stopped, activity.message)
+        FreeUpActivity.Idle -> state.lastResult?.let { result ->
+            if (result.removed > 0) {
+                lines += pluralStringResource(
+                    R.plurals.settings_free_up_removed, result.removed, result.removed, Formatter.formatShortFileSize(context, result.removedBytes),
+                )
+            }
+            result.kept.forEach { (reason, count) ->
+                val text = when (reason) {
+                    KeptReason.CHANGED_ON_PHONE -> R.plurals.settings_free_up_kept_changed
+                    KeptReason.MISSING_ON_SERVER -> R.plurals.settings_free_up_kept_missing
+                    KeptReason.DAMAGED_ON_SERVER -> R.plurals.settings_free_up_kept_damaged
+                }
+                lines += pluralStringResource(text, count, count)
+            }
+        }
+    }
+    if (state.waitingCount > 0) {
+        lines += pluralStringResource(
+            R.plurals.settings_free_up_waiting, state.waitingCount, state.waitingCount, Formatter.formatShortFileSize(context, state.waitingBytes),
+        )
+    }
+    return lines.takeIf { it.isNotEmpty() }?.joinToString("\n")
+}
+
+@Composable
+private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        colors = FilterChipDefaults.filterChipColors(
+            labelColor = LibraryColors.OnBackground,
+            selectedContainerColor = LibraryColors.Inverse,
+            selectedLabelColor = LibraryColors.OnInverse,
+        ),
+    )
 }
 
 /** "4.2 GB · 1,234 photos, 56 videos". */

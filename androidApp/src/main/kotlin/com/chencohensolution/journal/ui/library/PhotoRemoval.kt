@@ -1,17 +1,79 @@
 package com.chencohensolution.journal.ui.library
 
+import android.app.ActivityOptions
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.IntentSender
+import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
+import android.provider.Settings
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.storage.PhotoTrash
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /**
- * The one place the app may take a photo out of the phone's library (allowed by the owner on Oct 20, 2026: "Delete from
- * this phone" in a photo's details). It never deletes anything itself: it asks Android to move the photo to the
- * gallery's trash, and Android shows its own prompt, which the user confirms. The caller must first have the server
- * confirm it holds the photo (by sha256) and keep its previews, so the photo keeps showing. See PhotoSafetyTest.
+ * The one place the app may take photos out of the phone's library (allowed by the owner on Oct 20, 2026: "Delete from
+ * this phone" in a photo's details, and "Free up space" in Settings). It never deletes anything itself: it asks Android
+ * to move photos to the gallery's trash (kept there 30 days). Android shows its own prompt, which the user confirms,
+ * unless the user gave the app "Media management" access ([MediaStore.canManageMedia]). The caller must first have the
+ * server confirm it holds each photo (by sha256; "Free up space" also hashes both copies again). See PhotoSafetyTest.
  */
-internal fun moveToTrashRequest(context: Context, item: MediaItem): IntentSender {
-    require(item.isOnDevice) { "only a photo in the library can be moved to its trash" }
-    return MediaStore.createTrashRequest(context.contentResolver, listOf(item.contentUri()), true).intentSender
+internal fun moveToTrashRequest(context: Context, item: MediaItem): IntentSender = moveToTrashRequest(context, listOf(item))
+
+/** One prompt for all of [items]. */
+internal fun moveToTrashRequest(context: Context, items: List<MediaItem>): IntentSender {
+    require(items.all { it.isOnDevice }) { "only photos in the library can be moved to its trash" }
+    return MediaStore.createTrashRequest(context.contentResolver, items.map { it.contentUri() }, true).intentSender
+}
+
+/** The system page where the user gives the app "Media management" access, so the trash needs no prompt each time. */
+internal fun manageMediaSettingsIntent(context: Context): Intent =
+    Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA, Uri.fromParts("package", context.packageName, null))
+
+/**
+ * Moves photos to the trash without a prompt, for "Free up space" in the background; only with "Media management"
+ * access. Android may still refuse to start its request from the background: then the photos stay, and wait for one
+ * prompt in the app.
+ */
+internal class AndroidPhotoTrash(context: Context) : PhotoTrash {
+    private val context = context.applicationContext
+
+    override fun canTrashWithoutAsking(): Boolean = MediaStore.canManageMedia(context)
+
+    override suspend fun trash(items: List<MediaItem>): Boolean {
+        if (items.isEmpty() || !canTrashWithoutAsking() || !items.all { it.isOnDevice }) return false
+        val request = MediaStore.createTrashRequest(context.contentResolver, items.map { it.contentUri() }, true)
+        val mode = if (Build.VERSION.SDK_INT >= 36) {
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
+        } else {
+            @Suppress("DEPRECATION")
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+        }
+        val options = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(mode).toBundle()
+        try {
+            request.send(context, 0, null, null, null, null, options)
+        } catch (_: PendingIntent.CanceledException) {
+            return false
+        }
+        // Granted without a prompt, but asynchronously: wait until the photos have left the library.
+        repeat(TRASH_CHECKS) {
+            if (items.none { inLibrary(it) }) return true
+            delay(TRASH_CHECK_MILLIS)
+        }
+        return false
+    }
+
+    /** Whether [item] is still in the library (a trashed photo isn't listed). */
+    private suspend fun inLibrary(item: MediaItem): Boolean = withContext(Dispatchers.IO) {
+        context.contentResolver.query(item.contentUri(), arrayOf(MediaStore.MediaColumns._ID), null, null)?.use { it.count > 0 } ?: false
+    }
+
+    private companion object {
+        const val TRASH_CHECKS = 50
+        const val TRASH_CHECK_MILLIS = 100L
+    }
 }

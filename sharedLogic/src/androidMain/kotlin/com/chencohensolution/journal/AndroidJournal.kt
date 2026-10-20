@@ -26,6 +26,8 @@ import com.chencohensolution.journal.places.PlaceCache
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SharedPreferencesStore
+import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.storage.ServerVerifyApi
 import com.chencohensolution.journal.similarity.AndroidPhotoAnalyzer
 import com.chencohensolution.journal.similarity.FingerprintCache
 import com.chencohensolution.journal.similarity.PhotoSimilarity
@@ -90,11 +92,14 @@ fun serverLibrary(context: Context): ServerLibrary =
         directory = context.filesDir.toOkioPath() / "server",
     ).also { serverLibrary = it }
 
-/** Previews of server-only photos, cached in `cache/previews` (up to 10 GB). One per process. */
+/** Previews of server-only photos, cached in `cache/previews` (up to the limit in Settings, 10 GB by default). One per process. */
 @Synchronized
 fun serverPreviews(context: Context): ServerPreviews =
-    serverPreviews ?: ServerPreviews(serverHttp(context), FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "previews")
-        .also { serverPreviews = it }
+    serverPreviews ?: JournalSettings(SharedPreferencesStore(context)).let { settings ->
+        ServerPreviews(serverHttp(context), FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "previews") {
+            settings.previewCacheGigabytes.toLong() shl 30
+        }
+    }.also { serverPreviews = it }
 
 /** Originals downloaded from the server and kept in `files/originals`. One per process. */
 @Synchronized
@@ -103,6 +108,12 @@ fun keptOriginals(context: Context): KeptOriginals =
         .also { keptOriginals = it }
 
 private var backupController: BackupController? = null
+private var uploadLedger: UploadLedger? = null
+
+/** What this device read and uploaded, in `files/backup/ledger.jsonl`; shared by backup and "Free up space". */
+@Synchronized
+private fun uploadLedger(context: Context): UploadLedger =
+    uploadLedger ?: UploadLedger(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "backup").also { uploadLedger = it }
 
 /**
  * Backup to the server. One per process, shared by the screens and the background worker, so both see the same
@@ -113,7 +124,7 @@ private var backupController: BackupController? = null
 fun backupController(context: Context, scheduler: BackupScheduler): BackupController =
     backupController ?: BackupController(
         settings = JournalSettings(SharedPreferencesStore(context)),
-        ledger = UploadLedger(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "backup"),
+        ledger = uploadLedger(context),
         library = AndroidMediaLibrary(context),
         files = AndroidMediaFiles(context),
         clientFactory = AndroidMtlsHttpClientFactory(context),
@@ -122,6 +133,28 @@ fun backupController(context: Context, scheduler: BackupScheduler): BackupContro
         onSettingsChanged = scheduler::settingsChanged,
         onBackUpNow = scheduler::backUpNow,
     ).also { backupController = it }
+
+private var freeUpController: FreeUpController? = null
+
+/**
+ * "Free up space": takes originals the server has off the phone. One per process, shared by Settings and the
+ * background worker. [backup] sends again what it finds changed or missing; [start] runs it in the background. Files
+ * waiting for the user's confirmation are kept in `files/freeup/waiting.json`.
+ */
+@Synchronized
+fun freeUpController(context: Context, backup: BackupController, start: () -> Unit): FreeUpController =
+    freeUpController ?: FreeUpController(
+        settings = JournalSettings(SharedPreferencesStore(context)),
+        ledger = uploadLedger(context),
+        library = AndroidMediaLibrary(context),
+        files = AndroidMediaFiles(context),
+        server = ServerVerifyApi(serverHttp(context)),
+        fileSystem = FileSystem.SYSTEM,
+        directory = context.filesDir.toOkioPath() / "freeup",
+        now = System::currentTimeMillis,
+        onLedgerChanged = backup::ledgerChanged,
+        onStart = start,
+    ).also { freeUpController = it }
 
 /** The app's background scheduling of backup runs (WorkManager). */
 interface BackupScheduler {

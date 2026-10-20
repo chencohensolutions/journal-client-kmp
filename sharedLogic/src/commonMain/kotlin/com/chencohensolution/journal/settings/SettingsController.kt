@@ -62,7 +62,14 @@ data class SettingsState(
     val similarity: SimilarityThreshold = SimilarityThreshold(),
     val feedSources: Set<MediaSource> = MomentsFeed.DEFAULT_SOURCES,
     val dismissedTrips: Set<String> = emptySet(),
-)
+    /** How much the previews of server photos may take up on this device (Settings → Storage on this phone). */
+    val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
+) {
+    companion object {
+        /** What the Settings screen offers for [previewCacheGigabytes]. */
+        val PREVIEW_CACHE_GB_OPTIONS: List<Int> = listOf(1, 2, 5, 10, 20, 50)
+    }
+}
 
 /** The Settings screen's logic: reads and saves the user's choices on this device. */
 class SettingsController internal constructor(
@@ -79,6 +86,7 @@ class SettingsController internal constructor(
             similarity = similarity(settings.similarityPercent),
             feedSources = settings.feedSources,
             dismissedTrips = settings.dismissedTrips,
+            previewCacheGigabytes = settings.previewCacheGigabytes,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -114,6 +122,13 @@ class SettingsController internal constructor(
         val trips = _state.value.dismissedTrips + key
         settings.dismissedTrips = trips
         _state.update { it.copy(dismissedTrips = trips) }
+    }
+
+    /** The previews' limit; the platform trims them to it. Values below 1 are ignored. */
+    fun setPreviewCacheGigabytes(gigabytes: Int) {
+        if (gigabytes < 1) return
+        settings.previewCacheGigabytes = gigabytes
+        _state.update { it.copy(previewCacheGigabytes = gigabytes) }
     }
 
     /** Back to the platform's own threshold. */
