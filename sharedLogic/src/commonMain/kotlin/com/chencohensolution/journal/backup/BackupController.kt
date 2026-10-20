@@ -25,6 +25,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /** Why backup isn't running although it is on. */
 enum class WaitReason {
@@ -74,6 +78,30 @@ data class BackupState(
 
     /** The sources whose photos count as "not backed up"; everything when backup is off. */
     val countedSources: Set<MediaSource>? get() = settings.sources.takeIf { settings.enabled }
+}
+
+/** How often progress reaches the screens while bytes move. */
+private val PROGRESS_EVERY = 500.milliseconds
+
+/** Bytes per second over the last [WINDOW]: bytes sent, sampled as they go. */
+internal class TransferRate(private val now: () -> TimeMark = TimeSource.Monotonic::markNow) {
+    private val samples = ArrayDeque<Pair<TimeMark, Long>>()
+
+    /** Adds the total sent so far; the rate, or null while there is too little to tell. */
+    fun add(sent: Long): Long? {
+        val mark = now()
+        samples.addLast(mark to sent)
+        while (samples.size > 2 && samples.first().first.elapsedNow() > WINDOW) samples.removeFirst()
+        val (firstMark, firstSent) = samples.first()
+        val seconds = firstMark.elapsedNow().inWholeMilliseconds / 1000.0
+        if (seconds < MIN_SECONDS) return null
+        return ((sent - firstSent) / seconds).toLong()
+    }
+
+    private companion object {
+        val WINDOW = 5.seconds
+        const val MIN_SECONDS = 0.5
+    }
 }
 
 /** Outcome of [BackupController.runOnce], for the platform's scheduler. */
@@ -190,8 +218,18 @@ class BackupController internal constructor(
             _state.update { it.copy(queued = queue) }
             val http = clientFactory.create(alias, trustedCas)
             var done = 0
+            val rate = TransferRate()
+            var shownFile: String? = null
+            var shownAt: TimeMark? = null
             val result = createApolloClient(http, url).useClient { apollo ->
-                BackupEngine(files, ledger, ServerBackupApi(apollo, http, url), locate).run(items, current) { progress ->
+                BackupEngine(files, ledger, ServerBackupApi(apollo, http, url), locate).run(items, current) { counted ->
+                    // Bytes are reported many times a second; the screens redraw from this state, so it changes at
+                    // most every PROGRESS_EVERY, except when a file starts or finishes.
+                    val newFile = counted.currentId != shownFile || counted.done != done
+                    if (!newFile && shownAt != null && shownAt!!.elapsedNow() < PROGRESS_EVERY) return@run
+                    shownFile = counted.currentId
+                    shownAt = TimeSource.Monotonic.markNow()
+                    val progress = counted.copy(bytesPerSecond = rate.add(counted.bytesSent))
                     _state.update { it.copy(activity = BackupActivity.Running(progress)) }
                     // A file finished: show it as backed up without waiting for the whole run.
                     if (progress.done != done) {

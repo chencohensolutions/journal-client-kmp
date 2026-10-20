@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.backup.BackupProgress
 import androidx.compose.ui.res.pluralStringResource
@@ -115,11 +116,29 @@ internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** The bottom pill's text: the running backup ("Backing up 3 of 120"), else how many photos aren't backed up. */
+/**
+ * The bottom pill's text: the running backup ("Backing up 3 of 120 · 42% · 5.1 MB/s"), else how many photos aren't
+ * backed up.
+ */
 @Composable
 internal fun backupSummary(library: LibraryState, running: BackupProgress?): String? = when {
-    running != null && running.total > 0 ->
-        stringResource(R.string.library_backing_up, (running.done + 1).coerceAtMost(running.total), running.total)
+    running != null && running.total > 0 -> backupProgressText(running)
     library.notBackedUpCount > 0 -> pluralStringResource(R.plurals.library_not_backed_up, library.notBackedUpCount, library.notBackedUpCount)
     else -> null
 }
+
+/** "Backing up 3 of 120 · 42% · 5.1 MB/s": the file, the whole run in percent, and the transfer rate once known. */
+@Composable
+internal fun backupProgressText(progress: BackupProgress): String {
+    val context = LocalContext.current
+    val parts = listOfNotNull(
+        stringResource(R.string.library_backing_up, (progress.done + 1).coerceAtMost(progress.total), progress.total),
+        "${(progress.fraction * 100).toInt()}%",
+        progress.bytesPerSecond?.let { transferRate(context, it) },
+    )
+    return parts.joinToString(" · ")
+}
+
+/** "5.1 MB/s". */
+internal fun transferRate(context: android.content.Context, bytesPerSecond: Long): String =
+    context.getString(R.string.backup_rate, android.text.format.Formatter.formatShortFileSize(context, bytesPerSecond))

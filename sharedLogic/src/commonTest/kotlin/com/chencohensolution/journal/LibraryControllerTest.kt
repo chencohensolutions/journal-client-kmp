@@ -1,6 +1,11 @@
 package com.chencohensolution.journal
 
+import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupProgress
+import com.chencohensolution.journal.backup.BackupSettings
+import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.connection.ConnectionStatus
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.chencohensolution.journal.connection.JournalState
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.library.BackupStatus
@@ -193,5 +198,35 @@ class ServerHealthTest {
         assertEquals(ServerHealth.OFFLINE, health(ConnectionStatus.Failed(502)))
         assertEquals(ServerHealth.REJECTED, health(ConnectionStatus.Failed(401)))
         assertEquals(ServerHealth.REJECTED, health(ConnectionStatus.MissingIdentity))
+    }
+
+    @Test
+    fun backupRatesDontRebuildTheLibraryButStatusChangesDo() = runTest {
+        val backup = MutableStateFlow(BackupState(settings = BackupSettings(enabled = true)))
+        val library = FakeLibrary(items = listOf(item("a", OCT_8, 1), item("b", OCT_8, 2)))
+        val controller = LibraryController(library, JournalSettings(LibraryTestStore()), StandardTestDispatcher(testScheduler), backup = backup)
+        controller.refresh()
+        advanceUntilIdle()
+
+        fun running(fraction: Float, rate: Long) = BackupState(
+            settings = BackupSettings(enabled = true),
+            activity = BackupActivity.Running(BackupProgress(0, 2, 10, 100, currentId = "a", currentFraction = fraction, bytesPerSecond = rate)),
+        )
+        backup.value = running(0.41f, 1_000)
+        advanceUntilIdle()
+        val first = controller.currentState
+        assertEquals(BackupStatus.Uploading(0.41f), first.days.single().items.first { it.id == "a" }.backup)
+
+        // Only the rate and a sliver of progress changed: the same state, so nothing redraws.
+        backup.value = running(0.42f, 5_000)
+        advanceUntilIdle()
+        assertTrue(first === controller.currentState)
+
+        // The ring moved a step: a new state, and the photo that didn't change is the same object.
+        backup.value = running(0.60f, 5_000)
+        advanceUntilIdle()
+        val second = controller.currentState
+        assertFalse(first === second)
+        assertTrue(first.days.single().items.first { it.id == "b" } === second.days.single().items.first { it.id == "b" })
     }
 }

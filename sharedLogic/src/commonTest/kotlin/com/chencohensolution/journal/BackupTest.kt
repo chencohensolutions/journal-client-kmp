@@ -8,6 +8,7 @@ import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.MediaFiles
 import com.chencohensolution.journal.backup.PieceResult
 import com.chencohensolution.journal.backup.StartResult
+import com.chencohensolution.journal.backup.TransferRate
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.UploadRequest
@@ -28,6 +29,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 private class FakeFiles : MediaFiles {
     val bytes = mutableMapOf<String, ByteArray>()
@@ -44,6 +48,9 @@ private class FakeServer : BackupApi {
     private val partial = mutableMapOf<String, Buffer>()
     var starts = 0
 
+    /** startUpload answers with a GraphQL error for these file names (as gqlgen does for a bad time). */
+    val refusedNames = mutableSetOf<String>()
+
     /** Throws (a dropped connection) when this many pieces have arrived in total. */
     var dropAfterPieces = Int.MAX_VALUE
     private var pieces = 0
@@ -52,6 +59,7 @@ private class FakeServer : BackupApi {
 
     override suspend fun start(request: UploadRequest): StartResult {
         starts++
+        if (request.fileName in refusedNames) throw com.chencohensolution.journal.backup.BackupServerException("time should be RFC3339Nano formatted string")
         if (request.sha256 in stored) return StartResult.Exists
         if (request.versionOf != null && request.versionOf !in stored) return StartResult.Rejected("UNKNOWN_ORIGINAL")
         requests[request.sha256] = request
@@ -59,12 +67,13 @@ private class FakeServer : BackupApi {
         return StartResult.Ready("/upload/${request.sha256}", received.size, CHUNK)
     }
 
-    override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long): PieceResult {
+    override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit): PieceResult {
         val sha = url.removePrefix("/upload/")
         val received = partial[sha] ?: return PieceResult.NoUpload
         if (start != received.size) return PieceResult.WrongOffset(received.size)
         if (++pieces > dropAfterPieces) throw okio.IOException("connection reset")
         received.write(bytes)
+        onSent(bytes.size.toLong())
         if (received.size < total) return PieceResult.Accepted(received.size, complete = false)
         val content = received.readByteArray()
         partial.remove(sha)
@@ -189,5 +198,46 @@ class BackupTest {
         assertEquals("b".repeat(64), reopened.entry("2")?.sha256)
         reopened.forget("2")
         assertNull(ledger().entry("2"))
+    }
+
+    @Test
+    fun theRateIsOverTheLastFewSeconds() {
+        val clock = TestTimeSource()
+        val rate = TransferRate(clock::markNow)
+        assertNull(rate.add(0))
+        clock += 200.milliseconds
+        assertNull(rate.add(1_000)) // too soon to tell
+        repeat(10) { i ->
+            clock += 1.seconds
+            rate.add(2_000_000L * (i + 1))
+        }
+        // 2 MB a second, measured over the last 5 seconds only.
+        assertEquals(2_000_000L, rate.add(20_000_000L)?.let { (it + 50_000) / 100_000 * 100_000 })
+    }
+
+    @Test
+    fun progressCountsOnlyBytesSent() = runTest {
+        val sentLater = add(photo("1", takenAt = 1_000, size = 600_000), seed = 1)
+        val alreadyThere = add(photo("2", takenAt = 2_000, size = 400_000), seed = 2)
+        server.stored[sha(files.bytes.getValue("2"))] = files.bytes.getValue("2")
+        val seen = mutableListOf<com.chencohensolution.journal.backup.BackupProgress>()
+        BackupEngine(files, ledger(), server).run(listOf(sentLater, alreadyThere), BackupSettings(enabled = true)) { seen += it }
+        val last = seen.last()
+        assertEquals(1f, last.fraction)
+        assertEquals(1_000_000L, last.bytesDone)
+        assertEquals(600_000L, last.bytesSent)
+    }
+
+    @Test
+    fun aFileTheServerRefusesDoesntStopTheOthers() = runTest {
+        val refused = add(photo("1", takenAt = 1_000, size = 500), seed = 1)
+        val fine = add(photo("2", takenAt = 2_000, size = 500), seed = 2)
+        server.refusedNames += "IMG_1.jpg"
+        val ledger = ledger()
+        val result = BackupEngine(files, ledger, server).run(listOf(refused, fine), BackupSettings(enabled = true)) {}
+        assertEquals(1, result.uploaded)
+        assertEquals(1, result.failed)
+        assertEquals("time should be RFC3339Nano formatted string", ledger.entry("1")?.rejected)
+        assertEquals(BackupStatus.Failed("time should be RFC3339Nano formatted string"), BackupState(entries = ledger.all()).status(refused))
     }
 }

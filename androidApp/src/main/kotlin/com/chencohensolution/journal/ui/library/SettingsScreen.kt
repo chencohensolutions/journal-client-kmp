@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
+import android.text.format.Formatter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -263,7 +265,12 @@ private fun backupStatus(ui: BackupUi): String {
     return when (val activity = state.activity) {
         is BackupActivity.Running -> {
             val progress = activity.progress
-            stringResource(R.string.settings_backup_status_running, (progress.done + 1).coerceAtMost(progress.total), progress.total)
+            val context = LocalContext.current
+            backupProgressText(progress) + "\n" + stringResource(
+                R.string.settings_backup_status_bytes,
+                Formatter.formatShortFileSize(context, progress.bytesDone),
+                Formatter.formatShortFileSize(context, progress.bytesTotal),
+            )
         }
         is BackupActivity.Waiting -> stringResource(
             when (activity.reason) {

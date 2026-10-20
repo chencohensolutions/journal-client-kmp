@@ -365,6 +365,8 @@
     <string name="settings_backup_oldest_body">Starts with your earliest photos.</string>
     <string name="settings_backup_newest">Newest first</string>
     <string name="settings_backup_newest_body">Your latest photos are safe soonest.</string>
+    <string name="backup_rate">%s/s</string>
+    <string name="settings_backup_status_bytes">%1$s of %2$s</string>
     <string name="library_backing_up">Backing up %1$d of %2$d</string>
     <string name="backup_notification_channel">Backup</string>
     <string name="backup_notification_title">Backing up %1$d of %2$d</string>

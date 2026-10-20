@@ -379,6 +379,8 @@
     <string name="settings_backup_oldest_body">מתחיל מהתמונות המוקדמות ביותר.</string>
     <string name="settings_backup_newest">החדשות קודם</string>
     <string name="settings_backup_newest_body">התמונות האחרונות מגובות ראשונות.</string>
+    <string name="backup_rate">%s/שנ׳</string>
+    <string name="settings_backup_status_bytes">%1$s מתוך %2$s</string>
     <string name="library_backing_up">מגבה %1$d מתוך %2$d</string>
     <string name="backup_notification_channel">גיבוי</string>
     <string name="backup_notification_title">מגבה %1$d מתוך %2$d</string>

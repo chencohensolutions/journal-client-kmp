@@ -133,11 +133,35 @@ class LibraryController internal constructor(
             merged = groupByDay(mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }))
             mergedFrom = inputs
         }
+        // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
+        // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it).
+        val running = (backupState?.activity as? BackupActivity.Running)?.progress
+        val statusKey = listOf(
+            merged, backupState?.entries, backupState?.queued, backupState?.countedSources,
+            running?.currentId, running?.let { (it.currentFraction * STATUS_STEPS).toInt() },
+        )
+        if (publishedKey != null && publishedKey!!.indices.all { i ->
+                val a = publishedKey!![i]
+                val b = statusKey[i]
+                if (i <= 2) a === b else a == b
+            }
+        ) return
+        publishedKey = statusKey
         val days = if (backupState == null) merged else merged.map { group ->
-            group.copy(items = group.items.map { if (it.isOnDevice) it.copy(backup = backupState.status(it)) else it })
+            group.copy(
+                items = group.items.map { item ->
+                    if (!item.isOnDevice) return@map item
+                    val status = backupState.status(item)
+                    // Unchanged photos stay the same object, so screens skip them.
+                    if (status == item.backup) item else item.copy(backup = status)
+                },
+            )
         }
         _state.update { it.copy(days = days, backupSources = backupState?.countedSources) }
     }
+
+    /** What [state] was last built from (see [publish]). */
+    private var publishedKey: List<Any?>? = null
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: LibraryState get() = _state.value
 
@@ -232,6 +256,9 @@ internal fun mergeWithServer(
         media.toMediaItem(id = formerIds[media.sha256] ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
     }
 }
+
+/** The uploading photo's ring moves in this many steps (5%). */
+private const val STATUS_STEPS = 20
 
 /** How long the library must be quiet after a change before it is read again. */
 private const val CHANGE_SETTLE_MILLIS = 1_000L

@@ -21,6 +21,7 @@ import com.chencohensolution.journal.backup.BackupProgress
 import com.chencohensolution.journal.backup.RunOutcome
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.backupController
+import com.chencohensolution.journal.ui.library.transferRate
 
 /**
  * One backup run in the background, also with the app closed. Shows its progress in a notification (as a foreground
@@ -94,8 +95,14 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             builder.setContentTitle(context.getString(R.string.backup_notification_checking)).setProgress(0, 0, true)
         } else {
             val percent = if (progress.bytesTotal > 0) (progress.bytesDone * 100 / progress.bytesTotal).toInt() else 0
+            // "42% · 5.1 MB/s · IMG_1234.heic"
+            val detail = listOfNotNull(
+                "$percent%",
+                progress.bytesPerSecond?.let { transferRate(context, it) },
+                progress.currentName,
+            ).joinToString(" · ")
             builder.setContentTitle(context.getString(R.string.backup_notification_title, progress.done.coerceAtMost(progress.total - 1) + 1, progress.total))
-                .setContentText(progress.currentName)
+                .setContentText(detail)
                 .setProgress(100, percent, false)
         }
         return builder.build()

@@ -37,7 +37,14 @@ data class BackupProgress(
     val currentName: String? = null,
     /** 0..1 of the current file. */
     val currentFraction: Float = 0f,
-)
+    /** Bytes actually sent this run (files the server already had count in [bytesDone], not here). */
+    val bytesSent: Long = 0,
+    /** How fast bytes leave, over the last few seconds; null until it is known. */
+    val bytesPerSecond: Long? = null,
+) {
+    /** 0..1 of the whole run, by bytes. */
+    val fraction: Float get() = if (bytesTotal > 0) (bytesDone.toFloat() / bytesTotal).coerceIn(0f, 1f) else 0f
+}
 
 data class BackupRunResult(val uploaded: Int, val alreadyOnServer: Int, val failed: Int)
 
@@ -67,6 +74,7 @@ internal class BackupEngine(
         var progress = BackupProgress(done = 0, total = pending.size, bytesDone = 0, bytesTotal = pending.sumOf { it.sizeBytes ?: 0 })
         onProgress(progress)
         var uploaded = 0
+        var sent = 0L
         var already = 0
         var failed = 0
 
@@ -83,8 +91,23 @@ internal class BackupEngine(
                     ledger.record(entry.copy(uploaded = true, rejected = null))
                     Outcome.ALREADY
                 } else {
-                    upload(item, entry) { sent ->
-                        onProgress(progress.copy(currentId = item.id, currentName = item.fileName, bytesDone = progress.bytesDone + sent, currentFraction = sent.toFloat() / size))
+                    // Bytes the server had from an earlier try aren't sent now: only what moves past them counts.
+                    var seen = -1L
+                    upload(item, entry) { offset ->
+                        if (seen < 0) seen = offset
+                        if (offset > seen) {
+                            sent += offset - seen
+                            seen = offset
+                        }
+                        onProgress(
+                            progress.copy(
+                                currentId = item.id,
+                                currentName = item.fileName,
+                                bytesDone = progress.bytesDone + offset,
+                                currentFraction = offset.toFloat() / size,
+                                bytesSent = sent,
+                            ),
+                        )
                     }
                 }
                 when (outcome) {
@@ -92,7 +115,7 @@ internal class BackupEngine(
                     Outcome.ALREADY -> already++
                     Outcome.FAILED -> failed++
                 }
-                progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + size, currentId = null, currentName = null, currentFraction = 0f)
+                progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + size, currentId = null, currentName = null, currentFraction = 0f, bytesSent = sent)
                 onProgress(progress)
             }
         }
@@ -127,7 +150,15 @@ internal class BackupEngine(
     private suspend fun upload(item: MediaItem, entry: LedgerEntry, onSent: (Long) -> Unit): Outcome {
         val size = entry.size
         repeat(MAX_STARTS) {
-            val start = when (val result = api.start(request(item, entry))) {
+            val answer = try {
+                api.start(request(item, entry))
+            } catch (e: BackupServerException) {
+                if (e.unauthorized) throw e
+                // The server refused this file's details (not the connection): skip it, the others go on.
+                ledger.record(entry.copy(rejected = e.message ?: "refused"))
+                return Outcome.FAILED
+            }
+            val start = when (val result = answer) {
                 StartResult.Exists -> {
                     ledger.record(entry.copy(uploaded = true, rejected = null))
                     return Outcome.ALREADY
@@ -149,7 +180,8 @@ internal class BackupEngine(
                         do {
                             coroutineContext.ensureActive()
                             val bytes = source.readByteArray(minOf(chunk, size - offset))
-                            last = api.put(start.url, offset, bytes, size)
+                            val pieceStart = offset
+                            last = api.put(start.url, offset, bytes, size) { inPiece -> onSent(pieceStart + inPiece) }
                             if (last is PieceResult.Accepted) {
                                 offset = last.offset
                                 onSent(offset)

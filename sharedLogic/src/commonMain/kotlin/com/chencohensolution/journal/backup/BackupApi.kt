@@ -10,6 +10,7 @@ import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.graphql.type.StartUploadInput
 import com.chencohensolution.journal.library.GeoPoint
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.header
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -65,8 +66,8 @@ internal interface BackupApi {
     suspend fun missing(hashes: List<String>): Set<String>
     suspend fun start(request: UploadRequest): StartResult
 
-    /** Sends bytes [start] until [start] + [bytes].size of a [total]-byte file. */
-    suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long): PieceResult
+    /** Sends bytes [start] until [start] + [bytes].size of a [total]-byte file; [onSent] gets how many of them left so far. */
+    suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit = {}): PieceResult
 }
 
 internal class ServerBackupApi(
@@ -108,12 +109,13 @@ internal class ServerBackupApi(
         throw BackupServerException("Unknown answer to startUpload: ${result.__typename}")
     }
 
-    override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long): PieceResult {
+    override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit): PieceResult {
         val end = start + bytes.size - 1
         val response = http.put(resolve(url)) {
             header("Content-Range", "bytes $start-$end/$total")
             contentType(ContentType.Application.OctetStream)
             setBody(bytes)
+            onUpload { sent, _ -> onSent(sent) }
         }
         val offset = response.headers["Upload-Offset"]?.toLongOrNull()
         return when (response.status) {

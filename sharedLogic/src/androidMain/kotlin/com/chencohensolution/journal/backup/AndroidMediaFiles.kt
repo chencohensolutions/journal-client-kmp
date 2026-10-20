@@ -10,6 +10,7 @@ import okio.source
 import java.io.FileNotFoundException
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Reads photos and videos for upload, read-only. MediaStore removes GPS from what an app reads unless it may read
@@ -36,6 +37,14 @@ internal class AndroidMediaFiles(context: Context) : MediaFiles {
         return stream.source()
     }
 
-    override fun takenAt(item: MediaItem): String =
-        Instant.ofEpochMilli(item.takenAtMillis).atZone(ZoneId.systemDefault()).toOffsetDateTime().toString()
+    override fun takenAt(item: MediaItem): String = rfc3339(item.takenAtMillis, ZoneId.systemDefault())
 }
+
+/**
+ * [millis] as RFC 3339 with the zone's offset at that moment: "2026-10-16T22:48:00.000+03:00". Always with seconds:
+ * `OffsetDateTime.toString()` leaves them out on a whole minute, which the server refuses.
+ */
+internal fun rfc3339(millis: Long, zone: ZoneId): String =
+    Instant.ofEpochMilli(millis).atZone(zone).format(RFC_3339)
+
+private val RFC_3339: DateTimeFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSXXX")
