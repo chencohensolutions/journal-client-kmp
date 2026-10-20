@@ -33,6 +33,7 @@ import com.chencohensolution.journal.similarity.FingerprintCache
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.decodePemCertificates
+import okhttp3.OkHttpClient
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 
@@ -104,6 +105,26 @@ fun serverPreviews(context: Context): ServerPreviews =
             options = { settings.previewOptions },
         )
     }.also { serverPreviews = it }
+
+/** Where to stream a server original from (`GET /media/{sha256}`, with Range), and the mTLS client to do it with. */
+class ServerStream(val url: String, val client: OkHttpClient)
+
+private var streamClient: Pair<String, OkHttpClient>? = null
+
+/** The stream of [sha256]'s original; null when this device isn't registered. Blocks the first time: call off the main thread. */
+fun serverStream(context: Context, sha256: String): ServerStream? {
+    val alias = JournalSettings(SharedPreferencesStore(context)).identityAlias ?: return null
+    val client = synchronized(ServerStream::class) {
+        streamClient?.takeIf { it.first == alias }?.second
+            ?: AndroidMtlsHttpClientFactory(context).okHttpClient(alias, decodePemCertificates(SERVER_CA_PEM))
+                .also { streamClient = alias to it }
+    }
+    return ServerStream(serverHttp(context).url("/media/$sha256"), client)
+}
+
+/** What server photos and videos may take up on this device together (Settings → Storage on this phone). */
+fun keptOnPhoneLimitBytes(context: Context): Long =
+    JournalSettings(SharedPreferencesStore(context)).previewCacheGigabytes.toLong() shl 30
 
 /** Originals downloaded from the server and kept in `files/originals`. One per process. */
 @Synchronized

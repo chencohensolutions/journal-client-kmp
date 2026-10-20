@@ -26,6 +26,7 @@ import com.chencohensolution.journal.ui.EnrollmentWizard
 import com.chencohensolution.journal.ui.JournalTheme
 import com.chencohensolution.journal.ui.library.LibraryApp
 import com.chencohensolution.journal.ui.library.ServerFiles
+import com.chencohensolution.journal.ui.library.ServerVideos
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.work.WorkBackupScheduler
 import com.chencohensolution.journal.work.freeUp
@@ -45,6 +46,11 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val settings: SettingsController = createSettingsController(application)
     val stories: StoriesController = createStoriesController(application, library, settings)
     val freeUp: FreeUpController = freeUp(application)
+
+    init {
+        // The video cache counts toward the same limit as previews from the start (Media3 reads its index here).
+        Thread { ServerVideos.cache(application) }.start()
+    }
 
     override fun onCleared() {
         stories.close()

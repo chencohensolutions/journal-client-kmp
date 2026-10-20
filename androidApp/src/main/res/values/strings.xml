@@ -57,6 +57,8 @@
     <string name="library_viewer_position">%1$d of %2$d · %3$s</string>
     <string name="library_viewer_details">Details</string>
     <string name="library_viewer_play">Play video</string>
+    <string name="library_viewer_video_unavailable">This video can only be played once the phone is registered with your server.</string>
+    <string name="library_viewer_video_failed">The video can’t be played right now. Is the server reachable?</string>
     <string name="library_info_file">File</string>
     <string name="library_info_size">Size</string>
     <string name="library_info_dimensions">Dimensions</string>

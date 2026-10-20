@@ -264,7 +264,7 @@ private fun LibraryScreens(
             ServerLibrary.Confirmation.HAS_IT -> Unit
         }
         val previewKept = if (item.type == MediaType.VIDEO) {
-            // The server makes no video posters yet: keep a frame of it, made here from the video itself.
+            // Keep a frame of it, made here from the video itself (the server makes posters too, once online).
             withContext(Dispatchers.IO) { videoPoster(context.contentResolver, item, VIDEO_POSTER_SIDE) }
                 ?.let { (bytes, width, height) -> server.previews.keepPoster(sha, bytes, width, height); true } ?: false
         } else {
@@ -326,7 +326,8 @@ private fun LibraryScreens(
         clearPreviews = {
             scope.launch {
                 server.previews.clear()
-                previewBytes = server.previews.usedBytes()
+                withContext(Dispatchers.IO) { ServerVideos.clear(context) }
+                previewBytes = server.previews.usedBytes() + withContext(Dispatchers.IO) { ServerVideos.usedBytes(context) }
             }
         },
         setRule = freeUp::setRule,
@@ -492,7 +493,7 @@ private fun LibraryScreens(
                                     // Counted on open, and again (after trimming) when the limit changes.
                                     LaunchedEffect(settingsState.previewCacheGigabytes) {
                                         server.previews.trimToLimit()
-                                        previewBytes = server.previews.usedBytes()
+                                        previewBytes = server.previews.usedBytes() + withContext(Dispatchers.IO) { ServerVideos.usedBytes(context) }
                                     }
                                     SettingsScreen(
                                         settings = settingsState,

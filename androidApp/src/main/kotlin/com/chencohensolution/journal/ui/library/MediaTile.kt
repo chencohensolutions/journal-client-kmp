@@ -195,9 +195,9 @@ private suspend fun serverBitmap(
 ): Bitmap? {
     val sha = item.sha256 ?: return null
     previews ?: return null
-    // The server makes no video posters yet, and videos aren't downloaded to be shown: a video shows the frame kept
-    // when it left the phone.
-    if (item.type == MediaType.VIDEO) return previews.preview(sha, width, height, contain = true, fetch = false)?.let(::decodePreview)
+    // A video's tile is the server's poster frame at this size, also with previews off: a video isn't downloaded just
+    // to show its tile. Offline, the largest kept stands in (also the frame kept when it left the phone).
+    if (item.type == MediaType.VIDEO) return previews.preview(sha, width, height, contain = true)?.let(::decodePreview)
     suspend fun decode(original: String?) = original?.let { withContext(fullDecodes) { decodeKept(it, item, fromOriginal) } }
     decode(previews.cachedOriginal(sha))?.let { return it }
     if (!previews.usesPreviews) {

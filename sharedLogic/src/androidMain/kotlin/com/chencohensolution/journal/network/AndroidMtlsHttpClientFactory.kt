@@ -29,29 +29,36 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
 
     override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient =
         withContext(Dispatchers.IO) {
-            val trust = HandshakeCertificates.Builder()
-                .addPlatformTrustedCertificates()
-                .apply { trustedCas.forEach { addTrustedCertificate(parseX509Certificate(it)) } }
-                .build()
-
-            val keyManagers = identityAlias?.let { arrayOf(keyManager(it)) }
-            val sslContext = SSLContext.getInstance("TLS").apply {
-                init(keyManagers, arrayOf(trust.trustManager), null)
-            }
-            val okHttp = OkHttpClient.Builder()
-                .sslSocketFactory(sslContext.socketFactory, trust.trustManager)
-                // OkHttp waits 10 s by default; the server answers an upload piece only after writing and syncing it,
-                // and the last one only after hashing the whole file, which takes longer for a large video.
-                .readTimeout(2, TimeUnit.MINUTES)
-                .writeTimeout(2, TimeUnit.MINUTES)
-                .build()
-
+            val okHttp = okHttpClient(identityAlias, trustedCas)
             HttpClient(OkHttp) {
                 engine { preconfigured = okHttp }
                 // No limits of its own: a request that needs longer than OkHttp's (verifying a large video) sets them.
                 install(HttpTimeout)
             }
         }
+
+    /**
+     * The OkHttp client under [create], also used directly where OkHttp is needed (the video player streams with it).
+     * Blocks (KeyChain and Keystore), so it must stay off the main thread.
+     */
+    fun okHttpClient(identityAlias: String?, trustedCas: List<ByteArray>): OkHttpClient {
+        val trust = HandshakeCertificates.Builder()
+            .addPlatformTrustedCertificates()
+            .apply { trustedCas.forEach { addTrustedCertificate(parseX509Certificate(it)) } }
+            .build()
+
+        val keyManagers = identityAlias?.let { arrayOf(keyManager(it)) }
+        val sslContext = SSLContext.getInstance("TLS").apply {
+            init(keyManagers, arrayOf(trust.trustManager), null)
+        }
+        return OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trust.trustManager)
+            // OkHttp waits 10 s by default; the server answers an upload piece only after writing and syncing it,
+            // and the last one only after hashing the whole file, which takes longer for a large video.
+            .readTimeout(2, TimeUnit.MINUTES)
+            .writeTimeout(2, TimeUnit.MINUTES)
+            .build()
+    }
 
     /** Blocks (KeyChain and Keystore), so it must stay off the main thread. */
     private fun keyManager(alias: String): KeyChainKeyManager {

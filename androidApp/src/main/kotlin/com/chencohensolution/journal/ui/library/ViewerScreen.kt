@@ -10,8 +10,15 @@ import com.chencohensolution.journal.places.PlaceName
 import java.util.Locale
 import kotlinx.coroutines.launch
 import android.text.format.Formatter
-import android.widget.MediaController
-import android.widget.VideoView
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.PlayerView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
@@ -363,26 +370,18 @@ private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
-/** Shows the poster frame until Play is tapped; stops when swiped away. */
+/**
+ * Shows the poster frame until Play is tapped; stops when swiped away, and continues from there when played again. A
+ * video only on the server streams from its original, and what was fetched stays cached ([ServerVideos]).
+ */
 @Composable
 private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
     var playing by rememberSaveable(item.id) { mutableStateOf(false) }
+    var position by rememberSaveable(item.id) { mutableLongStateOf(0L) }
     LaunchedEffect(isCurrent) { if (!isCurrent) playing = false }
 
-    // A video only on the server isn't played yet (streaming it comes later); its poster shows.
-    val uri = item.playableUri()
-    if (playing && uri != null) {
-        AndroidView(
-            factory = { context ->
-                VideoView(context).apply {
-                    setMediaController(MediaController(context).also { it.setAnchorView(this) })
-                    setVideoURI(uri)
-                    setOnPreparedListener { start() }
-                }
-            },
-            onRelease = { it.stopPlayback() },
-            modifier = Modifier.fillMaxSize(),
-        )
+    if (playing) {
+        VideoPlayer(item, startAt = position, onStopped = { position = it })
     } else {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             rememberThumbnail(item, THUMB_LARGE)?.let { ViewerImage(it, sharedKey) }
@@ -394,6 +393,57 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
                 Icon(LibraryIcons.Play, stringResource(R.string.library_viewer_play), tint = Color.White, modifier = Modifier.size(32.dp))
             }
         }
+    }
+}
+
+/**
+ * ExoPlayer with its controls, playing [item] from [startAt] (ms). Released when it leaves the screen, which stops a
+ * stream from downloading further; [onStopped] gets where it was.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Unit) {
+    val context = LocalContext.current
+    var player by remember(item.id) { mutableStateOf<ExoPlayer?>(null) }
+    var failed by remember(item.id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item.id) {
+        val playable = withContext(Dispatchers.IO) { runCatching { ServerVideos.playable(context, item) }.getOrNull() }
+        if (playable == null) {
+            failed = context.getString(R.string.library_viewer_video_unavailable)
+            return@LaunchedEffect
+        }
+        player = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(playable.dataSource))
+            .build()
+            .apply {
+                addListener(object : Player.Listener {
+                    override fun onPlayerError(error: PlaybackException) {
+                        failed = context.getString(R.string.library_viewer_video_failed)
+                    }
+                })
+                setMediaItem(playable.item, startAt)
+                prepare()
+                playWhenReady = true
+            }
+    }
+    val stopped by rememberUpdatedState(onStopped)
+    DisposableEffect(item.id) {
+        onDispose {
+            player?.let {
+                stopped(it.currentPosition)
+                it.release()
+            }
+            player = null
+        }
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        AndroidView(
+            factory = { PlayerView(it).apply { setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING) } },
+            update = { it.player = player },
+            onRelease = { it.player = null },
+            modifier = Modifier.fillMaxSize(),
+        )
+        failed?.let { Text(it, color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
     }
 }
 

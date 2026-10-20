@@ -60,6 +60,8 @@
     <string name="library_viewer_position">%1$d מתוך %2$d · %3$s</string>
     <string name="library_viewer_details">פרטים</string>
     <string name="library_viewer_play">הפעלת הסרטון</string>
+    <string name="library_viewer_video_unavailable">אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך.</string>
+    <string name="library_viewer_video_failed">אי אפשר להפעיל את הסרטון כרגע. האם יש חיבור לשרת?</string>
     <string name="library_info_file">קובץ</string>
     <string name="library_info_size">גודל</string>
     <string name="library_info_dimensions">מידות</string>

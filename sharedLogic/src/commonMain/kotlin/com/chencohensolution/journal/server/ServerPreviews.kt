@@ -42,6 +42,18 @@ class ServerPreviews internal constructor(
     /** Bytes in the cache; counted on first use. */
     private var cachedBytes: Long? = null
 
+    /**
+     * Bytes kept elsewhere under the same limit (the video player's cache), so previews, originals and videos together
+     * stay within [maxBytes].
+     */
+    var otherBytes: () -> Long = { 0 }
+
+    /** Bytes of previews and originals kept here as last counted (0 before the first count); cheap to read. */
+    val knownBytes: Long get() = cachedBytes ?: 0
+
+    /** What previews and originals may take: the limit, less what the other cache under it takes. */
+    private fun limit(): Long = (maxBytes() - otherBytes()).coerceAtLeast(MIN_SHARE)
+
     /** Whether [NO_MEDIA] was checked this launch. */
     private var marked = false
 
@@ -136,7 +148,7 @@ class ServerPreviews internal constructor(
         cacheMutex.withLock {
             val total = cachedBytes ?: countBytes()
             cachedBytes = total + (fileSystem.metadataOrNull(target)?.size ?: 0)
-            if (cachedBytes!! > maxBytes()) trim()
+            if (cachedBytes!! > limit()) trim()
         }
         target.takeIf { fileSystem.exists(it) }?.toString()
     }
@@ -188,7 +200,7 @@ class ServerPreviews internal constructor(
             fileSystem.write(temp) { write(bytes) }
             fileSystem.atomicMove(temp, path)
             cachedBytes = total + bytes.size
-            if (cachedBytes!! > maxBytes()) trim()
+            if (cachedBytes!! > limit()) trim()
         }
     }
 
@@ -202,7 +214,7 @@ class ServerPreviews internal constructor(
         cacheMutex.withLock {
             val total = cachedBytes ?: countBytes()
             cachedBytes = total
-            if (total > maxBytes()) trim()
+            if (total > limit()) trim()
         }
     }
 
@@ -220,7 +232,7 @@ class ServerPreviews internal constructor(
 
     /** Deletes the oldest previews until the cache is at 90% of its limit. */
     private fun trim() {
-        val limit = maxBytes()
+        val limit = limit()
         val files = fileSystem.listRecursively(directory)
             .filter { it.name != NO_MEDIA }
             .mapNotNull { path -> fileSystem.metadataOrNull(path)?.takeIf { it.isRegularFile }?.let { Triple(path, it.size ?: 0, it.lastModifiedAtMillis ?: 0) } }
@@ -240,6 +252,9 @@ class ServerPreviews internal constructor(
         private const val MAX_SIDE = 4096
         private const val PARALLEL_DOWNLOADS = 6
         private const val PARALLEL_ORIGINALS = 2
+
+        /** What previews may always keep, however much the videos take. */
+        private const val MIN_SHARE = 512L shl 20
 
         /** The name (before its extension) of an original kept in this cache. */
         private const val ORIGINAL = "original"

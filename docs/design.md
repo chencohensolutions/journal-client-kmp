@@ -171,7 +171,8 @@ one file at a time, the server hashes its copy again (`POST /media/{sha256}/veri
 only files where both match the sha256 backup uploaded go to the phone's **trash** (30 days), right away with
 "Media management" access (`MANAGE_MEDIA`), else with one system prompt at the end. No previews are kept for them on
 purpose: they are fetched as you scroll, like any server photo. See [screens/settings.md](screens/settings.md).
-Not yet: iOS, playing server-only videos, story/note sync.
+Server-only videos stream from their original (HTTP Range, ExoPlayer) into `cache/videos`, keeping what was
+fetched, and their tiles show the poster frame the server makes. Not yet: iOS, story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
