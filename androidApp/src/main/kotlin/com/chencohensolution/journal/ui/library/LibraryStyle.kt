@@ -21,6 +21,7 @@ import com.chencohensolution.journal.library.LocalDay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Library colors, light or dark with the system theme (the viewer is always dark). Things drawn over photos (the
@@ -163,8 +164,16 @@ internal fun dayLabel(day: LocalDay): String {
 /** [skeleton] is a CLDR skeleton; the locale decides order and punctuation. */
 internal fun formatDate(date: java.time.temporal.TemporalAccessor, skeleton: String): String {
     val locale = Locale.getDefault()
-    return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(date)
+    return formatters.getOrPut(locale to skeleton) {
+        DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    }.format(date)
 }
+
+/**
+ * Formatters by locale and skeleton: looking up the pattern and parsing it took longer than formatting, and the feed
+ * formats several dates per item as it scrolls. Formatters are immutable, so any thread may share them.
+ */
+private val formatters = ConcurrentHashMap<Pair<Locale, String>, DateTimeFormatter>()
 
 /** "0:42", "12:05", "1:02:09". */
 internal fun formatDuration(millis: Long): String {

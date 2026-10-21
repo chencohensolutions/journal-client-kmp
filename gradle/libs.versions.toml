@@ -67,6 +67,8 @@ androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "androi
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "androidx-compose" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "androidx-compose" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "androidx-compose" }
+androidx-compose-runtime-tracing = { module = "androidx.compose.runtime:runtime-tracing", version.ref = "androidx-compose" }
+androidx-tracing-perfetto-binary = { module = "androidx.tracing:tracing-perfetto-binary", version = "1.0.1" }
 screenshot-validation-api = { module = "com.android.tools.screenshot:screenshot-validation-api", version.ref = "screenshot" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "androidx-compose-material3" }
 

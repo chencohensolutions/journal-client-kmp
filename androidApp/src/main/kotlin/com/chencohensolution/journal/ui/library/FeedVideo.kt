@@ -71,8 +71,11 @@ internal class FeedVideo(
 
     fun showPage(block: FeedBlock, itemId: String) {
         if (pages[block.key] == itemId) return
+        // A set scrolling into view reports the page it opened on, which is already saved (or is its first): only a
+        // turn is saved.
+        val openedOn = if (block.key in pages) null else block.items[startPage(block)].id
         pages[block.key] = itemId
-        savePage(block, itemId)
+        if (itemId != openedOn) savePage(block, itemId)
     }
 
     /** The page [block] opens on: the one it was last turned to, else its first. */

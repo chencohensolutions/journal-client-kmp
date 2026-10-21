@@ -39,6 +39,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 private const val MINUTE = 60_000L
@@ -354,6 +355,10 @@ class FeedStoryTest {
         stories.turnSet(listOf("a", "b"), "a")
         assertEquals(null, stories.currentState.note("b"))
         assertEquals(null, stories.currentState.note("a"))
+        // A set scrolling into view reports the page it already shows: no new state, which would redraw the screen.
+        val before = stories.currentState
+        stories.turnSet(listOf("a", "b"), "a")
+        assertSame(before, stories.currentState)
 
         val storyId = assertNotNull(stories.createStoryFromFeed("", stories.currentState.feed.sections().single().key))
         advanceUntilIdle()

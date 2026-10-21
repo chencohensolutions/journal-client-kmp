@@ -95,7 +95,8 @@ internal class FeedActions(
 
 /**
  * One item of the feed's list: a trip card, a row's divider, a moment's label, or one photo or near-duplicate set.
- * A photo per item keeps the list lazy: a moment of a hundred photos lays out only the ones in view.
+ * A photo per item keeps the list lazy: a moment of a hundred photos lays out only the ones in view. Counts, towns and
+ * times are worked out with the rows, off the main thread, so an item coming into view only lays them out.
  */
 internal sealed interface FeedRow {
     val key: String
@@ -104,12 +105,16 @@ internal sealed interface FeedRow {
         override val key get() = trip.key
     }
 
-    data class Heading(val section: FeedSection) : FeedRow {
+    /** [count]: the row's photos; [towns]: "Tel Aviv → Jaffa", empty when it has no places. */
+    data class Heading(val section: FeedSection, val count: Int, val towns: String) : FeedRow {
         override val key get() = "heading-${section.key}"
     }
 
-    /** [showPlace]: a camera moment whose place differs from the camera moment above it in its row. */
-    data class Label(val moment: FeedMoment, val showPlace: Boolean) : FeedRow {
+    /**
+     * [showPlace]: a camera moment whose place differs from the camera moment above it in its row. [count]: its photos;
+     * [start] and [end]: its times as [timeLabel] writes them.
+     */
+    data class Label(val moment: FeedMoment, val showPlace: Boolean, val count: Int, val start: String, val end: String) : FeedRow {
         override val key get() = "label-${moment.key}"
     }
 
@@ -118,7 +123,7 @@ internal sealed interface FeedRow {
     }
 
     /** A band of a hidden source's photos shown on a row: its heading, rows of three, and its links. */
-    data class BandTop(val section: FeedSection, val band: RevealedPhotos) : FeedRow {
+    data class BandTop(val section: FeedSection, val band: RevealedPhotos, val start: String, val end: String) : FeedRow {
         override val key get() = "band-${section.key}-${band.source}"
     }
 
@@ -150,25 +155,31 @@ internal class FeedSelection {
 /** The key a block is picked by: its first photo's id. */
 internal val FeedBlock.key: String get() = items.first().id
 
-/** The feed as list items; worked out once per feed. */
+/** The feed as list items; worked out once per feed, off the main thread. */
 internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
         is FeedEntry.Trip -> listOf(FeedRow.Trip(entry.trip))
         is FeedEntry.Section -> {
             var place: String? = null
-            listOf(FeedRow.Heading(entry.section)) + entry.section.moments.flatMap { moment ->
+            val section = entry.section
+            val heading = FeedRow.Heading(section, section.moments.sumOf { it.count() }, section.places.take(MAX_TOWNS).joinToString(" → "))
+            listOf(heading) + section.moments.flatMap { moment ->
                 val camera = moment.source == MediaSource.CAMERA
                 val showPlace = camera && moment.place != null && moment.place != place
                 if (camera) place = moment.place
-                listOf(FeedRow.Label(moment, showPlace)) + moment.shownBlocks.map { FeedRow.Photo(entry.section, it) }
-            } + entry.section.revealed.flatMap { band ->
-                listOf(FeedRow.BandTop(entry.section, band)) +
+                val label = FeedRow.Label(moment, showPlace, moment.count(), timeLabel(moment.startMillis), timeLabel(moment.endMillis))
+                listOf(label) + moment.shownBlocks.map { FeedRow.Photo(section, it) }
+            } + section.revealed.flatMap { band ->
+                listOf(FeedRow.BandTop(section, band, timeLabel(band.startMillis), timeLabel(band.endMillis))) +
                     band.items.chunked(BAND_COLUMNS).map { FeedRow.BandPhotos(entry.section, band, it) } +
-                    FeedRow.BandEnd(entry.section, band)
+                    FeedRow.BandEnd(section, band)
             }
         }
     }
 }
+
+/** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
+private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
 
 /** The item of [rows] that shows [itemId], or -1: for landing from the viewer. */
 internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row ->
@@ -191,11 +202,11 @@ internal fun LazyListScope.feedItems(
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
             is FeedRow.Trip -> TripCard(row.trip, actions)
-            is FeedRow.Heading -> DayDivider(row.section, actions)
-            is FeedRow.BandTop -> BandTop(row.band)
+            is FeedRow.Heading -> DayDivider(row, actions)
+            is FeedRow.BandTop -> BandTop(row)
             is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
             is FeedRow.BandEnd -> BandEnd(row.band, onAdd = { actions.addRevealedToStory(row.band) }) { actions.alwaysShow(row.section, row.band.source) }
-            is FeedRow.Label -> MomentLabel(row.moment, row.showPlace)
+            is FeedRow.Label -> MomentLabel(row)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
                     PhotoNoteText(notes[block.item.id]?.caption)
@@ -232,8 +243,9 @@ internal fun LazyListScope.feedItems(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DayDivider(section: FeedSection, actions: FeedActions) {
-    val count = section.items.size
+private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
+    val section = heading.section
+    val count = heading.count
     val line = LibraryColors.Muted.copy(alpha = 0.3f)
     Column(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 2.dp),
@@ -264,7 +276,7 @@ private fun DayDivider(section: FeedSection, actions: FeedActions) {
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                (section.places.take(MAX_TOWNS).joinToString(" → ").ifEmpty { null }?.let { "$it · " }.orEmpty()) +
+                (heading.towns.ifEmpty { null }?.let { "$it · " }.orEmpty()) +
                     pluralStringResource(R.plurals.library_story_items, count, count),
                 color = LibraryColors.Muted,
                 fontSize = 12.sp,
@@ -316,9 +328,8 @@ private fun Modifier.band(color: Color, top: Boolean = false, bottom: Boolean = 
 
 /** A band's heading: "WhatsApp · 6" and its times, "14:02 – 17:30". */
 @Composable
-private fun BandTop(band: RevealedPhotos) {
-    val start = timeLabel(band.startMillis)
-    val end = timeLabel(band.endMillis)
+private fun BandTop(top: FeedRow.BandTop) {
+    val band = top.band
     Row(
         Modifier.padding(top = 18.dp).band(LibraryColors.Raised, top = true).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -332,7 +343,7 @@ private fun BandTop(band: RevealedPhotos) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
-        Text(if (start == end) start else stringResource(R.string.feed_time_range, start, end), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(timeRange(top.start, top.end), color = LibraryColors.Muted, fontSize = 13.sp)
     }
 }
 
@@ -394,11 +405,12 @@ private fun dividerLabel(span: Moment): String {
  * ([showPlace]), then the time ("18:10 – 19:05"). Other sources: "WhatsApp · 6 · 14:02 – 17:30".
  */
 @Composable
-private fun MomentLabel(moment: FeedMoment, showPlace: Boolean) {
-    val time = momentTime(moment)
+private fun MomentLabel(label: FeedRow.Label) {
+    val moment = label.moment
+    val time = timeRange(label.start, label.end)
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 8.dp)) {
         if (moment.source == MediaSource.CAMERA) {
-            moment.place?.takeIf { showPlace }?.let { place ->
+            moment.place?.takeIf { label.showPlace }?.let { place ->
                 Row(Modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(FeedIcons.Pin, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
@@ -411,7 +423,7 @@ private fun MomentLabel(moment: FeedMoment, showPlace: Boolean) {
                 Icon(moment.source.icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    stringResource(R.string.feed_place_time, stringResource(R.string.feed_source_count, sourceName(moment.source), moment.items.size), time),
+                    stringResource(R.string.feed_place_time, stringResource(R.string.feed_source_count, sourceName(moment.source), label.count), time),
                     color = LibraryColors.Muted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -425,11 +437,8 @@ private fun MomentLabel(moment: FeedMoment, showPlace: Boolean) {
 
 /** "18:10 – 19:05", or "18:10" when it starts and ends in one minute. */
 @Composable
-private fun momentTime(moment: FeedMoment): String {
-    val start = timeLabel(moment.startMillis)
-    val end = timeLabel(moment.endMillis)
-    return if (start == end) start else stringResource(R.string.feed_time_range, start, end)
-}
+private fun timeRange(start: String, end: String): String =
+    if (start == end) start else stringResource(R.string.feed_time_range, start, end)
 
 /**
  * The photo's note above it, in the serif of written text: up to four lines, then "more" (tap to read it all).

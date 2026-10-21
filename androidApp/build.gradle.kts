@@ -33,6 +33,13 @@ dependencies {
 
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Names each composable in Perfetto traces, to find what makes a frame slow; debug builds only, and off until
+    // turned on in the running app with
+    //   adb shell am broadcast -a androidx.tracing.perfetto.action.ENABLE_TRACING \
+    //     com.chencohensolution.journal/androidx.tracing.perfetto.TracingReceiver
+    // and recorded with the "track_event" data source, category "rendering".
+    debugImplementation(libs.androidx.compose.runtime.tracing)
+    debugImplementation(libs.androidx.tracing.perfetto.binary)
 
     // Screenshot tests: render @PreviewTest previews to PNGs without a device (see docs/previews.md).
     screenshotTestImplementation(libs.screenshot.validation.api)
@@ -62,6 +69,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // Release as it runs, signed with the debug key so it installs over a debug build and keeps its data: for
+        // measuring scrolling and start-up, which a debug build makes several times slower.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
     compileOptions {

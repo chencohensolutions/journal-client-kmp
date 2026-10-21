@@ -443,15 +443,24 @@ class StoriesController internal constructor(
 
     /**
      * Saves the notes [transform] changes. Without [rebuild] (for what changes nothing else on screen, done on each
-     * swipe) only the state's notes are updated, as rebuilding the whole state can take longer than a frame.
+     * swipe) only the state's notes are updated, as rebuilding the whole state can take longer than a frame, and
+     * nothing at all when no note changed: a new state redraws the whole home screen, and a set scrolling into view
+     * reports the page it already shows.
      */
     private fun changeNotes(itemIds: List<String>, rebuild: Boolean = true, transform: (PhotoNote) -> PhotoNote) {
         val time = now()
+        var changedAny = false
+        // From the state's index: searching the whole library, on the main thread, for each swipe set took 14% of it
+        // while scrolling. A photo
+        // the state doesn't know yet (it is rebuilt in the background) is searched for in the library instead.
+        val known = _state.value.itemsById
+        val items = itemIds.mapNotNull { known[it] }.takeIf { it.size == itemIds.size } ?: itemsById(itemIds)
         try {
-            itemsById(itemIds).forEach { item ->
+            items.forEach { item ->
                 val current = notes[item.id] ?: PhotoNote(item.id, item.fileName, item.takenAtMillis, updatedAt = time)
                 val changed = transform(current)
                 if (changed == current) return@forEach
+                changedAny = true
                 if (changed.isEmpty) {
                     noteStore.delete(item.id)
                     notes = notes - item.id
@@ -465,7 +474,7 @@ class StoriesController internal constructor(
         } catch (e: Exception) {
             error = e.describe()
         }
-        if (rebuild || error != null) publish() else _state.value = _state.value.copy(notes = notes)
+        if (rebuild || error != null) publish() else if (changedAny) _state.value = _state.value.copy(notes = notes)
     }
 
     private fun loadStories(): List<Story> = try {

@@ -141,10 +141,18 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
                     }.getOrNull()
                 }
             }
-        }?.also { thumbnailCache.put(key, it) }
+        }?.forDrawing()?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
 }
+
+/**
+ * This bitmap in graphics memory, copied there off the main thread. A software bitmap is otherwise copied by the
+ * render thread the first frame it is drawn: 5–8 ms for a full-width photo, a dropped frame or two just as it scrolls
+ * into view. Cached bitmaps are only drawn, never read, so they can live there.
+ */
+private suspend fun Bitmap.forDrawing(): Bitmap =
+    if (config == Bitmap.Config.HARDWARE) this else withContext(Dispatchers.IO) { copy(Bitmap.Config.HARDWARE, false) } ?: this
 
 /** Decodes of whole photos, which take far longer than MediaStore's thumbnails, run this many at a time. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -253,7 +261,7 @@ internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
             } else {
                 runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
             }
-        }?.also { thumbnailCache.put(key, it) }
+        }?.forDrawing()?.also { thumbnailCache.put(key, it) }
     }
     return bitmap?.asImageBitmap()
 }
