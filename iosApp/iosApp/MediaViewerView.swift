@@ -12,6 +12,8 @@ struct ViewerActions {
     var createStory: (_ title: String, _ itemId: String) -> Void
     var setCaption: (_ itemId: String, _ text: String) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
+    /// Saves the photo's crops (Done on the crop screen).
+    var setCrops: (_ itemId: String, _ crops: PhotoCrops) -> Void
     /// The photo now shown, on opening and on each swipe: the one that zooms back into its tile on closing.
     var showing: (_ itemId: String) -> Void
 }
@@ -30,6 +32,10 @@ struct MediaViewerView: View {
     @State private var choosingStory = false
     @State private var choosingTag = false
     @State private var editingCaption = false
+    /// The whole photo instead of its crop, until turned back (kept while swiping).
+    @State private var showWhole = false
+    @State private var cropping: CropRequest?
+    @State private var screenSize = CGSize(width: 9, height: 19.5)
 
     init(items: [MediaItem], startId: String, stories: StoriesState, openedFrom: StoryView?, group: GroupView?, actions: ViewerActions) {
         self.items = items
@@ -42,10 +48,21 @@ struct MediaViewerView: View {
 
     private var onClose: () -> Void { actions.close }
 
+    // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
+    private var screenRatio: Float { Float(screenSize.width / max(screenSize.height, 1)) }
+    private var cropKind: CropKind { screenRatio <= 1 ? .portrait : .landscape }
+
+    private func cropOf(_ item: MediaItem) -> CropRect? {
+        guard !item.isVideo else { return nil }
+        return stories.note(itemId: item.id)?.crops.get(kind: cropKind)?.fittedTo(screenRatio: screenRatio, photoRatio: item.ratio)
+    }
+
     var body: some View {
         let index = items.firstIndex { $0.id == currentId } ?? 0
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black
+                .ignoresSafeArea()
+                .onGeometryChange(for: CGSize.self) { $0.screenSize } action: { screenSize = $0 }
             if items.isEmpty {
                 // The item was deleted from the device while open.
                 Color.clear.onAppear(perform: onClose)
@@ -56,7 +73,7 @@ struct MediaViewerView: View {
                             if item.isVideo {
                                 VideoPage(item: item, isCurrent: item.id == currentId)
                             } else {
-                                PhotoPage(item: item)
+                                PhotoPage(item: item, crop: showWhole ? nil : cropOf(item))
                             }
                         }
                         .tag(item.id)
@@ -98,7 +115,22 @@ struct MediaViewerView: View {
             .padding(.horizontal, 4)
             .background(LibraryColors.topFade.ignoresSafeArea())
         }
+        .overlay(alignment: .top) {
+            if !showInfo, let item = items[safe: index], cropOf(item) != nil {
+                CropChip(showingWhole: showWhole) { showWhole.toggle() }
+                    .padding(.top, 60)
+            }
+        }
         .overlay(alignment: .bottom) {
+            if !showInfo, let item = items[safe: index] {
+                HStack(spacing: 10) {
+                    ViewerAction(icon: "square.and.pencil", label: "Write") { editingCaption = true }
+                    if !item.isVideo {
+                        ViewerAction(icon: "crop", label: "Crop") { cropping = CropRequest(itemId: item.id, kind: cropKind) }
+                    }
+                }
+                .padding(.bottom, 20)
+            }
             if showInfo, let item = items[safe: index] {
                 let memberOf = stories.storiesContaining(itemId: item.id)
                 InfoPanel(
@@ -148,29 +180,108 @@ struct MediaViewerView: View {
                 }
             }
         }
+        .cropCover($cropping, stories: stories, save: actions.setCrops)
         .statusBarHidden(!showInfo)
     }
 }
 
+/// The photo fitted on the screen, or only its `crop` (which has the screen's shape), filling it.
 private struct PhotoPage: View {
     let item: MediaItem
+    let crop: CropRect?
     @State private var image: UIImage?
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 if let image {
-                    Image(uiImage: image).resizable().scaledToFit()
+                    if let crop {
+                        CroppedImage(image: image, crop: crop)
+                    } else {
+                        Image(uiImage: image).resizable().scaledToFit()
+                    }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .task(id: item.id) {
-                // A quick low-quality image first, then the sharp one.
-                image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: CGSize(width: 200, height: 200))
-                if let full = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size) {
+            .task(id: "\(item.id)|\(crop != nil)") {
+                // A quick low-quality image first, then the sharp one, large enough for a crop to stay sharp.
+                if image == nil {
+                    image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: CGSize(width: 200, height: 200))
+                }
+                let size = crop.map { CGSize(width: geometry.size.width / CGFloat($0.w), height: geometry.size.height / CGFloat($0.h)) }
+                    ?? geometry.size
+                if let full = await PhotoLibraryImages.shared.image(id: item.id, pointSize: size) {
                     image = full
                 }
             }
+        }
+        // The whole screen, so a crop (the screen's shape) fills it.
+        .ignoresSafeArea()
+    }
+}
+
+/// The `crop` part of `image`, fitted in the space: the whole image is laid out at its size and moved so the crop
+/// lands on the frame.
+private struct CroppedImage: View {
+    let image: UIImage
+    let crop: CropRect
+
+    var body: some View {
+        let ratio = image.size.width / max(image.size.height, 1) * CGFloat(crop.w / crop.h)
+        Color.clear
+            .aspectRatio(ratio, contentMode: .fit)
+            .overlay {
+                GeometryReader { geometry in
+                    let width = geometry.size.width / CGFloat(crop.w)
+                    let height = geometry.size.height / CGFloat(crop.h)
+                    Image(uiImage: image)
+                        .resizable()
+                        .frame(width: width, height: height)
+                        .offset(x: -CGFloat(crop.x) * width, y: -CGFloat(crop.y) * height)
+                }
+            }
+            .clipped()
+            // The crop is in the photo's coordinates, which don't mirror in Hebrew.
+            .environment(\.layoutDirection, .leftToRight)
+    }
+}
+
+/// "Cropped · Show all" over a cropped photo, or "Show crop" while the whole photo shows.
+private struct CropChip: View {
+    let showingWhole: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 6) {
+                Image(systemName: "crop").font(.system(size: 13))
+                if !showingWhole {
+                    Text("Cropped ·").font(.system(size: 13)).foregroundStyle(Color(white: 0.75))
+                }
+                Text(showingWhole ? "Show crop" : "Show all").font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(LibraryColors.pillScrim, in: Capsule())
+        }
+    }
+}
+
+/// A round-ended button over the photo: Write, Crop.
+private struct ViewerAction: View {
+    let icon: String
+    let label: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(label, systemImage: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .frame(height: 44)
+                .background(LibraryColors.pillScrim, in: Capsule())
         }
     }
 }

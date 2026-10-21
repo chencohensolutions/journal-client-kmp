@@ -62,8 +62,8 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 
 - **Long press** opens the system context menu: the photo lifted as its preview and the day and time as the menu's
   heading, then **Write about it** (or **Edit what you wrote**), **Crop** (photos only), **Add to story**, **Tag**,
-  **Select** and, in a set, **Take out of this set**. **Crop** does nothing yet: the crop screen isn't on iOS
-  (`HomeActions.crop` in `LibraryRootView.swift` is where it opens). Crops made on Android are shown.
+  **Select** and, in a set, **Take out of this set**. **Crop** opens the [crop screen](crop.md) on the photo's
+  Moments crop.
 - While picking, the bottom bar is **Cancel · N selected · Merge**; changing tabs stops picking.
 - **Sets** are a horizontal paging scroll view; the photos beside the one shown are cached ahead
   (`PHCachingImageManager`). There are no photos only on the server on iOS yet, so nothing is downloaded.

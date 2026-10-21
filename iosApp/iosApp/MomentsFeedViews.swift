@@ -12,7 +12,7 @@ struct FeedActions {
     var dismissTrip: (_ key: String) -> Void = { _ in }
     /// From a photo's long-press menu.
     var write: (MediaItem) -> Void = { _ in }
-    /// The crop screen opens here, on the photo's Moments crop.
+    /// Opens the crop screen on the photo's Moments crop.
     var crop: (MediaItem) -> Void = { _ in }
     var addToStory: (MediaItem) -> Void = { _ in }
     var tag: (MediaItem) -> Void = { _ in }
