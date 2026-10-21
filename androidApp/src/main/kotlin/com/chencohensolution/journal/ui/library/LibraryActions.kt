@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,14 +65,20 @@ internal class LibraryActions(
     val downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
     /** "Delete from this phone": only after the server confirms it has the file and a preview is kept. */
     val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
-    /** Whether "only on these Wi-Fi networks" can be checked while the app is in the background. */
-    val backgroundLocation: Boolean,
-    /** Whether Free up space can trash files without a system prompt ("Media management" access). */
-    val canTrashWithoutAsking: Boolean,
+    backgroundLocation: State<Boolean>,
+    canTrashWithoutAsking: State<Boolean>,
     /** What previews, originals and videos take on this phone; the Settings screen counts it. */
     val previewBytes: MutableState<Long?>,
     storage: (openFreeUp: () -> Unit) -> StorageActions,
 ) {
+    // Read through their State, not copied: a screen on the back stack keeps the LibraryActions it was first given.
+
+    /** Whether "only on these Wi-Fi networks" can be checked while the app is in the background. */
+    val backgroundLocation by backgroundLocation
+
+    /** Whether Free up space can trash files without a system prompt ("Media management" access). */
+    val canTrashWithoutAsking by canTrashWithoutAsking
+
     /** Opens the Free up space screen; set by the screens once navigation exists. */
     var openFreeUp: () -> Unit = {}
 
@@ -125,7 +132,8 @@ internal fun libraryActions(
     }
 
     // Backup: notifications for its progress, and location for "only on these Wi-Fi networks".
-    var backgroundLocation by remember { mutableStateOf(granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) }
+    val backgroundLocationState = remember { mutableStateOf(granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) }
+    var backgroundLocation by backgroundLocationState
     LifecycleResumeEffect(Unit) {
         backgroundLocation = granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         onPauseOrDispose {}
@@ -220,7 +228,8 @@ internal fun libraryActions(
     }
     LaunchedEffect(freeUpState.needsConfirmation) { if (freeUpState.needsConfirmation) moveWaitingToTrash() }
     val photoTrash = remember { AndroidPhotoTrash(context) }
-    var canTrashWithoutAsking by remember { mutableStateOf(photoTrash.canTrashWithoutAsking()) }
+    val canTrashWithoutAskingState = remember { mutableStateOf(photoTrash.canTrashWithoutAsking()) }
+    var canTrashWithoutAsking by canTrashWithoutAskingState
     LifecycleResumeEffect(Unit) {
         canTrashWithoutAsking = photoTrash.canTrashWithoutAsking()
         onPauseOrDispose {}
@@ -242,8 +251,8 @@ internal fun libraryActions(
         backup = backupActions,
         downloadOriginal = downloadOriginal,
         deleteFromPhone = deleteFromPhone,
-        backgroundLocation = backgroundLocation,
-        canTrashWithoutAsking = canTrashWithoutAsking,
+        backgroundLocation = backgroundLocationState,
+        canTrashWithoutAsking = canTrashWithoutAskingState,
         previewBytes = previewBytes,
         storage = { openFreeUp ->
             StorageActions(
