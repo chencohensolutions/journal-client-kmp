@@ -133,6 +133,8 @@ disposable `.cache/` index rebuilt from the files.
   platforms (iOS Oct 21, 2026).
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
 - Search pickers for stories and tags.
+- Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
+  both; iOS since Oct 21, 2026).
 - Screen docs in `docs/screens/`; shared tests (83 on the JVM host, 81 on the iOS simulator).
 
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over

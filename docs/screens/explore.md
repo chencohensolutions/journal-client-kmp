@@ -2,7 +2,7 @@
 
 The **Explore** tab of the [Journal](journal-home.md) (asked Oct 20, 2026): every photo by the **country** and **town** it was taken
 in or by **year**, and on a **map**. Like [Moments](moments.md) nothing is saved for it: it is worked out again from
-the library and the places found so far, and it shows the same sources as the Moments filter bar. Android only.
+the library and the places found so far, and it shows the same sources as the Moments filter bar. On Android and, since Oct 21, 2026, on iOS (see [iOS](#ios)).
 
 ## Layout
 
@@ -26,6 +26,23 @@ the library and the places found so far, and it shows the same sources as the Mo
   photos here" with **Show** (the viewer on them), and a slider over the years with photos to narrow them. The map
   opens fitted to all pins, keeps where it was while the viewer is open, and follows the system theme. No rotating or
   tilting.
+
+## iOS
+
+The same tab, pages and map, from the same shared logic, with these differences:
+
+- The summaries, pages and pins are worked out in a detached task, again whenever the library, the places or the
+  sources shown change.
+- A town's or a year's page has the system navigation bar (back, and swiping back) over its photo, with a scrim
+  behind it. A long press on its photos does nothing, as on Android.
+- The map is MapLibre Native iOS (Swift package `maplibre-gl-native-distribution`, pinned to 6.31.0) in a
+  `UIViewRepresentable`: the photos are an `MLNShapeSource` clustered at a 48 pt radius up to zoom 16, drawn by three
+  layers (circles with the count, and single pins) in the library colors of the scheme shown. The year slider is a
+  two-thumb slider of the app's own (SwiftUI has none), stopping at each year, left to right also in Hebrew. The
+  credit is MapLibre's logo and its ⓘ button at the top right, which lists the credits the style gives. The
+  back button is drawn over the map, so the map has no swipe back.
+- Fitting all pins on open stops at the closest zoom out a tall screen allows: photos on several continents can sit
+  at the screen's edges.
 
 ## Where it comes from
 
@@ -57,3 +74,9 @@ top right.
 Android: [ExploreViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ExploreViews.kt)
 (the tab, a town's and a year's page) and
 [MapScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MapScreen.kt).
+
+iOS: [ExploreViews.swift](../../iosApp/iosApp/ExploreViews.swift) (the tab's rows, a town's and a year's page, with
+the feed rows of [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift)),
+[ExploreMapView.swift](../../iosApp/iosApp/ExploreMapView.swift), the tab in
+[JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift) and the routes and what the viewer swipes through
+in [LibraryRootView.swift](../../iosApp/iosApp/LibraryRootView.swift).

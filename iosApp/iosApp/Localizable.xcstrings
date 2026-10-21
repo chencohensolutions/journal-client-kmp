@@ -446,6 +446,58 @@
         }
       }
     },
+    "%lld photos here" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo here"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos here"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת כאן"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שתי תמונות כאן"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות כאן"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות כאן"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld photos in a row" : {
       "localizations" : {
         "he" : {
@@ -543,6 +595,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld photos of this story aren't on this device."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld places" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld place"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld places"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "מקום אחד"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld מקומות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld מקומות"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld מקומות"
                 }
               }
             }
@@ -856,6 +960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל התמונות"
+          }
+        }
+      }
+    },
+    "All years" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל השנים"
           }
         }
       }
@@ -1390,12 +1504,32 @@
         }
       }
     },
+    "Explore" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גילוי"
+          }
+        }
+      }
+    },
     "File" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "קובץ"
+          }
+        }
+      }
+    },
+    "Finding where your photos were taken…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאתרים איפה צולמו התמונות…"
           }
         }
       }
@@ -1582,6 +1716,16 @@
         }
       }
     },
+    "Home" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בית"
+          }
+        }
+      }
+    },
     "How alike" : {
       "localizations" : {
         "he" : {
@@ -1761,6 +1905,16 @@
         }
       }
     },
+    "Map" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפה"
+          }
+        }
+      }
+    },
     "Merge" : {
       "localizations" : {
         "he" : {
@@ -1851,6 +2005,16 @@
         }
       }
     },
+    "No photos with a location yet." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין תמונות עם מיקום."
+          }
+        }
+      }
+    },
     "No stories yet. Make one from a day in Moments." : {
       "localizations" : {
         "he" : {
@@ -1877,6 +2041,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עדיין אין תגיות. הקלידו תגית למעלה כדי ליצור אותה."
+          }
+        }
+      }
+    },
+    "None of these photos has a location." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לאף אחת מהתמונות האלה אין מיקום."
           }
         }
       }
@@ -2051,6 +2225,16 @@
         }
       }
     },
+    "Other places" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקומות נוספים"
+          }
+        }
+      }
+    },
     "Photo, %@" : {
       "localizations" : {
         "he" : {
@@ -2067,6 +2251,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תמונות וסרטונים, מסודרים כמו ביומן."
+          }
+        }
+      }
+    },
+    "Places" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקומות"
           }
         }
       }
@@ -2467,6 +2661,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Show" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגה"
           }
         }
       }
@@ -3059,6 +3263,16 @@
         }
       }
     },
+    "Whole year" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל השנה"
+          }
+        }
+      }
+    },
     "Wide" : {
       "localizations" : {
         "he" : {
@@ -3115,6 +3329,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כתבו על הסיפור הזה…"
+          }
+        }
+      }
+    },
+    "Years" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שנים"
           }
         }
       }

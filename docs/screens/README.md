@@ -11,7 +11,7 @@ updated.
 | Photo access | After enrollment, until the user answers once | [photo-access.md](photo-access.md) |
 | Journal (home) | Every launch after that | [journal-home.md](journal-home.md) |
 | Moments (feed) | The Moments tab of the Journal (Android) | [moments.md](moments.md) |
-| Explore | The Explore tab of the Journal: towns, years, a town's or year's page, the map (Android) | [explore.md](explore.md) |
+| Explore | The Explore tab of the Journal: towns, years, a town's or year's page, the map | [explore.md](explore.md) |
 | Story | Tapping a story card, or right after creating a story | [story page](story-page.md) |
 | Group | Tapping a group tile in a story | [group.md](group.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |

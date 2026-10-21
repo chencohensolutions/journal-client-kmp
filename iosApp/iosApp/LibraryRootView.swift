@@ -28,10 +28,15 @@ struct LibraryRootView: View {
         case tags
         case tag(String)
         case settings
+        /// Explore: a town's page, a year's page (on one of its months), and the map.
+        case place(String)
+        case year(Int, month: Int?)
+        case map
     }
 
     /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), a row of Moments
-    /// (`feedSection`, its key), or All photos with `filter`.
+    /// (`feedSection`, its key), Explore (`scope`: the map's photos, or with `feedSection` a row of a town's or a
+    /// year's page), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         let storyId: String?
         var groupId: String? = nil
@@ -39,6 +44,7 @@ struct LibraryRootView: View {
         let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
+        var scope: ExploreScope? = nil
         /// What it swipes through, fixed when opened: tagging or grouping a photo must not pull it out from under it.
         var itemIds: [String] = []
         var id: String { itemId }
@@ -100,6 +106,11 @@ struct LibraryRootView: View {
                             openAllPhotos: { path.append(.allPhotos) },
                             openSettings: { path.append(.settings) },
                             openTags: { path.append(.tags) },
+                            explore: ExploreActions(
+                                openPlace: { path.append(.place($0)) },
+                                openYear: { path.append(.year($0, month: $1)) },
+                                openMap: { path.append(.map) }
+                            ),
                             allowAccess: requestOrOpenSettings,
                             registerAgain: onRegisterAgain
                         )
@@ -113,6 +124,15 @@ struct LibraryRootView: View {
                             }
                         case .settings:
                             SettingsView(settings: settings)
+                        case .place(let town):
+                            PlacePageView(town: town, library: library.state, stories: stories.state, openItem: openExplore)
+                        case let .year(year, month):
+                            YearPageView(year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore)
+                        case .map:
+                            ExploreMapView(library: library.state, stories: stories.state) { scope, itemId in
+                                guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
+                                openViewer(ViewerRequest(storyId: nil, filter: .all, itemId: first, scope: scope))
+                            }
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
@@ -227,6 +247,11 @@ struct LibraryRootView: View {
         }
     }
 
+    /// A photo of a town's or a year's page: the viewer swipes through its row, as the page shows it.
+    private func openExplore(_ scope: ExploreScope, _ section: FeedSection, _ item: MediaItem) {
+        openViewer(ViewerRequest(storyId: nil, feedSection: section.key, filter: .all, itemId: item.id, scope: scope))
+    }
+
     /// iOS asks only once; after that only Settings can grant access.
     private func requestOrOpenSettings() {
         if library.state.access == .denied, let url = URL(string: UIApplication.openSettingsURLString) {
@@ -237,8 +262,14 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its
-    /// cover), the row of Moments (its photos in the order shown), or everything in the All photos filter.
+    /// cover), the row of Moments or an Explore page (its photos in the order shown), the map's photos, or everything
+    /// in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
+        if let scope = request.scope {
+            let items = scopeItems(library.state, stories.state, scope)
+            guard let section = request.feedSection else { return items }
+            return stories.state.feedOf(items: items).section(key: section)?.items ?? []
+        }
         if let tag = request.tag {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
         }
