@@ -7,6 +7,7 @@ import com.chencohensolution.journal.stories.StoryIds
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.FileStoryStore
+import com.chencohensolution.journal.library.FileFactsCache
 import com.chencohensolution.journal.library.IosMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
@@ -50,10 +51,10 @@ object IosJournal {
             onEnrolled = journal::useEnrolledIdentity,
         )
 
-    /** The device photo library (PhotoKit). */
+    /** The device photo library (PhotoKit). Its photos' file names, sizes and types are cached in Caches (`library`). */
     fun createLibraryController(): LibraryController =
         LibraryController(
-            library = IosMediaLibrary(),
+            library = IosMediaLibrary(FileFactsCache(FileSystem.SYSTEM, cachesDir().toPath() / "library")),
             settings = JournalSettings(UserDefaultsStore()),
         )
 
@@ -69,7 +70,7 @@ object IosJournal {
      */
     fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
         val support = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
-        val caches = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
+        val caches = cachesDir()
         return StoriesController(
             store = FileStoryStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, support.toPath() / "journal"),
@@ -80,6 +81,8 @@ object IosJournal {
             places = PhotoPlaces(IosPlaceReader(), PlaceCache(FileSystem.SYSTEM, caches.toPath() / "places")),
         )
     }
+
+    private fun cachesDir() = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
 
     /** Imports a PKCS#12 bundle into the app Keychain; select the returned label on the controller. */
     fun importIdentity(pkcs12: NSData, password: String): IdentityImportResult =

@@ -146,7 +146,8 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150` before that).
 
 **Not built yet**
-- On iOS: backup and server-only photos. Everywhere: playing server-only videos, downloading an original, story/note
+- On iOS: backup and server-only photos (the library already reports what they need: file name, size, type,
+  modified date and source, cached in `Caches/library`, and changes through a PhotoKit observer). Everywhere: playing server-only videos, downloading an original, story/note
   sync (Android backup and server-only photos are built, see below).
 - Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
   reordering; choosing a story's cover.

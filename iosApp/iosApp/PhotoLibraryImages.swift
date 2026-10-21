@@ -77,10 +77,4 @@ final class PhotoLibraryImages {
             }
         }
     }
-
-    /// The file name the photo had when it was taken or imported.
-    func originalFileName(id: String) -> String? {
-        guard let asset = asset(id) else { return nil }
-        return PHAssetResource.assetResources(for: asset).first?.originalFilename
-    }
 }

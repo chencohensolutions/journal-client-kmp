@@ -7,6 +7,16 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ video" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון %@"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "he" : {
@@ -1350,6 +1360,16 @@
         }
       }
     },
+    "From" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקור"
+          }
+        }
+      }
+    },
     "From then on, this device signs in automatically." : {
       "localizations" : {
         "he" : {
@@ -2401,6 +2421,16 @@
         }
       }
     },
+    "Size" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גודל"
+          }
+        }
+      }
+    },
     "Software (Simulator)" : {
       "localizations" : {
         "he" : {
@@ -2717,6 +2747,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הפעלת צליל"
+          }
+        }
+      }
+    },
+    "Type" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סוג"
           }
         }
       }
