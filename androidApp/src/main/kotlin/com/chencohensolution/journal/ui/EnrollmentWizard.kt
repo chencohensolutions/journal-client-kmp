@@ -29,6 +29,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.enrollment.EnrollmentController
@@ -63,6 +66,9 @@ import com.chencohensolution.journal.enrollment.EnrollmentState
 import com.chencohensolution.journal.enrollment.EnrollmentStep
 import com.chencohensolution.journal.enrollment.KeyProtection
 import com.chencohensolution.journal.enrollment.RegistrationProgress
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 
 /** Registers this device with the server: enrollment code → hardware key → client certificate. */
 @Composable
@@ -71,6 +77,7 @@ fun EnrollmentWizard(
     onOpenJournal: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     BackHandler(enabled = state.step !is EnrollmentStep.Welcome && state.step !is EnrollmentStep.Enrolled) {
         controller.back()
     }
@@ -83,6 +90,13 @@ fun EnrollmentWizard(
             updateCode = controller::updateCode,
             updateDeviceName = controller::updateDeviceName,
             checkCode = controller::checkCode,
+            // Google's scanner screen, from Play services: it needs no camera permission.
+            scan = {
+                val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+                GmsBarcodeScanning.getClient(context, options).startScan()
+                    .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
+                    .addOnFailureListener { Toast.makeText(context, R.string.enroll_scan_failed, Toast.LENGTH_LONG).show() }
+            },
             register = controller::register,
             openJournal = onOpenJournal,
         ),
@@ -96,6 +110,7 @@ private class EnrollmentActions(
     val updateCode: (String) -> Unit = {},
     val updateDeviceName: (String) -> Unit = {},
     val checkCode: () -> Unit = {},
+    val scan: () -> Unit = {},
     val register: () -> Unit = {},
     val openJournal: () -> Unit = {},
 )
@@ -145,6 +160,15 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
     StepBody {
         Title(stringResource(R.string.enroll_code_title), Modifier.padding(top = 24.dp))
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
+        OutlinedButton(
+            onClick = actions.scan,
+            enabled = !step.checking,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(top = 24.dp),
+        ) {
+            Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
+        }
         OutlinedTextField(
             value = state.serverAddress,
             onValueChange = actions.updateServerAddress,
@@ -154,7 +178,7 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
             singleLine = true,
             enabled = !step.checking,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-            modifier = Modifier.fillMaxWidth().padding(top = 28.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         )
         val codeError = step.error?.takeIf { it != EnrollmentError.MissingServerAddress }
         OutlinedTextField(
@@ -538,6 +562,11 @@ private object Icons {
     val Lock = icon("Lock", "M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M8 11V8a4 4 0 0 1 8 0v3")
     val Server = icon("Server", "M5 4h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M5 13h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z", "M7 7.5h0.01", "M7 16.5h0.01")
     val Person = icon("Person", "M12 4a4 4 0 1 0 0.01 0", "M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5")
+    val QrCode = icon(
+        "QrCode",
+        "M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z",
+        "M14 14h2v2h-2z", "M18 18h2v2h-2z", "M14 18v2", "M18 14h2",
+    )
     val Error = icon("Error", "M12 3a9 9 0 1 0 0.01 0", "M12 7.5v5.5", "M12 16.5h0.01")
 }
 

@@ -8,9 +8,11 @@ import com.chencohensolution.journal.enrollment.DeviceKey
 import com.chencohensolution.journal.enrollment.DeviceKeyStore
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.enrollment.EnrollmentError
+import com.chencohensolution.journal.enrollment.EnrollmentLink
 import com.chencohensolution.journal.enrollment.EnrollmentStep
 import com.chencohensolution.journal.enrollment.KeyProtection
 import com.chencohensolution.journal.enrollment.cleanCode
+import com.chencohensolution.journal.enrollment.parseEnrollmentLink
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.graphQlEndpoint
 import com.chencohensolution.journal.network.serverAddress
@@ -93,6 +95,25 @@ class CleanCodeTest {
         assertEquals("5MHH-0JDB", cleanCode(pasted))
         assertEquals("K7QM-4XPD", cleanCode("  Code     K7QM-4XPD"))
         assertEquals("K7QM-4XPD", cleanCode(" k7qm-4xpd "))
+    }
+}
+
+class EnrollmentLinkTest {
+    @Test
+    fun readsCodeAndServer() {
+        assertEquals(
+            EnrollmentLink("K7QM-4XPD", "https://journal.example.com:56398"),
+            parseEnrollmentLink("journal://enroll?code=K7QM-4XPD&server=https%3A%2F%2Fjournal.example.com%3A56398"),
+        )
+        assertEquals(EnrollmentLink("K7QM-4XPD", null), parseEnrollmentLink("journal://enroll?code=K7QM-4XPD"))
+    }
+
+    @Test
+    fun ignoresOtherLinks() {
+        assertNull(parseEnrollmentLink("journal://enroll"))
+        assertNull(parseEnrollmentLink("journal://other?code=K7QM-4XPD"))
+        assertNull(parseEnrollmentLink("https://enroll?code=K7QM-4XPD"))
+        assertNull(parseEnrollmentLink("not a link"))
     }
 }
 
@@ -219,6 +240,26 @@ class EnrollmentControllerTest {
         assertEquals(EnrollmentStep.Confirm(user = "hen", minutesLeft = 8), controller.awaitStep { it is EnrollmentStep.Confirm })
         assertEquals(listOf<String?>(null), requestedAliases)
         assertContains(requests.single(), "\"code\":\"K7QM-4XPD\"")
+    }
+
+    @Test
+    fun linkFillsInAndChecksTheCode() = runTest {
+        val controller = controller()
+        controller.openLink(EnrollmentLink("k7qm-4xpd", "https://192.168.50.2:8080"))
+
+        assertEquals(EnrollmentStep.Confirm(user = "hen", minutesLeft = 8), controller.awaitStep { it is EnrollmentStep.Confirm })
+        assertEquals("https://192.168.50.2:8080", controller.currentState.serverAddress)
+        assertContains(requests.single(), "\"code\":\"K7QM-4XPD\"")
+    }
+
+    @Test
+    fun scannedTextThatIsNotALinkIsTheCode() = runTest {
+        val controller = controller()
+        controller.start()
+        controller.openScanned("k7qm-4xpd")
+
+        assertEquals("K7QM-4XPD", controller.currentState.code)
+        assertEquals(EnrollmentStep.EnterCode(), controller.currentState.step)
     }
 
     @Test

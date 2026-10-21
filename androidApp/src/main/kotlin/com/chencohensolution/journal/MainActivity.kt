@@ -1,6 +1,7 @@
 package com.chencohensolution.journal
 
 import android.app.Application
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +20,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.EnrollmentController
+import com.chencohensolution.journal.enrollment.parseEnrollmentLink
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.settings.SettingsController
@@ -64,9 +66,14 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
 class MainActivity : ComponentActivity() {
     private val viewModel: JournalViewModel by viewModels()
 
+    /** Set when an enrollment link arrives, to open the wizard on it. */
+    private var linkOpened by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Only on a fresh start: after a rotation the link was handled already.
+        if (savedInstanceState == null) openLink(intent)
 
         setContent {
             JournalTheme {
@@ -79,6 +86,13 @@ class MainActivity : ComponentActivity() {
                 }
                 // Without an identity the device has to be registered first.
                 var showWizard by rememberSaveable { mutableStateOf(viewModel.controller.currentState.identityAlias == null) }
+                // An enrollment QR code scanned with the camera: register (again) with its code.
+                LaunchedEffect(linkOpened) {
+                    if (linkOpened) {
+                        showWizard = true
+                        linkOpened = false
+                    }
+                }
                 if (showWizard) {
                     EnrollmentWizard(
                         controller = viewModel.enrollment,
@@ -104,6 +118,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openLink(intent)
+    }
+
+    private fun openLink(intent: Intent?) {
+        val link = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString?.let(::parseEnrollmentLink) ?: return
+        viewModel.enrollment.openLink(link)
+        linkOpened = true
     }
 }
 

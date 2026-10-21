@@ -32,13 +32,24 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Journal">
+        <!-- singleTask: an enrollment link opened from the camera comes to the running app (onNewIntent). -->
         <activity
             android:exported="true"
+            android:launchMode="singleTask"
             android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- journal://enroll?code=…&server=…: the QR code `enroll-code` prints on the server. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="journal" android:host="enroll" />
             </intent-filter>
         </activity>
         <!-- WorkManager's service for long-running workers; backup declares what it does. -->

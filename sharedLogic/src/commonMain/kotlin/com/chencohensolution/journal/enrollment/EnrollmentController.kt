@@ -13,6 +13,7 @@ import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.decodePemCertificates
+import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -250,6 +251,25 @@ class EnrollmentController internal constructor(
     }
 
     /** Back to the start, e.g. to enroll again later. */
+    /**
+     * Fills in the code (and the server, when the link has one) from an enrollment link the server printed as a QR
+     * code, and checks it: the wizard opens on Confirm, or on the code screen with what was wrong. Ignored while a
+     * device is being registered.
+     */
+    fun openLink(link: EnrollmentLink) {
+        if (_state.value.step is EnrollmentStep.Registering) return
+        job?.cancel()
+        _state.update {
+            it.copy(serverAddress = link.server ?: it.serverAddress, code = cleanCode(link.code), step = EnrollmentStep.EnterCode())
+        }
+        checkCode()
+    }
+
+    /** What a QR code scan read: an enrollment link (see [openLink]), or else just the code. */
+    fun openScanned(text: String) {
+        parseEnrollmentLink(text)?.let(::openLink) ?: updateCode(text)
+    }
+
     fun reset() {
         job?.cancel()
         _state.update { it.copy(code = "", serverAddress = serverAddress(settings.serverUrl), step = EnrollmentStep.Welcome) }
@@ -301,6 +321,21 @@ private val PASTED_CODE = Regex("""(?<![A-Za-z0-9])[A-Za-z0-9]{4}-?[A-Za-z0-9]{4
  * Pasted text (e.g. a terminal line with "Code  K7QM-4XPD" or extra lines) is reduced to the first
  * code-shaped word in it. The server ignores case and dashes.
  */
+/** What an enrollment QR code holds (see `enroll-code` in journal-server-go). [server] is null when it has none. */
+data class EnrollmentLink(val code: String, val server: String?)
+
+/** `journal://enroll?code=K7QM-4XPD&server=https%3A%2F%2Fhost%3A56398`; null for any other link. */
+fun parseEnrollmentLink(link: String): EnrollmentLink? {
+    val url = try {
+        Url(link.trim())
+    } catch (e: Exception) {
+        return null
+    }
+    if (url.protocol.name != "journal" || url.host != "enroll") return null
+    val code = url.parameters["code"]?.takeIf { it.isNotBlank() } ?: return null
+    return EnrollmentLink(code, url.parameters["server"]?.takeIf { it.isNotBlank() })
+}
+
 internal fun cleanCode(input: String): String {
     val pasted = input.any(Char::isWhitespace) || input.count(Char::isLetterOrDigit) > CODE_LENGTH
     val candidate = if (pasted) PASTED_CODE.find(input)?.value ?: input else input

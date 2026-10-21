@@ -198,6 +198,8 @@
     <string name="enroll_code">Enrollment code</string>
     <string name="enroll_code_help">8 letters and digits. Works once, expires 10 minutes after it was created.</string>
     <string name="enroll_continue">Continue</string>
+    <string name="enroll_scan">Scan QR code</string>
+    <string name="enroll_scan_failed">Couldn\'t open the QR code scanner. Type the code instead.</string>
     <string name="enroll_confirm_title">Register this device?</string>
     <string name="enroll_server">Server</string>
     <string name="enroll_server_verified">Verified by journal-server-ca</string>

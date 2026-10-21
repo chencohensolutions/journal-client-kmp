@@ -210,6 +210,8 @@
     <string name="enroll_code">קוד רישום</string>
     <string name="enroll_code_help">8 אותיות וספרות. עובד פעם אחת, ותוקפו פג 10 דקות אחרי שנוצר.</string>
     <string name="enroll_continue">המשך</string>
+    <string name="enroll_scan">סריקת קוד QR</string>
+    <string name="enroll_scan_failed">לא ניתן לפתוח את סורק קוד ה-QR. אפשר להקליד את הקוד במקום.</string>
     <string name="enroll_confirm_title">לרשום את המכשיר הזה?</string>
     <string name="enroll_server">שרת</string>
     <string name="enroll_server_verified">מאומת על ידי journal-server-ca</string>

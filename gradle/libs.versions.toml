@@ -11,6 +11,7 @@ androidx-lifecycle = "2.11.0"
 androidx-navigation3 = "1.2.0"
 androidx-work = "2.12.0"
 jxl-coder = "2.6.1"
+play-services-code-scanner = "16.1.0"
 media3 = "1.11.1"
 maplibre = "13.6.1"
 apollo = "5.2.0"
@@ -45,6 +46,8 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-tls = { module = "com.squareup.okhttp3:okhttp-tls", version.ref = "okhttp" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+# Enrollment: scans the server's QR code with Google's scanner screen (no camera permission).
+play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "play-services-code-scanner" }
 # JPEG XL previews: Android has no JPEG XL decoder of its own.
 jxl-coder = { module = "io.github.awxkee:jxl-coder", version.ref = "jxl-coder" }
 # Videos: played with ExoPlayer, streamed from the server over mTLS (OkHttp) into a cache.
