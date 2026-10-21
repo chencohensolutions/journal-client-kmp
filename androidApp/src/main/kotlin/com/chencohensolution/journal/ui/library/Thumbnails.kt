@@ -13,26 +13,39 @@ import android.provider.MediaStore
 import android.util.LruCache
 import android.util.Size
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.library.MediaType
+import java.nio.ByteBuffer
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 
 // Loading and caching the pictures tiles and pages draw: device thumbnails, server previews, kept originals, video posters.
@@ -72,21 +85,192 @@ private fun coverDimensions(sourceWidth: Int, sourceHeight: Int, width: Int, hei
 
 /**
  * [item] cropped to fill this box, at exactly the box's size in pixels so it is drawn without scaling; empty while it
- * loads.
+ * loads. A box larger than MediaStore's thumbnails (a grid's large tile) loads in two steps, as [TwoStepPhoto].
  */
 @Composable
 internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier) {
-        val thumbnail = if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
-            rememberCoverThumbnail(item, constraints.maxWidth, constraints.maxHeight)
+        val bounded = constraints.hasBoundedWidth && constraints.hasBoundedHeight
+        val (width, height) = constraints.maxWidth to constraints.maxHeight
+        if (bounded && coverLonger(item, width, height) > STORE_THUMBNAIL_MAX) {
+            TwoStepPhoto(item, width, height, Modifier.fillMaxSize())
         } else {
-            rememberThumbnail(item, THUMB_SMALL)
-        }
-        thumbnail?.let {
-            Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            val thumbnail = if (bounded) rememberCoverThumbnail(item, width, height) else rememberThumbnail(item, THUMB_SMALL)
+            thumbnail?.let {
+                Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }
+
+/**
+ * [item] cropped to fill a [width] × [height] pixel box in two steps: a quick image at once (MediaStore's thumbnail,
+ * or for a photo only on the server its [first image][rememberFirstImage]), soft when the box is large, then the sharp
+ * one on top once the list has slowed down ([LocalScrollSettled]). A fast scroll decodes only the quick ones.
+ */
+@Composable
+internal fun TwoStepPhoto(item: MediaItem, width: Int, height: Int, modifier: Modifier = Modifier) {
+    Box(modifier) {
+        val quick = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberFirstImage(item)
+        quick?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        // First images off in Settings: the sharp one at once, as there is nothing to show meanwhile.
+        val noQuick = !item.hasOriginalHere && LocalServerPreviews.current?.currentOptions?.firstWidthPercent == 0
+        if (noQuick || sharpAllowed(item, width, height)) SizedThumbnail(item, width, height, Modifier.fillMaxSize())
+    }
+}
+
+/**
+ * Whether [item]'s sharp image at [width] × [height] may load: once the list has slowed down, and from then on even if
+ * it speeds up again; at once when it is already in memory.
+ */
+@Composable
+private fun sharpAllowed(item: MediaItem, width: Int, height: Int): Boolean {
+    val settled by LocalScrollSettled.current
+    // Not state: it only turns true while [settled] is read, which recomposes this anyway.
+    val started = remember(item.id, width, height) { booleanArrayOf(thumbnailCache.get("${item.id}@${width}x$height") != null) }
+    if (settled) started[0] = true
+    return started[0]
+}
+
+/**
+ * Whether the list on screen moves slowly enough for sharp images to be worth decoding ([rememberScrollSettled]);
+ * always where there is no list to watch (the viewer, screenshot tests).
+ */
+internal val LocalScrollSettled = staticCompositionLocalOf<State<Boolean>> { AlwaysSettled }
+
+private object AlwaysSettled : State<Boolean> {
+    override val value = true
+}
+
+/** A list moving slower than this many screens a second counts as settled. */
+private const val SETTLED_SCREENS_PER_SECOND = 1f
+
+/** ...for this long: a fling slowing down past it for a frame isn't settled yet. */
+private const val SETTLED_NANOS = 100_000_000L
+
+/**
+ * Whether [list] is still or moving slowly (under [SETTLED_SCREENS_PER_SECOND] for [SETTLED_NANOS]), for
+ * [LocalScrollSettled]. The speed is how far the first item on screen moved since the frame before.
+ */
+@Composable
+internal fun rememberScrollSettled(list: LazyListState): State<Boolean> {
+    val settled = remember { mutableStateOf(true) }
+    val screen = LocalWindowInfo.current.containerSize.height
+    LaunchedEffect(list, screen) {
+        snapshotFlow { list.isScrollInProgress }.collectLatest { scrolling ->
+            if (!scrolling) {
+                settled.value = true
+                return@collectLatest
+            }
+            val limit = screen * SETTLED_SCREENS_PER_SECOND
+            var anchor = list.layoutInfo.visibleItemsInfo.firstOrNull()?.let { it.key to it.offset }
+            var last = withFrameNanos { it }
+            var slowSince: Long? = null
+            while (true) {
+                val now = withFrameNanos { it }
+                val items = list.layoutInfo.visibleItemsInfo
+                // Gone from the screen in one frame: fast.
+                val moved = anchor?.let { (key, offset) -> items.firstOrNull { it.key == key }?.let { abs(it.offset - offset) } }
+                val fast = moved == null || moved * 1e9f / (now - last).coerceAtLeast(1) > limit
+                if (fast) {
+                    slowSince = null
+                    settled.value = false
+                } else {
+                    val since = slowSince ?: now.also { slowSince = it }
+                    if (now - since >= SETTLED_NANOS) settled.value = true
+                }
+                anchor = items.firstOrNull()?.let { it.key to it.offset }
+                last = now
+            }
+        }
+    }
+    return settled
+}
+
+/**
+ * What a photo only on the server shows first, before its sharp image and in its place while the list moves fast:
+ * [ServerPreviews.firstImage], by default a HEIF at half the window's width (Settings → Advanced; the same size on
+ * every screen, so one file serves them all). Null while it loads, when there is none, or when it is off.
+ */
+@Composable
+private fun rememberFirstImage(item: MediaItem): ImageBitmap? {
+    val window = LocalWindowInfo.current.containerSize.width
+    LocalThumbnailSource.current?.let { source -> return remember(source, item) { source.thumbnail(item, window / 2) } }
+    val previews = LocalServerPreviews.current
+    val key = previews?.let { firstImageKey(item, it.currentOptions) }
+    val bitmap by produceState(key?.let(thumbnailCache::get), key) {
+        value = loadFirstImage(previews, item, window)
+    }
+    return bitmap?.asImageBitmap()
+}
+
+/** In memory by its format and size too, so a change in Settings shows at once. */
+private fun firstImageKey(item: MediaItem, options: PreviewOptions) = "${item.id}@first-${options.firstFormat}-${options.firstWidthPercent}"
+
+/** [rememberFirstImage] for [item] in a window [windowWidth] pixels wide, kept in memory; also to load it ahead. */
+internal suspend fun loadFirstImage(previews: ServerPreviews?, item: MediaItem, windowWidth: Int): Bitmap? {
+    if (previews == null || windowWidth <= 0) return null
+    val options = previews.currentOptions
+    if (options.firstWidthPercent <= 0) return null
+    val key = firstImageKey(item, options)
+    thumbnailCache.get(key)?.let { return it }
+    val sha = item.sha256 ?: return null
+    // The photo's shape at a part of the window's width: what a full-width photo is drawn at, scaled down.
+    val width = (windowWidth * options.firstWidthPercent / 100).coerceAtLeast(1)
+    val height = if (item.width > 0 && item.height > 0) ceil(width.toFloat() * item.height / item.width).toInt() else width
+    val bytes = previews.firstImage(sha, width, height) ?: return null
+    return withContext(firstLoads) { decodeFirstImage(bytes, width, height) }?.also { thumbnailCache.put(key, it) }
+}
+
+/**
+ * A first image straight into graphics memory, fitted in [width] × [height] (a larger preview kept stands in offline).
+ * HEIF through ImageDecoder, which uses the phone's video decoder where it has one.
+ */
+private fun decodeFirstImage(bytes: ByteArray, width: Int, height: Int): Bitmap? {
+    if (JxlCoder.isJXL(bytes)) return decodePreview(bytes)
+    return runCatching {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_HARDWARE
+            val scale = minOf(width.toFloat() / info.size.width, height.toFloat() / info.size.height)
+            if (scale < 1f) {
+                decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))
+            }
+        }
+    }.getOrNull()
+}
+
+/**
+ * Loads the first images of [rows] ahead of [list] while it moves, in the direction it moves: the next [FIRST_AHEAD]
+ * rows past the screen. [key] is a row's list item key (other items, banners, are skipped); [items] the photos a row
+ * shows full size. Only photos that are only on the server; the others have MediaStore's thumbnails.
+ */
+@Composable
+internal fun <R> PrefetchFirstImages(list: LazyListState, rows: List<R>, key: (R) -> Any, items: (R) -> List<MediaItem>) {
+    if (LocalThumbnailSource.current != null) return
+    val previews = LocalServerPreviews.current ?: return
+    val window = LocalWindowInfo.current.containerSize.width
+    LaunchedEffect(list, rows, window) {
+        val byKey = withContext(Dispatchers.Default) { rows.withIndex().associate { (index, row) -> key(row) to index } }
+        val rowOf = { listKey: Any -> byKey[listKey] }
+        var lastFirst = list.firstVisibleItemIndex
+        snapshotFlow { list.layoutInfo.visibleItemsInfo.let { it.firstOrNull()?.key to it.lastOrNull()?.key } }
+            .collectLatest { (firstKey, lastKey) ->
+                val down = list.firstVisibleItemIndex >= lastFirst
+                lastFirst = list.firstVisibleItemIndex
+                val edge = (if (down) lastKey else firstKey)?.let(rowOf) ?: return@collectLatest
+                val ahead = if (down) (edge + 1..minOf(edge + FIRST_AHEAD, rows.lastIndex)) else (edge - 1 downTo maxOf(edge - FIRST_AHEAD, 0))
+                for (index in ahead) {
+                    for (item in items(rows[index])) {
+                        // One at a time; the one under way finishes when the scroll moves on, to be there next time.
+                        if (!item.hasOriginalHere) withContext(NonCancellable) { loadFirstImage(previews, item, window) }
+                    }
+                }
+            }
+    }
+}
+
+/** How many rows past the screen [PrefetchFirstImages] loads. */
+private const val FIRST_AHEAD = 20
 
 /**
  * [item] cropped to fill this box, which the caller knows to be [width] × [height] pixels: like [CroppedThumbnail]
@@ -155,7 +339,18 @@ private suspend fun Bitmap.forDrawing(): Bitmap =
 
 /** Decodes of whole photos, which take far longer than MediaStore's thumbnails, run this many at a time. */
 @OptIn(ExperimentalCoroutinesApi::class)
-private val fullDecodes = Dispatchers.IO.limitedParallelism(3)
+private val fullDecodes = Dispatchers.IO.limitedParallelism(2)
+
+/** Sharp server previews decode this many at a time, so a fast scroll can't start dozens that slow each other down. */
+@OptIn(ExperimentalCoroutinesApi::class)
+private val previewDecodes = Dispatchers.IO.limitedParallelism(3)
+
+/**
+ * First images decode in their own lane, never behind sharp decodes; few at a time, as a phone has only a few hardware
+ * HEVC decoders.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+private val firstLoads = Dispatchers.IO.limitedParallelism(3)
 
 /** Where photos that are only on the server come from; null in screenshot tests. */
 internal val LocalServerPreviews = staticCompositionLocalOf<ServerPreviews?> { null }
@@ -166,7 +361,7 @@ internal val LocalPhoneStorage = staticCompositionLocalOf<com.chencohensolution.
 /** Android's decoders for what [ServerPreviews] keeps: an original fitted by [fromOriginal], or preview bytes. */
 private fun decoders(item: MediaItem, fromOriginal: (Int, Int) -> Pair<Int, Int>?) = ServerPreviews.Decoders(
     original = { path -> withContext(fullDecodes) { decodeKept(path, item, fromOriginal) } },
-    preview = { bytes -> decodePreview(bytes) },
+    preview = { bytes -> withContext(previewDecodes) { decodePreview(bytes) } },
 )
 
 /**

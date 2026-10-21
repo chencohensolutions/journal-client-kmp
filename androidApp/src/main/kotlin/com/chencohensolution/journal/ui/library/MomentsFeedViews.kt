@@ -573,7 +573,7 @@ private fun PhotoTitle(title: String?) {
         color = LibraryColors.OnBackground,
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
     )
 }
 
@@ -592,7 +592,7 @@ private fun PhotoNoteText(caption: String?) {
         lineHeight = 24.sp
     )
     val measurer = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp)) {
         // Measured here, not after drawing, so "more" is there in the first frame.
         val cut = remember(caption, constraints.maxWidth) {
             measurer.measure(
@@ -691,25 +691,13 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
 }
 
 /**
- * [item] filling this box, which has its shape and is [width] wide in pixels: MediaStore's thumbnail at once (at most
- * 512 px, blurry at full width), then the photo itself decoded at the box's size on top, sharp on any screen. A photo
- * only on the server gets only the box's size: the thumbnail under it would be one more preview to ask for and keep.
+ * [item] filling this box, which has its shape and is [width] wide in pixels: a quick image at once (MediaStore's
+ * thumbnail, or a half-width HEIF for a photo only on the server), soft at full width, then the photo decoded at the
+ * box's size on top once the feed slows down ([TwoStepPhoto]), sharp on any screen.
  */
 @Composable
 private fun SharpPhoto(item: MediaItem, width: Int, modifier: Modifier = Modifier) {
-    Box(modifier) {
-        if (item.hasOriginalHere) {
-            rememberThumbnail(item, THUMB_LARGE)?.let {
-                Image(
-                    it,
-                    null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-        SizedThumbnail(item, width, (width / item.ratio).toInt(), Modifier.fillMaxSize())
-    }
+    TwoStepPhoto(item, width, (width / item.ratio).toInt(), modifier)
 }
 
 /** The feed is the width of the window: its photos' size in pixels is known without measuring them. */

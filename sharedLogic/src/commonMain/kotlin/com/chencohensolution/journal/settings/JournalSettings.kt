@@ -126,11 +126,17 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 ?: PreviewFormat.WEBP,
             quality = store.getString(KEY_PREVIEW_QUALITY)?.let { name -> PreviewQuality.entries.firstOrNull { it.name == name } }
                 ?: PreviewQuality.HIGH,
+            firstFormat = store.getString(KEY_FIRST_IMAGE_FORMAT)?.let { name -> PreviewFormat.entries.firstOrNull { it.name == name } }
+                ?: PreviewFormat.HEIF,
+            firstWidthPercent = store.getString(KEY_FIRST_IMAGE_WIDTH_PERCENT)?.toIntOrNull()?.takeIf { it in 0..100 }
+                ?: PreviewOptions.DEFAULT_FIRST_WIDTH_PERCENT,
         )
         set(value) {
             store.putString(KEY_PREVIEWS_ENABLED, value.enabled.toString())
             store.putString(KEY_PREVIEW_FORMAT, value.format.name)
             store.putString(KEY_PREVIEW_QUALITY, value.quality.name)
+            store.putString(KEY_FIRST_IMAGE_FORMAT, value.firstFormat.name)
+            store.putString(KEY_FIRST_IMAGE_WIDTH_PERCENT, value.firstWidthPercent.toString())
         }
 
     /** "Show private media" and its threshold (Settings → Private media); off by default. */
@@ -198,6 +204,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
         private const val KEY_PREVIEW_FORMAT = "preview_format"
         private const val KEY_PREVIEW_QUALITY = "preview_quality"
+        private const val KEY_FIRST_IMAGE_FORMAT = "first_image_format"
+        private const val KEY_FIRST_IMAGE_WIDTH_PERCENT = "first_image_width_percent"
         private const val KEY_SHOW_PRIVATE_MEDIA = "show_private_media"
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"

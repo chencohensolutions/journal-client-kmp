@@ -37,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -190,6 +191,16 @@ internal fun JournalHomeScreen(
         HomeTab.EXPLORE -> emptyList()
     }
     list.LandOn(landing, rows.size) { id -> rows.rowOf(id) }
+    // Sharp photos decode once the list slows down; until then each shows its quick image, loaded ahead of the scroll.
+    val scrollSettled = rememberScrollSettled(list)
+    PrefetchFirstImages(list, rows, { it.key }) { row ->
+        when (row) {
+            // A set's second photo is a swipe away.
+            is FeedRow.Photo -> row.block.items.take(2)
+            is FeedRow.StoryPhoto -> listOf(row.item)
+            else -> emptyList()
+        }
+    }
     // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val canPlay = tab != HomeTab.EXPLORE && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
@@ -250,42 +261,44 @@ internal fun JournalHomeScreen(
                 actions.explore,
                 PaddingValues(top = insets.calculateTopPadding() + 118.dp, bottom = insets.calculateBottomPadding() + 150.dp),
             )
-        } else LazyColumn(
-            state = list,
-            contentPadding = PaddingValues(
-                top = insets.calculateTopPadding() + if (moments) 118.dp else 72.dp,
-                bottom = insets.calculateBottomPadding() + 150.dp,
-            ),
-        ) {
-            if (health == ServerHealth.REJECTED) {
-                item(key = "rejected") { RegisterAgainBanner(actions.registerAgain) }
-            }
-            when (library.access) {
-                PhotoAccess.NOT_DETERMINED, PhotoAccess.DENIED -> item(key = "no-access") { NoAccessCard(actions.allowAccess) }
-                PhotoAccess.LIMITED -> item(key = "limited") { LimitedBanner(library.itemCount, actions.changeSelection) }
-                PhotoAccess.FULL -> Unit
-            }
-            library.loadError?.let { error ->
-                item(key = "error") { Message(stringResource(R.string.library_load_error, error)) }
-            }
-            val canRead = library.access == PhotoAccess.FULL || library.access == PhotoAccess.LIMITED
-            when {
-                library.loading && library.days.isEmpty() -> item(key = "loading") {
-                    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LibraryColors.OnBackground)
-                    }
+        } else CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
+            LazyColumn(
+                state = list,
+                contentPadding = PaddingValues(
+                    top = insets.calculateTopPadding() + if (moments) 118.dp else 72.dp,
+                    bottom = insets.calculateBottomPadding() + 150.dp,
+                ),
+            ) {
+                if (health == ServerHealth.REJECTED) {
+                    item(key = "rejected") { RegisterAgainBanner(actions.registerAgain) }
                 }
-                canRead && library.days.isEmpty() && library.loadError == null ->
-                    item(key = "empty") { Message(stringResource(R.string.library_empty)) }
+                when (library.access) {
+                    PhotoAccess.NOT_DETERMINED, PhotoAccess.DENIED -> item(key = "no-access") { NoAccessCard(actions.allowAccess) }
+                    PhotoAccess.LIMITED -> item(key = "limited") { LimitedBanner(library.itemCount, actions.changeSelection) }
+                    PhotoAccess.FULL -> Unit
+                }
+                library.loadError?.let { error ->
+                    item(key = "error") { Message(stringResource(R.string.library_load_error, error)) }
+                }
+                val canRead = library.access == PhotoAccess.FULL || library.access == PhotoAccess.LIMITED
+                when {
+                    library.loading && library.days.isEmpty() -> item(key = "loading") {
+                        Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = LibraryColors.OnBackground)
+                        }
+                    }
+                    canRead && library.days.isEmpty() && library.loadError == null ->
+                        item(key = "empty") { Message(stringResource(R.string.library_empty)) }
+                }
+                if (storyline && stories.storyline.isEmpty() && library.days.isNotEmpty()) {
+                    item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
+                }
+                if (moments && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
+                    item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
+                }
+                // Last, so landing from the viewer can count them from the end.
+                feedItems(rows, feedActions, landing, video, stories.notes, selection)
             }
-            if (storyline && stories.storyline.isEmpty() && library.days.isNotEmpty()) {
-                item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
-            }
-            if (moments && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
-                item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
-            }
-            // Last, so landing from the viewer can count them from the end.
-            feedItems(rows, feedActions, landing, video, stories.notes, selection)
         }
 
         TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {

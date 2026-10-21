@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,27 +110,29 @@ internal fun TagScreen(
     val list = rememberLazyListState()
     val rows = remember(days) { dayGridRows(days) }
     list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        LazyColumn(
-            state = list,
-            contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
-        ) {
-            item(key = "count") {
-                val count = days.sumOf { it.items.size }
-                Text(
-                    pluralStringResource(R.plurals.library_story_items, count, count),
-                    color = LibraryColors.Muted,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-                )
+    CompositionLocalProvider(LocalScrollSettled provides rememberDayGridsLoading(list, days)) {
+        Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
+            LazyColumn(
+                state = list,
+                contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
+                verticalArrangement = Arrangement.spacedBy(TILE_GAP),
+            ) {
+                item(key = "count") {
+                    val count = days.sumOf { it.items.size }
+                    Text(
+                        pluralStringResource(R.plurals.library_story_items, count, count),
+                        color = LibraryColors.Muted,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                    )
+                }
+                if (days.isEmpty()) {
+                    item(key = "empty") { Note(stringResource(R.string.library_tag_empty)) }
+                }
+                dayGrids(days, onOpen = onOpenItem)
             }
-            if (days.isEmpty()) {
-                item(key = "empty") { Note(stringResource(R.string.library_tag_empty)) }
-            }
-            dayGrids(days, onOpen = onOpenItem)
+            TitleBar(tag, onBack, Modifier.align(Alignment.TopCenter))
         }
-        TitleBar(tag, onBack, Modifier.align(Alignment.TopCenter))
     }
 }
 

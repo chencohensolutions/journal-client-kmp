@@ -490,4 +490,10 @@
     <string name="explore_sheet_here">%1$,d here</string>
     <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
+    <string name="settings_advanced_title">Advanced</string>
+    <string name="settings_first_image">Quick image while scrolling</string>
+    <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>
+    <string name="settings_first_image_size">Width, of the screen\'s</string>
+    <string name="settings_first_image_off">None</string>
+    <string name="settings_first_image_percent">%1$d%%</string>
 </resources>

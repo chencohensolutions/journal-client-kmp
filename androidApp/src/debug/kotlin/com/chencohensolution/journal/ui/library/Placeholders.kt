@@ -27,7 +27,7 @@ private val tones = longArrayOf(
 )
 
 /** A flat landscape (sun and hill) in a color picked by the item's id, at the item's aspect ratio. */
-private val PlaceholderThumbnails = ThumbnailSource { item: MediaItem, _ ->
+internal val PlaceholderThumbnails =ThumbnailSource { item: MediaItem, _ ->
     val w = 320
     val h = if (item.width > 0 && item.height > 0) (w.toLong() * item.height / item.width).toInt().coerceIn(80, 960) else w
     val bitmap = ImageBitmap(w, h)

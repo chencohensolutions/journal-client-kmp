@@ -64,6 +64,9 @@ class ServerPreviews internal constructor(
     /** Whether photos are shown from previews (else from their originals, downloaded). */
     val usesPreviews: Boolean get() = options().enabled
 
+    /** How previews are chosen now (Settings): the first image's format and size among them. */
+    val currentOptions: PreviewOptions get() = options()
+
     /** How a platform turns what is kept into a picture: an original file, or encoded preview bytes. Null: it can't. */
     class Decoders<T : Any>(
         val original: suspend (path: String) -> T?,
@@ -116,16 +119,47 @@ class ServerPreviews internal constructor(
     }
 
     /**
-     * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it), in the format
-     * and quality of [options]: the one kept here, else made by the server now (unless not [fetch]). Offline (with
-     * [orLargest]), the largest preview of it kept here (the platform scales it); null when there is none. Encoded.
+     * What a photo shows first while a list moves fast, before its sharp preview: a preview fitted in [width] × [height]
+     * (a part of the size it is drawn at), at medium quality in [PreviewOptions.firstFormat] (HEIF by default, which
+     * most Android phones decode on their video chip). Kept beside the sharp one, under the same limit. Offline, or
+     * when the server can't make it, the smallest preview kept that is at least that large, in any format; null when
+     * there is none.
      */
-    suspend fun preview(sha256: String, width: Int, height: Int, contain: Boolean, fetch: Boolean = true, orLargest: Boolean = true): ByteArray? {
+    suspend fun firstImage(sha256: String, width: Int, height: Int): ByteArray? {
+        preview(sha256, width, height, contain = true, orLargest = false, format = options().firstFormat, quality = PreviewQuality.MEDIUM)
+            ?.let { return it }
+        val atLeast = maxOf(width, height)
+        val smallest = kept(sha256)
+            .mapNotNull { kept -> keptPreview(kept, 0, 0)?.let { kept to maxOf(it.width, it.height) } }
+            .filter { (_, longer) -> longer >= atLeast }
+            .minByOrNull { (_, longer) -> longer }
+            ?: return null
+        return withContext(Dispatchers.IO) { fileSystem.read(smallest.first.file.toPath()) { readByteArray() } }
+    }
+
+    /**
+     * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it), in the format
+     * and quality of [options] unless [format] or [quality] are given: the one kept here, else made by the server now
+     * (unless not [fetch]). Offline (with [orLargest]), the largest preview of it kept here (the platform scales it);
+     * null when there is none. Encoded.
+     */
+    suspend fun preview(
+        sha256: String,
+        width: Int,
+        height: Int,
+        contain: Boolean,
+        fetch: Boolean = true,
+        orLargest: Boolean = true,
+        format: PreviewFormat? = null,
+        quality: PreviewQuality? = null,
+    ): ByteArray? {
         if (width <= 0 || height <= 0) return null
         val w = width.coerceAtMost(MAX_SIDE)
         val h = height.coerceAtMost(MAX_SIDE)
         val fit = if (contain) "contain" else "cover"
-        val (_, format, quality) = options()
+        val chosen = options()
+        val format = format ?: chosen.format
+        val quality = quality ?: chosen.quality
         val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit-${quality.query}.${format.extension}"
         markOnce()
         withContext(Dispatchers.IO) { if (fileSystem.exists(path)) return@withContext fileSystem.read(path) { readByteArray() } else null }

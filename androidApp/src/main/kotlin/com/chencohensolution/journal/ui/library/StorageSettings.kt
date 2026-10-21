@@ -57,6 +57,8 @@ internal class StorageActions(
     val setPreviewsEnabled: (Boolean) -> Unit = {},
     val setPreviewFormat: (PreviewFormat) -> Unit = {},
     val setPreviewQuality: (PreviewQuality) -> Unit = {},
+    val setFirstImageFormat: (PreviewFormat) -> Unit = {},
+    val setFirstImageWidth: (Int) -> Unit = {},
     val setPreviewLimit: (Int) -> Unit = {},
     val clearPreviews: () -> Unit = {},
     val setRule: (FreeUpRule) -> Unit = {},
@@ -147,6 +149,51 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
                 Text(freeUpRowText(ui.freeUp), color = LibraryColors.Muted, fontSize = 13.sp)
             }
             Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/**
+ * Settings → Advanced: the first image of a photo only on the server, shown at once and while a list moves fast,
+ * before its sharp preview (docs/design.md): its format and its width in percent of the screen's, or none.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun AdvancedSection(ui: StorageUi, actions: StorageActions) {
+    val options = ui.previewOptions
+    SectionTitle(stringResource(R.string.settings_advanced_title))
+    SettingsCard {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
+            Text(stringResource(R.string.settings_first_image), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_first_image_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(
+                stringResource(R.string.settings_first_image_size),
+                color = LibraryColors.OnBackground,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PreviewOptions.FIRST_WIDTH_OPTIONS.forEach { percent ->
+                    val label = if (percent == 0) stringResource(R.string.settings_first_image_off) else stringResource(R.string.settings_first_image_percent, percent)
+                    Chip(label, options.firstWidthPercent == percent) { actions.setFirstImageWidth(percent) }
+                }
+            }
+            if (options.firstWidthPercent > 0) {
+                Text(
+                    stringResource(R.string.settings_storage_format),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewFormat.entries.forEach { format ->
+                        Chip(formatName(format), options.firstFormat == format) { actions.setFirstImageFormat(format) }
+                    }
+                }
+                Text(formatHint(options.firstFormat), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+            }
         }
     }
 }

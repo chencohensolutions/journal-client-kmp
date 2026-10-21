@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
 import com.chencohensolution.journal.backup.BackupProgress
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,12 +21,16 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +78,7 @@ private fun gridRows(day: DayGroup): List<GridRow> {
  * Every photo and video the sources setting shows, edge to edge, newest first. The backup pill still counts every
  * photo not backed up: hiding doesn't change what is backed up. See docs/screens/all-photos.md.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AllPhotosScreen(
     library: LibraryState,
@@ -89,69 +95,83 @@ internal fun AllPhotosScreen(
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val days = remember(library, stories.shownSources, filter) { stories.shownDays(library.days(filter)) }
-    val list = rememberLazyListState()
+    // Composes rows ahead in spare time between frames, as the feed does.
+    val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
     val rows = remember(days) { dayGridRows(days) }
     list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
 
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        LazyColumn(
-            state = list,
-            contentPadding = PaddingValues(
-                top = insets.calculateTopPadding() + 64.dp,
-                bottom = insets.calculateBottomPadding() + 150.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(TILE_GAP),
-        ) {
-            if (days.isEmpty() && !library.loading) {
-                item(key = "empty") {
-                    Text(
-                        stringResource(R.string.library_filter_empty),
-                        color = LibraryColors.Muted,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(24.dp),
-                    )
-                }
-            }
-            dayGrids(days, onOpen = onOpenItem)
-        }
-
-        Row(
-            Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .background(LibraryColors.TopFade)
-                .statusBarsPadding()
-                .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
-            }
-            Text(
-                stringResource(R.string.library_all_photos),
-                color = LibraryColors.OnBackground,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            if (health == ServerHealth.OFFLINE) OfflinePill()
-        }
-
-        BottomControls(
-            summary = backupSummary(library, backupRunning),
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
-        ) {
-            SegmentedBar(
-                options = listOf(
-                    LibraryFilter.ALL to stringResource(R.string.library_filter_all),
-                    LibraryFilter.NOT_BACKED_UP to stringResource(R.string.library_filter_not_backed_up),
-                    LibraryFilter.VIDEOS to stringResource(R.string.library_filter_videos),
+    CompositionLocalProvider(LocalScrollSettled provides rememberDayGridsLoading(list, days)) {
+        Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
+            LazyColumn(
+                state = list,
+                contentPadding = PaddingValues(
+                    top = insets.calculateTopPadding() + 64.dp,
+                    bottom = insets.calculateBottomPadding() + 150.dp,
                 ),
-                selected = filter,
-                onSelect = onFilter,
-            )
+                verticalArrangement = Arrangement.spacedBy(TILE_GAP),
+            ) {
+                if (days.isEmpty() && !library.loading) {
+                    item(key = "empty") {
+                        Text(
+                            stringResource(R.string.library_filter_empty),
+                            color = LibraryColors.Muted,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(24.dp),
+                        )
+                    }
+                }
+                dayGrids(days, onOpen = onOpenItem)
+            }
+
+            Row(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(LibraryColors.TopFade)
+                    .statusBarsPadding()
+                    .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
+                }
+                Text(
+                    stringResource(R.string.library_all_photos),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                if (health == ServerHealth.OFFLINE) OfflinePill()
+            }
+
+            BottomControls(
+                summary = backupSummary(library, backupRunning),
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            ) {
+                SegmentedBar(
+                    options = listOf(
+                        LibraryFilter.ALL to stringResource(R.string.library_filter_all),
+                        LibraryFilter.NOT_BACKED_UP to stringResource(R.string.library_filter_not_backed_up),
+                        LibraryFilter.VIDEOS to stringResource(R.string.library_filter_videos),
+                    ),
+                    selected = filter,
+                    onSelect = onFilter,
+                )
+            }
         }
     }
+}
+
+/**
+ * What [dayGrids] needs of the list it is in: its large tiles' first images loaded ahead of the scroll, and whether the
+ * list has slowed down enough for sharp images ([LocalScrollSettled]).
+ */
+@Composable
+internal fun rememberDayGridsLoading(list: LazyListState, days: List<DayGroup>): State<Boolean> {
+    val rows = remember(days) { days.flatMap(::gridRows) }
+    PrefetchFirstImages(list, rows, { it.key }) { row -> if (row is GridRow.Hero) listOf(row.large) else emptyList() }
+    return rememberScrollSettled(list)
 }
 
 /** The ids in each row of [dayGrids], in order. */
@@ -169,7 +189,7 @@ internal fun LazyListScope.dayGrids(
 ) {
     days.forEach { day ->
         val rows = gridRows(day)
-        items(rows, key = { it.key }) { row ->
+        items(rows, key = { it.key }, contentType = { it::class }) { row ->
             Box {
                 when (row) {
                     is GridRow.Hero -> HeroRow(row, onOpen)

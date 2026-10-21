@@ -178,6 +178,14 @@ class SettingsController internal constructor(
 
     fun setPreviewQuality(quality: PreviewQuality) = changePreviews { it.copy(quality = quality) }
 
+    /** The first image's format (Settings → Advanced). */
+    fun setFirstImageFormat(format: PreviewFormat) = changePreviews { it.copy(firstFormat = format) }
+
+    /** The first image's width in percent of the window's; 0 for none. Values outside 0..100 are ignored. */
+    fun setFirstImageWidth(percent: Int) {
+        if (percent in 0..100) changePreviews { it.copy(firstWidthPercent = percent) }
+    }
+
     private fun changePreviews(transform: (PreviewOptions) -> PreviewOptions) {
         val options = transform(_state.value.previewOptions)
         settings.previewOptions = options

@@ -510,4 +510,10 @@
     <string name="explore_sheet_here">%1$,d כאן</string>
     <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">לרוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן מופיעות במפה. ההסתרה משנה בעיקר את השנים ואת התמונות בדף של עיר.</string>
+    <string name="settings_advanced_title">מתקדם</string>
+    <string name="settings_first_image">תמונה מהירה בזמן גלילה</string>
+    <string name="settings_first_image_body">תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר.</string>
+    <string name="settings_first_image_size">רוחב, מתוך רוחב המסך</string>
+    <string name="settings_first_image_off">ללא</string>
+    <string name="settings_first_image_percent">%1$d%%</string>
 </resources>

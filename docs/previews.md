@@ -16,12 +16,12 @@ looks shows up as an image diff in review.
 
 - Screens take their data as parameters (`JournalHomeScreen(library, stories, health, actions)`), so a preview
   passes made-up state instead of the controllers' state.
-- [PreviewData.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/PreviewData.kt) holds that
+- [PreviewData.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/PreviewData.kt) holds that
   state: a library, notes (writing, tags) and the Moments feed, dated relative to today.
 - There is no photo library in a screenshot, so every preview is wrapped in `Screen { … }`
-  ([Placeholders.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/Placeholders.kt)),
+  ([Placeholders.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/Placeholders.kt)),
   which sets the app's themes and draws a colored placeholder for each photo. The app's only hook for this is
-  `LocalThumbnailSource` in [MediaTile.kt](../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MediaTile.kt):
+  `LocalThumbnailSource` in [Thumbnails.kt](../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/Thumbnails.kt):
   null in the app, where thumbnails come from MediaStore.
 - The previews are in `androidApp/src/screenshotTest/kotlin/`, one file per screen. Each function is marked
   `@PreviewTest` and has one `@Preview` per variant (light, dark, offline…). Google's Compose Preview Screenshot
@@ -33,6 +33,32 @@ looks shows up as an image diff in review.
 1. Add what the screen needs to `PreviewData`.
 2. Add `<Screen>Screenshots.kt` next to `JournalHomeScreenshots.kt`, with a `@PreviewTest` function per state.
 3. Run `./scripts/screenshots.sh` and look at the images.
+4. Add it to `labScreens` in the UI lab (below).
+
+## The UI lab: screens and suggestions (on the emulator)
+
+A library of the app's screens and of suggested designs for them, with the same made-up data, running on the
+emulator so they scroll, tap and animate. The first page lists the screens; each screen lists its options, the
+first being the screen as the app has it now, then the suggestions. UX suggestions are shown here.
+
+```bash
+./scripts/ui-lab.sh                    # build, install on the running emulator, open the list of screens
+./scripts/ui-lab.sh moments            # a screen's options
+./scripts/ui-lab.sh moments current    # one option (ids in LabScreens.kt)
+```
+
+The list is [LabScreens.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/LabScreens.kt).
+A suggestion is a composable in `<Screen>Suggestions.kt` beside it, added to its screen's list as a `LabOption`
+after `current`. When one is chosen, its code moves into the real screen in `src/main`, and it leaves the list.
+
+After the first build, a change to a screen is on the emulator in about 8 seconds. With Android Studio, run the
+"Journal UI lab" activity and turn on Live Edit: a saved change to a composable shows in about a second, without a
+rebuild (changes outside composables, such as new classes or resources, still need one).
+
+The lab is [UiLabActivity.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/UiLabActivity.kt)
+with its own [manifest](../androidApp/src/debug/AndroidManifest.xml), both in `src/debug`, as are `PreviewData` and
+`Placeholders`: release builds never compile them. It shows the real screens from `src/main`; taps that would
+reach a controller do nothing.
 
 Gradle needs a JDK (17 or newer). The script uses `JAVA_HOME`, else Homebrew's `openjdk@21`
 (`brew install openjdk@21`), else the JDK bundled with Android Studio.

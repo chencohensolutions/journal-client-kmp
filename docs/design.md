@@ -273,6 +273,11 @@ change feed, and 404. Not yet anywhere: note sync.
     background; iOS in the app, with `IosPhotoTrash` never deleting by itself and PhotoKit's deletion only in
     `PhotoRemoval.swift`, which PhotoSafetyTest allows).
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
+  Large photos load in two steps (owner, Oct 22, 2026): a quick image first (MediaStore's thumbnail, or for a photo
+  only on the server a "first image", a HEIF at medium quality and half the window's width, kept beside its sharp
+  preview and loaded ahead of the scroll), and the sharp one only once the list moves slower than about a screen a
+  second (`TwoStepPhoto`, `LocalScrollSettled`, `ServerPreviews.firstImage`). HEIF so phones decode it on their video
+  chip; the sharp preview stays in the format chosen in Settings.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
   original.

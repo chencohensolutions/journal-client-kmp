@@ -91,6 +91,34 @@ class ServerPreviewsTest {
     }
 
     @Test
+    fun theFirstImageIsAHeifKeptBesideTheSharpOneAndOfflineTheSmallestKeptThatIsLargeEnough() = runTest {
+        options = PreviewOptions(format = PreviewFormat.WEBP, quality = PreviewQuality.HIGH)
+        assertEquals("preview heif medium", previews.firstImage(sha, 540, 720)?.decodeToString())
+        assertEquals("w=540&h=720&fit=contain&fmt=heif&q=medium", requests.single().encodedQuery)
+        val dir = "/cache/previews/${sha.take(2)}/$sha".toPath()
+        assertTrue(fs.exists(dir / "540x720-contain-medium.heif"))
+        previews.firstImage(sha, 540, 720)
+        assertEquals(1, requests.size, "kept")
+
+        // Another format chosen in Settings → Advanced: asked for and kept as its own file.
+        options = options.copy(firstFormat = PreviewFormat.AVIF)
+        assertEquals("preview avif medium", previews.firstImage(sha, 540, 720)?.decodeToString())
+        assertTrue(fs.exists(dir / "540x720-contain-medium.avif"))
+
+        // Offline, another size: the smallest kept that is at least as large, never one smaller.
+        val other = "3".repeat(64)
+        val otherDir = "/cache/previews/33/$other".toPath()
+        fs.createDirectories(otherDir)
+        fs.write(otherDir / "1080x1440-contain-high.webp") { writeUtf8("sharp") }
+        fs.write(otherDir / "640x640-contain-high.webp") { writeUtf8("small") }
+        fs.write(otherDir / "320x320-contain-high.webp") { writeUtf8("too small") }
+        offline = true
+        assertEquals("small", previews.firstImage(other, 540, 540)?.decodeToString())
+        assertEquals("sharp", previews.firstImage(other, 540, 720)?.decodeToString())
+        assertNull(previews.firstImage(other, 2000, 2000))
+    }
+
+    @Test
     fun withPreviewsOffTheOriginalIsDownloadedOnceAndChecked() = runTest {
         options = PreviewOptions(enabled = false)
         assertEquals(false, previews.usesPreviews)

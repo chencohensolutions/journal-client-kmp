@@ -147,6 +147,7 @@ internal fun SettingsScreen(
             SimilarityCard(settings.similarity, actions)
             SectionTitle(stringResource(R.string.settings_private_title))
             PrivateMediaCard(settings.privateMedia, actions)
+            if (storage != null) AdvancedSection(storage, storageActions)
         }
         TitleBar(stringResource(R.string.library_settings), actions.back, Modifier.align(Alignment.TopCenter))
     }
