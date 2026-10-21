@@ -895,6 +895,16 @@
         }
       }
     },
+    "Any shape. This is how the photo shows in Moments." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל צורה. כך התמונה תופיע ברגעים."
+          }
+        }
+      }
+    },
     "Back" : {
       "localizations" : {
         "he" : {
@@ -1121,6 +1131,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "יצירת ״%@״"
+          }
+        }
+      }
+    },
+    "Crop" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיתוך"
+          }
+        }
+      }
+    },
+    "Cropped ·" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חתוכה ·"
           }
         }
       }
@@ -1566,6 +1596,16 @@
         }
       }
     },
+    "Landscape" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לרוחב"
+          }
+        }
+      }
+    },
     "Length" : {
       "localizations" : {
         "he" : {
@@ -1876,6 +1916,16 @@
         }
       }
     },
+    "Portrait" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לאורך"
+          }
+        }
+      }
+    },
     "Recent" : {
       "localizations" : {
         "he" : {
@@ -2022,6 +2072,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שינוי שם הסיפור"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס"
           }
         }
       }
@@ -2192,6 +2252,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Show all" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת הכול"
+          }
+        }
+      }
+    },
+    "Show crop" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת החיתוך"
           }
         }
       }
@@ -2382,6 +2462,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "המפתח שנוצר בניסיון הזה נמחק מהמכשיר."
+          }
+        }
+      }
+    },
+    "The photo itself isn't changed." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונה עצמה לא משתנה."
           }
         }
       }
@@ -2644,6 +2734,16 @@
         }
       }
     },
+    "Write" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתיבה"
+          }
+        }
+      }
+    },
     "Write about this moment…" : {
       "localizations" : {
         "he" : {
@@ -2730,6 +2830,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הרגעים שלך, יום אחרי יום"
+          }
+        }
+      }
+    },
+    "Your screen's shape, sideways. Shown when you view it with the phone turned." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בצורת המסך, לרוחב. מוצג כשמסתכלים עליה כשהטלפון שוכב."
+          }
+        }
+      }
+    },
+    "Your screen's shape. Shown when you view it with the phone upright." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בצורת המסך. מוצג כשמסתכלים עליה כשהטלפון עומד."
           }
         }
       }

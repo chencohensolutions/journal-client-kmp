@@ -17,7 +17,7 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 ## Layout
 
 - **Top bar:** back, the position ("4 of 29 · Yesterday"), and the **ⓘ** button.
-- **Bottom (Android):** **Write** (the note editor) and **Crop** (photos only; opens the [crop screen](crop.md) on
+- **Bottom:** **Write** (the note editor) and **Crop** (photos only; opens the [crop screen](crop.md) on
   Portrait or Landscape, as the phone is held). Hidden while the details panel is open.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top.
@@ -56,7 +56,8 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 ## Platform notes
 
 - **iOS** doesn't report file size cheaply, so it's not shown. The file name comes from PhotoKit when the panel
-  opens. Photos stored only in iCloud are downloaded when viewed.
+  opens. Photos stored only in iCloud are downloaded when viewed. A cropped photo is loaded large enough for its
+  crop to stay sharp (the screen size divided by the crop's), and the crop fills the whole screen, under the bars.
 - **Android emulator:** 4K HEVC videos from recent phones may show no first frame and fail to play, because the
   emulator's decoder can't handle them. Real devices can.
 

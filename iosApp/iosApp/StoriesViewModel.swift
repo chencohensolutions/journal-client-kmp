@@ -80,6 +80,9 @@ final class StoriesViewModel: ObservableObject {
 
     func setCaption(_ text: String, of itemId: String) { controller.setCaption(itemId: itemId, text: text) }
 
+    /// The photo's crops, for looking only (the photo isn't changed); empty crops remove them.
+    func setCrops(_ crops: PhotoCrops, of itemId: String) { controller.setCrops(itemId: itemId, crops: crops) }
+
     @discardableResult
     func addTag(_ tag: String, to itemIds: [String]) -> String? { controller.addTag(itemIds: itemIds, tag: tag) }
 

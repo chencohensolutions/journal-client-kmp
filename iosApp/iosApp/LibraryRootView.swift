@@ -16,6 +16,8 @@ struct LibraryRootView: View {
     @State private var viewer: ViewerRequest?
     /// The photo the viewer shows; the screen under it keeps that photo's tile in view to zoom back into.
     @State private var showing: ViewerShowing?
+    /// Set to open the crop screen over the journal, e.g. `crop = CropRequest(itemId: id, kind: .moments)`.
+    @State private var crop: CropRequest?
     /// Photos, story cards and group tiles mark themselves in it; the screens they open zoom out of them.
     @Namespace private var zoom
 
@@ -148,6 +150,7 @@ struct LibraryRootView: View {
                     }
                 }
                 .environment(\.zoomNamespace, zoom)
+                .cropCover($crop, stories: stories.state) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
@@ -181,6 +184,7 @@ struct LibraryRootView: View {
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
+                            setCrops: { itemId, crops in stories.setCrops(crops, of: itemId) },
                             showing: { itemId in
                                 showing = ViewerShowing(session: showing?.session ?? UUID(), itemId: itemId)
                             }
