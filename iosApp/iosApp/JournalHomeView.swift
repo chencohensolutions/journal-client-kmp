@@ -25,13 +25,15 @@ struct HomeActions {
     var openAllPhotos: () -> Void
     var openSettings: () -> Void
     var openTags: () -> Void
+    /// The Explore tab's towns, years and map.
+    var explore: ExploreActions
     var allowAccess: () -> Void
     var registerAgain: () -> Void
 }
 
 /// The home screen: in the Stories tab the journal's stories as a timeline, newest first, and in the Moments tab every
-/// photo as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
-/// docs/screens/journal-home.md and docs/screens/moments.md.
+/// photo as a feed that groups itself (by day or run of photos, then time, place, source and looks), and in the Explore
+/// tab every photo by place and year. See docs/screens/journal-home.md, moments.md and explore.md.
 struct JournalHomeView: View {
     let library: LibraryState
     let stories: StoriesState
@@ -40,8 +42,11 @@ struct JournalHomeView: View {
     let viewerOpen: Bool
     let actions: HomeActions
 
-    private enum Tab { case stories, moments }
+    private enum Tab { case stories, moments, explore }
     @State private var tab = Tab.stories
+    @State private var exploreView = ExploreView.places
+    /// The Explore tab's towns and years, worked out off the main thread while it shows.
+    @State private var explore: ExploreSummaries?
     /// The trip whose "Save as story" was tapped, and the title to start with.
     @State private var tripToSave: String?
     @State private var newTitle = ""
@@ -57,6 +62,7 @@ struct JournalHomeView: View {
 
     var body: some View {
         let moments = tab == .moments
+        let barUnderTitle = tab != .stories
         GeometryReader { geometry in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -79,7 +85,11 @@ struct JournalHomeView: View {
                     } else if canRead && library.days.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
                     }
-                    if moments {
+                    if tab == .explore {
+                        if let explore {
+                            ExploreRowsView(summaries: explore, view: exploreView, width: geometry.size.width, actions: actions.explore)
+                        }
+                    } else if moments {
                         if stories.feed.entries.isEmpty && !library.days.isEmpty {
                             Message(text: "Nothing to show. Turn on a source above.")
                         }
@@ -102,7 +112,7 @@ struct JournalHomeView: View {
                         }
                     }
                 }
-                .padding(.top, moments ? 118 : 72)
+                .padding(.top, barUnderTitle ? 118 : 72)
                 .padding(.bottom, 150)
                 // Swiping in the viewer keeps its photo in view here, and a set turns to it.
                 .followsViewer { id in tab == .moments ? rows.place(of: id) : nil }
@@ -112,6 +122,9 @@ struct JournalHomeView: View {
             .onChange(of: geometry.size) { playback.viewport = viewport(geometry) }
         }
         .onChange(of: stories.feed, initial: true) { rows = stories.feed.rows }
+        .task(id: tab == .explore ? ExploreInput(library, stories) : nil) {
+            if tab == .explore { explore = await ExploreSummaries.of(library, stories) }
+        }
         .onChange(of: canPlay, initial: true) { playback.enabled = canPlay }
         .onAppear { onScreen = true }
         .onDisappear { onScreen = false }
@@ -134,7 +147,7 @@ struct JournalHomeView: View {
             if !selection.isEmpty && tab == .moments {
                 FeedSelectionBar(count: selection.count, onCancel: { selection = [] }, onMerge: merge)
             } else {
-                SegmentedBar(options: [(Tab.stories, "Stories"), (Tab.moments, "Moments")], selection: tabBinding)
+                SegmentedBar(options: [(Tab.stories, "Stories"), (Tab.moments, "Moments"), (Tab.explore, "Explore")], selection: tabBinding)
             }
         }
     }
@@ -252,6 +265,8 @@ struct JournalHomeView: View {
             .padding(.trailing, 8)
             if tab == .moments {
                 FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource)
+            } else if tab == .explore {
+                ExploreBar(view: $exploreView, onMap: actions.explore.openMap)
             }
         }
         .padding(.bottom, 24)

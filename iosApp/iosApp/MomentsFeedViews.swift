@@ -19,6 +19,8 @@ struct FeedActions {
     var takeOutOfSet: (MediaItem) -> Void = { _ in }
     /// A swipe set (its photos, in order) was turned to a photo: it opens there next time.
     var turnSet: (_ itemIds: [String], _ itemId: String) -> Void = { _, _ in }
+    /// Off where a long press offers nothing (Explore's pages).
+    var menus = true
 }
 
 /// One item of the feed's lazy stack: a trip card, a row's divider, a moment's label, or one photo or near-duplicate
@@ -152,7 +154,7 @@ struct FeedRowsView: View {
     /// A photo's long-press menu; none while picking.
     @ViewBuilder
     private func menu(for item: MediaItem, block: FeedBlock) -> some View {
-        if selection.isEmpty {
+        if selection.isEmpty && actions.menus {
             Section("\(item.day.label) · \(item.takenAt.formatted(date: .omitted, time: .shortened))") {
                 let written = note(item.id)?.caption.isBlank == false
                 Button { actions.write(item) } label: {
