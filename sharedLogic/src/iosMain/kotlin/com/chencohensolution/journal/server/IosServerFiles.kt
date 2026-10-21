@@ -158,7 +158,7 @@ class IosServerFiles internal constructor(
         storage.usedBytes()
     }
 
-    /** "Clear": deletes previews and downloaded-to-show originals; [onDone] gets what is left. */
+    /** "Clear": deletes previews, downloaded-to-show originals and streamed videos; [onDone] gets what is left. */
     fun clear(onDone: (Long) -> Unit): ObservationHandle = run({ onDone(it ?: 0) }) {
         storage.clear()
         storage.usedBytes()

@@ -365,46 +365,27 @@ private struct ViewerAction: View {
     }
 }
 
-/// Shows the poster frame until Play is tapped; stops when swiped away. A video only on the server shows its poster
-/// and that it plays from the server later (streaming isn't built on iOS); its downloaded original plays.
+/// Shows the poster frame until Play is tapped; stops when swiped away. A video only on the server streams from its
+/// original, and what was fetched stays cached (`ServerVideos`); when it can't play, a line over the poster says why.
 private struct VideoPage: View {
     let item: MediaItem
     let isCurrent: Bool
 
     @State private var player: AVPlayer?
     @State private var poster: UIImage?
+    @State private var failure: String?
+    @State private var status: NSKeyValueObservation?
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 if let player {
                     VideoPlayer(player: player)
-                } else if !item.hasOriginalHere {
-                    if let poster {
-                        Image(uiImage: poster).resizable().scaledToFit()
-                    }
-                    Label("On your server. Playing it from there comes later; download the original to play it here.", systemImage: "icloud")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(LibraryColors.pillScrim, in: RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 24)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 96)
                 } else {
                     if let poster {
                         Image(uiImage: poster).resizable().scaledToFit()
                     }
-                    Button {
-                        Task {
-                            if let playerItem = await PhotoLibraryImages.shared.playerItem(item: item) {
-                                let player = AVPlayer(playerItem: playerItem)
-                                self.player = player
-                                player.play()
-                            }
-                        }
-                    } label: {
+                    Button(action: play) {
                         Image(systemName: "play.fill")
                             .font(.system(size: 30))
                             .foregroundStyle(.white)
@@ -413,21 +394,58 @@ private struct VideoPage: View {
                     }
                     .accessibilityLabel("Play video")
                 }
+                if let failure {
+                    Text(failure)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(LibraryColors.pillScrim, in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 24)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 96)
+                }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .task(id: item.id) {
                 // A video only on the server shows the poster already kept (a tile's), asking for no new size.
                 poster = item.hasOriginalHere
                     ? await PhotoLibraryImages.shared.image(item: item, pointSize: geometry.size)
-                    : await ServerImages.shared.cached(item)
-            }
+                    : await ServerImages.shared.cached(item)            }
         }
         .onChange(of: isCurrent) { _, current in
-            if !current {
-                player?.pause()
-                player = nil
-            }
+            if !current { stop() }
         }
+    }
+
+    private func play() {
+        failure = nil
+        Task {
+            guard let playerItem = await PhotoLibraryImages.shared.playerItem(item: item) else {
+                if !item.hasOriginalHere {
+                    failure = String(localized: "This video can only be played once the phone is registered with your server.")
+                }
+                return
+            }
+            // Offline, say: back to the poster, with Play to try again.
+            status = playerItem.observe(\.status, options: [.new]) { playerItem, _ in
+                guard playerItem.status == .failed else { return }
+                DispatchQueue.main.async {
+                    stop()
+                    failure = String(localized: "The video can’t be played right now. Is the server reachable?")
+                }
+            }
+            let player = AVPlayer(playerItem: playerItem)
+            self.player = player
+            player.play()
+        }
+    }
+
+    private func stop() {
+        status?.invalidate()
+        status = nil
+        player?.pause()
+        player = nil
     }
 }
 

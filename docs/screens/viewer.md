@@ -57,8 +57,14 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 - **Photos only on the server:** the best image already on the phone shows at once (the largest decoded in memory,
   else the largest preview kept), while the original downloads into the preview cache (at most 2560 px decoded) and
   fades in, with a small spinner meanwhile.
-- **Videos only on the server:** Android streams them. iOS shows the poster and "On your server. Playing it from
-  there comes later; download the original to play it here." (no streaming yet); a downloaded original plays.
+- **Videos only on the server:** the poster with Play, like any video; Play streams the original from the server
+  (`GET /media/{sha256}` with Range, seeking fetches from there), and what was fetched stays on the phone for next
+  time, under the Storage on this phone limit. Android: ExoPlayer through Media3's cache (`ServerVideos.kt`). iOS
+  (Oct 21, 2026): `AVPlayer` reads `journal-media://<sha256>` through a resource loader that answers from
+  `Caches/videos` and fetches what is missing with the device's certificate (`ServerVideos.swift`). Not registered:
+  "This video can only be played once the phone is registered with your server."; can't reach the server: "The
+  video can't be played right now. Is the server reachable?" over the poster, with Play to try again. The info
+  panel's Kept on this phone adds "Video · 12 MB of 25 MB cached".
 
 ## Platform notes
 

@@ -19,6 +19,8 @@ final class ServerImages: NSObject, ServerImageDecoding {
         super.init()
         cache.totalCostLimit = 256 << 20
         files.decoding = self
+        // Streamed videos count toward the same limit, and Settings' Clear.
+        ServerVideoCache.shared.attach()
     }
 
     /// `item` to cover `pixels` (a tile), from memory or as `IosServerFiles.tile` finds it.

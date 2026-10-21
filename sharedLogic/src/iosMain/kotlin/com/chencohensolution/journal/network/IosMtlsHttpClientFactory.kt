@@ -35,14 +35,10 @@ internal typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, 
 internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 
     override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient {
-        val identity = identityAlias?.let {
-            KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again")
-        }
-        val anchors: List<Any> = trustedCas.map(::secCertificateObject)
-
+        val challenges = MtlsChallenges(identityAlias, trustedCas)
         return HttpClient(Darwin) {
             engine {
-                handleChallenge { _, _, challenge, completion -> answerChallenge(challenge, identity, anchors, completion) }
+                handleChallenge { _, _, challenge, completion -> challenges.answer(challenge, completion) }
             }
             // No limits of its own: a request that needs longer than usual (verifying a large video) sets them.
             install(HttpTimeout)
@@ -51,50 +47,52 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 }
 
 /**
- * Answers a URLSession challenge: the server's certificate must chain to [anchors] (or the system roots), and the
- * client certificate is [identity] (a SecIdentity; none for enrollment). Also used by the background upload session.
+ * The answers to a URLSession's TLS challenges as [identity] (a SecIdentity; none: enrollment), trusting [anchors]
+ * besides the system roots. Shared by the Ktor client, the video player's URLSession (IosServerStream) and the
+ * background upload session ([answerChallenge]).
  */
-internal fun answerChallenge(challenge: NSURLAuthenticationChallenge, identity: Any?, anchors: List<Any>, completion: ChallengeCompletion) {
-    when (challenge.protectionSpace.authenticationMethod) {
-        NSURLAuthenticationMethodServerTrust -> evaluateServerTrust(challenge, anchors, completion)
-        NSURLAuthenticationMethodClientCertificate -> presentIdentity(identity, completion)
-        else -> completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
+internal class MtlsChallenges(private val identity: Any?, private val anchors: List<Any>) {
+    /** As the Keychain identity [identityAlias], trusting [trustedCas]. */
+    constructor(identityAlias: String?, trustedCas: List<ByteArray>) : this(
+        identityAlias?.let { KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again") },
+        trustedCas.map(::secCertificateObject),
+    )
+
+    fun answer(challenge: NSURLAuthenticationChallenge, completion: ChallengeCompletion) {
+        when (challenge.protectionSpace.authenticationMethod) {
+            NSURLAuthenticationMethodServerTrust -> serverTrust(challenge)
+                ?.let { completion(NSURLSessionAuthChallengeUseCredential, it) }
+                ?: completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
+            // No client certificate: the server accepts that for enrollment only.
+            NSURLAuthenticationMethodClientCertificate -> clientCertificate()
+                ?.let { completion(NSURLSessionAuthChallengeUseCredential, it) }
+                ?: completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
+            else -> completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
+        }
+    }
+
+    /** The server's certificate checked against the journal's CA (and the system roots); null: don't connect. */
+    fun serverTrust(challenge: NSURLAuthenticationChallenge): NSURLCredential? {
+        val trust = challenge.protectionSpace.serverTrust ?: return null
+        withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
+        // Keep trusting the system roots as well, like the Android client.
+        SecTrustSetAnchorCertificatesOnly(trust, false)
+        return if (SecTrustEvaluateWithError(trust, null)) NSURLCredential.credentialForTrust(trust) else null
+    }
+
+    /** This device's certificate; null without an identity. */
+    fun clientCertificate(): NSURLCredential? {
+        val identity = identity ?: return null
+        return withCFBridge(identity) { identityRef ->
+            NSURLCredential.credentialWithIdentity(
+                identity = identityRef!!.reinterpret(),
+                certificates = null,
+                persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
+            )
+        }
     }
 }
 
-private fun evaluateServerTrust(
-    challenge: NSURLAuthenticationChallenge,
-    anchors: List<Any>,
-    completion: ChallengeCompletion,
-) {
-    val trust = challenge.protectionSpace.serverTrust
-    if (trust == null) {
-        completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-        return
-    }
-    withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
-    // Keep trusting the system roots as well, like the Android client.
-    SecTrustSetAnchorCertificatesOnly(trust, false)
-
-    if (SecTrustEvaluateWithError(trust, null)) {
-        completion(NSURLSessionAuthChallengeUseCredential, NSURLCredential.credentialForTrust(trust))
-    } else {
-        completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-    }
-}
-
-private fun presentIdentity(identity: Any?, completion: ChallengeCompletion) {
-    if (identity == null) {
-        // No client certificate: the server accepts that for enrollment only.
-        completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
-        return
-    }
-    val credential = withCFBridge(identity) { identityRef ->
-        NSURLCredential.credentialWithIdentity(
-            identity = identityRef!!.reinterpret(),
-            certificates = null,
-            persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
-        )
-    }
-    completion(NSURLSessionAuthChallengeUseCredential, credential)
-}
+/** Answers [challenge] as [identity], trusting [anchors]: for the background upload session. */
+internal fun answerChallenge(challenge: NSURLAuthenticationChallenge, identity: Any?, anchors: List<Any>, completion: ChallengeCompletion) =
+    MtlsChallenges(identity, anchors).answer(challenge, completion)

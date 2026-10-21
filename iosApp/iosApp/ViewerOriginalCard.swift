@@ -102,7 +102,7 @@ struct OriginalCard: View {
             ? String(localized: "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, in its stories, from its preview.")
             : String(localized: "The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview.")
         guard item.isVideo else { return body }
-        return body + "\n\n" + String(localized: "A video only on your server doesn’t play in the app yet; it shows a frame of it. Download the original to play it again.")
+        return body + "\n\n" + String(localized: "It then plays from your server, streamed; what was played stays on this phone for next time.")
     }
 }
 
@@ -139,6 +139,13 @@ private struct ShownHereFacts: View {
                         }
                         if let original = here.originalBytes {
                             Text("Original · \(sizeText(original.int64Value))")
+                        }
+                        if let video = here.videoBytes.map({ fileSize($0.int64Value) }) {
+                            if let original = item.sizeBytes?.int64Value, original > 0 {
+                                Text("Video · \(video) of \(fileSize(original)) cached")
+                            } else {
+                                Text("Video · \(video) cached")
+                            }
                         }
                         Text("\(fileSize(here.totalBytes)) in all")
                             .font(.footnote)
