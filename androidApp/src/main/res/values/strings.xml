@@ -523,6 +523,11 @@
     <string name="explore_whole_year">Whole year</string>
     <string name="explore_finding_places">Finding where your photos were taken…</string>
     <string name="explore_no_places">None of these photos has a location.</string>
+    <string name="explore_unknown_country">Other places</string>
+    <plurals name="explore_country_places">
+        <item quantity="one">%d place</item>
+        <item quantity="other">%d places</item>
+    </plurals>
     <plurals name="map_photos_here">
         <item quantity="one">%d photo here</item>
         <item quantity="other">%d photos here</item>

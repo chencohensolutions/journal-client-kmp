@@ -7,7 +7,7 @@ import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.places.distanceMeters
 
 /*
- * The Explore tab: every photo by the town it was taken in, or by year, and on a map. Like the Moments tab it is
+ * The Explore tab: every photo by the country and town it was taken in, or by year, and on a map. Like the Moments tab it is
  * worked out again from the library and the places found so far; nothing is saved.
  */
 
@@ -17,6 +17,8 @@ data class PlaceSummary(
     val items: List<MediaItem>,
     /** The town the owner lives in (see [home]). */
     val home: Boolean,
+    /** The country most of its photos were taken in; null while none is known. */
+    val country: String? = null,
 ) {
     val cover: MediaItem get() = items.firstOrNull { it.type == MediaType.IMAGE } ?: items.first()
     val firstYear: Int get() = items.last().day.year
@@ -24,6 +26,17 @@ data class PlaceSummary(
 
     /** Its years with photos, newest first, and how many in each. */
     val years: List<Pair<Int, Int>> get() = items.groupingBy { it.day.year }.eachCount().toList().sortedByDescending { it.first }
+}
+
+/** A country and its towns, as [placesOf] orders them. */
+data class CountrySummary(
+    /** Null for the towns whose country isn't known. */
+    val country: String?,
+    val places: List<PlaceSummary>,
+    /** The country of the home town. */
+    val home: Boolean,
+) {
+    val photoCount: Int get() = places.sumOf { it.items.size }
 }
 
 /** A year's photos, newest first. */
@@ -91,9 +104,26 @@ fun placesOf(library: List<MediaItem>, places: Places): List<PlaceSummary> {
             places.location(item)?.takeIf { distanceMeters(it, point) <= HOME_TOWN_METERS }?.let(places::name)?.town
         }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
     }
-    return byTown.mapNotNull { (town, items) -> town?.let { PlaceSummary(it, items, it == homeTown) } }
+    return byTown.mapNotNull { (town, items) ->
+        town?.let {
+            val country = items.mapNotNull { item -> places.location(item)?.let(places::name)?.country }
+                .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+            PlaceSummary(it, items, it == homeTown, country)
+        }
+    }
         .sortedWith(compareByDescending<PlaceSummary> { it.home }.thenByDescending { it.items.size }.thenBy { it.town })
 }
+
+/**
+ * [places] by country: the home country first, then the others by number of photos, and the towns whose country
+ * isn't known last. Each keeps the towns in the order given.
+ */
+fun countriesOf(places: List<PlaceSummary>): List<CountrySummary> =
+    places.groupBy { it.country }.map { (country, towns) -> CountrySummary(country, towns, towns.any { it.home }) }
+        .sortedWith(
+            compareByDescending<CountrySummary> { it.home }.thenBy { it.country == null }
+                .thenByDescending { it.photoCount }.thenBy { it.country },
+        )
 
 /** Every year with photos among [library] (newest first), newest first. */
 fun yearsOf(library: List<MediaItem>, places: Places): List<YearSummary> =

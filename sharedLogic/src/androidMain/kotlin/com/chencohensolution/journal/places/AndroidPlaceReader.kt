@@ -64,7 +64,11 @@ internal class AndroidPlaceReader(context: Context) : PlaceReader {
             )
         } ?: return null
         val city = address.locality ?: address.subAdminArea ?: address.adminArea
-        return PlaceName(area = (address.subLocality ?: address.thoroughfare)?.takeIf { it != city }, city = city)
+        return PlaceName(
+            area = (address.subLocality ?: address.thoroughfare)?.takeIf { it != city },
+            city = city,
+            country = address.countryName,
+        )
     }
 }
 

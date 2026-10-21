@@ -15,6 +15,7 @@ import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.buildState
+import com.chencohensolution.journal.stories.countriesOf
 import com.chencohensolution.journal.stories.placesOf
 import com.chencohensolution.journal.stories.yearsOf
 import kotlin.test.Test
@@ -25,6 +26,10 @@ import kotlin.test.assertTrue
 private val TEL_AVIV = GeoPoint(32.0853, 34.7818)
 private val JAFFA = GeoPoint(32.0504, 34.7522)
 private val HAIFA = GeoPoint(32.7940, 34.9896)
+private val PARIS = GeoPoint(48.8566, 2.3522)
+private val LYON = GeoPoint(45.7640, 4.8357)
+private val ROME = GeoPoint(41.9028, 12.4964)
+private val NOWHERE_KNOWN = GeoPoint(10.0, 10.0)
 
 private val NAMED = Places(
     emptyMap(),
@@ -66,6 +71,33 @@ class ExploreTest {
     fun withoutEnoughPhotosNoTownIsHome() {
         val places = placesOf(library(shot("a", LocalDay(2026, 1, 1), JAFFA)), NAMED)
         assertEquals(listOf(false), places.map { it.home })
+    }
+
+    @Test
+    fun countriesHomeFirstThenByCountWithUnknownLast() {
+        // Home is in Israel, which has fewer photos than France; Italy has the fewest.
+        val home = (1..20).map { shot("t$it", LocalDay(2025, 3, it), TEL_AVIV) }
+        val paris = (1..15).map { shot("p$it", LocalDay(2024, 5, it), PARIS) }
+        val lyon = (1..10).map { shot("l$it", LocalDay(2024, 6, it), LYON) }
+        val rome = (1..2).map { shot("r$it", LocalDay(2023, 6, it), ROME) }
+        val unknown = shot("u", LocalDay(2022, 1, 1), NOWHERE_KNOWN)
+        val named = Places(
+            emptyMap(),
+            mapOf(
+                cellKey(TEL_AVIV) to PlaceName("Old North", "Tel Aviv", "Israel"),
+                cellKey(PARIS) to PlaceName("Le Marais", "Paris", "France"),
+                cellKey(LYON) to PlaceName(null, "Lyon", "France"),
+                cellKey(ROME) to PlaceName(null, "Rome", "Italy"),
+                cellKey(NOWHERE_KNOWN) to PlaceName(null, "Somewhere"),
+            ),
+        )
+        val countries = countriesOf(placesOf(library(*(home + paris + lyon + rome + unknown).toTypedArray()), named))
+
+        assertEquals(listOf("Israel", "France", "Italy", null), countries.map { it.country })
+        assertEquals(listOf(true, false, false, false), countries.map { it.home })
+        assertEquals(listOf("Paris", "Lyon"), countries[1].places.map { it.town })
+        assertEquals(25, countries[1].photoCount)
+        assertEquals(listOf("Somewhere"), countries.last().places.map { it.town })
     }
 
     @Test

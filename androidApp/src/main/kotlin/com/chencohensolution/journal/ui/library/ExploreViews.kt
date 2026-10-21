@@ -56,11 +56,13 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.stories.CountrySummary
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.PlaceSummary
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.YearSummary
+import com.chencohensolution.journal.stories.countriesOf
 import com.chencohensolution.journal.stories.placesOf
 import com.chencohensolution.journal.stories.yearsOf
 import java.time.Month
@@ -69,7 +71,7 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-// The Explore tab: every photo by town or by year, and the map (see Explore.kt in the shared logic and
+// The Explore tab: every photo by country and town or by year, and the map (see Explore.kt in the shared logic and
 // docs/screens/explore.md). A town's or a year's page shows its photos like the Moments tab.
 
 internal enum class ExploreView { PLACES, YEARS }
@@ -125,9 +127,9 @@ internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, 
     }
 }
 
-private class ExploreSummaries(val places: List<PlaceSummary>, val years: List<YearSummary>, val anyLocated: Boolean)
+private class ExploreSummaries(val countries: List<CountrySummary>, val years: List<YearSummary>, val anyLocated: Boolean)
 
-/** The Explore tab under its bar: the towns, home first, or the years, newest first. */
+/** The Explore tab under its bar: the towns by country, home first, or the years, newest first. */
 @Composable
 internal fun ExploreContent(
     library: LibraryState,
@@ -139,7 +141,7 @@ internal fun ExploreContent(
     val summaries by produceState<ExploreSummaries?>(null, library, stories.places, stories.feed.shown) {
         value = withContext(Dispatchers.Default) {
             val items = exploreItems(library, stories)
-            ExploreSummaries(placesOf(items, stories.places), yearsOf(items, stories.places), items.any { stories.places.location(it) != null })
+            ExploreSummaries(countriesOf(placesOf(items, stories.places)), yearsOf(items, stories.places), items.any { stories.places.location(it) != null })
         }
     }
     val loaded = summaries ?: return
@@ -163,15 +165,43 @@ private fun PlacesGrid(summaries: ExploreSummaries, actions: ExploreActions, con
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (summaries.places.isEmpty()) {
+        if (summaries.countries.isEmpty()) {
             item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
                 // Places are looked up in the background; until one is named there is nothing to list.
                 ExploreMessage(stringResource(if (summaries.anyLocated || summaries.years.isNotEmpty()) R.string.explore_finding_places else R.string.explore_no_places))
             }
         }
-        items(summaries.places, key = { it.town }, span = { GridItemSpan(if (it.home) maxLineSpan else 1) }) { place ->
-            if (place.home) HomeCard(place) { actions.openPlace(place.town) } else PlaceCard(place) { actions.openPlace(place.town) }
+        summaries.countries.forEach { country ->
+            item(key = "country:${country.country}", span = { GridItemSpan(maxLineSpan) }) { CountryHeader(country) }
+            items(country.places, key = { it.town }, span = { GridItemSpan(if (it.home) maxLineSpan else 1) }) { place ->
+                if (place.home) HomeCard(place) { actions.openPlace(place.town) } else PlaceCard(place) { actions.openPlace(place.town) }
+            }
         }
+    }
+}
+
+/** A country above its towns: "France", "3 places · 1,240 photos". */
+@Composable
+private fun CountryHeader(country: CountrySummary) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text(
+            country.country ?: stringResource(R.string.explore_unknown_country),
+            color = LibraryColors.OnBackground,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            stringResource(
+                R.string.feed_place_time,
+                pluralStringResource(R.plurals.explore_country_places, country.places.size, country.places.size),
+                pluralStringResource(R.plurals.library_story_items, country.photoCount, country.photoCount),
+            ),
+            color = LibraryColors.Muted,
+            fontSize = 13.sp,
+        )
     }
 }
 

@@ -30,7 +30,11 @@ internal class IosPlaceReader : PlaceReader {
             continuation.invokeOnCancellation { geocoder.cancelGeocode() }
         } ?: return null
         val city = placemark.locality ?: placemark.subAdministrativeArea ?: placemark.administrativeArea
-        return PlaceName(area = (placemark.subLocality ?: placemark.thoroughfare)?.takeIf { it != city }, city = city)
+        return PlaceName(
+            area = (placemark.subLocality ?: placemark.thoroughfare)?.takeIf { it != city },
+            city = city,
+            country = placemark.country,
+        )
     }
 
     private companion object {

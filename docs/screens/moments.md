@@ -96,4 +96,4 @@ cache can be deleted at any time.
   (`MediaMetadataRetriever`, the ISO 6709 location cameras write); until Oct 19, 2026 videos weren't read, so they
   took the place of the photos around them.
 - **iOS:** PhotoKit gives each photo's and video's location with the library; names come from `CLGeocoder`, about one a second.
-- Names are looked up once per ~500 m square.
+- Names are looked up once per ~500 m square: the area, the town and the country.

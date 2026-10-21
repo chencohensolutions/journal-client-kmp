@@ -1,14 +1,16 @@
 # Explore (places, years, map)
 
-The **Explore** tab of the [Journal](journal-home.md) (asked Oct 20, 2026): every photo by the **town** it was taken
+The **Explore** tab of the [Journal](journal-home.md) (asked Oct 20, 2026): every photo by the **country** and **town** it was taken
 in or by **year**, and on a **map**. Like [Moments](moments.md) nothing is saved for it: it is worked out again from
 the library and the places found so far, and it shows the same sources as the Moments filter bar. Android only.
 
 ## Layout
 
 - **Bar under the title:** **Places** / **Years** (filled when chosen), and **Map** at the right.
-- **Places:** the home town across the top, its photo with "HOME", the name and "4,812 photos · 2017 – 2026" written
-  over it; then the other towns two to a row, most photos first: a photo, the name and "312 · 2019 – 2026". Until a
+- **Places**, by country (asked Oct 21, 2026): the home country first, then the others by number of photos, and
+  "Other places" last for towns whose country isn't known. Each country has its name as a heading with "3 places ·
+  1,240 photos" under it, then its towns. The home town is across the top of its country, its photo with "HOME", the
+  name and "4,812 photos · 2017 – 2026" written over it; then the other towns two to a row, most photos first: a photo, the name and "312 · 2019 – 2026". Until a
   place is named it reads "Finding where your photos were taken…" ("None of these photos has a location." when none
   has one). Tapping a town opens its page.
 - **Years**, newest first: the year, its count, the towns most of it was taken in ("Tel Aviv · Jaffa · Haifa"), four
@@ -30,7 +32,9 @@ the library and the places found so far, and it shows the same sources as the Mo
 Shared logic in [Explore.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/Explore.kt)
 (tested in `ExploreTest`):
 
-- `placesOf` groups photos by their place's town (`PlaceName.town`, see [moments.md](moments.md#where-locations-come-from)).
+- `placesOf` groups photos by their place's town (`PlaceName.town`, see [moments.md](moments.md#where-locations-come-from));
+  a town's country is the one most of its photos were named with (`PlaceName.country`). `countriesOf` groups the towns
+  by country.
   The **home town** is the town most photos within 10 km of home were taken in, home being the one the Moments tab
   finds trips with (20 located photos or more). A town's photo is its newest photo (not a video).
 - `yearsOf`: per year its towns (most photos first, up to four) and four photos evenly spread across it.
@@ -38,7 +42,7 @@ Shared logic in [Explore.kt](../../sharedLogic/src/commonMain/kotlin/com/chencoh
 - `StoriesState.feedOf(items)` is the Moments feed of only those photos, with the same grouping, look-alike sets and
   hand-made sets, and no trips.
 - Places are looked up for the whole library in the background (unsorted photos first), so towns and pins fill in
-  while that runs. Countries aren't known: towns are the widest grouping.
+  while that runs. Names cached before countries were (cache version 1) are looked up again; photo locations are kept.
 
 ## The map's tiles
 

@@ -23,8 +23,11 @@ import kotlin.math.floor
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** What a place is called: [area] is the neighborhood or spot ("Jaffa"), [city] the town ("Tel Aviv-Yafo"). */
-data class PlaceName(val area: String?, val city: String?) {
+/**
+ * What a place is called: [area] is the neighborhood or spot ("Jaffa"), [city] the town ("Tel Aviv-Yafo"), [country]
+ * the country ("Israel"), in the phone's language.
+ */
+data class PlaceName(val area: String?, val city: String?, val country: String? = null) {
     /** The most precise name: for one moment. A geocoder sometimes gives only a house number ("79"): skipped. */
     val label: String? get() = area?.takeIf { name -> name.any { it.isLetter() } } ?: city
 
@@ -186,7 +189,7 @@ private const val EARTH_RADIUS_METERS = 6_371_000.0
 
 /**
  * `<dir>/places.json`: device photo id → [latitude, longitude], or [] for a photo without a location; and place
- * cell → name. A cache in the platform's caches folder, rebuilt when it's missing or damaged.
+ * cell → name (area, city and country). A cache in the platform's caches folder, rebuilt when it's missing or damaged.
  */
 internal class PlaceCache(private val fileSystem: FileSystem, private val dir: Path) {
     private val file = dir / "places.json"
@@ -195,12 +198,17 @@ internal class PlaceCache(private val fileSystem: FileSystem, private val dir: P
 
     fun load(): Contents = try {
         val saved = fileSystem.read(file) { json.decodeFromString<CacheFile>(readUtf8()) }
-        if (saved.v != VERSION) {
+        if (saved.v !in NAMES_WITHOUT_COUNTRY..VERSION) {
             empty()
         } else {
             Contents(
                 saved.photos.mapValues { (_, it) -> if (it.size == 2) GeoPoint(it[0], it[1]) else null }.toMutableMap(),
-                saved.names.mapValues { (_, it) -> PlaceName(it.a, it.c) }.toMutableMap(),
+                // Names saved before countries were are looked up again; the photos' locations are kept.
+                if (saved.v < VERSION) {
+                    mutableMapOf()
+                } else {
+                    saved.names.mapValues { (_, it) -> PlaceName(it.a, it.c, it.o) }.toMutableMap()
+                },
             )
         }
     } catch (e: Exception) {
@@ -212,7 +220,7 @@ internal class PlaceCache(private val fileSystem: FileSystem, private val dir: P
             val file = CacheFile(
                 VERSION,
                 contents.located.mapValues { (_, point) -> point?.let { listOf(it.latitude, it.longitude) }.orEmpty() },
-                contents.names.mapValues { (_, name) -> CachedName(name.area, name.city) },
+                contents.names.mapValues { (_, name) -> CachedName(name.area, name.city, name.country) },
             )
             fileSystem.createDirectories(dir)
             val temp = dir / "places.json.tmp"
@@ -229,10 +237,13 @@ internal class PlaceCache(private val fileSystem: FileSystem, private val dir: P
     private class CacheFile(val v: Int, val photos: Map<String, List<Double>>, val names: Map<String, CachedName> = emptyMap())
 
     @Serializable
-    private class CachedName(val a: String? = null, val c: String? = null)
+    private class CachedName(val a: String? = null, val c: String? = null, val o: String? = null)
 
     private companion object {
-        const val VERSION = 1
+        const val VERSION = 2
+
+        /** The version before names had a country. */
+        const val NAMES_WITHOUT_COUNTRY = 1
         val json = Json { ignoreUnknownKeys = true }
     }
 }
