@@ -123,7 +123,8 @@ disposable `.cache/` index rebuilt from the files.
 
 **Built (Android and iOS, logic shared in `sharedLogic`)**
 - Photo access screen, Journal timeline, All photos (2×2 hero per day, filters), viewer (photos, video, details).
-- Backup status model and badges (everything shows "Only on this device": uploads don't exist).
+- Backup to the server with its badges, the bottom pill and Settings → Backup (iOS since Oct 21, 2026; see "Upload
+  and sync").
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
 - Groups: burst suggestions (by time, and by looks: dHash + native embeddings), select-and-group with Undo, merging groups (with photos or each other), group page,
   set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
@@ -133,7 +134,7 @@ disposable `.cache/` index rebuilt from the files.
   platforms (iOS Oct 21, 2026).
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
 - Search pickers for stories and tags.
-- Screen docs in `docs/screens/`; shared tests (83 on the JVM host, 81 on the iOS simulator).
+- Screen docs in `docs/screens/`; shared tests (187 on the JVM host, 187 on the iOS simulator).
 
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the
@@ -146,9 +147,9 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150` before that).
 
 **Not built yet**
-- On iOS: backup and server-only photos (the library already reports what they need: file name, size, type,
-  modified date and source, cached in `Caches/library`, and changes through a PhotoKit observer). Everywhere: playing server-only videos, downloading an original, story/note
-  sync (Android backup and server-only photos are built, see below).
+- On iOS: server-only photos (and with them "On your server" in Settings → Backup), "Only on these Wi-Fi networks",
+  and Free up space. Everywhere: playing server-only videos, downloading an original, story/note sync (Android
+  server-only photos are built, see below).
 - Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
@@ -175,7 +176,8 @@ only files where both match the sha256 backup uploaded go to the phone's **trash
 "Media management" access (`MANAGE_MEDIA`), else with one system prompt at the end. No previews are kept for them on
 purpose: they are fetched as you scroll, like any server photo. See [screens/settings.md](screens/settings.md).
 Server-only videos stream from their original (HTTP Range, ExoPlayer) into `cache/videos`, keeping what was
-fetched, and their tiles show the poster frame the server makes. Not yet: iOS, story/note sync.
+fetched, and their tiles show the poster frame the server makes. **iOS backup** is built (see "iOS backup" below);
+not yet on iOS: server-only photos and Free up space. Not yet anywhere: story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -197,7 +199,33 @@ fetched, and their tiles show the poster frame the server makes. Not yet: iOS, s
   oldest first by default, newest first as an option.
 - In the background with the app closed: Android WorkManager with a foreground progress notification; iOS a
   background URLSession (stopped by iOS if the user force-quits the app), progress in the app. iOS users of this app
-  keep photos on the device (no iCloud Optimize Storage).
+  keep photos on the device (no iCloud Optimize Storage); a photo only in iCloud is downloaded before it is read.
+- **iOS backup (built Oct 21, 2026)**: the shared `BackupEngine`/`BackupController`/`UploadLedger` run unchanged;
+  only how a piece travels is the platform's (`PieceSender`: Android keeps its in-process Ktor `PUT`). iOS writes each
+  16 MB piece (the server's `chunkSize`) to `Caches/backup/pieces` and hands it to a background URLSession
+  (`BackgroundPieceSender`, session `com.chencohensolution.journal.backup`): the client certificate is answered from
+  the Keychain and the server's certificate checked against the journal CA, as in the app's own client; Wi-Fi only is
+  set on each request (no cellular, no expensive networks), so a piece waits for Wi-Fi. While the app runs, the run
+  waits for the piece's answer (status and `Upload-Offset`, read as on Android). Suspended or ended by the system, iOS
+  carries the piece on and relaunches the app in the background when it is answered
+  (`handleEventsForBackgroundURLSession`): the session reconnects, adopts pieces still on their way
+  (`InFlightPieces`: a piece asked for again while it is on its way is awaited, never sent twice), and the run starts
+  again from the server's offset (`startUpload`); the system's completion handler is called once the next piece is
+  with iOS (or after 15 s). The ledger is written only from server answers (a piece finished while nobody listened is
+  seen as the server's offset, or as `MediaExists`/`missingMedia` when it was the last). Files are read with
+  `PHAssetResourceManager.writeData` from the same resource the library reports (edit → full-size render, Live Photo
+  → photo, RAW+JPEG → JPEG) into `Caches/backup/files`, one file at a time, checked against the reported size (else
+  skipped and read again later) and removed when the run ends. Runs start when the app comes to the foreground, on
+  **Back up now** or turning backup on, 10 s after the library changes, when iOS relaunches the app for an answered
+  piece, and in `BGProcessingTask` (network required, external power with "Only while charging") and
+  `BGAppRefreshTask` runs that iOS schedules when it sees fit (not on the simulator). Before a run, "Only on Wi-Fi"
+  is checked with `NWPathMonitor` (not expensive) and "Only while charging" with the battery state; a change that
+  breaks them stops the run (a piece already with iOS still arrives). Limits: iOS spaces out background relaunches
+  (in a test, the next piece came about a minute after a relaunch, then waited for the app to open), so a large
+  library mostly uploads while the app is open or in background task windows; force-quitting the app stops uploads
+  until it is opened. Tested against a local server on the simulator: 409 photos and three 0.5–0.7 GB videos, with
+  the app killed mid-upload in the foreground and in the background: every piece arrived once and the files matched
+  their sha256.
 
 **Viewing without originals** (built on Android, except videos and originals)
 - The app's library is one list of device photos and server photos joined by sha256 (or by file name and size before

@@ -1,6 +1,14 @@
 package com.chencohensolution.journal
 
+import com.apollographql.apollo.ApolloClient
 import com.chencohensolution.journal.backup.BackupApi
+import com.chencohensolution.journal.backup.BackupServerException
+import com.chencohensolution.journal.backup.InFlightPieces
+import com.chencohensolution.journal.backup.PieceResponse
+import com.chencohensolution.journal.backup.PieceSender
+import com.chencohensolution.journal.backup.ServerBackupApi
+import com.chencohensolution.journal.backup.pieceResult
+import kotlinx.coroutines.async
 import com.chencohensolution.journal.backup.BackupEngine
 import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.BackupState
@@ -56,6 +64,15 @@ private class FakeServer : BackupApi {
     var dropAfterPieces = Int.MAX_VALUE
     private var pieces = 0
 
+    /**
+     * Stores this many pieces in total and then loses the answer to the next one, which it stores as well: a piece an
+     * iOS background session finished while the app was gone.
+     */
+    var answerLostAfterPieces = Int.MAX_VALUE
+
+    /** Every byte that arrived, also twice. */
+    var bytesReceived = 0L
+
     override suspend fun missing(hashes: List<String>) = hashes.filterNot { it in stored }.toSet()
 
     override suspend fun start(request: UploadRequest): StartResult {
@@ -74,6 +91,8 @@ private class FakeServer : BackupApi {
         if (start != received.size) return PieceResult.WrongOffset(received.size)
         if (++pieces > dropAfterPieces) throw okio.IOException("connection reset")
         received.write(bytes)
+        bytesReceived += bytes.size
+        if (pieces > answerLostAfterPieces) throw kotlinx.coroutines.CancellationException("the app was suspended")
         onSent(bytes.size.toLong())
         if (received.size < total) return PieceResult.Accepted(received.size, complete = false)
         val content = received.readByteArray()
@@ -240,5 +259,91 @@ class BackupTest {
         assertEquals(1, result.failed)
         assertEquals("time should be RFC3339Nano formatted string", ledger.entry("1")?.rejected)
         assertEquals(BackupStatus.Failed("time should be RFC3339Nano formatted string"), BackupState(entries = ledger.all()).status(refused))
+    }
+
+    @Test
+    fun aPieceFinishedInTheBackgroundIsNotSentAgain() = runTest {
+        val video = add(photo("1", takenAt = 1_000, size = 1_000_000), seed = 5)
+        val ledger = ledger()
+        server.answerLostAfterPieces = 2
+        assertFailsWith<kotlinx.coroutines.CancellationException> { BackupEngine(files, ledger, server).run(listOf(video), BackupSettings(enabled = true)) {} }
+        assertTrue(!ledger.isUploaded(video))
+
+        // Relaunched: startUpload says where the server is, past the piece whose answer never came.
+        server.answerLostAfterPieces = Int.MAX_VALUE
+        val result = BackupEngine(files, ledger, server).run(listOf(video), BackupSettings(enabled = true)) {}
+        assertEquals(1, result.uploaded)
+        assertEquals(1_000_000L, server.bytesReceived)
+        assertContentEquals(files.bytes["1"], server.stored[sha(files.bytes.getValue("1"))])
+        assertTrue(ledger.isUploaded(video))
+    }
+
+    @Test
+    fun aFileNotTheSizeTheLibrarySaidIsSkipped() = runTest {
+        val changed = photo("1", takenAt = 1_000, size = 500)
+        files.bytes["1"] = content(1, 400)
+        // Like iOS, which checks the size of the file it copied out of the library.
+        val checking = object : MediaFiles by files {
+            override fun open(item: MediaItem, offset: Long): Source =
+                if (files.bytes.getValue(item.id).size.toLong() != item.sizeBytes) throw okio.EOFException("changed") else files.open(item, offset)
+        }
+        val fine = add(photo("2", takenAt = 2_000, size = 500), seed = 2)
+        val result = BackupEngine(checking, ledger(), server).run(listOf(changed, fine), BackupSettings(enabled = true)) {}
+        assertEquals(1, result.failed)
+        assertEquals(1, result.uploaded)
+    }
+
+    @Test
+    fun piecesGoThroughThePlatformsSenderAndItsAnswerIsRead() = runTest {
+        val sent = mutableListOf<Pair<String, String>>()
+        var answer = PieceResponse(200, 16)
+        val sender = object : PieceSender {
+            override suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse {
+                sent += url to contentRange
+                onSent(bytes.size.toLong())
+                return answer
+            }
+        }
+        val api = ServerBackupApi(ApolloClient.Builder().serverUrl("https://journal.example:56398/query?x=1").build(), "https://journal.example:56398/query?x=1", sender)
+        assertEquals(PieceResult.Accepted(16, complete = false), api.put("/upload/abc", 0, ByteArray(16), 40))
+        assertEquals("https://journal.example:56398/upload/abc" to "bytes 0-15/40", sent.single())
+        answer = PieceResponse(201, 40)
+        assertEquals(PieceResult.Accepted(40, complete = true), api.put("/upload/abc", 16, ByteArray(24), 40))
+        assertEquals(PieceResult.WrongOffset(32), pieceResult(PieceResponse(416, 32), 15))
+        assertEquals(PieceResult.NoUpload, pieceResult(PieceResponse(404, null), 15))
+        assertEquals(PieceResult.HashMismatch, pieceResult(PieceResponse(409, null), 15))
+        assertTrue(assertFailsWith<BackupServerException> { pieceResult(PieceResponse(401, null), 15) }.unauthorized)
+        assertFailsWith<BackupServerException> { pieceResult(PieceResponse(500, null), 15) }
+    }
+
+    @Test
+    fun aPieceOnItsWayIsAwaitedNotSentTwice() = runTest {
+        val pieces = InFlightPieces()
+        var started = 0
+        val url = "https://journal.example/upload/abc"
+        // The run that sent it is cancelled; the piece goes on in the background.
+        val first = backgroundScope.async { pieces.send(url, "bytes 0-9/20", {}) { started++ } }
+        testScheduler.runCurrent()
+        first.cancel()
+        val progress = mutableListOf<Long>()
+        val again = async { pieces.send(url, "bytes 0-9/20", { progress += it }) { started++ } }
+        testScheduler.runCurrent()
+        pieces.progress(url, "bytes 0-9/20", 7)
+        pieces.finished(url, "bytes 0-9/20", PieceResponse(200, 10))
+        assertEquals(PieceResponse(200, 10), again.await())
+        assertEquals(1, started)
+        assertEquals(listOf(7L), progress)
+
+        // Found on its way after a relaunch: the same piece waits for it; the next one waits until it is answered.
+        pieces.adopt(url, "bytes 10-19/20")
+        val next = async { runCatching { pieces.send(url, "bytes 20-29/30", {}) { started++ } } }
+        testScheduler.runCurrent()
+        assertEquals(1, started)
+        pieces.finished(url, "bytes 10-19/20", PieceResponse(201, 20))
+        testScheduler.runCurrent()
+        assertEquals(2, started)
+        pieces.finished(url, "bytes 20-29/30", null, okio.IOException("offline"))
+        assertTrue(next.await().exceptionOrNull() is okio.IOException)
+        assertEquals(0, pieces.count)
     }
 }

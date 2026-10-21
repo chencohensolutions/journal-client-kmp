@@ -10,6 +10,16 @@
 	<string>Journal connects to your journal server on the local network.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Journal scans the enrollment QR code your server shows.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.chencohensolution.journal.backup.processing</string>
+		<string>com.chencohensolution.journal.backup.refresh</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -395,8 +395,8 @@ private struct InfoPanel: View {
                     }
                 }
                 HStack(spacing: 10) {
-                    BackupBadge(status: item.backup, size: 22)
-                    Text(item.backup.label).font(.subheadline.weight(.semibold))
+                    BackupBadge(status: item.backup, size: 22, originalHere: item.hasOriginalHere)
+                    Text(item.originalLabel).font(.subheadline.weight(.semibold))
                     Spacer()
                     if let uploading = item.backup as? BackupStatusUploading {
                         Text("\(Int(uploading.progress * 100))%")

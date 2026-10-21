@@ -5,7 +5,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 ## Layout
 
 - **Top bar:** back and "Settings".
-- **Backup** (Android; iOS later):
+- **Backup** (Android; iOS since Oct 21, 2026, without "On your server", which waits for server photos on iOS, and
+  without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
+  entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
+  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):
   - **Back up to your server** switch (off until turned on), and a status line: "Off. Nothing is uploaded.",
     "Backing up 3 of 120", "12 photos waiting to upload", "Everything chosen is backed up", "Waiting: …" (Wi-Fi network
     not on the list, location needed to check it, register again, photo access), or "Stopped: … It tries again
@@ -74,7 +77,14 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   with a Stop action) and in the bottom pill of the Journal and All photos ("Backing up 3 of 120", else "N not backed
   up", counting only the chosen sources while backup is on). Each photo's badge follows (waiting, uploading, backed up,
   failed). Turning backup on asks for notification permission.
-- What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (sha256 per photo), so a photo is
+- On iOS each piece goes through a background URLSession, which carries it on while the app is suspended and
+  relaunches the app when it is answered; runs start when the app opens, on **Back up now**, 10 s after the library
+  changes, on those relaunches, and in background tasks iOS schedules (BGProcessingTask, BGAppRefreshTask). Wi-Fi only
+  is checked before a run (`NWPathMonitor`) and set on every piece; charging only is checked with the battery state
+  and asked of the processing task. Progress shows in the bottom pill of the Journal and All photos ("Backing up 3 of
+  120 · 42% · 5.1 MB/s") and in this section; there is no notification. See [design.md](../design.md), "iOS backup".
+- What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (iOS: Application Support
+  `backup/ledger.jsonl`) (sha256 per photo), so a photo is
   read once and never sent twice; the server also deduplicates. An edit saved in place uploads as a new version
   (`versionOf`). Uploads resume where they stopped. See [design.md](../design.md) "Upload and sync".
 
@@ -115,4 +125,4 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   only in [PhotoRemoval.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhotoRemoval.kt)
   (`AndroidPhotoTrash`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
-- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift).
+- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift); backup in [BackupViewModel.swift](../../iosApp/iosApp/BackupViewModel.swift) and [BackupService.swift](../../iosApp/iosApp/BackupService.swift) (when runs start), with `IosMediaFiles` and `BackgroundPieceSender` in [iosMain/backup/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/backup/BackgroundPieceSender.kt).

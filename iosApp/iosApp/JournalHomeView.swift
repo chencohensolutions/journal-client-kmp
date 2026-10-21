@@ -38,6 +38,8 @@ struct JournalHomeView: View {
     let health: ServerHealth
     /// Videos of the feed stop while the viewer is over it.
     let viewerOpen: Bool
+    /// The backup run, for the bottom pill.
+    let backupRunning: BackupProgress?
     let actions: HomeActions
 
     private enum Tab { case stories, moments }
@@ -130,7 +132,7 @@ struct JournalHomeView: View {
     }
 
     private var bottomControls: some View {
-        BottomControls(notBackedUp: selection.isEmpty ? Int(library.notBackedUpCount) : 0) {
+        BottomControls(summary: selection.isEmpty ? backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount)) : nil) {
             if !selection.isEmpty && tab == .moments {
                 FeedSelectionBar(count: selection.count, onCancel: { selection = [] }, onMerge: merge)
             } else {

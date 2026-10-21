@@ -10,8 +10,8 @@ final class LibraryViewModel: ObservableObject {
     let controller: LibraryController
     private var observation: ObservationHandle?
 
-    init() {
-        controller = IosJournal.shared.createLibraryController()
+    init(backup: BackupViewModel) {
+        controller = IosJournal.shared.createLibraryController(backup: backup.controller)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in

@@ -7,6 +7,16 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ מתוך %@"
+          }
+        }
+      }
+    },
     "%@ video" : {
       "localizations" : {
         "he" : {
@@ -187,6 +197,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "%@/s" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@/שנ׳"
           }
         }
       }
@@ -543,6 +563,52 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld photos of this story aren't on this device."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos waiting to upload" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo waiting to upload"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos waiting to upload"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת ממתינה להעלאה"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות ממתינות להעלאה"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות ממתינות להעלאה"
                 }
               }
             }
@@ -910,6 +976,26 @@
         }
       }
     },
+    "Back up now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גיבוי עכשיו"
+          }
+        }
+      }
+    },
+    "Back up to your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גיבוי לשרת שלך"
+          }
+        }
+      }
+    },
     "Backed up" : {
       "localizations" : {
         "he" : {
@@ -926,6 +1012,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מגובה בשרת שלך"
+          }
+        }
+      }
+    },
+    "Backing up %lld of %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגבה %lld מתוך %lld"
+          }
+        }
+      }
+    },
+    "Backup" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גיבוי"
           }
         }
       }
@@ -1260,6 +1366,16 @@
         }
       }
     },
+    "Downloaded to this phone, and on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורד לטלפון הזה, ונמצא בשרת שלך"
+          }
+        }
+      }
+    },
     "EC P-256 · non-exportable" : {
       "localizations" : {
         "he" : {
@@ -1346,6 +1462,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל הקבוצות בסיפור יוסרו והתמונות שלהן יחזרו לסיפור. הטקסט של הקבוצות יעבור לטקסט של הסיפור. ההצעות יתחילו מחדש, כולל כאלה שעניתם עליהן \"לא עכשיו\"."
+          }
+        }
+      }
+    },
+    "Everything chosen is backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל מה שנבחר מגובה"
           }
         }
       }
@@ -1711,6 +1837,16 @@
         }
       }
     },
+    "Never on mobile data." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף פעם לא בחבילת גלישה."
+          }
+        }
+      }
+    },
     "New row after a break of" : {
       "localizations" : {
         "he" : {
@@ -1737,6 +1873,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סיפור חדש עם התמונה הזו"
+          }
+        }
+      }
+    },
+    "Newest first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החדשות קודם"
           }
         }
       }
@@ -1881,6 +2027,16 @@
         }
       }
     },
+    "Off. Nothing is uploaded." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבוי. שום דבר לא מועלה."
+          }
+        }
+      }
+    },
     "Offline" : {
       "localizations" : {
         "he" : {
@@ -1891,12 +2047,32 @@
         }
       }
     },
+    "Oldest first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הישנות קודם"
+          }
+        }
+      }
+    },
     "On these days" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "באותם ימים"
+          }
+        }
+      }
+    },
+    "On this phone and on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בטלפון הזה ובשרת שלך"
           }
         }
       }
@@ -1921,6 +2097,16 @@
         }
       }
     },
+    "Only on Wi-Fi" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק ב-Wi-Fi"
+          }
+        }
+      }
+    },
     "Only on this device" : {
       "localizations" : {
         "he" : {
@@ -1931,12 +2117,42 @@
         }
       }
     },
+    "Only on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק בשרת שלך"
+          }
+        }
+      }
+    },
+    "Only while charging" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק בזמן טעינה"
+          }
+        }
+      }
+    },
     "Open journal" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "פתיחת היומן"
+          }
+        }
+      }
+    },
+    "Order" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סדר"
           }
         }
       }
@@ -1967,6 +2183,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תמונות וסרטונים, מסודרים כמו ביומן."
+          }
+        }
+      }
+    },
+    "Photos keep uploading in the background. Swiping the app away stops it until you open it again." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונות ממשיכות לעלות ברקע. סגירת האפליקציה בהחלקה עוצרת את הגיבוי עד שפותחים אותה שוב."
           }
         }
       }
@@ -2451,12 +2677,32 @@
         }
       }
     },
+    "Starts with your earliest photos." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתחיל מהתמונות המוקדמות ביותר."
+          }
+        }
+      }
+    },
     "Step %lld of 3 · %@" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "שלב %1$lld מתוך 3 · %2$@"
+          }
+        }
+      }
+    },
+    "Stopped: %@. It tries again later." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נעצר: %@. ננסה שוב מאוחר יותר."
           }
         }
       }
@@ -2889,12 +3135,72 @@
         }
       }
     },
+    "Waiting: allow access to photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין: יש לאפשר גישה לתמונות"
+          }
+        }
+      }
+    },
+    "Waiting: allow location so the Wi-Fi network can be checked" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין: יש לאפשר מיקום כדי לבדוק את רשת ה-Wi-Fi"
+          }
+        }
+      }
+    },
+    "Waiting: register this device again" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין: יש לרשום את המכשיר מחדש"
+          }
+        }
+      }
+    },
+    "Waiting: this Wi-Fi network isn’t on the list" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין: רשת ה-Wi-Fi הזו לא ברשימה"
+          }
+        }
+      }
+    },
+    "What to back up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה לגבות"
+          }
+        }
+      }
+    },
     "WhatsApp" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "וואטסאפ"
+          }
+        }
+      }
+    },
+    "When" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתי"
           }
         }
       }
@@ -2995,6 +3301,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "היומן שלך מתחיל בתמונות ובסרטונים שלך"
+          }
+        }
+      }
+    },
+    "Your latest photos are safe soonest." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונות האחרונות מגובות ראשונות."
           }
         }
       }

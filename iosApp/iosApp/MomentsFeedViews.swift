@@ -230,7 +230,7 @@ struct FeedPhoto: View {
             if playing && !failed {
                 MuteButton(muted: playback.muted, onToggle: playback.toggleMute).padding(4)
             } else {
-                BackupBadge(status: item.backup, size: 26).padding(10)
+                BackupBadge(status: item.backup, size: 26, originalHere: item.hasOriginalHere).padding(10)
             }
         }
         .overlay(alignment: .bottomLeading) {

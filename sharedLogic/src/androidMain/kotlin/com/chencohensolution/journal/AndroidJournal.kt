@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import com.chencohensolution.journal.backup.AndroidMediaFiles
 import com.chencohensolution.journal.backup.BackupController
-import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.AndroidDeviceKeyStore
@@ -193,12 +192,6 @@ fun freeUpController(context: Context, backup: BackupController, start: () -> Un
         onLedgerChanged = backup::ledgerChanged,
         onStart = start,
     ).also { freeUpController = it }
-
-/** The app's background scheduling of backup runs (WorkManager). */
-interface BackupScheduler {
-    fun settingsChanged(settings: BackupSettings)
-    fun backUpNow(settings: BackupSettings)
-}
 
 /** The user's choices on the Settings screen. */
 fun createSettingsController(context: Context): SettingsController =

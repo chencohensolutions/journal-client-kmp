@@ -8,7 +8,8 @@ final class JournalViewModel: ObservableObject {
     /// The device registration wizard; a successful enrollment switches this controller's identity.
     let enrollment: EnrollmentViewModel
 
-    /// The device photo library, and the stories built on it.
+    /// Backup to the server, the device photo library (with each photo's backup status), and the stories built on it.
+    let backup: BackupViewModel
     let library: LibraryViewModel
     let stories: StoriesViewModel
     let settings: SettingsViewModel
@@ -19,7 +20,8 @@ final class JournalViewModel: ObservableObject {
     init() {
         controller = IosJournal.shared.createController()
         enrollment = EnrollmentViewModel(journal: controller)
-        library = LibraryViewModel()
+        backup = BackupViewModel()
+        library = LibraryViewModel(backup: backup)
         settings = SettingsViewModel()
         stories = StoriesViewModel(library: library, settings: settings)
         state = controller.currentState

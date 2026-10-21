@@ -24,7 +24,7 @@ struct MediaTileView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                BackupBadge(status: item.backup, size: badgeSize).padding(5)
+                BackupBadge(status: item.backup, size: badgeSize, originalHere: item.hasOriginalHere).padding(5)
             }
             .task(id: item.id) {
                 // Zoomed in, the tile shows a part of a larger image.
@@ -85,13 +85,17 @@ struct DurationChip: View {
 struct BackupBadge: View {
     let status: BackupStatus
     let size: CGFloat
+    /// False for a photo only on the server: backed up, it has no badge.
+    var originalHere = true
 
     var body: some View {
-        ZStack {
-            Circle().fill(background)
-            symbol
+        if !(status.isBackedUp && !originalHere) {
+            ZStack {
+                Circle().fill(background)
+                symbol
+            }
+            .frame(width: size, height: size)
         }
-        .frame(width: size, height: size)
     }
 
     private var background: Color {
@@ -120,7 +124,8 @@ struct BackupBadge: View {
             }
             .frame(width: inner, height: inner)
         case is BackupStatusBackedUp:
-            Image(systemName: "checkmark").font(.system(size: inner * 0.75, weight: .bold)).foregroundStyle(.white)
+            // On this phone, and on the server.
+            Image(systemName: "iphone").font(.system(size: inner * 0.8, weight: .semibold)).foregroundStyle(.white)
         case is BackupStatusFailed:
             Text("!").font(.system(size: inner, weight: .bold)).foregroundStyle(.white)
         default:
