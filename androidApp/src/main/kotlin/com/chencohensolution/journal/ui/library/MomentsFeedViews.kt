@@ -111,7 +111,13 @@ internal sealed interface FeedRow {
      * [showPlace]: a camera moment whose place differs from the camera moment above it in its row. [count]: its photos;
      * [start] and [end]: its times as [timeLabel] writes them.
      */
-    data class Label(val moment: FeedMoment, val showPlace: Boolean, val count: Int, val start: String, val end: String) : FeedRow {
+    data class Label(
+        val moment: FeedMoment,
+        val showPlace: Boolean,
+        val count: Int,
+        val start: String,
+        val end: String
+    ) : FeedRow {
         override val key get() = "label-${moment.key}"
     }
 
@@ -120,7 +126,8 @@ internal sealed interface FeedRow {
     }
 
     /** A band of a hidden source's photos shown on a row: its heading, rows of three, and its links. */
-    data class BandTop(val section: FeedSection, val band: RevealedPhotos, val start: String, val end: String) : FeedRow {
+    data class BandTop(val section: FeedSection, val band: RevealedPhotos, val start: String, val end: String) :
+        FeedRow {
         override val key get() = "band-${section.key}-${band.source}"
     }
 
@@ -168,17 +175,27 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
         is FeedEntry.Section -> {
             var place: String? = null
             val section = entry.section
-            val heading = FeedRow.Heading(section, section.moments.sumOf { it.count() }, section.places.take(MAX_TOWNS).joinToString(" → "))
+            val heading = FeedRow.Heading(
+                section,
+                section.moments.sumOf { it.count() },
+                section.places.take(MAX_TOWNS).joinToString(" → ")
+            )
             listOf(heading) + section.moments.flatMap { moment ->
                 val camera = moment.source == MediaSource.CAMERA
                 val showPlace = camera && moment.place != null && moment.place != place
                 if (camera) place = moment.place
-                val label = FeedRow.Label(moment, showPlace, moment.count(), timeLabel(moment.startMillis), timeLabel(moment.endMillis))
+                val label = FeedRow.Label(
+                    moment,
+                    showPlace,
+                    moment.count(),
+                    timeLabel(moment.startMillis),
+                    timeLabel(moment.endMillis)
+                )
                 listOf(label) + moment.shownBlocks.map { FeedRow.Photo(section, it) }
             } + section.revealed.flatMap { band ->
                 listOf(FeedRow.BandTop(section, band, timeLabel(band.startMillis), timeLabel(band.endMillis))) +
-                    band.items.chunked(BAND_COLUMNS).map { FeedRow.BandPhotos(entry.section, band, it) } +
-                    FeedRow.BandEnd(section, band)
+                        band.items.chunked(BAND_COLUMNS).map { FeedRow.BandPhotos(entry.section, band, it) } +
+                        FeedRow.BandEnd(section, band)
             }
         }
     }
@@ -200,7 +217,7 @@ private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single)
 /** The item of [rows] that shows [itemId], or -1: for landing from the viewer. */
 internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row ->
     (row is FeedRow.Photo && row.block.items.any { it.id == itemId }) || (row is FeedRow.BandPhotos && row.items.any { it.id == itemId }) ||
-        (row is FeedRow.StoryPhoto && row.item.id == itemId)
+            (row is FeedRow.StoryPhoto && row.item.id == itemId)
 }
 
 /**
@@ -230,10 +247,13 @@ internal fun LazyListScope.feedItems(
                     row.item,
                     video,
                     note?.crops?.moments,
-                    Modifier.combinedClickable(onLongClick = { actions.itemMenu(row.item) }, onClick = { actions.openStoryline(row.item) }),
+                    Modifier.combinedClickable(
+                        onLongClick = { actions.itemMenu(row.item) },
+                        onClick = { actions.openStoryline(row.item) }),
                 )
                 PhotoNoteText(note?.caption)
             }
+
             is FeedRow.Label -> MomentLabel(row)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
@@ -244,14 +264,27 @@ internal fun LazyListScope.feedItems(
                             video,
                             notes[block.item.id]?.crops?.moments,
                             Modifier.combinedClickable(
-                                onLongClick = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(block.item) },
-                                onClick = { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, block.item) },
+                                onLongClick = {
+                                    if (selection.active) selection.toggle(block.key) else actions.itemMenu(
+                                        block.item
+                                    )
+                                },
+                                onClick = {
+                                    if (selection.active) selection.toggle(block.key) else actions.openItem(
+                                        row.section,
+                                        block.item
+                                    )
+                                },
                             ),
                         )
-                        if (selection.active) SelectMark(block.key in selection.keys, Modifier.align(Alignment.TopStart).padding(10.dp))
+                        if (selection.active) SelectMark(
+                            block.key in selection.keys,
+                            Modifier.align(Alignment.TopStart).padding(10.dp)
+                        )
                     }
                     PhotoNoteText(notes[block.item.id]?.caption)
                 }
+
                 is FeedBlock.Similar -> SimilarPhotos(
                     block,
                     landing,
@@ -306,7 +339,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
         ) {
             Text(
                 (heading.towns.ifEmpty { null }?.let { "$it · " }.orEmpty()) +
-                    pluralStringResource(R.plurals.library_story_items, count, count),
+                        pluralStringResource(R.plurals.library_story_items, count, count),
                 color = LibraryColors.Muted,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
@@ -315,8 +348,18 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
             )
             MediaSource.entries.forEach { source ->
                 when {
-                    source in shownHere -> HiddenChip(stringResource(R.string.feed_hide_source, sourceName(source)), on = true) { actions.hideOnRow(section, source) }
-                    source in section.hidden -> HiddenChip(stringResource(R.string.feed_hidden_chip, section.hidden.getValue(source), sourceName(source)), on = false) {
+                    source in shownHere -> HiddenChip(
+                        stringResource(R.string.feed_hide_source, sourceName(source)),
+                        on = true
+                    ) { actions.hideOnRow(section, source) }
+
+                    source in section.hidden -> HiddenChip(
+                        stringResource(
+                            R.string.feed_hidden_chip,
+                            section.hidden.getValue(source),
+                            sourceName(source)
+                        ), on = false
+                    ) {
                         actions.showOnRow(section, source)
                     }
                 }
@@ -351,7 +394,12 @@ private fun HiddenChip(label: String, on: Boolean, onClick: () -> Unit) {
 /** The band's background, a little lighter than the page, with round corners at its [top] and [bottom]. */
 private fun Modifier.band(color: Color, top: Boolean = false, bottom: Boolean = false): Modifier {
     val r = 16.dp
-    val shape = RoundedCornerShape(topStart = if (top) r else 0.dp, topEnd = if (top) r else 0.dp, bottomStart = if (bottom) r else 0.dp, bottomEnd = if (bottom) r else 0.dp)
+    val shape = RoundedCornerShape(
+        topStart = if (top) r else 0.dp,
+        topEnd = if (top) r else 0.dp,
+        bottomStart = if (bottom) r else 0.dp,
+        bottomEnd = if (bottom) r else 0.dp
+    )
     return padding(horizontal = 12.dp).fillMaxWidth().background(color, shape)
 }
 
@@ -360,7 +408,8 @@ private fun Modifier.band(color: Color, top: Boolean = false, bottom: Boolean = 
 private fun BandTop(top: FeedRow.BandTop) {
     val band = top.band
     Row(
-        Modifier.padding(top = 18.dp).band(LibraryColors.Raised, top = true).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
+        Modifier.padding(top = 18.dp).band(LibraryColors.Raised, top = true)
+            .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(band.source.icon, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(15.dp))
@@ -394,7 +443,8 @@ private fun BandPhotos(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
 @Composable
 private fun BandEnd(band: RevealedPhotos, onAlways: () -> Unit) {
     Row(
-        Modifier.padding(bottom = 6.dp).band(LibraryColors.Raised, bottom = true).padding(horizontal = 4.dp, vertical = 4.dp),
+        Modifier.padding(bottom = 6.dp).band(LibraryColors.Raised, bottom = true)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BandLink(null, stringResource(R.string.feed_reveal_always), onAlways)
@@ -404,7 +454,8 @@ private fun BandEnd(band: RevealedPhotos, onAlways: () -> Unit) {
 @Composable
 private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
     Row(
-        Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp),
+        Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon?.let {
@@ -419,7 +470,10 @@ private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
 @Composable
 private fun StorylineDay(day: LocalDay) {
     val line = LibraryColors.Muted.copy(alpha = 0.3f)
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Box(Modifier.weight(1f).height(1.dp).background(line))
         Text(
             dayLabel(day),
@@ -442,7 +496,11 @@ private fun StorylineDay(day: LocalDay) {
  */
 @Composable
 private fun dividerLabel(span: Moment): String {
-    if (span.oldestDay != span.newestDay) return stringResource(R.string.library_moment_days, dayLabel(span.oldestDay), dayLabel(span.newestDay))
+    if (span.oldestDay != span.newestDay) return stringResource(
+        R.string.library_moment_days,
+        dayLabel(span.oldestDay),
+        dayLabel(span.newestDay)
+    )
     val label = dayLabel(span.newestDay)
     val date = span.newestDay.toLocalDate()
     val recent = !date.isBefore(LocalDate.now().minusDays(1))
@@ -463,16 +521,33 @@ private fun MomentLabel(label: FeedRow.Label) {
                 Row(Modifier.padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(FeedIcons.Pin, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(place, color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        place,
+                        color = LibraryColors.OnBackground,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
-            Text(time, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 22.dp))
+            Text(
+                time,
+                color = LibraryColors.Muted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 22.dp)
+            )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(moment.source.icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    stringResource(R.string.feed_place_time, stringResource(R.string.feed_source_count, sourceName(moment.source), label.count), time),
+                    stringResource(
+                        R.string.feed_place_time,
+                        stringResource(R.string.feed_source_count, sourceName(moment.source), label.count),
+                        time
+                    ),
                     color = LibraryColors.Muted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -510,17 +585,38 @@ private fun PhotoTitle(title: String?) {
 private fun PhotoNoteText(caption: String?) {
     if (caption.isNullOrBlank()) return
     var expanded by remember(caption) { mutableStateOf(false) }
-    val style = TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 16.sp, lineHeight = 24.sp)
+    val style = TextStyle(
+        color = LibraryColors.OnBackground,
+        fontFamily = FontFamily.Serif,
+        fontSize = 16.sp,
+        lineHeight = 24.sp
+    )
     val measurer = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)) {
         // Measured here, not after drawing, so "more" is there in the first frame.
         val cut = remember(caption, constraints.maxWidth) {
-            measurer.measure(caption, style, maxLines = NOTE_LINES, constraints = Constraints(maxWidth = constraints.maxWidth)).hasVisualOverflow
+            measurer.measure(
+                caption,
+                style,
+                maxLines = NOTE_LINES,
+                constraints = Constraints(maxWidth = constraints.maxWidth)
+            ).hasVisualOverflow
         }
         Column(Modifier.fillMaxWidth().clickable(enabled = cut) { expanded = !expanded }) {
-            Text(caption, style = style, maxLines = if (expanded) Int.MAX_VALUE else NOTE_LINES, overflow = TextOverflow.Ellipsis)
+            Text(
+                caption,
+                style = style,
+                maxLines = if (expanded) Int.MAX_VALUE else NOTE_LINES,
+                overflow = TextOverflow.Ellipsis
+            )
             if (cut && !expanded) {
-                Text(stringResource(R.string.feed_note_more), color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
+                Text(
+                    stringResource(R.string.feed_note_more),
+                    color = LibraryColors.Muted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
     }
@@ -535,7 +631,10 @@ private fun PhotoNoteText(caption: String?) {
 private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, crop: CropRect?, modifier: Modifier = Modifier) {
     // Videos aren't cropped (yet).
     val frame = crop?.takeIf { item.durationMillis == null }
-    Box(modifier.fillMaxWidth().aspectRatio(frame?.ratioOn(item.ratio) ?: item.ratio).background(LibraryColors.Raised).shared(SharedKey.item(item.id))) {
+    Box(
+        modifier.fillMaxWidth().aspectRatio(frame?.ratioOn(item.ratio) ?: item.ratio).background(LibraryColors.Raised)
+            .shared(SharedKey.item(item.id))
+    ) {
         PhotoOrVideo(item, video, feedWidth(), frame)
     }
 }
@@ -562,9 +661,18 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
             )
         }
         if (frame != null) {
-            CropBox(frame, Modifier.fillMaxSize()) { SharpPhoto(item, (width / frame.w).toInt(), Modifier.fillMaxSize()) }
+            CropBox(frame, Modifier.fillMaxSize()) {
+                SharpPhoto(
+                    item,
+                    (width / frame.w).toInt(),
+                    Modifier.fillMaxSize()
+                )
+            }
         } else {
-            SharpPhoto(item, width, Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
+            SharpPhoto(
+                item,
+                width,
+                Modifier.fillMaxSize().graphicsLayer { alpha = if (playing && showing && !failed) 0f else 1f })
         }
         if (playing && !failed) {
             MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
@@ -591,7 +699,14 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
 private fun SharpPhoto(item: MediaItem, width: Int, modifier: Modifier = Modifier) {
     Box(modifier) {
         if (item.hasOriginalHere) {
-            rememberThumbnail(item, THUMB_LARGE)?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+            rememberThumbnail(item, THUMB_LARGE)?.let {
+                Image(
+                    it,
+                    null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
         SizedThumbnail(item, width, (width / item.ratio).toInt(), Modifier.fillMaxSize())
     }
@@ -636,11 +751,17 @@ private fun SimilarPhotos(
         Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
             // The photos beside the one shown are ready before a swipe; one only on the server is fetched only once it
             // is next to the one shown (the pager's own look-ahead gets an empty page instead), not the whole set.
-            HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP, beyondViewportPageCount = 1) { page ->
+            HorizontalPager(
+                pager,
+                Modifier.fillMaxSize(),
+                pageSpacing = TILE_GAP,
+                beyondViewportPageCount = 1
+            ) { page ->
                 val item = block.items[page]
                 val fetchable = item.hasOriginalHere || kotlin.math.abs(page - pager.currentPage) <= 1
                 Box(
-                    Modifier.fillMaxSize().background(Color.Black).combinedClickable(onLongClick = { onLongPress(item) }, onClick = { onOpen(item) }),
+                    Modifier.fillMaxSize().background(Color.Black)
+                        .combinedClickable(onLongClick = { onLongPress(item) }, onClick = { onOpen(item) }),
                     contentAlignment = Alignment.Center,
                 ) {
                     // A photo of another shape than the set's first fits inside, at its own shape.
@@ -653,7 +774,9 @@ private fun SimilarPhotos(
                 }
             }
             Row(
-                Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50)).padding(horizontal = 9.dp, vertical = 5.dp),
+                Modifier.align(Alignment.TopEnd).padding(10.dp)
+                    .background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -665,10 +788,16 @@ private fun SimilarPhotos(
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
                 repeat(block.items.size.coerceAtMost(MAX_DOTS)) { i ->
                     val current = i == pager.currentPage.coerceAtMost(MAX_DOTS - 1)
-                    Box(Modifier.size(if (current) 7.dp else 6.dp).background(Color.White.copy(alpha = if (current) 1f else 0.5f), CircleShape))
+                    Box(
+                        Modifier.size(if (current) 7.dp else 6.dp)
+                            .background(Color.White.copy(alpha = if (current) 1f else 0.5f), CircleShape)
+                    )
                 }
             }
             if (selected != null) SelectMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
@@ -680,12 +809,18 @@ private fun SimilarPhotos(
 @Composable
 private fun VideoLength(millis: Long, modifier: Modifier = Modifier) {
     Row(
-        modifier.background(LibraryColors.BadgeScrim, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier.background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.Play, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(12.dp))
-        Text(formatDuration(millis), color = LibraryColors.PhotoText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            formatDuration(millis),
+            color = LibraryColors.PhotoText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
