@@ -2,6 +2,7 @@ package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.SetPrivateMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
 import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.library.BackupStatus
@@ -53,6 +54,8 @@ data class ServerMedia(
     val uploadedAt: String,
     /** The server's nudity scan, 0 to 1; null until scanned. Over the user's threshold it is hidden (see PrivateMedia). */
     val nudity: Double? = null,
+    /** The user marked it private; hidden like nudity over the threshold (see PrivateMedia). */
+    val isPrivate: Boolean = false,
 ) {
     /**
      * The library's view of it, for a photo that isn't in the device's library: shown from the server's previews, or
@@ -78,6 +81,7 @@ data class ServerMedia(
             sha256 = sha256,
             isOnDevice = false,
             keptOriginal = keptOriginal,
+            isPrivate = isPrivate,
         )
     }
 
@@ -203,6 +207,28 @@ class ServerLibrary internal constructor(
         }
     }
 
+    /**
+     * Marks [sha256s] private ([isPrivate]), or no longer private, on the server (with their edits and paired files), then syncs so
+     * the library follows. False when the server couldn't be reached or refused.
+     */
+    suspend fun setPrivate(sha256s: List<String>, isPrivate: Boolean): Boolean {
+        val alias = settings.identityAlias ?: return false
+        try {
+            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+                val response = apollo.mutation(SetPrivateMutation(sha256s, isPrivate)).execute()
+                response.exception?.let { throw it }
+                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            }
+            syncJob?.join()
+            sync()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return false
+        }
+        return true
+    }
+
     /** One sync: every page since the saved cursor. */
     internal suspend fun sync(): Unit = mutex.withLock {
         val alias = settings.identityAlias ?: return
@@ -267,4 +293,5 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     source = source,
     uploadedAt = uploadedAt,
     nudity = nudity,
+    isPrivate = private,
 )

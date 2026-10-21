@@ -269,7 +269,7 @@
     <string name="settings_similarity_reset">איפוס ל־%d%%</string>
     <string name="settings_private_title">מדיה פרטית</string>
     <string name="settings_private_switch">הצגת מדיה פרטית</string>
-    <string name="settings_private_switch_body">כשכבוי, תמונות וסרטונים שהשרת מצא בהם עירום מוסתרים בכל מקום, ולא יורדים לטלפון הזה.</string>
+    <string name="settings_private_switch_body">כשכבוי, תמונות וסרטונים שסימנת כפרטיים, ואלה שהשרת מצא בהם עירום, מוסתרים בכל מקום, ולא יורדים לטלפון הזה.</string>
     <string name="settings_private_threshold">הסתרה החל מ־</string>
     <string name="settings_private_threshold_body">כמה השרת צריך להיות בטוח שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום.</string>
     <string name="settings_gap_title">שורה חדשה אחרי הפסקה של</string>
@@ -407,6 +407,12 @@
     <string name="library_original_delete_confirm">מחיקה</string>
     <string name="library_original_unreachable">לא נמחק: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_original_no_preview">לא נמחק: לא ניתן לשמור תמונה שלו להצגה כאן.</string>
+    <string name="library_private_mark">סימון כפרטי</string>
+    <string name="library_private_unmark">ביטול סימון כפרטי</string>
+    <string name="library_private_mark_title">לסמן כפרטי?</string>
+    <string name="library_private_mark_body">הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
+    <string name="library_private_mark_confirm">סימון כפרטי</string>
+    <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_original_delete_video">אחר כך הסרטון מתנגן מהשרת שלך בהזרמה; מה שכבר נוגן נשמר בטלפון הזה לפעם הבאה.</string>
     <string name="library_original_not_on_server">לא נמחק: התמונה לא נמצאת בשרת שלך. היא תועלה שוב בגיבוי הבא.</string>
     <string name="library_info_type">סוג</string>

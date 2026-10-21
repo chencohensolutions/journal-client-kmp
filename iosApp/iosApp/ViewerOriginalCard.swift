@@ -2,20 +2,24 @@ import SwiftUI
 import SharedLogic
 
 // The viewer's "The original" card: where the original is, its facts, what is kept on this phone of a photo only on
-// the server, and Download original / Delete from this phone. Like Android's OriginalCard (ViewerInfoPanel.kt).
+// the server, and Download original / Delete from this phone / Mark private. Like Android's OriginalCard
+// (ViewerInfoPanel.kt).
 
 /// Where the original is (this phone, the server, or both; upload progress), its facts (file, size, dimensions,
 /// length, type, source, where it was taken), what is kept here of a photo only on the server, and "Download
-/// original" or "Delete from this phone".
+/// original" or "Delete from this phone", and "Mark private" for a photo the server has.
 struct OriginalCard: View {
     let item: MediaItem
     let location: (GeoPoint, PlaceName?)?
     let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
     let deleteFromPhone: (MediaItem) async -> RemovalOutcome
+    let setPrivate: (MediaItem, Bool) async -> Bool
 
     /// The download's percent while it runs.
     @State private var downloading: Int?
     @State private var confirmingDelete = false
+    @State private var confirmingPrivate = false
+    @State private var markingPrivate = false
     @State private var message: String?
 
     var body: some View {
@@ -72,6 +76,14 @@ struct OriginalCard: View {
             } else if item.hasOriginalHere && item.backup.isBackedUp {
                 OriginalButton(icon: "trash", label: "Delete from this phone") { confirmingDelete = true }
             }
+            // Only a photo the server has can be marked: the mark is kept there, for every device.
+            if item.sha256 != nil && item.backup.isBackedUp && !markingPrivate {
+                if item.isPrivate {
+                    OriginalButton(icon: "eye", label: "Unmark private") { markPrivate(false) }
+                } else {
+                    OriginalButton(icon: "lock", label: "Mark private") { confirmingPrivate = true }
+                }
+            }
         }
         .foregroundStyle(LibraryColors.onInverse)
         .padding(14)
@@ -92,8 +104,24 @@ struct OriginalCard: View {
         } message: {
             Text(deleteBody)
         }
+        .alert("Mark private?", isPresented: $confirmingPrivate) {
+            Button("Mark private") { markPrivate(true) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.")
+        }
         .alert(message ?? "", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK", role: .cancel) {}
+        }
+    }
+
+    private func markPrivate(_ isPrivate: Bool) {
+        markingPrivate = true
+        Task {
+            if !(await setPrivate(item, isPrivate)) {
+                message = String(localized: "Not changed: can’t reach your server. Try again when connected to it.")
+            }
+            markingPrivate = false
         }
     }
 

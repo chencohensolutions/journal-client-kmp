@@ -21,10 +21,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class ServerLibraryTest {
-    private fun server(sha: Char, name: String, size: Long, takenAt: String? = "2026-10-08T19:01:57.937+03:00", nudity: Double? = null) = ServerMedia(
+    private fun server(
+        sha: Char, name: String, size: Long, takenAt: String? = "2026-10-08T19:01:57.937+03:00", nudity: Double? = null,
+        isPrivate: Boolean = false,
+    ) = ServerMedia(
         sha256 = sha.toString().repeat(64), isVideo = false, fileName = name, mimeType = "image/heic", size = size,
         takenAt = takenAt, width = 3000, height = 4000, source = "whatsapp", latitude = 32.8, longitude = 35.0,
-        uploadedAt = "2026-10-19T22:05:21.535868Z", nudity = nudity,
+        uploadedAt = "2026-10-19T22:05:21.535868Z", nudity = nudity, isPrivate = isPrivate,
     )
 
     private fun device(id: String, name: String, size: Long) =
@@ -101,6 +104,25 @@ class ServerLibraryTest {
 
         val shown = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true))
         assertEquals(5, shown.size)
+    }
+
+    @Test
+    fun filesMarkedPrivateAreHiddenWhateverTheirScoreAndFlaggedWhenShown() {
+        val backedUp = device("22", "IMG_1.heic", 999)
+        val notReadYet = device("23", "IMG_2.heic", 555)
+        val entries = mapOf("22" to LedgerEntry("22", 999, 1, "b".repeat(64), uploaded = true))
+        val server = listOf(
+            server('b', "IMG_1.heic", 999, isPrivate = true), // the device photo backup read (same sha256)
+            server('d', "IMG_2.heic", 555, nudity = 0.1, isPrivate = true), // matched by name and size, scored low
+            server('c', "only.heic", 123, isPrivate = true), // only on the server
+            server('e', "beach.heic", 321),
+        )
+        val hidden = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia())
+        assertEquals(listOf("server:" + "e".repeat(64)), hidden.map { it.id })
+
+        val shown = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true))
+        assertEquals(listOf("22" to true, "23" to true, "server:" + "c".repeat(64) to true, "server:" + "e".repeat(64) to false),
+            shown.map { it.id to it.isPrivate })
     }
 
     @Test

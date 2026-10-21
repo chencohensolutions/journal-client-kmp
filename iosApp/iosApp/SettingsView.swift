@@ -291,7 +291,7 @@ extension SettingsView {
             Toggle(isOn: Binding(get: { privateMedia.show }, set: settings.setShowPrivateMedia)) {
                 ModeLabel(
                     title: "Show private media",
-                    detail: "When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone."
+                    detail: "When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone."
                 )
             }
             .tint(LibraryColors.accent)

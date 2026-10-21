@@ -20,6 +20,8 @@ struct ViewerActions {
     var downloadOriginal: (_ item: MediaItem, _ progress: @escaping (Int) -> Void) async -> Bool
     /// Removes the original from this phone, keeping it on the server and its preview here.
     var deleteFromPhone: (_ item: MediaItem) async -> RemovalOutcome
+    /// Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached.
+    var setPrivate: (_ item: MediaItem, _ isPrivate: Bool) async -> Bool
 }
 
 /// What "Delete from this phone" did.
@@ -166,7 +168,8 @@ struct MediaViewerView: View {
                     onRemoveFromGroup: { actions.removeFromGroup(item.id) },
                     location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
                     downloadOriginal: actions.downloadOriginal,
-                    deleteFromPhone: actions.deleteFromPhone
+                    deleteFromPhone: actions.deleteFromPhone,
+                    setPrivate: actions.setPrivate
                 )
             }
         }
@@ -466,6 +469,7 @@ private struct InfoPanel: View {
     let location: (GeoPoint, PlaceName?)?
     let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
     let deleteFromPhone: (MediaItem) async -> RemovalOutcome
+    let setPrivate: (MediaItem, Bool) async -> Bool
 
     var body: some View {
         ScrollView {
@@ -544,7 +548,10 @@ private struct InfoPanel: View {
                         .padding(.top, 4)
                     }
                 }
-                OriginalCard(item: item, location: location, downloadOriginal: downloadOriginal, deleteFromPhone: deleteFromPhone)
+                OriginalCard(
+                    item: item, location: location, downloadOriginal: downloadOriginal, deleteFromPhone: deleteFromPhone,
+                    setPrivate: setPrivate
+                )
             }
             .foregroundStyle(LibraryColors.onInverse)
             .padding(20)

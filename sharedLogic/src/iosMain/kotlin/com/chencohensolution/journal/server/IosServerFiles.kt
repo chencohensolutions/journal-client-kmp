@@ -115,6 +115,12 @@ class IosServerFiles internal constructor(
         }
     }
 
+    /** Marks [item] private on the server ([isPrivate]), or no longer private; [onDone] gets whether it worked. */
+    fun setPrivate(item: MediaItem, isPrivate: Boolean, onDone: (Boolean) -> Unit): ObservationHandle = run({ onDone(it ?: false) }) {
+        val sha = item.sha256 ?: return@run false
+        library.setPrivate(listOf(sha), isPrivate)
+    }
+
     /**
      * Before "Delete from this phone", as on Android: never without the server confirming it has these bytes
      * ([ServerLibrary.confirms]) and a preview kept to show instead ([ServerPreviews.keepForViewing]; a video keeps

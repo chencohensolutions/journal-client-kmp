@@ -103,13 +103,20 @@ final class ServerImages: NSObject, ServerImageDecoding {
     }
 }
 
-// MARK: The viewer's Download original and Delete from this phone
+// MARK: The viewer's Download original, Delete from this phone and Mark private
 
 extension ServerImages {
     /// Downloads `item`'s original and keeps it in Application Support; `progress` gets each percent.
     func downloadOriginal(_ item: MediaItem, progress: @escaping (Int) -> Void) async -> Bool {
         await awaiting { done in
             self.files.downloadOriginal(item: item, onProgress: { progress($0.intValue) }, onDone: { done($0.boolValue) })
+        }
+    }
+
+    /// Marks `item` private on the server, or no longer private; the library follows once the server's list is synced.
+    func setPrivate(_ item: MediaItem, isPrivate: Bool) async -> Bool {
+        await awaiting { done in
+            self.files.setPrivate(item: item, isPrivate: isPrivate, onDone: { done($0.boolValue) })
         }
     }
 

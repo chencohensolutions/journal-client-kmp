@@ -189,7 +189,12 @@ fetches what is missing with Range requests on a URLSession answering the mTLS c
 `IosServerStream`; the cache gives way whole videos, least recently played first, within `PhoneStorage.videoBudget`.
 **iOS Free up space** (Oct 21, 2026) runs the same checks in the app, but deletes nothing during a run: every file
 that passed waits for **Move to trash**, one PhotoKit request with iOS's own prompt, to Recently Deleted (see
-[screens/settings.md](screens/settings.md)). Not yet anywhere: story/note sync.
+[screens/settings.md](screens/settings.md)). **Mark private** (asked for Oct 21, 2026; Android and iOS): the viewer's
+original card marks a photo the server has as private (`setPrivate`, kept in its sidecar with its edits and paired
+files) or unmarks it. Private photos are hidden like nudity over the threshold, on every device, while "Show private
+media" is off (the default); the phone's own copy is hidden too. The server can also keep private photos from a
+device entirely (`journal-server private <serial> withhold`, off by default): they come to it as deleted from the
+change feed, and 404. Not yet anywhere: story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will

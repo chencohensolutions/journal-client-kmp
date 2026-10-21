@@ -21,6 +21,12 @@ mutation StartUpload($input: StartUploadInput!) {
   }
 }
 
+mutation SetPrivate($sha256s: [Sha256!]!, $private: Boolean!) {
+  setPrivate(sha256s: $sha256s, private: $private) {
+    sha256
+  }
+}
+
 query Changes($since: String, $limit: Int) {
   changes(since: $since, limit: $limit) {
     cursor
@@ -46,6 +52,7 @@ query Changes($since: String, $limit: Int) {
         source
         uploadedAt
         nudity
+        private
       }
     }
   }

@@ -65,6 +65,8 @@ internal class LibraryActions(
     val downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
     /** "Delete from this phone": only after the server confirms it has the file and a preview is kept. */
     val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
+    /** Marks a photo on the server private, or no longer private; false when the server couldn't be reached. */
+    val setPrivate: suspend (MediaItem, Boolean) -> Boolean,
     backgroundLocation: State<Boolean>,
     canTrashWithoutAsking: State<Boolean>,
     /** What previews, originals and videos take on this phone; the Settings screen counts it. */
@@ -176,6 +178,10 @@ internal fun libraryActions(
         val sha = item.sha256
         sha != null && server.originals.download(sha, item.fileName ?: sha, onProgress)
     }
+    val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { item, isPrivate ->
+        val sha = item.sha256
+        sha != null && server.library.setPrivate(listOf(sha), isPrivate)
+    }
     val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = remove@{ item ->
         val sha = item.sha256
         if (sha == null || item.backup != BackupStatus.BackedUp) return@remove RemovalOutcome.NOT_ON_SERVER
@@ -251,6 +257,7 @@ internal fun libraryActions(
         backup = backupActions,
         downloadOriginal = downloadOriginal,
         deleteFromPhone = deleteFromPhone,
+        setPrivate = setPrivate,
         backgroundLocation = backgroundLocationState,
         canTrashWithoutAsking = canTrashWithoutAskingState,
         previewBytes = previewBytes,

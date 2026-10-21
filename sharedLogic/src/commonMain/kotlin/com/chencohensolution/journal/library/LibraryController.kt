@@ -247,7 +247,7 @@ class LibraryController internal constructor(
  * name and size (a new device whose photos are already on the server would otherwise show each one twice). A server
  * photo that was on this device (deleted from it since) keeps its device id, so its stories and note still find it;
  * [kept] are originals the app downloaded, by sha256. What [privateMedia] hides is left out, the device's copies too
- * (matched the same way), so nothing of it is shown or fetched.
+ * (matched the same way), so nothing of it is shown or fetched; what is shown of a private file is marked [MediaItem.isPrivate].
  */
 internal fun mergeWithServer(
     device: List<MediaItem>,
@@ -262,12 +262,22 @@ internal fun mergeWithServer(
     val namesAndSizes = items.mapNotNullTo(HashSet()) { item -> item.fileName?.lowercase()?.let { it to item.sizeBytes } }
     val deviceIds = device.mapTo(HashSet()) { it.id }
     val formerIds = entries.values.filter { it.uploaded && it.id !in deviceIds }.associate { it.sha256 to it.id }
-    val hidden = server.filter { privateMedia.hides(it.nudity) }
+    val hidden = server.filter { privateMedia.hides(it.nudity, it.isPrivate) }
     val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }
     val hiddenNamesAndSizes = hidden.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
-    val shown = if (hidden.isEmpty()) items else items.filter { item ->
-        val sha = item.sha256
-        if (sha != null) sha !in hiddenShas else (item.fileName?.lowercase() to item.sizeBytes) !in hiddenNamesAndSizes
+    val marked = server.filter { it.isPrivate }
+    val markedShas = marked.mapTo(HashSet()) { it.sha256 }
+    val markedNamesAndSizes = marked.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
+    fun MediaItem.matches(shas: Set<String>, namesAndSizes: Set<Pair<String?, Long?>>): Boolean {
+        val sha = sha256
+        return if (sha != null) sha in shas else (fileName?.lowercase() to sizeBytes) in namesAndSizes
+    }
+    val shown = items.mapNotNull { item ->
+        when {
+            item.matches(hiddenShas, hiddenNamesAndSizes) -> null
+            item.matches(markedShas, markedNamesAndSizes) -> item.copy(isPrivate = true)
+            else -> item
+        }
     }
     val serverOnly = server.filter {
         it.sha256 !in shas && (it.fileName.lowercase() to it.size) !in namesAndSizes && it.sha256 !in hiddenShas

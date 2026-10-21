@@ -355,6 +355,7 @@ private fun LibraryScreens(
                                         crop = { itemId, kind -> push(Route.Crop(itemId, kind)) },
                                         downloadOriginal = actions.downloadOriginal,
                                         deleteFromPhone = actions.deleteFromPhone,
+                                        setPrivate = actions.setPrivate,
                                     ),
                                 )
                                 is Route.Crop -> {

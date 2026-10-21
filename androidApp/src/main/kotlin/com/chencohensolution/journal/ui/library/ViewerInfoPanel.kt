@@ -88,6 +88,7 @@ internal fun InfoPanel(
     location: Pair<GeoPoint, PlaceName?>?,
     downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
     deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
+    setPrivate: suspend (MediaItem, Boolean) -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     val taken = Instant.ofEpochMilli(item.takenAtMillis).atZone(ZoneId.systemDefault())
@@ -112,7 +113,7 @@ internal fun InfoPanel(
         } else {
             StoriesRow(memberOf, openedFrom?.takeIf { from -> memberOf.any { it.id == from.id } }, onAddToStory, onRemove)
         }
-        OriginalCard(item, location, downloadOriginal, deleteFromPhone)
+        OriginalCard(item, location, downloadOriginal, deleteFromPhone, setPrivate)
     }
 }
 
@@ -234,12 +235,22 @@ private fun OriginalCard(
     location: Pair<GeoPoint, PlaceName?>?,
     downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
     deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
+    setPrivate: suspend (MediaItem, Boolean) -> Boolean,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val status = item.backup
     var downloading by remember(item.id) { mutableStateOf<Float?>(null) }
     var confirmingDelete by remember(item.id) { mutableStateOf(false) }
+    var confirmingPrivate by remember(item.id) { mutableStateOf(false) }
+    var markingPrivate by remember(item.id) { mutableStateOf(false) }
+    fun markPrivate(isPrivate: Boolean) {
+        markingPrivate = true
+        scope.launch {
+            if (!setPrivate(item, isPrivate)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+            markingPrivate = false
+        }
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -309,6 +320,28 @@ private fun OriginalCard(
             item.hasOriginalHere && status == BackupStatus.BackedUp ->
                 OriginalButton(LibraryIcons.Trash, stringResource(R.string.library_original_delete)) { confirmingDelete = true }
         }
+        // Only a photo the server has can be marked: the mark is kept there, for every device.
+        if (item.sha256 != null && status == BackupStatus.BackedUp && !markingPrivate) {
+            if (item.isPrivate) {
+                OriginalButton(LibraryIcons.Eye, stringResource(R.string.library_private_unmark)) { markPrivate(false) }
+            } else {
+                OriginalButton(LibraryIcons.Lock, stringResource(R.string.library_private_mark)) { confirmingPrivate = true }
+            }
+        }
+    }
+    if (confirmingPrivate) {
+        AlertDialog(
+            onDismissRequest = { confirmingPrivate = false },
+            title = { Text(stringResource(R.string.library_private_mark_title)) },
+            text = { Text(stringResource(R.string.library_private_mark_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingPrivate = false
+                    markPrivate(true)
+                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
+        )
     }
     if (confirmingDelete) {
         AlertDialog(

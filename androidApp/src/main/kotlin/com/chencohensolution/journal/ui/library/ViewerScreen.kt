@@ -89,6 +89,8 @@ internal class ViewerActions(
     val downloadOriginal: suspend (item: MediaItem, onProgress: (Float) -> Unit) -> Boolean = { _, _ -> false },
     /** Removes the original from this phone, keeping it on the server and its preview here. */
     val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = { RemovalOutcome.UNREACHABLE },
+    /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
+    val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { _, _ -> false },
 )
 
 /** What "Delete from this phone" did. */
@@ -237,6 +239,7 @@ internal fun ViewerScreen(
                 location = stories.places.location(current)?.let { point -> point to stories.places.name(point) },
                 downloadOriginal = actions.downloadOriginal,
                 deleteFromPhone = actions.deleteFromPhone,
+                setPrivate = actions.setPrivate,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }

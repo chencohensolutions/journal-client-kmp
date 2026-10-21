@@ -60,12 +60,14 @@ data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPe
 }
 
 /**
- * Photos the server's nudity scan scored at [thresholdPercent] or more: unless [show], they are left out of the library
- * everywhere, and nothing of them is fetched (no preview, no original). Device photos the server scored are left out too.
+ * Photos the user marked private, and those the server's nudity scan scored at [thresholdPercent] or more: unless [show]
+ * (off by default), they are left out of the library everywhere, and nothing of them is fetched (no preview, no
+ * original). Device photos the server marked or scored are left out too.
  */
 data class PrivateMedia(val show: Boolean = false, val thresholdPercent: Int = DEFAULT_THRESHOLD_PERCENT) {
-    /** Whether a photo with this score is hidden; one not scanned yet ([nudity] null) never is. */
-    fun hides(nudity: Double?): Boolean = !show && nudity != null && nudity * 100 >= thresholdPercent
+    /** Whether a photo is hidden: marked private ([isPrivate]), or with this score; one not scanned yet ([nudity] null) isn't. */
+    fun hides(nudity: Double?, isPrivate: Boolean = false): Boolean =
+        !show && (isPrivate || nudity != null && nudity * 100 >= thresholdPercent)
 
     companion object {
         const val DEFAULT_THRESHOLD_PERCENT = 50

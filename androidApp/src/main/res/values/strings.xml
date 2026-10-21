@@ -257,7 +257,7 @@
     <string name="settings_similarity_reset">Reset to %d%%</string>
     <string name="settings_private_title">Private media</string>
     <string name="settings_private_switch">Show private media</string>
-    <string name="settings_private_switch_body">When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone.</string>
+    <string name="settings_private_switch_body">When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone.</string>
     <string name="settings_private_threshold">Hide from</string>
     <string name="settings_private_threshold_body">How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.</string>
     <string name="settings_gap_title">New row after a break of</string>
@@ -403,6 +403,12 @@
     <string name="library_original_delete_confirm">Delete</string>
     <string name="library_original_unreachable">Not deleted: can’t reach your server. Try again when connected to it.</string>
     <string name="library_original_no_preview">Not deleted: couldn’t keep a picture of it to show here.</string>
+    <string name="library_private_mark">Mark private</string>
+    <string name="library_private_unmark">Unmark private</string>
+    <string name="library_private_mark_title">Mark private?</string>
+    <string name="library_private_mark_body">It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
+    <string name="library_private_mark_confirm">Mark private</string>
+    <string name="library_private_unreachable">Not changed: can’t reach your server. Try again when connected to it.</string>
     <string name="library_original_delete_video">It then plays from your server, streamed; what was played stays on this phone for next time.</string>
     <string name="library_original_not_on_server">Not deleted: your server doesn’t have this photo. It uploads again with the next backup.</string>
     <string name="library_info_type">Type</string>

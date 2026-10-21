@@ -147,6 +147,8 @@ data class MediaItem(
     val isOnDevice: Boolean = true,
     /** For a photo not in the library: the original downloaded from the server and kept in the app's storage. */
     val keptOriginal: String? = null,
+    /** The user marked it private on the server; shown only while "Show private media" is on. */
+    val isPrivate: Boolean = false,
 ) {
     /** Whether its original is on this device, in the library or kept by the app: then nothing is fetched for it. */
     val hasOriginalHere: Boolean get() = isOnDevice || keptOriginal != null

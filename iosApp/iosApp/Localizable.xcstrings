@@ -5107,16 +5107,6 @@
         }
       }
     },
-    "When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "כשכבוי, תמונות וסרטונים שהשרת מצא בהם עירום מוסתרים בכל מקום, ולא יורדים לטלפון הזה."
-          }
-        }
-      }
-    },
     "Whole year" : {
       "localizations" : {
         "he" : {
@@ -5313,6 +5303,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "„‎+6 וואטסאפ” ביום, הקשה מציגה אותן"
+          }
+        }
+      }
+    },
+    "When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשכבוי, תמונות וסרטונים שסימנת כפרטיים, ואלה שהשרת מצא בהם עירום, מוסתרים בכל מקום, ולא יורדים לטלפון הזה."
+          }
+        }
+      }
+    },
+    "Mark private" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סימון כפרטי"
+          }
+        }
+      }
+    },
+    "Unmark private" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול סימון כפרטי"
+          }
+        }
+      }
+    },
+    "Mark private?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לסמן כפרטי?"
+          }
+        }
+      }
+    },
+    "It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת."
+          }
+        }
+      }
+    },
+    "Not changed: can’t reach your server. Try again when connected to it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור."
           }
         }
       }
