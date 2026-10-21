@@ -3,13 +3,17 @@
 package com.chencohensolution.journal.backup
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.decrementAndFetch
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Pieces handed to a transport that goes on without the app (iOS's background URLSession), one per upload URL. A
+ * Pieces handed to a transport that goes on without the app (iOS's background URLSession), one per upload URL, for
+ * many uploads at once. A
  * piece asked for again while it is still on its way (the run was cancelled, or the app was relaunched mid-piece) is
  * not sent twice: its answer is awaited. Another piece of the same upload waits for the one on its way, so the server
  * gets one request per file at a time. Safe to call from the transport's callbacks and the upload at once.
@@ -20,12 +24,16 @@ internal class InFlightPieces {
     }
 
     private val pieces = AtomicReference<Map<String, Piece>>(emptyMap())
+    private val starting = AtomicInt(0)
+
+    /** Whether a piece is being handed to the transport right now (its file written, its task made). */
+    val handingOver: Boolean get() = starting.load() > 0
 
     /**
      * The answer to the piece [range] (a Content-Range) of [url]: the one on its way, or a new one that [start] hands
      * to the transport. [onSent] gets the bytes sent while this call waits.
      */
-    suspend fun send(url: String, range: String, onSent: (Long) -> Unit, start: () -> Unit): PieceResponse {
+    suspend fun send(url: String, range: String, onSent: (Long) -> Unit, start: suspend () -> Unit): PieceResponse {
         while (true) {
             val current = pieces.load()[url]
             if (current != null) {
@@ -42,11 +50,15 @@ internal class InFlightPieces {
             }
             val piece = Piece(range, onSent)
             if (!add(url, piece)) continue
+            starting.incrementAndFetch()
             try {
                 start()
             } catch (e: Throwable) {
                 remove(url, piece)
+                piece.answer.completeExceptionally(e)
                 throw e
+            } finally {
+                starting.decrementAndFetch()
             }
             return await(piece, onSent)
         }

@@ -76,8 +76,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
   with a Stop action) and in the bottom pill of the Journal and All photos ("Backing up 3 of 120", else "N not backed
-  up", counting only the chosen sources while backup is on). Each photo's badge follows (waiting, uploading, backed up,
-  failed). Turning backup on asks for notification permission.
+  up", counting only the chosen sources while backup is on). Several files upload at once (3 on Android, up to 50 on
+  iOS): the count is of finished files plus one ("3 of 120" = 2 finished, the next on its way), the percent includes
+  what has arrived of the files on their way, and the notification names the earliest of them. Each photo's badge
+  follows (waiting, uploading, backed up, failed); every file on its way shows its own ring. Turning backup on asks for notification permission.
 - On iOS each piece goes through a background URLSession, which carries it on while the app is suspended and
   relaunches the app when it is answered; runs start when the app opens, on **Back up now**, 10 s after the library
   changes, on those relaunches, and in background tasks iOS schedules (BGProcessingTask, BGAppRefreshTask). Wi-Fi only

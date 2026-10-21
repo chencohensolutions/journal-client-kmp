@@ -31,8 +31,10 @@ import platform.darwin.dispatch_semaphore_wait
 /**
  * Reads photos and videos for upload, read-only. PhotoKit can't open a file at an offset, so the file the library
  * reported (an edit's full-size render, a Live Photo's photo, the JPEG of RAW+JPEG; see `currentResource`) is copied
- * into [directory] (in Caches) and read from there. One copy is kept, for the photo being uploaded: the next photo
- * replaces it, and the end of the run removes it. Photos only in iCloud are downloaded first.
+ * into [directory] (in Caches) and read from there. A copy is kept while the run reads it: one for the photo being
+ * hashed, and one per file being uploaded (the engine sends several at once, bounded by the sender's limits). Each
+ * goes when the engine is done with it ([release]), and the end of the run removes any left. Photos only in iCloud are
+ * downloaded first. Safe to use for several photos at once.
  */
 internal class IosMediaFiles(private val directory: Path, private val fileSystem: FileSystem = FileSystem.SYSTEM) : MediaFiles {
     init {
@@ -49,22 +51,28 @@ internal class IosMediaFiles(private val directory: Path, private val fileSystem
 
     override fun takenAt(item: MediaItem): String = rfc3339(item.takenAtMillis)
 
+    override fun release(item: MediaItem) {
+        runCatching { fileSystem.delete(directory / name(item)) }
+    }
+
     override fun runEnded() {
         runCatching { fileSystem.deleteRecursively(directory) }
     }
 
+    private fun name(item: MediaItem) = "${item.id.filter { it.isLetterOrDigit() }}-${item.sizeBytes}-${item.modifiedMillis}"
+
     /** The copy of [item]'s file, made now unless it is already there. */
     private fun copy(item: MediaItem): Path {
-        val name = "${item.id.filter { it.isLetterOrDigit() }}-${item.sizeBytes}-${item.modifiedMillis}"
+        val name = name(item)
         val path = directory / name
         if (fileSystem.metadataOrNull(path)?.size == item.sizeBytes) return path
-        fileSystem.deleteRecursively(directory)
         fileSystem.createDirectories(directory)
 
         val asset = PHAsset.fetchAssetsWithLocalIdentifiers(listOf(item.id), null).firstObject as PHAsset?
             ?: throw IOException("${item.fileName ?: item.id} is no longer in the library")
         val resource = currentResource(asset) ?: throw IOException("${item.fileName ?: item.id} has no file yet")
         val partial = directory / "$name.part"
+        fileSystem.delete(partial) // PhotoKit won't write over a file.
         val options = PHAssetResourceRequestOptions().apply { networkAccessAllowed = true }
         val done = dispatch_semaphore_create(0)
         var failure: NSError? = null

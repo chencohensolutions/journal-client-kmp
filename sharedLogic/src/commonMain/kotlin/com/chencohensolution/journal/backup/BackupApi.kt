@@ -19,6 +19,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.contentType
 import io.ktor.http.encodedPath
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
+import okio.Buffer
+import okio.BufferedSink
 
 /** What the device declares about a file before sending it (the server's StartUploadInput). */
 internal data class UploadRequest(
@@ -60,37 +65,65 @@ internal sealed interface PieceResult {
 /** The server answered something the device can't continue from; [unauthorized] means the certificate was refused. */
 internal class BackupServerException(message: String, val unauthorized: Boolean = false) : Exception(message)
 
+/**
+ * One piece's [size] bytes, read from the file only when they are sent: a piece found still on its way
+ * ([InFlightPieces]) is not read at all. Read once.
+ */
+internal class PieceBody(val size: Long, private val read: (BufferedSink) -> Unit) {
+    fun writeTo(sink: BufferedSink) = read(sink)
+
+    fun readByteArray(): ByteArray = Buffer().also(read).readByteArray()
+}
+
 /** The server's upload API (journal-server-go docs/media.md). */
 internal interface BackupApi {
     /** The piece size this device sends instead of the server's chunkSize, or null to follow the server. */
     val pieceSize: Long? get() = null
 
+    /** See [PieceSender.maxFilesInFlight]. */
+    val maxFilesInFlight: Int get() = 1
+
+    /** See [PieceSender.maxBytesInFlight]. */
+    val maxBytesInFlight: Long get() = Long.MAX_VALUE
+
     /** Which of [hashes] the server doesn't have. */
     suspend fun missing(hashes: List<String>): Set<String>
     suspend fun start(request: UploadRequest): StartResult
 
-    /** Sends bytes [start] until [start] + [bytes].size of a [total]-byte file; [onSent] gets how many of them left so far. */
-    suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit = {}): PieceResult
+    /** Sends bytes [start] until [start] + [body].size of a [total]-byte file; [onSent] gets how many of them left so far. */
+    suspend fun put(url: String, start: Long, body: PieceBody, total: Long, onSent: (Long) -> Unit = {}): PieceResult
 }
 
 /** The server's answer to one piece: the HTTP status and its `Upload-Offset` header. */
 internal data class PieceResponse(val status: Int, val uploadOffset: Long?)
 
 /**
- * Sends one piece of an upload (a `PUT` of [bytes] with [contentRange] to [url], an absolute URL) and returns the
- * server's answer; [onSent] gets how many of [bytes] left so far. The platform's transport: the app's own client on
- * Android, a background URLSession on iOS (which goes on while the app is suspended).
+ * Sends one piece of an upload (a `PUT` of [body] with [contentRange] to [url], an absolute URL) and returns the
+ * server's answer; [onSent] gets how many of its bytes left so far. The platform's transport: the app's own client on
+ * Android, a background URLSession on iOS (which goes on while the app is suspended). Called for several files at
+ * once (up to [maxFilesInFlight]), one piece at a time per file.
  */
 internal interface PieceSender {
     /** See [BackupApi.pieceSize]. */
     val pieceSize: Long? get() = null
 
-    suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse
+    /** How many files a run sends at once. */
+    val maxFilesInFlight: Int get() = 1
+
+    /** What the sizes of the files sent at once may add up to; a larger file still goes, alone. */
+    val maxBytesInFlight: Long get() = Long.MAX_VALUE
+
+    suspend fun send(url: String, contentRange: String, body: PieceBody, onSent: (Long) -> Unit): PieceResponse
 }
 
 /** Sends pieces with the app's mTLS client, in the app's process. */
 internal class KtorPieceSender(private val http: HttpClient) : PieceSender {
-    override suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse {
+    // A few files at once hide each one's round trips (startUpload, the answer to each piece), which is most of the
+    // time a small photo takes. Each holds its piece in memory (the server's 16 MB), so 3 hold at most 48 MB.
+    override val maxFilesInFlight: Int get() = 3
+
+    override suspend fun send(url: String, contentRange: String, body: PieceBody, onSent: (Long) -> Unit): PieceResponse {
+        val bytes = withContext(Dispatchers.IO) { body.readByteArray() }
         val response = http.put(url) {
             header("Content-Range", contentRange)
             contentType(ContentType.Application.OctetStream)
@@ -122,6 +155,8 @@ internal class ServerBackupApi(
     private val pieces: PieceSender,
 ) : BackupApi {
     override val pieceSize: Long? get() = pieces.pieceSize
+    override val maxFilesInFlight: Int get() = pieces.maxFilesInFlight
+    override val maxBytesInFlight: Long get() = pieces.maxBytesInFlight
 
     override suspend fun missing(hashes: List<String>): Set<String> {
         if (hashes.isEmpty()) return emptySet()
@@ -156,9 +191,9 @@ internal class ServerBackupApi(
         throw BackupServerException("Unknown answer to startUpload: ${result.__typename}")
     }
 
-    override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit): PieceResult {
-        val end = start + bytes.size - 1
-        return pieceResult(pieces.send(resolve(url), "bytes $start-$end/$total", bytes, onSent), end)
+    override suspend fun put(url: String, start: Long, body: PieceBody, total: Long, onSent: (Long) -> Unit): PieceResult {
+        val end = start + body.size - 1
+        return pieceResult(pieces.send(resolve(url), "bytes $start-$end/$total", body, onSent), end)
     }
 
     private fun resolve(path: String): String = URLBuilder(serverUrl).apply {

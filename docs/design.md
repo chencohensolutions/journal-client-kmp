@@ -203,13 +203,27 @@ streaming (a server-only video shows its poster), Free up space. Not yet anywher
 - **What uploads**: sources chosen in Settings, **default Camera only**. **When**: Settings conditions Wi-Fi only,
   only listed Wi-Fi networks (needs location permission to read the network name), only while charging. **Order**:
   oldest first by default, newest first as an option.
+- **Several files at once** (Oct 21, 2026, approved by the owner; the same shared `BackupEngine` on both platforms,
+  only the amount differs): the run hashes the queue in batches of 100 (`missingMedia` per batch, hashing the next
+  batch while the last one uploads) and starts the files the server lacks **in the queue's order** (the order setting
+  decides what starts first) while fewer than `PieceSender.maxFilesInFlight` are on their way and their sizes add up
+  to at most `maxBytesInFlight` (a larger file goes alone). Each file's pieces still go one after another. Android
+  (`KtorPieceSender`): **3 files**, no byte limit: enough to hide each small photo's round trips, and each holds its
+  16 MB piece in memory, so at most 48 MB. iOS (`BackgroundPieceSender`): **50 files or 512 MB**, whichever comes
+  first (see "iOS backup"). A file that fails (refused, changed, hash mismatch) doesn't stop the others; a network or
+  server error starts no more files, lets those on their way finish and then ends the run (retried later); a refused
+  certificate (401) stops every file at once. Two device photos with the same bytes are sent once. The ledger is safe
+  for completions at once (one lock around its file). Progress: `done` counts finished files, so the text stays
+  "Backing up *done + 1* of *total*" (the next file to finish); `bytesDone` adds what has arrived of the files on
+  their way, `currentName` is the earliest of them, and each one's ring shows (`BackupProgress.uploading`).
 - In the background with the app closed: Android WorkManager with a foreground progress notification; iOS a
   background URLSession (stopped by iOS if the user force-quits the app), progress in the app. iOS users of this app
   keep photos on the device (no iCloud Optimize Storage); a photo only in iCloud is downloaded before it is read.
 - **iOS backup (built Oct 21, 2026)**: the shared `BackupEngine`/`BackupController`/`UploadLedger` run unchanged;
   only how a piece travels is the platform's (`PieceSender`: Android keeps its in-process Ktor `PUT`). iOS writes each
   64 MB piece (the server's limit; it asks for 16 MB, but iOS wakes a closed app about once per finished piece, so
-  fewer, larger pieces mean fewer waits; `PieceSender.pieceSize`) to `Caches/backup/pieces` and hands it to a background URLSession
+  fewer, larger pieces mean fewer waits; `PieceSender.pieceSize`) to `Caches/backup/pieces`, streamed from the
+  photo's copy (no piece is held in memory), and hands it to a background URLSession
   (`BackgroundPieceSender`, session `com.chencohensolution.journal.backup`): the client certificate is answered from
   the Keychain and the server's certificate checked against the journal CA, as in the app's own client; Wi-Fi only is
   set on each request (no cellular, no expensive networks), so a piece waits for Wi-Fi. While the app runs, the run
@@ -217,12 +231,20 @@ streaming (a server-only video shows its poster), Free up space. Not yet anywher
   carries the piece on and relaunches the app in the background when it is answered
   (`handleEventsForBackgroundURLSession`): the session reconnects, adopts pieces still on their way
   (`InFlightPieces`: a piece asked for again while it is on its way is awaited, never sent twice), and the run starts
-  again from the server's offset (`startUpload`); the system's completion handler is called once the next piece is
-  with iOS (or after 15 s). The ledger is written only from server answers (a piece finished while nobody listened is
+  again from the server's offset (`startUpload`). Up to **50 files (or 512 MB of them) are with iOS at once**, so each
+  wake of a closed app leaves iOS a batch rather than one piece: 50 because iOS wakes a closed app about once per
+  batch of finished tasks and spaces the wakes out, far below the thousands of tasks Apple warns slow a session, and
+  few enough to top up in one wake (a PhotoKit copy and a `startUpload` each); 512 MB because each file on its way has
+  its full copy in `Caches/backup/files` and a piece (up to 64 MB) in `Caches/backup/pieces`, so backup holds about
+  1 GB of Caches at most (a single larger video goes alone). After a relaunch, pieces still on their way are adopted
+  and don't count toward the limit, so for one run iOS may hold up to twice as many. The system's completion handler
+  is called once the run has topped the queue back up: new pieces were handed to iOS and none for 2 s, or 50 are with
+  iOS (or after 20 s; iOS allows about 30). The ledger is written only from server answers (a piece finished while nobody listened is
   seen as the server's offset, or as `MediaExists`/`missingMedia` when it was the last). Files are read with
   `PHAssetResourceManager.writeData` from the same resource the library reports (edit → full-size render, Live Photo
-  → photo, RAW+JPEG → JPEG) into `Caches/backup/files`, one file at a time, checked against the reported size (else
-  skipped and read again later) and removed when the run ends. Runs start when the app comes to the foreground, on
+  → photo, RAW+JPEG → JPEG) into `Caches/backup/files`, one copy per file being hashed or uploaded, checked against
+  the reported size (else skipped and read again later) and removed when the engine is done with that file (and any
+  left when the run ends). Runs start when the app comes to the foreground, on
   **Back up now** or turning backup on, 10 s after the library changes, when iOS relaunches the app for an answered
   piece, and in `BGProcessingTask` (network required, external power with "Only while charging") and
   `BGAppRefreshTask` runs that iOS schedules when it sees fit (not on the simulator). Before a run, "Only on Wi-Fi"
@@ -232,7 +254,13 @@ streaming (a server-only video shows its poster), Free up space. Not yet anywher
   library mostly uploads while the app is open or in background task windows; force-quitting the app stops uploads
   until it is opened. Tested against a local server on the simulator: 409 photos and three 0.5–0.7 GB videos, with
   the app killed mid-upload in the foreground and in the background: every piece arrived once and the files matched
-  their sha256.
+  their sha256. Several at once, tested Oct 21, 2026 on the simulator against a server slowed to ~8 s per piece: 116
+  small photos; 50 pieces and 50 copies waited with iOS, which sent 6 at a time (its connections per host); with the
+  app killed, iOS sent 18 more over 25 s with no app running, relaunched it, the run topped the queue back up within
+  3 s and the app was suspended 10 s after the wake; iOS then sent the rest of that batch on its own and spaced
+  further wakes out (its request delay grew 60 → 960 s, and tasks made in the background got a 60 s delay), so the
+  last 9 went when the app was opened. Every file arrived once (116 stored, 116 distinct sha256, 116 ledger entries
+  uploaded).
 
 **Viewing without originals** (built on Android, except videos and originals)
 - The app's library is one list of device photos and server photos joined by sha256 (or by file name and size before
