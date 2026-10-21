@@ -76,7 +76,7 @@ struct EnrollmentView: View {
 
                     FieldLabel("Server address")
                         .padding(.top, 28)
-                    TextField("192.168.50.2:8080", text: binding(\.serverAddress, viewModel.updateServerAddress))
+                    TextField("journal.example.com:56398", text: binding(\.serverAddress, viewModel.updateServerAddress))
                         .keyboardType(.URL)
                         .textContentType(.URL)
                         .textInputAutocapitalization(.never)

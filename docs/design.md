@@ -140,8 +140,9 @@ shared logic passes on the simulator, but most iOS tap flows haven't been clicke
 mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 
 **In progress by the owner (not from the main build sessions)**: Hebrew localization (`values-iw/`,
-`Localizable.xcstrings`, `InfoPlist.xcstrings`), enrollment screen changes, server address now
-`192.168.50.2:8080` (the server PC, Oct 20, 2026; before that the Mac at `192.168.50.150`).
+`Localizable.xcstrings`, `InfoPlist.xcstrings`), enrollment screen changes, default server address
+`journal.example.com:56398` (Oct 21, 2026; before that the server PC at `192.168.50.2:8080`, and the Mac at
+`192.168.50.150` before that).
 
 **Not built yet**
 - On iOS: backup and server-only photos. Everywhere: playing server-only videos, downloading an original, story/note
