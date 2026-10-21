@@ -25,7 +25,10 @@ The server authenticates users by client certificate; the certificate CN maps to
 address and a one-time code from `journal-server enroll-code <user>`. It creates an EC P-256 key in secure hardware
 (Android Keystore/StrongBox, iOS Secure Enclave; software keys on emulators where neither is available), sends a
 certificate request, and stores the certificate the server issues. After that the app opens on the home screen.
-The logic is shared ([enrollment/](./sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/enrollment/));
+Instead of typing, **Scan QR code** on the code screen reads the QR code `enroll-code` prints (Google's scanner on
+Android, VisionKit's on iOS; on the iOS simulator, which has no camera, it says so and the code is typed), and the
+same `journal://enroll?code=…&server=…` link opened from the camera app fills in the server and code and checks
+them, opening the wizard even on a registered device (to register it again). The logic is shared ([enrollment/](./sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/enrollment/));
 see `docs/authentication.md` in journal-server-go for the full design.
 
 The server CA is embedded in

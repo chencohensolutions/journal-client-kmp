@@ -8,6 +8,7 @@ struct LibraryRootView: View {
     @ObservedObject var library: LibraryViewModel
     @ObservedObject var stories: StoriesViewModel
     @ObservedObject var settings: SettingsViewModel
+    @ObservedObject var backup: BackupViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -16,6 +17,8 @@ struct LibraryRootView: View {
     @State private var viewer: ViewerRequest?
     /// The photo the viewer shows; the screen under it keeps that photo's tile in view to zoom back into.
     @State private var showing: ViewerShowing?
+    /// Set to open the crop screen over the journal, e.g. `crop = CropRequest(itemId: id, kind: .moments)`.
+    @State private var crop: CropRequest?
     /// Photos, story cards and group tiles mark themselves in it; the screens they open zoom out of them.
     @Namespace private var zoom
 
@@ -26,17 +29,23 @@ struct LibraryRootView: View {
         case tags
         case tag(String)
         case settings
+        /// Explore: a town's page, a year's page (on one of its months), and the map.
+        case place(String)
+        case year(Int, month: Int?)
+        case map
     }
 
-    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), one moment of the journal
-    /// (`moment`, its key), or All photos with `filter`.
+    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), a row of Moments
+    /// (`feedSection`, its key), Explore (`scope`: the map's photos, or with `feedSection` a row of a town's or a
+    /// year's page), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         let storyId: String?
         var groupId: String? = nil
-        var moment: String? = nil
+        var feedSection: String? = nil
         let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
+        var scope: ExploreScope? = nil
         /// What it swipes through, fixed when opened: tagging or grouping a photo must not pull it out from under it.
         var itemIds: [String] = []
         var id: String { itemId }
@@ -69,15 +78,41 @@ struct LibraryRootView: View {
                         library: library.state,
                         stories: stories.state,
                         health: journal.state.health,
+                        viewerOpen: viewer != nil,
+                        backupRunning: backup.running,
                         actions: HomeActions(
-                            openItem: { moment, item in openViewer(ViewerRequest(storyId: nil, moment: moment.key, filter: .all, itemId: item.id)) },
+                            openItem: { section, item in
+                                openViewer(ViewerRequest(storyId: nil, feedSection: section.key, filter: .all, itemId: item.id))
+                            },
                             openStory: { path.append(.story($0)) },
-                            createStory: { title, momentKey in
-                                if let id = stories.createStory(title: title, momentKey: momentKey) { path.append(.story(id)) }
+                            createStory: { title, feedKey in
+                                if let id = stories.createStory(title: title, feedKey: feedKey) { path.append(.story(id)) }
+                            },
+                            toggleSource: settings.toggleFeedSource,
+                            dismissTrip: settings.dismissTrip,
+                            merge: stories.mergeInFeed,
+                            takeOutOfSet: stories.takeOutOfSet,
+                            turnSet: { stories.turnSet($0, to: $1) },
+                            setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
+                            // The crop screen, on the photo's Moments crop.
+                            crop: { item in crop = CropRequest(itemId: item.id, kind: .moments) },
+                            toggleStory: { storyId, itemId, add in
+                                if add { stories.add([itemId], to: storyId) } else { stories.remove([itemId], from: storyId) }
+                            },
+                            createStoryWith: { title, itemId in
+                                if let id = stories.createStory(title: title, itemIds: [itemId]) { path.append(.story(id)) }
+                            },
+                            toggleTag: { itemId, tag, add in
+                                if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
                             openAllPhotos: { path.append(.allPhotos) },
                             openSettings: { path.append(.settings) },
                             openTags: { path.append(.tags) },
+                            explore: ExploreActions(
+                                openPlace: { path.append(.place($0)) },
+                                openYear: { path.append(.year($0, month: $1)) },
+                                openMap: { path.append(.map) }
+                            ),
                             allowAccess: requestOrOpenSettings,
                             registerAgain: onRegisterAgain
                         )
@@ -86,11 +121,20 @@ struct LibraryRootView: View {
                     .navigationDestination(for: Route.self) { route in
                         switch route {
                         case .allPhotos:
-                            AllPhotosView(library: library.state, health: journal.state.health, filter: $filter) { item in
+                            AllPhotosView(library: library.state, backupRunning: backup.running, health: journal.state.health, filter: $filter) { item in
                                 openViewer(ViewerRequest(storyId: nil, filter: filter, itemId: item.id))
                             }
                         case .settings:
-                            SettingsView(settings: settings)
+                            SettingsView(settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount), refreshLibrary: library.refresh)
+                        case .place(let town):
+                            PlacePageView(town: town, library: library.state, stories: stories.state, openItem: openExplore)
+                        case let .year(year, month):
+                            YearPageView(year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore)
+                        case .map:
+                            ExploreMapView(library: library.state, stories: stories.state) { scope, itemId in
+                                guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
+                                openViewer(ViewerRequest(storyId: nil, filter: .all, itemId: first, scope: scope))
+                            }
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
@@ -119,7 +163,11 @@ struct LibraryRootView: View {
                                     dismissSuggestion: { stories.dismissSuggestion($0, in: id) },
                                     ungroup: { stories.ungroup($0, in: id) },
                                     removeItems: { stories.remove($0, from: id) },
-                                    resetGroups: { stories.resetGroups(in: id) }
+                                    resetGroups: { stories.resetGroups(in: id) },
+                                    setTileSize: { stories.setTileSize($1, of: $0, in: id) },
+                                    setTileFocus: { stories.setTileFocus($1, of: $0, in: id) },
+                                    moveTile: { stories.moveTile($0, by: $1, in: id) },
+                                    resetLayout: { stories.resetLayout(in: id) }
                                 )
                             )
                             .navigationTransition(.zoom(sourceID: ZoomID.story(id), in: zoom))
@@ -148,6 +196,7 @@ struct LibraryRootView: View {
                     }
                 }
                 .environment(\.zoomNamespace, zoom)
+                .cropCover($crop, stories: stories.state) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
@@ -181,9 +230,12 @@ struct LibraryRootView: View {
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
+                            setCrops: { itemId, crops in stories.setCrops(crops, of: itemId) },
                             showing: { itemId in
                                 showing = ViewerShowing(session: showing?.session ?? UUID(), itemId: itemId)
-                            }
+                            },
+                            downloadOriginal: { item, progress in await ServerImages.shared.downloadOriginal(item, progress: progress) },
+                            deleteFromPhone: { item in await ServerImages.shared.deleteFromPhone(item, refresh: library.refresh) }
                         )
                     )
                     // The viewer is always dark, like a photo app; the rest follows the system.
@@ -199,6 +251,11 @@ struct LibraryRootView: View {
         }
     }
 
+    /// A photo of a town's or a year's page: the viewer swipes through its row, as the page shows it.
+    private func openExplore(_ scope: ExploreScope, _ section: FeedSection, _ item: MediaItem) {
+        openViewer(ViewerRequest(storyId: nil, feedSection: section.key, filter: .all, itemId: item.id, scope: scope))
+    }
+
     /// iOS asks only once; after that only Settings can grant access.
     private func requestOrOpenSettings() {
         if library.state.access == .denied, let url = URL(string: UIApplication.openSettingsURLString) {
@@ -209,8 +266,14 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its
-    /// cover), the moment of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
+    /// cover), the row of Moments or an Explore page (its photos in the order shown), the map's photos, or everything
+    /// in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
+        if let scope = request.scope {
+            let items = scopeItems(library.state, stories.state, scope)
+            guard let section = request.feedSection else { return items }
+            return stories.state.feedOf(items: items).section(key: section)?.items ?? []
+        }
         if let tag = request.tag {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
         }
@@ -220,8 +283,8 @@ struct LibraryRootView: View {
         if let storyId = request.storyId {
             return stories.state.story(id: storyId)?.viewerItems ?? []
         }
-        if let moment = request.moment {
-            return stories.state.moment(key: moment)?.items ?? []
+        if let section = request.feedSection {
+            return stories.state.feed.section(key: section)?.items ?? []
         }
         return library.state.days(filter: request.filter).flatMap { $0.items }
     }

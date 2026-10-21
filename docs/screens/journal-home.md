@@ -1,7 +1,7 @@
 # Journal (home)
 
 The main screen, with three tabs (renamed on Oct 19, 2026 from Journal / Unsorted; **Explore** added Oct 20, 2026,
-Android only). **Stories** is the timeline of
+on iOS since Oct 21, 2026). **Stories** is the timeline of
 **stories** (a trip, a birthday, a person, anything worth naming), newest first; a story sits at its newest photo's
 day. **Moments** holds **every photo**, in rows: one row per day, or with the [grouping setting](settings.md) one row
 per run of photos without a long break. Photos never show on the Stories tab outside their story card.
@@ -24,20 +24,14 @@ Photos fill the screen on the page background (light or dark with the system); t
   them a mosaic of the story's **main photos**: its first six tiles in the story's order, a group as its cover. One
   photo is full width, two sit side by side, three to five are a large one with two beside it, and six add a row of
   three under them. The last photo shows "+N" for the rest of the story. Tapping opens the [story](story-page.md).
-- **Moments (Android):** a feed of every photo that groups itself, full-width photos split by time, place, source and
-  looks; see [moments.md](moments.md). iOS still shows the older unsorted moments below.
-- **Unsorted moments (iOS, Moments tab).** Only the photos in no story and without tags (a photo has a place once it
-  is in a story **or has a tag**). Each has a heading, "N unsorted", a **+ Story** button, and a row of 76 pt photos you can
-  scroll sideways. Tapping a photo opens the [viewer](viewer.md) on that moment's unsorted photos. Headings:
-  - By day: "Today", "Yesterday", "Tue, Oct 7", with the year for other years.
-  - By breaks, within one day: the day and the times, "Today · 9:14 – 21:40" (one time for a single photo).
-  - By breaks, across days: "Sat, Oct 4 – Mon, Oct 6".
-- **+ Story** asks for a title (optional), creates a story from that moment's unsorted photos and opens it. More days are added
-  from the story page.
+- **Moments:** a feed of every photo that groups itself, full-width photos split by time, place, source and
+  looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
+  then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
   - **Stories / Moments / Explore** switch: Stories shows only story cards, Moments the photos, Explore the photos by
-    town and year and the map ([explore.md](explore.md)). No counts.
+    town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
+    **Cancel · N selected · Merge** takes its place.
 
 Empty, loading and error states show a single line of text in place of the days. With photos but no stories yet,
 the Stories tab says "No stories yet. Make one from a day in Moments."
@@ -47,8 +41,8 @@ the Stories tab says "No stories yet. Make one from a day in Moments."
 - Connects to the server when it opens; the result only shows as the Offline pill or the Register again card.
 - Re-reads the library whenever the app comes to the foreground, so new photos and permission changes show up.
 - Headings use the device's locale and time zone.
-- Moments are keyed by their oldest photo's id, so a moment keeps its place (and an open "+ Story" dialog its
-  target) when newer photos join it.
+- Feed rows, moments and sets are keyed by their oldest photo's id, so they keep their place (and a set its page)
+  when newer photos join them.
 
 ## Not built yet
 
@@ -63,5 +57,7 @@ These are in the design but wait for features that don't exist:
 - Android: [JournalHomeScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/JournalHomeScreen.kt);
   navigation, permission handling and refresh on resume in
   [LibraryApp.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/LibraryApp.kt).
-- iOS: [JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift); navigation and refresh in
+- iOS: [JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift), the Moments feed in
+  [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift) and
+  [FeedVideo.swift](../../iosApp/iosApp/FeedVideo.swift); navigation and refresh in
   [LibraryRootView.swift](../../iosApp/iosApp/LibraryRootView.swift).

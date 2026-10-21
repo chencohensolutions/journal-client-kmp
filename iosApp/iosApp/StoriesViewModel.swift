@@ -24,7 +24,8 @@ final class StoriesViewModel: ObservableObject {
 
     /// Returns the new story's id, or nil when the title is blank.
     @discardableResult
-    func createStory(title: String, momentKey: String) -> String? { controller.createStoryFromMoment(title: title, key: momentKey) }
+    /// A row of Moments or a trip ("Save as story"), by its key; near-duplicate sets become groups.
+    func createStory(title: String, feedKey: String) -> String? { controller.createStoryFromFeed(title: title, key: feedKey) }
 
     @discardableResult
     func createStory(title: String, itemIds: [String]) -> String? { controller.createStory(title: title, itemIds: itemIds) }
@@ -76,9 +77,37 @@ final class StoriesViewModel: ObservableObject {
     }
     func ungroup(_ groupId: String, in storyId: String) { controller.ungroup(storyId: storyId, groupId: groupId) }
 
+    // MARK: Layout
+
+    /// A tile's (`StoryTile.key`) size on the story's grid; nil goes back to the automatic size.
+    func setTileSize(_ size: TileSize?, of tileKey: String, in storyId: String) {
+        controller.setTileSize(storyId: storyId, tileKey: tileKey, size: size)
+    }
+    /// The point of the tile's photo that stays in view, and how much closer than filling the tile to show it.
+    func setTileFocus(_ crop: TileCrop, of tileKey: String, in storyId: String) {
+        controller.setTileFocus(storyId: storyId, tileKey: tileKey, x: Float(crop.x), y: Float(crop.y), zoom: Float(crop.zoom))
+    }
+    /// `offset` places later (negative: earlier) among the tiles of its day.
+    func moveTile(_ tileKey: String, by offset: Int32, in storyId: String) {
+        controller.moveTile(storyId: storyId, tileKey: tileKey, offset: offset)
+    }
+    /// Back to the automatic layout: sizes, focus points and order.
+    func resetLayout(in storyId: String) { controller.resetLayout(storyId: storyId) }
+
     // MARK: Captions and tags
 
     func setCaption(_ text: String, of itemId: String) { controller.setCaption(itemId: itemId, text: text) }
+
+    /// The photo's crops, for looking only (the photo isn't changed); empty crops remove them.
+    func setCrops(_ crops: PhotoCrops, of itemId: String) { controller.setCrops(itemId: itemId, crops: crops) }
+
+    // MARK: Moments
+
+    /// The photos of the picked sets and photos become one set you swipe.
+    func mergeInFeed(_ itemIds: [String]) { controller.mergeInFeed(itemIds: itemIds) }
+    func takeOutOfSet(_ itemId: String) { controller.takeOutOfSet(itemId: itemId) }
+    /// The set of `itemIds` was turned to `itemId`: it opens there next time.
+    func turnSet(_ itemIds: [String], to itemId: String) { controller.turnSet(itemIds: itemIds, itemId: itemId) }
 
     @discardableResult
     func addTag(_ tag: String, to itemIds: [String]) -> String? { controller.addTag(itemIds: itemIds, tag: tag) }

@@ -1,10 +1,12 @@
 import SwiftUI
 import SharedLogic
 
-/// A square-cropped photo or video with its video length and backup badge. Size it from outside.
+/// A photo or video cropped to fill its tile (around `crop`), with its video length and backup badge. Size it from
+/// outside.
 struct MediaTileView: View {
     let item: MediaItem
     var badgeSize: CGFloat = 22
+    var crop: TileCrop = .none
 
     @State private var thumbnail: UIImage?
 
@@ -13,11 +15,7 @@ struct MediaTileView: View {
             ZStack {
                 LibraryColors.raised
                 if let thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
+                    TileImage(image: thumbnail, size: geometry.size, crop: crop)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -26,16 +24,41 @@ struct MediaTileView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                BackupBadge(status: item.backup, size: badgeSize).padding(5)
+                BackupBadge(status: item.backup, size: badgeSize, originalHere: item.hasOriginalHere).padding(5)
             }
             .task(id: item.id) {
-                thumbnail = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size)
+                // Zoomed in, the tile shows a part of a larger image.
+                let size = CGSize(width: geometry.size.width * crop.zoom, height: geometry.size.height * crop.zoom)
+                thumbnail = await PhotoLibraryImages.shared.image(item: item, pointSize: size)
             }
         }
         .contentShape(Rectangle())
         .accessibilityElement()
         .accessibilityLabel(item.accessibilityDescription)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// `image` scaled to cover `size`, anchored at the crop's focus point and zoomed around it, clipped to `size`.
+struct TileImage: View {
+    let image: UIImage
+    let size: CGSize
+    let crop: TileCrop
+
+    var body: some View {
+        let width = max(image.size.width, 1)
+        let height = max(image.size.height, 1)
+        let scale = max(size.width / width, size.height / height)
+        let filled = CGSize(width: width * scale, height: height * scale)
+        Image(uiImage: image)
+            .resizable()
+            .frame(width: filled.width, height: filled.height)
+            .offset(x: (size.width - filled.width) * crop.x, y: (size.height - filled.height) * crop.y)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .scaleEffect(crop.zoom, anchor: UnitPoint(x: crop.x, y: crop.y))
+            .clipped()
+            // The focus point is in the photo's own coordinates: not mirrored in Hebrew.
+            .environment(\.layoutDirection, .leftToRight)
     }
 }
 
@@ -58,17 +81,22 @@ struct DurationChip: View {
     }
 }
 
-/// The corner badge; see docs/screens/README.md for what each state means.
+/// The corner badge; see docs/screens/README.md for what each state means. None when the original is only on the
+/// server (`originalHere` false).
 struct BackupBadge: View {
     let status: BackupStatus
     let size: CGFloat
+    /// False for a photo only on the server: backed up, it has no badge.
+    var originalHere = true
 
     var body: some View {
-        ZStack {
-            Circle().fill(background)
-            symbol
+        if !(status.isBackedUp && !originalHere) {
+            ZStack {
+                Circle().fill(background)
+                symbol
+            }
+            .frame(width: size, height: size)
         }
-        .frame(width: size, height: size)
     }
 
     private var background: Color {
@@ -97,7 +125,8 @@ struct BackupBadge: View {
             }
             .frame(width: inner, height: inner)
         case is BackupStatusBackedUp:
-            Image(systemName: "checkmark").font(.system(size: inner * 0.75, weight: .bold)).foregroundStyle(.white)
+            // On this phone, and on the server.
+            Image(systemName: "iphone").font(.system(size: inner * 0.8, weight: .semibold)).foregroundStyle(.white)
         case is BackupStatusFailed:
             Text("!").font(.system(size: inner, weight: .bold)).foregroundStyle(.white)
         default:

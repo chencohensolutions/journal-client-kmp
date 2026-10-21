@@ -61,7 +61,7 @@ sealed interface BackupStatus {
     data class Failed(val reason: String) : BackupStatus
 }
 
-/** Where a photo came from, by the folder it is in (Android) or what the camera marked it as (iOS). */
+/** Where a photo came from, by the folder it is in (Android) or what PhotoKit tells of it (iOS, [sourceOfAsset]). */
 enum class MediaSource {
     /** Taken with the phone's camera (DCIM). */
     CAMERA,
@@ -91,6 +91,25 @@ internal fun sourceOfFolder(relativePath: String?): MediaSource {
     }
 }
 
+/** What an iPhone's own camera writes: HEIC/HEIF or JPEG photos, ProRAW DNG, QuickTime videos. */
+private val CAMERA_TYPES = setOf("image/heic", "image/heif", "image/jpeg", "image/x-adobe-dng", "image/dng", "video/quicktime")
+
+/**
+ * The source of an iOS photo, which has no folder: PhotoKit marks screenshots and screen recordings
+ * ([isScreenshot]); WhatsApp saves into an album named "WhatsApp" ([inWhatsAppAlbum]); a photo synced from a computer
+ * or in a shared album isn't [inUserLibrary]. Of the rest, a file the camera can't have written (a PNG, GIF, WebP or
+ * MP4 saved from an app) is Other; a JPEG saved from Safari can't be told apart and counts as Camera. Unknown
+ * [originalMimeType] (not read yet) counts as Camera too, as before it was read.
+ */
+internal fun sourceOfAsset(isScreenshot: Boolean, inWhatsAppAlbum: Boolean, inUserLibrary: Boolean, originalMimeType: String?): MediaSource =
+    when {
+        isScreenshot -> MediaSource.SCREENSHOTS
+        inWhatsAppAlbum -> MediaSource.WHATSAPP
+        !inUserLibrary -> MediaSource.OTHER
+        originalMimeType != null && originalMimeType.lowercase() !in CAMERA_TYPES -> MediaSource.OTHER
+        else -> MediaSource.CAMERA
+    }
+
 /** A photo or video in the device library. */
 data class MediaItem(
     /** MediaStore row id on Android, PHAsset localIdentifier on iOS. */
@@ -105,9 +124,9 @@ data class MediaItem(
     /** In pixels as it is shown, after the camera's rotation; 0 when unknown. */
     val width: Int,
     val height: Int,
-    /** Null when the platform does not report it cheaply (iOS). */
+    /** Of the file backup reads (on iOS the current version: an edit's render); null when unknown (not read yet). */
     val sizeBytes: Long?,
-    /** Null when the platform does not report it cheaply (iOS). */
+    /** "IMG_1234.HEIC"; an edited iOS photo has its original's name with the edit's extension. Null when unknown. */
     val fileName: String?,
     val backup: BackupStatus = BackupStatus.NotBackedUp,
     /** Shots of one camera burst share this: iOS burstIdentifier, or the Samsung "20261008_140901_092" name pattern. */

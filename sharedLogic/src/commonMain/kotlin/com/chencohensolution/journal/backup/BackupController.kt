@@ -66,6 +66,7 @@ data class BackupState(
     /** Where [item] is in the backup process. */
     fun status(item: MediaItem): BackupStatus {
         val running = (activity as? BackupActivity.Running)?.progress
+        running?.uploading?.get(item.id)?.let { return BackupStatus.Uploading(it) }
         if (running?.currentId == item.id) return BackupStatus.Uploading(running.currentFraction)
         val entry = entries[item.id]
         return when {
@@ -131,6 +132,8 @@ class BackupController internal constructor(
     private val onSettingsChanged: (BackupSettings) -> Unit = {},
     /** Asks the platform to run now (in the background, with its progress notification). */
     private val onBackUpNow: (BackupSettings) -> Unit = {},
+    /** How pieces travel; by default with the app's own client. */
+    private val pieceSender: PieceSender? = null,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -233,7 +236,7 @@ class BackupController internal constructor(
             var shownFile: String? = null
             var shownAt: TimeMark? = null
             val result = createApolloClient(http, url).useClient { apollo ->
-                BackupEngine(files, ledger, ServerBackupApi(apollo, http, url), locate).run(items, current) { counted ->
+                BackupEngine(files, ledger, ServerBackupApi(apollo, url, pieceSender ?: KtorPieceSender(http)), locate).run(items, current) { counted ->
                     // Bytes are reported many times a second; the screens redraw from this state, so it changes at
                     // most every PROGRESS_EVERY, except when a file starts or finishes.
                     val newFile = counted.currentId != shownFile || counted.done != done
@@ -263,8 +266,22 @@ class BackupController internal constructor(
             RunOutcome.Retry(e.describe())
         } finally {
             _state.update { it.copy(queued = emptySet()) }
+            files.runEnded()
             reloadLedger()
         }
+    }
+
+    /** [runOnce] for Swift, which can't cancel a Kotlin suspend call: cancelling the handle stops the run. */
+    fun launchRun(onDone: (RunOutcome?) -> Unit): ObservationHandle {
+        val job = scope.launch {
+            val outcome = try {
+                runOnce()
+            } catch (e: CancellationException) {
+                null
+            }
+            onDone(outcome)
+        }
+        return ObservationHandle { job.cancel() }
     }
 
     /** Callback-style observation for Swift; Android collects [state] directly. */

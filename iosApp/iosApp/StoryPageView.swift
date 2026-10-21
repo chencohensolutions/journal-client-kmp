@@ -20,10 +20,16 @@ struct StoryPageActions {
     var removeItems: ([String]) -> Void
     /// Removes every group and brings suggestions back; `restore` undoes it.
     var resetGroups: () -> Void
+    /// Layout, by tile key (`StoryTile.key`): a nil size is automatic; `moveTile` moves it among its day's tiles.
+    var setTileSize: (String, TileSize?) -> Void
+    var setTileFocus: (String, TileCrop) -> Void
+    var moveTile: (String, Int32) -> Void
+    var resetLayout: () -> Void
 }
 
 /// One story: its title, dates and story, burst suggestions, then its photos and groups day by day, oldest first.
-/// Long-press a photo or group to select tiles and group them (groups nest) or merge them. See docs/screens/story.md.
+/// Long-press a photo or group to select tiles and group them (groups nest) or merge them; ⋯ › Arrange layout to size,
+/// reorder and crop the tiles. See docs/screens/story-page.md.
 struct StoryPageView: View {
     let story: StoryView?
     let neighborDays: [DayGroup]
@@ -41,6 +47,12 @@ struct StoryPageView: View {
     @State private var selection: Set<String>?
     /// The story as it was before grouping, to put back on Undo.
     @State private var undo: (groupId: String, count: Int, before: Story)?
+    @State private var arranging = false
+    /// The tile picked in arrange mode.
+    @State private var arrangeKey: String?
+    /// The tile whose focus is being chosen; kept apart from `arrangeKey` so the editor stays on it.
+    @State private var focusKey: String?
+    @State private var confirmingLayoutReset = false
 
     var body: some View {
         Group {
@@ -53,8 +65,8 @@ struct StoryPageView: View {
         }
         .background(LibraryColors.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(selection.map { "\($0.count) selected" } ?? "")
-        .navigationBarBackButtonHidden(selection != nil)
+        .navigationTitle(title)
+        .navigationBarBackButtonHidden(selection != nil || arranging)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
         .toolbar { toolbar }
         .safeAreaInset(edge: .bottom) { bottomBar }
@@ -82,14 +94,54 @@ struct StoryPageView: View {
         } message: {
             Text("The story and its title go away. Its photos and videos stay on this device.")
         }
+        .confirmationDialog("Reset the layout?", isPresented: $confirmingLayoutReset, titleVisibility: .visible) {
+            Button("Reset", role: .destructive) {
+                arrangeKey = nil
+                actions.resetLayout()
+            }
+        } message: {
+            Text("Sizes, order and focus go back to automatic. Photos and text stay.")
+        }
+        .fullScreenCover(isPresented: Binding(get: { focusKey != nil }, set: { if !$0 { focusKey = nil } })) {
+            if let story, let tile = placed(focusKey, in: story) {
+                FocusEditor(tile: tile) { crop in actions.setTileFocus(tile.tile.key, crop) }
+            }
+        }
         .sheet(isPresented: $editingIntro) {
             WritingEditor(title: story?.name ?? "", initial: story?.intro ?? "", onSave: actions.setIntro)
         }
     }
 
+    private var title: String {
+        if arranging { return String(localized: "Arrange") }
+        return selection.map { String(localized: "\($0.count) selected") } ?? ""
+    }
+
+    private func placed(_ key: String?, in story: StoryView) -> PlacedTile? {
+        guard let key else { return nil }
+        for day in story.tileDays {
+            for band in day.bands {
+                if let tile = band.tiles.first(where: { $0.tile.key == key }) { return tile }
+            }
+        }
+        return nil
+    }
+
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if selection != nil {
+        if arranging {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Reset") { confirmingLayoutReset = true }
+                    .foregroundStyle(LibraryColors.onBackground)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    arranging = false
+                    arrangeKey = nil
+                } label: { Text("Done").bold() }
+                    .foregroundStyle(LibraryColors.onBackground)
+            }
+        } else if selection != nil {
             ToolbarItem(placement: .topBarLeading) {
                 Button { selection = nil } label: { Image(systemName: "xmark") }
                     .accessibilityLabel("Cancel selection")
@@ -104,6 +156,10 @@ struct StoryPageView: View {
                         newTitle = story?.title ?? ""
                         renaming = true
                     } label: { Label("Rename", systemImage: "pencil") }
+                    Button {
+                        selection = nil
+                        arranging = true
+                    } label: { Label("Arrange layout", systemImage: "square.grid.2x2") }
                     if let story, !story.groups.isEmpty || !story.story.dismissedSuggestions.isEmpty {
                         Button { confirmingGroupsReset = true } label: {
                             Label("Reset groups", systemImage: "square.stack")
@@ -123,7 +179,15 @@ struct StoryPageView: View {
     /// Group / Merge / Remove while selecting; otherwise the "Grouped · Undo" message after grouping.
     @ViewBuilder
     private var bottomBar: some View {
-        if let selection, let story {
+        if arranging, let story {
+            let tile = placed(arrangeKey, in: story)
+            ArrangePanel(
+                tile: tile,
+                onSize: { size in if let tile { actions.setTileSize(tile.tile.key, size) } },
+                onMove: { offset in if let tile { actions.moveTile(tile.tile.key, offset) } },
+                onFocus: { focusKey = arrangeKey }
+            )
+        } else if let selection, let story {
             let tiles = story.tiles.filter { selection.contains($0.key) }
             let ids = itemIds(of: tiles)
             SelectionBar(
@@ -172,8 +236,10 @@ struct StoryPageView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     header(story)
-                    WritingBlock(text: story.intro, emptyPrompt: "Write about this story…") { editingIntro = true }
-                    if selection == nil {
+                    if !arranging {
+                        WritingBlock(text: story.intro, emptyPrompt: "Write about this story…") { editingIntro = true }
+                    }
+                    if selection == nil && !arranging {
                         if !neighborDays.isEmpty { neighbors }
                         ForEach(story.suggestions, id: \.key) { suggestion in
                             BurstSuggestionCard(
@@ -192,6 +258,8 @@ struct StoryPageView: View {
                     if story.items.isEmpty {
                         note("None of this story's photos are on this device.")
                     }
+                    // The grid's rows are its bands, so space goes above the first one only.
+                    Color.clear.frame(height: 6)
                     StoryGrid(
                         days: story.tileDays,
                         label: { label(for: $0, in: story) },
@@ -205,9 +273,11 @@ struct StoryPageView: View {
                         onLongPress: { key in
                             if selection == nil { selection = [] }
                             selection?.insert(key)
-                        }
+                        },
+                        arranging: arranging ? GridArranging(selectedKey: arrangeKey) { key in
+                            arrangeKey = key == arrangeKey ? nil : key
+                        } : nil
                     )
-                    .padding(.top, 8)
                 }
                 .padding(.bottom, 32)
                 .followsViewer { id in storyPlace(of: id, in: story.tileDays) }

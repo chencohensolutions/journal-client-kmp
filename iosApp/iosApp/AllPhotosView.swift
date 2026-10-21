@@ -4,6 +4,7 @@ import SharedLogic
 /// Every photo and video, edge to edge, newest first. See docs/screens/all-photos.md.
 struct AllPhotosView: View {
     let library: LibraryState
+    let backupRunning: BackupProgress?
     let health: ServerHealth
     @Binding var filter: LibraryFilter
     let onOpen: (MediaItem) -> Void
@@ -41,7 +42,7 @@ struct AllPhotosView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            BottomControls(notBackedUp: Int(library.notBackedUpCount)) {
+            BottomControls(summary: backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount))) {
                 SegmentedBar(
                     options: [(LibraryFilter.all, "All"), (.notBackedUp, "Not backed up"), (.videos, "Videos")],
                     selection: $filter

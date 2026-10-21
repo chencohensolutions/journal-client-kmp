@@ -407,7 +407,7 @@
     <string name="library_original_delete_confirm">מחיקה</string>
     <string name="library_original_unreachable">לא נמחק: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_original_no_preview">לא נמחק: לא ניתן לשמור תמונה שלו להצגה כאן.</string>
-    <string name="library_original_delete_video">סרטון שנמצא רק בשרת עדיין לא מתנגן באפליקציה; מוצגת תמונה ממנו. אפשר להוריד את המקור כדי לנגן אותו שוב.</string>
+    <string name="library_original_delete_video">אחר כך הסרטון מתנגן מהשרת שלך בהזרמה; מה שכבר נוגן נשמר בטלפון הזה לפעם הבאה.</string>
     <string name="library_original_not_on_server">לא נמחק: התמונה לא נמצאת בשרת שלך. היא תועלה שוב בגיבוי הבא.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>
