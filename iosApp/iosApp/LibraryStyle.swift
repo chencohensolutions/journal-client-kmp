@@ -111,6 +111,10 @@ func formatDuration(_ seconds: TimeInterval) -> String {
 /// Lays its children out in rows, wrapping to the next row when one is full (tag chips).
 struct FlowLayout: Layout {
     var spacing: CGFloat = 6
+    /// Between rows; `spacing` when nil.
+    var lineSpacing: CGFloat? = nil
+    /// Each row centred (a Moments day line), else from the leading edge (tag chips).
+    var centered = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = arrange(subviews, width: proposal.width ?? .infinity)
@@ -119,13 +123,22 @@ struct FlowLayout: Layout {
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         for row in arrange(subviews, width: bounds.width) {
-            var x = bounds.minX
+            var x = centered ? bounds.minX + (bounds.width - row.width) / 2 : bounds.minX
             for index in row.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
-                subviews[index].place(at: CGPoint(x: x, y: bounds.minY + row.y + (row.height - size.height) / 2), proposal: .unspecified)
+                let size = measure(subviews[index], width: bounds.width)
+                subviews[index].place(
+                    at: CGPoint(x: x, y: bounds.minY + row.y + (row.height - size.height) / 2),
+                    proposal: ProposedViewSize(size)
+                )
                 x += size.width + spacing
             }
         }
+    }
+
+    /// Its own size, but never wider than a row: a long one is cut (its text truncates) rather than spill over.
+    private func measure(_ subview: LayoutSubview, width: CGFloat) -> CGSize {
+        let size = subview.sizeThatFits(.unspecified)
+        return size.width <= width ? size : subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
     }
 
     private struct Row {
@@ -138,10 +151,10 @@ struct FlowLayout: Layout {
     private func arrange(_ subviews: Subviews, width: CGFloat) -> [Row] {
         var rows = [Row()]
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = measure(subviews[index], width: width)
             if !rows[rows.count - 1].indices.isEmpty && rows[rows.count - 1].width + spacing + size.width > width {
                 let last = rows[rows.count - 1]
-                rows.append(Row(y: last.y + last.height + spacing))
+                rows.append(Row(y: last.y + last.height + (lineSpacing ?? spacing)))
             }
             var row = rows[rows.count - 1]
             row.width += (row.indices.isEmpty ? 0 : spacing) + size.width

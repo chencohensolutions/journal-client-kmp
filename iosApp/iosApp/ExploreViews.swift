@@ -8,6 +8,8 @@ enum ExploreView { case places, years }
 
 struct ExploreActions {
     var openPlace: (_ town: String) -> Void
+    /// A country's page of towns; nil for the towns whose country isn't known ("Other places").
+    var openCountry: (_ country: String?) -> Void
     /// A year's page, on one of its months when `month` is set.
     var openYear: (_ year: Int, _ month: Int?) -> Void
     var openMap: () -> Void
@@ -132,18 +134,21 @@ struct ExploreRowsView: View {
 
     private enum Row: Identifiable {
         case message(LocalizedStringKey)
-        case country(CountrySummary)
         case home(PlaceSummary)
-        /// One or two towns side by side.
-        case towns([PlaceSummary])
+        /// The home country's other towns, in a row to swipe through.
+        case homeCountry(CountrySummary, [PlaceSummary])
+        /// "Other countries", or "Countries" when no country is home.
+        case countriesHeading(LocalizedStringKey)
+        case country(CountrySummary)
         case year(YearSummary)
 
         var id: String {
             switch self {
             case .message: return "message"
-            case .country(let country): return "country|\(country.country ?? "")"
             case .home(let place): return "home|\(place.town)"
-            case .towns(let places): return "towns|\(places[0].town)"
+            case .homeCountry(let country, _): return "home-country|\(country.country ?? "")"
+            case .countriesHeading: return "countries"
+            case .country(let country): return "country|\(country.country ?? "")"
             case .year(let year): return "year|\(year.year)"
             }
         }
@@ -165,25 +170,29 @@ struct ExploreRowsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 32)
-            case .country(let country):
-                CountryHeader(country: country).padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8)
             case .home(let place):
-                HomeCard(place: place) { actions.openPlace(place.town) }.padding(.horizontal, 16).padding(.bottom, 16)
-            case .towns(let places):
-                HStack(alignment: .top, spacing: 10) {
-                    ForEach(places, id: \.town) { place in
-                        PlaceCard(place: place) { actions.openPlace(place.town) }
-                    }
-                    if places.count == 1 { Color.clear.frame(height: 1) }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                HomeCard(place: place) { actions.openPlace(place.town) }.padding(.horizontal, 16).padding(.top, 4)
+            case let .homeCountry(country, towns):
+                HomeCountryTowns(country: country, towns: towns, actions: actions).padding(.top, 20)
+            case .countriesHeading(let text):
+                Text(text)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+                    .padding(.bottom, 4)
+            case .country(let country):
+                CountryRow(country: country) { actions.openCountry(country.country) }
             case .year(let year):
                 YearCard(year: year, actions: actions)
             }
         }
     }
 
+    /// Places: the home town and a row of the home country's other towns, then every other country as one row, so
+    /// all of them fit on a screen or two. A country opens its own page of towns. As Android's `PlacesList`.
     private var rows: [Row] {
         if view == .years { return summaries.years.map { .year($0) } }
         if summaries.countries.isEmpty {
@@ -191,33 +200,139 @@ struct ExploreRowsView: View {
             let finding = summaries.anyLocated || !summaries.years.isEmpty
             return [.message(finding ? "Finding where your photos were taken…" : "None of these photos has a location.")]
         }
-        return summaries.countries.flatMap { country -> [Row] in
-            var rows: [Row] = [.country(country)]
-            rows += country.places.filter(\.home).map { .home($0) }
-            let others = country.places.filter { !$0.home }
-            rows += stride(from: 0, to: others.count, by: 2).map { .towns(Array(others[$0..<min($0 + 2, others.count)])) }
-            return rows
+        let homeCountry = summaries.countries.first { $0.home }
+        var rows: [Row] = []
+        if let homeCountry {
+            rows += homeCountry.places.filter(\.home).prefix(1).map { .home($0) }
+            let towns = homeCountry.places.filter { !$0.home }
+            if !towns.isEmpty { rows.append(.homeCountry(homeCountry, towns)) }
+        }
+        let others = summaries.countries.filter { $0 !== homeCountry }
+        if !others.isEmpty {
+            rows.append(.countriesHeading(homeCountry != nil ? "Other countries" : "Countries"))
+            rows += others.map { .country($0) }
+        }
+        return rows
+    }
+}
+
+/// "More in Israel", "11 places · 1,708 photos" and See all, over a row of its towns besides home to swipe through.
+private struct HomeCountryTowns: View {
+    let country: CountrySummary
+    let towns: [PlaceSummary]
+    let actions: ExploreActions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button { actions.openCountry(country.country) } label: {
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("More in \(countryName(country))")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(LibraryColors.onBackground)
+                            .lineLimit(1)
+                            .accessibilityAddTraits(.isHeader)
+                        let photos = towns.reduce(0) { $0 + $1.items.count }
+                        Text(verbatim: "\(String(localized: "\(towns.count) places")) · \(String(localized: "\(photos) photos"))")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LibraryColors.muted)
+                    }
+                    Spacer(minLength: 8)
+                    HStack(spacing: 2) {
+                        Text("See all").font(.system(size: 14, weight: .semibold))
+                        Image(systemName: "chevron.forward").font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .frame(height: 44)
+                    .padding(.horizontal, 8)
+                }
+                .padding(.leading, 16)
+                .padding(.trailing, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: 10) {
+                    ForEach(towns, id: \.town) { place in
+                        PlaceCard(place: place) { actions.openPlace(place.town) }.frame(width: 140)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .scrollIndicators(.hidden)
         }
     }
 }
 
-/// A country above its towns: "France", "3 places · 1,240 photos".
-private struct CountryHeader: View {
+/// A country in the list: a few of its photos, its name, its main towns ("Paris, Lyon, Nice +3"), its count and years.
+private struct CountryRow: View {
     let country: CountrySummary
+    let onOpen: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(country.country ?? String(localized: "Other places"))
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(LibraryColors.onBackground)
-                .lineLimit(1)
-                .accessibilityAddTraits(.isHeader)
-            Text("\(String(localized: "\(country.places.count) places")) · \(String(localized: "\(Int(country.photoCount)) photos"))")
-                .font(.system(size: 13))
-                .foregroundStyle(LibraryColors.muted)
+        Button(action: onOpen) {
+            HStack(spacing: 14) {
+                CoverMosaic(covers: country.covers)
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(verbatim: countryName(country))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(LibraryColors.onBackground)
+                        .lineLimit(1)
+                    Text(verbatim: townsLine)
+                        .font(.system(size: 13))
+                        .foregroundStyle(LibraryColors.muted)
+                        .lineLimit(1)
+                    Text(verbatim: "\(String(localized: "\(Int(country.photoCount)) photos")) · \(yearRange(Int(country.firstYear), Int(country.lastYear)))")
+                        .font(.system(size: 12))
+                        .foregroundStyle(LibraryColors.muted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(LibraryColors.muted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
     }
+
+    /// "Paris, Lyon, Nice", and "+3" for the rest.
+    private var townsLine: String {
+        let names = country.places.prefix(countryRowTowns).map(\.town).joined(separator: ", ")
+        let more = country.places.count - countryRowTowns
+        return more > 0 ? String(localized: "\(names) +\(more)") : names
+    }
+}
+
+/// The towns a country's row names before "+3".
+private let countryRowTowns = 3
+
+/// Up to four photos in a square: one whole, two side by side, one beside two, or two by two.
+private struct CoverMosaic: View {
+    let covers: [MediaItem]
+
+    var body: some View {
+        let columns: [[MediaItem]] = covers.count <= 2
+            ? covers.map { [$0] }
+            : [Array(covers.prefix(covers.count - 2)), Array(covers.suffix(2))]
+        HStack(spacing: 2) {
+            ForEach(columns.indices, id: \.self) { column in
+                VStack(spacing: 2) {
+                    ForEach(columns[column], id: \.id) { item in ExploreThumbnail(item: item) }
+                }
+            }
+        }
+        .background(LibraryColors.raised)
+    }
+}
+
+/// A country's name, or "Other places" for the towns whose country isn't known.
+func countryName(_ country: CountrySummary) -> String {
+    country.country ?? String(localized: "Other places")
 }
 
 /// The home town, across the grid: its photo with the name written over it.
@@ -546,7 +661,7 @@ private struct ExplorePageView: View {
         GeometryReader { geometry in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    cover(all, top: geometry.safeAreaInsets.top)
+                    PageCover(title: title, subtitle: all.isEmpty ? nil : subtitle(all), photo: all.first { !$0.isVideo } ?? all.first, top: geometry.safeAreaInsets.top)
                     ScrollView(.horizontal) {
                         HStack(spacing: 8) {
                             ForEach(chips(all), id: \.0) { value, label in
@@ -598,10 +713,18 @@ private struct ExplorePageView: View {
             }.value
         }
     }
+}
 
-    private func cover(_ all: [MediaItem], top: CGFloat) -> some View {
-        let photo = all.first { !$0.isVideo } ?? all.first
-        return ZStack(alignment: .bottomLeading) {
+/// A page's photo across the top, under the status bar, with its title and a line under it written over the photo.
+struct PageCover: View {
+    let title: String
+    let subtitle: String?
+    let photo: MediaItem?
+    /// The safe area above it: the photo goes under the status bar.
+    let top: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
             LibraryColors.raised
             if let photo { ExploreThumbnail(item: photo) }
             VStack(alignment: .leading, spacing: 0) {
@@ -609,8 +732,8 @@ private struct ExplorePageView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(LibraryColors.photoText)
                     .accessibilityAddTraits(.isHeader)
-                if !all.isEmpty {
-                    Text(verbatim: subtitle(all))
+                if let subtitle {
+                    Text(verbatim: subtitle)
                         .font(.system(size: 13))
                         .foregroundStyle(LibraryColors.photoTextMuted)
                         .lineLimit(1)
@@ -626,5 +749,63 @@ private struct ExplorePageView: View {
         .clipped()
         // A scrim under the back button, which is over the photo.
         .overlay(alignment: .top) { LibraryColors.labelFade.frame(height: top + 44) }
+    }
+}
+
+// MARK: - A country's page
+
+/// A country's page: its photo and name, then its towns as on the Places list, the home town across the top and the
+/// others two to a row. `country` is nil for the towns whose country isn't known ("Other places"). As Android's
+/// `CountryScreen`.
+struct CountryPageView: View {
+    let country: String?
+    let library: LibraryState
+    let stories: StoriesState
+    let openPlace: (_ town: String) -> Void
+
+    @State private var summary: CountrySummary?
+
+    var body: some View {
+        let towns = summary?.places.filter { !$0.home } ?? []
+        GeometryReader { geometry in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    PageCover(
+                        title: country ?? String(localized: "Other places"),
+                        subtitle: summary.map { summary in
+                            "\(String(localized: "\(summary.places.count) places")) · \(String(localized: "\(Int(summary.photoCount)) photos"))"
+                        },
+                        photo: summary?.covers.first,
+                        top: geometry.safeAreaInsets.top
+                    )
+                    ForEach(summary?.places.filter(\.home) ?? [], id: \.town) { place in
+                        HomeCard(place: place) { openPlace(place.town) }.padding(.horizontal, 16)
+                    }
+                    ForEach(Array(stride(from: 0, to: towns.count, by: 2)), id: \.self) { start in
+                        HStack(alignment: .top, spacing: 10) {
+                            ForEach(towns[start..<min(start + 2, towns.count)], id: \.town) { place in
+                                PlaceCard(place: place) { openPlace(place.town) }
+                            }
+                            if start + 1 == towns.count { Color.clear.frame(height: 1) }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.bottom, 48)
+            }
+            .scrollIndicators(.hidden)
+            .ignoresSafeArea(edges: .top)
+        }
+        .background(LibraryColors.background.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task(id: ExploreInput(library, stories)) {
+            let (library, stories, country) = (library, stories, country)
+            summary = await Task.detached(priority: .userInitiated) {
+                let places = ExploreKt.placesOf(library: exploreItems(library, stories), places: stories.places)
+                return ExploreKt.countriesOf(places: places).first { $0.country == country }
+            }.value
+        }
     }
 }

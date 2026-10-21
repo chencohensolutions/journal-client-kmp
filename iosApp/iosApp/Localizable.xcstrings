@@ -7,6 +7,16 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ +%lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ +%2$lld"
+          }
+        }
+      }
+    },
     "%@ hidden" : {
       "localizations" : {
         "he" : {
@@ -2139,6 +2149,16 @@
         }
       }
     },
+    "Countries" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מדינות"
+          }
+        }
+      }
+    },
     "Cover" : {
       "localizations" : {
         "he" : {
@@ -3140,6 +3160,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נמוכה"
+          }
+        }
+      }
+    },
+    "More in %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד ב%@"
+          }
+        }
+      }
+    },
+    "Other countries" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מדינות נוספות"
+          }
+        }
+      }
+    },
+    "See all" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכול"
           }
         }
       }

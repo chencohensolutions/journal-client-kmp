@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The themed (Material You) icon: the card with the title, photo and lines cut out. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.72"
+        android:scaleY="0.72"
+        android:translateX="18"
+        android:translateY="18">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M28,16H72A6,6 0,0 1,78 22V78A6,6 0,0 1,72 84H28A6,6 0,0 1,22 78V22A6,6 0,0 1,28 16ZM32.5,24H53.5A2.5,2.5 0,0 1,53.5 29H32.5A2.5,2.5 0,0 1,32.5 24ZM30,34H70V62H30ZM31.5,68H68.5A1.5,1.5 0,0 1,68.5 71H31.5A1.5,1.5 0,0 1,31.5 68ZM31.5,75H56.5A1.5,1.5 0,0 1,56.5 78H31.5A1.5,1.5 0,0 1,31.5 75Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M57,42A4,4 0,1 1,65 42A4,4 0,1 1,57 42ZM30,62L44,46L53,55L59,49L70,62Z" />
+    </group>
+</vector>

@@ -29,6 +29,8 @@ struct LibraryRootView: View {
         case settings
         /// Explore: a town's page, a year's page (on one of its months), and the map.
         case place(String)
+        /// A country's page of towns; nil for "Other places".
+        case country(String?)
         case year(Int, month: Int?)
         case map
     }
@@ -103,6 +105,7 @@ struct LibraryRootView: View {
                             },
                             explore: ExploreActions(
                                 openPlace: { path.append(.place($0)) },
+                                openCountry: { path.append(.country($0)) },
                                 openYear: { path.append(.year($0, month: $1)) },
                                 openMap: { path.append(.map) },
                                 toggleSource: settings.toggleFeedSource
@@ -129,6 +132,8 @@ struct LibraryRootView: View {
                             PlacePageView(
                                 town: town, library: library.state, stories: stories.state, openItem: openExplore, toggleSource: settings.toggleFeedSource
                             )
+                        case .country(let country):
+                            CountryPageView(country: country, library: library.state, stories: stories.state) { path.append(.place($0)) }
                         case let .year(year, month):
                             YearPageView(
                                 year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore,

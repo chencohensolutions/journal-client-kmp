@@ -19,13 +19,11 @@ struct StorylineView: View {
             let newDay = index == 0 || items[index - 1].day != item.day
             VStack(spacing: 0) {
                 if newDay {
-                    Text(item.day.label)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(LibraryColors.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // As Android's: the day on a line, like a Moments row's.
+                    DayLine(label: item.day.label)
                         .padding(.horizontal, 16)
-                        .padding(.top, index == 0 ? 4 : 22)
-                        .padding(.bottom, 8)
+                        .padding(.top, 28)
+                        .padding(.bottom, 12)
                 }
                 entry(item)
             }
@@ -45,7 +43,7 @@ struct StorylineView: View {
                 .contextMenu { menu(for: item) }
             FeedNoteText(caption: note(item.id)?.caption)
         }
-        .padding(.bottom, 18)
+        .padding(.bottom, tileGap)
     }
 
     @ViewBuilder

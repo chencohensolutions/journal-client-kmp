@@ -182,6 +182,18 @@ class IosServerFiles internal constructor(
     /** The sha256 of each original kept here. */
     fun observeKept(onChange: (Set<String>) -> Unit): ObservationHandle = observe(originals.kept) { onChange(it.keys) }
 
+    /**
+     * How far [item]'s original is downloading into the cache now (0..1; 0 while its size isn't known), or null when
+     * it isn't downloading: the viewer's cloud, whichever screen started the download.
+     */
+    fun observeOriginalProgress(item: MediaItem, onChange: (Float?) -> Unit): ObservationHandle =
+        observe(previews.originalProgress) { downloads -> onChange(item.sha256?.let { downloads[it] }) }
+
+    /** Whether [item]'s original is on this phone already (kept, or in the cache): showing it downloads nothing. */
+    fun hasOriginal(item: MediaItem, onResult: (Boolean) -> Unit): ObservationHandle = run({ onResult(it ?: false) }) {
+        item.keptOriginal != null || item.sha256?.let { previews.cachedOriginal(it) } != null
+    }
+
     private fun <T> observe(flow: StateFlow<T>, onChange: (T) -> Unit): ObservationHandle {
         val job = scope.launch { flow.collect(onChange) }
         return ObservationHandle { job.cancel() }

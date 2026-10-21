@@ -373,7 +373,8 @@ private struct FeedSet: View {
         VStack(spacing: 0) {
             FeedNoteTitle(title: note(items[index].id)?.title)
             ScrollView(.horizontal) {
-                LazyHStack(spacing: 0) {
+                // As Android's pager: the photos a tile gap apart while swiping, each one snapping into place.
+                LazyHStack(spacing: tileGap) {
                     ForEach(items, id: \.id) { item in
                         ZStack {
                             Color.black
@@ -389,7 +390,7 @@ private struct FeedSet: View {
                 .scrollTargetLayout()
             }
             .scrollPosition(id: $current)
-            .scrollTargetBehavior(.paging)
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
             .scrollIndicators(.hidden)
             .frame(width: width, height: height)
             .overlay(alignment: .topTrailing) { position(index, of: items.count) }
@@ -505,8 +506,8 @@ struct FeedNoteText: View {
             .contentShape(Rectangle())
             .onTapGesture { if cut || expanded { expanded.toggle() } }
             .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
         }
     }
 
@@ -521,38 +522,32 @@ struct FeedNoteText: View {
 /// A note longer than this shows "more".
 private let noteLines = 4
 
+/// The band of a hidden source's photos: inset this far from the screen's edges, its photos this far inside it and
+/// apart, its corners this round. As Android's `band`.
+private let bandInset: CGFloat = 12
+private let bandSides: CGFloat = 8
+private let bandGap: CGFloat = 3
+private let bandRadius: CGFloat = 16
+
 /// The line between rows, "Today · Tue, Oct 20" on it, then the towns visited and the count ("Tel Aviv → Jaffa · 21 photos").
 private struct FeedDayDivider: View {
     let section: FeedSection
     let actions: FeedActions
 
     var body: some View {
-        let line = LibraryColors.muted.opacity(0.3)
         VStack(spacing: 4) {
-            HStack(spacing: 0) {
-                Rectangle().fill(line).frame(height: 1)
-                Text(label)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(LibraryColors.onBackground)
-                    .lineLimit(1)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(LibraryColors.raised, in: Capsule())
-                    .padding(.horizontal, 12)
-                    .layoutPriority(1)
-                    .accessibilityAddTraits(.isHeader)
-                Rectangle().fill(line).frame(height: 1)
-            }
-            HStack(spacing: 6) {
+            DayLine(label: label)
+            // Wraps onto more lines when the chips don't fit beside the summary, each line centred.
+            FlowLayout(spacing: 6, lineSpacing: 4, centered: true) {
                 Text(summary)
                     .font(.system(size: 12))
                     .foregroundStyle(LibraryColors.muted)
                     .lineLimit(1)
                 ForEach(section.revealed.map(\.source), id: \.self) { source in
-                    HiddenChip(label: String(localized: "Hide \(source.title)"), symbol: "eye.slash") { actions.hideOnRow(section, source) }
+                    HiddenChip(label: String(localized: "Hide \(source.title)"), on: true) { actions.hideOnRow(section, source) }
                 }
                 ForEach(sourceCountList(section.hidden), id: \.0) { source, count in
-                    HiddenChip(label: String(localized: "+\(count) \(source.title)"), symbol: nil) { actions.showOnRow(section, source) }
+                    HiddenChip(label: String(localized: "+\(count) \(source.title)"), on: false) { actions.showOnRow(section, source) }
                 }
             }
         }
@@ -582,23 +577,51 @@ private struct FeedDayDivider: View {
     }
 }
 
-/// On a row's divider: "+6 WhatsApp" (the photos the sources setting leaves out of the row; tap to see them) or,
-/// while they show, "Hide WhatsApp".
+/// A day on a line across the feed, in a pill: a Moments row's divider and the storyline's days.
+struct DayLine: View {
+    let label: String
+
+    var body: some View {
+        let line = LibraryColors.muted.opacity(0.3)
+        HStack(spacing: 0) {
+            Rectangle().fill(line).frame(height: 1)
+            Text(verbatim: label)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(LibraryColors.onBackground)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(LibraryColors.raised, in: Capsule())
+                .padding(.horizontal, 12)
+                .layoutPriority(1)
+                .accessibilityAddTraits(.isHeader)
+            Rectangle().fill(line).frame(height: 1)
+        }
+    }
+}
+
+/// On a row's divider: "+6 WhatsApp" (outlined: the photos the sources setting leaves out of the row; tap to see them)
+/// or, while they show, "Hide WhatsApp" (filled). As Android's.
 private struct HiddenChip: View {
     let label: String
-    let symbol: String?
+    let on: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                if let symbol { Image(systemName: symbol).font(.system(size: 10, weight: .semibold)) }
-                Text(verbatim: label).font(.system(size: 12, weight: .semibold)).lineLimit(1)
-            }
-            .foregroundStyle(LibraryColors.onBackground)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(LibraryColors.hiddenTint, in: Capsule())
+            Text(verbatim: label)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+                .foregroundStyle(on ? LibraryColors.onInverse : LibraryColors.onBackground)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background {
+                    if on {
+                        Capsule().fill(LibraryColors.inverse)
+                    } else {
+                        Capsule().strokeBorder(LibraryColors.muted.opacity(0.5), lineWidth: 1)
+                    }
+                }
             // A larger target than the chip.
             .padding(.vertical, 8)
             .contentShape(Rectangle())
@@ -609,8 +632,8 @@ private struct HiddenChip: View {
     }
 }
 
-/// A part of the tinted band of a hidden source's photos shown on one row: "WhatsApp · 6   14:02 – 17:30", the
-/// photos in lines of three, then "Always show this day".
+/// A part of the band of a hidden source's photos shown on one row: "WhatsApp · 6   14:02 – 17:30", the photos in
+/// lines of three, then "Always show this day".
 private struct RevealedBandPart: View {
     let section: FeedSection
     let revealed: RevealedPhotos
@@ -619,6 +642,8 @@ private struct RevealedBandPart: View {
     let actions: FeedActions
 
     var body: some View {
+        // As Android's: a card a little lighter than the page, inset from the edges, its top corners round on the
+        // header and its bottom ones on the footer.
         Group {
             switch part {
             case .header: header
@@ -627,53 +652,61 @@ private struct RevealedBandPart: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LibraryColors.hiddenTint.opacity(0.6))
-        // Apart from the row's last photo.
-        .padding(.top, part == .header ? 12 : 0)
+        .background(LibraryColors.raised, in: UnevenRoundedRectangle(
+            topLeadingRadius: part == .header ? bandRadius : 0,
+            bottomLeadingRadius: part == .footer ? bandRadius : 0,
+            bottomTrailingRadius: part == .footer ? bandRadius : 0,
+            topTrailingRadius: part == .header ? bandRadius : 0
+        ))
+        .padding(.horizontal, bandInset)
+        // Apart from the row's last photo above, and from what follows.
+        .padding(.top, part == .header ? 18 : 0)
+        .padding(.bottom, part == .footer ? 6 : 0)
     }
 
     private var header: some View {
         HStack(spacing: 6) {
-            Image(systemName: revealed.source.symbol).font(.system(size: 12, weight: .semibold))
-            Text("\(revealed.source.title) · \(revealed.items.count)").font(.system(size: 13, weight: .semibold))
+            Image(systemName: revealed.source.symbol).font(.system(size: 13, weight: .semibold))
+            Text("\(revealed.source.title) · \(revealed.items.count)")
+                .font(.system(size: 13, weight: .bold))
+                .accessibilityAddTraits(.isHeader)
             Spacer()
-            Text(verbatim: time).font(.system(size: 13))
+            Text(verbatim: time).font(.system(size: 13)).foregroundStyle(LibraryColors.muted)
         }
         .foregroundStyle(LibraryColors.onBackground)
         .lineLimit(1)
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
         .padding(.bottom, 10)
     }
 
     private func line(_ start: Int) -> some View {
-        let gap = tileGap
-        let cell = (width - CGFloat(bandColumns - 1) * gap) / CGFloat(bandColumns)
+        let cell = (width - 2 * bandInset - 2 * bandSides - CGFloat(bandColumns - 1) * bandGap) / CGFloat(bandColumns)
         let items = revealed.items[start..<min(start + bandColumns, revealed.items.count)]
-        return HStack(spacing: gap) {
+        return HStack(spacing: bandGap) {
             ForEach(items, id: \.id) { item in
                 MediaTileView(item: item)
                     .frame(width: cell, height: cell)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
                     .zoomSource(ZoomID.item(item.id))
                     .contentShape(Rectangle())
                     .onTapGesture { actions.openRevealed(section, revealed, item) }
             }
         }
-        .padding(.bottom, gap)
+        .padding(.horizontal, bandSides)
+        .padding(.bottom, bandGap)
     }
 
     private var footer: some View {
-        HStack(spacing: 20) {
-            Button { actions.alwaysShow(section, revealed.source) } label: {
-                Label("Always show this day", systemImage: "eye")
-            }
+        Button { actions.alwaysShow(section, revealed.source) } label: {
+            Text("Always show this day")
+                .font(.system(size: 14, weight: .semibold))
+                .padding(10)
+                .contentShape(Capsule())
         }
-        .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(LibraryColors.onBackground)
         .buttonStyle(.plain)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
+        .padding(4)
     }
 
     /// "14:02 – 17:30", or "14:02" when it starts and ends in one minute.
