@@ -62,6 +62,9 @@ internal class BackupServerException(message: String, val unauthorized: Boolean 
 
 /** The server's upload API (journal-server-go docs/media.md). */
 internal interface BackupApi {
+    /** The piece size this device sends instead of the server's chunkSize, or null to follow the server. */
+    val pieceSize: Long? get() = null
+
     /** Which of [hashes] the server doesn't have. */
     suspend fun missing(hashes: List<String>): Set<String>
     suspend fun start(request: UploadRequest): StartResult
@@ -79,6 +82,9 @@ internal data class PieceResponse(val status: Int, val uploadOffset: Long?)
  * Android, a background URLSession on iOS (which goes on while the app is suspended).
  */
 internal interface PieceSender {
+    /** See [BackupApi.pieceSize]. */
+    val pieceSize: Long? get() = null
+
     suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse
 }
 
@@ -115,6 +121,8 @@ internal class ServerBackupApi(
     private val serverUrl: String,
     private val pieces: PieceSender,
 ) : BackupApi {
+    override val pieceSize: Long? get() = pieces.pieceSize
+
     override suspend fun missing(hashes: List<String>): Set<String> {
         if (hashes.isEmpty()) return emptySet()
         val response = apollo.query(MissingMediaQuery(hashes)).execute()

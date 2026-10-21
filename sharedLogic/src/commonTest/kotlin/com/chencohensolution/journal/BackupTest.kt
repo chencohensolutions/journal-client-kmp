@@ -73,6 +73,9 @@ private class FakeServer : BackupApi {
     /** Every byte that arrived, also twice. */
     var bytesReceived = 0L
 
+    override var pieceSize: Long? = null
+    val pieceSizes = mutableListOf<Int>()
+
     override suspend fun missing(hashes: List<String>) = hashes.filterNot { it in stored }.toSet()
 
     override suspend fun start(request: UploadRequest): StartResult {
@@ -91,6 +94,7 @@ private class FakeServer : BackupApi {
         if (start != received.size) return PieceResult.WrongOffset(received.size)
         if (++pieces > dropAfterPieces) throw okio.IOException("connection reset")
         received.write(bytes)
+        pieceSizes += bytes.size
         bytesReceived += bytes.size
         if (pieces > answerLostAfterPieces) throw kotlinx.coroutines.CancellationException("the app was suspended")
         onSent(bytes.size.toLong())
@@ -259,6 +263,18 @@ class BackupTest {
         assertEquals(1, result.failed)
         assertEquals("time should be RFC3339Nano formatted string", ledger.entry("1")?.rejected)
         assertEquals(BackupStatus.Failed("time should be RFC3339Nano formatted string"), BackupState(entries = ledger.all()).status(refused))
+    }
+
+    @Test
+    fun theDeviceCanSendLargerPiecesThanTheServerAsks() = runTest {
+        val video = add(photo("1", takenAt = 1_000, size = 1_300_000), seed = 1)
+        server.pieceSize = 512L * 1024
+
+        BackupEngine(files, ledger(), server).run(listOf(video), BackupSettings(enabled = true)) {}
+
+        // 1.3 MB in 512 KB pieces rather than the server's 256 KB.
+        assertEquals(listOf(524_288, 524_288, 251_424), server.pieceSizes)
+        assertContentEquals(files.bytes["1"], server.stored[sha(files.bytes.getValue("1"))])
     }
 
     @Test

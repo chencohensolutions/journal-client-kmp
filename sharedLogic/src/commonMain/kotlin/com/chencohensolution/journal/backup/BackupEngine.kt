@@ -172,7 +172,7 @@ internal class BackupEngine(
                 }
                 is StartResult.Ready -> result
             }
-            val chunk = start.chunkSize.coerceIn(MIN_CHUNK, MAX_CHUNK)
+            val chunk = (api.pieceSize ?: start.chunkSize).coerceIn(MIN_CHUNK, MAX_CHUNK)
             var offset = start.offset
             if (offset >= size) return Outcome.FAILED // The server has every byte but no file; nothing left to send.
             onSent(offset)
@@ -233,6 +233,7 @@ internal class BackupEngine(
         /** Hashes asked about in one missingMedia call (the server takes up to 1000). */
         const val BATCH = 100
         const val MIN_CHUNK = 256L shl 10
+        /** The largest piece the server takes (journal-server-go media/upload.go MaxChunkSize). */
         const val MAX_CHUNK = 64L shl 20
 
         /** startUpload calls per file in one run (a lost upload, or a piece the server placed elsewhere). */

@@ -208,7 +208,8 @@ streaming (a server-only video shows its poster), Free up space. Not yet anywher
   keep photos on the device (no iCloud Optimize Storage); a photo only in iCloud is downloaded before it is read.
 - **iOS backup (built Oct 21, 2026)**: the shared `BackupEngine`/`BackupController`/`UploadLedger` run unchanged;
   only how a piece travels is the platform's (`PieceSender`: Android keeps its in-process Ktor `PUT`). iOS writes each
-  16 MB piece (the server's `chunkSize`) to `Caches/backup/pieces` and hands it to a background URLSession
+  64 MB piece (the server's limit; it asks for 16 MB, but iOS wakes a closed app about once per finished piece, so
+  fewer, larger pieces mean fewer waits; `PieceSender.pieceSize`) to `Caches/backup/pieces` and hands it to a background URLSession
   (`BackgroundPieceSender`, session `com.chencohensolution.journal.backup`): the client certificate is answered from
   the Keychain and the server's certificate checked against the journal CA, as in the app's own client; Wi-Fi only is
   set on each request (no cellular, no expensive networks), so a piece waits for Wi-Fi. While the app runs, the run

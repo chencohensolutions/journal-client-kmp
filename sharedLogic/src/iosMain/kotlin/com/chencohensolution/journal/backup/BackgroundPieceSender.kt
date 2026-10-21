@@ -54,6 +54,9 @@ internal class BackgroundPieceSender(
     private val wifiOnly: () -> Boolean,
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
 ) : PieceSender {
+    // iOS wakes a closed app about once per finished piece, so the largest piece the server takes means the fewest waits.
+    override val pieceSize: Long get() = PIECE_BYTES
+
     private val pieces = InFlightPieces()
     private val ready = CompletableDeferred<Unit>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -176,6 +179,9 @@ internal class BackgroundPieceSender(
 
     companion object {
         const val SESSION_ID = "com.chencohensolution.journal.backup"
+
+        /** 64 MB, the server's limit (journal-server-go media/upload.go MaxChunkSize); it asks for 16 MB. */
+        private const val PIECE_BYTES = 64L shl 20
 
         /** How long a background wake waits for the run to hand iOS the next piece. */
         private const val NEXT_PIECE_WAIT_MILLIS = 15_000L
