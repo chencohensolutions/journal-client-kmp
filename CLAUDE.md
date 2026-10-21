@@ -52,6 +52,20 @@ until they ask for it:
 Android only; the SwiftUI version follows once the design settles. Images are still, so each state is its own
 preview. See [docs/previews.md](docs/previews.md).
 
+## Working on the Windows machine (Android only)
+
+The owner has a Mac and a Windows machine. On Windows there is no Xcode, so work there is shared logic and Android
+only. Whenever a change there leaves iOS behind:
+
+1. Say so in the screen's doc ("Android only; iOS not built yet", as `explore.md` does).
+2. Add an entry to [docs/ios-todo.md](docs/ios-todo.md): what Android now does, the shared-logic state and controller
+   methods the SwiftUI side should call, the Android files to mirror, new strings, and anything left to decide.
+   Write it so a session on the Mac can build it without this conversation.
+3. Tell the owner at the end that iOS is still to do.
+
+On the Mac, read `docs/ios-todo.md` before starting iOS work and remove entries once built. Larger features planned
+for later are in [docs/plans/](docs/plans/).
+
 ## Commands
 
 No system JDK: use Homebrew's `openjdk@21` (or Android Studio's, if installed). `scripts/*.sh` find it themselves.
