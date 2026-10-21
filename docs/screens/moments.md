@@ -2,8 +2,8 @@
 
 The **Moments** tab of the [Journal](journal-home.md) (called Unsorted until Oct 19, 2026): **every photo and video**,
 also those already in a story or tagged, read like a story that arranged itself. Nothing is saved for it. The feed is worked out again from the library each time, and only
-**Save as story** on a trip turns part of it into a real story. Android only; iOS still shows the earlier
-rows of small photos.
+**Save as story** on a trip turns part of it into a real story. On Android and, since Oct 21, 2026, on iOS (see
+[iOS](#ios) for what differs).
 
 ## Layout
 
@@ -56,14 +56,47 @@ the platform `MediaPlayer` and a `TextureView` ([FeedVideo.kt](../../androidApp/
 Tapping a photo opens the [viewer](viewer.md) on its row's photos, in the order shown. When the viewer closes, the
 feed scrolls to that photo, and a near-duplicate set turns to it.
 
+## iOS
+
+The same feed, from the same shared `StoriesState.feed`, with these differences:
+
+- **Long press** opens the system context menu: the photo lifted as its preview and the day and time as the menu's
+  heading, then **Write about it** (or **Edit what you wrote**), **Crop** (photos only), **Add to story**, **Tag**,
+  **Select** and, in a set, **Take out of this set**. **Crop** opens the [crop screen](crop.md) on the photo's
+  Moments crop.
+- While picking, the bottom bar is **Cancel · N selected · Merge**; changing tabs stops picking.
+- **Sets** are a horizontal paging scroll view; the photos beside the one shown are cached ahead
+  (`PHCachingImageManager`). There are no photos only on the server on iOS yet, so nothing is downloaded.
+- **Videos** play with `AVQueuePlayer` and `AVPlayerLooper` in an `AVPlayerLayer`. Muted, the audio session is
+  `ambient` with `mixWithOthers`, so music from another app keeps playing; with sound it is `playback`, and an
+  interruption (another app taking the audio) mutes the feed again. The video that plays is worked out from where each
+  video is on screen (the part between the top bar and the bottom controls), with the same 60% and settle delay. It
+  stops on the Stories tab, while the viewer or another screen is open, and in the background. A video only on the
+  server plays too (Oct 21, 2026), streamed through the same video cache as the viewer's (`ServerVideos.swift`), as
+  on Android; offline it stays its poster.
+- A new feed (places and fingerprints arriving) shows at once, also mid-scroll; Android waits for the scroll to stop.
+- The backup badge is the iOS one (see [README.md](README.md)).
+
+## Code
+
+- Android: [MomentsFeedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentsFeedViews.kt),
+  [FeedVideo.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedVideo.kt), the
+  screen's state and menus in [JournalHomeScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/JournalHomeScreen.kt).
+- iOS: [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift) (the rows, made to be reused for any
+  feed, such as `StoriesState.feedOf(items)`), [FeedVideo.swift](../../iosApp/iosApp/FeedVideo.swift), the screen's
+  state, menus and sheets in [JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift).
+
 ## How it is grouped
 
 Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/MomentsFeed.kt)
 (`buildFeed`, tested in `FeedTest`):
 
 - **Source** comes from the folder: `DCIM/` is Camera; a path containing "screenshot" or "screen record" is
-  Screenshots; one containing "WhatsApp" is WhatsApp; everything else is Other. On iOS, PhotoKit marks screenshots;
-  everything else counts as Camera for now.
+  Screenshots; one containing "WhatsApp" is WhatsApp; everything else is Other. iOS has no folders
+  (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album "WhatsApp" (WhatsApp saves
+  there) are WhatsApp; photos synced from a computer or in shared albums, and files the camera can't have written
+  (PNG, GIF, WebP, MP4: saved from apps) are Other; the rest (HEIC, JPEG, DNG, MOV) is Camera, so a JPEG saved from
+  Safari counts as Camera.
 - **Camera moments** split after 2 hours without a photo, or after 20 minutes when the next photo is more than 1 km
   from the last located one. A walk stays one moment; a drive to another town doesn't. Photos without GPS stay with
   their neighbors.

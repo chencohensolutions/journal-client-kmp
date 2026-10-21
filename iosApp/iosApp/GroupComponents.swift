@@ -14,16 +14,20 @@ extension GroupView {
     var name: String { title ?? timeRange(items) }
 }
 
-/// A story's grid, day by day: each photo, and each group as its cover, full width at the photo's own ratio (the
-/// automatic layout; sizes arranged on Android aren't read here yet). With `selection` (tile keys), tapping a photo
-/// or group toggles it.
-/// Where a `StoryGrid` shows a photo: in its day, as its own tile or as the cover of a group's.
+/// Where a `StoryGrid` shows a photo: the band of its day with its own tile, or with the group's it is the cover of.
 func storyPlace(of itemId: String, in days: [StoryDay]) -> PhotoPlace? {
     for day in days {
-        if let tile = tilePlace(of: itemId, in: day.tiles) { return PhotoPlace(section: day.day, tile: tile) }
+        for band in day.bands {
+            if let tile = tilePlace(of: itemId, in: band.tiles.map(\.tile)) {
+                return PhotoPlace(section: bandId(day, band), tile: tile)
+            }
+        }
     }
     return nil
 }
+
+/// The row id of a band in a `StoryGrid`'s lazy stack.
+private func bandId(_ day: StoryDay, _ band: StoryBand) -> String { "\(day.day)|\(band.key)" }
 
 /// The zoom id of the tile showing a photo: its own, or that of the group it is the cover of.
 func tilePlace(of itemId: String, in tiles: [StoryTile]) -> String? {
@@ -45,6 +49,27 @@ func tileRatio(_ tile: StoryTile) -> CGFloat {
     return item.width > 0 && item.height > 0 ? CGFloat(item.width) / CGFloat(item.height) : 1.5
 }
 
+/// How a tile crops its photo: anchored at the focus point (0...1 of the photo from the left and from the top),
+/// `zoom` times closer than filling the tile. Anchored there, the point sits at the same fraction of the tile, so
+/// zooming around that fraction keeps it in view.
+struct TileCrop: Equatable {
+    var x: CGFloat = 0.5
+    var y: CGFloat = 0.5
+    var zoom: CGFloat = 1
+
+    static let none = TileCrop()
+}
+
+extension TileCrop {
+    init(_ placed: PlacedTile) {
+        self.init(x: CGFloat(placed.focus.x), y: CGFloat(placed.focus.y), zoom: max(CGFloat(placed.zoom), 1))
+    }
+}
+
+/// A story's grid, day by day, each day packed onto the 6-column grid (`StoryDay.bands`): tiles are as large as the
+/// owner arranged them, or automatic (full width at the photo's own ratio), cropped around their focus point. Each
+/// band is one row of the lazy stack, so a long day still scrolls lazily. With `selection` (tile keys), tapping a
+/// photo or group toggles it; with `arranging`, tapping any tile picks it.
 struct StoryGrid: View {
     let days: [StoryDay]
     let label: (StoryDay) -> String
@@ -54,53 +79,101 @@ struct StoryGrid: View {
     let onOpenGroup: (GroupView) -> Void
     let onToggle: (String) -> Void
     let onLongPress: (String) -> Void
+    var arranging: GridArranging?
 
+    /// Same as the stack's spacing between bands.
     private let gap: CGFloat = 2
 
-    var body: some View {
-        ForEach(days, id: \.day) { day in
-            VStack(spacing: gap) {
-                ForEach(day.tiles, id: \.key) { tile in
-                    self.tile(tile)
-                        .frame(width: width, height: width / tileRatio(tile))
-                        .clipped()
-                }
-            }
-            .overlay(alignment: .topLeading) {
-                Text(label(day))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 12)
-                    .padding(.bottom, 24)
-                    .background(LibraryColors.labelFade)
-                    .allowsHitTesting(false)
-                    .accessibilityAddTraits(.isHeader)
+    private struct Row: Identifiable {
+        let id: String
+        let day: StoryDay
+        let band: StoryBand
+        let first: Bool
+    }
+
+    private var rows: [Row] {
+        days.flatMap { day in
+            day.bands.enumerated().map { index, band in
+                Row(id: bandId(day, band), day: day, band: band, first: index == 0)
             }
         }
     }
 
+    var body: some View {
+        ForEach(rows) { row in
+            bandGrid(row.band)
+                .overlay(alignment: .topLeading) {
+                    if row.first {
+                        Text(label(row.day))
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 12)
+                            .padding(.bottom, 24)
+                            .background(LibraryColors.labelFade)
+                            .allowsHitTesting(false)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                }
+        }
+    }
+
+    /// One band: square cells six across, each tile spanning its size in cells; or one full-width tile at its photo's
+    /// own ratio (`StoryBand.aspectRatio`).
     @ViewBuilder
-    private func tile(_ tile: StoryTile) -> some View {
+    private func bandGrid(_ band: StoryBand) -> some View {
+        if let ratio = band.aspectRatio, let placed = band.tiles.first {
+            tile(placed).frame(width: width, height: width / CGFloat(truncating: ratio))
+        } else {
+            let columns = CGFloat(StoryLayoutKt.GRID_COLUMNS)
+            let cell = (width - gap * (columns - 1)) / columns
+            let span = { (cells: Int32) in cell * CGFloat(cells) + gap * CGFloat(cells - 1) }
+            // Leading padding follows the layout direction, so the grid mirrors in Hebrew like the rest of the screen.
+            ZStack(alignment: .topLeading) {
+                ForEach(band.tiles, id: \.tile.key) { placed in
+                    tile(placed)
+                        .frame(width: span(placed.size.columns), height: span(placed.size.rows))
+                        .padding(.leading, (cell + gap) * CGFloat(placed.column))
+                        .padding(.top, (cell + gap) * CGFloat(placed.row))
+                }
+            }
+            .frame(width: width, height: span(band.rows), alignment: .topLeading)
+        }
+    }
+
+    @ViewBuilder
+    private func tile(_ placed: PlacedTile) -> some View {
+        let tile = placed.tile
         let key = tile.key
         Group {
             switch tile {
             case let group as StoryTileGroup:
-                GroupTileView(group: group.group, large: true)
+                GroupTileView(group: group.group, large: true, crop: TileCrop(placed))
                     .zoomSource(ZoomID.group(group.group.id))
-                    .onTapGesture { selection == nil ? onOpenGroup(group.group) : onToggle(key) }
+                    .onTapGesture { tap(key) { onOpenGroup(group.group) } }
             case let media as StoryTileMedia:
-                MediaTileView(item: media.item)
+                MediaTileView(item: media.item, crop: TileCrop(placed))
                     .zoomSource(ZoomID.item(media.item.id))
-                    .onTapGesture { selection == nil ? onOpenItem(media.item) : onToggle(key) }
+                    .onTapGesture { tap(key) { onOpenItem(media.item) } }
             default:
                 EmptyView()
             }
         }
         .overlay {
             if let selection { SelectionOverlay(selected: selection.contains(key)) }
+            if arranging?.selectedKey == key { Rectangle().strokeBorder(LibraryColors.warning, lineWidth: 3) }
         }
-        .onLongPressGesture { onLongPress(key) }
+        .onLongPressGesture { if arranging == nil { onLongPress(key) } }
+    }
+
+    private func tap(_ key: String, open: () -> Void) {
+        if let arranging {
+            arranging.select(key)
+        } else if selection != nil {
+            onToggle(key)
+        } else {
+            open()
+        }
     }
 
 }
@@ -212,9 +285,10 @@ struct UndoBar: View {
 struct GroupTileView: View {
     let group: GroupView
     let large: Bool
+    var crop: TileCrop = .none
 
     var body: some View {
-        MediaTileView(item: group.cover, badgeSize: 0)
+        MediaTileView(item: group.cover, badgeSize: 0, crop: crop)
             .overlay(alignment: .bottomTrailing) {
                 Text("\(group.itemCount)")
                     .font(.caption.weight(.bold))

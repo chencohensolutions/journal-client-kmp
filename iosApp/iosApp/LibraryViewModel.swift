@@ -10,8 +10,16 @@ final class LibraryViewModel: ObservableObject {
     let controller: LibraryController
     private var observation: ObservationHandle?
 
-    init() {
-        controller = IosJournal.shared.createLibraryController()
+    /// With each photo's backup status, the photos only on the server, the originals downloaded from it, and what
+    /// "Show private media" hides.
+    init(backup: BackupViewModel, settings: SettingsViewModel) {
+        let journal = IosJournal.shared
+        controller = journal.createLibraryController(
+            backup: backup.controller,
+            server: journal.serverLibrary(),
+            originals: journal.keptOriginals(),
+            privateMedia: settings.controller.privateMedia
+        )
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in

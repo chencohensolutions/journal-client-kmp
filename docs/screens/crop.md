@@ -13,7 +13,8 @@ leaves its near-duplicate set in Moments and shows on its own (unless merged int
 
 ## Opening it
 
-- Moments: long press a photo → **Crop** (opens on Moments).
+- Moments: long press a photo → **Crop** (opens on Moments). iOS: not wired yet; the feed sets
+  `crop = CropRequest(itemId:, kind: .moments)` in `LibraryRootView`, which presents it with `.cropCover`.
 - Viewer: **Crop** at the bottom (opens on Portrait or Landscape, as the phone is held).
 
 ## Layout
@@ -58,4 +59,7 @@ fields of the file this version doesn't know, also inside `"crops"`, so an older
   [PhotoNote.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/PhotoNote.kt),
   `StoriesController.setCrops`.
 - Android: [CropScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/CropScreen.kt).
-  iOS reads and keeps crops in the files but doesn't show them yet.
+- iOS: [CropView.swift](../../iosApp/iosApp/CropView.swift): the same screen and rules, calling the shared geometry;
+  any screen opens it with `.cropCover($request, stories:save:)` and a `CropRequest(itemId:kind:)`. The photo
+  geometry stays left to right in Hebrew. Shown in the viewer by
+  [MediaViewerView.swift](../../iosApp/iosApp/MediaViewerView.swift).

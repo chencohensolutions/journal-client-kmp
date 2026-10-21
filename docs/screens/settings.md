@@ -5,7 +5,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 ## Layout
 
 - **Top bar:** back and "Settings".
-- **Backup** (Android; iOS later):
+- **Backup** (Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
+  entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
+  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):
   - **Back up to your server** switch (off until turned on), and a status line: "Off. Nothing is uploaded.",
     "Backing up 3 of 120", "12 photos waiting to upload", "Everything chosen is backed up", "Waiting: …" (Wi-Fi network
     not on the list, location needed to check it, register again, photo access), or "Stopped: … It tries again
@@ -18,7 +20,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
-- **Storage on this phone** (Android; asked for Oct 20, 2026):
+- **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
+  writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
+  every format itself, JPEG XL from iOS 17):
   - **Previews from your server** switch (on by default; asked for Oct 20, 2026). On: the server makes each photo at
     the exact pixels it is drawn at, in a **Format** (WebP default, HEIF, AVIF, JPEG XL, JPEG; a line says what each is
     good for) and **Quality** (Low, Medium, **High**, Max), and every size is kept as its own file: a size the phone
@@ -30,7 +34,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - **Kept on this phone**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and **Clear**.
     Previews and downloaded originals of server photos are kept up to the limit (the oldest go first) and fetched
     again when scrolled to; none are pinned, also for photos removed from the phone.
-- **Free up space** (Android): a row, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
+- **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
   for you", "Nothing to free up right now"), opening its own screen (UX chosen by the owner on Oct 20, 2026: one button
   plus More options, a summary before running, sources to choose, manual only):
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
@@ -55,7 +59,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
   suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
-- **Private media** (Android; iOS doesn't show server photos yet): **Show private media**, a switch, **off** by
+- **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
   default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
   server's scan must reach for a photo or video to be hidden.
 
@@ -72,9 +76,18 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
   with a Stop action) and in the bottom pill of the Journal and All photos ("Backing up 3 of 120", else "N not backed
-  up", counting only the chosen sources while backup is on). Each photo's badge follows (waiting, uploading, backed up,
-  failed). Turning backup on asks for notification permission.
-- What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (sha256 per photo), so a photo is
+  up", counting only the chosen sources while backup is on). Several files upload at once (3 on Android, up to 50 on
+  iOS): the count is of finished files plus one ("3 of 120" = 2 finished, the next on its way), the percent includes
+  what has arrived of the files on their way, and the notification names the earliest of them. Each photo's badge
+  follows (waiting, uploading, backed up, failed); every file on its way shows its own ring. Turning backup on asks for notification permission.
+- On iOS each piece goes through a background URLSession, which carries it on while the app is suspended and
+  relaunches the app when it is answered; runs start when the app opens, on **Back up now**, 10 s after the library
+  changes, on those relaunches, and in background tasks iOS schedules (BGProcessingTask, BGAppRefreshTask). Wi-Fi only
+  is checked before a run (`NWPathMonitor`) and set on every piece; charging only is checked with the battery state
+  and asked of the processing task. Progress shows in the bottom pill of the Journal and All photos ("Backing up 3 of
+  120 · 42% · 5.1 MB/s") and in this section; there is no notification. See [design.md](../design.md), "iOS backup".
+- What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (iOS: Application Support
+  `backup/ledger.jsonl`) (sha256 per photo), so a photo is
   read once and never sent twice; the server also deduplicates. An edit saved in place uploads as a new version
   (`versionOf`). Uploads resume where they stopped. See [design.md](../design.md) "Upload and sync".
 
@@ -91,6 +104,19 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     opens the app, which shows **one** system prompt for all of them (also on the next app open, or with **Move to
     trash**). A file changed since it was checked (size or date) is left out of the prompt, with its pair. Either
     answer clears the list.
+- **Free up space on iOS** (Oct 21, 2026): the same shared `FreeUpController`, rules, sources, checks and lines; the
+  screen is a list like the rest of Settings (From is a switch per source, More options a disclosure with the rule
+  as an inline choice and its values in a menu under it). The difference is the deletion: PhotoKit always asks, so
+  nothing is ever deleted during a run (`IosPhotoTrash.canTrashWithoutAsking()` is false) and there is no "Media
+  management" dialog. The run (plan, the phone's hashing, the server's verify) happens in the app, on **Free up**; it
+  goes on for the short time iOS gives after the app leaves the screen (`beginBackgroundTask`), and when iOS ends that
+  time it stops, and what was checked by then waits. It does not run in background tasks: Free up space never runs by
+  itself, on either platform. Every file that passed waits in Application Support `freeup/waiting.json`; the screen
+  shows "120 files (3.2 GB) checked, waiting for you" with **Move to trash**, and only that tap deletes: all of them
+  in **one** `deleteAssets` request, so one iOS prompt, and they go to Recently Deleted (30 days). Unlike Android the
+  prompt is never shown by itself when a run ends. A run that ends while the app is away posts a local notification
+  ("120 files checked: tap to move them to the trash", as Android's), which opens the app; notification permission
+  is asked when **Free up** is tapped. Either answer to the prompt clears the list and that notification.
 - Private media: the server scores files with NudeNet (`scripts/scan-nudity`, journal-server-go docs/media.md
   "Nudity scan") and sends the score in the change feed (`Media.nudity`, null until scanned). While **Show private
   media** is off, a file at or over the threshold is left out of the library (`mergeWithServer`), so no screen shows it
@@ -114,5 +140,17 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   [FreeUpWorker.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/FreeUpWorker.kt), and the trash
   only in [PhotoRemoval.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhotoRemoval.kt)
   (`AndroidPhotoTrash`; see PhotoSafetyTest).
+- iOS Free up space: [FreeUpView.swift](../../iosApp/iosApp/FreeUpView.swift),
+  [FreeUpViewModel.swift](../../iosApp/iosApp/FreeUpViewModel.swift),
+  [FreeUpService.swift](../../iosApp/iosApp/FreeUpService.swift) (runs, the notification), `IosFreeUp` and
+  `IosPhotoTrash` in [iosMain/storage/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/storage/IosFreeUp.kt)
+  (factory `IosJournal.freeUp`, sharing backup's ledger), and the deletion only in
+  [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift) (`moveToRecentlyDeleted(checked:)`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
-- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift).
+- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
+  (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
+  `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list in
+  `Application Support/server/media.json`, downloaded originals in `Application Support/originals` (left out of
+  iCloud backup). Backup in [BackupViewModel.swift](../../iosApp/iosApp/BackupViewModel.swift) and
+  [BackupService.swift](../../iosApp/iosApp/BackupService.swift) (when runs start), with `IosMediaFiles` and
+  `BackgroundPieceSender` in [iosMain/backup/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/backup/BackgroundPieceSender.kt).

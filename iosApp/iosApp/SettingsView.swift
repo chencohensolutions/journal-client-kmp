@@ -4,12 +4,23 @@ import SharedLogic
 /// The user's choices, kept on this device. See docs/screens/settings.md.
 struct SettingsView: View {
     @ObservedObject var settings: SettingsViewModel
+    @ObservedObject var backup: BackupViewModel
+    /// Photos of the chosen sources not on the server yet.
+    let notBackedUp: Int
+    /// The library reads PhotoKit again once Free up space removed photos.
+    var refreshLibrary: () -> Void = {}
+    @StateObject private var freeUp = FreeUpViewModel()
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
+    /// The private media slider's value while it is dragged.
+    @State private var privateThreshold: Double?
 
     var body: some View {
         let grouping = settings.state.grouping
         Form {
+            backupSections
+            storageSection
+            freeUpSection
             Section {
                 Picker("Grouping", selection: Binding(get: { grouping.mode }, set: settings.setGroupingMode)) {
                     ModeLabel(title: "By day", detail: "One row for each calendar day.")
@@ -34,6 +45,12 @@ struct SettingsView: View {
             }
             .listRowBackground(LibraryColors.raised)
             similaritySection
+            privateMediaSection
+        }
+        // Counted on open (and again when the limit changes or Clear is tapped).
+        .task {
+            settings.refreshStorage()
+            freeUp.refreshPlan()
         }
         .scrollContentBackground(.hidden)
         .background(LibraryColors.background.ignoresSafeArea())
@@ -44,6 +61,74 @@ struct SettingsView: View {
 }
 
 extension SettingsView {
+    /// Backup: on or off with its status, then what uploads, when, and in which order. "On your server" (storage
+    /// used there) and "Only on these Wi-Fi networks" are Android only for now; see docs/screens/settings.md.
+    @ViewBuilder private var backupSections: some View {
+        let state = backup.state.settings
+        Section {
+            Toggle(isOn: Binding(get: { state.enabled }, set: backup.setEnabled)) {
+                ModeLabel(
+                    title: "Back up to your server",
+                    detail: "Photos keep uploading in the background. Swiping the app away stops it until you open it again."
+                )
+            }
+            .tint(LibraryColors.accent)
+            HStack {
+                Text(backup.statusText(waiting: notBackedUp))
+                    .font(.subheadline)
+                    .monospacedDigit()
+                    .foregroundStyle(LibraryColors.muted)
+                Spacer()
+                if state.enabled && backup.running == nil {
+                    Button("Back up now", action: backup.backUpNow).foregroundStyle(LibraryColors.onBackground)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("On your server").foregroundStyle(LibraryColors.onBackground)
+                Text(serverUsageText(settings.serverUsage))
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(LibraryColors.muted)
+            }
+        } header: {
+            Text("Backup")
+        }
+        .listRowBackground(LibraryColors.raised)
+        if state.enabled {
+            Section {
+                ForEach(MediaSource.entries, id: \.self) { source in
+                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in backup.toggleSource(source) }))
+                        .tint(LibraryColors.accent)
+                }
+            } header: {
+                Text("What to back up")
+            }
+            .listRowBackground(LibraryColors.raised)
+            Section {
+                Toggle(isOn: Binding(get: { state.wifiOnly }, set: backup.setWifiOnly)) {
+                    ModeLabel(title: "Only on Wi-Fi", detail: "Never on mobile data.")
+                }
+                .tint(LibraryColors.accent)
+                Toggle("Only while charging", isOn: Binding(get: { state.chargingOnly }, set: backup.setChargingOnly))
+                    .tint(LibraryColors.accent)
+            } header: {
+                Text("When")
+            }
+            .listRowBackground(LibraryColors.raised)
+            Section {
+                Picker("Order", selection: Binding(get: { state.order }, set: backup.setOrder)) {
+                    ModeLabel(title: "Oldest first", detail: "Starts with your earliest photos.").tag(UploadOrder.oldestFirst)
+                    ModeLabel(title: "Newest first", detail: "Your latest photos are safe soonest.").tag(UploadOrder.newestFirst)
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text("Order")
+            }
+            .listRowBackground(LibraryColors.raised)
+        }
+    }
+
     /// How alike photos must be for a "Look alike" suggestion.
     private var similaritySection: some View {
         let threshold = settings.state.similarity
@@ -81,6 +166,158 @@ extension SettingsView {
     }
 }
 
+extension SettingsView {
+    /// How server photos are shown (previews in a format and quality, or originals) and the space they may take here.
+    private var storageSection: some View {
+        let options = settings.state.previewOptions
+        let limit = Int(settings.state.previewCacheGigabytes)
+        return Section {
+            Toggle(isOn: Binding(get: { options.enabled }, set: settings.setPreviewsEnabled)) {
+                ModeLabel(
+                    title: "Previews from your server",
+                    detail: options.enabled
+                        ? "The server makes each photo at the size it is shown, in the format and quality below."
+                        : "The original files are downloaded and kept in the space below. Videos are not downloaded."
+                )
+            }
+            .tint(LibraryColors.accent)
+            if options.enabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Format", selection: Binding(get: { options.format }, set: settings.setPreviewFormat)) {
+                        ForEach(PreviewFormat.shownInSettings, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .foregroundStyle(LibraryColors.onBackground)
+                    Text(options.format.hint).font(.footnote).foregroundStyle(LibraryColors.muted)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quality").foregroundStyle(LibraryColors.onBackground)
+                    Picker("Quality", selection: Binding(get: { options.quality }, set: settings.setPreviewQuality)) {
+                        ForEach(PreviewQuality.shownInSettings, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Kept on this phone").foregroundStyle(LibraryColors.onBackground)
+                Group {
+                    if let bytes = settings.previewBytes {
+                        Text("\(fileSize(bytes)) of \(limit) GB used. Photos from your server are fetched again when you scroll to them.")
+                    } else {
+                        Text("Counting…")
+                    }
+                }
+                .font(.footnote)
+                .foregroundStyle(LibraryColors.muted)
+            }
+            Picker("Up to", selection: Binding(get: { limit }, set: settings.setPreviewLimit)) {
+                ForEach(SettingsViewModel.previewLimitOptions, id: \.self) { Text("\($0) GB").tag($0) }
+            }
+            .foregroundStyle(LibraryColors.onBackground)
+            Button("Clear", action: settings.clearPreviews).foregroundStyle(LibraryColors.onBackground)
+        } header: {
+            Text("Storage on this phone")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// The Free up space row: what it would free, or what it is doing; it opens its own screen.
+    private var freeUpSection: some View {
+        Section {
+            NavigationLink {
+                FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Free up space").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text(freeUp.rowText).font(.footnote).monospacedDigit().foregroundStyle(LibraryColors.muted)
+                }
+            }
+        } header: {
+            Text("Free up space")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// "Show private media" (off by default) and, while off, the score from which photos are hidden.
+    private var privateMediaSection: some View {
+        let privateMedia = settings.state.privateMedia
+        let shown = Int(privateThreshold ?? Double(privateMedia.thresholdPercent))
+        return Section {
+            Toggle(isOn: Binding(get: { privateMedia.show }, set: settings.setShowPrivateMedia)) {
+                ModeLabel(
+                    title: "Show private media",
+                    detail: "When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone."
+                )
+            }
+            .tint(LibraryColors.accent)
+            if !privateMedia.show {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Hide from").foregroundStyle(LibraryColors.onBackground)
+                        Spacer()
+                        Text("\(shown)%").monospacedDigit().foregroundStyle(LibraryColors.onBackground)
+                    }
+                    Slider(
+                        value: Binding(get: { privateThreshold ?? Double(privateMedia.thresholdPercent) }, set: { privateThreshold = $0 }),
+                        in: SettingsViewModel.privateRange,
+                        step: 5
+                    ) { editing in
+                        if !editing, let privateThreshold {
+                            settings.setPrivateThresholdPercent(Int(privateThreshold))
+                            self.privateThreshold = nil
+                        }
+                    }
+                    .tint(LibraryColors.onBackground)
+                    Text("How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.")
+                        .font(.footnote)
+                        .foregroundStyle(LibraryColors.muted)
+                }
+            }
+        } header: {
+            Text("Private media")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+}
+
+extension PreviewFormat {
+    static let shownInSettings: [PreviewFormat] = [.webp, .heif, .avif, .jpegXl, .jpeg]
+
+    var label: String {
+        switch self {
+        case .heif: return "HEIF"
+        case .avif: return "AVIF"
+        case .jpegXl: return "JPEG XL"
+        case .jpeg: return "JPEG"
+        default: return "WebP"
+        }
+    }
+
+    /// What a format is good for.
+    var hint: String {
+        switch self {
+        case .heif: return String(localized: "About a third smaller than WebP at the same quality.")
+        case .avif: return String(localized: "The smallest files; the server takes longer to make them.")
+        case .jpegXl: return String(localized: "The most detail for its size.")
+        case .jpeg: return String(localized: "Works everywhere; the largest files.")
+        default: return String(localized: "Quick to make and to show.")
+        }
+    }
+}
+
+extension PreviewQuality {
+    static let shownInSettings: [PreviewQuality] = [.low, .medium, .high, .max]
+
+    var label: String {
+        switch self {
+        case .low: return String(localized: "Low")
+        case .medium: return String(localized: "Medium")
+        case .max: return String(localized: "Max")
+        default: return String(localized: "High")
+        }
+    }
+}
+
 private struct ModeLabel: View {
     let title: LocalizedStringKey
     let detail: LocalizedStringKey
@@ -91,4 +328,13 @@ private struct ModeLabel: View {
             Text(detail).font(.footnote).foregroundStyle(LibraryColors.muted)
         }
     }
+}
+
+/// "2.4 GB · 1,204 photos, 31 videos", what the user's originals take up on the server.
+private func serverUsageText(_ usage: StorageUsage?) -> String {
+    guard let usage else { return String(localized: "Can’t reach the server right now") }
+    let size = ByteCountFormatter.string(fromByteCount: usage.bytes, countStyle: .file)
+    let photos = String(localized: "\(Int(usage.photos)) photos")
+    if usage.videos == 0 { return "\(size) · \(photos)" }
+    return "\(size) · \(photos), " + String(localized: "\(Int(usage.videos)) videos")
 }

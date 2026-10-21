@@ -6,7 +6,7 @@ after creating a story.
 ## Layout
 
 - **Top bar:** back, the Offline pill when the server can't be reached, and **⋯** with **Rename**,
-  **Arrange layout** (Android), **Reset groups** (when the story has groups or dismissed suggestions) and
+  **Arrange layout**, **Reset groups** (when the story has groups or dismissed suggestions) and
   **Delete story**.
 - **Header:** the first day as a calendar block (OCT / 8), the title, and a summary such as
   "Oct 8 – 16 · 9 days · 142 photos · 2 groups". One-day stories leave out the day count. An untitled story has no
@@ -22,7 +22,7 @@ after creating a story.
 - **Photos and groups, day by day, oldest first**, so the story reads like a story. Each day is a grid six square
   cells wide. A [group](group.md) is one tile where its first photo would be. Unless the story was arranged, every
   tile is **Original**: full width at its photo's own aspect ratio (a group's cover), one under the other, so nothing
-  is cropped. In stories longer than a day each day is labeled
+  is cropped. Arranging works on both platforms. In stories longer than a day each day is labeled
   "Day 2 · Fri, Oct 9".
 
 Tapping a photo opens the [viewer](viewer.md), swiping through this story's photos, with each group as one stop
@@ -41,7 +41,9 @@ tap again to drop it). The bottom panel then offers:
   **Small** 2×2, **Wide** 4×2, **Tall** 2×4, **Half** 3×3, **Large** 4×4, **Full** 6×4 cells, and **Original**: full
   width at the photo's own aspect ratio, so nothing is cropped. An Original tile stands on its own below the tiles
   before it; tiles after it continue under it.
-- **Earlier / Later**: moves the tile one place among its day's tiles. Tiles never move to another day.
+- **Earlier / Later**: moves the tile one place among its day's tiles. Tiles never move to another day. In Hebrew
+  the buttons, the grid and the size shapes mirror (Earlier is on the right); the focus photo and its frame don't,
+  since the focus point is measured on the photo from its left.
 - **Focus**: the whole photo (a group's cover), full screen, with a frame around what the tile will show. Tap the
   part that must stay in view, and **Zoom** (1×–4×) to show it closer; the tile as it will look is below. Zoom
   works with every size, Original included. Changing a group's cover resets its focus and zoom.
@@ -129,8 +131,7 @@ Uninstalling the app deletes these files.
 
 ## Not built yet
 
-Sub-stories, layout templates, drag-and-drop reordering, arranging on iOS (iOS still shows the automatic layout,
-see below), and choosing the story's cover.
+Sub-stories, layout templates, drag-and-drop reordering, and choosing the story's cover.
 
 ## Code
 
@@ -144,4 +145,8 @@ see below), and choosing the story's cover.
   [ArrangeComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ArrangeComponents.kt)
 - Layout logic (sizes, packing into bands, order): [StoryLayout.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoryLayout.kt)
 - iOS: [StoryPageView.swift](../../iosApp/iosApp/StoryPageView.swift),
-  [StoryComponents.swift](../../iosApp/iosApp/StoryComponents.swift)
+  [StoryComponents.swift](../../iosApp/iosApp/StoryComponents.swift), the grid in
+  [GroupComponents.swift](../../iosApp/iosApp/GroupComponents.swift) (`StoryGrid`, one lazy row per band; focus and
+  zoom in `MediaTileView`), arrange mode (`ArrangePanel`, `FocusEditor`) in
+  [ArrangeComponents.swift](../../iosApp/iosApp/ArrangeComponents.swift); on iOS the top bar is **Reset** at the
+  leading edge and **Done** at the trailing edge, and the focus editor is a full-screen cover

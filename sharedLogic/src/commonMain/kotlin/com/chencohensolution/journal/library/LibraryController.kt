@@ -141,11 +141,13 @@ class LibraryController internal constructor(
             mergedFrom = inputs
         }
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
-        // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it).
+        // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it). Several files
+        // upload at once; each one's ring counts.
         val running = (backupState?.activity as? BackupActivity.Running)?.progress
         val statusKey = listOf(
             merged, backupState?.entries, backupState?.queued, backupState?.countedSources,
             running?.currentId, running?.let { (it.currentFraction * STATUS_STEPS).toInt() },
+            running?.uploading?.mapValues { (it.value * STATUS_STEPS).toInt() },
         )
         if (publishedKey != null && publishedKey!!.indices.all { i ->
                 val a = publishedKey!![i]

@@ -6,11 +6,7 @@ extension StoryView {
     /// no dates of their own), nil without photos.
     var dateRange: String? {
         guard let first = firstDay, let last = lastDay else { return nil }
-        let formatter = DateIntervalFormatter()
-        let thisYear = Calendar.current.component(.year, from: Date())
-        let sameYear = first.year == thisYear && last.year == thisYear
-        formatter.dateTemplate = sameYear ? "MMMd" : "MMMdyyyy"
-        return formatter.string(from: first.date, to: last.date)
+        return dayRange(first, last)
     }
 
     /// The title, or for an untitled story its dates ("Oct 8 – 16").
@@ -23,6 +19,15 @@ extension StoryView {
         parts.append(String(localized: "\(Int(itemCount)) photos"))
         return parts.joined(separator: " · ")
     }
+}
+
+/// "Oct 8", "Oct 8 – 16", "Sep 28 – Oct 3", with the year when it isn't this year.
+func dayRange(_ first: LocalDay, _ last: LocalDay) -> String {
+    let formatter = DateIntervalFormatter()
+    let thisYear = Calendar.current.component(.year, from: Date())
+    let sameYear = first.year == thisYear && last.year == thisYear
+    formatter.dateTemplate = sameYear ? "MMMd" : "MMMdyyyy"
+    return formatter.string(from: first.date, to: last.date)
 }
 
 /// Calendar-style first day of a story: "OCT" over "8".
@@ -161,7 +166,7 @@ private struct CoverTile: View {
                 }
             }
             .task(id: item.id) {
-                image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size)
+                image = await PhotoLibraryImages.shared.image(item: item, pointSize: geometry.size)
             }
         }
     }
