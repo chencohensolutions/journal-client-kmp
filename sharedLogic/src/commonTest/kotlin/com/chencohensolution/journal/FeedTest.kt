@@ -18,6 +18,7 @@ import com.chencohensolution.journal.places.cellKey
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.settings.SettingsController
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoFingerprint
 import com.chencohensolution.journal.similarity.PhotoLooks
@@ -68,7 +69,9 @@ private val JAFFA = GeoPoint(32.0504, 34.7522)
 private val HAIFA = GeoPoint(32.7940, 34.9896)
 
 private fun feed(vararg items: MediaItem, places: Places = Places.NONE, looks: PhotoLooks = PhotoLooks.NONE, shown: Set<MediaSource> = MediaSource.entries.toSet()) =
-    buildFeed(newestFirst(*items), shown, TimelineGrouping(), places, looks)
+    buildFeed(newestFirst(*items), ShownSources(shown), TimelineGrouping(), places, looks)
+
+private val ALL_SOURCES = ShownSources(MediaSource.entries.toSet())
 
 private fun MomentsFeed.sections() = entries.filterIsInstance<FeedEntry.Section>().map { it.section }
 
@@ -148,7 +151,7 @@ class FeedTest {
         assertIs<FeedBlock.Single>(blocks[2])
 
         // A cropped photo leaves its set, and the ones after it don't join it.
-        val cropped = buildFeed(newestFirst(*items), MediaSource.entries.toSet(), TimelineGrouping(), looks = looks, alone = setOf("b1"))
+        val cropped = buildFeed(newestFirst(*items), ALL_SOURCES, TimelineGrouping(), looks = looks, alone = setOf("b1"))
             .sections().single().moments.single().blocks
         assertEquals(listOf("b1"), cropped.first().items.map { it.id })
         assertEquals(listOf("b2"), cropped[1].items.map { it.id })
@@ -193,7 +196,7 @@ class FeedTest {
             pic("late", 200), pic("later", 210),
         )
         val feed = buildFeed(
-            newestFirst(*items), MediaSource.entries.toSet(), TimelineGrouping(),
+            newestFirst(*items), ALL_SOURCES, TimelineGrouping(),
             alone = setOf("b2"),
             sets = mapOf("a" to "s1", "late" to "s1"),
         )
@@ -213,7 +216,7 @@ class FeedTest {
         val back = pic("back", 600, at = TEL_AVIV, day = LocalDay(2026, 10, 7))
         val items = home + trip + back
         val places = Places(emptyMap(), mapOf(cellKey(HAIFA) to PlaceName(null, "Haifa")))
-        val feed = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places)
+        val feed = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places)
 
         // A day without locations in the middle of a trip belongs to it; one at its end doesn't.
         val offered = feed.entries.filterIsInstance<FeedEntry.Trip>().single().trip
@@ -225,11 +228,11 @@ class FeedTest {
         val index = feed.entries.indexOfFirst { it is FeedEntry.Trip }
         assertEquals(LocalDay(2026, 10, 5), assertIs<FeedEntry.Section>(feed.entries[index + 1]).section.span.newestDay)
 
-        val dismissed = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places, dismissedTrips = setOf("trip-2026-10-04"))
+        val dismissed = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places, dismissedTrips = setOf("trip-2026-10-04"))
         assertTrue(dismissed.entries.none { it is FeedEntry.Trip })
 
         // Once its photos are in a story, it isn't offered again; they still show in the feed.
-        val saved = buildFeed(newestFirst(*items.toTypedArray()), MediaSource.entries.toSet(), TimelineGrouping(), places, sorted = setOf("t1", "t2"))
+        val saved = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places, sorted = setOf("t1", "t2"))
         assertTrue(saved.entries.none { it is FeedEntry.Trip })
         assertTrue(saved.sections().any { section -> section.items.any { it.id == "t1" } })
     }
@@ -334,10 +337,12 @@ class FeedStoryTest {
             now = { "2026-10-17T12:00:00Z" },
         )
         advanceUntilIdle()
-        // Camera and WhatsApp are shown at first; screenshots aren't.
+        // Camera and Other are shown at first; WhatsApp and screenshots aren't, and the row says so.
         val section = stories.currentState.feed.sections().single()
-        assertEquals(setOf("a", "b", "c", "w"), section.items.map { it.id }.toSet())
+        assertEquals(setOf("a", "b", "c"), section.items.map { it.id }.toSet())
+        assertEquals(mapOf(MediaSource.WHATSAPP to 1, MediaSource.SCREENSHOTS to 1), section.hidden)
 
+        settings.toggleFeedSource(MediaSource.WHATSAPP)
         settings.toggleFeedSource(MediaSource.SCREENSHOTS)
         advanceUntilIdle()
         assertEquals(5, stories.currentState.feed.sections().single().items.size)

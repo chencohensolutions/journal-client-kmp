@@ -13,6 +13,7 @@ import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 
 // The library's screens as a back stack of routes (saved as strings across rotation), and what the viewer shows for each.
 
@@ -38,7 +39,8 @@ internal sealed interface Route {
     /**
      * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), All photos with [filter], or Explore
-     * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page).
+     * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
+     * the band of that hidden source's photos on the Moments row.
      */
     data class Viewer(
         val storyId: String?,
@@ -48,6 +50,7 @@ internal sealed interface Route {
         val itemId: String,
         val tag: String? = null,
         val scope: ExploreScope? = null,
+        val revealed: MediaSource? = null,
     ) : Route
 
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
@@ -65,7 +68,7 @@ internal sealed interface Route {
         is Year -> "year|$year|${month ?: ""}"
         Map -> "map"
         is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
-            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|$itemId"
+            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|$itemId"
     }
 
     companion object {
@@ -90,7 +93,8 @@ internal sealed interface Route {
                     filter = LibraryFilter.valueOf(parts[4]),
                     tag = parts[5].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     scope = parts[6].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
-                    itemId = parts.drop(7).joinToString("|"),
+                    revealed = MediaSource.entries.firstOrNull { it.name == parts[7] },
+                    itemId = parts.drop(8).joinToString("|"),
                 )
                 else -> Journal
             }
@@ -138,8 +142,10 @@ internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Ro
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
     route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.viewerItems.orEmpty()
     route.storyId != null -> stories.story(route.storyId)?.viewerItems.orEmpty()
+    route.moment != null && route.revealed != null ->
+        stories.feed.section(route.moment)?.revealed?.firstOrNull { it.source == route.revealed }?.items.orEmpty()
     route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()
-    else -> library.days(route.filter).flatMap { it.items }
+    else -> stories.shownDays(library.days(route.filter)).flatMap { it.items }
 }
 
 /** The photos an Explore page or the map shows, newest first. */

@@ -2,6 +2,7 @@ package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.places.distanceMeters
@@ -42,11 +43,14 @@ data class CountrySummary(
 /** A year's photos, newest first. */
 data class YearSummary(
     val year: Int,
+    /** Empty when every photo of the year is hidden ([hidden]). */
     val items: List<MediaItem>,
     /** Where most of them were taken, most photos first. */
     val towns: List<String>,
-    /** A few photos spread across the year, newest first. */
+    /** A few photos spread across the year, newest first; only shown photos. */
     val covers: List<MediaItem>,
+    /** Its photos the sources setting hides, per source in [MediaSource] order: "+2,410 WhatsApp hidden". */
+    val hidden: Map<MediaSource, Int> = emptyMap(),
 ) {
     /** Its months with photos (1–12), newest first. */
     val months: List<Int> get() = items.map { it.day.month }.distinct()
@@ -125,12 +129,25 @@ fun countriesOf(places: List<PlaceSummary>): List<CountrySummary> =
                 .thenByDescending { it.photoCount }.thenBy { it.country },
         )
 
-/** Every year with photos among [library] (newest first), newest first. */
-fun yearsOf(library: List<MediaItem>, places: Places): List<YearSummary> =
-    library.groupBy { it.day.year }.map { (year, items) ->
+/**
+ * Every year with photos among [library] (newest first), newest first, each counting its photos among [hidden] (those
+ * the sources setting leaves out). A year with only hidden photos is listed too, with no items.
+ */
+fun yearsOf(library: List<MediaItem>, places: Places, hidden: List<MediaItem>): List<YearSummary> {
+    val hiddenByYear = hidden.groupBy { it.day.year }
+    val byYear = library.groupBy { it.day.year }
+    return (byYear.keys + hiddenByYear.keys).map { year ->
+        val items = byYear[year].orEmpty()
         val towns = items.mapNotNull { item -> places.location(item)?.let(places::name)?.town }
             .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(YEAR_TOWNS).map { it.key }
         val images = items.filter { it.type == MediaType.IMAGE }.ifEmpty { items }
-        val covers = (0 until YEAR_COVERS).map { images[it * images.size / YEAR_COVERS] }.distinct()
-        YearSummary(year, items, towns, covers)
+        val covers = if (images.isEmpty()) emptyList() else (0 until YEAR_COVERS).map { images[it * images.size / YEAR_COVERS] }.distinct()
+        YearSummary(year, items, towns, covers, sourceCounts(hiddenByYear[year].orEmpty()))
     }.sortedByDescending { it.year }
+}
+
+/** How many of [items] come from each source, in [MediaSource] order, leaving out sources with none. */
+fun sourceCounts(items: List<MediaItem>): Map<MediaSource, Int> {
+    val counts = items.groupingBy { it.source }.eachCount()
+    return MediaSource.entries.filter { it in counts }.associateWith { counts.getValue(it) }
+}

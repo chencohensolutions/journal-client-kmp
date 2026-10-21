@@ -5,6 +5,13 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 ## Layout
 
 - **Top bar:** back and "Settings".
+- **Show in the app** (first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
+  photos and videos", Screenshots "Screenshots and screen recordings · N", Other "Downloads, other apps · N". Camera and
+  Other are on at first. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
+  [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore, Tags and the days
+  offered to a story; photos already in a story always show there; hiding never deletes anything and doesn't change
+  what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
+  (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`).
 - **Backup** (Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):

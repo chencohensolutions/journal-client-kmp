@@ -16,5 +16,4 @@ Still missing on iOS:
 
 Planned, not built on either platform yet:
 
-- **Hiding WhatsApp, screenshots and other sources everywhere** — build on the Mac for both. See
-  [plans/hide-whatsapp.md](plans/hide-whatsapp.md).
+- **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

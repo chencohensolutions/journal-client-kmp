@@ -46,6 +46,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsState
@@ -59,6 +61,9 @@ internal class SettingsActions(
     val resetSimilarity: () -> Unit = {},
     val setShowPrivateMedia: (Boolean) -> Unit = {},
     val setPrivateThresholdPercent: (Int) -> Unit = {},
+    /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
+    val toggleSource: (MediaSource) -> Unit = {},
+    val setSayWhatsHidden: (Boolean) -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -68,6 +73,8 @@ internal class SettingsActions(
 internal fun SettingsScreen(
     settings: SettingsState,
     actions: SettingsActions,
+    /** The library's photos per source, shown or not, for Show in the app. */
+    sourceCounts: Map<MediaSource, Int> = emptyMap(),
     backup: BackupUi? = null,
     backupActions: BackupActions = BackupActions(),
     storage: StorageUi? = null,
@@ -82,6 +89,7 @@ internal fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
+            ShownSourcesSection(settings.shownSources, sourceCounts, actions)
             if (backup != null) BackupSection(backup, backupActions)
             if (storage != null) StorageSection(storage, storageActions)
             SectionTitle(stringResource(R.string.settings_grouping_title))
@@ -181,6 +189,45 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
                 uncheckedBorderColor = LibraryColors.Muted,
             ),
         )
+    }
+}
+
+/**
+ * Show in the app: a switch per source with its count, then "Say what's hidden", then where it applies and that
+ * hiding never deletes or changes backup.
+ */
+@Composable
+private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
+    SectionTitle(stringResource(R.string.settings_shown_title))
+    Card {
+        MediaSource.entries.forEachIndexed { i, source ->
+            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            val count = counts[source] ?: 0
+            SwitchRow(
+                title = sourceName(source),
+                body = when (source) {
+                    MediaSource.CAMERA -> pluralStringResource(R.plurals.settings_shown_camera, count, count)
+                    MediaSource.WHATSAPP -> pluralStringResource(R.plurals.settings_shown_whatsapp, count, count)
+                    MediaSource.SCREENSHOTS -> stringResource(R.string.settings_shown_screenshots, count)
+                    MediaSource.OTHER -> stringResource(R.string.settings_shown_other, count)
+                },
+                checked = shown.isShown(source),
+                onChange = { actions.toggleSource(source) },
+            )
+        }
+    }
+    Column(Modifier.padding(top = 12.dp)) {
+        Card {
+            SwitchRow(
+                title = stringResource(R.string.settings_say_hidden),
+                body = stringResource(R.string.settings_say_hidden_body),
+                checked = shown.sayWhatsHidden,
+                onChange = actions.setSayWhatsHidden,
+            )
+        }
+    }
+    listOf(R.string.settings_shown_where, R.string.settings_shown_stories).forEach { note ->
+        Text(stringResource(note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp))
     }
 }
 

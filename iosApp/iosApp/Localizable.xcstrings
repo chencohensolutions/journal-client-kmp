@@ -7,6 +7,16 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ hidden" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ מוסתרים"
+          }
+        }
+      }
+    },
     "%@ – %@" : {
       "localizations" : {
         "he" : {
@@ -269,6 +279,68 @@
     },
     "%lld" : {
       "shouldTranslate" : false
+    },
+    "%lld here" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld כאן"
+          }
+        }
+      }
+    },
+    "%lld photos and videos" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo or video"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos and videos"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות וסרטונים"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה או סרטון אחד"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות וסרטונים"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות וסרטונים"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld · Open" : {
       "localizations" : {
@@ -1439,6 +1511,26 @@
     "+%lld" : {
 
     },
+    "+%lld %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‎+%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "+%lld %@ hidden" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד %1$lld מ%2$@ מוסתרים"
+          }
+        }
+      }
+    },
     "8 letters and digits. Works once, expires 10 minutes after it was created." : {
       "localizations" : {
         "he" : {
@@ -1571,6 +1663,16 @@
         }
       }
     },
+    "Add to a story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספה לסיפור"
+          }
+        }
+      }
+    },
     "Add to story" : {
       "localizations" : {
         "he" : {
@@ -1661,12 +1763,32 @@
         }
       }
     },
+    "Always show this day" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להציג תמיד ביום הזה"
+          }
+        }
+      }
+    },
     "Any shape. This is how the photo shows in Moments." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל צורה. כך התמונה תופיע ברגעים."
+          }
+        }
+      }
+    },
+    "Applies to Moments, All photos, Explore, Tags and picking photos for a story." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חל על רגעים, כל התמונות, גילוי, תגיות ובחירת תמונות לסיפור."
           }
         }
       }
@@ -2210,6 +2332,16 @@
         }
       }
     },
+    "Downloads, other apps · %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורדות, אפליקציות אחרות · %lld"
+          }
+        }
+      }
+    },
     "Each file is hashed again on this phone and on your server first. Then you confirm them all at once, and they go to Recently Deleted, where they stay for 30 days." : {
       "localizations" : {
         "he" : {
@@ -2588,6 +2720,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חצי"
+          }
+        }
+      }
+    },
+    "Hide" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרה"
+          }
+        }
+      }
+    },
+    "Hide %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרת %@"
           }
         }
       }
@@ -2972,6 +3124,16 @@
         }
       }
     },
+    "Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town's page." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ברוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן על המפה. הסתרתן משנה בעיקר את השנים ואת התמונות בדף של עיר."
+          }
+        }
+      }
+    },
     "Move to trash" : {
       "localizations" : {
         "he" : {
@@ -3222,6 +3384,16 @@
         }
       }
     },
+    "Nothing shown" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שום דבר לא מוצג"
+          }
+        }
+      }
+    },
     "Nothing to free up" : {
       "localizations" : {
         "he" : {
@@ -3378,6 +3550,16 @@
         }
       }
     },
+    "Only %@ photos this year (%lld)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק תמונות מ%1$@ בשנה הזו (%2$lld)"
+          }
+        }
+      }
+    },
     "Only on this device" : {
       "localizations" : {
         "he" : {
@@ -3514,6 +3696,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התמונות ממשיכות לעלות ברקע. סגירת האפליקציה בהחלקה עוצרת את הגיבוי עד שפותחים אותה שוב."
+          }
+        }
+      }
+    },
+    "Photos you already put in a story always show there. Hiding never deletes anything and doesn't change what is backed up." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות שכבר הכנסת לסיפור תמיד מוצגות בו. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה."
           }
         }
       }
@@ -3871,6 +4063,16 @@
         }
       }
     },
+    "Say what's hidden" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לציין מה מוסתר"
+          }
+        }
+      }
+    },
     "Scan QR code" : {
       "localizations" : {
         "he" : {
@@ -3887,6 +4089,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "צילומי מסך"
+          }
+        }
+      }
+    },
+    "Screenshots and screen recordings · %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צילומי מסך והקלטות מסך · %lld"
           }
         }
       }
@@ -4031,6 +4243,16 @@
         }
       }
     },
+    "Show in the app" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה מוצג באפליקציה"
+          }
+        }
+      }
+    },
     "Show private media" : {
       "localizations" : {
         "he" : {
@@ -4041,12 +4263,42 @@
         }
       }
     },
+    "Show them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להציג אותן"
+          }
+        }
+      }
+    },
     "Show them as one?" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "להציג אותן כאחת?"
+          }
+        }
+      }
+    },
+    "Showing" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה מוצג"
+          }
+        }
+      }
+    },
+    "Showing %lld from %@ on %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוצגות %1$lld מ%2$@ ב־%3$@"
           }
         }
       }
@@ -4400,6 +4652,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן ובסיפורים שלה מהתצוגה המקדימה."
+          }
+        }
+      }
+    },
+    "The same in Moments, Explore and All photos." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אותו הדבר ברגעים, בגילוי ובכל התמונות."
           }
         }
       }
@@ -5041,6 +5303,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "זום"
+          }
+        }
+      }
+    },
+    "“+6 WhatsApp” on a day, tap to see them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„‎+6 וואטסאפ” ביום, הקשה מציגה אותן"
           }
         }
       }

@@ -254,6 +254,8 @@ struct UndoBar: View {
     let count: Int
     /// Instead of "Grouped N photos".
     var message: LocalizedStringKey?
+    /// Instead of "Undo".
+    var actionLabel: LocalizedStringKey = "Undo"
     let onUndo: () -> Void
     let onDismiss: () -> Void
 
@@ -261,7 +263,7 @@ struct UndoBar: View {
         HStack(spacing: 4) {
             Text(message ?? "Grouped \(count) photos").font(.subheadline)
             Spacer()
-            Button("Undo", action: onUndo)
+            Button(actionLabel, action: onUndo)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(LibraryColors.accent)
             Button(action: onDismiss) {

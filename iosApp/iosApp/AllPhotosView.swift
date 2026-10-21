@@ -4,6 +4,8 @@ import SharedLogic
 /// Every photo and video, edge to edge, newest first. See docs/screens/all-photos.md.
 struct AllPhotosView: View {
     let library: LibraryState
+    /// What the sources setting hides is left out.
+    let stories: StoriesState
     let backupRunning: BackupProgress?
     let health: ServerHealth
     @Binding var filter: LibraryFilter
@@ -12,7 +14,7 @@ struct AllPhotosView: View {
     private static let gap: CGFloat = 2
 
     var body: some View {
-        let days = library.days(filter: filter)
+        let days = stories.shownDays(days: library.days(filter: filter))
         GeometryReader { geometry in
             let cell = (geometry.size.width - 2 * Self.gap) / 3
             ScrollView {

@@ -44,6 +44,7 @@ import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.stories.StoriesState
 
 /** One row of the grid: a large photo with two small ones beside it, or up to three small ones. */
 private sealed interface GridRow {
@@ -68,10 +69,14 @@ private fun gridRows(day: DayGroup): List<GridRow> {
         items.drop(3).chunked(3).map { GridRow.Regular(day.day, it) }
 }
 
-/** Every photo and video, edge to edge, newest first. See docs/screens/all-photos.md. */
+/**
+ * Every photo and video the sources setting shows, edge to edge, newest first. The backup pill still counts every
+ * photo not backed up: hiding doesn't change what is backed up. See docs/screens/all-photos.md.
+ */
 @Composable
 internal fun AllPhotosScreen(
     library: LibraryState,
+    stories: StoriesState,
     health: ServerHealth,
     filter: LibraryFilter,
     onFilter: (LibraryFilter) -> Unit,
@@ -83,7 +88,7 @@ internal fun AllPhotosScreen(
     backupRunning: BackupProgress? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
-    val days = library.days(filter)
+    val days = remember(library, stories.shownSources, filter) { stories.shownDays(library.days(filter)) }
     val list = rememberLazyListState()
     val rows = remember(days) { dayGridRows(days) }
     list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }

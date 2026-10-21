@@ -9,6 +9,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
@@ -25,6 +26,7 @@ import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoCrops
 import com.chencohensolution.journal.stories.PhotoNote
+import com.chencohensolution.journal.stories.RevealedPhotos
 import java.time.Instant
 import java.time.ZoneId
 
@@ -238,4 +240,64 @@ internal object PreviewData {
             }
         }.associateBy { it.id },
     )
+
+    // Hiding sources (Settings › Show in the app): WhatsApp and screenshots off, as at first.
+
+    private fun Iterable<MediaItem>.asDays() =
+        sortedByDescending { it.takenAtMillis }.groupBy { it.day }.map { (day, items) -> DayGroup(day, items) }
+
+    private val todaySection = (feed.entries[0] as FeedEntry.Section).section
+    private val yesterdaySection = (feed.entries[1] as FeedEntry.Section).section
+
+    /** Today's six WhatsApp photos the setting hides, newest first. */
+    private val hiddenWhatsApp = List(6) { photo(0, hour = 17 - it % 4, ratio = ratios[it % 4]).copy(source = MediaSource.WHATSAPP) }
+        .sortedByDescending { it.takenAtMillis }
+
+    private fun FeedSection.cameraOnly() = copy(moments = moments.filter { it.source == MediaSource.CAMERA })
+
+    /** Moments with WhatsApp and Screenshots off: the rows say what they leave out ("+6 WhatsApp"). */
+    val hiddenFeed: MomentsFeed = feed.copy(
+        entries = listOf(
+            FeedEntry.Section(todaySection.cameraOnly().copy(hidden = mapOf(MediaSource.WHATSAPP to 6, MediaSource.SCREENSHOTS to 3))),
+            FeedEntry.Section(yesterdaySection.cameraOnly().copy(hidden = mapOf(MediaSource.SCREENSHOTS to 2))),
+        ) + feed.entries.drop(2),
+        counts = mapOf(MediaSource.CAMERA to 48_210, MediaSource.WHATSAPP to 18_458, MediaSource.SCREENSHOTS to 2_388, MediaSource.OTHER to 3_104),
+        shown = ShownSources.DEFAULT_SOURCES,
+    )
+
+    /** Today's "+6 WhatsApp" tapped: the six in a band under the row, "Hide WhatsApp" in its place. */
+    val revealedFeed: MomentsFeed = hiddenFeed.copy(
+        entries = listOf(
+            FeedEntry.Section(
+                todaySection.cameraOnly().copy(
+                    hidden = mapOf(MediaSource.SCREENSHOTS to 3),
+                    revealed = listOf(RevealedPhotos(MediaSource.WHATSAPP, hiddenWhatsApp)),
+                ),
+            ),
+        ) + hiddenFeed.entries.drop(1),
+    )
+
+    val todayKey: String = todaySection.key
+
+    val hiddenStories: StoriesState = feedStories.copy(feed = hiddenFeed, shownSources = ShownSources())
+    val revealedStories: StoriesState = feedStories.copy(
+        feed = revealedFeed,
+        shownSources = ShownSources(),
+        itemsById = feedStories.itemsById + hiddenWhatsApp.associateBy { it.id },
+    )
+
+    /** Photos over several years; 2016 has only WhatsApp photos. */
+    private fun year(daysAgo: Int, count: Int, source: MediaSource) =
+        List(count) { photo(daysAgo + it % 40, hour = 9 + it % 10, ratio = ratios[it % 4]).copy(source = source) }
+
+    val exploreLibrary = LibraryState(
+        access = PhotoAccess.FULL,
+        days = (
+            year(0, 30, MediaSource.CAMERA) + year(5, 24, MediaSource.WHATSAPP) +
+                year(380, 20, MediaSource.CAMERA) + year(390, 51, MediaSource.WHATSAPP) + year(400, 3, MediaSource.SCREENSHOTS) +
+                year(800, 12, MediaSource.CAMERA) +
+                year(3_700, 41, MediaSource.WHATSAPP)
+            ).asDays(),
+    )
+    val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed(shown = ShownSources.DEFAULT_SOURCES))
 }

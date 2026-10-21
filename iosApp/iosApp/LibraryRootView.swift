@@ -36,12 +36,14 @@ struct LibraryRootView: View {
     }
 
     /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), a row of Moments
-    /// (`feedSection`, its key), Explore (`scope`: the map's photos, or with `feedSection` a row of a town's or a
+    /// (`feedSection`, its key, with `revealed` a band of hidden photos on it), Explore (`scope`: the map's photos, or with `feedSection` a row of a town's or a
     /// year's page), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         let storyId: String?
         var groupId: String? = nil
         var feedSection: String? = nil
+        /// With `feedSection`: the band of this hidden source's photos shown on that row.
+        var revealed: MediaSource? = nil
         let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
@@ -96,11 +98,11 @@ struct LibraryRootView: View {
                             setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
                             // The crop screen, on the photo's Moments crop.
                             crop: { item in crop = CropRequest(itemId: item.id, kind: .moments) },
-                            toggleStory: { storyId, itemId, add in
-                                if add { stories.add([itemId], to: storyId) } else { stories.remove([itemId], from: storyId) }
+                            toggleStory: { storyId, itemIds, add in
+                                if add { stories.add(itemIds, to: storyId) } else { stories.remove(itemIds, from: storyId) }
                             },
-                            createStoryWith: { title, itemId in
-                                if let id = stories.createStory(title: title, itemIds: [itemId]) { path.append(.story(id)) }
+                            createStoryWith: { title, itemIds in
+                                if let id = stories.createStory(title: title, itemIds: itemIds) { path.append(.story(id)) }
                             },
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
@@ -108,10 +110,17 @@ struct LibraryRootView: View {
                             openAllPhotos: { path.append(.allPhotos) },
                             openSettings: { path.append(.settings) },
                             openTags: { path.append(.tags) },
+                            showOnRow: { stories.showOnRow($0, source: $1) },
+                            hideOnRow: { stories.hideOnRow($0, source: $1) },
+                            alwaysShow: { settings.alwaysShow(days: $0, source: $1) },
+                            openRevealed: { section, revealed, item in
+                                openViewer(ViewerRequest(storyId: nil, feedSection: section.key, revealed: revealed.source, filter: .all, itemId: item.id))
+                            },
                             explore: ExploreActions(
                                 openPlace: { path.append(.place($0)) },
                                 openYear: { path.append(.year($0, month: $1)) },
-                                openMap: { path.append(.map) }
+                                openMap: { path.append(.map) },
+                                toggleSource: settings.toggleFeedSource
                             ),
                             allowAccess: requestOrOpenSettings,
                             registerAgain: onRegisterAgain
@@ -121,17 +130,27 @@ struct LibraryRootView: View {
                     .navigationDestination(for: Route.self) { route in
                         switch route {
                         case .allPhotos:
-                            AllPhotosView(library: library.state, backupRunning: backup.running, health: journal.state.health, filter: $filter) { item in
+                            AllPhotosView(
+                                library: library.state, stories: stories.state, backupRunning: backup.running, health: journal.state.health, filter: $filter
+                            ) { item in
                                 openViewer(ViewerRequest(storyId: nil, filter: filter, itemId: item.id))
                             }
                         case .settings:
-                            SettingsView(settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount), refreshLibrary: library.refresh)
+                            SettingsView(
+                                settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount),
+                                sourceCounts: stories.state.feed.counts, refreshLibrary: library.refresh
+                            )
                         case .place(let town):
-                            PlacePageView(town: town, library: library.state, stories: stories.state, openItem: openExplore)
+                            PlacePageView(
+                                town: town, library: library.state, stories: stories.state, openItem: openExplore, toggleSource: settings.toggleFeedSource
+                            )
                         case let .year(year, month):
-                            YearPageView(year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore)
+                            YearPageView(
+                                year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore,
+                                toggleSource: settings.toggleFeedSource
+                            )
                         case .map:
-                            ExploreMapView(library: library.state, stories: stories.state) { scope, itemId in
+                            ExploreMapView(library: library.state, stories: stories.state, toggleSource: settings.toggleFeedSource) { scope, itemId in
                                 guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
                                 openViewer(ViewerRequest(storyId: nil, filter: .all, itemId: first, scope: scope))
                             }
@@ -283,9 +302,12 @@ struct LibraryRootView: View {
         if let storyId = request.storyId {
             return stories.state.story(id: storyId)?.viewerItems ?? []
         }
+        if let section = request.feedSection, let source = request.revealed {
+            return stories.state.feed.section(key: section)?.revealed.first { $0.source == source }?.items ?? []
+        }
         if let section = request.feedSection {
             return stories.state.feed.section(key: section)?.items ?? []
         }
-        return library.state.days(filter: request.filter).flatMap { $0.items }
+        return stories.state.shownDays(days: library.state.days(filter: request.filter)).flatMap { $0.items }
     }
 }

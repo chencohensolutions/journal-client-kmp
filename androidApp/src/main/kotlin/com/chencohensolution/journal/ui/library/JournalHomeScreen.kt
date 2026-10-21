@@ -64,6 +64,8 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.FeedBlock
+import com.chencohensolution.journal.stories.FeedReveal
+import com.chencohensolution.journal.stories.RevealedPhotos
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
@@ -106,11 +108,19 @@ internal class HomeActions(
     /** From a photo's long-press menu in Moments, by item id. */
     val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
     val crop: (itemId: String) -> Unit = {},
-    val toggleStory: (storyId: String, itemId: String, add: Boolean) -> Unit = { _, _, _ -> },
-    val createStoryWith: (title: String, itemId: String) -> Unit = { _, _ -> },
+    /** From a photo's menu, or a band's "Add to a story" with all its photos. */
+    val toggleStory: (storyId: String, itemIds: List<String>, add: Boolean) -> Unit = { _, _, _ -> },
+    val createStoryWith: (title: String, itemIds: List<String>) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The Explore tab's towns, years and map. */
     val explore: ExploreActions = ExploreActions(),
+    /** A hidden source's photos shown on one row of Moments ([FeedSection.key]), or hidden again; nothing is saved. */
+    val showOnRow: (sectionKey: String, MediaSource) -> Unit = { _, _ -> },
+    val hideOnRow: (sectionKey: String, MediaSource) -> Unit = { _, _ -> },
+    /** A band's "Always show this day": the setting keeps showing [MediaSource] on the row's days. */
+    val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
+    /** A photo of a band; the viewer swipes through the band. */
+    val openRevealed: (FeedSection, MediaSource, MediaItem) -> Unit = { _, _, _ -> },
 )
 
 /**
@@ -135,20 +145,33 @@ internal fun JournalHomeScreen(
     initialMenuItem: String? = null,
     /** Photos and sets picked at first (by first photo id); previews use it. */
     initialSelection: Set<String> = emptySet(),
+    /** The band whose "Showing 6 from WhatsApp" note shows at first; previews use it. */
+    initialReveal: FeedReveal? = null,
+    /** Places or Years at first in the Explore tab; previews use it. */
+    initialExploreView: ExploreView = ExploreView.PLACES,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
-    var exploreView by rememberSaveable { mutableStateOf(ExploreView.PLACES) }
+    var exploreView by rememberSaveable { mutableStateOf(initialExploreView) }
     // The row or trip whose "+ Story" or "Save as story" was tapped, and the title to start with.
     var newStoryKey by rememberSaveable { mutableStateOf<String?>(null) }
     var newStoryTitle by rememberSaveable { mutableStateOf("") }
     // The photo whose long-press menu is open, and the one being written about, added to a story or tagged from it.
     var menuItem by rememberSaveable { mutableStateOf(initialMenuItem) }
     var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
-    var storyFor by rememberSaveable { mutableStateOf<String?>(null) }
+    var storyFor by rememberSaveable { mutableStateOf<List<String>?>(null) }
     var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
     // Photos and sets picked to merge; back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
     BackHandler(enabled = selection.active) { selection.clear() }
+    // The band just shown, for its note above the tabs: "Showing 6 from WhatsApp on Oct 4 · Hide".
+    var reveal by remember { mutableStateOf(initialReveal) }
+    val inPreview = LocalInspectionMode.current
+    LaunchedEffect(reveal) {
+        if (reveal != null && !inPreview) {
+            delay(REVEAL_NOTE_MILLIS)
+            reveal = null
+        }
+    }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
     // Stories shows only stories; every photo is in the Moments tab, as the feed.
@@ -206,6 +229,20 @@ internal fun JournalHomeScreen(
             },
             dismissTrip = { currentActions.dismissTrip(it) },
             itemMenu = { _, item -> menuItem = item.id },
+            showOnRow = { section, source ->
+                reveal = FeedReveal(section.key, source)
+                currentActions.showOnRow(section.key, source)
+            },
+            hideOnRow = { section, source ->
+                if (reveal == FeedReveal(section.key, source)) reveal = null
+                currentActions.hideOnRow(section.key, source)
+            },
+            openRevealed = { section, band, item -> currentActions.openRevealed(section, band.source, item) },
+            addRevealedToStory = { band -> storyFor = band.items.map { it.id } },
+            alwaysShow = { section, source ->
+                if (reveal == FeedReveal(section.key, source)) reveal = null
+                currentActions.alwaysShow(section, source)
+            },
         )
     }
 
@@ -284,6 +321,15 @@ internal fun JournalHomeScreen(
                     },
                 )
             } else {
+                val band = reveal?.takeIf { moments }?.let { shown ->
+                    stories.feed.section(shown.section)?.let { section -> section.revealed.firstOrNull { it.source == shown.source }?.let { section to it } }
+                }
+                band?.let { (section, photos) ->
+                    RevealNote(section, photos) {
+                        reveal = null
+                        actions.hideOnRow(section.key, photos.source)
+                    }
+                }
                 SegmentedBar(
                     options = listOf(
                         HomeTab.STORIES to stringResource(R.string.library_tab_stories),
@@ -311,7 +357,7 @@ internal fun JournalHomeScreen(
                     when (choice) {
                         FeedItemChoice.WRITE -> writingFor = item.id
                         FeedItemChoice.CROP -> actions.crop(item.id)
-                        FeedItemChoice.ADD_TO_STORY -> storyFor = item.id
+                        FeedItemChoice.ADD_TO_STORY -> storyFor = listOf(item.id)
                         FeedItemChoice.TAG -> tagFor = item.id
                         FeedItemChoice.SELECT -> selection.toggle(block?.key ?: item.id)
                         FeedItemChoice.TAKE_OUT -> actions.takeOutOfSet(item.id)
@@ -332,14 +378,14 @@ internal fun JournalHomeScreen(
             onDismiss = { writingFor = null },
         )
     }
-    storyFor?.let { id ->
+    storyFor?.let { ids ->
         AddToStorySheet(
-            itemIds = listOf(id),
+            itemIds = ids,
             stories = stories,
-            onToggle = { storyId, add -> actions.toggleStory(storyId, id, add) },
+            onToggle = { storyId, add -> actions.toggleStory(storyId, ids, add) },
             onCreate = { title ->
                 storyFor = null
-                actions.createStoryWith(title, id)
+                actions.createStoryWith(title, ids)
             },
             onDismiss = { storyFor = null },
         )
@@ -367,6 +413,33 @@ internal fun JournalHomeScreen(
         )
     }
 }
+
+/** Above the tabs while a band is shown: "Showing 6 from WhatsApp on Oct 4 · Hide". */
+@Composable
+private fun RevealNote(section: FeedSection, band: RevealedPhotos, onHide: () -> Unit) {
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .background(LibraryColors.Inverse, RoundedCornerShape(12.dp))
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.feed_reveal_showing, band.items.size, sourceName(band.source), formatDate(section.span.newestDay.toLocalDate(), "MMMd")),
+            color = LibraryColors.OnInverse,
+            fontSize = 14.sp,
+            maxLines = 2,
+            modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+        )
+        TextButton(onClick = onHide) {
+            Text(stringResource(R.string.feed_reveal_hide), color = LibraryColors.OnInverse, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** How long the note about a band just shown stays. */
+private const val REVEAL_NOTE_MILLIS = 6_000L
 
 @Composable
 private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifier = Modifier, below: @Composable () -> Unit = {}) {

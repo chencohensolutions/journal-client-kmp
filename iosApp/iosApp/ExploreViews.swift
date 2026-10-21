@@ -11,12 +11,13 @@ struct ExploreActions {
     /// A year's page, on one of its months when `month` is set.
     var openYear: (_ year: Int, _ month: Int?) -> Void
     var openMap: () -> Void
+    /// A source on or off everywhere (the "Showing" sheet, "Show them").
+    var toggleSource: (MediaSource) -> Void
 }
 
-/// What Explore works from: the library, newest first, of the sources the Moments tab shows.
+/// What Explore works from: the library, newest first, without what the sources setting hides.
 func exploreItems(_ library: LibraryState, _ stories: StoriesState) -> [MediaItem] {
-    let shown = stories.feed.shown
-    return library.days.flatMap { $0.items }.filter { shown.contains($0.source) }
+    library.days.flatMap { $0.items }.filter { stories.shows(item: $0) }
 }
 
 /// The photos an Explore page or the map shows, newest first.
@@ -38,12 +39,12 @@ extension ExploreScope {
 struct ExploreInput: Equatable {
     let library: ObjectIdentifier
     let places: ObjectIdentifier
-    let shown: Set<MediaSource>
+    let shown: ShownSources
 
     init(_ library: LibraryState, _ stories: StoriesState) {
         self.library = ObjectIdentifier(library)
         places = ObjectIdentifier(stories.places)
-        shown = stories.feed.shown
+        shown = stories.shownSources
     }
 }
 
@@ -52,15 +53,23 @@ struct ExploreSummaries {
     let countries: [CountrySummary]
     let years: [YearSummary]
     let anyLocated: Bool
+    /// The whole library per source, shown or not: the "Showing" sheet's "N here".
+    let sourceCounts: [MediaSource: KotlinInt]
 
     static func of(_ library: LibraryState, _ stories: StoriesState) async -> ExploreSummaries {
         await Task.detached(priority: .userInitiated) {
-            let items = exploreItems(library, stories)
+            let all = library.days.flatMap { $0.items }
+            var items: [MediaItem] = []
+            var hidden: [MediaItem] = []
+            for item in all {
+                if stories.shows(item: item) { items.append(item) } else { hidden.append(item) }
+            }
             let places = stories.places
             return ExploreSummaries(
                 countries: ExploreKt.countriesOf(places: ExploreKt.placesOf(library: items, places: places)),
-                years: ExploreKt.yearsOf(library: items, places: places),
-                anyLocated: items.contains { places.location(item: $0) != nil }
+                years: ExploreKt.yearsOf(library: items, places: places, hidden: hidden),
+                anyLocated: items.contains { places.location(item: $0) != nil },
+                sourceCounts: ExploreKt.sourceCounts(items: all)
             )
         }.value
     }
@@ -117,6 +126,9 @@ struct ExploreRowsView: View {
     let view: ExploreView
     let width: CGFloat
     let actions: ExploreActions
+    let shownSources: ShownSources
+
+    @State private var choosing = false
 
     private enum Row: Identifiable {
         case message(LocalizedStringKey)
@@ -138,6 +150,12 @@ struct ExploreRowsView: View {
     }
 
     var body: some View {
+        ShownSourcesLine(shown: shownSources, counts: summaries.sourceCounts) { choosing = true }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+            .sheet(isPresented: $choosing) {
+                ShowingSheet(shown: shownSources, counts: summaries.sourceCounts, onToggle: actions.toggleSource)
+            }
         ForEach(rows) { row in
             switch row {
             case .message(let text):
@@ -294,47 +312,87 @@ private struct YearCard: View {
                     .foregroundStyle(LibraryColors.onBackground)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
-                Text("\(year.items.count) photos")
-                    .font(.system(size: 13))
-                    .foregroundStyle(LibraryColors.muted)
-            }
-            if !year.towns.isEmpty {
-                Text(verbatim: year.towns.joined(separator: " · "))
-                    .font(.system(size: 13))
-                    .foregroundStyle(LibraryColors.muted)
-                    .lineLimit(1)
-            }
-            HStack(spacing: 3) {
-                ForEach(year.covers, id: \.id) { item in
-                    ExploreThumbnail(item: item)
-                }
-            }
-            .frame(height: 86)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.top, 10)
-            ScrollView(.horizontal) {
-                HStack(spacing: 6) {
-                    ForEach(year.months.map { Int($0.intValue) }, id: \.self) { month in
-                        Button { actions.openYear(Int(year.year), month) } label: {
-                            Text(monthName(month))
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(LibraryColors.onBackground)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 7)
-                                .background(LibraryColors.raised, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("\(year.items.count) photos")
+                        .font(.system(size: 13))
+                        .foregroundStyle(LibraryColors.muted)
+                    ForEach(hidden, id: \.0) { source, count in
+                        Text("+\(count) \(source.title) hidden")
+                            .font(.system(size: 12))
+                            .foregroundStyle(LibraryColors.muted.opacity(0.8))
                     }
                 }
             }
-            .scrollIndicators(.hidden)
-            .padding(.top, 10)
+            if year.items.isEmpty {
+                onlyHidden
+            } else {
+                shownPhotos
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
-        .onTapGesture { actions.openYear(Int(year.year), nil) }
-        .accessibilityAddTraits(.isButton)
+        .onTapGesture { if !year.items.isEmpty { actions.openYear(Int(year.year), nil) } }
+        .accessibilityAddTraits(year.items.isEmpty ? [] : .isButton)
+    }
+
+    /// Its photos the sources setting hides, per source in order.
+    private var hidden: [(MediaSource, Int)] { sourceCountList(year.hidden) }
+
+    /// A year with only hidden photos: "Only WhatsApp photos this year (412)", and Show them, which turns them on.
+    private var onlyHidden: some View {
+        let names = hidden.map(\.0.title).joined(separator: ", ")
+        let total = hidden.reduce(0) { $0 + $1.1 }
+        return HStack(spacing: 8) {
+            Text("Only \(names) photos this year (\(total))")
+                .font(.system(size: 14))
+                .foregroundStyle(LibraryColors.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Show them") { hidden.forEach { actions.toggleSource($0.0) } }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(LibraryColors.onBackground)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .background {
+            RoundedRectangle(cornerRadius: 12).strokeBorder(LibraryColors.muted.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+        }
+        .padding(.top, 10)
+    }
+
+    @ViewBuilder
+    private var shownPhotos: some View {
+        if !year.towns.isEmpty {
+            Text(verbatim: year.towns.joined(separator: " · "))
+                .font(.system(size: 13))
+                .foregroundStyle(LibraryColors.muted)
+                .lineLimit(1)
+        }
+        HStack(spacing: 3) {
+            ForEach(year.covers, id: \.id) { item in
+                ExploreThumbnail(item: item)
+            }
+        }
+        .frame(height: 86)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.top, 10)
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(year.months.map { Int($0.intValue) }, id: \.self) { month in
+                    Button { actions.openYear(Int(year.year), month) } label: {
+                        Text(monthName(month))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(LibraryColors.onBackground)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(LibraryColors.raised, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .padding(.top, 10)
     }
 }
 
@@ -372,6 +430,7 @@ struct PlacePageView: View {
     let library: LibraryState
     let stories: StoriesState
     let openItem: (ExploreScope, FeedSection, MediaItem) -> Void
+    let toggleSource: (MediaSource) -> Void
 
     @State private var year: Int?
 
@@ -391,7 +450,8 @@ struct PlacePageView: View {
                 return [(nil, String(localized: "All years"))] + years.map { ($0.0, "\(String($0.0)) · \($0.1)") }
             },
             selected: $year,
-            openItem: { openItem(scope, $0, $1) }
+            openItem: { openItem(scope, $0, $1) },
+            toggleSource: toggleSource
         )
     }
 }
@@ -402,14 +462,19 @@ struct YearPageView: View {
     let library: LibraryState
     let stories: StoriesState
     let openItem: (ExploreScope, FeedSection, MediaItem) -> Void
+    let toggleSource: (MediaSource) -> Void
 
     @State private var month: Int?
 
-    init(year: Int, month: Int?, library: LibraryState, stories: StoriesState, openItem: @escaping (ExploreScope, FeedSection, MediaItem) -> Void) {
+    init(
+        year: Int, month: Int?, library: LibraryState, stories: StoriesState,
+        openItem: @escaping (ExploreScope, FeedSection, MediaItem) -> Void, toggleSource: @escaping (MediaSource) -> Void
+    ) {
         self.year = year
         self.library = library
         self.stories = stories
         self.openItem = openItem
+        self.toggleSource = toggleSource
         _month = State(initialValue: month)
     }
 
@@ -436,15 +501,18 @@ struct YearPageView: View {
                 return [(nil, String(localized: "Whole year"))] + months.map { ($0, monthName($0)) }
             },
             selected: $month,
-            openItem: { openItem(scope, $0, $1) }
+            openItem: { openItem(scope, $0, $1) },
+            toggleSource: toggleSource
         )
     }
 }
 
-/// Everything in `whole`, and the feed rows of what `shown` takes in.
+/// Everything in `whole` the sources setting shows, the feed rows of what `shown` takes in, and everything in `whole`
+/// per source, shown or not ("N here").
 private struct ExplorePage {
     let all: [MediaItem]
     let rows: [FeedRow]
+    let counts: [MediaSource: KotlinInt]
 }
 
 private struct ExplorePageInput: Equatable {
@@ -465,9 +533,11 @@ private struct ExplorePageView: View {
     let chips: ([MediaItem]) -> [(Int?, String)]
     @Binding var selected: Int?
     let openItem: (FeedSection, MediaItem) -> Void
+    let toggleSource: (MediaSource) -> Void
 
     @State private var page: ExplorePage?
     @State private var selection = Set<String>()
+    @State private var choosing = false
     @StateObject private var playback = FeedPlayback()
 
     var body: some View {
@@ -488,6 +558,11 @@ private struct ExplorePageView: View {
                     .scrollIndicators(.hidden)
                     .padding(.top, 14)
                     .padding(.bottom, 8)
+                    if let page {
+                        ShownSourcesLine(shown: stories.shownSources, counts: page.counts) { choosing = true }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 4)
+                    }
                     FeedRowsView(
                         rows: rows,
                         note: { stories.note(itemId: $0) },
@@ -507,11 +582,19 @@ private struct ExplorePageView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .sheet(isPresented: $choosing) {
+            ShowingSheet(shown: stories.shownSources, counts: page?.counts ?? [:], onToggle: toggleSource)
+        }
         .task(id: ExplorePageInput(explore: ExploreInput(library, stories), shown: shown)) {
             let (library, stories, whole, shown, places) = (library, stories, whole, shown, stories.places)
             page = await Task.detached(priority: .userInitiated) {
-                let all = exploreItems(library, stories).filter { whole.matches(item: $0, places: places) }
-                return ExplorePage(all: all, rows: stories.feedOf(items: all.filter { shown.matches(item: $0, places: places) }).rows)
+                let everything = library.days.flatMap { $0.items }.filter { whole.matches(item: $0, places: places) }
+                let all = everything.filter { stories.shows(item: $0) }
+                return ExplorePage(
+                    all: all,
+                    rows: stories.feedOf(items: all.filter { shown.matches(item: $0, places: places) }).rows,
+                    counts: ExploreKt.sourceCounts(items: everything)
+                )
             }.value
         }
     }

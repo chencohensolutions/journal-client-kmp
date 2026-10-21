@@ -5,6 +5,7 @@ import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.places.PhotoPlaces
@@ -63,6 +64,8 @@ class StoriesController internal constructor(
     private var stories = loadStories()
     private var notes = loadNotes()
     private var error: String? = null
+    // Hidden sources shown on one row of the Moments tab; forgotten when the app closes.
+    private var revealed = emptySet<FeedReveal>()
     // Compared with the threshold chosen in Settings.
     private val looks get() =
         (similarity?.looks?.value ?: PhotoLooks.NONE).withSameScene(settingsState.value.similarity.percent / 100f)
@@ -136,6 +139,21 @@ class StoriesController internal constructor(
         val storyId = createStory(title, items.map { it.id }) ?: return null
         feed.similarSets(items.map { it.id }).forEach { set -> createGroup(storyId, set.map { it.id }) }
         return storyId
+    }
+
+    /**
+     * Shows [source]'s hidden photos on the Moments row [sectionKey] ([FeedSection.key]), in a band under its
+     * photos: its "+6 WhatsApp" chip. The setting doesn't change, and nothing is saved.
+     */
+    fun showOnRow(sectionKey: String, source: MediaSource) {
+        revealed = revealed + FeedReveal(sectionKey, source)
+        publish()
+    }
+
+    /** Hides again what [showOnRow] showed. */
+    fun hideOnRow(sectionKey: String, source: MediaSource) {
+        revealed = revealed - FeedReveal(sectionKey, source)
+        publish()
     }
 
     /** Creates a story from a moment of the journal ([Moment.key]). */
@@ -504,7 +522,7 @@ class StoriesController internal constructor(
     }
 
     /** Everything the state is built from, as it is now. */
-    private fun inputs() = Inputs(libraryState.value, stories, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE)
+    private fun inputs() = Inputs(libraryState.value, stories, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed)
 
     private class Inputs(
         val library: LibraryState,
@@ -514,13 +532,15 @@ class StoriesController internal constructor(
         val settings: SettingsState,
         val looks: PhotoLooks,
         val places: Places,
+        val revealed: Set<FeedReveal>,
     ) {
         fun build(): Built {
             val state = buildState(
                 library, stories, notes, error, settings.grouping, looks,
-                feedSources = settings.feedSources,
+                shown = settings.shownSources,
                 dismissedTrips = settings.dismissedTrips,
                 places = places,
+                revealed = revealed,
             )
             return Built(
                 state,

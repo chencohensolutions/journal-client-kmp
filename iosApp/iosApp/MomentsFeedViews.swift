@@ -21,6 +21,24 @@ struct FeedActions {
     var turnSet: (_ itemIds: [String], _ itemId: String) -> Void = { _, _ in }
     /// Off where a long press offers nothing (Explore's pages).
     var menus = true
+    /// A row's "+6 WhatsApp" chip: that source's hidden photos show on the row, in a band under its photos.
+    var showOnRow: (FeedSection, MediaSource) -> Void = { _, _ in }
+    /// "Hide WhatsApp" on a row showing them.
+    var hideOnRow: (FeedSection, MediaSource) -> Void = { _, _ in }
+    /// A photo of a band; the viewer swipes through the band's photos.
+    var openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Void = { _, _, _ in }
+    /// A band's "Add to a story", with all its photos.
+    var addAllToStory: (_ itemIds: [String]) -> Void = { _ in }
+    /// A band's "Always show this day": the source's photos of the row's days show from now on.
+    var alwaysShow: (FeedSection, MediaSource) -> Void = { _, _ in }
+}
+
+/// A part of a band of hidden photos shown on one row (`FeedSection.revealed`): its header, a line of three of its
+/// photos (from the photo at `start`), or its links.
+enum BandPart: Hashable {
+    case header
+    case line(start: Int)
+    case footer
 }
 
 /// One item of the feed's lazy stack: a trip card, a row's divider, a moment's label, or one photo or near-duplicate
@@ -31,6 +49,8 @@ enum FeedRow: Identifiable {
     /// `showPlace`: a camera moment whose place differs from the camera moment above it in its row.
     case label(FeedMoment, showPlace: Bool)
     case photo(FeedSection, FeedBlock)
+    /// After a row's moments, for each hidden source shown on it (tapping its chip).
+    case band(FeedSection, RevealedPhotos, BandPart)
 
     var id: String {
         switch self {
@@ -38,9 +58,13 @@ enum FeedRow: Identifiable {
         case .heading(let section): return "heading-\(section.key)"
         case .label(let moment, _): return "label-\(moment.key)"
         case .photo(_, let block): return "photo-\(block.key)"
+        case let .band(section, revealed, part): return "band-\(section.key)-\(revealed.source.name)-\(part)"
         }
     }
 }
+
+/// A band's photos in lines of three.
+let bandColumns = 3
 
 extension FeedBlock {
     /// The key a block is picked and remembered by: its first photo's id.
@@ -61,6 +85,11 @@ extension MomentsFeed {
                 if camera { place = moment.place }
                 rows += moment.shownBlocks.map { .photo(section, $0) }
             }
+            for revealed in section.revealed {
+                rows.append(.band(section, revealed, .header))
+                rows += stride(from: 0, to: revealed.items.count, by: bandColumns).map { .band(section, revealed, .line(start: $0)) }
+                rows.append(.band(section, revealed, .footer))
+            }
             return rows
         }
     }
@@ -70,8 +99,14 @@ extension Array where Element == FeedRow {
     /// The row and photo that show `itemId`, for landing from the viewer.
     func place(of itemId: String) -> PhotoPlace? {
         lazy.compactMap { row -> PhotoPlace? in
-            guard case .photo(_, let block) = row, block.items.contains(where: { $0.id == itemId }) else { return nil }
-            return PhotoPlace(section: row.id, tile: ZoomID.item(itemId))
+            switch row {
+            case .photo(_, let block) where block.items.contains(where: { $0.id == itemId }):
+                return PhotoPlace(section: row.id, tile: ZoomID.item(itemId))
+            case let .band(_, revealed, .line(start)) where revealed.items[start..<Swift.min(start + bandColumns, revealed.items.count)].contains(where: { $0.id == itemId }):
+                return PhotoPlace(section: row.id, tile: ZoomID.item(itemId))
+            default:
+                return nil
+            }
         }.first
     }
 
@@ -101,7 +136,9 @@ struct FeedRowsView: View {
             case .trip(let trip):
                 FeedTripCard(trip: trip, onSave: { actions.saveTrip(trip) }, onDismiss: { actions.dismissTrip(trip.key) })
             case .heading(let section):
-                FeedDayDivider(section: section)
+                FeedDayDivider(section: section, actions: actions)
+            case let .band(section, revealed, part):
+                RevealedBandPart(section: section, revealed: revealed, part: part, width: width, actions: actions)
             case let .label(moment, showPlace):
                 FeedMomentLabel(moment: moment, showPlace: showPlace)
             case let .photo(section, block):
@@ -449,6 +486,7 @@ private let noteLines = 4
 /// The line between rows, "Today · Tue, Oct 20" on it, then the towns visited and the count ("Tel Aviv → Jaffa · 21 photos").
 private struct FeedDayDivider: View {
     let section: FeedSection
+    let actions: FeedActions
 
     var body: some View {
         let line = LibraryColors.muted.opacity(0.3)
@@ -467,10 +505,18 @@ private struct FeedDayDivider: View {
                     .accessibilityAddTraits(.isHeader)
                 Rectangle().fill(line).frame(height: 1)
             }
-            Text(summary)
-                .font(.system(size: 12))
-                .foregroundStyle(LibraryColors.muted)
-                .lineLimit(1)
+            HStack(spacing: 6) {
+                Text(summary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(LibraryColors.muted)
+                    .lineLimit(1)
+                ForEach(section.revealed.map(\.source), id: \.self) { source in
+                    HiddenChip(label: String(localized: "Hide \(source.title)"), symbol: "eye.slash") { actions.hideOnRow(section, source) }
+                }
+                ForEach(sourceCountList(section.hidden), id: \.0) { source, count in
+                    HiddenChip(label: String(localized: "+\(count) \(source.title)"), symbol: nil) { actions.showOnRow(section, source) }
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 28)
@@ -495,6 +541,110 @@ private struct FeedDayDivider: View {
         let count = String(localized: "\(section.items.count) photos")
         let towns = section.places.prefix(3).joined(separator: " → ")
         return towns.isEmpty ? count : String(localized: "\(towns) · \(count)")
+    }
+}
+
+/// On a row's divider: "+6 WhatsApp" (the photos the sources setting leaves out of the row; tap to see them) or,
+/// while they show, "Hide WhatsApp".
+private struct HiddenChip: View {
+    let label: String
+    let symbol: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let symbol { Image(systemName: symbol).font(.system(size: 10, weight: .semibold)) }
+                Text(verbatim: label).font(.system(size: 12, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundStyle(LibraryColors.onBackground)
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(LibraryColors.hiddenTint, in: Capsule())
+            // A larger target than the chip.
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, -8)
+        .fixedSize()
+    }
+}
+
+/// A part of the tinted band of a hidden source's photos shown on one row: "WhatsApp · 6   14:02 – 17:30", the
+/// photos in lines of three, then "Add to a story" and "Always show this day".
+private struct RevealedBandPart: View {
+    let section: FeedSection
+    let revealed: RevealedPhotos
+    let part: BandPart
+    let width: CGFloat
+    let actions: FeedActions
+
+    var body: some View {
+        Group {
+            switch part {
+            case .header: header
+            case .line(let start): line(start)
+            case .footer: footer
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LibraryColors.hiddenTint.opacity(0.6))
+        // Apart from the row's last photo.
+        .padding(.top, part == .header ? 12 : 0)
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: revealed.source.symbol).font(.system(size: 12, weight: .semibold))
+            Text("\(revealed.source.title) · \(revealed.items.count)").font(.system(size: 13, weight: .semibold))
+            Spacer()
+            Text(verbatim: time).font(.system(size: 13))
+        }
+        .foregroundStyle(LibraryColors.onBackground)
+        .lineLimit(1)
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+    }
+
+    private func line(_ start: Int) -> some View {
+        let gap = tileGap
+        let cell = (width - CGFloat(bandColumns - 1) * gap) / CGFloat(bandColumns)
+        let items = revealed.items[start..<min(start + bandColumns, revealed.items.count)]
+        return HStack(spacing: gap) {
+            ForEach(items, id: \.id) { item in
+                MediaTileView(item: item)
+                    .frame(width: cell, height: cell)
+                    .zoomSource(ZoomID.item(item.id))
+                    .contentShape(Rectangle())
+                    .onTapGesture { actions.openRevealed(section, revealed, item) }
+            }
+        }
+        .padding(.bottom, gap)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 20) {
+            Button { actions.addAllToStory(revealed.items.map(\.id)) } label: {
+                Label("Add to a story", systemImage: "plus")
+            }
+            Button { actions.alwaysShow(section, revealed.source) } label: {
+                Label("Always show this day", systemImage: "eye")
+            }
+        }
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(LibraryColors.onBackground)
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 14)
+    }
+
+    /// "14:02 – 17:30", or "14:02" when it starts and ends in one minute.
+    private var time: String {
+        let start = clockTime(revealed.startMillis), end = clockTime(revealed.endMillis)
+        return start == end ? start : String(localized: "\(start) – \(end)")
     }
 }
 

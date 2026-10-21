@@ -16,6 +16,8 @@ enum LibraryColors {
     static let onInverseMuted = dynamic(light: 0xA9B4B1, dark: 0x5E6866)
     static let warning = dynamic(light: 0xB45309, dark: 0xF2B84B)
     static let error = hex(0xC2410C)
+    /// Behind what the sources setting hides or says about: Explore's "… hidden · Change", Moments' chips and bands.
+    static let hiddenTint = accent.opacity(0.35)
 
     private static let scrim = hex(0x0F1413)
     static let badgeScrim = scrim.opacity(0.6)

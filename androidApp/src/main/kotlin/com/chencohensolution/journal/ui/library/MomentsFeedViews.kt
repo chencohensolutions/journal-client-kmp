@@ -2,6 +2,7 @@ package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -35,6 +38,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -65,6 +71,7 @@ import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
+import com.chencohensolution.journal.stories.RevealedPhotos
 import java.time.LocalDate
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
@@ -76,6 +83,14 @@ internal class FeedActions(
     val dismissTrip: (key: String) -> Unit = {},
     /** Long press on a photo: Write about it, Crop, Add to story, Tag. */
     val itemMenu: (FeedSection, MediaItem) -> Unit = { _, _ -> },
+    /** A "+6 WhatsApp" chip: that source's hidden photos of the row, in a band under it; "Hide WhatsApp" again. */
+    val showOnRow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
+    val hideOnRow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
+    /** A photo of a band; the viewer swipes through the band. */
+    val openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Unit = { _, _, _ -> },
+    /** A band's "Add to a story" and "Always show this day". */
+    val addRevealedToStory: (RevealedPhotos) -> Unit = {},
+    val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
 )
 
 /**
@@ -100,6 +115,19 @@ internal sealed interface FeedRow {
 
     data class Photo(val section: FeedSection, val block: FeedBlock) : FeedRow {
         override val key get() = "photo-${block.items.first().id}"
+    }
+
+    /** A band of a hidden source's photos shown on a row: its heading, rows of three, and its links. */
+    data class BandTop(val section: FeedSection, val band: RevealedPhotos) : FeedRow {
+        override val key get() = "band-${section.key}-${band.source}"
+    }
+
+    data class BandPhotos(val section: FeedSection, val band: RevealedPhotos, val items: List<MediaItem>) : FeedRow {
+        override val key get() = "band-photos-${items.first().id}"
+    }
+
+    data class BandEnd(val section: FeedSection, val band: RevealedPhotos) : FeedRow {
+        override val key get() = "band-end-${section.key}-${band.source}"
     }
 }
 
@@ -133,13 +161,19 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
                 val showPlace = camera && moment.place != null && moment.place != place
                 if (camera) place = moment.place
                 listOf(FeedRow.Label(moment, showPlace)) + moment.shownBlocks.map { FeedRow.Photo(entry.section, it) }
+            } + entry.section.revealed.flatMap { band ->
+                listOf(FeedRow.BandTop(entry.section, band)) +
+                    band.items.chunked(BAND_COLUMNS).map { FeedRow.BandPhotos(entry.section, band, it) } +
+                    FeedRow.BandEnd(entry.section, band)
             }
         }
     }
 }
 
 /** The item of [rows] that shows [itemId], or -1: for landing from the viewer. */
-internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row -> row is FeedRow.Photo && row.block.items.any { it.id == itemId } }
+internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row ->
+    (row is FeedRow.Photo && row.block.items.any { it.id == itemId }) || (row is FeedRow.BandPhotos && row.items.any { it.id == itemId })
+}
 
 /**
  * The feed's [rows], for the home screen's list. [landing] is the photo the viewer above shows; [video] says which
@@ -157,7 +191,10 @@ internal fun LazyListScope.feedItems(
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
             is FeedRow.Trip -> TripCard(row.trip, actions)
-            is FeedRow.Heading -> DayDivider(row.section)
+            is FeedRow.Heading -> DayDivider(row.section, actions)
+            is FeedRow.BandTop -> BandTop(row.band)
+            is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
+            is FeedRow.BandEnd -> BandEnd(row.band, onAdd = { actions.addRevealedToStory(row.band) }) { actions.alwaysShow(row.section, row.band.source) }
             is FeedRow.Label -> MomentLabel(row.moment, row.showPlace)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
@@ -189,9 +226,13 @@ internal fun LazyListScope.feedItems(
     }
 }
 
-/** The line between rows, "Today · Tue, Oct 20" on it, then the towns visited and the count ("Tel Aviv → Jaffa · 21 photos"). */
+/**
+ * The line between rows, "Today · Tue, Oct 20" on it, then the towns visited and the count ("Tel Aviv → Jaffa · 21
+ * photos"), and a chip per source it hides ("+6 WhatsApp"), or "Hide WhatsApp" once shown.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DayDivider(section: FeedSection) {
+private fun DayDivider(section: FeedSection, actions: FeedActions) {
     val count = section.items.size
     val line = LibraryColors.Muted.copy(alpha = 0.3f)
     Column(
@@ -215,16 +256,123 @@ private fun DayDivider(section: FeedSection) {
             )
             Box(Modifier.weight(1f).height(1.dp).background(line))
         }
+        val shownHere = section.revealed.map { it.source }
+        FlowRow(
+            Modifier.padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                (section.places.take(MAX_TOWNS).joinToString(" → ").ifEmpty { null }?.let { "$it · " }.orEmpty()) +
+                    pluralStringResource(R.plurals.library_story_items, count, count),
+                color = LibraryColors.Muted,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            MediaSource.entries.forEach { source ->
+                when {
+                    source in shownHere -> HiddenChip(stringResource(R.string.feed_hide_source, sourceName(source)), on = true) { actions.hideOnRow(section, source) }
+                    source in section.hidden -> HiddenChip(stringResource(R.string.feed_hidden_chip, section.hidden.getValue(source), sourceName(source)), on = false) {
+                        actions.showOnRow(section, source)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "+6 WhatsApp" (outlined) or "Hide WhatsApp" (filled), small, in a row's divider. */
+@Composable
+private fun HiddenChip(label: String, on: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .then(
+                if (on) {
+                    Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50))
+                } else {
+                    Modifier.border(1.dp, LibraryColors.Muted.copy(alpha = 0.5f), RoundedCornerShape(50))
+                },
+            )
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}
+
+/** The band's background, a little lighter than the page, with round corners at its [top] and [bottom]. */
+private fun Modifier.band(color: Color, top: Boolean = false, bottom: Boolean = false): Modifier {
+    val r = 16.dp
+    val shape = RoundedCornerShape(topStart = if (top) r else 0.dp, topEnd = if (top) r else 0.dp, bottomStart = if (bottom) r else 0.dp, bottomEnd = if (bottom) r else 0.dp)
+    return padding(horizontal = 12.dp).fillMaxWidth().background(color, shape)
+}
+
+/** A band's heading: "WhatsApp · 6" and its times, "14:02 – 17:30". */
+@Composable
+private fun BandTop(band: RevealedPhotos) {
+    val start = timeLabel(band.startMillis)
+    val end = timeLabel(band.endMillis)
+    Row(
+        Modifier.padding(top = 18.dp).band(LibraryColors.Raised, top = true).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(band.source.icon, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(15.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
-            (section.places.take(MAX_TOWNS).joinToString(" → ").ifEmpty { null }?.let { "$it · " }.orEmpty()) +
-                pluralStringResource(R.plurals.library_story_items, count, count),
-            color = LibraryColors.Muted,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
+            stringResource(R.string.feed_source_count, sourceName(band.source), band.items.size),
+            color = LibraryColors.OnBackground,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f).semantics { heading() },
         )
+        Text(if (start == end) start else stringResource(R.string.feed_time_range, start, end), color = LibraryColors.Muted, fontSize = 13.sp)
+    }
+}
+
+/** Up to three of a band's photos, square. */
+@Composable
+private fun BandPhotos(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
+    Row(
+        Modifier.band(LibraryColors.Raised).padding(start = 8.dp, end = 8.dp, bottom = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        items.forEach { item ->
+            MediaTile(item, { onOpen(item) }, Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(4.dp)))
+        }
+        repeat(BAND_COLUMNS - items.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+/** A band's links: "Add to a story" and "Always show this day". */
+@Composable
+private fun BandEnd(band: RevealedPhotos, onAdd: () -> Unit, onAlways: () -> Unit) {
+    Row(
+        Modifier.padding(bottom = 6.dp).band(LibraryColors.Raised, bottom = true).padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BandLink(LibraryIcons.Plus, stringResource(R.string.feed_reveal_add), onAdd)
+        BandLink(null, stringResource(R.string.feed_reveal_always), onAlways)
+    }
+}
+
+@Composable
+private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            Icon(it, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(label, color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -461,6 +609,9 @@ private fun VideoLength(millis: Long, modifier: Modifier = Modifier) {
         Text(formatDuration(millis), color = LibraryColors.PhotoText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+/** A band of hidden photos shows this many in a row. */
+private const val BAND_COLUMNS = 3
 
 /** A note longer than this shows "more". */
 private const val NOTE_LINES = 4

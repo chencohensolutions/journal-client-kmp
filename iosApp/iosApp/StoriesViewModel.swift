@@ -108,6 +108,9 @@ final class StoriesViewModel: ObservableObject {
     func takeOutOfSet(_ itemId: String) { controller.takeOutOfSet(itemId: itemId) }
     /// The set of `itemIds` was turned to `itemId`: it opens there next time.
     func turnSet(_ itemIds: [String], to itemId: String) { controller.turnSet(itemIds: itemIds, itemId: itemId) }
+    /// A hidden source's photos shown on one row (its key), until hidden again; the setting doesn't change.
+    func showOnRow(_ sectionKey: String, source: MediaSource) { controller.showOnRow(sectionKey: sectionKey, source: source) }
+    func hideOnRow(_ sectionKey: String, source: MediaSource) { controller.hideOnRow(sectionKey: sectionKey, source: source) }
 
     @discardableResult
     func addTag(_ tag: String, to itemIds: [String]) -> String? { controller.addTag(itemIds: itemIds, tag: tag) }

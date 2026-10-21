@@ -9,8 +9,17 @@ also those already in a story or tagged, read like a story that arranged itself.
 
 - **Filter bar** under the title: one toggle per source with its count of photos: **Camera**, **WhatsApp**,
   **Screenshots**, **Other** (downloads, other apps). On means filled, with a ✓. Any mix can be on; Camera and
-  WhatsApp are on at first. A source with no photos is hidden unless it is on. The choice is kept
-  (`feed_sources` in settings).
+  Other are on at first (WhatsApp and Screenshots off for everyone since Oct 21, 2026). A source with no photos is
+  hidden unless it is on. It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
+  everywhere (`ShownSources`, kept as `shown_sources`; an older `feed_sources` keeps its Camera and Other choice).
+- **What's hidden (Oct 21, 2026):** with **Say what's hidden** on, a row's divider ends with a chip per hidden
+  source, "+6 WhatsApp", "+3 Screenshots", for the hidden photos of its days (each counted once, on the row of its
+  day nearest in time). Days with no shown photos say nothing. Tapping a chip shows those photos on that row only, in
+  a tinted band after its moments: "WhatsApp · 6 · 14:02 – 17:30", a grid of three, **Add to a story** (all of them,
+  the usual sheet) and **Always show this day**. The chip turns into "Hide WhatsApp", and a note "Showing 6 from
+  WhatsApp on Oct 4 · Hide" shows for 6 seconds. A band's photo opens the viewer on the band. The setting doesn't
+  change and nothing is saved: bands are forgotten when the app closes. **Always show this day** saves those days as
+  shown for that source (`always_shown_days`); the photos join the row as moments.
 - **A timeline, newest first all the way down (asked Oct 20, 2026):** rows, the moments in a row and the photos in a
   moment are all newest first. Only a near-duplicate set keeps its photos oldest first, to swipe through.
 - **Rows**: the grouping setting splits them, by day or by breaks between photos, as before. Each row starts with a

@@ -19,12 +19,19 @@ struct HomeActions {
     var setCaption: (_ itemId: String, _ text: String) -> Void
     /// Crop in a photo's long-press menu: the crop screen opens here, on the Moments crop.
     var crop: (MediaItem) -> Void = { _ in }
-    var toggleStory: (_ storyId: String, _ itemId: String, _ add: Bool) -> Void
-    var createStoryWith: (_ title: String, _ itemId: String) -> Void
+    var toggleStory: (_ storyId: String, _ itemIds: [String], _ add: Bool) -> Void
+    var createStoryWith: (_ title: String, _ itemIds: [String]) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
     var openAllPhotos: () -> Void
     var openSettings: () -> Void
     var openTags: () -> Void
+    /// A hidden source's photos on one row of Moments ("+6 WhatsApp"), and hidden again; the setting doesn't change.
+    var showOnRow: (_ sectionKey: String, MediaSource) -> Void
+    var hideOnRow: (_ sectionKey: String, MediaSource) -> Void
+    /// "Always show this day": the source's photos of these days show from now on.
+    var alwaysShow: (_ days: [LocalDay], MediaSource) -> Void
+    /// A photo of a row's band of hidden photos; the viewer swipes through the band.
+    var openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Void
     /// The Explore tab's towns, years and map.
     var explore: ExploreActions
     var allowAccess: () -> Void
@@ -60,6 +67,8 @@ struct JournalHomeView: View {
     @State private var rows: [FeedRow] = []
     @StateObject private var playback = FeedPlayback()
     @State private var onScreen = false
+    /// "Showing 6 from WhatsApp on Oct 4 · Hide", for a few seconds after a row's chip was tapped.
+    @State private var revealToast: RevealToast?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -89,7 +98,10 @@ struct JournalHomeView: View {
                     }
                     if tab == .explore {
                         if let explore {
-                            ExploreRowsView(summaries: explore, view: exploreView, width: geometry.size.width, actions: actions.explore)
+                            ExploreRowsView(
+                                summaries: explore, view: exploreView, width: geometry.size.width, actions: actions.explore,
+                                shownSources: stories.shownSources
+                            )
                         }
                     } else if moments {
                         if stories.feed.entries.isEmpty && !library.days.isEmpty {
@@ -149,6 +161,18 @@ struct JournalHomeView: View {
             if !selection.isEmpty && tab == .moments {
                 FeedSelectionBar(count: selection.count, onCancel: { selection = [] }, onMerge: merge)
             } else {
+                if let toast = revealToast, tab == .moments {
+                    UndoBar(
+                        count: toast.count,
+                        message: "Showing \(toast.count) from \(toast.source.title) on \(toast.days)",
+                        actionLabel: "Hide",
+                        onUndo: {
+                            actions.hideOnRow(toast.sectionKey, toast.source)
+                            withAnimation { revealToast = nil }
+                        },
+                        onDismiss: { withAnimation { revealToast = nil } }
+                    )
+                }
                 SegmentedBar(options: [(Tab.stories, "Stories"), (Tab.moments, "Moments"), (Tab.explore, "Explore")], selection: tabBinding)
             }
         }
@@ -169,14 +193,14 @@ struct JournalHomeView: View {
             WritingEditor(title: String(localized: "Note"), initial: stories.note(itemId: id)?.caption ?? "") {
                 actions.setCaption(id, $0)
             }
-        case .addToStory(let id):
+        case .addToStory(let ids):
             AddToStorySheet(
-                itemIds: [id],
+                itemIds: ids,
                 stories: stories,
-                onToggle: { storyId, add in actions.toggleStory(storyId, id, add) },
+                onToggle: { storyId, add in actions.toggleStory(storyId, ids, add) },
                 onCreate: { title in
                     self.sheet = nil
-                    actions.createStoryWith(title, id)
+                    actions.createStoryWith(title, ids)
                 }
             )
         case .tag(let id):
@@ -215,10 +239,31 @@ struct JournalHomeView: View {
             dismissTrip: actions.dismissTrip,
             write: { sheet = .write($0.id) },
             crop: actions.crop,
-            addToStory: { sheet = .addToStory($0.id) },
+            addToStory: { sheet = .addToStory([$0.id]) },
             tag: { sheet = .tag($0.id) },
             takeOutOfSet: { actions.takeOutOfSet($0.id) },
-            turnSet: actions.turnSet
+            turnSet: actions.turnSet,
+            showOnRow: { section, source in
+                let count = Int(section.hidden[source]?.intValue ?? 0)
+                actions.showOnRow(section.key, source)
+                let toast = RevealToast(sectionKey: section.key, source: source, count: count, days: shortDays(section.span))
+                withAnimation { revealToast = toast }
+                Task {
+                    try? await Task.sleep(for: .seconds(undoSeconds))
+                    if revealToast == toast { withAnimation { revealToast = nil } }
+                }
+            },
+            hideOnRow: { section, source in
+                actions.hideOnRow(section.key, source)
+                if revealToast?.sectionKey == section.key && revealToast?.source == source { withAnimation { revealToast = nil } }
+            },
+            openRevealed: actions.openRevealed,
+            addAllToStory: { sheet = .addToStory($0) },
+            alwaysShow: { section, source in
+                actions.alwaysShow(section.days, source)
+                actions.hideOnRow(section.key, source)
+                if revealToast?.sectionKey == section.key { withAnimation { revealToast = nil } }
+            }
         )
     }
 
@@ -276,16 +321,34 @@ struct JournalHomeView: View {
     }
 }
 
-/// What a photo's long-press menu in Moments opened, by the photo's id.
+/// A row's hidden photos just shown, for "Showing 6 from WhatsApp on Oct 4 · Hide".
+private struct RevealToast: Equatable {
+    let sectionKey: String
+    let source: MediaSource
+    let count: Int
+    /// "Oct 4", or "Oct 3 – Oct 4" for a row over two days.
+    let days: String
+}
+
+/// "Oct 4", or "Oct 3 – Oct 4": a row's days, short.
+private func shortDays(_ span: Moment) -> String {
+    let formatter = DateFormatter()
+    formatter.setLocalizedDateFormatFromTemplate("MMMd")
+    let newest = formatter.string(from: span.newestDay.date)
+    if span.oldestDay == span.newestDay { return newest }
+    return String(localized: "\(formatter.string(from: span.oldestDay.date)) – \(newest)")
+}
+
+/// What a photo's long-press menu in Moments opened, by the photo's id (or a band's photos, to add to a story).
 private enum FeedSheet: Identifiable {
     case write(String)
-    case addToStory(String)
+    case addToStory([String])
     case tag(String)
 
     var id: String {
         switch self {
         case .write(let id): return "write-\(id)"
-        case .addToStory(let id): return "story-\(id)"
+        case .addToStory(let ids): return "story-\(ids.joined(separator: ","))"
         case .tag(let id): return "tag-\(id)"
         }
     }

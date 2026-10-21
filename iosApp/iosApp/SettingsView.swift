@@ -7,6 +7,8 @@ struct SettingsView: View {
     @ObservedObject var backup: BackupViewModel
     /// Photos of the chosen sources not on the server yet.
     let notBackedUp: Int
+    /// Photos per source on this device and the server, shown or not (Show in the app).
+    let sourceCounts: [MediaSource: KotlinInt]
     /// The library reads PhotoKit again once Free up space removed photos.
     var refreshLibrary: () -> Void = {}
     @StateObject private var freeUp = FreeUpViewModel()
@@ -18,6 +20,7 @@ struct SettingsView: View {
     var body: some View {
         let grouping = settings.state.grouping
         Form {
+            shownSourcesSection
             backupSections
             storageSection
             freeUpSection
@@ -61,6 +64,48 @@ struct SettingsView: View {
 }
 
 extension SettingsView {
+    /// Show in the app: a switch per source (the same as the Moments filter bar and Explore's "Showing" sheet), and
+    /// "Say what's hidden" (the "+6 WhatsApp" chips in Moments).
+    private var shownSourcesSection: some View {
+        let shown = settings.state.shownSources
+        return Section {
+            ForEach(MediaSource.entries, id: \.self) { source in
+                Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in settings.toggleFeedSource(source) })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(source.title).foregroundStyle(LibraryColors.onBackground)
+                        Text(verbatim: sourceDetail(source, count: sourceCounts[source]?.intValue ?? 0))
+                            .font(.footnote)
+                            .monospacedDigit()
+                            .foregroundStyle(LibraryColors.muted)
+                    }
+                }
+                .tint(LibraryColors.accent)
+            }
+            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: settings.setSayWhatsHidden)) {
+                ModeLabel(title: "Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
+            }
+            .tint(LibraryColors.accent)
+        } header: {
+            Text("Show in the app")
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Applies to Moments, All photos, Explore, Tags and picking photos for a story.")
+                Text("Photos you already put in a story always show there. Hiding never deletes anything and doesn't change what is backed up.")
+            }
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// "48,210 photos", "18,458 photos and videos", "Screenshots and screen recordings · 2,388".
+    private func sourceDetail(_ source: MediaSource, count: Int) -> String {
+        switch source {
+        case .whatsapp: return String(localized: "\(count) photos and videos")
+        case .screenshots: return String(localized: "Screenshots and screen recordings · \(count)")
+        case .other: return String(localized: "Downloads, other apps · \(count)")
+        default: return String(localized: "\(count) photos")
+        }
+    }
+
     /// Backup: on or off with its status, then what uploads, when, and in which order. "On your server" (storage
     /// used there) and "Only on these Wi-Fi networks" are Android only for now; see docs/screens/settings.md.
     @ViewBuilder private var backupSections: some View {

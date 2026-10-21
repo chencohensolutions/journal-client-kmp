@@ -24,7 +24,8 @@ runs of spaces become one.
 
 The **tag** button in the Journal's top bar opens every tag, most recently used first, each with the newest photo
 carrying it and a count. A search field narrows the list. Tapping a tag opens its photos, by day, newest first;
-tapping a photo opens the viewer on that tag's photos.
+tapping a photo opens the viewer on that tag's photos. Photos of a source hidden in
+[Settings › Show in the app](settings.md) are left out of the photos and the counts.
 
 ## How it's saved
 

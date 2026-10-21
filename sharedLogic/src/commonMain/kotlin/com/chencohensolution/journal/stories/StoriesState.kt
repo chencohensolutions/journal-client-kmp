@@ -4,9 +4,9 @@ import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
-import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.places.Places
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoLooks
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +64,8 @@ data class StoriesState(
     /** What the feed was built with, for [feedOf]. */
     val grouping: TimelineGrouping = TimelineGrouping(),
     val looks: PhotoLooks = PhotoLooks.NONE,
+    /** What the app shows of each source; Moments, Explore, All photos, Tags and the days offered to a story follow it. */
+    val shownSources: ShownSources = ShownSources(),
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -75,12 +77,19 @@ data class StoriesState(
 
     fun story(id: String): StoryView? = stories.firstOrNull { it.id == id }
 
+    /** Whether [item] shows outside the stories it is in (see [ShownSources]). */
+    fun shows(item: MediaItem): Boolean = shownSources.shows(item)
+
+    /** [days] without what [shownSources] hides; days left empty are left out. All photos shows these. */
+    fun shownDays(days: List<DayGroup>): List<DayGroup> =
+        days.mapNotNull { day -> day.items.filter(::shows).takeIf { it.isNotEmpty() }?.let { DayGroup(day.day, it) } }
+
     /**
-     * A Moments feed of only [items] (newest first), of the sources the Moments tab shows and without trips: a place's
-     * or a year's page in Explore.
+     * A Moments feed of only [items] (newest first), of what [shownSources] shows and without trips or chips: a
+     * place's or a year's page in Explore.
      */
     fun feedOf(items: List<MediaItem>): MomentsFeed {
-        val built = buildFeed(items, feed.shown, grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
+        val built = buildFeed(items, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
         return built.copy(entries = built.entries.filterIsInstance<FeedEntry.Section>())
     }
 
@@ -88,10 +97,10 @@ data class StoriesState(
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
-    /** Photos and videos tagged [tag] (ignoring case), by day, newest first. */
+    /** Photos and videos tagged [tag] (ignoring case) that [shownSources] shows, by day, newest first. */
     fun tagged(tag: String): List<DayGroup> = notes.values
         .filter { note -> note.tags.any { it.equals(tag, ignoreCase = true) } }
-        .mapNotNull { itemsById[it.deviceId] }
+        .mapNotNull { itemsById[it.deviceId]?.takeIf(::shows) }
         .sortedByDescending { it.takenAtMillis }
         .groupBy { it.day }
         .map { (day, items) -> DayGroup(day, items) }
@@ -126,13 +135,13 @@ data class StoriesState(
 
     /**
      * Unsorted days up to [NEIGHBOR_DAYS] before or after a trip-like story ([StoryView.isShortSpan]): likely part of
-     * the same trip. Stories that span months get none.
+     * the same trip. Stories that span months get none. Only what [shownSources] shows is offered.
      */
     fun neighborDays(storyId: String): List<DayGroup> {
         val story = story(storyId)?.takeIf { it.isShortSpan } ?: return emptyList()
         val first = story.firstDay!!.toEpochDay()
         val last = story.lastDay!!.toEpochDay()
-        return unsortedDays.filter { day ->
+        return shownDays(unsortedDays).filter { day ->
             val epochDay = day.day.toEpochDay()
             epochDay in (first - NEIGHBOR_DAYS) until first || epochDay in (last + 1)..(last + NEIGHBOR_DAYS)
         }.sortedBy { it.day }
@@ -159,9 +168,10 @@ internal fun buildState(
     error: String?,
     grouping: TimelineGrouping,
     looks: PhotoLooks = PhotoLooks.NONE,
-    feedSources: Set<MediaSource> = MomentsFeed.DEFAULT_SOURCES,
+    shown: ShownSources = ShownSources(),
     dismissedTrips: Set<String> = emptySet(),
     places: Places = Places.NONE,
+    revealed: Set<FeedReveal> = emptySet(),
 ): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     val views = stories
@@ -182,7 +192,9 @@ internal fun buildState(
     val timeline = (views.map { it.timelineDay to TimelineEntry.StoryEntry(it) } + moments.map { it.newestDay to TimelineEntry.MomentEntry(it) })
         .sortedWith(compareByDescending<Pair<LocalDay, TimelineEntry>> { it.first }.thenBy { if (it.second is TimelineEntry.StoryEntry) 0 else 1 })
         .map { it.second }
+    // A tag counts the photos it shows; those not on this device yet count too.
     val tags = notes.values
+        .filter { note -> itemsById[note.deviceId]?.let(shown::shows) != false }
         .flatMap { note -> note.tags.map { tag -> tag to note } }
         .groupBy { (tag, _) -> tag.lowercase() }
         .map { (_, uses) ->
@@ -199,6 +211,7 @@ internal fun buildState(
         places = places,
         grouping = grouping,
         looks = looks,
+        shownSources = shown,
         stories = views,
         timeline = timeline,
         unsortedDays = unsorted,
@@ -207,9 +220,10 @@ internal fun buildState(
         tags = tags,
         itemsById = itemsById,
         feed = buildFeed(
-            library.days.flatMap { it.items }, feedSources, grouping, places, looks, dismissedTrips, sorted,
+            library.days.flatMap { it.items }, shown, grouping, places, looks, dismissedTrips, sorted,
             alone = aloneIn(notes),
             sets = setsIn(notes),
+            revealed = revealed,
         ),
         error = error,
     )

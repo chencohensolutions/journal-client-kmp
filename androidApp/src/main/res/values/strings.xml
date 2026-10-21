@@ -536,4 +536,38 @@
     </plurals>
     <string name="map_show">Show</string>
     <string name="map_no_photos">No photos with a location yet.</string>
+    <!-- Which sources the app shows: Settings › Show in the app, the Moments chips and band, Explore's line and sheet -->
+    <string name="settings_shown_title">Show in the app</string>
+    <plurals name="settings_shown_camera">
+        <item quantity="one">%1$,d photo</item>
+        <item quantity="other">%1$,d photos</item>
+    </plurals>
+    <plurals name="settings_shown_whatsapp">
+        <item quantity="one">%1$,d photo or video</item>
+        <item quantity="other">%1$,d photos and videos</item>
+    </plurals>
+    <string name="settings_shown_screenshots">Screenshots and screen recordings · %1$,d</string>
+    <string name="settings_shown_other">Downloads, other apps · %1$,d</string>
+    <string name="settings_say_hidden">Say what\'s hidden</string>
+    <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
+    <string name="settings_shown_where">Applies to Moments, All photos, Explore, Tags and picking photos for a story.</string>
+    <string name="settings_shown_stories">Photos you already put in a story always show there. Hiding never deletes anything and doesn\'t change what is backed up.</string>
+    <string name="feed_hidden_chip">+%1$,d %2$s</string>
+    <string name="feed_hide_source">Hide %1$s</string>
+    <string name="feed_reveal_add">Add to a story</string>
+    <string name="feed_reveal_always">Always show this day</string>
+    <string name="feed_reveal_showing">Showing %1$,d from %2$s on %3$s</string>
+    <string name="feed_reveal_hide">Hide</string>
+    <string name="explore_shown_hidden">%1$s · %2$s hidden</string>
+    <string name="explore_all_hidden">%1$s hidden</string>
+    <string name="explore_change">Change</string>
+    <string name="explore_source_count">%1$,d %2$s</string>
+    <string name="explore_year_hidden">+%1$s hidden</string>
+    <string name="explore_only_hidden">Only %1$s photos this year (%2$,d)</string>
+    <string name="explore_show_them">Show them</string>
+    <string name="explore_sheet_title">Showing</string>
+    <string name="explore_sheet_body">The same in Moments, Explore and All photos.</string>
+    <string name="explore_sheet_here">%1$,d here</string>
+    <string name="explore_sheet_none">—</string>
+    <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
 </resources>

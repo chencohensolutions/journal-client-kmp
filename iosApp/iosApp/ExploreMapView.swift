@@ -17,6 +17,8 @@ struct MapPin: Equatable {
 struct ExploreMapView: View {
     let library: LibraryState
     let stories: StoriesState
+    /// A source on or off everywhere, from the "Showing" sheet.
+    let toggleSource: (MediaSource) -> Void
     /// The viewer on the photos the scope takes in, starting at a photo (or the newest of them).
     let openPhotos: (ExploreScope, _ itemId: String?) -> Void
 
@@ -28,6 +30,9 @@ struct ExploreMapView: View {
     @State private var toYear: Int?
     /// What the map shows, once it has settled.
     @State private var area: GeoArea?
+    /// The whole library per source, shown or not, for the "Showing" sheet.
+    @State private var counts: [MediaSource: KotlinInt] = [:]
+    @State private var choosing = false
 
     var body: some View {
         ZStack {
@@ -68,15 +73,45 @@ struct ExploreMapView: View {
             .padding(.leading, 12)
             .padding(.top, 4)
         }
+        // Beside the back button: the map's logo and attribution are at the top right.
+        .overlay(alignment: .topLeading) { showingButton }
+        .sheet(isPresented: $choosing) {
+            ShowingSheet(shown: stories.shownSources, counts: counts, onToggle: toggleSource)
+        }
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ExploreInput(library, stories)) {
             let (library, stories) = (library, stories)
-            pins = await Task.detached(priority: .userInitiated) {
+            (pins, counts) = await Task.detached(priority: .userInitiated) {
                 let places = stories.places
-                return exploreItems(library, stories).compactMap { item in
+                let pins = exploreItems(library, stories).compactMap { item in
                     places.location(item: item).map { MapPin(id: item.id, year: Int(item.day.year), latitude: $0.latitude, longitude: $0.longitude) }
                 }
+                return (pins, ExploreKt.sourceCounts(items: library.days.flatMap { $0.items }))
             }.value
+        }
+    }
+
+    /// The sources shown ("Camera · Other"), opening the "Showing" sheet.
+    @ViewBuilder
+    private var showingButton: some View {
+        let present = sourceCountList(counts).map(\.0)
+        if !present.isEmpty {
+            let on = present.filter { stories.shownSources.isShown(source: $0) }.map(\.title)
+            Button { choosing = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "line.3.horizontal.decrease").font(.system(size: 13, weight: .semibold))
+                    Text(verbatim: on.isEmpty ? String(localized: "Nothing shown") : on.joined(separator: " · "))
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(LibraryColors.photoText)
+                .padding(.horizontal, 14)
+                .frame(height: 44)
+                .background(LibraryColors.pillScrim, in: Capsule())
+            }
+            .accessibilityLabel("Showing")
+            .padding(.leading, 64)
+            .padding(.top, 4)
         }
     }
 

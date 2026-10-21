@@ -7,6 +7,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.places.distanceMeters
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoLooks
 
@@ -50,12 +51,31 @@ data class FeedSection(
     val moments: List<FeedMoment>,
     /** The towns its camera photos were taken in, in the order visited. */
     val places: List<String>,
+    /**
+     * Photos of its days left out by the sources setting, per source in [MediaSource] order: the "+6 WhatsApp" chips.
+     * Empty while "Say what's hidden" is off; a source shown for this row ([revealed]) isn't counted.
+     */
+    val hidden: Map<MediaSource, Int> = emptyMap(),
+    /** Hidden photos shown for this row only (tapping a chip), per source, each newest first: the tinted bands. */
+    val revealed: List<RevealedPhotos> = emptyList(),
 ) {
     val key: String get() = span.key
+
+    /** Its days, newest first: what "Always show this day" keeps showing. */
+    val days: List<LocalDay> get() = span.items.map { it.day }.distinct()
 
     /** In the order shown: moments newest first, each newest first ([FeedMoment.shownBlocks]). */
     val items: List<MediaItem> get() = moments.flatMap { moment -> moment.shownBlocks.flatMap { it.items } }
 }
+
+/** A hidden source's photos of one row, shown there until hidden again; newest first. */
+data class RevealedPhotos(val source: MediaSource, val items: List<MediaItem>) {
+    val startMillis: Long get() = items.last().takenAtMillis
+    val endMillis: Long get() = items.first().takenAtMillis
+}
+
+/** A hidden source shown on one row of the feed ([FeedSection.key]), until hidden again; not saved. */
+data class FeedReveal(val section: String, val source: MediaSource)
 
 /**
  * Days in a row away from home, offered as one story ("Save as story"), never made one by itself. Its sections
@@ -84,7 +104,7 @@ data class MomentsFeed(
     val entries: List<FeedEntry> = emptyList(),
     /** Photos per source, shown or not. */
     val counts: Map<MediaSource, Int> = emptyMap(),
-    val shown: Set<MediaSource> = DEFAULT_SOURCES,
+    val shown: Set<MediaSource> = ShownSources.DEFAULT_SOURCES,
 ) {
     // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
     override fun equals(other: Any?): Boolean = this === other
@@ -108,11 +128,6 @@ data class MomentsFeed(
                 .filter { it.size >= 2 }
         }
     }
-
-    companion object {
-        /** What the filter bar shows until the user changes it. */
-        val DEFAULT_SOURCES: Set<MediaSource> = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP)
-    }
 }
 
 /** A new camera moment starts after this long without a photo… */
@@ -133,15 +148,16 @@ internal const val TRIP_MIN_DAYS = 2
 internal const val HOME_MIN_PHOTOS = 20
 
 /**
- * The feed of [items] (the whole library, newest first): only the [shown] sources, split into rows ([grouping]),
+ * The feed of [items] (the whole library, newest first): only what [shown] shows, split into rows ([grouping]),
  * each into moments ([splitMoments]) of blocks ([blocksOf]). Trips are found among the rows using every located
  * photo to tell where home is; [dismissedTrips], and trips whose photos are all [sorted] already (in a story or
  * tagged, as when the trip was saved), are left out. Photos in [alone] (cropped, or taken out of a set) are never in
  * a near-duplicate set; photos merged by hand ([sets]: photo id to set id) are one set, where its oldest photo is.
+ * Each row counts the photos it hides ([FeedSection.hidden]) and shows those of the sources in [revealed].
  */
 internal fun buildFeed(
     items: List<MediaItem>,
-    shown: Set<MediaSource>,
+    shown: ShownSources,
     grouping: TimelineGrouping,
     places: Places = Places.NONE,
     looks: PhotoLooks = PhotoLooks.NONE,
@@ -149,9 +165,10 @@ internal fun buildFeed(
     sorted: Set<String> = emptySet(),
     alone: Set<String> = emptySet(),
     sets: Map<String, String> = emptyMap(),
+    revealed: Set<FeedReveal> = emptySet(),
 ): MomentsFeed {
     val counts = items.groupingBy { it.source }.eachCount()
-    val visible = items.filter { it.source in shown }
+    val (visible, hidden) = items.partition(shown::shows)
     // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
     val merged = visible.filter { it.id in sets }.groupBy { sets.getValue(it.id) }.values
         .map { members -> members.sortedBy { it.takenAtMillis } }
@@ -166,13 +183,45 @@ internal fun buildFeed(
             .filter { it.source == MediaSource.CAMERA }
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
         FeedSection(span, moments, towns.distinct())
-    }
+    }.withHidden(hidden, shown.sayWhatsHidden, revealed)
     // A trip comes just above the newest row of its last day.
     val trips = findTrips(sections, home(items, places), places)
         .filter { trip -> trip.key !in dismissedTrips && trip.items.any { it.id !in sorted } }
     val tripAbove = trips.associateBy { trip -> sections.indexOfFirst { section -> section.items.any { it.day == trip.lastDay } } }
     val entries = sections.flatMapIndexed { i, section -> listOfNotNull(tripAbove[i]?.let(FeedEntry::Trip), FeedEntry.Section(section)) }
-    return MomentsFeed(entries, counts, shown)
+    return MomentsFeed(entries, counts, shown.sources)
+}
+
+/**
+ * [hidden] photos (newest first) counted on, or for [revealed] sources shown on, the row of their day nearest to
+ * them in time; days without a row of shown photos say nothing.
+ */
+private fun List<FeedSection>.withHidden(hidden: List<MediaItem>, say: Boolean, revealed: Set<FeedReveal>): List<FeedSection> {
+    if (hidden.isEmpty()) return this
+    val byDay = HashMap<LocalDay, MutableList<Int>>()
+    forEachIndexed { i, section -> section.days.forEach { byDay.getOrPut(it) { mutableListOf() } += i } }
+    val perSection = HashMap<Int, MutableList<MediaItem>>()
+    hidden.forEach { item ->
+        val rows = byDay[item.day] ?: return@forEach
+        val row = rows.minBy { i ->
+            val span = this[i].span
+            maxOf(span.startMillis - item.takenAtMillis, item.takenAtMillis - span.endMillis, 0)
+        }
+        perSection.getOrPut(row) { mutableListOf() } += item
+    }
+    return mapIndexed { i, section ->
+        val items = perSection[i] ?: return@mapIndexed section
+        val bySource = items.groupBy { it.source }
+        val shownHere = bySource.keys.filter { FeedReveal(section.key, it) in revealed }.toSet()
+        section.copy(
+            hidden = if (say) {
+                sourceCounts(items.filter { it.source !in shownHere })
+            } else {
+                emptyMap()
+            },
+            revealed = MediaSource.entries.filter { it in shownHere }.map { RevealedPhotos(it, bySource.getValue(it)) },
+        )
+    }
 }
 
 private fun Places.nameOf(item: MediaItem) = location(item)?.let(::name)

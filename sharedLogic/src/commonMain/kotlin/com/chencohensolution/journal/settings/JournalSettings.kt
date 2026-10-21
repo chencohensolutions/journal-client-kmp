@@ -2,12 +2,12 @@ package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.UploadOrder
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
 import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.storage.FreeUpRule
-import com.chencohensolution.journal.stories.MomentsFeed
 
 /** Minimal persistent string storage: SharedPreferences on Android, NSUserDefaults on iOS. */
 internal interface KeyValueStore {
@@ -53,14 +53,30 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SIMILARITY_PERCENT)?.toIntOrNull()
         set(value) = store.putString(KEY_SIMILARITY_PERCENT, value?.toString())
 
-    /** The sources the Moments tab shows (its filter bar). */
-    var feedSources: Set<MediaSource>
-        get() = store.getString(KEY_FEED_SOURCES)
-            ?.split(",")
-            ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
-            ?.toSet()
-            ?: MomentsFeed.DEFAULT_SOURCES
-        set(value) = store.putString(KEY_FEED_SOURCES, value.joinToString(",") { it.name })
+    /**
+     * What the app shows of each source (see [ShownSources]). Before Oct 21, 2026 it was only the Moments tab's
+     * filter bar (`feed_sources`): its Camera and Other choices are kept, and WhatsApp and screenshots start off.
+     */
+    var shownSources: ShownSources
+        get() {
+            val sources = store.getString(KEY_SHOWN_SOURCES)?.let(::sourcesOf)
+                ?: store.getString(KEY_FEED_SOURCES)?.let { old -> sourcesOf(old) - setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) }
+                ?: ShownSources.DEFAULT_SOURCES
+            val alwaysShown = store.getString(KEY_ALWAYS_SHOWN_DAYS)?.split(",")?.mapNotNull { entry ->
+                val (day, source) = entry.split(":").takeIf { it.size == 2 } ?: return@mapNotNull null
+                DaySource(LocalDay.parse(day) ?: return@mapNotNull null, MediaSource.entries.firstOrNull { it.name == source } ?: return@mapNotNull null)
+            }?.toSet().orEmpty()
+            return ShownSources(sources, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown)
+        }
+        set(value) {
+            store.putString(KEY_SHOWN_SOURCES, value.sources.joinToString(",") { it.name })
+            store.putString(KEY_FEED_SOURCES, null)
+            store.putString(KEY_SAY_WHATS_HIDDEN, value.sayWhatsHidden.toString())
+            store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${it.source.name}" }.ifEmpty { null })
+        }
+
+    private fun sourcesOf(stored: String): Set<MediaSource> =
+        stored.split(",").mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }.toSet()
 
     /** Trips the user answered "Not now" to, by key ("trip-2026-10-04"). */
     var dismissedTrips: Set<String>
@@ -167,6 +183,9 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_GROUPING_GAP_HOURS = "grouping_gap_hours"
         private const val KEY_SIMILARITY_PERCENT = "similarity_percent"
         private const val KEY_FEED_SOURCES = "feed_sources"
+        private const val KEY_SHOWN_SOURCES = "shown_sources"
+        private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
+        private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_DISMISSED_TRIPS = "dismissed_trips"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"
         private const val KEY_BACKUP_SOURCES = "backup_sources"

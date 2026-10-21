@@ -18,7 +18,9 @@ Opened from the Journal's **⋯** menu.
 - Tapping a tile opens the [viewer](viewer.md), which swipes through everything in the current filter.
 - The filter is kept while the viewer is open and when coming back to this screen. Leaving All photos resets it
   on Android; iOS keeps it until the app restarts.
-- Filtering is `LibraryState.days(filter)`, so both apps filter the same way.
+- Filtering is `LibraryState.days(filter)`, so both apps filter the same way, and then `StoriesState.shownDays`:
+  only what [Settings › Show in the app](settings.md) shows, in the grid, its filters and the viewer. The **N not
+  backed up** pill still counts hidden photos (hiding doesn't change backup), so it can be more than the filter shows.
 
 ## Code
 

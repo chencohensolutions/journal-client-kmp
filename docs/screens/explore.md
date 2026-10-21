@@ -7,6 +7,15 @@ the library and the places found so far, and it shows the same sources as the Mo
 ## Layout
 
 - **Bar under the title:** **Places** / **Years** (filled when chosen), and **Map** at the right.
+- **What it shows (Oct 21, 2026):** only what [Settings › Show in the app](settings.md) shows; covers too. The first
+  row of Places and Years is a line "Camera · Other · WhatsApp, Screenshots hidden · Change" opening the **Showing**
+  sheet: the same switches, each with "N here" ("—" for none; the whole library here and on the map, the page's own
+  photos on a town's or year's page), and a note that most WhatsApp photos have no location. Town and year pages show
+  the line only when they have hidden photos or more than one source; the map has it at the top of its panel
+  (Android) or as a "Camera · Other" pill beside the back button (iOS, where MapLibre's logo is top right).
+- **Hidden in a year:** the year says "+2,410 WhatsApp hidden". A year with only hidden photos stays, with "0 photos"
+  and "Only WhatsApp photos this year (412) · Show them", which turns those sources on everywhere; it has no covers or
+  months and can't be opened.
 - **Places**, by country (asked Oct 21, 2026): the home country first, then the others by number of photos, and
   "Other places" last for towns whose country isn't known. Each country has its name as a heading with "3 places ·
   1,240 photos" under it, then its towns. The home town is across the top of its country, its photo with "HOME", the

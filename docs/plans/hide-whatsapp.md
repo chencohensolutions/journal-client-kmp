@@ -1,6 +1,11 @@
 # Plan: hiding WhatsApp, screenshots (and other sources) everywhere
 
-Planned Oct 21, 2026 on the Windows machine; **not built yet**. Build it on the Mac so Android and iOS land together.
+Planned Oct 21, 2026 on the Windows machine; **built Oct 21, 2026 on the Mac, Android and iOS**, without "Not private"
+(the owner chose Hide / All only) and without screen 4 (hiding one photo, which needs the server). WhatsApp and
+Screenshots are off by default for everyone. The server's part was the ~1,100 WhatsApp-named files:
+`scripts/fix-sources` there (imports now tell the source from the name too). What was built is in
+[screens/moments.md](../screens/moments.md), [explore.md](../screens/explore.md),
+[settings.md](../screens/settings.md) and [all-photos.md](../screens/all-photos.md); this plan is kept for screen 4.
 Mockups (6 phone screens): https://claude.ai/artifact/ARgmUkhoGNDRYQeJ7g5Dh7
 
 ## Why

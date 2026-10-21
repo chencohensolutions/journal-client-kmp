@@ -53,9 +53,11 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.stories.sourceCounts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
@@ -84,6 +86,8 @@ internal class MapActions(
     val back: () -> Unit = {},
     /** The viewer on the photos [scope] takes in, starting at [itemId] (or the newest of them). */
     val openPhotos: (scope: ExploreScope, itemId: String?) -> Unit = { _, _ -> },
+    /** A switch of the "Showing" sheet: the setting changes everywhere. */
+    val toggleSource: (MediaSource) -> Unit = {},
 )
 
 private const val LIGHT_STYLE = "https://tiles.openfreemap.org/styles/liberty"
@@ -109,18 +113,27 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
     val dark = isSystemInDarkTheme()
     val insets = WindowInsets.systemBars.asPaddingValues()
     val density = LocalDensity.current
-    val pins by produceState<List<Pin>?>(null, library, stories.places, stories.feed.shown) {
+    val pins by produceState<List<Pin>?>(null, library, stories.places, stories.shownSources) {
         value = withContext(Dispatchers.Default) {
             exploreItems(library, stories).mapNotNull { item -> stories.places.location(item)?.let { Pin(item, it) } }
         }
     }
+    // The whole library's photos per source, shown or not, for the "Showing" sheet.
+    val counts by produceState(emptyMap<MediaSource, Int>(), library) {
+        value = withContext(Dispatchers.Default) { sourceCounts(library.days.flatMap { it.items }) }
+    }
+    var sheetOpen by rememberSaveable { mutableStateOf(false) }
+    val shownSources = stories.shownSources.sources
+    if (sheetOpen) ShowingSheet(shownSources, counts, actions.toggleSource, onDismiss = { sheetOpen = false })
     val years = pins?.takeIf { it.isNotEmpty() }?.let { all -> all.minOf { it.item.day.year }..all.maxOf { it.item.day.year } }
     // The years shown and where the map looks, kept while the viewer is open above it.
     var fromYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var toYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
     if (years == null) {
-        MapEmpty(pins, actions)
+        MapEmpty(pins, actions) {
+            ShowingLine(shownSources, presentSources(counts, shownSources), onChange = { sheetOpen = true })
+        }
         return
     }
     val from = (fromYear ?: years.first).coerceIn(years)
@@ -222,6 +235,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                 .navigationBarsPadding()
                 .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         ) {
+            ShowingLine(shownSources, presentSources(counts, shownSources), onChange = { sheetOpen = true }, Modifier.padding(end = 8.dp, bottom = 8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -265,15 +279,14 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
 
 /** No located photo yet (or still working them out): the message, and a way back. */
 @Composable
-private fun MapEmpty(pins: List<Pin>?, actions: MapActions) {
+private fun MapEmpty(pins: List<Pin>?, actions: MapActions, line: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         if (pins != null) {
-            Text(
-                stringResource(R.string.map_no_photos),
-                color = LibraryColors.Muted,
-                fontSize = 15.sp,
-                modifier = Modifier.align(Alignment.Center).padding(24.dp),
-            )
+            Column(Modifier.align(Alignment.Center).padding(24.dp)) {
+                Text(stringResource(R.string.map_no_photos), color = LibraryColors.Muted, fontSize = 15.sp, modifier = Modifier.padding(bottom = 16.dp))
+                // Their photos may all be of sources hidden.
+                line()
+            }
         }
         IconButton(onClick = actions.back, modifier = Modifier.statusBarsPadding().padding(start = 8.dp, top = 8.dp)) {
             Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)

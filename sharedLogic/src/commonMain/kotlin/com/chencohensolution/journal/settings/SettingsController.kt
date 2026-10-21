@@ -1,11 +1,11 @@
 package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
 import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.PreviewQuality
-import com.chencohensolution.journal.stories.MomentsFeed
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +79,8 @@ data class PrivateMedia(val show: Boolean = false, val thresholdPercent: Int = D
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
     val similarity: SimilarityThreshold = SimilarityThreshold(),
-    val feedSources: Set<MediaSource> = MomentsFeed.DEFAULT_SOURCES,
+    /** What the app shows of each source (Settings › Show in the app, and the Moments filter bar). */
+    val shownSources: ShownSources = ShownSources(),
     val dismissedTrips: Set<String> = emptySet(),
     /** How much the previews of server photos may take up on this device (Settings → Storage on this phone). */
     val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
@@ -107,7 +108,7 @@ class SettingsController internal constructor(
         SettingsState(
             grouping = settings.grouping,
             similarity = similarity(settings.similarityPercent),
-            feedSources = settings.feedSources,
+            shownSources = settings.shownSources,
             dismissedTrips = settings.dismissedTrips,
             previewCacheGigabytes = settings.previewCacheGigabytes,
             previewOptions = settings.previewOptions,
@@ -139,12 +140,22 @@ class SettingsController internal constructor(
         _state.update { it.copy(similarity = similarity(percent)) }
     }
 
-    /** Turns a source on or off in the Moments tab's filter bar. */
-    fun toggleFeedSource(source: MediaSource) {
-        val current = _state.value.feedSources
-        val sources = if (source in current) current - source else current + source
-        settings.feedSources = sources
-        _state.update { it.copy(feedSources = sources) }
+    /** Turns a source on or off everywhere (Settings › Show in the app, and the Moments filter bar). */
+    fun toggleFeedSource(source: MediaSource) = changeShownSources { shown ->
+        shown.copy(sources = if (source in shown.sources) shown.sources - source else shown.sources + source)
+    }
+
+    /** "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments. */
+    fun setSayWhatsHidden(say: Boolean) = changeShownSources { it.copy(sayWhatsHidden = say) }
+
+    /** "Always show this day": [source]'s photos of [days] show even while the source is hidden. */
+    fun alwaysShow(days: List<LocalDay>, source: MediaSource) =
+        changeShownSources { shown -> shown.copy(alwaysShown = shown.alwaysShown + days.map { DaySource(it, source) }) }
+
+    private fun changeShownSources(transform: (ShownSources) -> ShownSources) {
+        val shown = transform(_state.value.shownSources)
+        settings.shownSources = shown
+        _state.update { it.copy(shownSources = shown) }
     }
 
     /** "Not now" on a trip suggestion: it isn't offered again. */

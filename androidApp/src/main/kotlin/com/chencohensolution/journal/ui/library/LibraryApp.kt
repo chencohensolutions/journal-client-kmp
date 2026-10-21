@@ -157,10 +157,10 @@ private fun LibraryScreens(
                                         merge = stories::mergeInFeed,
                                         takeOutOfSet = stories::takeOutOfSet,
                                         turnSet = stories::turnSet,
-                                        toggleStory = { storyId, itemId, add ->
-                                            if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
+                                        toggleStory = { storyId, itemIds, add ->
+                                            if (add) stories.addItems(storyId, itemIds) else stories.removeItems(storyId, itemIds)
                                         },
-                                        createStoryWith = { title, itemId -> stories.createStory(title, listOf(itemId)) },
+                                        createStoryWith = { title, itemIds -> stories.createStory(title, itemIds) },
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },
@@ -168,7 +168,17 @@ private fun LibraryScreens(
                                             openPlace = { push(Route.Place(it)) },
                                             openYear = { year, month -> push(Route.Year(year, month)) },
                                             openMap = { push(Route.Map) },
+                                            toggleSource = settings::toggleFeedSource,
                                         ),
+                                        showOnRow = stories::showOnRow,
+                                        hideOnRow = stories::hideOnRow,
+                                        alwaysShow = { section, source ->
+                                            settings.alwaysShow(section.days, source)
+                                            stories.hideOnRow(section.key, source)
+                                        },
+                                        openRevealed = { section, source, item ->
+                                            push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, revealed = source))
+                                        },
                                     ),
                                     landing = landingHere,
                                     backupRunning = backupRunning,
@@ -184,6 +194,7 @@ private fun LibraryScreens(
                                         onOpenItem = { scope, section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, scope = scope)) },
                                         onBack = pop,
                                         landing = landingHere,
+                                        onToggleSource = settings::toggleFeedSource,
                                     )
                                 }
                                 is Route.Year -> {
@@ -197,6 +208,7 @@ private fun LibraryScreens(
                                         onOpenItem = { scope, section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, scope = scope)) },
                                         onBack = pop,
                                         landing = landingHere,
+                                        onToggleSource = settings::toggleFeedSource,
                                     )
                                 }
                                 Route.Map -> MapScreen(
@@ -204,6 +216,7 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     actions = MapActions(
                                         back = pop,
+                                        toggleSource = settings::toggleFeedSource,
                                         openPhotos = { scope, itemId ->
                                             val first = itemId ?: scopeItems(libraryState, storiesState, scope).firstOrNull()?.id
                                             if (first != null) push(Route.Viewer(null, null, null, LibraryFilter.ALL, first, scope = scope))
@@ -214,6 +227,7 @@ private fun LibraryScreens(
                                     var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
                                     AllPhotosScreen(
                                         library = libraryState,
+                                        stories = storiesState,
                                         health = journalState.health,
                                         filter = filter,
                                         onFilter = { filter = it },
@@ -284,7 +298,10 @@ private fun LibraryScreens(
                                     }
                                     SettingsScreen(
                                         settings = settingsState,
+                                        sourceCounts = storiesState.feed.counts,
                                         actions = SettingsActions(
+                                            toggleSource = settings::toggleFeedSource,
+                                            setSayWhatsHidden = settings::setSayWhatsHidden,
                                             setGroupingMode = settings::setGroupingMode,
                                             setGapHours = settings::setGapHours,
                                             setSimilarityPercent = settings::setSimilarityPercent,

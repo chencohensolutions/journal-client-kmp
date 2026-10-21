@@ -109,7 +109,7 @@ class ExploreTest {
             shot("v", LocalDay(2026, 2, 1), type = MediaType.VIDEO),
             shot("old", LocalDay(2024, 6, 1)),
         )
-        val years = yearsOf(items, NAMED)
+        val years = yearsOf(items, NAMED, emptyList())
 
         assertEquals(listOf(2026, 2024), years.map { it.year })
         val year = years.first()
