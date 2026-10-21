@@ -230,10 +230,7 @@ internal class AssetFile(val type: Long, val name: String, val uti: String, val 
  * deferred processing: only a proxy file), or for an asset without its file.
  */
 internal fun factsOf(files: List<AssetFile>, isVideo: Boolean, modifiedMillis: Long?, mimeType: (String) -> String?): FileFacts {
-    fun file(type: Long) = files.firstOrNull { it.type == type }
-    val original = (if (isVideo) file(PHAssetResourceTypeVideo) else file(PHAssetResourceTypePhoto))
-        ?: return FileFacts(modifiedMillis, null, null, null, null, null)
-    val current = (if (isVideo) file(PHAssetResourceTypeFullSizeVideo) else file(PHAssetResourceTypeFullSizePhoto)) ?: original
+    val (original, current) = currentFile(files, isVideo) ?: return FileFacts(modifiedMillis, null, null, null, null, null)
     return FileFacts(
         assetModifiedMillis = modifiedMillis,
         fileName = if (current === original) original.name else editedFileName(original.name, current.name),
@@ -242,6 +239,25 @@ internal fun factsOf(files: List<AssetFile>, isVideo: Boolean, modifiedMillis: L
         originalMimeType = mimeType(original.uti),
         modifiedMillis = modifiedMillis,
     )
+}
+
+/**
+ * The original of an asset's [files] and the file a [MediaItem] stands for (see [factsOf]); null without an original.
+ * Backup reads the second, so it gets the very bytes whose size the library reported.
+ */
+internal fun currentFile(files: List<AssetFile>, isVideo: Boolean): Pair<AssetFile, AssetFile>? {
+    fun file(type: Long) = files.firstOrNull { it.type == type }
+    val original = (if (isVideo) file(PHAssetResourceTypeVideo) else file(PHAssetResourceTypePhoto)) ?: return null
+    val current = (if (isVideo) file(PHAssetResourceTypeFullSizeVideo) else file(PHAssetResourceTypeFullSizePhoto)) ?: original
+    return original to current
+}
+
+/** The resource of [asset] that its [MediaItem] stands for, as [factsOf] chooses it: what backup reads. */
+internal fun currentResource(asset: PHAsset): PHAssetResource? {
+    val resources = PHAssetResource.assetResourcesForAsset(asset).map { it as PHAssetResource }
+    val files = resources.map { AssetFile(it.type, it.originalFilename, it.uniformTypeIdentifier, null) }
+    val (_, current) = currentFile(files, asset.mediaType == PHAssetMediaTypeVideo) ?: return null
+    return resources[files.indexOf(current)]
 }
 
 /**

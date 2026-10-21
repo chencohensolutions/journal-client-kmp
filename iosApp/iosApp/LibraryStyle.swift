@@ -70,7 +70,7 @@ extension MediaItem {
 
     /// Where the original is: on this phone and the server, only on one of them, or on its way.
     var originalLabel: String {
-        if !backup.isBackedUp { return backup.label }
+        guard backup.isBackedUp else { return backup.label }
         if !hasOriginalHere { return String(localized: "Only on your server") }
         if !isOnDevice { return String(localized: "Downloaded to this phone, and on your server") }
         return String(localized: "On this phone and on your server")
@@ -193,15 +193,16 @@ struct SegmentedBar<Value: Equatable>: View {
     }
 }
 
-/// The bottom controls: the backup summary (when something isn't backed up) above a bar.
+/// The bottom controls: the backup summary (`backupSummary`: the running backup, or what isn't backed up) above a bar.
 struct BottomControls<Bar: View>: View {
-    let notBackedUp: Int
+    let summary: String?
     @ViewBuilder let bar: Bar
 
     var body: some View {
         VStack(spacing: 10) {
-            if notBackedUp > 0 {
-                Label("\(notBackedUp) not backed up", systemImage: "icloud.slash")
+            if let summary {
+                Label(summary, systemImage: "icloud.slash")
+                    .monospacedDigit()
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(LibraryColors.onBackground)
                     .padding(.horizontal, 14)

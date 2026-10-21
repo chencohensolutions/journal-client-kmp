@@ -86,10 +86,11 @@ struct DurationChip: View {
 struct BackupBadge: View {
     let status: BackupStatus
     let size: CGFloat
+    /// False for a photo only on the server: backed up, it has no badge.
     var originalHere = true
 
     var body: some View {
-        if originalHere || !status.isBackedUp {
+        if !(status.isBackedUp && !originalHere) {
             ZStack {
                 Circle().fill(background)
                 symbol
@@ -124,7 +125,8 @@ struct BackupBadge: View {
             }
             .frame(width: inner, height: inner)
         case is BackupStatusBackedUp:
-            Image(systemName: "checkmark").font(.system(size: inner * 0.75, weight: .bold)).foregroundStyle(.white)
+            // On this phone, and on the server.
+            Image(systemName: "iphone").font(.system(size: inner * 0.8, weight: .semibold)).foregroundStyle(.white)
         case is BackupStatusFailed:
             Text("!").font(.system(size: inner, weight: .bold)).foregroundStyle(.white)
         default:

@@ -26,7 +26,7 @@ import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustSetAnchorCertificates
 import platform.Security.SecTrustSetAnchorCertificatesOnly
 
-private typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Unit
+internal typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Unit
 
 /**
  * mTLS over URLSession, using an identity in the app Keychain: imported by [KeychainIdentities] or
@@ -42,53 +42,59 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 
         return HttpClient(Darwin) {
             engine {
-                handleChallenge { _, _, challenge, completion ->
-                    when (challenge.protectionSpace.authenticationMethod) {
-                        NSURLAuthenticationMethodServerTrust -> evaluateServerTrust(challenge, anchors, completion)
-                        NSURLAuthenticationMethodClientCertificate -> presentIdentity(identity, completion)
-                        else -> completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
-                    }
-                }
+                handleChallenge { _, _, challenge, completion -> answerChallenge(challenge, identity, anchors, completion) }
             }
             // No limits of its own: a request that needs longer than usual (verifying a large video) sets them.
             install(HttpTimeout)
         }
     }
+}
 
-    private fun evaluateServerTrust(
-        challenge: NSURLAuthenticationChallenge,
-        anchors: List<Any>,
-        completion: ChallengeCompletion,
-    ) {
-        val trust = challenge.protectionSpace.serverTrust
-        if (trust == null) {
-            completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-            return
-        }
-        withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
-        // Keep trusting the system roots as well, like the Android client.
-        SecTrustSetAnchorCertificatesOnly(trust, false)
-
-        if (SecTrustEvaluateWithError(trust, null)) {
-            completion(NSURLSessionAuthChallengeUseCredential, NSURLCredential.credentialForTrust(trust))
-        } else {
-            completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-        }
+/**
+ * Answers a URLSession challenge: the server's certificate must chain to [anchors] (or the system roots), and the
+ * client certificate is [identity] (a SecIdentity; none for enrollment). Also used by the background upload session.
+ */
+internal fun answerChallenge(challenge: NSURLAuthenticationChallenge, identity: Any?, anchors: List<Any>, completion: ChallengeCompletion) {
+    when (challenge.protectionSpace.authenticationMethod) {
+        NSURLAuthenticationMethodServerTrust -> evaluateServerTrust(challenge, anchors, completion)
+        NSURLAuthenticationMethodClientCertificate -> presentIdentity(identity, completion)
+        else -> completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
     }
+}
 
-    private fun presentIdentity(identity: Any?, completion: ChallengeCompletion) {
-        if (identity == null) {
-            // No client certificate: the server accepts that for enrollment only.
-            completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
-            return
-        }
-        val credential = withCFBridge(identity) { identityRef ->
-            NSURLCredential.credentialWithIdentity(
-                identity = identityRef!!.reinterpret(),
-                certificates = null,
-                persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
-            )
-        }
-        completion(NSURLSessionAuthChallengeUseCredential, credential)
+private fun evaluateServerTrust(
+    challenge: NSURLAuthenticationChallenge,
+    anchors: List<Any>,
+    completion: ChallengeCompletion,
+) {
+    val trust = challenge.protectionSpace.serverTrust
+    if (trust == null) {
+        completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
+        return
     }
+    withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
+    // Keep trusting the system roots as well, like the Android client.
+    SecTrustSetAnchorCertificatesOnly(trust, false)
+
+    if (SecTrustEvaluateWithError(trust, null)) {
+        completion(NSURLSessionAuthChallengeUseCredential, NSURLCredential.credentialForTrust(trust))
+    } else {
+        completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
+    }
+}
+
+private fun presentIdentity(identity: Any?, completion: ChallengeCompletion) {
+    if (identity == null) {
+        // No client certificate: the server accepts that for enrollment only.
+        completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
+        return
+    }
+    val credential = withCFBridge(identity) { identityRef ->
+        NSURLCredential.credentialWithIdentity(
+            identity = identityRef!!.reinterpret(),
+            certificates = null,
+            persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
+        )
+    }
+    completion(NSURLSessionAuthChallengeUseCredential, credential)
 }

@@ -70,11 +70,50 @@ internal interface BackupApi {
     suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit = {}): PieceResult
 }
 
+/** The server's answer to one piece: the HTTP status and its `Upload-Offset` header. */
+internal data class PieceResponse(val status: Int, val uploadOffset: Long?)
+
+/**
+ * Sends one piece of an upload (a `PUT` of [bytes] with [contentRange] to [url], an absolute URL) and returns the
+ * server's answer; [onSent] gets how many of [bytes] left so far. The platform's transport: the app's own client on
+ * Android, a background URLSession on iOS (which goes on while the app is suspended).
+ */
+internal interface PieceSender {
+    suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse
+}
+
+/** Sends pieces with the app's mTLS client, in the app's process. */
+internal class KtorPieceSender(private val http: HttpClient) : PieceSender {
+    override suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse {
+        val response = http.put(url) {
+            header("Content-Range", contentRange)
+            contentType(ContentType.Application.OctetStream)
+            setBody(bytes)
+            onUpload { sent, _ -> onSent(sent) }
+        }
+        return PieceResponse(response.status.value, response.headers["Upload-Offset"]?.toLongOrNull())
+    }
+}
+
+/** What the answer to a piece ending at byte [end] means (journal-server-go docs/media.md, `PUT /upload/{sha256}`). */
+internal fun pieceResult(response: PieceResponse, end: Long): PieceResult {
+    val offset = response.uploadOffset
+    return when (response.status) {
+        HttpStatusCode.OK.value, HttpStatusCode.Created.value ->
+            PieceResult.Accepted(offset ?: (end + 1), complete = response.status == HttpStatusCode.Created.value)
+        HttpStatusCode.RequestedRangeNotSatisfiable.value -> PieceResult.WrongOffset(offset ?: 0)
+        HttpStatusCode.NotFound.value -> PieceResult.NoUpload
+        HttpStatusCode.Conflict.value -> PieceResult.HashMismatch
+        HttpStatusCode.Unauthorized.value -> throw BackupServerException("The server refused this device", unauthorized = true)
+        else -> throw BackupServerException("Upload failed: HTTP ${response.status}")
+    }
+}
+
 internal class ServerBackupApi(
     private val apollo: ApolloClient,
-    private val http: HttpClient,
     /** The GraphQL endpoint; the upload URLs the server returns are paths on the same origin. */
     private val serverUrl: String,
+    private val pieces: PieceSender,
 ) : BackupApi {
     override suspend fun missing(hashes: List<String>): Set<String> {
         if (hashes.isEmpty()) return emptySet()
@@ -111,22 +150,7 @@ internal class ServerBackupApi(
 
     override suspend fun put(url: String, start: Long, bytes: ByteArray, total: Long, onSent: (Long) -> Unit): PieceResult {
         val end = start + bytes.size - 1
-        val response = http.put(resolve(url)) {
-            header("Content-Range", "bytes $start-$end/$total")
-            contentType(ContentType.Application.OctetStream)
-            setBody(bytes)
-            onUpload { sent, _ -> onSent(sent) }
-        }
-        val offset = response.headers["Upload-Offset"]?.toLongOrNull()
-        return when (response.status) {
-            HttpStatusCode.OK, HttpStatusCode.Created ->
-                PieceResult.Accepted(offset ?: (end + 1), complete = response.status == HttpStatusCode.Created)
-            HttpStatusCode.RequestedRangeNotSatisfiable -> PieceResult.WrongOffset(offset ?: 0)
-            HttpStatusCode.NotFound -> PieceResult.NoUpload
-            HttpStatusCode.Conflict -> PieceResult.HashMismatch
-            HttpStatusCode.Unauthorized -> throw BackupServerException("The server refused this device", unauthorized = true)
-            else -> throw BackupServerException("Upload failed: HTTP ${response.status.value}")
-        }
+        return pieceResult(pieces.send(resolve(url), "bytes $start-$end/$total", bytes, onSent), end)
     }
 
     private fun resolve(path: String): String = URLBuilder(serverUrl).apply {

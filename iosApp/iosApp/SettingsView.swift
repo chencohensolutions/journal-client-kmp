@@ -4,6 +4,9 @@ import SharedLogic
 /// The user's choices, kept on this device. See docs/screens/settings.md.
 struct SettingsView: View {
     @ObservedObject var settings: SettingsViewModel
+    @ObservedObject var backup: BackupViewModel
+    /// Photos of the chosen sources not on the server yet.
+    let notBackedUp: Int
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
     /// The private media slider's value while it is dragged.
@@ -12,6 +15,7 @@ struct SettingsView: View {
     var body: some View {
         let grouping = settings.state.grouping
         Form {
+            backupSections
             storageSection
             Section {
                 Picker("Grouping", selection: Binding(get: { grouping.mode }, set: settings.setGroupingMode)) {
@@ -50,6 +54,74 @@ struct SettingsView: View {
 }
 
 extension SettingsView {
+    /// Backup: on or off with its status, then what uploads, when, and in which order. "On your server" (storage
+    /// used there) and "Only on these Wi-Fi networks" are Android only for now; see docs/screens/settings.md.
+    @ViewBuilder private var backupSections: some View {
+        let state = backup.state.settings
+        Section {
+            Toggle(isOn: Binding(get: { state.enabled }, set: backup.setEnabled)) {
+                ModeLabel(
+                    title: "Back up to your server",
+                    detail: "Photos keep uploading in the background. Swiping the app away stops it until you open it again."
+                )
+            }
+            .tint(LibraryColors.accent)
+            HStack {
+                Text(backup.statusText(waiting: notBackedUp))
+                    .font(.subheadline)
+                    .monospacedDigit()
+                    .foregroundStyle(LibraryColors.muted)
+                Spacer()
+                if state.enabled && backup.running == nil {
+                    Button("Back up now", action: backup.backUpNow).foregroundStyle(LibraryColors.onBackground)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("On your server").foregroundStyle(LibraryColors.onBackground)
+                Text(serverUsageText(settings.serverUsage))
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(LibraryColors.muted)
+            }
+        } header: {
+            Text("Backup")
+        }
+        .listRowBackground(LibraryColors.raised)
+        if state.enabled {
+            Section {
+                ForEach(MediaSource.entries, id: \.self) { source in
+                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in backup.toggleSource(source) }))
+                        .tint(LibraryColors.accent)
+                }
+            } header: {
+                Text("What to back up")
+            }
+            .listRowBackground(LibraryColors.raised)
+            Section {
+                Toggle(isOn: Binding(get: { state.wifiOnly }, set: backup.setWifiOnly)) {
+                    ModeLabel(title: "Only on Wi-Fi", detail: "Never on mobile data.")
+                }
+                .tint(LibraryColors.accent)
+                Toggle("Only while charging", isOn: Binding(get: { state.chargingOnly }, set: backup.setChargingOnly))
+                    .tint(LibraryColors.accent)
+            } header: {
+                Text("When")
+            }
+            .listRowBackground(LibraryColors.raised)
+            Section {
+                Picker("Order", selection: Binding(get: { state.order }, set: backup.setOrder)) {
+                    ModeLabel(title: "Oldest first", detail: "Starts with your earliest photos.").tag(UploadOrder.oldestFirst)
+                    ModeLabel(title: "Newest first", detail: "Your latest photos are safe soonest.").tag(UploadOrder.newestFirst)
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text("Order")
+            }
+            .listRowBackground(LibraryColors.raised)
+        }
+    }
+
     /// How alike photos must be for a "Look alike" suggestion.
     private var similaritySection: some View {
         let threshold = settings.state.similarity
@@ -232,4 +304,13 @@ private struct ModeLabel: View {
             Text(detail).font(.footnote).foregroundStyle(LibraryColors.muted)
         }
     }
+}
+
+/// "2.4 GB · 1,204 photos, 31 videos", what the user's originals take up on the server.
+private func serverUsageText(_ usage: StorageUsage?) -> String {
+    guard let usage else { return String(localized: "Can’t reach the server right now") }
+    let size = ByteCountFormatter.string(fromByteCount: usage.bytes, countStyle: .file)
+    let photos = String(localized: "\(Int(usage.photos)) photos")
+    if usage.videos == 0 { return "\(size) · \(photos)" }
+    return "\(size) · \(photos), " + String(localized: "\(Int(usage.videos)) videos")
 }

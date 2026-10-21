@@ -8,6 +8,7 @@ struct LibraryRootView: View {
     @ObservedObject var library: LibraryViewModel
     @ObservedObject var stories: StoriesViewModel
     @ObservedObject var settings: SettingsViewModel
+    @ObservedObject var backup: BackupViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -78,6 +79,7 @@ struct LibraryRootView: View {
                         stories: stories.state,
                         health: journal.state.health,
                         viewerOpen: viewer != nil,
+                        backupRunning: backup.running,
                         actions: HomeActions(
                             openItem: { section, item in
                                 openViewer(ViewerRequest(storyId: nil, feedSection: section.key, filter: .all, itemId: item.id))
@@ -119,11 +121,11 @@ struct LibraryRootView: View {
                     .navigationDestination(for: Route.self) { route in
                         switch route {
                         case .allPhotos:
-                            AllPhotosView(library: library.state, health: journal.state.health, filter: $filter) { item in
+                            AllPhotosView(library: library.state, backupRunning: backup.running, health: journal.state.health, filter: $filter) { item in
                                 openViewer(ViewerRequest(storyId: nil, filter: filter, itemId: item.id))
                             }
                         case .settings:
-                            SettingsView(settings: settings)
+                            SettingsView(settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount))
                         case .place(let town):
                             PlacePageView(town: town, library: library.state, stories: stories.state, openItem: openExplore)
                         case let .year(year, month):

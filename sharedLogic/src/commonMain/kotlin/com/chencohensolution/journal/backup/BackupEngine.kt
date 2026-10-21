@@ -24,6 +24,9 @@ internal interface MediaFiles {
 
     /** When [item] was taken, RFC 3339 with the device's UTC offset at that moment. */
     fun takenAt(item: MediaItem): String
+
+    /** A run ended: what was copied out of the library to read it can go. */
+    fun runEnded() {}
 }
 
 /** Where a run is: [done] of [total] files, and the bytes of the files still to send. */
@@ -79,10 +82,20 @@ internal class BackupEngine(
         var failed = 0
 
         for (batch in pending.chunked(BATCH)) {
-            val entries = batch.map { item ->
+            val entries = batch.mapNotNull { item ->
                 progress = progress.copy(currentId = item.id, currentName = item.fileName, currentFraction = 0f)
                 onProgress(progress)
-                item to hashed(item)
+                val entry = try {
+                    hashed(item)
+                } catch (e: EOFException) {
+                    // Not the size the library reported: changed since it was listed. Read again next time.
+                    ledger.forget(item.id)
+                    failed++
+                    progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + (item.sizeBytes ?: 0), currentId = null, currentName = null)
+                    onProgress(progress)
+                    null
+                }
+                entry?.let { item to it }
             }
             val missing = api.missing(entries.map { it.second.sha256 })
             for ((item, entry) in entries) {

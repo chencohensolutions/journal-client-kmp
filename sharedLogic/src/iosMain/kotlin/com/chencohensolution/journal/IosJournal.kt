@@ -1,6 +1,14 @@
 package com.chencohensolution.journal
 
+import com.chencohensolution.journal.backup.BackgroundPieceSender
+import com.chencohensolution.journal.backup.BackupController
+import com.chencohensolution.journal.backup.IosMediaFiles
+import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.JournalController
+import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.tls.SERVER_CA_PEM
+import com.chencohensolution.journal.tls.decodePemCertificates
+import com.chencohensolution.journal.tls.secCertificateObject
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.enrollment.IosDeviceKeyStore
 import com.chencohensolution.journal.stories.StoryIds
@@ -22,8 +30,6 @@ import com.chencohensolution.journal.similarity.IosPhotoAnalyzer
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
-import com.chencohensolution.journal.tls.SERVER_CA_PEM
-import com.chencohensolution.journal.tls.decodePemCertificates
 import com.chencohensolution.journal.server.IosServerFiles
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerHttp
@@ -65,19 +71,23 @@ object IosJournal {
             onEnrolled = journal::useEnrolledIdentity,
         )
 
+    /** PhotoKit, read once for the screens and backup. Its photos' file names, sizes and types are cached in Caches (`library`). */
+    private val mediaLibrary by lazy { IosMediaLibrary(FileFactsCache(FileSystem.SYSTEM, cachesDir().toPath() / "library")) }
+
     /**
-     * The device photo library (PhotoKit), with the photos that are only on the server from [server] and the originals
-     * downloaded into [originals]; what [privateMedia] hides is left out. Its photos' file names, sizes and types are
-     * cached in Caches (`library`).
+     * The device photo library (PhotoKit), with each photo's backup status from [backup], the photos that are only on
+     * the server from [server] and the originals downloaded into [originals]; what [privateMedia] hides is left out.
      */
     fun createLibraryController(
+        backup: BackupController?,
         server: ServerLibrary?,
         originals: KeptOriginals?,
         privateMedia: StateFlow<PrivateMedia>?,
     ): LibraryController =
         LibraryController(
-            library = IosMediaLibrary(FileFactsCache(FileSystem.SYSTEM, cachesDir().toPath() / "library")),
+            library = mediaLibrary,
             settings = JournalSettings(UserDefaultsStore()),
+            backup = backup?.state,
             server = server,
             originals = originals,
             privateMedia = privateMedia,
@@ -140,6 +150,57 @@ object IosJournal {
     fun serverFiles(): IosServerFiles =
         serverFiles ?: IosServerFiles(serverLibrary(), serverPreviews(), keptOriginals(), phoneStorage()).also { serverFiles = it }
 
+    private var backupController: BackupController? = null
+    private var pieceSender: BackgroundPieceSender? = null
+
+    /**
+     * Backup to the server. One per process, shared by the screens and the background launches, so both see the same
+     * progress. Hashes and uploads are remembered in Application Support (`backup/ledger.jsonl`); pieces go through a
+     * background URLSession (from `Caches/backup/pieces`), photos are copied out of PhotoKit to `Caches/backup/files`.
+     * [scheduler] starts runs; it is set once, by the first caller. Call on the main thread.
+     */
+    fun backupController(scheduler: BackupScheduler): BackupController =
+        backupController ?: run {
+            val settings = JournalSettings(UserDefaultsStore())
+            val caches = cachesDir().toPath() / "backup"
+            val sender = BackgroundPieceSender(
+                directory = caches / "pieces",
+                identityAlias = { settings.identityAlias },
+                anchors = decodePemCertificates(SERVER_CA_PEM).map(::secCertificateObject),
+                wifiOnly = { settings.backup.wifiOnly },
+            )
+            pieceSender = sender
+            BackupController(
+                settings = settings,
+                ledger = UploadLedger(FileSystem.SYSTEM, supportDir().toPath() / "backup"),
+                library = mediaLibrary,
+                files = IosMediaFiles(caches / "files"),
+                clientFactory = IosMtlsHttpClientFactory(),
+                trustedCas = decodePemCertificates(SERVER_CA_PEM),
+                onSettingsChanged = scheduler::settingsChanged,
+                onBackUpNow = scheduler::backUpNow,
+                pieceSender = sender,
+            )
+        }.also { backupController = it }
+
+    /**
+     * iOS relaunched or woke the app for the background upload session [identifier]; false when it isn't backup's.
+     * [completion] is called once the session's news is in and the next piece is on its way. Call [backupController]
+     * first, so the session is connected.
+     */
+    fun handleBackgroundUploadEvents(identifier: String, completion: () -> Unit): Boolean {
+        val sender = pieceSender
+        if (identifier != BackgroundPieceSender.SESSION_ID || sender == null) return false
+        sender.handleEvents(completion)
+        return true
+    }
+
+    /** Calls [onChange] (on a background queue) when photos are added or changed, or their file facts arrive. */
+    fun watchLibrary(onChange: () -> Unit): ObservationHandle {
+        val stop = mediaLibrary.watch(onChange)
+        return ObservationHandle { stop() }
+    }
+
     /** The user's choices on the Settings screen. */
     fun createSettingsController(): SettingsController = SettingsController(
         JournalSettings(UserDefaultsStore()),
@@ -151,7 +212,7 @@ object IosJournal {
      * suggestions are cached in Caches (`similarity`), where photos were taken and place names too (`places`).
      */
     fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
-        val support = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
+        val support = supportDir()
         val caches = cachesDir()
         return StoriesController(
             store = FileStoryStore(FileSystem.SYSTEM, support.toPath() / "journal"),
