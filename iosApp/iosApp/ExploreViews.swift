@@ -356,7 +356,7 @@ struct ExploreThumbnail: View {
                 }
             }
             .task(id: item.id) {
-                image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size)
+                image = await PhotoLibraryImages.shared.image(item: item, pointSize: geometry.size)
             }
         }
         .accessibilityHidden(true)
