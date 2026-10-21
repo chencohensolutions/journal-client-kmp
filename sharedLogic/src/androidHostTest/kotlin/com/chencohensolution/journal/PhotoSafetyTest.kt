@@ -37,8 +37,9 @@ class PhotoSafetyTest {
         // holds them ("Free up space" also hashes both copies again). Android confirms with its own prompt, unless the
         // user gave the app "Media management" access (MANAGE_MEDIA) in system settings. Only in PhotoRemoval.kt.
         "createTrashRequest" to setOf("PhotoRemoval.kt"),
-        // The same on iOS (approved by the owner for "Delete from this phone"): PhotoKit deletes a photo the server
-        // confirmed it holds, to Recently Deleted, always behind iOS's own prompt. Only in PhotoRemoval.swift.
+        // The same on iOS (approved by the owner for "Delete from this phone" and "Free up space"): PhotoKit deletes
+        // photos the server confirmed it holds, to Recently Deleted, always behind iOS's own prompt. Only in
+        // PhotoRemoval.swift.
         "performChanges" to setOf("PhotoRemoval.swift"),
         "PHAssetChangeRequest" to setOf("PhotoRemoval.swift"),
         "deleteAssets" to setOf("PhotoRemoval.swift"),

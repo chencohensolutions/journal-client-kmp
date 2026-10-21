@@ -7,6 +7,26 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ can be freed" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשר לפנות %@"
+          }
+        }
+      }
+    },
+    "%@ can leave this phone. Your server has every one of them." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשר לפנות %@ מהטלפון. כולם נמצאים בשרת שלך."
+          }
+        }
+      }
+    },
     "%@ in all" : {
       "localizations" : {
         "he" : {
@@ -263,6 +283,110 @@
         }
       }
     },
+    "%lld changed on this phone: backed up again" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld changed on this phone: backed up again"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld changed on this phone: backed up again"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "אחד השתנה בטלפון: יגובה שוב"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld השתנו בטלפון: יגובו שוב"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld השתנו בטלפון: יגובו שוב"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld השתנו בטלפון: יגובו שוב"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld damaged on your server: kept on this phone" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld damaged on your server: kept on this phone"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld damaged on your server: kept on this phone"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "אחד פגום בשרת: נשאר בטלפון"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld פגומים בשרת: נשארים בטלפון"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld פגומים בשרת: נשארים בטלפון"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld פגומים בשרת: נשארים בטלפון"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld days" : {
       "localizations" : {
         "he" : {
@@ -308,6 +432,202 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld days"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files (%@) checked, waiting for you" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@files@ (%2$@) checked, waiting for you"
+          },
+          "substitutions" : {
+            "files" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@files@"
+          },
+          "substitutions" : {
+            "files" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ אחד (%2$@) נבדק ומחכה לאישורך"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) נבדקו ומחכים לאישורך"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) נבדקו ומחכים לאישורך"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) נבדקו ומחכים לאישורך"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files (%@) moved to the trash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@files@ (%2$@) moved to the trash"
+          },
+          "substitutions" : {
+            "files" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@files@"
+          },
+          "substitutions" : {
+            "files" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ אחד (%2$@) הועבר לאשפה"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) הועברו לאשפה"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) הועברו לאשפה"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים (%2$@) הועברו לאשפה"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files checked: tap to move them to the trash" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file checked: tap to move it to the trash"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files checked: tap to move them to the trash"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "קובץ אחד נבדק: הקישו כדי להעביר לאשפה"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קבצים נבדקו: הקישו כדי להעביר לאשפה"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קבצים נבדקו: הקישו כדי להעביר לאשפה"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קבצים נבדקו: הקישו כדי להעביר לאשפה"
                 }
               }
             }
@@ -419,6 +739,58 @@
         }
       }
     },
+    "%lld months" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld month"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld months"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "חודש"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "חודשיים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld חודשים"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld חודשים"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld not backed up" : {
       "localizations" : {
         "he" : {
@@ -440,6 +812,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld לא מגובות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld not on your server: backed up again" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld not on your server: backed up again"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld not on your server: backed up again"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "אחד חסר בשרת: יגובה שוב"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld חסרים בשרת: יגובו שוב"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld חסרים בשרת: יגובו שוב"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld חסרים בשרת: יגובו שוב"
                 }
               }
             }
@@ -947,6 +1371,58 @@
         }
       }
     },
+    "%lld years" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld year"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld years"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שנה"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שנתיים"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שנים"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שנים"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld · Open" : {
       "localizations" : {
         "he" : {
@@ -1121,6 +1597,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הכול"
+          }
+        }
+      }
+    },
+    "All but the newest %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכל חוץ מ־%@ החדשים ביותר"
           }
         }
       }
@@ -1367,6 +1853,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שינוי"
+          }
+        }
+      }
+    },
+    "Checking %lld of %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בודק %lld מתוך %lld"
           }
         }
       }
@@ -1721,6 +2217,16 @@
         }
       }
     },
+    "Each file is hashed again on this phone and on your server first. Then you confirm them all at once, and they go to Recently Deleted, where they stay for 30 days." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל קובץ מחושב שוב (sha256) בטלפון ובשרת לפני ההסרה. אחר כך מאשרים את כולם יחד, והם עוברים ל„נמחקו לאחרונה” ונשארים שם 30 יום."
+          }
+        }
+      }
+    },
     "Earlier" : {
       "localizations" : {
         "he" : {
@@ -1811,6 +2317,26 @@
         }
       }
     },
+    "Every photo and video this phone backed up to your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל התמונות והסרטונים שהטלפון הזה גיבה לשרת שלך."
+          }
+        }
+      }
+    },
+    "Everything backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל מה שגובה"
+          }
+        }
+      }
+    },
     "Everything chosen is backed up" : {
       "localizations" : {
         "he" : {
@@ -1867,6 +2393,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פורמט"
+          }
+        }
+      }
+    },
+    "Free up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פינוי"
+          }
+        }
+      }
+    },
+    "Free up %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פינוי %@"
+          }
+        }
+      }
+    },
+    "Free up space" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פינוי מקום"
           }
         }
       }
@@ -2202,6 +2758,26 @@
     "K7QM-4XPD" : {
       "shouldTranslate" : false
     },
+    "Keep the newest" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמירת החדשים ביותר"
+          }
+        }
+      }
+    },
+    "Keeps the newest photos and videos up to this size and removes the older ones." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שומר את התמונות והסרטונים החדשים ביותר עד לגודל הזה ומסיר את הישנים יותר."
+          }
+        }
+      }
+    },
     "Kept on this phone" : {
       "localizations" : {
         "he" : {
@@ -2358,6 +2934,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עוד"
+          }
+        }
+      }
+    },
+    "More options" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשרויות נוספות"
+          }
+        }
+      }
+    },
+    "Move to trash" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העברה לאשפה"
           }
         }
       }
@@ -2602,6 +3198,36 @@
         }
       }
     },
+    "Nothing to free up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מה לפנות"
+          }
+        }
+      }
+    },
+    "Nothing to free up right now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מה לפנות כרגע"
+          }
+        }
+      }
+    },
+    "Nothing to remove. Only photos already backed up are removed." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מה להסיר. מוסרות רק תמונות שכבר גובו."
+          }
+        }
+      }
+    },
     "Nothing to show. Turn on a source above." : {
       "localizations" : {
         "he" : {
@@ -2648,6 +3274,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא מחובר"
+          }
+        }
+      }
+    },
+    "Older than" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ישנים מ־"
           }
         }
       }
@@ -2824,6 +3460,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תמונה, %@"
+          }
+        }
+      }
+    },
+    "Photos and videos already on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות וסרטונים שכבר נמצאים בשרת שלך"
           }
         }
       }
@@ -3054,6 +3700,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הסרת התגית %@"
+          }
+        }
+      }
+    },
+    "Removes photos and videos taken before then." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסיר תמונות וסרטונים שצולמו לפני כן."
           }
         }
       }
@@ -3478,6 +4134,16 @@
         }
       }
     },
+    "Stopped: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נעצר: %@"
+          }
+        }
+      }
+    },
     "Stopped: %@. It tries again later." : {
       "localizations" : {
         "he" : {
@@ -3554,6 +4220,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הוצאה מהקבוצה"
+          }
+        }
+      }
+    },
+    "Taken more than %@ ago" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צולמו לפני יותר מ־%@"
           }
         }
       }

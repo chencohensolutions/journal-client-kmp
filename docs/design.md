@@ -149,7 +149,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150` before that).
 
 **Not built yet**
-- On iOS: "Only on these Wi-Fi networks" and Free up space. Everywhere: story/note sync.
+- On iOS: "Only on these Wi-Fi networks". Everywhere: story/note sync.
 - Sub-stories; layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
@@ -187,7 +187,9 @@ through an `AVAssetResourceLoader` that serves byte ranges from `Caches/videos/<
 the bytes at their own offsets, and `index.json`, which ranges are kept, the length and type, when last played) and
 fetches what is missing with Range requests on a URLSession answering the mTLS challenges through the shared
 `IosServerStream`; the cache gives way whole videos, least recently played first, within `PhoneStorage.videoBudget`.
-Not yet on iOS: Free up space. Not yet anywhere: story/note sync.
+**iOS Free up space** (Oct 21, 2026) runs the same checks in the app, but deletes nothing during a run: every file
+that passed waits for **Move to trash**, one PhotoKit request with iOS's own prompt, to Recently Deleted (see
+[screens/settings.md](screens/settings.md)). Not yet anywhere: story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -262,8 +264,9 @@ Not yet on iOS: Free up space. Not yet anywhere: story/note sync.
     iOS through `IosServerStream`, which gives Swift's URLSession the same challenge answers as the Ktor client,
     `MtlsChallenges`).
   - Free up space: `FreeUpController` (rules, sources, checks, batches, waiting files) with `FreeUpState.summary`,
-    `statusLines` and `needsConfirmation`; the platform implements `PhotoTrash` (iOS: PhotoKit, which PhotoSafetyTest must
-    allow) and runs it in the background.
+    `statusLines` and `needsConfirmation`; the platform implements `PhotoTrash` and runs it (Android in the
+    background; iOS in the app, with `IosPhotoTrash` never deleting by itself and PhotoKit's deletion only in
+    `PhotoRemoval.swift`, which PhotoSafetyTest allows).
 - **Previews are made by the server** at the exact pixel size (and crop) the client asks for, never upscaled.
   **Videos are streamed as the original** (HTTP Range); the server only makes the poster frame.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
