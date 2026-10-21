@@ -15,6 +15,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import okio.ByteString.Companion.toByteString
 import okio.Path.Companion.toPath
@@ -41,12 +43,16 @@ class ServerPreviewsTest {
     private val fs = FakeFileSystem()
     private var options = PreviewOptions()
 
+    /** While set, an original's download waits for it. */
+    private var holdOriginal: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
     private val previews = ServerPreviews(
         http = ServerHttp(
             JournalSettings(PreviewsStore()),
             MtlsHttpClientFactory { _, _ ->
                 HttpClient(MockEngine { request ->
                     if (offline) throw okio.IOException("offline")
+                    holdOriginal?.await()
                     requests += request.url
                     val path = request.url.encodedPath
                     when {
@@ -159,6 +165,23 @@ class ServerPreviewsTest {
         val other = "1".repeat(64)
         offline = true
         assertNull(previews.viewer(other, "x.jpg", 2560, decoders()))
+    }
+
+    @Test
+    fun anOriginalDownloadingShowsItsProgressUntilItIsKept() = runTest {
+        val hold = kotlinx.coroutines.CompletableDeferred<Unit>()
+        holdOriginal = hold
+        val viewing = backgroundScope.async { previews.viewer(sha, "IMG.HEIC", 2560, decoders()) }
+        // Seen by any screen while it comes, at 0 until bytes arrive.
+        assertEquals(0f, previews.originalProgress.first { sha in it }[sha])
+        hold.complete(Unit)
+        assertEquals("original", viewing.await())
+        assertTrue(previews.originalProgress.value.isEmpty(), "gone once kept")
+
+        // Already here: nothing downloads.
+        holdOriginal = null
+        previews.viewer(sha, "IMG.HEIC", 2560, decoders())
+        assertTrue(previews.originalProgress.value.isEmpty())
     }
 
     @Test

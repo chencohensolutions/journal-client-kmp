@@ -163,6 +163,42 @@ class CropsTest {
         assertNull(stories.currentState.note("p1"))
         assertFalse(fileSystem.exists(CROPS_ROOT / "media" / "p1.json"))
     }
+    @Test
+    fun theViewersZoomIsKeptInTheNoteUntilThePhotoIsLeftFitted() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val day = LocalDay(2026, 10, 1)
+        val photo = MediaItem("p1", MediaType.IMAGE, day.toEpochDay() * 86_400_000, day, null, 4000, 3000, 100, "p1.jpg")
+        val library = LibraryController(CropsTestLibrary(listOf(photo)), JournalSettings(CropsTestStore()), dispatcher)
+        library.refresh()
+        val fileSystem = FakeFileSystem()
+        fun controller() = StoriesController(
+            noteStore = FilePhotoNoteStore(fileSystem, CROPS_ROOT),
+            library = library,
+            settings = SettingsController(JournalSettings(CropsTestStore()), dispatcher),
+            newId = { "story-1" },
+            dispatcher = dispatcher,
+            now = { "2026-10-19T12:00:00Z" },
+        )
+        val stories = controller()
+        advanceUntilIdle()
+
+        val zoom = CropRect(0.4f, 0.3f, 0.1f, 0.25f, SCREEN)
+        stories.setZoom("p1", zoom)
+        advanceUntilIdle()
+        val path = CROPS_ROOT / "media" / "p1.json"
+        assertTrue("\"zoom\"" in fileSystem.read(path) { readUtf8() })
+        // Read back from the file, as on the next start.
+        val again = controller()
+        advanceUntilIdle()
+        assertEquals(zoom, again.currentState.note("p1")?.zoom)
+        assertTrue(again.currentState.storyline.isEmpty())
+
+        // Left fitted: nothing else in the note, so the file goes.
+        again.setZoom("p1", null)
+        advanceUntilIdle()
+        assertNull(again.currentState.note("p1"))
+        assertFalse(fileSystem.exists(path))
+    }
 }
 
 private class CropsTestLibrary(val items: List<MediaItem>) : MediaLibrary {

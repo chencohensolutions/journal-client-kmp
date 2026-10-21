@@ -1,6 +1,8 @@
 # Viewer
 
-One photo or video at a time, full screen on black.
+One photo or video at a time, full screen on black. **Immersive** (asked for Oct 21, 2026): the status bar and the
+gesture bar are hidden while the viewer is open (a swipe from the edge shows them for a moment); the bars and buttons
+keep their room, so nothing moves when they show. Android tells the user once, the first time, how to bring them back.
 
 ## What it swipes through
 
@@ -26,6 +28,40 @@ Swiping is not a tap; a playing video's own controls take its taps.
   **Cropped · Show all** at the top.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS).
+- **Zoom** (asked for Oct 21, 2026, reworked the same day; Android only, iOS not built yet):
+  - **Double-taps step**: fitted → filling the screen (edges cut off) → the original's size (one photo pixel to one
+    screen pixel) → back to fitted, zooming around the tap. A step that would add nothing is skipped (a small photo's
+    own size below fitted or within 5% of filling). From a pinched zoom, a double-tap goes to the next step above it.
+  - **Pinch** at any zoom; let go within 15% of fitted, filling or the original's size and it snaps there (around
+    where the fingers were); pinched below fitted it springs back. At most twice the original size, never less than
+    filling the screen.
+  - Zoomed in, **one finger moves the photo** once it has moved further than a tap would, and swiping to the next
+    photo is off until it is back to fitted. A **tap** still shows and hides the bars; starting to move or pinch hides
+    them.
+  - **Minimap** (top right, under the bar): the whole photo small with the part on screen outlined and the rest
+    dimmed, while zoomed in, as it moves and 1.5 s after, and whenever the bars show. It is **grey until the photo
+    on screen is at the original's quality** (the original decoded for zooming, and the part at full detail where
+    the screen wants more), then its colour fades in.
+  - **Remembered**: leaving a photo (a swipe or closing the viewer) keeps the part on screen in its note
+    (`"zoom"`, below). Next time the photo opens as usual (flying out of its tile, fitted or at its crop) and, once
+    it has landed (the opening transition, or a swipe, has settled), glides to that zoom in 0.55 s: the scale
+    changes evenly in doublings while the middle slides across, so it reads as one camera move. A photo with a crop
+    starts the glide from the crop. Touching the photo meanwhile stops it there. Left fitted, the zoom is removed.
+  - **Closing while zoomed** flies from the zoomed view straight into the photo's tile: the zoom is laid out (the
+    photo's bounds are its zoomed size and place), not only drawn, so the shared element starts from what is seen.
+  - Zoomed, a cropped photo shows whole. Once zoomed in the original is decoded at its own size (at most 24
+    megapixels and 8192 px a side, under Android's limit for drawing one bitmap); a photo only on the server is
+    decoded again from the downloaded original. Videos don't zoom.
+  - **Full detail of larger photos** (Oct 21, 2026): when the screen shows more pixels than that decoded image has
+    (a photo over 24 MP past about its own size), 150 ms after the photo stops moving the part on screen, plus 15%
+    around it, is decoded from the true original (`BitmapRegionDecoder`, with the EXIF turn undone and put back) and
+    fades in over it in 150 ms; the part before stays under it meanwhile, so nothing blurs in between. It is placed
+    on the original's own pixels, so it lines up with the photo exactly. Originals it can't read in parts (DNG, JPEG
+    XL, mirrored EXIF) keep the decoded image. Gallery photos are read through `openInputStream`, as the photo safety
+    rules allow (the decoder keeps a copy of the file in memory while the photo is zoomed).
+  - **In the note file** (`media/<id>.json`, format 4): `"zoom": {"x", "y", "w", "h", "aspect"}`, the part on screen
+    as fractions of the upright photo, like a crop, with the screen's shape. On another screen shape it opens with the
+    same middle, zoomed so that part fills the screen as far as it can.
 - **Videos:** the first frame with a play button. Play starts the system player (Android `VideoView` with media
   controls, iOS `VideoPlayer`). Swiping away stops it.
 - **Details panel** (ⓘ, hidden by default):
@@ -63,7 +99,10 @@ Swiping is not a tap; a playing video's own controls take its taps.
     downloaded original can be deleted.
 - **Photos only on the server:** the best image already on the phone shows at once (the largest decoded in memory,
   else the largest preview kept), while the original downloads into the preview cache (at most 2560 px decoded) and
-  fades in, with a small spinner meanwhile.
+  fades in. While it **downloads** (asked for Oct 21, 2026, in place of a spinner), a small **cloud** at the top
+  left fills from the bottom with the download's progress (`ServerPreviews.originalProgress`, whichever screen
+  started it); it shows only after 300 ms, so a quick download never flashes it, and fades when done. An original
+  already in the cache is just decoded, with no indicator.
 - **Videos only on the server:** the poster with Play, like any video; Play streams the original from the server
   (`GET /media/{sha256}` with Range, seeking fetches from there), and what was fetched stays on the phone for next
   time, under the Storage on this phone limit. Android: ExoPlayer through Media3's cache (`ServerVideos.kt`). iOS
@@ -89,7 +128,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
 
 ## Code
 
-- Android: [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt)
+- Android: [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt), zoom in
+  [ViewerZoom.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerZoom.kt), full detail in
+  [ViewerDetail.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerDetail.kt)
 - iOS: [MediaViewerView.swift](../../iosApp/iosApp/MediaViewerView.swift), the original's card in
   [ViewerOriginalCard.swift](../../iosApp/iosApp/ViewerOriginalCard.swift), loading in
   [PhotoLibraryImages.swift](../../iosApp/iosApp/PhotoLibraryImages.swift) and

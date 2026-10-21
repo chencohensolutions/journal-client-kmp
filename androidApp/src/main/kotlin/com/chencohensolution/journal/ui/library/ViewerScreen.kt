@@ -8,6 +8,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,10 +32,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +71,14 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.snapshotFlow
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import kotlinx.coroutines.flow.first
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +101,16 @@ private const val VIEWER_MAX_SIDE = 2560
 /** How long the bars and buttons stay after a tap on the photo. */
 private const val CHROME_MILLIS = 3_000L
 
+/** How long the zoom's minimap stays after the photo stops moving. */
+private const val MINIMAP_MILLIS = 1_500L
+
+/** The same zoom to within a hair (a zoom shown again is worked out anew, so it is rarely exactly equal). */
+private fun CropRect?.sameAs(other: CropRect?): Boolean {
+    if (this == null || other == null) return this == other
+    val e = 0.002f
+    return kotlin.math.abs(x - other.x) < e && kotlin.math.abs(y - other.y) < e && kotlin.math.abs(w - other.w) < e && kotlin.math.abs(h - other.h) < e
+}
+
 internal class ViewerActions(
     val back: () -> Unit = {},
     /** "Remove" (false) or "Add back" (true) in the details panel's Storyline section. */
@@ -97,6 +129,8 @@ internal class ViewerActions(
     val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = { RemovalOutcome.UNREACHABLE },
     /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { _, _ -> false },
+    /** Leaving a photo: where it was zoomed in (the part on screen; null: fitted), so it opens there next time. */
+    val setZoom: (itemId: String, zoom: CropRect?) -> Unit = { _, _ -> },
 )
 
 /** What "Delete from this phone" did. */
@@ -133,6 +167,7 @@ internal fun ViewerScreen(
         LaunchedEffect(Unit) { onBack() }
         return
     }
+    HideSystemBars()
     val pager = rememberPagerState(initialPage = items.indexOfFirst { it.id == startId }.coerceAtLeast(0)) { items.size }
     var showInfo by rememberSaveable { mutableStateOf(false) }
     // The bars and buttons over the photo: hidden at first, shown by a tap for CHROME_MILLIS, hidden by the next tap.
@@ -148,7 +183,40 @@ internal fun ViewerScreen(
     fun cropOf(item: MediaItem) =
         stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
     val current = items[pager.currentPage.coerceIn(items.indices)]
-    val currentCrop = cropOf(current)
+    // Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open;
+    // zoomed, the whole photo shows instead of its crop.
+    val zoomScope = rememberCoroutineScope()
+    val zooms = remember { mutableMapOf<String, PhotoZoom>() }
+    fun zoomOf(item: MediaItem) = zooms.getOrPut(item.id) { PhotoZoom(zoomScope, stories.note(item.id)?.zoom) }
+    val zoom = zoomOf(current)
+    val zoomNow by rememberUpdatedState(zoom.takeIf { current.type != MediaType.VIDEO })
+    val currentCrop = cropOf(current)?.takeIf { !zoom.isZoomed }
+    // Leaving a photo (a swipe, or closing the viewer): its zoom goes into its note when it changed.
+    val latestStories by rememberUpdatedState(stories)
+    DisposableEffect(current.id) {
+        val left = current
+        onDispose {
+            if (left.type != MediaType.VIDEO) {
+                val part = zoomOf(left).zoomedPart
+                if (!part.sameAs(latestStories.note(left.id)?.zoom)) actions.setZoom(left.id, part)
+            }
+        }
+    }
+    // A photo zoomed in last time opens as usual (fitted, or at its crop), then glides to that zoom once it has landed:
+    // after the viewer's opening transition and once a swipe has settled.
+    val opening = if (LocalSharedTransitionScope.current != null) LocalNavAnimatedContentScope.current.transition else null
+    LaunchedEffect(current.id) {
+        if (current.type == MediaType.VIDEO || !zoom.hasSaved) return@LaunchedEffect
+        snapshotFlow { opening?.isRunning != true && !pager.isScrollInProgress }.first { it }
+        zoom.resume(cropOf(current)?.takeIf { !showWhole })
+    }
+    // The minimap shows while the photo moves and a moment after, and with the bars.
+    var zoomMoving by remember { mutableStateOf(false) }
+    LaunchedEffect(zoom, zoom.scale, zoom.offset) {
+        zoomMoving = true
+        delay(MINIMAP_MILLIS)
+        zoomMoving = false
+    }
     LaunchedEffect(current.id) { actions.showing(current.id) }
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
@@ -163,26 +231,48 @@ internal fun ViewerScreen(
         HorizontalPager(
             pager,
             key = { items[it].id },
+            // Zoomed in, a drag moves the photo instead of swiping; double-taps step back to fitted.
+            userScrollEnabled = !zoom.isZoomed,
             // A tap on the photo (not a swipe, nor one the play button or the player takes); the details panel and
-            // the bars are drawn over it and keep their own taps.
-            modifier = Modifier.fillMaxSize().pointerInput(Unit) {
-                detectTapGestures {
+            // the bars are drawn over it and keep their own taps. Double-taps on a photo step from fitted to filling the
+            // screen, to its original size, and back.
+            modifier = Modifier
+                .fillMaxSize()
+                .zoomGestures({ zoomNow }) {
+                    chrome = false
                     showInfo = false
-                    chrome = !chrome
                 }
-            },
+                .pointerInput(current.type == MediaType.VIDEO) {
+                    val onTap: (Offset) -> Unit = {
+                        showInfo = false
+                        chrome = !chrome
+                    }
+                    if (current.type == MediaType.VIDEO) {
+                        detectTapGestures(onTap = onTap)
+                    } else {
+                        detectTapGestures(
+                            onDoubleTap = { at ->
+                                chrome = false
+                                showInfo = false
+                                zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
+                            },
+                            onTap = onTap,
+                        )
+                    }
+                },
         ) { page ->
             val item = items[page]
             if (item.type == MediaType.VIDEO) {
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
             } else {
-                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole })
+                val pageZoom = zoomOf(item)
+                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole && !pageZoom.isZoomed }, pageZoom)
             }
         }
 
         AnimatedVisibility(
             chrome && currentCrop != null && !showInfo,
-            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 60.dp),
+            Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
@@ -190,7 +280,7 @@ internal fun ViewerScreen(
         }
         AnimatedVisibility(
             chrome && !showInfo,
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp),
+            Modifier.align(Alignment.BottomCenter).navigationBarRoom().padding(bottom = 20.dp),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
@@ -202,12 +292,25 @@ internal fun ViewerScreen(
             }
         }
 
+        if (current.type != MediaType.VIDEO) {
+            val small = zoom.picture
+            val part = if (zoom.isZoomed) zoom.visibleRect(0f) else null
+            AnimatedVisibility(
+                small != null && part != null && !showInfo && (chrome || zoomMoving),
+                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 12.dp),
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                if (small != null && part != null) ZoomMinimap(small, part, sharp = zoom.atOriginalQuality)
+            }
+        }
+
         AnimatedVisibility(chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
             Row(
                 Modifier
                     .fillMaxWidth()
                     .background(LibraryColors.TopFade)
-                    .statusBarsPadding()
+                    .statusBarRoom()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -273,17 +376,40 @@ internal fun ViewerScreen(
     }
 }
 
+/** [zoom] is the viewer's for the photo shown, null for the pages beside it. */
 @Composable
-private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
-    if (!item.hasOriginalHere) return ServerPhotoPage(item, sharedKey, crop)
+private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
+    if (!item.hasOriginalHere) return ServerPhotoPage(item, sharedKey, crop, zoom)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
     val full by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { loadImage(resolver, previews, item, VIEWER_MAX_SIDE) }
     }
-    val image = full?.asImageBitmap() ?: preview
-    if (image != null) ViewerImage(image, sharedKey, crop)
+    val sharp = rememberZoomedOriginal(item, zoom) { loadImage(resolver, previews, item, zoomDecodeSide(item)) }
+    val image = sharp ?: full?.asImageBitmap() ?: preview
+    val small = preview ?: remember(full) { full?.asImageBitmap() }
+    SideEffect { zoom?.picture = small }
+    val detail = rememberDetailLayer(item, zoom, shownSide = image?.let { maxOf(it.width, it.height) } ?: 0) {
+        openOriginalRegions(resolver, previews, item)
+    }
+    ReportQuality(zoom, item, sharp = sharp != null, shownSide = image?.let { maxOf(it.width, it.height) } ?: 0, detail = detail)
+    if (image != null) ViewerImage(image, sharedKey, crop, zoom = zoom, pixelSide = maxOf(item.width, item.height), detail = detail)
+}
+
+/**
+ * The original at its own size (or as large as can be drawn, [zoomDecodeSide]) once [zoom] first zooms in, kept while
+ * the photo stays on screen; null until then.
+ */
+@Composable
+private fun rememberZoomedOriginal(item: MediaItem, zoom: PhotoZoom?, load: suspend () -> android.graphics.Bitmap?): ImageBitmap? {
+    val zoomed = zoom?.isZoomed == true
+    var wanted by remember(item.id) { mutableStateOf(false) }
+    LaunchedEffect(zoomed) { if (zoomed) wanted = true }
+    val original by produceState<ImageBitmap?>(null, item.id, wanted) {
+        if (wanted) value = withContext(Dispatchers.IO) { load()?.asImageBitmap() }
+    }
+    return original
 }
 
 /**
@@ -293,40 +419,133 @@ private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
  * for instead; offline, the cached image stays.
  */
 @Composable
-private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?) {
+private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
     val previews = LocalServerPreviews.current
     val cached by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) }
     }
-    var downloading by remember(item.id) { mutableStateOf(true) }
+    // The spinner is for a download only: an original already in the cache is just decoded, with nothing to wait for.
+    var downloading by remember(item.id) { mutableStateOf(false) }
     val original by produceState<android.graphics.Bitmap?>(null, item.id) {
+        if (item.sha256?.let { previews?.cachedOriginal(it) } == null) downloading = true
         value = withContext(Dispatchers.IO) { serverOriginal(previews, item, VIEWER_MAX_SIDE) }
         downloading = false
     }
+    // Zoomed in: decoded again from the downloaded original, at its own size.
+    val sharp = rememberZoomedOriginal(item, zoom) { serverOriginal(previews, item, zoomDecodeSide(item)) }
+    val resolver = LocalContext.current.contentResolver
+    val drawn = sharp ?: (cached ?: original)?.asImageBitmap()
+    val detail = rememberDetailLayer(item, zoom, shownSide = drawn?.let { maxOf(it.width, it.height) } ?: 0) {
+        openOriginalRegions(resolver, previews, item)
+    }
+    ReportQuality(zoom, item, sharp = sharp != null, shownSide = drawn?.let { maxOf(it.width, it.height) } ?: 0, detail = detail)
+    val progress by (previews?.originalProgress ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyMap<String, Float>()) }).collectAsState()
     val fade by animateFloatAsState(if (original != null) 1f else 0f, tween(ORIGINAL_FADE_MILLIS), label = "original")
+    // The minimap's picture: what this phone had of it, else the original as first decoded.
+    val small = remember(cached, original) { (cached ?: original)?.asImageBitmap() }
+    SideEffect { zoom?.picture = small }
     Box(Modifier.fillMaxSize()) {
         val base = cached ?: original
-        if (base != null) {
-            ViewerImage(base.asImageBitmap(), sharedKey, crop, over = original?.takeIf { cached != null }?.asImageBitmap(), overAlpha = fade)
-        }
-        if (downloading) {
-            CircularProgressIndicator(
-                color = Color.White.copy(alpha = 0.8f),
-                strokeWidth = 2.dp,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 16.dp).size(18.dp),
+        val pixelSide = maxOf(item.width, item.height)
+        if (sharp != null) {
+            ViewerImage(sharp, sharedKey, crop, zoom = zoom, pixelSide = pixelSide, detail = detail)
+        } else if (base != null) {
+            ViewerImage(
+                base.asImageBitmap(), sharedKey, crop,
+                over = original?.takeIf { cached != null }?.asImageBitmap(), overAlpha = fade,
+                zoom = zoom, pixelSide = pixelSide,
             )
+        }
+        // A cloud filling as the original downloads; shown only after a moment, so a quick one never flashes.
+        var showCloud by remember(item.id) { mutableStateOf(false) }
+        LaunchedEffect(downloading) {
+            if (downloading) delay(CLOUD_DELAY_MILLIS)
+            showCloud = downloading
+        }
+        AnimatedVisibility(
+            showCloud,
+            Modifier.align(Alignment.TopStart).statusBarRoom().padding(top = 64.dp, start = 14.dp),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            DownloadCloud(item.sha256?.let { progress[it] } ?: 0f)
         }
     }
 }
 
 private const val ORIGINAL_FADE_MILLIS = 250
 
+/** How long a download goes before its cloud shows. */
+private const val CLOUD_DELAY_MILLIS = 300L
+
+/** The cloud of [LibraryIcons.CloudUp], without its arrow. */
+private val CLOUD_PATH = PathParser().parsePathString("M17.5 19H7a5 5 0 1 1 1.1-9.9A6 6 0 0 1 19.5 11a4 4 0 0 1-2 8z").toPath()
+
+/** The original coming from the server: a cloud outline filling from the bottom as [progress] (0..1) goes. */
+@Composable
+private fun DownloadCloud(progress: Float) {
+    val level by animateFloatAsState(progress, tween(200), label = "download")
+    Canvas(
+        Modifier
+            .size(34.dp)
+            .background(LibraryColors.PillScrim, RoundedCornerShape(50))
+            .padding(7.dp),
+    ) {
+        val bounds = CLOUD_PATH.getBounds()
+        val scale = size.width / 24f
+        withTransform({ scale(scale, scale, pivot = Offset.Zero) }) {
+            // Filled up to the share downloaded, measured on the cloud itself, not on its 24-unit box.
+            val top = bounds.bottom - (bounds.bottom - bounds.top) * level
+            clipRect(top = top) { drawPath(CLOUD_PATH, Color.White) }
+            drawPath(CLOUD_PATH, Color.White, style = Stroke(width = 2f, join = StrokeJoin.Round))
+        }
+    }
+}
+
+/** The status bar's room, kept while the viewer hides it, so nothing moves when it shows for a moment. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Modifier.statusBarRoom() = windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+
+/** The same for the gesture bar at the bottom. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun Modifier.navigationBarRoom() = windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
+
 /**
- * The photo at its own shape (or its [crop]'s), centred: it looks fitted, and it is shared with the tile it was opened
- * from, so its crop opens up as the tile grows into it.
+ * Immersive while the viewer is open: the status bar and the gesture bar are hidden (a swipe from the edge shows them
+ * for a moment), and shown again when it closes.
  */
 @Composable
-private fun ViewerImage(image: ImageBitmap, sharedKey: String, crop: CropRect? = null, over: ImageBitmap? = null, overAlpha: Float = 1f) {
+private fun HideSystemBars() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
+            .filterIsInstance<android.app.Activity>().firstOrNull()?.window
+        val bars = window?.let { WindowCompat.getInsetsController(it, view) }
+        bars?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        bars?.hide(WindowInsetsCompat.Type.systemBars())
+        onDispose { bars?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+}
+
+/**
+ * The photo at its own shape (or its [crop]'s), centred: it looks fitted, and it is shared with the tile it was opened
+ * from, so its crop opens up as the tile grows into it. [zoom] scales and moves it; [pixelSide] is the longer side of
+ * the original's pixels, which "Original size" shows one to one (0: the image's own); [detail] the parts of the original
+ * decoded at full detail over it, once zoomed in past what [image] has.
+ */
+@Composable
+private fun ViewerImage(
+    image: ImageBitmap,
+    sharedKey: String,
+    crop: CropRect? = null,
+    over: ImageBitmap? = null,
+    overAlpha: Float = 1f,
+    zoom: PhotoZoom? = null,
+    pixelSide: Int = 0,
+    detail: DetailLayer? = null,
+) {
     val ratio = image.width.toFloat() / image.height
     // [over] (the original, once downloaded) is drawn on top of [image] in the same place, fading in.
     @Composable
@@ -334,11 +553,23 @@ private fun ViewerImage(image: ImageBitmap, sharedKey: String, crop: CropRect? =
         Image(image, contentDescription = null, contentScale = scale, modifier = Modifier.fillMaxSize())
         over?.let { Image(it, contentDescription = null, contentScale = scale, modifier = Modifier.fillMaxSize().alpha(overAlpha)) }
     }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    val side = pixelSide.takeIf { it > 0 } ?: maxOf(image.width, image.height)
+    // Told again on every change: after a swipe the zoom is a new one, while the screen's size stays the same.
+    var screen by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+    SideEffect { if (!screen.isEmpty()) zoom?.layout(screen, ratio, side) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onSizeChanged { screen = it.toSize() },
+        contentAlignment = Alignment.Center,
+    ) {
         if (crop != null) {
             CropBox(crop, Modifier.aspectRatio(ratio * crop.w / crop.h).shared(sharedKey)) { Pictures(ContentScale.FillBounds) }
         } else {
-            Box(Modifier.aspectRatio(ratio).shared(sharedKey)) { Pictures(ContentScale.Crop) }
+            // Laid out at its zoomed size and place (not only drawn so), so closing flies to the tile from the zoomed
+            // view rather than from the fitted photo.
+            val placed = if (zoom != null) Modifier.zoomedLayout(zoom, ratio) else Modifier.aspectRatio(ratio)
+            Box(placed.shared(sharedKey).detailOver(detail)) { Pictures(ContentScale.Crop) }
         }
     }
 }

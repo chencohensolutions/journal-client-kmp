@@ -8,6 +8,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -142,6 +146,14 @@ class ServerPreviews internal constructor(
         return largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
     }
 
+    private val _originalProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
+
+    /**
+     * The originals downloading into this cache now, by sha256, with how far each is (0..1; 0 while its size isn't
+     * known): what the viewer shows while one comes, whichever screen started it.
+     */
+    val originalProgress: StateFlow<Map<String, Float>> = _originalProgress.asStateFlow()
+
     /** The original of [sha256] when it is kept in this cache (downloaded while previews were off); never fetched. */
     suspend fun cachedOriginal(sha256: String): String? = withContext(Dispatchers.IO) {
         val dir = directory / sha256.take(2) / sha256
@@ -177,19 +189,34 @@ class ServerPreviews internal constructor(
         val extension = fileName.substringAfterLast('.', "").lowercase().filter { it.isLetterOrDigit() }.take(8)
         val target = dir / (if (extension.isEmpty()) ORIGINAL else "$ORIGINAL.$extension")
         val temp = dir / "$ORIGINAL.tmp"
-        val ok = client.prepareGet(http.url("/media/$sha256")).execute { response ->
-            if (response.status != HttpStatusCode.OK) return@execute false
-            val hashing = HashingSink.sha256(fileSystem.sink(temp))
-            hashing.buffer().use { sink ->
-                val channel = response.bodyAsChannel()
-                val buffer = ByteArray(64 * 1024)
-                while (true) {
-                    val n = channel.readAvailable(buffer)
-                    if (n == -1) break
-                    sink.write(buffer, 0, n)
+        _originalProgress.update { it + (sha256 to 0f) }
+        val ok = try {
+            client.prepareGet(http.url("/media/$sha256")).execute { response ->
+                if (response.status != HttpStatusCode.OK) return@execute false
+                val total = response.headers["Content-Length"]?.toLongOrNull()?.takeIf { it > 0 }
+                val hashing = HashingSink.sha256(fileSystem.sink(temp))
+                hashing.buffer().use { sink ->
+                    val channel = response.bodyAsChannel()
+                    val buffer = ByteArray(64 * 1024)
+                    var received = 0L
+                    var shown = 0
+                    while (true) {
+                        val n = channel.readAvailable(buffer)
+                        if (n == -1) break
+                        sink.write(buffer, 0, n)
+                        received += n
+                        // Each whole percent, not each read: the viewer redraws on every change.
+                        val percent = if (total == null) 0 else (received * 100 / total).toInt()
+                        if (percent != shown) {
+                            shown = percent
+                            _originalProgress.update { it + (sha256 to percent / 100f) }
+                        }
+                    }
                 }
+                hashing.hash.hex() == sha256
             }
-            hashing.hash.hex() == sha256
+        } finally {
+            _originalProgress.update { it - sha256 }
         }
         if (!ok) {
             fileSystem.delete(temp, mustExist = false)

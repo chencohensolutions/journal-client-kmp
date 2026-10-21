@@ -176,6 +176,12 @@ class StoriesController internal constructor(
     fun turnSet(itemIds: List<String>, itemId: String) =
         changeNotes(itemIds, rebuild = false) { it.copy(front = it.deviceId == itemId && itemId != itemIds.first()) }
 
+    /**
+     * Where the viewer was zoomed in on the photo as it was left ([zoom]: the part on screen; null: fitted), so it opens
+     * there next time. Kept in the photo's note.
+     */
+    fun setZoom(itemId: String, zoom: CropRect?) = changeNotes(listOf(itemId), rebuild = false) { it.copy(zoom = zoom) }
+
     /** The photo's crops, for looking only (the photo isn't changed); empty crops remove them. */
     fun setCrops(itemId: String, crops: PhotoCrops) = changeNotes(listOf(itemId)) { it.copy(crops = crops) }
 

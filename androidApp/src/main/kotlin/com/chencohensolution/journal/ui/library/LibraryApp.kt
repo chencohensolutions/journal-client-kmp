@@ -303,6 +303,7 @@ private fun LibraryScreens(
                                         downloadOriginal = actions.downloadOriginal,
                                         deleteFromPhone = actions.deleteFromPhone,
                                         setPrivate = actions.setPrivate,
+                                        setZoom = stories::setZoom,
                                     ),
                                 )
                                 is Route.Crop -> {

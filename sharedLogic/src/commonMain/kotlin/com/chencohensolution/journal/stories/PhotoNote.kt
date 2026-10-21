@@ -41,10 +41,15 @@ data class PhotoNote(
     val history: List<NoteVersion> = emptyList(),
     /** False once "Remove from storyline" was chosen: the writing stays, and shows in Moments, but not in the storyline. */
     val inStoryline: Boolean = true,
+    /**
+     * Where the viewer was zoomed in on the photo when it was last left: the part on screen, as fractions of the upright
+     * photo, with the screen's shape as its aspect. It opens there next time. Null: fitted.
+     */
+    val zoom: CropRect? = null,
 ) {
     val isEmpty: Boolean
         get() = caption.isBlank() && title.isBlank() && history.isEmpty() && tags.isEmpty() && crops.isEmpty &&
-            feedSet == null && !apart && !front
+            feedSet == null && !apart && !front && zoom == null
 
     val hasWriting: Boolean get() = title.isNotBlank() || caption.isNotBlank()
 
@@ -132,7 +137,7 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
         /** The fields this version writes; everything else in a file is kept as it was. */
         val NOTE_KEYS = setOf(
             "v", "deviceId", "fileName", "takenAt", "title", "caption", "writtenAt", "history", "storyline", "tags", "crops", "set",
-            "apart", "front", "updatedAt",
+            "apart", "front", "zoom", "updatedAt",
         )
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
 
@@ -155,12 +160,13 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
 }
 
 /**
- * media/<id>.json, format version 3 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt,
- * history or storyline). "caption" is the paragraph; "storyline": false once removed from the storyline.
+ * media/<id>.json, format version 4 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt,
+ * history or storyline; version 3 no zoom). "caption" is the paragraph; "storyline": false once removed from the
+ * storyline; "zoom": the part of the photo the viewer showed when last left, like a crop.
  */
 @Serializable
 private data class NoteFile(
-    val v: Int = 3,
+    val v: Int = 4,
     val deviceId: String,
     val fileName: String? = null,
     val takenAt: Long = 0,
@@ -176,6 +182,7 @@ private data class NoteFile(
     val apart: Boolean? = null,
     /** The photo its set opens on. */
     val front: Boolean? = null,
+    val zoom: RectFile? = null,
     val updatedAt: String = "",
 ) {
     fun toNote() = PhotoNote(
@@ -184,6 +191,7 @@ private data class NoteFile(
         writtenAt = writtenAt,
         history = history.orEmpty().map { NoteVersion(it.title.orEmpty(), it.text.orEmpty(), it.savedAt) },
         inStoryline = storyline != false,
+        zoom = zoom?.toRect(),
     )
 
     companion object {
@@ -201,6 +209,7 @@ private data class NoteFile(
             set = note.feedSet,
             apart = note.apart.takeIf { it },
             front = note.front.takeIf { it },
+            zoom = note.zoom?.let(RectFile::of),
             updatedAt = note.updatedAt,
         )
     }
