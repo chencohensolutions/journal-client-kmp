@@ -125,7 +125,7 @@ struct LibraryRootView: View {
                                 openViewer(ViewerRequest(storyId: nil, filter: filter, itemId: item.id))
                             }
                         case .settings:
-                            SettingsView(settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount))
+                            SettingsView(settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount), refreshLibrary: library.refresh)
                         case .place(let town):
                             PlacePageView(town: town, library: library.state, stories: stories.state, openItem: openExplore)
                         case let .year(year, month):

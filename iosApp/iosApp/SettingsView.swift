@@ -7,6 +7,9 @@ struct SettingsView: View {
     @ObservedObject var backup: BackupViewModel
     /// Photos of the chosen sources not on the server yet.
     let notBackedUp: Int
+    /// The library reads PhotoKit again once Free up space removed photos.
+    var refreshLibrary: () -> Void = {}
+    @StateObject private var freeUp = FreeUpViewModel()
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
     /// The private media slider's value while it is dragged.
@@ -17,6 +20,7 @@ struct SettingsView: View {
         Form {
             backupSections
             storageSection
+            freeUpSection
             Section {
                 Picker("Grouping", selection: Binding(get: { grouping.mode }, set: settings.setGroupingMode)) {
                     ModeLabel(title: "By day", detail: "One row for each calendar day.")
@@ -44,7 +48,10 @@ struct SettingsView: View {
             privateMediaSection
         }
         // Counted on open (and again when the limit changes or Clear is tapped).
-        .task { settings.refreshStorage() }
+        .task {
+            settings.refreshStorage()
+            freeUp.refreshPlan()
+        }
         .scrollContentBackground(.hidden)
         .background(LibraryColors.background.ignoresSafeArea())
         .navigationTitle("Settings")
@@ -210,6 +217,23 @@ extension SettingsView {
             Button("Clear", action: settings.clearPreviews).foregroundStyle(LibraryColors.onBackground)
         } header: {
             Text("Storage on this phone")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// The Free up space row: what it would free, or what it is doing; it opens its own screen.
+    private var freeUpSection: some View {
+        Section {
+            NavigationLink {
+                FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Free up space").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text(freeUp.rowText).font(.footnote).monospacedDigit().foregroundStyle(LibraryColors.muted)
+                }
+            }
+        } header: {
+            Text("Free up space")
         }
         .listRowBackground(LibraryColors.raised)
     }

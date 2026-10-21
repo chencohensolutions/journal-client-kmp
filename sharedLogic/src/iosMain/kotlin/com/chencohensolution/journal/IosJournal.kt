@@ -36,7 +36,10 @@ import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.PrivateMedia
+import com.chencohensolution.journal.storage.FreeUpController
+import com.chencohensolution.journal.storage.IosFreeUp
 import com.chencohensolution.journal.storage.PhoneStorage
+import com.chencohensolution.journal.storage.ServerVerifyApi
 import kotlinx.coroutines.flow.StateFlow
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNumber
@@ -150,6 +153,9 @@ object IosJournal {
     fun serverFiles(): IosServerFiles =
         serverFiles ?: IosServerFiles(serverLibrary(), serverPreviews(), keptOriginals(), phoneStorage()).also { serverFiles = it }
 
+    /** What this device read and uploaded, in Application Support (`backup/ledger.jsonl`); shared by backup and "Free up space". */
+    private val uploadLedger by lazy { UploadLedger(FileSystem.SYSTEM, supportDir().toPath() / "backup") }
+
     private var backupController: BackupController? = null
     private var pieceSender: BackgroundPieceSender? = null
 
@@ -172,7 +178,7 @@ object IosJournal {
             pieceSender = sender
             BackupController(
                 settings = settings,
-                ledger = UploadLedger(FileSystem.SYSTEM, supportDir().toPath() / "backup"),
+                ledger = uploadLedger,
                 library = mediaLibrary,
                 files = IosMediaFiles(caches / "files"),
                 clientFactory = IosMtlsHttpClientFactory(),
@@ -194,6 +200,31 @@ object IosJournal {
         sender.handleEvents(completion)
         return true
     }
+
+    private var freeUp: IosFreeUp? = null
+
+    /**
+     * "Free up space": takes originals the server has off the phone. One per process. [backup] sends again what it
+     * finds changed or missing; [start] runs it (in the app). Photos are copied to `Caches/freeup/files` to hash them;
+     * files waiting for the user's confirmation are kept in Application Support (`freeup/waiting.json`).
+     */
+    fun freeUp(backup: BackupController, start: () -> Unit): IosFreeUp =
+        freeUp ?: run {
+            val files = IosMediaFiles(cachesDir().toPath() / "freeup" / "files")
+            val controller = FreeUpController(
+                settings = JournalSettings(UserDefaultsStore()),
+                ledger = uploadLedger,
+                library = mediaLibrary,
+                files = files,
+                server = ServerVerifyApi(serverHttp()),
+                fileSystem = FileSystem.SYSTEM,
+                directory = supportDir().toPath() / "freeup",
+                now = { (NSDate().timeIntervalSince1970 * 1000).toLong() },
+                onLedgerChanged = backup::ledgerChanged,
+                onStart = start,
+            )
+            IosFreeUp(controller, files)
+        }.also { freeUp = it }
 
     /** Calls [onChange] (on a background queue) when photos are added or changed, or their file facts arrive. */
     fun watchLibrary(onChange: () -> Unit): ObservationHandle {

@@ -20,7 +20,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
-- **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026, without Free up space. iOS
+- **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
   writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
   every format itself, JPEG XL from iOS 17):
   - **Previews from your server** switch (on by default; asked for Oct 20, 2026). On: the server makes each photo at
@@ -34,7 +34,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - **Kept on this phone**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and **Clear**.
     Previews and downloaded originals of server photos are kept up to the limit (the oldest go first) and fetched
     again when scrolled to; none are pinned, also for photos removed from the phone.
-- **Free up space** (Android): a row, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
+- **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
   for you", "Nothing to free up right now"), opening its own screen (UX chosen by the owner on Oct 20, 2026: one button
   plus More options, a summary before running, sources to choose, manual only):
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
@@ -102,6 +102,19 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     opens the app, which shows **one** system prompt for all of them (also on the next app open, or with **Move to
     trash**). A file changed since it was checked (size or date) is left out of the prompt, with its pair. Either
     answer clears the list.
+- **Free up space on iOS** (Oct 21, 2026): the same shared `FreeUpController`, rules, sources, checks and lines; the
+  screen is a list like the rest of Settings (From is a switch per source, More options a disclosure with the rule
+  as an inline choice and its values in a menu under it). The difference is the deletion: PhotoKit always asks, so
+  nothing is ever deleted during a run (`IosPhotoTrash.canTrashWithoutAsking()` is false) and there is no "Media
+  management" dialog. The run (plan, the phone's hashing, the server's verify) happens in the app, on **Free up**; it
+  goes on for the short time iOS gives after the app leaves the screen (`beginBackgroundTask`), and when iOS ends that
+  time it stops, and what was checked by then waits. It does not run in background tasks: Free up space never runs by
+  itself, on either platform. Every file that passed waits in Application Support `freeup/waiting.json`; the screen
+  shows "120 files (3.2 GB) checked, waiting for you" with **Move to trash**, and only that tap deletes: all of them
+  in **one** `deleteAssets` request, so one iOS prompt, and they go to Recently Deleted (30 days). Unlike Android the
+  prompt is never shown by itself when a run ends. A run that ends while the app is away posts a local notification
+  ("120 files checked: tap to move them to the trash", as Android's), which opens the app; notification permission
+  is asked when **Free up** is tapped. Either answer to the prompt clears the list and that notification.
 - Private media: the server scores files with NudeNet (`scripts/scan-nudity`, journal-server-go docs/media.md
   "Nudity scan") and sends the score in the change feed (`Media.nudity`, null until scanned). While **Show private
   media** is off, a file at or over the threshold is left out of the library (`mergeWithServer`), so no screen shows it
@@ -125,6 +138,12 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   [FreeUpWorker.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/FreeUpWorker.kt), and the trash
   only in [PhotoRemoval.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhotoRemoval.kt)
   (`AndroidPhotoTrash`; see PhotoSafetyTest).
+- iOS Free up space: [FreeUpView.swift](../../iosApp/iosApp/FreeUpView.swift),
+  [FreeUpViewModel.swift](../../iosApp/iosApp/FreeUpViewModel.swift),
+  [FreeUpService.swift](../../iosApp/iosApp/FreeUpService.swift) (runs, the notification), `IosFreeUp` and
+  `IosPhotoTrash` in [iosMain/storage/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/storage/IosFreeUp.kt)
+  (factory `IosJournal.freeUp`, sharing backup's ledger), and the deletion only in
+  [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift) (`moveToRecentlyDeleted(checked:)`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
 - iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
   (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
