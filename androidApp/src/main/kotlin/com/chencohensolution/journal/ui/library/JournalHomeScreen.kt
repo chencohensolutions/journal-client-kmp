@@ -68,10 +68,8 @@ import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.FeedReveal
 import com.chencohensolution.journal.stories.RevealedPhotos
 import com.chencohensolution.journal.stories.FeedSection
-import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
-import com.chencohensolution.journal.stories.TimelineEntry
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
@@ -85,16 +83,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
 
-internal enum class HomeTab { STORIES, MOMENTS, EXPLORE }
+internal enum class HomeTab { STORYLINE, MOMENTS, EXPLORE }
 
 internal class HomeActions(
     /** A photo of the Moments tab; the viewer swipes through its row. */
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
-    val openStory: (String) -> Unit = {},
-    /** "+ Story" on a row of the Moments tab, or "Save as story" on a trip ([FeedSection.key] or [FeedTrip.key]). */
-    val createStory: (title: String, feedKey: String) -> Unit = { _, _ -> },
+    /** A photo of the storyline; the viewer swipes through the storyline. */
+    val openStoryline: (MediaItem) -> Unit = {},
     val toggleSource: (MediaSource) -> Unit = {},
-    val dismissTrip: (key: String) -> Unit = {},
     val openAllPhotos: () -> Unit = {},
     val openSettings: () -> Unit = {},
     val openTags: () -> Unit = {},
@@ -110,9 +106,8 @@ internal class HomeActions(
     val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
     val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
     val crop: (itemId: String) -> Unit = {},
-    /** From a photo's menu, or a band's "Add to a story" with all its photos. */
-    val toggleStory: (storyId: String, itemIds: List<String>, add: Boolean) -> Unit = { _, _, _ -> },
-    val createStoryWith: (title: String, itemIds: List<String>) -> Unit = { _, _ -> },
+    /** "Remove from storyline" (false) or "Add to storyline" (true) from a photo's menu. */
+    val setInStoryline: (itemId: String, inStoryline: Boolean) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The Explore tab's towns, years and map. */
     val explore: ExploreActions = ExploreActions(),
@@ -126,8 +121,8 @@ internal class HomeActions(
 )
 
 /**
- * The home screen: in the Stories tab the journal's stories as a timeline, newest first, and in the Moments tab every
- * photo as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
+ * The home screen: in the Storyline tab every photo written about, newest first, and in the Moments tab every photo
+ * as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
  * docs/screens/journal-home.md and docs/screens/moments.md.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -138,7 +133,7 @@ internal fun JournalHomeScreen(
     health: ServerHealth,
     actions: HomeActions,
     /** The tab shown first; previews use it to show Moments. */
-    initialTab: HomeTab = HomeTab.STORIES,
+    initialTab: HomeTab = HomeTab.STORYLINE,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
     /** The backup run in progress, for the bottom pill. */
@@ -154,13 +149,9 @@ internal fun JournalHomeScreen(
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     var exploreView by rememberSaveable { mutableStateOf(initialExploreView) }
-    // The row or trip whose "+ Story" or "Save as story" was tapped, and the title to start with.
-    var newStoryKey by rememberSaveable { mutableStateOf<String?>(null) }
-    var newStoryTitle by rememberSaveable { mutableStateOf("") }
-    // The photo whose long-press menu is open, and the one being written about, added to a story or tagged from it.
+    // The photo whose long-press menu is open, and the one being written about or tagged from it.
     var menuItem by rememberSaveable { mutableStateOf(initialMenuItem) }
     var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
-    var storyFor by rememberSaveable { mutableStateOf<List<String>?>(null) }
     var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
     // Photos and sets picked to merge; back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
@@ -176,9 +167,9 @@ internal fun JournalHomeScreen(
     }
     val insets = WindowInsets.systemBars.asPaddingValues()
 
-    // Stories shows only stories; every photo is in the Moments tab, as the feed.
+    // The storyline shows the photos written about; every photo is in the Moments tab, as the feed.
     val moments = tab == HomeTab.MOMENTS
-    val entries = if (moments) emptyList() else stories.timeline.filterIsInstance<TimelineEntry.StoryEntry>()
+    val storyline = tab == HomeTab.STORYLINE
     // Composes items about two screens ahead in spare time between frames, not in the frame they scroll into view.
     val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
     // A feed that changes mid-scroll (fingerprints and places keep arriving while a library is read) is shown once the
@@ -191,13 +182,20 @@ internal fun JournalHomeScreen(
     val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
         value = withContext(Dispatchers.Default) { shownFeed.rows() }
     }
-    list.LandOn(landing, feedRows.size) { id -> if (moments) feedRows.rowOf(id) else -1 }
+    val storyRows = remember(stories.storyline) { storylineRows(stories.storyline) }
+    // What the list shows below its banners: the storyline's or the feed's items.
+    val rows = when (tab) {
+        HomeTab.MOMENTS -> feedRows
+        HomeTab.STORYLINE -> storyRows
+        HomeTab.EXPLORE -> emptyList()
+    }
+    list.LandOn(landing, rows.size) { id -> rows.rowOf(id) }
     // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val canPlay = moments && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
+    val canPlay = tab != HomeTab.EXPLORE && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
     // Watched in a coroutine, not read here: a change redraws only the videos, not the whole screen (which took 20 ms).
     val playingId = remember { mutableStateOf<String?>(null) }
-    val currentRows by rememberUpdatedState(feedRows)
+    val currentRows by rememberUpdatedState(rows)
     val muted = rememberSaveable { mutableStateOf(true) }
     // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
     val currentActions by rememberUpdatedState(actions)
@@ -225,12 +223,8 @@ internal fun JournalHomeScreen(
     val feedActions = remember {
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
-            saveTrip = { trip ->
-                newStoryTitle = trip.place.orEmpty()
-                newStoryKey = trip.key
-            },
-            dismissTrip = { currentActions.dismissTrip(it) },
-            itemMenu = { _, item -> menuItem = item.id },
+            openStoryline = { currentActions.openStoryline(it) },
+            itemMenu = { item -> menuItem = item.id },
             showOnRow = { section, source ->
                 reveal = FeedReveal(section.key, source)
                 currentActions.showOnRow(section.key, source)
@@ -240,7 +234,6 @@ internal fun JournalHomeScreen(
                 currentActions.hideOnRow(section.key, source)
             },
             openRevealed = { section, band, item -> currentActions.openRevealed(section, band.source, item) },
-            addRevealedToStory = { band -> storyFor = band.items.map { it.id } },
             alwaysShow = { section, source ->
                 if (reveal == FeedReveal(section.key, source)) reveal = null
                 currentActions.alwaysShow(section, source)
@@ -285,22 +278,14 @@ internal fun JournalHomeScreen(
                 canRead && library.days.isEmpty() && library.loadError == null ->
                     item(key = "empty") { Message(stringResource(R.string.library_empty)) }
             }
-            if (tab == HomeTab.STORIES && entries.isEmpty() && library.days.isNotEmpty()) {
-                item(key = "no-stories") { Message(stringResource(R.string.library_no_stories)) }
+            if (storyline && stories.storyline.isEmpty() && library.days.isNotEmpty()) {
+                item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
             }
             if (moments && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
                 item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
             }
-            items(entries, key = { "story-${it.story.id}" }) { entry ->
-                StoryCard(
-                    cardState(entry.story),
-                    onOpen = { actions.openStory(entry.story.id) },
-                    // The card grows into the story's page.
-                    modifier = Modifier.sharedContainer(SharedKey.story(entry.story.id)),
-                )
-            }
             // Last, so landing from the viewer can count them from the end.
-            if (moments) feedItems(feedRows, feedActions, landing, video, stories.notes, selection)
+            feedItems(rows, feedActions, landing, video, stories.notes, selection)
         }
 
         TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
@@ -334,7 +319,7 @@ internal fun JournalHomeScreen(
                 }
                 SegmentedBar(
                     options = listOf(
-                        HomeTab.STORIES to stringResource(R.string.library_tab_stories),
+                        HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
                         HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
                         HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
                     ),
@@ -351,15 +336,17 @@ internal fun JournalHomeScreen(
             val block = feedRows.firstNotNullOfOrNull { row -> (row as? FeedRow.Photo)?.block?.takeIf { block -> block.items.any { it.id == item.id } } }
             FeedItemMenu(
                 item,
-                note = stories.notes[item.id]?.let { it.title.ifBlank { it.caption } },
+                note = stories.notes[item.id],
                 inSet = block is FeedBlock.Similar,
+                inMoments = moments,
                 onDismiss = { menuItem = null },
                 onChoose = { choice ->
                     menuItem = null
                     when (choice) {
                         FeedItemChoice.WRITE -> writingFor = item.id
                         FeedItemChoice.CROP -> actions.crop(item.id)
-                        FeedItemChoice.ADD_TO_STORY -> storyFor = listOf(item.id)
+                        FeedItemChoice.REMOVE_FROM_STORYLINE -> actions.setInStoryline(item.id, false)
+                        FeedItemChoice.ADD_TO_STORYLINE -> actions.setInStoryline(item.id, true)
                         FeedItemChoice.TAG -> tagFor = item.id
                         FeedItemChoice.SELECT -> selection.toggle(block?.key ?: item.id)
                         FeedItemChoice.TAKE_OUT -> actions.takeOutOfSet(item.id)
@@ -383,18 +370,6 @@ internal fun JournalHomeScreen(
             onDismiss = { writingFor = null },
         )
     }
-    storyFor?.let { ids ->
-        AddToStorySheet(
-            itemIds = ids,
-            stories = stories,
-            onToggle = { storyId, add -> actions.toggleStory(storyId, ids, add) },
-            onCreate = { title ->
-                storyFor = null
-                actions.createStoryWith(title, ids)
-            },
-            onDismiss = { storyFor = null },
-        )
-    }
     tagFor?.let { id ->
         TagSheet(
             itemIds = listOf(id),
@@ -402,19 +377,6 @@ internal fun JournalHomeScreen(
             onToggle = { tag, add -> actions.toggleTag(id, tag, add) },
             onCreate = { tag -> actions.toggleTag(id, tag, true) },
             onDismiss = { tagFor = null },
-        )
-    }
-
-    newStoryKey?.let { key ->
-        StoryTitleDialog(
-            title = stringResource(R.string.library_new_story),
-            initial = newStoryTitle,
-            confirmLabel = stringResource(R.string.library_create),
-            onConfirm = {
-                newStoryKey = null
-                actions.createStory(it, key)
-            },
-            onDismiss = { newStoryKey = null },
         )
     }
 }

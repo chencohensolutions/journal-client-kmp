@@ -77,13 +77,12 @@ data class PrivateMedia(val show: Boolean = false, val thresholdPercent: Int = D
     }
 }
 
-/** The user's choices on the Settings screen, and the Moments tab's filter bar and trip answers. */
+/** The user's choices on the Settings screen, and the Moments tab's filter bar. */
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
     val similarity: SimilarityThreshold = SimilarityThreshold(),
     /** What the app shows of each source (Settings › Show in the app, and the Moments filter bar). */
     val shownSources: ShownSources = ShownSources(),
-    val dismissedTrips: Set<String> = emptySet(),
     /** How much the previews of server photos may take up on this device (Settings → Storage on this phone). */
     val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
     /** How server photos are shown: previews (format, quality) or their originals. */
@@ -116,7 +115,6 @@ class SettingsController internal constructor(
             grouping = settings.grouping,
             similarity = similarity(settings.similarityPercent),
             shownSources = settings.shownSources,
-            dismissedTrips = settings.dismissedTrips,
             previewCacheGigabytes = settings.previewCacheGigabytes,
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
@@ -164,13 +162,6 @@ class SettingsController internal constructor(
         val shown = transform(_state.value.shownSources)
         settings.shownSources = shown
         _state.update { it.copy(shownSources = shown) }
-    }
-
-    /** "Not now" on a trip suggestion: it isn't offered again. */
-    fun dismissTrip(key: String) {
-        val trips = _state.value.dismissedTrips + key
-        settings.dismissedTrips = trips
-        _state.update { it.copy(dismissedTrips = trips) }
     }
 
     /** The previews' limit; the platform trims them to it. Values below 1 are ignored. */

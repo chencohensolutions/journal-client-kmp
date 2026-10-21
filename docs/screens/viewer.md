@@ -5,14 +5,12 @@ One photo or video at a time, full screen on black.
 ## What it swipes through
 
 - Opened from a tag: the photos with that tag.
-- Opened from a group: that group's photos, with each subgroup as one stop (its cover) and the same **Open** button.
-- Opened from a story: that story's photos, with each group as one stop (its cover) and a **⧉ 14 · Open** button
-  in the top bar that opens the group.
+- Opened from the Storyline tab: the storyline's photos, newest first.
 - Opened from a row of the Moments tab: that row's photos as shown.
 - Opened from All photos: everything in the current filter.
 
-The list is fixed when the viewer opens, so tagging a photo or adding it to a story (which takes it out of Unsorted)
-doesn't pull it out from under you. If the open item is deleted from the device, the viewer closes.
+The list is fixed when the viewer opens, so tagging a photo or removing it from the storyline doesn't pull it out
+from under you. If the open item is deleted from the device, the viewer closes.
 
 ## Layout
 
@@ -43,14 +41,10 @@ Swiping is not a tap; a playing video's own controls take its taps.
   as the writing and keeps what it replaced as a version too, so nothing is lost. Moments doesn't show history.
   - **Tags:** chips with ×, and **+ Tag**, which opens the same kind of search sheet for tags (recent tags before
     typing, **Create tag "…"** for a new one). See [tags.md](tags.md).
-  - **Stories:** the stories the item is in ("Car trouble, Walk with the dog", or "Not in any story"),
-    **+ Add to story**, and **− Remove from <story>** when the viewer was opened from that story.
-    **Add to story** opens a search sheet, focused and ready to type. Before typing it suggests stories that hold
-    photos **on these days**, **nearby** ones (within 7 days) and the 3 most **recent**; typing searches every story
-    by title (anywhere in the word, one typo allowed for 4+ letters), closest in time first, with
-    **Create "…"** at the top. A check marks the stories the item is in; tapping one adds or removes it.
-  - **Group** instead of Stories when opened from a group: its name, **Set as cover** (or "This is the cover"),
-    and **− Remove from group** (the photo moves to the level above the group, even from a subgroup).
+  - **Storyline** (Oct 21, 2026; only for a photo with a title or paragraph): "In the storyline" with **Remove**,
+    or "Not in the storyline" with **Add back**. Removing keeps the writing, which still shows in Moments. The
+    Stories and Group sections, **Add to story**, and the **⧉ 14 · Open** button for a group's cover went with
+    stories the same day.
   - **The original** (both platforms; iOS since Oct 21, 2026): where it is
     ("On this phone and on your server", "Only on this phone", "Downloaded to this phone, and on your server", "Only
     on your server", or the upload state with % and a bar), then file name, size, dimensions, length for videos,
@@ -64,7 +58,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
     removed ("Not deleted: your server didn't confirm…"). A downloaded original is then deleted; a gallery photo
     goes to the phone's trash through Android's own prompt (`PhotoRemoval.kt`), or on iOS to Recently Deleted through
     PhotoKit's own prompt (`PhotoRemoval.swift`, approved by the owner); these two files are the only exceptions in
-    `PhotoSafetyTest`. The photo keeps its place, its stories and note (it keeps its device id), and shows from its
+    `PhotoSafetyTest`. The photo keeps its place and its note (it keeps its device id), and shows from its
     preview. On iOS a library photo can't reach this yet: without iOS backup no device photo is backed up, so only a
     downloaded original can be deleted.
 - **Photos only on the server:** the best image already on the phone shows at once (the largest decoded in memory,

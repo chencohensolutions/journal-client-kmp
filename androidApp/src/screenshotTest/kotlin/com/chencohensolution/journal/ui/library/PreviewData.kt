@@ -17,14 +17,8 @@ import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
-import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
-import com.chencohensolution.journal.stories.Story
-import com.chencohensolution.journal.stories.StoryGroup
-import com.chencohensolution.journal.stories.StoryMember
-import com.chencohensolution.journal.stories.StoryView
-import com.chencohensolution.journal.stories.TimelineEntry
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoCrops
@@ -34,7 +28,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Made-up library and stories for the screenshot tests. Dates are relative to now, so "Today" and "Yesterday" read
+ * A made-up library, Moments feed and storyline for the screenshot tests. Dates are relative to now, so "Today" and "Yesterday" read
  * right whenever the previews are rendered. The pictures are placeholders (see [Screen]).
  */
 internal object PreviewData {
@@ -71,32 +65,10 @@ internal object PreviewData {
     fun day(daysAgo: Int, count: Int, item: (Int) -> MediaItem = { photo(daysAgo, hour = 20 - it) }): List<MediaItem> =
         List(count) { item(it) }
 
-    fun story(title: String, items: List<MediaItem>, intro: String = ""): StoryView {
-        val sorted = items.sortedBy { it.takenAtMillis }
-        val story = Story(
-            id = "2026-10-17T12-00-00.000Z-$title",
-            title = title,
-            members = sorted.map { StoryMember(it.id, it.fileName, it.takenAtMillis) },
-            createdAt = "2026-10-17T12:00:00Z",
-            updatedAt = "2026-10-17T12:00:00Z",
-            intro = intro,
-        )
-        return StoryView(story, sorted)
-    }
-
     private val ratios = listOf(4f / 3f, 3f / 4f, 16f / 9f, 1f)
 
-    val japan = story(
-        "Japan trip",
-        (2..10).flatMap { d -> day(d, 4) { photo(d, hour = 9 + it * 3, ratio = ratios[it], backup = if (d > 6) BackupStatus.BackedUp else BackupStatus.NotBackedUp) } },
-        intro = "Nine days, two cities and far too many trains.",
-    )
-    val birthday = story("Noa’s birthday", day(15, 6) { photo(15, hour = 16 + it % 4, backup = BackupStatus.BackedUp) })
-    val weekend = story("Weekend in the north", day(22, 5) { photo(22, ratio = 16f / 9f, backup = BackupStatus.BackedUp) } + day(23, 4) { photo(23, backup = BackupStatus.BackedUp) })
-
-    /** A story without a title: only its dates and count show above its photos. */
-    val untitled = story("", day(12, 8) { photo(12, hour = 10 + it, ratio = ratios[it % 4], backup = BackupStatus.BackedUp) })
-    val dinner = story("Dinner at Maya’s", day(18, 2) { photo(18, hour = 20 + it, backup = BackupStatus.BackedUp) })
+    /** Older days, as the library lists them. */
+    private val older = (2..23).filter { it % 3 != 0 }.map { d -> day(d, 4) { photo(d, hour = 9 + it * 3, ratio = ratios[it], backup = BackupStatus.BackedUp) } }
 
     val today = day(0, 7) {
         when (it) {
@@ -110,59 +82,19 @@ internal object PreviewData {
     }
     val earlier = day(11, 6)
 
-    val unsorted = listOf(today, yesterday, earlier)
+    private val recent = listOf(today, yesterday, earlier)
 
     val library = LibraryState(
         access = PhotoAccess.FULL,
-        days = (unsorted + listOf(japan.items, untitled.items, birthday.items, dinner.items, weekend.items))
+        days = (recent + older)
             .flatten()
             .sortedByDescending { it.takenAtMillis }
             .groupBy { it.day }
             .map { (day, items) -> DayGroup(day, items) },
     )
 
-    val stories = StoriesState(
-        stories = listOf(japan, birthday, weekend),
-        timeline = listOf(
-            TimelineEntry.MomentEntry(Moment(today, GroupingMode.BY_DAY)),
-            TimelineEntry.MomentEntry(Moment(yesterday, GroupingMode.BY_DAY)),
-            TimelineEntry.StoryEntry(japan),
-            TimelineEntry.MomentEntry(Moment(earlier, GroupingMode.BY_DAY)),
-            TimelineEntry.StoryEntry(birthday),
-            TimelineEntry.StoryEntry(weekend),
-        ),
-        unsortedDays = unsorted.map { DayGroup(it.first().day, it) },
-        moments = unsorted.map { Moment(it, GroupingMode.BY_DAY) },
-    )
-
-    /** The journal with an untitled story and a two-photo one too, for the story card designs. */
-    val moreStories = stories.copy(
-        stories = listOf(japan, untitled, birthday, dinner, weekend),
-        timeline = listOf(
-            TimelineEntry.StoryEntry(japan),
-            TimelineEntry.StoryEntry(untitled),
-            TimelineEntry.StoryEntry(birthday),
-            TimelineEntry.StoryEntry(dinner),
-            TimelineEntry.StoryEntry(weekend),
-        ),
-    )
-
-    /**
-     * A story with a group of seven photos and a three-photo subgroup that holds the cover: eight tiles, so the last
-     * row of the group's page is not full.
-     */
-    val seaside: StoryView = run {
-        val items = day(5, 10) { photo(5, hour = 8 + it, ratio = ratios[it % 4], backup = BackupStatus.BackedUp) }.sortedBy { it.takenAtMillis }
-        val view = story("Summer by the sea", items)
-        val groups = listOf(
-            StoryGroup("g1", "Day at the sea", coverId = items[8].id, memberIds = items.take(7).map { it.id }, text = "Cold water, warm sand."),
-            StoryGroup("g2", "Sunset", coverId = items[8].id, memberIds = items.drop(7).map { it.id }, parentId = "g1"),
-        )
-        StoryView(view.story.copy(groups = groups), view.items)
-    }
-
-    /** A first launch: access granted, but no stories yet. */
-    val noStories = stories.copy(stories = emptyList(), timeline = stories.timeline.filterIsInstance<TimelineEntry.MomentEntry>())
+    /** Nothing written yet: the storyline is empty. */
+    val stories = StoriesState(itemsById = library.days.flatMap { it.items }.associateBy { it.id })
 
     private var tripCoverItem: MediaItem? = null
 
@@ -192,9 +124,8 @@ internal object PreviewData {
             "Tel Aviv",
         )
         val tripDay = section(listOf(FeedMoment(MediaSource.CAMERA, listOf(single(tripCover), similar(14, 12, 3f / 4f, 3)), "Bahá’í Gardens")), "Haifa")
-        val trip = FeedTrip("trip", "Haifa", LocalDay.fromEpochDay(tripCover.day.toEpochDay() - 2), tripCover.day, tripDay.items)
         MomentsFeed(
-            entries = listOf(FeedEntry.Section(today), FeedEntry.Section(yesterday), FeedEntry.Trip(trip), FeedEntry.Section(tripDay)),
+            entries = listOf(FeedEntry.Section(today), FeedEntry.Section(yesterday), FeedEntry.Section(tripDay)),
             counts = mapOf(MediaSource.CAMERA to 168, MediaSource.WHATSAPP to 19, MediaSource.SCREENSHOTS to 23, MediaSource.OTHER to 4),
             shown = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS),
         )
@@ -208,7 +139,7 @@ internal object PreviewData {
     /** A 4:3 photo of Carmel Market, cropped wide for Moments, with a short note. */
     val croppedPhoto: MediaItem = todayMoments[2].blocks[0].items.first()
 
-    /** A 16:9 photo of the trip, cropped to the screen's shape for the viewer held upright. */
+    /** A 16:9 photo of a day in Haifa, cropped to the screen's shape for the viewer held upright. */
     val tripPhoto: MediaItem = tripCoverItem!!
 
     /** This phone's screen held upright (width / height), as in [PHONE]. */
@@ -220,28 +151,27 @@ internal object PreviewData {
         landscape = CropRect(0f, 0.2f, 1f, (4f / 3f) * SCREEN_RATIO, 1 / SCREEN_RATIO),
     )
 
-    private fun note(item: MediaItem, text: String, crops: PhotoCrops = PhotoCrops()) =
-        item.id to PhotoNote(item.id, item.fileName, item.takenAtMillis, caption = text, updatedAt = "2026-10-19T10:00:00Z", crops = crops)
+    private fun note(item: MediaItem, text: String, crops: PhotoCrops = PhotoCrops(), title: String = "") =
+        item.id to PhotoNote(item.id, item.fileName, item.takenAtMillis, caption = text, updatedAt = "2026-10-19T10:00:00Z", crops = crops, title = title)
 
-    /** The journal with the feed in its Moments tab, some photos with notes. */
+    private val feedNotes = mapOf(
+        note(
+            notedPhoto,
+            "The fishermen came in just as the sun dropped behind the old port. Noa wanted to stay until the last boat " +
+                "was tied, so we sat on the wall with the ice cream melting and watched the gulls fight over what was left. " +
+                "One of those evenings that didn't need a plan.",
+            title = "Last boats at Jaffa",
+        ),
+        note(croppedPhoto, "Breakfast at the market before everyone woke up.", marketCrops, title = "Carmel Market"),
+        note(tripPhoto, "", PhotoCrops(portrait = CropRect(0.52f, 0f, SCREEN_RATIO / (16f / 9f), 1f, SCREEN_RATIO)), title = "The gardens from the top"),
+    )
+
+    /** The journal with the feed in its Moments tab, some photos written about: they make the storyline. */
     val feedStories: StoriesState = stories.copy(
         feed = feed,
-        notes = mapOf(
-            note(
-                notedPhoto,
-                "The fishermen came in just as the sun dropped behind the old port. Noa wanted to stay until the last boat " +
-                    "was tied, so we sat on the wall with the ice cream melting and watched the gulls fight over what was left. " +
-                    "One of those evenings that didn't need a plan.",
-            ),
-            note(croppedPhoto, "Breakfast at the market before everyone woke up.", marketCrops),
-            note(tripPhoto, "", PhotoCrops(portrait = CropRect(0.52f, 0f, SCREEN_RATIO / (16f / 9f), 1f, SCREEN_RATIO))),
-        ),
-        itemsById = stories.itemsById + feed.entries.flatMap { entry ->
-            when (entry) {
-                is FeedEntry.Section -> entry.section.items
-                is FeedEntry.Trip -> entry.trip.items
-            }
-        }.associateBy { it.id },
+        notes = feedNotes,
+        storyline = listOf(notedPhoto, croppedPhoto, tripPhoto).sortedByDescending { it.takenAtMillis },
+        itemsById = stories.itemsById + feed.entries.flatMap { (it as FeedEntry.Section).section.items }.associateBy { it.id },
     )
 
     // Hiding sources (Settings › Show in the app): WhatsApp and screenshots off, as at first.

@@ -1,10 +1,9 @@
 # Journal (home)
 
 The main screen, with three tabs (renamed on Oct 19, 2026 from Journal / Unsorted; **Explore** added Oct 20, 2026,
-on iOS since Oct 21, 2026). **Stories** is the timeline of
-**stories** (a trip, a birthday, a person, anything worth naming), newest first; a story sits at its newest photo's
-day. **Moments** holds **every photo**, in rows: one row per day, or with the [grouping setting](settings.md) one row
-per run of photos without a long break. Photos never show on the Stories tab outside their story card.
+on iOS since Oct 21, 2026). **Storyline** (it replaced the Stories tab on Oct 21, 2026, owner's decision; the
+stories themselves were deleted) holds every photo you wrote about. **Moments** holds **every photo**, in rows: one
+row per day, or with the [grouping setting](settings.md) one row per run of photos without a long break.
 
 ## Layout
 
@@ -19,22 +18,24 @@ Photos fill the screen on the page background (light or dark with the system); t
     [photo-access.md](photo-access.md).
   - **Journal can see N photos and videos · Change**: limited access. Opens the system picker to change the
     selection.
-- **Story cards:** the title above, then "Oct 8 – 16 · 9 days · 142 photos" (an untitled story shows only that line,
-  in bold, as its heading), with a cloud-off icon and count at the right while any photo isn't on the server. Under
-  them a mosaic of the story's **main photos**: its first six tiles in the story's order, a group as its cover. One
-  photo is full width, two sit side by side, three to five are a large one with two beside it, and six add a row of
-  three under them. The last photo shows "+N" for the rest of the story. Tapping opens the [story](story-page.md).
+- **Storyline:** every photo or video with a title or a paragraph (see the [note editor](viewer.md)), one each and
+  never a set, newest first by the date taken. A small day heading comes before each new day; then the title above
+  the photo, the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
+  Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to
+  have one photo of a set here, open that photo and write on it. Tapping opens the [viewer](viewer.md), swiping
+  through the storyline; a long press opens the photo's menu, with **Remove from storyline** (the writing stays and
+  still shows in Moments; `"storyline": false` in its note file) or, once removed, **Add to storyline**.
 - **Moments:** a feed of every photo that groups itself, full-width photos split by time, place, source and
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
-  - **Stories / Moments / Explore** switch: Stories shows only story cards, Moments the photos, Explore the photos by
-    town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
+  - **Storyline / Moments / Explore** switch: Storyline shows the photos you wrote about, Moments every photo,
+    Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
     **Cancel · N selected · Merge** takes its place.
 
-Empty, loading and error states show a single line of text in place of the days. With photos but no stories yet,
-the Stories tab says "No stories yet. Make one from a day in Moments."
+Empty, loading and error states show a single line of text in place of the days. With nothing written yet, the
+Storyline tab says "Nothing here yet. Open a photo and tap Write: what you write shows here."
 
 ## Behavior
 
@@ -48,8 +49,8 @@ the Stories tab says "No stories yet. Make one from a day in Moments."
 
 These are in the design but wait for features that don't exist:
 
-- **Sub-stories.** They will only show inside a story, with an option in Settings later.
-- **Selecting several photos** to put them in a story at once.
+- **More photos with one entry** of the storyline (the owner will decide how, later); for now each entry is one
+  photo.
 - **Month scrubber** on the right edge for fast scrolling.
 
 ## Code

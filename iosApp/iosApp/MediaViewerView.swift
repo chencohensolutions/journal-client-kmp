@@ -5,14 +5,11 @@ import SharedLogic
 /// What the viewer can ask its parent to do.
 struct ViewerActions {
     var close: () -> Void
-    var openGroup: (_ groupId: String) -> Void
-    var setCover: (_ itemId: String) -> Void
-    var removeFromGroup: (_ itemId: String) -> Void
-    var toggleStory: (_ storyId: String, _ itemId: String, _ add: Bool) -> Void
-    var createStory: (_ title: String, _ itemId: String) -> Void
     var setWriting: (_ itemId: String, _ title: String, _ text: String) -> Void
     /// Back to an earlier version of the photo's writing.
     var restoreWriting: (_ itemId: String, _ version: NoteVersion) -> Void
+    /// "Remove" (false) or "Add back" (true) in the details' Storyline.
+    var setInStoryline: (_ itemId: String, _ inStoryline: Bool) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
     /// Saves the photo's crops (Done on the crop screen).
     var setCrops: (_ itemId: String, _ crops: PhotoCrops) -> Void
@@ -40,20 +37,16 @@ enum RemovalOutcome {
     case noPreview
 }
 
-/// One photo or video at a time, swiping through `items`. `openedFrom` is the story the viewer was opened from, if
-/// any, and `group` the group within it. See docs/screens/viewer.md.
+/// One photo or video at a time, swiping through `items`. See docs/screens/viewer.md.
 struct MediaViewerView: View {
     let items: [MediaItem]
     let stories: StoriesState
-    let openedFrom: StoryView?
-    let group: GroupView?
     let actions: ViewerActions
 
     @State private var currentId: String
     @State private var showInfo = false
     /// The bars and buttons over the photo: hidden at first, shown by a tap for 3 seconds, hidden by the next tap.
     @State private var chrome = false
-    @State private var choosingStory = false
     @State private var choosingTag = false
     @State private var editingCaption = false
     /// The whole photo instead of its crop, until turned back (kept while swiping).
@@ -61,11 +54,9 @@ struct MediaViewerView: View {
     @State private var cropping: CropRequest?
     @State private var screenSize = CGSize(width: 9, height: 19.5)
 
-    init(items: [MediaItem], startId: String, stories: StoriesState, openedFrom: StoryView?, group: GroupView?, actions: ViewerActions) {
+    init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions) {
         self.items = items
         self.stories = stories
-        self.openedFrom = openedFrom
-        self.group = group
         self.actions = actions
         _currentId = State(initialValue: startId)
     }
@@ -135,25 +126,12 @@ struct MediaViewerView: View {
         .animation(.easeInOut(duration: 0.2), value: chrome)
         // They stay while the details panel, a sheet, the note editor or the crop screen is open, and for the full
         // time again after it closes.
-        .task(id: [chrome, showInfo, choosingStory, choosingTag, editingCaption, cropping != nil]) {
-            guard chrome, !showInfo, !choosingStory, !choosingTag, !editingCaption, cropping == nil else { return }
+        .task(id: [chrome, showInfo, choosingTag, editingCaption, cropping != nil]) {
+            guard chrome, !showInfo, !choosingTag, !editingCaption, cropping == nil else { return }
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled { chrome = false }
         }
         .onChange(of: currentId, initial: true) { actions.showing(currentId) }
-        .sheet(isPresented: $choosingStory) {
-            if let item = items[safe: index] {
-                AddToStorySheet(
-                    itemIds: [item.id],
-                    stories: stories,
-                    onToggle: { storyId, add in actions.toggleStory(storyId, item.id, add) },
-                    onCreate: { title in
-                        choosingStory = false
-                        actions.createStory(title, item.id)
-                    }
-                )
-            }
-        }
         .sheet(isPresented: $choosingTag) {
             if let item = items[safe: index] {
                 TagSheet(
@@ -194,14 +172,6 @@ struct MediaViewerView: View {
                     .foregroundStyle(Color(white: 0.75))
             }
             Spacer()
-            // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
-            if let item = items[safe: index],
-               let coverOf = group.map({ $0.coverStop(itemId: item.id) }) ?? openedFrom?.coverStop(itemId: item.id) {
-                Button { actions.openGroup(coverOf.id) } label: {
-                    Label("\(Int(coverOf.itemCount)) · Open", systemImage: "square.on.square")
-                        .font(.subheadline.weight(.semibold))
-                }
-            }
             Button { showInfo.toggle() } label: {
                 Image(systemName: "info.circle")
                     .font(.system(size: 20))
@@ -216,20 +186,13 @@ struct MediaViewerView: View {
     }
 
     private func infoPanel(item: MediaItem) -> some View {
-        let memberOf = stories.storiesContaining(itemId: item.id)
-        return InfoPanel(
+        InfoPanel(
             item: item,
             note: stories.note(itemId: item.id),
             onEditCaption: { editingCaption = true },
             onAddTag: { choosingTag = true },
             onRemoveTag: { actions.toggleTag(item.id, $0, false) },
-            memberOf: memberOf,
-            removable: openedFrom.flatMap { from in memberOf.contains { $0.id == from.id } ? from : nil },
-            onAddToStory: { choosingStory = true },
-            onRemove: { actions.toggleStory($0.id, item.id, false) },
-            group: group,
-            onSetCover: { actions.setCover(item.id) },
-            onRemoveFromGroup: { actions.removeFromGroup(item.id) },
+            setInStoryline: { actions.setInStoryline(item.id, $0) },
             location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
             downloadOriginal: actions.downloadOriginal,
             deleteFromPhone: actions.deleteFromPhone,
@@ -486,20 +449,15 @@ private struct VideoPage: View {
     }
 }
 
-/// Date, backup status, stories and file details of the current item.
+/// Date, writing, tags, storyline, backup status and file details of the current item.
 private struct InfoPanel: View {
     let item: MediaItem
     let note: PhotoNote?
     let onEditCaption: () -> Void
     let onAddTag: () -> Void
     let onRemoveTag: (String) -> Void
-    let memberOf: [StoryView]
-    let removable: StoryView?
-    let onAddToStory: () -> Void
-    let onRemove: (StoryView) -> Void
-    let group: GroupView?
-    let onSetCover: () -> Void
-    let onRemoveFromGroup: () -> Void
+    /// "Remove" (false) or "Add back" (true).
+    let setInStoryline: (Bool) -> Void
     let location: (GeoPoint, PlaceName?)?
     let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
     let deleteFromPhone: (MediaItem) async -> RemovalOutcome
@@ -561,37 +519,19 @@ private struct InfoPanel: View {
                             .frame(height: 32)
                     }
                 }
-                if let group {
+                // Only a photo with writing can be in the storyline.
+                if let note, note.hasWriting {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Group").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
-                        Text(group.name).font(.subheadline.weight(.medium))
+                        Text("Storyline").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
                         HStack(spacing: 16) {
-                            if group.cover.id == item.id {
-                                Text("This is the cover").foregroundStyle(LibraryColors.onInverseMuted)
+                            Text(note.inStoryline ? "In the storyline" : "Not in the storyline").font(.subheadline.weight(.medium))
+                            if note.inStoryline {
+                                Button("Remove") { setInStoryline(false) }.foregroundStyle(LibraryColors.error)
                             } else {
-                                Button("Set as cover", action: onSetCover).foregroundStyle(LibraryColors.accent)
-                            }
-                            Button(action: onRemoveFromGroup) { Label("Remove from group", systemImage: "minus") }
-                                .foregroundStyle(LibraryColors.error)
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.top, 4)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Stories").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
-                        Text(memberOf.isEmpty ? String(localized: "Not in any story") : memberOf.map(\.name).joined(separator: ", "))
-                            .font(.subheadline.weight(.medium))
-                        HStack(spacing: 16) {
-                            Button(action: onAddToStory) { Label("Add to story", systemImage: "plus") }
-                                .foregroundStyle(LibraryColors.accent)
-                            if let removable {
-                                Button { onRemove(removable) } label: { Label("Remove from \(removable.name)", systemImage: "minus") }
-                                    .foregroundStyle(LibraryColors.error)
+                                Button("Add back") { setInStoryline(true) }.foregroundStyle(LibraryColors.accent)
                             }
                         }
                         .font(.subheadline.weight(.semibold))
-                        .padding(.top, 4)
                     }
                 }
                 OriginalCard(

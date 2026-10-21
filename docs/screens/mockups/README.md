@@ -6,19 +6,22 @@ and the screens link to each other like the app.
 
 They follow the specs in [docs/screens/](..). When a spec changes, change its mockup in the same commit.
 
+**Out of date:** `journal-home.html` and `viewer.html` still show stories (story cards, + Story, Add to story, the
+Stories and Group sections), which were replaced by the storyline on Oct 21, 2026, and the home mockup predates the
+Moments feed. Follow [journal-home.md](../journal-home.md) and [viewer.md](../viewer.md) until they are redrawn. The
+story and group mockups were deleted.
+
 | File | Screen | Try |
 |---|---|---|
 | `photo-access.html` | [Photo access](../photo-access.md) | Allow access, Not now |
-| `journal-home.html` | [Journal](../journal-home.md) | Stories / Moments, ⋯, + Story |
-| `story.html` | [Story](../story-page.md) | Group them, long-press to select, ⋯ › Arrange layout |
-| `group.html` | [Group](../group.md) | ⋯ › Rename, Edit |
-| `viewer.html` | [Viewer](../viewer.md) | ⓘ, + Tag, Add to story |
+| `journal-home.html` | [Journal](../journal-home.md) (out of date) | ⋯, the tabs |
+| `viewer.html` | [Viewer](../viewer.md) (out of date) | ⓘ, + Tag |
 | `all-photos.html` | [All photos](../all-photos.md) | the filter bar |
 | `tags.html` | [Tags](../tags.md) | search, open a tag |
 | `settings.html` | [Settings](../settings.md) | By breaks between photos |
 
 URL options: `?theme=light|dark`, and on some screens `?offline`, `journal-home.html?tab=unsorted`,
-`?card=register|denied|limited`, `?grouping=breaks`, `viewer.html?from=story|group|tag|all&info`.
+`?card=register|denied|limited`, `?grouping=breaks`, `viewer.html?from=tag|all&info`.
 
 ## How they're built
 

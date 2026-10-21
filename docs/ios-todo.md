@@ -3,9 +3,9 @@
 Work done on the Windows machine is Android only (no Xcode there). Each entry says what Android has and what the
 SwiftUI side needs, so it can be finished on the Mac. Remove an entry once iOS has it.
 
-Built on iOS on the Mac (Oct 21, 2026): Moments, Explore, arranging a story's layout, backup and its settings, and
-the where-the-original-is badge, plus crop, server-only photos and videos, Storage on this phone, Private media and
-Free up space.
+Built on iOS on the Mac (Oct 21, 2026): Moments, Explore, backup and its settings, and the where-the-original-is
+badge, plus crop, server-only photos and videos, Storage on this phone, Private media and Free up space; then, the
+same day on both platforms, writing with a title, paragraph and history, and the storyline in place of stories.
 
 Still missing on iOS:
 

@@ -90,8 +90,8 @@ extension SettingsView {
             Text("Show in the app")
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Applies to Moments, All photos, Explore, Tags and picking photos for a story.")
-                Text("Photos you already put in a story always show there. Hiding never deletes anything and doesn't change what is backed up.")
+                Text("Applies to Moments, All photos, Explore and Tags.")
+                Text("Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up.")
             }
         }
         .listRowBackground(LibraryColors.raised)

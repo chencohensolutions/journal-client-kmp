@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.stories.CropRect
@@ -67,7 +68,6 @@ import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
-import com.chencohensolution.journal.stories.FeedTrip
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
@@ -76,34 +76,31 @@ import java.time.LocalDate
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
 // Photos are full width at their own shape; near-duplicates are one photo you swipe. See docs/screens/moments.md.
+// The Storyline tab is drawn with the same items: each photo written about, with its day above the first of a day.
 
 internal class FeedActions(
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
-    val saveTrip: (FeedTrip) -> Unit = {},
-    val dismissTrip: (key: String) -> Unit = {},
-    /** Long press on a photo: Write about it, Crop, Add to story, Tag. */
-    val itemMenu: (FeedSection, MediaItem) -> Unit = { _, _ -> },
+    /** A photo of the storyline; the viewer swipes through the storyline. */
+    val openStoryline: (MediaItem) -> Unit = {},
+    /** Long press on a photo: Write about it, Crop, Tag, Remove from storyline. */
+    val itemMenu: (MediaItem) -> Unit = {},
     /** A "+6 WhatsApp" chip: that source's hidden photos of the row, in a band under it; "Hide WhatsApp" again. */
     val showOnRow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
     val hideOnRow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
     /** A photo of a band; the viewer swipes through the band. */
     val openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Unit = { _, _, _ -> },
-    /** A band's "Add to a story" and "Always show this day". */
-    val addRevealedToStory: (RevealedPhotos) -> Unit = {},
+    /** A band's "Always show this day". */
     val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
 )
 
 /**
- * One item of the feed's list: a trip card, a row's divider, a moment's label, or one photo or near-duplicate set.
+ * One item of the feed's list: a row's divider, a moment's label, or one photo or near-duplicate set; or of the
+ * storyline: a day, or one photo.
  * A photo per item keeps the list lazy: a moment of a hundred photos lays out only the ones in view. Counts, towns and
  * times are worked out with the rows, off the main thread, so an item coming into view only lays them out.
  */
 internal sealed interface FeedRow {
     val key: String
-
-    data class Trip(val trip: FeedTrip) : FeedRow {
-        override val key get() = trip.key
-    }
 
     /** [count]: the row's photos; [towns]: "Tel Aviv → Jaffa", empty when it has no places. */
     data class Heading(val section: FeedSection, val count: Int, val towns: String) : FeedRow {
@@ -134,6 +131,16 @@ internal sealed interface FeedRow {
     data class BandEnd(val section: FeedSection, val band: RevealedPhotos) : FeedRow {
         override val key get() = "band-end-${section.key}-${band.source}"
     }
+
+    /** The storyline: the day of the photos under it, until the next one. */
+    data class StoryDay(val day: LocalDay) : FeedRow {
+        override val key get() = "story-day-$day"
+    }
+
+    /** The storyline: one photo with its writing. */
+    data class StoryPhoto(val item: MediaItem) : FeedRow {
+        override val key get() = "story-${item.id}"
+    }
 }
 
 /** Photos and sets picked in Moments to merge, by their first photo's id; picking is on while any is. */
@@ -158,7 +165,6 @@ internal val FeedBlock.key: String get() = items.first().id
 /** The feed as list items; worked out once per feed, off the main thread. */
 internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
-        is FeedEntry.Trip -> listOf(FeedRow.Trip(entry.trip))
         is FeedEntry.Section -> {
             var place: String? = null
             val section = entry.section
@@ -178,12 +184,23 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     }
 }
 
+/** The storyline ([items], newest first) as list items: each day, then its photos. */
+internal fun storylineRows(items: List<MediaItem>): List<FeedRow> {
+    var day: LocalDay? = null
+    return items.flatMap { item ->
+        val heading = if (item.day != day) FeedRow.StoryDay(item.day) else null
+        day = item.day
+        listOfNotNull(heading, FeedRow.StoryPhoto(item))
+    }
+}
+
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
 
 /** The item of [rows] that shows [itemId], or -1: for landing from the viewer. */
 internal fun List<FeedRow>.rowOf(itemId: String): Int = indexOfFirst { row ->
-    (row is FeedRow.Photo && row.block.items.any { it.id == itemId }) || (row is FeedRow.BandPhotos && row.items.any { it.id == itemId })
+    (row is FeedRow.Photo && row.block.items.any { it.id == itemId }) || (row is FeedRow.BandPhotos && row.items.any { it.id == itemId }) ||
+        (row is FeedRow.StoryPhoto && row.item.id == itemId)
 }
 
 /**
@@ -201,11 +218,22 @@ internal fun LazyListScope.feedItems(
 ) {
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
-            is FeedRow.Trip -> TripCard(row.trip, actions)
             is FeedRow.Heading -> DayDivider(row, actions)
             is FeedRow.BandTop -> BandTop(row)
             is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
-            is FeedRow.BandEnd -> BandEnd(row.band, onAdd = { actions.addRevealedToStory(row.band) }) { actions.alwaysShow(row.section, row.band.source) }
+            is FeedRow.BandEnd -> BandEnd(row.band) { actions.alwaysShow(row.section, row.band.source) }
+            is FeedRow.StoryDay -> StorylineDay(row.day)
+            is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
+                val note = notes[row.item.id]
+                PhotoTitle(note?.title)
+                FullWidthPhoto(
+                    row.item,
+                    video,
+                    note?.crops?.moments,
+                    Modifier.combinedClickable(onLongClick = { actions.itemMenu(row.item) }, onClick = { actions.openStoryline(row.item) }),
+                )
+                PhotoNoteText(note?.caption)
+            }
             is FeedRow.Label -> MomentLabel(row)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
@@ -216,7 +244,7 @@ internal fun LazyListScope.feedItems(
                             video,
                             notes[block.item.id]?.crops?.moments,
                             Modifier.combinedClickable(
-                                onLongClick = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(row.section, block.item) },
+                                onLongClick = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(block.item) },
                                 onClick = { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, block.item) },
                             ),
                         )
@@ -231,7 +259,7 @@ internal fun LazyListScope.feedItems(
                     video,
                     Modifier.padding(bottom = TILE_GAP),
                     selected = if (selection.active) block.key in selection.keys else null,
-                    onLongPress = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(row.section, it) },
+                    onLongPress = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(it) },
                 ) { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, it) }
             }
         }
@@ -364,12 +392,11 @@ private fun BandPhotos(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
 
 /** A band's links: "Add to a story" and "Always show this day". */
 @Composable
-private fun BandEnd(band: RevealedPhotos, onAdd: () -> Unit, onAlways: () -> Unit) {
+private fun BandEnd(band: RevealedPhotos, onAlways: () -> Unit) {
     Row(
         Modifier.padding(bottom = 6.dp).band(LibraryColors.Raised, bottom = true).padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BandLink(LibraryIcons.Plus, stringResource(R.string.feed_reveal_add), onAdd)
         BandLink(null, stringResource(R.string.feed_reveal_always), onAlways)
     }
 }
@@ -385,6 +412,27 @@ private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
             Spacer(Modifier.width(6.dp))
         }
         Text(label, color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** The storyline's day above its photos, on a line like a Moments row's: "Sat, Oct 4". */
+@Composable
+private fun StorylineDay(day: LocalDay) {
+    val line = LibraryColors.Muted.copy(alpha = 0.3f)
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(1.dp).background(line))
+        Text(
+            dayLabel(day),
+            color = LibraryColors.OnBackground,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .background(LibraryColors.Raised, RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+                .semantics { heading() },
+        )
+        Box(Modifier.weight(1f).height(1.dp).background(line))
     }
 }
 

@@ -20,14 +20,16 @@
     <string name="library_all_photos">כל התמונות</string>
     <string name="library_today">היום</string>
     <string name="library_yesterday">אתמול</string>
-    <string name="library_tab_stories">סיפורים</string>
+    <string name="library_tab_storyline">הסיפור שלי</string>
+    <string name="storyline_title">הסיפור שלי</string>
+    <string name="storyline_empty">עדיין אין כאן כלום. פתחו תמונה והקישו על כתיבה: מה שתכתבו יופיע כאן.</string>
+    <string name="storyline_remove">הסרה מהסיפור</string>
+    <string name="storyline_add">הוספה לסיפור</string>
+    <string name="storyline_in">בסיפור</string>
+    <string name="storyline_not_in">לא בסיפור</string>
+    <string name="storyline_remove_short">הסרה</string>
+    <string name="storyline_add_back">החזרה</string>
     <string name="library_tab_moments">רגעים</string>
-    <string name="library_no_stories">אין עדיין סיפורים. אפשר ליצור סיפור מיום בלשונית ״רגעים״.</string>
-    <plurals name="library_unsorted_count">
-        <item quantity="one">תמונה אחת לא ממוינת</item>
-        <item quantity="two">%d לא ממוינות</item>
-        <item quantity="other">%d לא ממוינות</item>
-    </plurals>
     <plurals name="library_not_backed_up">
         <item quantity="one">תמונה אחת לא מגובה</item>
         <item quantity="two">%d לא מגובות</item>
@@ -68,110 +70,22 @@
     <string name="library_info_length">אורך</string>
 
     <!-- Stories -->
-    <string name="library_new_story">סיפור חדש</string>
-    <string name="library_story_title_hint">כותרת (לא חובה)</string>
     <string name="library_create">יצירה</string>
     <string name="library_cancel">ביטול</string>
     <string name="library_save">שמירה</string>
-    <string name="library_rename">שינוי שם</string>
-    <string name="library_rename_story">שינוי שם הסיפור</string>
-    <string name="library_delete">מחיקה</string>
-    <string name="library_delete_story">מחיקת הסיפור</string>
-    <string name="library_delete_story_title">למחוק את ״%s״?</string>
-    <string name="library_delete_story_body">הסיפור והכותרת שלו יימחקו. התמונות והסרטונים שבו יישארו במכשיר.</string>
-    <string name="library_add_to_story">הוספה לסיפור</string>
-    <string name="library_in_story">בסיפור הזה</string>
-    <string name="library_remove_from_story">הסרה מ-%s</string>
-    <string name="library_info_stories">סיפורים</string>
-    <string name="library_info_no_stories">לא נמצאת באף סיפור</string>
-    <string name="library_story_day">יום %1$d · %2$s</string>
-    <string name="library_story_add_day">הוספת %1$s · %2$s</string>
-    <string name="library_story_empty">אף תמונה מהסיפור הזה לא נמצאת במכשיר.</string>
-    <plurals name="library_story_days">
-        <item quantity="one">יום אחד</item>
-        <item quantity="two">יומיים</item>
-        <item quantity="other">%d ימים</item>
-    </plurals>
     <plurals name="library_story_items">
         <item quantity="one">תמונה אחת</item>
         <item quantity="two">שתי תמונות</item>
         <item quantity="other">%d תמונות</item>
     </plurals>
-    <plurals name="library_story_missing">
-        <item quantity="one">תמונה אחת מהסיפור הזה לא נמצאת במכשיר.</item>
-        <item quantity="two">שתי תמונות מהסיפור הזה לא נמצאות במכשיר.</item>
-        <item quantity="other">%d תמונות מהסיפור הזה לא נמצאות במכשיר.</item>
-    </plurals>
 
     <!-- Groups -->
-    <string name="library_group_action">קיבוץ</string>
-    <string name="library_merge_action">מיזוג</string>
     <string name="library_remove">הסרה</string>
-    <string name="library_cancel_selection">ביטול הבחירה</string>
-    <plurals name="library_selected">
-        <item quantity="one">נבחרה אחת</item>
-        <item quantity="two">%d נבחרו</item>
-        <item quantity="other">%d נבחרו</item>
-    </plurals>
-    <string name="library_grouped">%d תמונות קובצו</string>
-    <string name="library_undo">ביטול</string>
-    <plurals name="library_burst_title">
-        <item quantity="one">תמונה דומה אחת</item>
-        <item quantity="two">שתי תמונות דומות</item>
-        <item quantity="other">%d תמונות דומות</item>
-    </plurals>
-    <plurals name="library_burst_title_time">
-        <item quantity="one">תמונה אחת ברצף</item>
-        <item quantity="two">שתי תמונות ברצף</item>
-        <item quantity="other">%d תמונות ברצף</item>
-    </plurals>
-    <string name="library_burst_detail">%1$s · צולמו בתוך %2$d שניות</string>
-    <string name="library_burst_detail_minutes">%1$s · צולמו בתוך %2$d דקות</string>
-    <string name="library_burst_by_looks">נראות דומות</string>
-    <string name="library_burst_by_time">צולמו יחד</string>
-    <string name="library_burst_question">להציג אותן כאחת?</string>
-    <string name="library_burst_group">קבצו אותן</string>
-    <string name="library_burst_not_now">לא עכשיו</string>
-    <plurals name="library_story_groups">
-        <item quantity="one">קבוצה אחת</item>
-        <item quantity="two">שתי קבוצות</item>
-        <item quantity="other">%d קבוצות</item>
-    </plurals>
-    <string name="library_group_description">קבוצה: %1$s, %2$d תמונות</string>
-    <string name="library_open_group">%d · פתיחה</string>
-    <string name="library_cover">שער</string>
-    <string name="library_is_cover">זו תמונת השער</string>
-    <string name="library_set_cover">הגדרה כשער</string>
-    <string name="library_remove_from_group">הסרה מהקבוצה</string>
-    <string name="library_take_out">הוצאה</string>
-    <string name="library_untitled_story">סיפור ללא כותרת</string>
-    <string name="library_info_group">קבוצה</string>
-    <string name="library_ungroup">פירוק הקבוצה</string>
-    <string name="library_rename_group">שינוי שם הקבוצה</string>
     <string name="library_writing_edit">עריכה</string>
-    <string name="library_writing_saved_in">נשמר ב-story.md</string>
-    <string name="library_writing_story_prompt">כתבו על הסיפור הזה…</string>
-    <string name="library_writing_group_prompt">כתבו על הרגע הזה…</string>
-    <string name="library_writing_placeholder">מה קרה, איך זה הרגיש…</string>
 
     <!-- Story and tag pickers, photo notes, tags -->
-    <string name="library_search_stories">חיפוש סיפורים, או שם לסיפור חדש</string>
-    <string name="library_create_story">יצירת ״%s״</string>
-    <string name="library_create_story_detail">סיפור חדש עם התמונה הזו</string>
-    <string name="library_picker_on_these_days">באותם ימים</string>
-    <string name="library_picker_nearby">בקרבת מקום</string>
     <string name="library_picker_recent">אחרונים</string>
     <string name="library_picker_checked">נוספה</string>
-    <plurals name="library_picker_search_all">
-        <item quantity="one">הקלידו כדי לחפש בסיפור שלך</item>
-        <item quantity="two">הקלידו כדי לחפש בשני הסיפורים</item>
-        <item quantity="other">הקלידו כדי לחפש בכל %d הסיפורים</item>
-    </plurals>
-    <plurals name="library_picker_story_results">
-        <item quantity="one">סיפור אחד · הקרובים בזמן קודם</item>
-        <item quantity="two">שני סיפורים · הקרובים בזמן קודם</item>
-        <item quantity="other">%d סיפורים · הקרובים בזמן קודם</item>
-    </plurals>
     <string name="library_add_tag">תגיות</string>
     <string name="library_search_tags">חיפוש תגיות, או תגית חדשה</string>
     <string name="library_create_tag">יצירת התגית ״%s״</string>
@@ -297,31 +211,6 @@
     <string name="library_moment_times">%1$s · %2$s – %3$s</string>
     <string name="library_moment_time">%1$s · %2$s</string>
     <string name="library_moment_days">%1$s – %2$s</string>
-    <string name="library_arrange">סידור הפריסה</string>
-    <string name="library_arrange_title">סידור</string>
-    <string name="library_arrange_done">סיום</string>
-    <string name="library_reset_groups">איפוס קבוצות</string>
-    <string name="library_reset_groups_title">לאפס את הקבוצות?</string>
-    <string name="library_reset_groups_body">כל הקבוצות בסיפור יוסרו והתמונות שלהן יחזרו לסיפור. הטקסט של הקבוצות יעבור לטקסט של הסיפור. ההצעות יתחילו מחדש, כולל כאלה שעניתם עליהן \"לא עכשיו\".</string>
-    <string name="library_reset_groups_done">הקבוצות אופסו</string>
-    <string name="library_arrange_reset">איפוס</string>
-    <string name="library_arrange_reset_title">לאפס את הפריסה?</string>
-    <string name="library_arrange_reset_body">הגדלים, הסדר והמיקוד יחזרו לאוטומטי. התמונות והטקסט יישארו.</string>
-    <string name="library_arrange_hint">הקישו על תמונה או קבוצה כדי לשנות את הגודל, המקום או המיקוד שלה.</string>
-    <string name="library_arrange_earlier">לפני</string>
-    <string name="library_arrange_later">אחרי</string>
-    <string name="library_arrange_focus">מיקוד</string>
-    <string name="library_arrange_focus_hint">הקישו על החלק שצריך להישאר גלוי; המסגרת מראה מה יוצג באריח.</string>
-    <string name="library_size_auto">אוטומטי</string>
-    <string name="library_size_small">קטן</string>
-    <string name="library_size_wide">רחב</string>
-    <string name="library_size_tall">גבוה</string>
-    <string name="library_size_half">חצי</string>
-    <string name="library_size_large">גדול</string>
-    <string name="library_size_full">מלא</string>
-    <string name="library_size_original">מקורי</string>
-    <string name="library_arrange_zoom">זום</string>
-    <string name="library_arrange_zoom_value">%1$.1f×</string>
     <!-- The Moments tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
     <string name="feed_source_camera">מצלמה</string>
     <string name="feed_source_whatsapp">וואטסאפ</string>
@@ -331,9 +220,6 @@
     <string name="feed_time_range">%1$s – %2$s</string>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
-    <string name="feed_trip_kicker">נראה כמו טיול</string>
-    <string name="feed_trip_untitled">טיול</string>
-    <string name="feed_trip_save">שמירה כסיפור</string>
     <string name="feed_nothing_shown">אין מה להציג. אפשר להפעיל מקור למעלה.</string>
     <string name="feed_note_more">עוד</string>
     <!-- לחיצה ארוכה על תמונה ברגעים -->
@@ -609,7 +495,6 @@
     <string name="settings_shown_stories">תמונות שכבר שמת בסיפור תמיד מוצגות בו. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">הסתרת %1$s</string>
-    <string name="feed_reveal_add">הוספה לסיפור</string>
     <string name="feed_reveal_always">להציג תמיד ביום הזה</string>
     <string name="feed_reveal_showing">מוצגות %1$,d מ%2$s ב־%3$s</string>
     <string name="feed_reveal_hide">הסתרה</string>

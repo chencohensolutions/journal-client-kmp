@@ -127,7 +127,7 @@ struct OriginalCard: View {
 
     private var deleteBody: String {
         let body = item.isOnDevice
-            ? String(localized: "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, in its stories, from its preview.")
+            ? String(localized: "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, with what you wrote, from its preview.")
             : String(localized: "The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview.")
         guard item.isVideo else { return body }
         return body + "\n\n" + String(localized: "It then plays from your server, streamed; what was played stays on this phone for next time.")

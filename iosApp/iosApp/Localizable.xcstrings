@@ -1663,6 +1663,16 @@
         }
       }
     },
+    "Add back" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החזרה"
+          }
+        }
+      }
+    },
     "Add to a story" : {
       "localizations" : {
         "he" : {
@@ -1674,6 +1684,16 @@
       }
     },
     "Add to story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספה לסיפור"
+          }
+        }
+      }
+    },
+    "Add to storyline" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
@@ -1779,6 +1799,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל צורה. כך התמונה תופיע ברגעים."
+          }
+        }
+      }
+    },
+    "Applies to Moments, All photos, Explore and Tags." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חל על רגעים, כל התמונות, גילוי ותגיות."
           }
         }
       }
@@ -2864,6 +2894,16 @@
         }
       }
     },
+    "In the storyline" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בסיפור"
+          }
+        }
+      }
+    },
     "Issued by journal-server-ca" : {
       "localizations" : {
         "he" : {
@@ -3434,6 +3474,16 @@
         }
       }
     },
+    "Not in the storyline" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא בסיפור"
+          }
+        }
+      }
+    },
     "Not now" : {
       "localizations" : {
         "he" : {
@@ -3450,6 +3500,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הערה"
+          }
+        }
+      }
+    },
+    "Nothing here yet. Open a photo and tap Write: what you write shows here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין כאן כלום. פתחו תמונה והקישו על כתיבה: מה שתכתבו יופיע כאן."
           }
         }
       }
@@ -3800,6 +3860,16 @@
         }
       }
     },
+    "Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות שכתבת עליהן תמיד מוצגות בסיפור. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה."
+          }
+        }
+      }
+    },
     "Pixels" : {
       "localizations" : {
         "he" : {
@@ -3996,6 +4066,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הסרה מהקבוצה"
+          }
+        }
+      }
+    },
+    "Remove from storyline" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרה מהסיפור"
           }
         }
       }
@@ -4563,6 +4643,16 @@
         }
       }
     },
+    "Storyline" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסיפור שלי"
+          }
+        }
+      }
+    },
     "StrongBox security chip" : {
       "localizations" : {
         "he" : {
@@ -4762,6 +4852,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן ובסיפורים שלה מהתצוגה המקדימה."
+          }
+        }
+      }
+    },
+    "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, with what you wrote, from its preview." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן, עם מה שכתבת, מהתצוגה המקדימה."
           }
         }
       }

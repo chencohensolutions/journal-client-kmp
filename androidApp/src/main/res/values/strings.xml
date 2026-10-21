@@ -20,13 +20,16 @@
     <string name="library_all_photos">All photos</string>
     <string name="library_today">Today</string>
     <string name="library_yesterday">Yesterday</string>
-    <string name="library_tab_stories">Stories</string>
+    <string name="library_tab_storyline">Storyline</string>
+    <string name="storyline_title">Storyline</string>
+    <string name="storyline_empty">Nothing here yet. Open a photo and tap Write: what you write shows here.</string>
+    <string name="storyline_remove">Remove from storyline</string>
+    <string name="storyline_add">Add to storyline</string>
+    <string name="storyline_in">In the storyline</string>
+    <string name="storyline_not_in">Not in the storyline</string>
+    <string name="storyline_remove_short">Remove</string>
+    <string name="storyline_add_back">Add back</string>
     <string name="library_tab_moments">Moments</string>
-    <string name="library_no_stories">No stories yet. Make one from a day in Moments.</string>
-    <plurals name="library_unsorted_count">
-        <item quantity="one">%d unsorted</item>
-        <item quantity="other">%d unsorted</item>
-    </plurals>
     <plurals name="library_not_backed_up">
         <item quantity="one">%d not backed up</item>
         <item quantity="other">%d not backed up</item>
@@ -65,101 +68,21 @@
     <string name="library_info_length">Length</string>
 
     <!-- Stories -->
-    <string name="library_new_story">New story</string>
-    <string name="library_story_title_hint">Title (optional)</string>
     <string name="library_create">Create</string>
     <string name="library_cancel">Cancel</string>
     <string name="library_save">Save</string>
-    <string name="library_rename">Rename</string>
-    <string name="library_rename_story">Rename story</string>
-    <string name="library_delete">Delete</string>
-    <string name="library_delete_story">Delete story</string>
-    <string name="library_delete_story_title">Delete \"%s\"?</string>
-    <string name="library_delete_story_body">The story and its title go away. Its photos and videos stay on this device.</string>
-    <string name="library_add_to_story">Add to story</string>
-    <string name="library_in_story">In this story</string>
-    <string name="library_remove_from_story">Remove from %s</string>
-    <string name="library_info_stories">Stories</string>
-    <string name="library_info_no_stories">Not in any story</string>
-    <string name="library_story_day">Day %1$d · %2$s</string>
-    <string name="library_story_add_day">Add %1$s · %2$s</string>
-    <string name="library_story_empty">None of this story\'s photos are on this device.</string>
-    <plurals name="library_story_days">
-        <item quantity="one">%d day</item>
-        <item quantity="other">%d days</item>
-    </plurals>
     <plurals name="library_story_items">
         <item quantity="one">%d photo</item>
         <item quantity="other">%d photos</item>
     </plurals>
-    <plurals name="library_story_missing">
-        <item quantity="one">%d photo of this story isn\'t on this device.</item>
-        <item quantity="other">%d photos of this story aren\'t on this device.</item>
-    </plurals>
 
     <!-- Groups -->
-    <string name="library_group_action">Group</string>
-    <string name="library_merge_action">Merge</string>
     <string name="library_remove">Remove</string>
-    <string name="library_cancel_selection">Cancel selection</string>
-    <plurals name="library_selected">
-        <item quantity="one">%d selected</item>
-        <item quantity="other">%d selected</item>
-    </plurals>
-    <string name="library_grouped">Grouped %d photos</string>
-    <string name="library_undo">Undo</string>
-    <plurals name="library_burst_title">
-        <item quantity="one">%d similar photo</item>
-        <item quantity="other">%d similar photos</item>
-    </plurals>
-    <plurals name="library_burst_title_time">
-        <item quantity="one">%d photo in a row</item>
-        <item quantity="other">%d photos in a row</item>
-    </plurals>
-    <string name="library_burst_detail">%1$s · taken within %2$d seconds</string>
-    <string name="library_burst_detail_minutes">%1$s · taken within %2$d minutes</string>
-    <string name="library_burst_by_looks">Look alike</string>
-    <string name="library_burst_by_time">Taken together</string>
-    <string name="library_burst_question">Show them as one?</string>
-    <string name="library_burst_group">Group them</string>
-    <string name="library_burst_not_now">Not now</string>
-    <plurals name="library_story_groups">
-        <item quantity="one">%d group</item>
-        <item quantity="other">%d groups</item>
-    </plurals>
-    <string name="library_group_description">Group: %1$s, %2$d photos</string>
-    <string name="library_open_group">%d · Open</string>
-    <string name="library_cover">Cover</string>
-    <string name="library_is_cover">This is the cover</string>
-    <string name="library_set_cover">Set as cover</string>
-    <string name="library_remove_from_group">Remove from group</string>
-    <string name="library_take_out">Take out</string>
-    <string name="library_untitled_story">Untitled story</string>
-    <string name="library_info_group">Group</string>
-    <string name="library_ungroup">Ungroup</string>
-    <string name="library_rename_group">Rename group</string>
     <string name="library_writing_edit">Edit</string>
-    <string name="library_writing_saved_in">Saved in story.md</string>
-    <string name="library_writing_story_prompt">Write about this story…</string>
-    <string name="library_writing_group_prompt">Write about this moment…</string>
-    <string name="library_writing_placeholder">What happened, how it felt…</string>
 
     <!-- Story and tag pickers, photo notes, tags -->
-    <string name="library_search_stories">Search stories, or name a new one</string>
-    <string name="library_create_story">Create \u201c%s\u201d</string>
-    <string name="library_create_story_detail">New story with this photo</string>
-    <string name="library_picker_on_these_days">On these days</string>
-    <string name="library_picker_nearby">Nearby</string>
     <string name="library_picker_recent">Recent</string>
     <string name="library_picker_checked">Added</string>
-    <plurals name="library_picker_search_all">
-        <item quantity="one">Type to search your %d story</item>
-        <item quantity="other">Type to search all %d stories</item>
-    </plurals>
-    <plurals name="library_picker_story_results">
-        <item quantity="one">%d story · closest in time first</item>
-        <item quantity="other">%d stories · closest in time first</item>
-    </plurals>
     <string name="library_add_tag">Tags</string>
     <string name="library_search_tags">Search tags, or type a new one</string>
     <string name="library_create_tag">Create tag \u201c%s\u201d</string>
@@ -284,31 +207,6 @@
     <string name="library_moment_times">%1$s · %2$s – %3$s</string>
     <string name="library_moment_time">%1$s · %2$s</string>
     <string name="library_moment_days">%1$s – %2$s</string>
-    <string name="library_arrange">Arrange layout</string>
-    <string name="library_arrange_title">Arrange</string>
-    <string name="library_arrange_done">Done</string>
-    <string name="library_reset_groups">Reset groups</string>
-    <string name="library_reset_groups_title">Reset the groups?</string>
-    <string name="library_reset_groups_body">Every group in this story is removed and its photos go back to the story. Group text moves to the story\'s text. Suggestions start over, including ones you answered "Not now".</string>
-    <string name="library_reset_groups_done">Groups reset</string>
-    <string name="library_arrange_reset">Reset</string>
-    <string name="library_arrange_reset_title">Reset the layout?</string>
-    <string name="library_arrange_reset_body">Sizes, order and focus go back to automatic. Photos and text stay.</string>
-    <string name="library_arrange_hint">Tap a photo or group to change its size, place or focus.</string>
-    <string name="library_arrange_earlier">Earlier</string>
-    <string name="library_arrange_later">Later</string>
-    <string name="library_arrange_focus">Focus</string>
-    <string name="library_arrange_focus_hint">Tap the part that should stay in view; the frame shows what the tile will show.</string>
-    <string name="library_size_auto">Auto</string>
-    <string name="library_size_small">Small</string>
-    <string name="library_size_wide">Wide</string>
-    <string name="library_size_tall">Tall</string>
-    <string name="library_size_half">Half</string>
-    <string name="library_size_large">Large</string>
-    <string name="library_size_full">Full</string>
-    <string name="library_size_original">Original</string>
-    <string name="library_arrange_zoom">Zoom</string>
-    <string name="library_arrange_zoom_value">%1$.1f×</string>
     <!-- The Moments tab: its filter bar, moments ("Jaffa Port · 18:10 – 19:05") and trip suggestions -->
     <string name="feed_source_camera">Camera</string>
     <string name="feed_source_whatsapp">WhatsApp</string>
@@ -318,9 +216,6 @@
     <string name="feed_time_range">%1$s – %2$s</string>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
-    <string name="feed_trip_kicker">Looks like a trip</string>
-    <string name="feed_trip_untitled">A trip</string>
-    <string name="feed_trip_save">Save as story</string>
     <string name="feed_nothing_shown">Nothing to show. Turn on a source above.</string>
     <string name="feed_note_more">more</string>
     <!-- Long press on a photo in Moments -->
@@ -580,7 +475,6 @@
     <string name="settings_shown_stories">Photos you already put in a story always show there. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
-    <string name="feed_reveal_add">Add to a story</string>
     <string name="feed_reveal_always">Always show this day</string>
     <string name="feed_reveal_showing">Showing %1$,d from %2$s on %3$s</string>
     <string name="feed_reveal_hide">Hide</string>

@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Ids of the zoom transitions: a photo opening the viewer, a story card or a group tile opening its page.
+/// Ids of the zoom transitions: a photo opening the viewer.
 enum ZoomID {
     static func item(_ id: String) -> String { "item|\(id)" }
-    static func story(_ id: String) -> String { "story|\(id)" }
-    static func group(_ id: String) -> String { "group|\(id)" }
 }
 
 /// The photo the open viewer shows; `session` is new each time the viewer opens.

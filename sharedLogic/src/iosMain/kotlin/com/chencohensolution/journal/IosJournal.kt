@@ -14,7 +14,7 @@ import com.chencohensolution.journal.enrollment.IosDeviceKeyStore
 import com.chencohensolution.journal.stories.StoryIds
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
+import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.FileFactsCache
 import com.chencohensolution.journal.library.IosMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
@@ -250,14 +250,15 @@ object IosJournal {
     )
 
     /**
-     * Stories kept on this device, in Application Support (`journal/stories`). Photo fingerprints for burst
-     * suggestions are cached in Caches (`similarity`), where photos were taken and place names too (`places`).
+     * Photo notes kept on this device, in Application Support (`journal/media`); the stories once kept beside them
+     * are deleted. Photo fingerprints for Moments' sets are cached in Caches (`similarity`), where photos were taken
+     * and place names too (`places`).
      */
     fun createStoriesController(library: LibraryController, settings: SettingsController): StoriesController {
         val support = supportDir()
         val caches = cachesDir()
+        deleteOldStories(FileSystem.SYSTEM, support.toPath() / "journal")
         return StoriesController(
-            store = FileStoryStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             noteStore = FilePhotoNoteStore(FileSystem.SYSTEM, support.toPath() / "journal"),
             library = library,
             settings = settings,

@@ -14,8 +14,7 @@ import com.chencohensolution.journal.similarity.PhotoLooks
 /*
  * The Moments tab: every photo reads like a story that arranged itself: each row of the journal (a day, or a run of photos; see
  * the grouping setting) split into moments by time, place and source, with near-duplicates shown as one photo you
- * swipe. Nothing here is saved: it is worked out again from the library, and only "Save as story" on a trip makes a
- * story of it.
+ * swipe. Nothing here is saved: it is worked out again from the library.
  */
 
 /** One photo, or near-duplicates (a burst, or photos that look alike) shown as one photo you swipe through. */
@@ -77,26 +76,8 @@ data class RevealedPhotos(val source: MediaSource, val items: List<MediaItem>) {
 /** A hidden source shown on one row of the feed ([FeedSection.key]), until hidden again; not saved. */
 data class FeedReveal(val section: String, val source: MediaSource)
 
-/**
- * Days in a row away from home, offered as one story ("Save as story"), never made one by itself. Its sections
- * follow it in the feed.
- */
-data class FeedTrip(
-    /** "trip-<first day>"; dismissing a trip remembers it. */
-    val key: String,
-    /** The town most of it was in. */
-    val place: String?,
-    val firstDay: LocalDay,
-    val lastDay: LocalDay,
-    val items: List<MediaItem>,
-) {
-    val days: Int get() = (lastDay.toEpochDay() - firstDay.toEpochDay() + 1).toInt()
-    val cover: MediaItem get() = items.first()
-}
-
 sealed interface FeedEntry {
     data class Section(val section: FeedSection) : FeedEntry
-    data class Trip(val trip: FeedTrip) : FeedEntry
 }
 
 /** The Moments tab: every photo and video of the [shown] sources, newest first. */
@@ -113,21 +94,6 @@ data class MomentsFeed(
 
     fun section(key: String): FeedSection? =
         entries.firstNotNullOfOrNull { (it as? FeedEntry.Section)?.section?.takeIf { section -> section.key == key } }
-
-    fun trip(key: String): FeedTrip? =
-        entries.firstNotNullOfOrNull { (it as? FeedEntry.Trip)?.trip?.takeIf { trip -> trip.key == key } }
-
-    /** The near-duplicate sets among [itemIds], to group when they become a story. */
-    fun similarSets(itemIds: Collection<String>): List<List<MediaItem>> {
-        val wanted = itemIds.toSet()
-        return entries.flatMap { entry ->
-            (entry as? FeedEntry.Section)?.section?.moments.orEmpty()
-                .flatMap { it.blocks }
-                .filterIsInstance<FeedBlock.Similar>()
-                .map { block -> block.items.filter { it.id in wanted } }
-                .filter { it.size >= 2 }
-        }
-    }
 }
 
 /** A new camera moment starts after this long without a photo… */
@@ -137,21 +103,18 @@ internal const val MOMENT_GAP_MILLIS = 2 * 3_600_000L
 internal const val MOMENT_MOVE_GAP_MILLIS = 20 * 60_000L
 internal const val MOMENT_MOVE_METERS = 1_000.0
 
+/** Photos taken this close together are one burst, shown as one set you swipe. */
+internal const val BURST_GAP_MILLIS = 10_000L
+
 /** Videos taken this close together (in one moment) are one set you swipe. */
 internal const val VIDEO_SET_METERS = 150.0
-
-/** Days with most located photos this far from home are away; two or more in a row are a trip. */
-internal const val TRIP_AWAY_METERS = 50_000.0
-internal const val TRIP_MIN_DAYS = 2
 
 /** Home is only guessed from this many located photos or more. */
 internal const val HOME_MIN_PHOTOS = 20
 
 /**
  * The feed of [items] (the whole library, newest first): only what [shown] shows, split into rows ([grouping]),
- * each into moments ([splitMoments]) of blocks ([blocksOf]). Trips are found among the rows using every located
- * photo to tell where home is; [dismissedTrips], and trips whose photos are all [sorted] already (in a story or
- * tagged, as when the trip was saved), are left out. Photos in [alone] (cropped, or taken out of a set) are never in
+ * each into moments ([splitMoments]) of blocks ([blocksOf]). Photos in [alone] (cropped, or taken out of a set) are never in
  * a near-duplicate set; photos merged by hand ([sets]: photo id to set id) are one set, where its oldest photo is.
  * Each row counts the photos it hides ([FeedSection.hidden]) and shows those of the sources in [revealed].
  */
@@ -161,8 +124,6 @@ internal fun buildFeed(
     grouping: TimelineGrouping,
     places: Places = Places.NONE,
     looks: PhotoLooks = PhotoLooks.NONE,
-    dismissedTrips: Set<String> = emptySet(),
-    sorted: Set<String> = emptySet(),
     alone: Set<String> = emptySet(),
     sets: Map<String, String> = emptyMap(),
     revealed: Set<FeedReveal> = emptySet(),
@@ -184,12 +145,7 @@ internal fun buildFeed(
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
         FeedSection(span, moments, towns.distinct())
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
-    // A trip comes just above the newest row of its last day.
-    val trips = findTrips(sections, home(items, places), places)
-        .filter { trip -> trip.key !in dismissedTrips && trip.items.any { it.id !in sorted } }
-    val tripAbove = trips.associateBy { trip -> sections.indexOfFirst { section -> section.items.any { it.day == trip.lastDay } } }
-    val entries = sections.flatMapIndexed { i, section -> listOfNotNull(tripAbove[i]?.let(FeedEntry::Trip), FeedEntry.Section(section)) }
-    return MomentsFeed(entries, counts, shown.sources)
+    return MomentsFeed(sections.map(FeedEntry::Section), counts, shown.sources)
 }
 
 /**
@@ -315,34 +271,4 @@ internal fun home(library: List<MediaItem>, places: Places): GeoPoint? {
     if (located.size < HOME_MIN_PHOTOS) return null
     val square = located.groupBy { (it.latitude * 10).toInt() to (it.longitude * 10).toInt() }.maxBy { it.value.size }.value
     return GeoPoint(square.map { it.latitude }.average(), square.map { it.longitude }.average())
-}
-
-/**
- * Runs of [TRIP_MIN_DAYS] or more days in a row whose located camera photos were mostly taken [TRIP_AWAY_METERS]
- * from [home]. Days without photos of the shown sources break a run; days without located photos don't.
- */
-internal fun findTrips(sections: List<FeedSection>, home: GeoPoint?, places: Places): List<FeedTrip> {
-    if (home == null) return emptyList()
-    val byDay = sections.flatMap { it.items }.groupBy { it.day }
-    val days = byDay.keys.sorted()
-    val runs = mutableListOf<MutableList<LocalDay>>()
-    var previous: LocalDay? = null
-    days.forEach { day ->
-        val located = byDay.getValue(day).filter { it.source == MediaSource.CAMERA }.mapNotNull { places.location(it) }
-        val away = located.count { distanceMeters(it, home) > TRIP_AWAY_METERS } * 2 > located.size
-        val follows = previous?.let { day.toEpochDay() - it.toEpochDay() == 1L } == true
-        when {
-            located.isEmpty() && follows && runs.lastOrNull()?.last() == previous -> runs.last() += day
-            away && follows && runs.lastOrNull()?.last() == previous -> runs.last() += day
-            away -> runs += mutableListOf(day)
-        }
-        previous = day
-    }
-    return runs
-        .map { run -> run.dropLastWhile { day -> byDay.getValue(day).none { places.location(it) != null } } }
-        .filter { it.size >= TRIP_MIN_DAYS }
-        .map { run ->
-            val items = run.flatMap { byDay.getValue(it) }.sortedBy { it.takenAtMillis }
-            FeedTrip("trip-${run.first()}", mostCommon(items) { places.nameOf(it)?.town }, run.first(), run.last(), items)
-        }
 }

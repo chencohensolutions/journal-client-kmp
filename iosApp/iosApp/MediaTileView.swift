@@ -143,3 +143,14 @@ struct BackupBadge: View {
         }
     }
 }
+
+/// How a tile crops its photo: anchored at the focus point (0...1 of the photo from the left and from the top),
+/// `zoom` times closer than filling the tile. Anchored there, the point sits at the same fraction of the tile, so
+/// zooming around that fraction keeps it in view.
+struct TileCrop: Equatable {
+    var x: CGFloat = 0.5
+    var y: CGFloat = 0.5
+    var zoom: CGFloat = 1
+
+    static let none = TileCrop()
+}

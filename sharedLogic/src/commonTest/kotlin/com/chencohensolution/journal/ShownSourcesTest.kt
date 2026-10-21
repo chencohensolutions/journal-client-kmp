@@ -20,12 +20,9 @@ import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedReveal
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
 import com.chencohensolution.journal.stories.StoriesController
-import com.chencohensolution.journal.stories.Story
-import com.chencohensolution.journal.stories.StoryMember
 import com.chencohensolution.journal.stories.buildFeed
 import com.chencohensolution.journal.stories.buildState
 import com.chencohensolution.journal.stories.sourceCounts
@@ -122,22 +119,21 @@ class ShownSourcesTest {
     }
 
     @Test
-    fun hiddenPhotosStayInTheirStoryAndLeaveTagsAllPhotosAndNearbyDays() {
-        val inStory = shot("w-story", OCT_4, 12, MediaSource.WHATSAPP)
+    fun hiddenPhotosStayOnTheStorylineAndLeaveTagsAndAllPhotos() {
+        val written = shot("w-written", OCT_4, 12, MediaSource.WHATSAPP)
         val tagged = shot("w-tag", OCT_4, 13, MediaSource.WHATSAPP)
         val camera = shot("c", OCT_4, 10)
         val nearby = shot("w-near", OCT_3, 9, MediaSource.WHATSAPP)
         val nearbyCamera = shot("c-near", OCT_3, 10)
-        val library = LibraryState(days = listOf(DayGroup(OCT_4, newestFirst(inStory, tagged, camera)), DayGroup(OCT_3, newestFirst(nearby, nearbyCamera))))
-        val story = Story("s", "", listOf(StoryMember(inStory.id, null, inStory.takenAtMillis), StoryMember(camera.id, null, camera.takenAtMillis)), "2026-10-05T00:00:00Z", "2026-10-05T00:00:00Z")
-        val notes = listOf("c", "w-tag").associateWith { PhotoNote(it, null, 0, tags = listOf("sea"), updatedAt = "2026-10-05T00:00:00Z") }
-        val state = buildState(library, listOf(story), notes, null, TimelineGrouping(), shown = ShownSources())
+        val library = LibraryState(days = listOf(DayGroup(OCT_4, newestFirst(written, tagged, camera)), DayGroup(OCT_3, newestFirst(nearby, nearbyCamera))))
+        val notes = listOf("c", "w-tag").associateWith { PhotoNote(it, null, 0, tags = listOf("sea"), updatedAt = "2026-10-05T00:00:00Z") } +
+            (written.id to PhotoNote(written.id, null, 0, title = "From Dana", updatedAt = "2026-10-05T00:00:00Z"))
+        val state = buildState(library, notes, null, TimelineGrouping(), shown = ShownSources())
 
-        assertEquals(listOf("c", "w-story"), state.story("s")!!.items.map { it.id })
+        assertEquals(listOf("w-written"), state.storyline.map { it.id })
         assertEquals(listOf("c"), state.tagged("sea").flatMap { it.items }.map { it.id })
         assertEquals(1, state.tags.single().count)
         assertEquals(listOf(listOf("c"), listOf("c-near")), state.shownDays(library.days).map { day -> day.items.map { it.id } })
-        assertEquals(listOf("c-near"), state.neighborDays("s").flatMap { it.items }.map { it.id })
     }
 
     @Test
@@ -163,11 +159,10 @@ class ShownSourcesTest {
         val settings = SettingsController(JournalSettings(settingsStore), dispatcher)
         val fileSystem = FakeFileSystem()
         val stories = StoriesController(
-            store = FileStoryStore(fileSystem, "/data/journal".toPath()),
             noteStore = FilePhotoNoteStore(fileSystem, "/data/journal".toPath()),
             library = library,
             settings = settings,
-            newId = { "story-1" },
+            newId = { "set-1" },
             dispatcher = dispatcher,
             now = { "2026-10-17T12:00:00Z" },
         )

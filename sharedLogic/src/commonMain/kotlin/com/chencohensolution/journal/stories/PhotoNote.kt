@@ -39,12 +39,17 @@ data class PhotoNote(
     val writtenAt: String? = null,
     /** Earlier versions of the title and paragraph, oldest first. */
     val history: List<NoteVersion> = emptyList(),
+    /** False once "Remove from storyline" was chosen: the writing stays, and shows in Moments, but not in the storyline. */
+    val inStoryline: Boolean = true,
 ) {
     val isEmpty: Boolean
         get() = caption.isBlank() && title.isBlank() && history.isEmpty() && tags.isEmpty() && crops.isEmpty &&
             feedSet == null && !apart && !front
 
     val hasWriting: Boolean get() = title.isNotBlank() || caption.isNotBlank()
+
+    /** Whether the photo is in the storyline: it has writing, and wasn't removed from it. */
+    val onStoryline: Boolean get() = hasWriting && inStoryline
 
     /**
      * The note with [title] and [text] saved at [now]. What was written before becomes a version in [history], unless
@@ -126,8 +131,8 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
     private companion object {
         /** The fields this version writes; everything else in a file is kept as it was. */
         val NOTE_KEYS = setOf(
-            "v", "deviceId", "fileName", "takenAt", "title", "caption", "writtenAt", "history", "tags", "crops", "set", "apart", "front",
-            "updatedAt",
+            "v", "deviceId", "fileName", "takenAt", "title", "caption", "writtenAt", "history", "storyline", "tags", "crops", "set",
+            "apart", "front", "updatedAt",
         )
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
 
@@ -150,8 +155,8 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
 }
 
 /**
- * media/<id>.json, format version 3 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt or
- * history). "caption" is the paragraph.
+ * media/<id>.json, format version 3 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt,
+ * history or storyline). "caption" is the paragraph; "storyline": false once removed from the storyline.
  */
 @Serializable
 private data class NoteFile(
@@ -163,6 +168,7 @@ private data class NoteFile(
     val caption: String = "",
     val writtenAt: String? = null,
     val history: List<VersionFile>? = null,
+    val storyline: Boolean? = null,
     val tags: List<String> = emptyList(),
     val crops: CropsFile? = null,
     /** The set merged by hand in Moments; "apart": taken out of one. */
@@ -177,6 +183,7 @@ private data class NoteFile(
         title = title.orEmpty(),
         writtenAt = writtenAt,
         history = history.orEmpty().map { NoteVersion(it.title.orEmpty(), it.text.orEmpty(), it.savedAt) },
+        inStoryline = storyline != false,
     )
 
     companion object {
@@ -188,6 +195,7 @@ private data class NoteFile(
             caption = note.caption,
             writtenAt = note.writtenAt,
             history = note.history.takeIf { it.isNotEmpty() }?.map { VersionFile(it.title.ifEmpty { null }, it.text.ifEmpty { null }, it.savedAt) },
+            storyline = false.takeIf { !note.inStoryline },
             tags = note.tags,
             crops = note.crops.takeIf { !it.isEmpty }?.let(CropsFile::of),
             set = note.feedSet,

@@ -172,14 +172,11 @@ class ExploreTest {
         val items = library(*(home + trip).toTypedArray())
         val state = buildState(
             LibraryState(days = items.groupBy { it.day }.map { (day, dayItems) -> DayGroup(day, dayItems) }),
-            stories = emptyList(),
             notes = emptyMap(),
             error = null,
             grouping = TimelineGrouping(),
             places = NAMED,
         )
-        assertTrue(state.feed.entries.any { it is FeedEntry.Trip })
-
         val page = state.feedOf(items.filter { ExploreScope(town = "Haifa").matches(it, NAMED) })
         assertTrue(page.entries.all { it is FeedEntry.Section })
         assertEquals(listOf("h3", "h2", "h1"), page.entries.flatMap { (it as FeedEntry.Section).section.items }.map { it.id })

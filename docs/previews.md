@@ -17,7 +17,7 @@ looks shows up as an image diff in review.
 - Screens take their data as parameters (`JournalHomeScreen(library, stories, health, actions)`), so a preview
   passes made-up state instead of the controllers' state.
 - [PreviewData.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/PreviewData.kt) holds that
-  state: a library, stories and unsorted days, dated relative to today.
+  state: a library, notes (writing, tags) and the Moments feed, dated relative to today.
 - There is no photo library in a screenshot, so every preview is wrapped in `Screen { … }`
   ([Placeholders.kt](../androidApp/src/screenshotTest/kotlin/com/chencohensolution/journal/ui/library/Placeholders.kt)),
   which sets the app's themes and draws a colored placeholder for each photo. The app's only hook for this is

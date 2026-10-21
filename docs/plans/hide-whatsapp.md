@@ -1,5 +1,8 @@
 # Plan: hiding WhatsApp, screenshots (and other sources) everywhere
 
+(Stories, which this plan mentions, were replaced by the storyline later on Oct 21, 2026; written photos always show
+on the storyline instead.)
+
 Planned Oct 21, 2026 on the Windows machine; **built Oct 21, 2026 on the Mac, Android and iOS**, without "Not private"
 (the owner chose Hide / All only) and without screen 4 (hiding one photo, which needs the server). WhatsApp and
 Screenshots are off by default for everyone. The server's part was the ~1,100 WhatsApp-named files:

@@ -2,8 +2,7 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
-import com.chencohensolution.journal.stories.TimelineEntry
+import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.stories.groupMoments
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.TimelineGrouping
@@ -25,9 +24,6 @@ import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -86,86 +82,83 @@ class StoriesControllerTest {
         val library = LibraryController(StoriesTestLibrary(items), JournalSettings(StoriesTestStore()), dispatcher)
         library.refresh()
         var id = 0
+        var minute = 0
         val settings = SettingsController(JournalSettings(settingsStore), dispatcher)
         val stories = StoriesController(
-            store = FileStoryStore(fileSystem, ROOT),
             noteStore = FilePhotoNoteStore(fileSystem, ROOT),
             library = library,
             settings = settings,
             dispatcher = dispatcher,
-            now = { "2026-10-17T12:00:00Z" },
-            newId = { "story-${++id}" },
+            now = { "2026-10-17T12:${(minute++).toString().padStart(2, '0')}:00Z" },
+            newId = { "set-${++id}" },
         )
         advanceUntilIdle()
         return Setup(stories, fileSystem, settings)
     }
 
     @Test
-    fun everythingStartsUnsorted() = runTest {
-        val state = setup().stories.currentState
-        assertEquals(5, state.unsortedCount)
-        assertEquals(listOf(OCT_16, OCT_9, OCT_8, OCT_7), state.timeline.map { (it as TimelineEntry.MomentEntry).moment.newestDay })
-    }
-
-    @Test
-    fun storyFromADayTakesItsPhotosOutOfUnsorted() = runTest {
+    fun theStorylineHoldsWrittenPhotosNewestFirst() = runTest {
         val stories = setup().stories
-        val id = stories.createStoryFromDay("Arrival", OCT_8)
-        advanceUntilIdle()
+        assertTrue(stories.currentState.storyline.isEmpty())
 
-        val state = stories.currentState
-        val story = assertNotNull(state.story(assertNotNull(id)))
-        assertEquals(listOf("b", "c"), story.items.map { it.id })
-        assertEquals(OCT_8, story.firstDay)
-        assertEquals(1, story.dayCount)
-        assertEquals(3, state.unsortedCount)
-        // Newest first: Oct 16, Oct 9, the story (Oct 8), Oct 7.
-        val entries = state.timeline
-        assertIs<TimelineEntry.StoryEntry>(entries[2])
-        assertEquals(OCT_7, (entries[3] as TimelineEntry.MomentEntry).moment.newestDay)
+        stories.setWriting("b", "Coffee", "")
+        stories.setWriting("e", "", "The long walk home")
+        stories.addTag(listOf("c"), "Dog")
+        assertEquals(listOf("e", "b"), stories.currentState.storyline.map { it.id })
     }
 
     @Test
-    fun addingNeighborDaysStretchesTheDates() = runTest {
-        val stories = setup().stories
-        val id = assertNotNull(stories.createStoryFromDay("Trip", OCT_8))
-        advanceUntilIdle()
-        assertEquals(listOf(OCT_7, OCT_9), stories.currentState.neighborDays(id).map { it.day })
-
-        stories.addDay(id, OCT_9)
-        stories.addDay(id, OCT_7)
-        advanceUntilIdle()
-
-        val trip = assertNotNull(stories.currentState.story(id))
-        assertEquals(OCT_7, trip.firstDay)
-        assertEquals(OCT_9, trip.lastDay)
-        assertEquals(3, trip.dayCount)
-        assertEquals(listOf("a", "b", "c", "d"), trip.items.map { it.id })
-        assertEquals(listOf(OCT_7, OCT_8, OCT_9), trip.tileDays.map { it.day })
-    }
-
-    @Test
-    fun byGapAMomentRunsUntilALongPause() = runTest {
+    fun removingFromTheStorylineKeepsTheWriting() = runTest {
         val setup = setup()
-        setup.settings.setGroupingMode(GroupingMode.BY_GAP)
-        advanceUntilIdle()
+        val stories = setup.stories
+        stories.setWriting("b", "Coffee", "With Dana")
+        stories.setInStoryline("b", false)
+        assertTrue(stories.currentState.storyline.isEmpty())
+        assertEquals("Coffee", stories.currentState.note("b")?.title)
+        assertTrue("\"storyline\": false" in setup.fileSystem.read(ROOT / "media" / "b.json") { readUtf8() })
 
+        // Kept after a reload, and put back by "Add to storyline".
+        val reloaded = setup(setup.fileSystem).stories
+        assertTrue(reloaded.currentState.storyline.isEmpty())
+        reloaded.setInStoryline("b", true)
+        assertEquals(listOf("b"), reloaded.currentState.storyline.map { it.id })
+    }
+
+    @Test
+    fun clearingTheWritingTakesThePhotoOffTheStoryline() = runTest {
+        val stories = setup().stories
+        stories.setWriting("d", "Rain", "")
+        stories.setWriting("d", "", "")
+        assertTrue(stories.currentState.storyline.isEmpty())
+    }
+
+    @Test
+    fun oldStoriesAreDeletedAndNotesKept() = runTest {
+        val fileSystem = FakeFileSystem()
+        fileSystem.createDirectories(ROOT / "stories" / "2026-10-17T12-52-22.257Z")
+        fileSystem.write(ROOT / "stories" / "2026-10-17T12-52-22.257Z" / "story.json") { writeUtf8("{}") }
+        fileSystem.createDirectories(ROOT / "events")
+        setup(fileSystem).stories.setWriting("a", "Kept", "")
+
+        deleteOldStories(fileSystem, ROOT)
+        assertFalse(fileSystem.exists(ROOT / "stories"))
+        assertFalse(fileSystem.exists(ROOT / "events"))
+        assertTrue(fileSystem.exists(ROOT / "media" / "a.json"))
+        deleteOldStories(fileSystem, ROOT)
+    }
+
+    @Test
+    fun byGapAMomentRunsUntilALongPause() {
         // Gaps: a 9:00 → b 10:00 next day is 25 h; b → c 2 h; c 12:00 → d 8:00 next day is 20 h; d → e a week.
-        val moments = setup.stories.currentState.moments
+        val newestFirst = items.sortedByDescending { it.takenAtMillis }
+        val moments = groupMoments(newestFirst, TimelineGrouping(GroupingMode.BY_GAP, 12))
         assertEquals(listOf(listOf("e"), listOf("d"), listOf("c", "b"), listOf("a")), moments.map { m -> m.items.map { it.id } })
 
-        setup.settings.setGapHours(24)
-        advanceUntilIdle()
-        // c → d (20 h) now joins: one moment from Oct 8 to Oct 9.
-        val trip = setup.stories.currentState.moments[1]
-        assertEquals(listOf("d", "c", "b"), trip.items.map { it.id })
-        assertEquals(OCT_8, trip.oldestDay)
-        assertEquals(OCT_9, trip.newestDay)
-
-        val id = assertNotNull(setup.stories.createStoryFromMoment("Weekend", trip.key))
-        advanceUntilIdle()
-        assertEquals(listOf("b", "c", "d"), setup.stories.currentState.story(id)?.items?.map { it.id })
-        assertEquals(2, setup.stories.currentState.unsortedCount)
+        // c → d (20 h) joins with 24 h: one moment from Oct 8 to Oct 9.
+        val joined = groupMoments(newestFirst, TimelineGrouping(GroupingMode.BY_GAP, 24))[1]
+        assertEquals(listOf("d", "c", "b"), joined.items.map { it.id })
+        assertEquals(OCT_8, joined.oldestDay)
+        assertEquals(OCT_9, joined.newestDay)
     }
 
     @Test
@@ -187,99 +180,5 @@ class StoriesControllerTest {
         first.setGapHours(0)
 
         assertEquals(TimelineGrouping(GroupingMode.BY_GAP, 6), setup(settingsStore = store).settings.currentState.grouping)
-    }
-
-    @Test
-    fun aPhotoCanBeInSeveralStories() = runTest {
-        val stories = setup().stories
-        val trip = assertNotNull(stories.createStory("Trip", listOf("b", "c")))
-        val dinner = assertNotNull(stories.createStory("Dinner", listOf("c")))
-        advanceUntilIdle()
-
-        assertEquals(setOf(trip, dinner), stories.currentState.storiesContaining("c").map { it.id }.toSet())
-        stories.removeItems(trip, listOf("c"))
-        advanceUntilIdle()
-        assertEquals(listOf(dinner), stories.currentState.storiesContaining("c").map { it.id })
-    }
-
-    @Test
-    fun emptyStoriesAreRefused() = runTest {
-        val stories = setup().stories
-        assertNull(stories.createStory("Nothing", listOf("not-on-device")))
-        assertTrue(stories.currentState.stories.isEmpty())
-    }
-
-    @Test
-    fun titlesAreOptional() = runTest {
-        val fileSystem = FakeFileSystem()
-        val stories = setup(fileSystem).stories
-        val id = assertNotNull(stories.createStory("  ", listOf("a")))
-        assertEquals("", stories.currentState.story(id)!!.title)
-        assertFalse(stories.currentState.story(id)!!.hasTitle)
-
-        stories.rename(id, "Dinner")
-        assertTrue(stories.currentState.story(id)!!.hasTitle)
-        stories.rename(id, " ")
-        stories.setIntro(id, "Just us.")
-        val reloaded = setup(fileSystem).stories.currentState.story(id)!!
-        assertEquals("", reloaded.title)
-        assertEquals("Just us.", reloaded.intro)
-    }
-
-    @Test
-    fun storiesAreSavedAsReadableJsonAndReloaded() = runTest {
-        val fileSystem = FakeFileSystem()
-        val first = setup(fileSystem).stories
-        val id = assertNotNull(first.createStory("Japan trip", listOf("b")))
-        first.rename(id, "Japan")
-
-        val json = fileSystem.read(ROOT / "stories" / id / "story.json") { readUtf8() }
-        assertTrue("\"title\": \"Japan\"" in json, json)
-        assertTrue("\"dates\"" !in json, json)
-        assertTrue("\"deviceId\": \"b\"" in json, json)
-        assertTrue("\"fileName\": \"b.jpg\"" in json, json)
-
-        val reloaded = setup(fileSystem).stories.currentState.story(id)
-        assertEquals("Japan", reloaded?.title)
-        assertEquals(listOf("b"), reloaded?.items?.map { it.id })
-    }
-
-    @Test
-    fun deleteKeepsThePhotos() = runTest {
-        val setup = setup()
-        val id = assertNotNull(setup.stories.createStoryFromDay("Arrival", OCT_8))
-        setup.stories.delete(id)
-        advanceUntilIdle()
-
-        assertTrue(setup.stories.currentState.stories.isEmpty())
-        assertEquals(5, setup.stories.currentState.unsortedCount)
-        assertTrue(!setup.fileSystem.exists(ROOT / "stories" / id))
-    }
-
-    @Test
-    fun unsafeIdsNeverReachTheFileSystem() = runTest {
-        val fileSystem = FakeFileSystem()
-        val store = FileStoryStore(fileSystem, ROOT)
-        fileSystem.createDirectories(ROOT / "stories" / "keep")
-        fileSystem.write(ROOT / "stories" / "keep" / "story.json") { writeUtf8("{}") }
-        fileSystem.write(ROOT / "photo.jpg") { writeUtf8("pixels") }
-
-        listOf("..", "", ".", "../..", "a/b", "a..b", "/abs").forEach { id ->
-            assertFailsWith<IllegalArgumentException>(id) { store.delete(id) }
-        }
-        assertTrue(fileSystem.exists(ROOT / "stories" / "keep" / "story.json"))
-        assertTrue(fileSystem.exists(ROOT / "photo.jpg"))
-    }
-
-    @Test
-    fun aDamagedFileDoesNotHideOtherStories() = runTest {
-        val fileSystem = FakeFileSystem()
-        val first = setup(fileSystem).stories
-        val id = assertNotNull(first.createStory("Good", listOf("a")))
-        fileSystem.createDirectories(ROOT / "stories" / "broken")
-        fileSystem.write(ROOT / "stories" / "broken" / "story.json") { writeUtf8("{not json") }
-
-        val stories = setup(fileSystem).stories.currentState.stories
-        assertEquals(listOf(id), stories.map { it.id })
     }
 }

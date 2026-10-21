@@ -8,13 +8,12 @@ import SharedLogic
 struct FeedActions {
     /// A photo was tapped; the viewer swipes through its row.
     var openItem: (FeedSection, MediaItem) -> Void = { _, _ in }
-    var saveTrip: (FeedTrip) -> Void = { _ in }
-    var dismissTrip: (_ key: String) -> Void = { _ in }
     /// From a photo's long-press menu.
     var write: (MediaItem) -> Void = { _ in }
     /// Opens the crop screen on the photo's Moments crop.
     var crop: (MediaItem) -> Void = { _ in }
-    var addToStory: (MediaItem) -> Void = { _ in }
+    /// "Remove from storyline" (false) or "Add to storyline" (true), for a photo with writing.
+    var setInStoryline: (MediaItem, Bool) -> Void = { _, _ in }
     var tag: (MediaItem) -> Void = { _ in }
     var takeOutOfSet: (MediaItem) -> Void = { _ in }
     /// A swipe set (its photos, in order) was turned to a photo: it opens there next time.
@@ -27,8 +26,6 @@ struct FeedActions {
     var hideOnRow: (FeedSection, MediaSource) -> Void = { _, _ in }
     /// A photo of a band; the viewer swipes through the band's photos.
     var openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Void = { _, _, _ in }
-    /// A band's "Add to a story", with all its photos.
-    var addAllToStory: (_ itemIds: [String]) -> Void = { _ in }
     /// A band's "Always show this day": the source's photos of the row's days show from now on.
     var alwaysShow: (FeedSection, MediaSource) -> Void = { _, _ in }
 }
@@ -41,10 +38,9 @@ enum BandPart: Hashable {
     case footer
 }
 
-/// One item of the feed's lazy stack: a trip card, a row's divider, a moment's label, or one photo or near-duplicate
+/// One item of the feed's lazy stack: a row's divider, a moment's label, or one photo or near-duplicate
 /// set. A photo per item keeps the stack lazy: a moment of a hundred photos lays out only the ones in view.
 enum FeedRow: Identifiable {
-    case trip(FeedTrip)
     case heading(FeedSection)
     /// `showPlace`: a camera moment whose place differs from the camera moment above it in its row.
     case label(FeedMoment, showPlace: Bool)
@@ -54,7 +50,6 @@ enum FeedRow: Identifiable {
 
     var id: String {
         switch self {
-        case .trip(let trip): return trip.key
         case .heading(let section): return "heading-\(section.key)"
         case .label(let moment, _): return "label-\(moment.key)"
         case .photo(_, let block): return "photo-\(block.key)"
@@ -75,7 +70,6 @@ extension MomentsFeed {
     /// The feed as stack items; work it out once per feed.
     var rows: [FeedRow] {
         entries.flatMap { entry -> [FeedRow] in
-            if let trip = entry as? FeedEntryTrip { return [.trip(trip.trip)] }
             guard let section = (entry as? FeedEntrySection)?.section else { return [] }
             var place: String?
             var rows: [FeedRow] = [.heading(section)]
@@ -133,8 +127,6 @@ struct FeedRowsView: View {
     var body: some View {
         ForEach(rows) { row in
             switch row {
-            case .trip(let trip):
-                FeedTripCard(trip: trip, onSave: { actions.saveTrip(trip) }, onDismiss: { actions.dismissTrip(trip.key) })
             case .heading(let section):
                 FeedDayDivider(section: section, actions: actions)
             case let .band(section, revealed, part):
@@ -201,7 +193,13 @@ struct FeedRowsView: View {
                 if !item.isVideo {
                     Button { actions.crop(item) } label: { Label("Crop", systemImage: "crop") }
                 }
-                Button { actions.addToStory(item) } label: { Label("Add to story", systemImage: "plus") }
+                if let note = note(item.id), note.hasWriting {
+                    if note.inStoryline {
+                        Button { actions.setInStoryline(item, false) } label: { Label("Remove from storyline", systemImage: "text.badge.minus") }
+                    } else {
+                        Button { actions.setInStoryline(item, true) } label: { Label("Add to storyline", systemImage: "text.badge.plus") }
+                    }
+                }
                 Button { actions.tag(item) } label: { Label("Tag", systemImage: "tag") }
                 Button { selection.insert(block.key) } label: { Label("Select", systemImage: "checkmark.circle") }
                 if block is FeedBlockSimilar {
@@ -214,6 +212,25 @@ struct FeedRowsView: View {
 
 /// Between photos of the feed.
 let tileGap: CGFloat = 2
+
+/// Check circle and outline over a photo while picking.
+struct SelectionOverlay: View {
+    let selected: Bool
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if selected { Rectangle().stroke(.white, lineWidth: 3) }
+            ZStack {
+                Circle().fill(selected ? LibraryColors.accent : LibraryColors.badgeScrim)
+                Circle().stroke(.white, lineWidth: 2)
+                if selected { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white) }
+            }
+            .frame(width: 24, height: 24)
+            .padding(7)
+        }
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
 
 extension MediaItem {
     /// Its shape (width / height), 4:3 when unknown.
@@ -442,7 +459,7 @@ private struct FeedSet: View {
 private let maxDots = 8
 
 /// The title the user gave a photo, above it. Nothing when it has none.
-private struct FeedNoteTitle: View {
+struct FeedNoteTitle: View {
     let title: String?
 
     var body: some View {
@@ -460,7 +477,7 @@ private struct FeedNoteTitle: View {
 
 /// The paragraph the user wrote about a photo, under it, in the serif of written text: up to four lines, then "more"
 /// (tap to read it all). Nothing when it has none.
-private struct FeedNoteText: View {
+struct FeedNoteText: View {
     let caption: String?
 
     @State private var expanded = false
@@ -593,7 +610,7 @@ private struct HiddenChip: View {
 }
 
 /// A part of the tinted band of a hidden source's photos shown on one row: "WhatsApp · 6   14:02 – 17:30", the
-/// photos in lines of three, then "Add to a story" and "Always show this day".
+/// photos in lines of three, then "Always show this day".
 private struct RevealedBandPart: View {
     let section: FeedSection
     let revealed: RevealedPhotos
@@ -647,9 +664,6 @@ private struct RevealedBandPart: View {
 
     private var footer: some View {
         HStack(spacing: 20) {
-            Button { actions.addAllToStory(revealed.items.map(\.id)) } label: {
-                Label("Add to a story", systemImage: "plus")
-            }
             Button { actions.alwaysShow(section, revealed.source) } label: {
                 Label("Always show this day", systemImage: "eye")
             }
@@ -715,59 +729,6 @@ private struct FeedMomentLabel: View {
 /// "9:14" or "9:14 AM", as the locale writes it.
 func clockTime(_ millis: Int64) -> String {
     Date(timeIntervalSince1970: TimeInterval(millis) / 1000).formatted(date: .omitted, time: .shortened)
-}
-
-/// Days away from home, offered as one story; "Not now" doesn't offer it again.
-private struct FeedTripCard: View {
-    let trip: FeedTrip
-    let onSave: () -> Void
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                MediaTileView(item: trip.cover, badgeSize: 0)
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Looks like a trip").font(.system(size: 12, weight: .semibold)).foregroundStyle(LibraryColors.onInverseMuted)
-                    Text(trip.place ?? String(localized: "A trip"))
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(LibraryColors.onInverse)
-                        .lineLimit(1)
-                    Text([
-                        dayRange(trip.firstDay, trip.lastDay),
-                        String(localized: "\(Int(trip.days)) days"),
-                        String(localized: "\(trip.items.count) photos"),
-                    ].joined(separator: " · "))
-                    .font(.system(size: 13))
-                    .foregroundStyle(LibraryColors.onInverseMuted)
-                }
-            }
-            HStack(spacing: 8) {
-                Button(action: onSave) {
-                    Text("Save as story")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(LibraryColors.accent, in: Capsule())
-                }
-                Button(action: onDismiss) {
-                    Text("Not now")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(LibraryColors.onInverse)
-                        .padding(.horizontal, 18)
-                        .frame(height: 40)
-                        .overlay(Capsule().stroke(LibraryColors.onInverseMuted.opacity(0.5)))
-                }
-            }
-        }
-        .padding(14)
-        .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 18))
-        .padding(.horizontal, 12)
-        .padding(.top, 24)
-    }
 }
 
 /// The filter bar: each source with its count, on (filled, with a check) or off (outlined). A source with no photos

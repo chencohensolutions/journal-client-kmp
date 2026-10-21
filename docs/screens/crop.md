@@ -8,7 +8,7 @@ Crops are **only for looking**: the photo itself is never changed. Each photo ca
 | **Portrait** | This phone's screen, upright | The [viewer](viewer.md) with the phone upright |
 | **Landscape** | This phone's screen, sideways | The viewer with the phone sideways |
 
-A photo without a crop shows whole there. Videos aren't cropped (yet). Story pages don't use crops. A cropped photo
+A photo without a crop shows whole there. Videos aren't cropped (yet). The storyline shows a photo at its Moments crop. A cropped photo
 leaves its near-duplicate set in Moments and shows on its own (unless merged into a set by hand).
 
 ## Opening it
@@ -49,7 +49,7 @@ In the photo's note file, `media/<device id>.json` (see [tags.md](tags.md)), for
 ```
 
 Fractions of the upright photo, so they fit any resolution and a server copy; `aspect` is the screen shape a viewer
-crop was made for. A note with only crops is kept; a crop doesn't sort a photo (it stays unsorted). Saving keeps
+crop was made for. A note with only crops is kept; a crop alone doesn't put a photo on the storyline. Saving keeps
 fields of the file this version doesn't know, also inside `"crops"`, so an older app never drops a newer one's.
 
 ## Code

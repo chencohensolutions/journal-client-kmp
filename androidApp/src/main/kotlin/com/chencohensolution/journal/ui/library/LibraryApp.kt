@@ -130,7 +130,7 @@ private fun LibraryScreens(
                 popTransitionSpec = { sharedAxis(forward = false) },
                 predictivePopTransitionSpec = { sharedAxis(forward = false) },
                 entryProvider = { entry ->
-                    val opensFromTile = entry.route is Route.Viewer || entry.route is Route.Story || entry.route is Route.Group
+                    val opensFromTile = entry.route is Route.Viewer
                     NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
                         val route = entry.route
                         val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
@@ -141,12 +141,10 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     health = journalState.health,
                                     actions = HomeActions(
-                                        openItem = { section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id)) },
+                                        openItem = { section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id)) },
+                                        openStoryline = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
-                                        openStory = { push(Route.Story(it)) },
-                                        createStory = { title, key -> stories.createStoryFromFeed(title, key)?.let { push(Route.Story(it)) } },
                                         toggleSource = settings::toggleFeedSource,
-                                        dismissTrip = settings::dismissTrip,
                                         openAllPhotos = { push(Route.AllPhotos) },
                                         openSettings = { push(Route.Settings) },
                                         allowAccess = actions.requestAccess,
@@ -158,10 +156,7 @@ private fun LibraryScreens(
                                         merge = stories::mergeInFeed,
                                         takeOutOfSet = stories::takeOutOfSet,
                                         turnSet = stories::turnSet,
-                                        toggleStory = { storyId, itemIds, add ->
-                                            if (add) stories.addItems(storyId, itemIds) else stories.removeItems(storyId, itemIds)
-                                        },
-                                        createStoryWith = { title, itemIds -> stories.createStory(title, itemIds) },
+                                        setInStoryline = stories::setInStoryline,
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },
@@ -179,7 +174,7 @@ private fun LibraryScreens(
                                             stories.hideOnRow(section.key, source)
                                         },
                                         openRevealed = { section, source, item ->
-                                            push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, revealed = source))
+                                            push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, revealed = source))
                                         },
                                     ),
                                     landing = landingHere,
@@ -200,7 +195,7 @@ private fun LibraryScreens(
                                         stories = storiesState,
                                         year = year,
                                         onYear = { year = it },
-                                        onOpenItem = { scope, section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, scope = scope)) },
+                                        onOpenItem = { scope, section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope)) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
@@ -214,7 +209,7 @@ private fun LibraryScreens(
                                         stories = storiesState,
                                         month = month,
                                         onMonth = { month = it },
-                                        onOpenItem = { scope, section, item -> push(Route.Viewer(null, null, section.key, LibraryFilter.ALL, item.id, scope = scope)) },
+                                        onOpenItem = { scope, section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope)) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
@@ -228,7 +223,7 @@ private fun LibraryScreens(
                                         toggleSource = settings::toggleFeedSource,
                                         openPhotos = { scope, itemId ->
                                             val first = itemId ?: scopeItems(libraryState, storiesState, scope).firstOrNull()?.id
-                                            if (first != null) push(Route.Viewer(null, null, null, LibraryFilter.ALL, first, scope = scope))
+                                            if (first != null) push(Route.Viewer(null, LibraryFilter.ALL, first, scope = scope))
                                         },
                                     ),
                                 )
@@ -240,61 +235,12 @@ private fun LibraryScreens(
                                         health = journalState.health,
                                         filter = filter,
                                         onFilter = { filter = it },
-                                        onOpenItem = { push(Route.Viewer(null, null, null, filter, it.id)) },
+                                        onOpenItem = { push(Route.Viewer(null, filter, it.id)) },
                                         onBack = pop,
                                         landing = landingHere,
                                         backupRunning = backupRunning,
                                     )
                                 }
-                                is Route.Story -> StoryScreen(
-                                    story = storiesState.story(route.id),
-                                    neighborDays = storiesState.neighborDays(route.id),
-                                    health = journalState.health,
-                                    actions = StoryActions(
-                                        openItem = { push(Route.Viewer(route.id, null, null, LibraryFilter.ALL, it.id)) },
-                                        openGroup = { push(Route.Group(route.id, it.id)) },
-                                        addDay = { stories.addDay(route.id, it) },
-                                        rename = { stories.rename(route.id, it) },
-                                        delete = {
-                                            stories.delete(route.id)
-                                            pop()
-                                        },
-                                        setIntro = { stories.setIntro(route.id, it) },
-                                        acceptSuggestion = { stories.acceptSuggestion(route.id, it) },
-                                        groupTiles = { stories.groupTiles(route.id, it) },
-                                        mergeTiles = { stories.mergeTiles(route.id, it) },
-                                        restore = stories::restore,
-                                        dismissSuggestion = { stories.dismissSuggestion(route.id, it) },
-                                        ungroup = { stories.ungroup(route.id, it) },
-                                        removeItems = { stories.removeItems(route.id, it) },
-                                        setTileSize = { key, size -> stories.setTileSize(route.id, key, size) },
-                                        setTileFocus = { key, focus, zoom -> stories.setTileFocus(route.id, key, focus.x, focus.y, zoom) },
-                                        moveTile = { key, offset -> stories.moveTile(route.id, key, offset) },
-                                        resetLayout = { stories.resetLayout(route.id) },
-                                        resetGroups = { stories.resetGroups(route.id) },
-                                        back = pop,
-                                    ),
-                                    landing = landingHere,
-                                )
-                                is Route.Group -> GroupScreen(
-                                    story = storiesState.story(route.storyId),
-                                    group = storiesState.story(route.storyId)?.group(route.groupId),
-                                    actions = GroupActions(
-                                        openItem = { push(Route.Viewer(route.storyId, route.groupId, null, LibraryFilter.ALL, it.id)) },
-                                        openGroup = { push(Route.Group(route.storyId, it.id)) },
-                                        rename = { stories.renameGroup(route.storyId, route.groupId, it) },
-                                        setText = { stories.setGroupText(route.storyId, route.groupId, it) },
-                                        ungroup = { stories.ungroup(route.storyId, route.groupId) },
-                                        groupTiles = { stories.groupTiles(route.storyId, it, parentId = route.groupId) },
-                                        mergeTiles = { stories.mergeTiles(route.storyId, it, parentId = route.groupId) },
-                                        restore = stories::restore,
-                                        takeOut = { stories.removeFromGroup(route.storyId, route.groupId, it) },
-                                        acceptSuggestion = { stories.acceptGroupSuggestion(route.storyId, route.groupId, it) },
-                                        dismissSuggestion = { stories.dismissSuggestion(route.storyId, it) },
-                                        back = pop,
-                                    ),
-                                    landing = landingHere,
-                                )
                                 Route.Settings -> {
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
@@ -334,29 +280,19 @@ private fun LibraryScreens(
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,
                                     stories = storiesState,
-                                    onOpenItem = { push(Route.Viewer(null, null, null, LibraryFilter.ALL, it.id, tag = route.name)) },
+                                    onOpenItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, tag = route.name)) },
                                     onBack = pop,
                                     landing = landingHere,
                                 )
                                 is Route.Viewer -> ViewerScreen(
-                                    // Fixed when opened: tagging or grouping a photo must not pull it out from under the viewer.
+                                    // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
                                     items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
                                         .mapNotNull { storiesState.itemsById[it] },
                                     startId = route.itemId,
                                     stories = storiesState,
-                                    openedFrom = route.storyId?.let(storiesState::story),
-                                    group = route.groupId?.let { route.storyId?.let(storiesState::story)?.group(it) },
                                     actions = ViewerActions(
                                         back = pop,
-                                        openGroup = { groupId -> route.storyId?.let { push(Route.Group(it, groupId)) } },
-                                        setCover = { itemId -> if (route.storyId != null && route.groupId != null) stories.setCover(route.storyId, route.groupId, itemId) },
-                                        removeFromGroup = { itemId ->
-                                            if (route.storyId != null && route.groupId != null) stories.removeFromGroup(route.storyId, route.groupId, listOf(itemId))
-                                        },
-                                        toggleStory = { storyId, itemId, add ->
-                                            if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
-                                        },
-                                        createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
+                                        setInStoryline = stories::setInStoryline,
                                         setWriting = stories::setWriting,
                                         restoreWriting = stories::restoreWriting,
                                         toggleTag = { itemId, tag, add ->

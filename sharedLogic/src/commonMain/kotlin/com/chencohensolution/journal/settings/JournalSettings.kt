@@ -78,11 +78,6 @@ internal class JournalSettings(private val store: KeyValueStore) {
     private fun sourcesOf(stored: String): Set<MediaSource> =
         stored.split(",").mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }.toSet()
 
-    /** Trips the user answered "Not now" to, by key ("trip-2026-10-04"). */
-    var dismissedTrips: Set<String>
-        get() = store.getString(KEY_DISMISSED_TRIPS)?.split(",")?.filter { it.isNotEmpty() }?.toSet().orEmpty()
-        set(value) = store.putString(KEY_DISMISSED_TRIPS, value.joinToString(",").ifEmpty { null })
-
     /** What uploads to the server and when (Settings → Backup). */
     var backup: BackupSettings
         get() = BackupSettings(
@@ -191,7 +186,6 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SHOWN_SOURCES = "shown_sources"
         private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
-        private const val KEY_DISMISSED_TRIPS = "dismissed_trips"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"
         private const val KEY_BACKUP_SOURCES = "backup_sources"
         private const val KEY_BACKUP_WIFI_ONLY = "backup_wifi_only"

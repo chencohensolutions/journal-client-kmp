@@ -8,137 +8,109 @@ What the app is, what was decided and why, what is built, and what comes next. S
 
 A private journal built from the owner's own photos and videos, served by their own server (journal-server-go,
 mTLS, one user per certificate). Like Google Photos or iCloud, everything taken on the phone should eventually be
-backed up automatically, with the option to keep originals only on the server. Unlike them, it is a journal: photos
-are gathered into **stories** with the owner's writing, grouped into moments, and tagged.
+backed up automatically, with the option to keep originals only on the server. Unlike them, it is a journal: the owner
+writes a title and a paragraph on the photos that matter, and those make up the **storyline**; every photo is also
+grouped into moments, and can be tagged.
 
 ## Concepts
 
 | Concept | What it is |
 |---|---|
 | **Photo library** | Every photo and video on the device, read through MediaStore (Android) / PhotoKit (iOS). Read only, always. |
-| **Story** | A title (optional; an untitled story is named by its dates) over a set of photos, with text: a trip, a birthday, "Our dog". **No dates of its own**; the span shown comes from its photos. A photo can be in many stories. Was called "event" until it was renamed. |
-| **Group** | Photos of one moment shown as one tile inside a story (a burst, or picked by hand), with its own text. Groups nest: a group's tiles are its photos and its subgroups. Within a story a photo is directly in at most one group. |
-| **Tag** | A label on a photo, for photos that belong somewhere but don't deserve a story. Free text, compared ignoring case. |
 | **Note** | A photo's own writing, a title and a paragraph (`caption`) with earlier versions, shown wherever the photo appears. |
-| **Unsorted** | Photos in no story **and** without tags. A note alone doesn't sort a photo. Neighboring days on a story page offer only these. |
+| **Storyline** | Every photo with writing, one each (never a set), newest first, unless removed from it. Replaced stories on Oct 21, 2026. |
+| **Moments** | Every photo, in rows by day (or by breaks), split by time, place and source, near-duplicates as one set you swipe. Worked out, never saved, apart from sets merged or split by hand. |
+| **Tag** | A label on a photo, for photos that belong somewhere without writing about them. Free text, compared ignoring case. |
+
+Stories (a title over a set of photos, with groups, covers and an arranged layout), "Unsorted", and trip
+suggestions existed until **Oct 21, 2026**, when the owner replaced them with the storyline and had the existing
+stories deleted (see "Storyline" below).
 
 ## Decisions (and why)
 
 **Look and navigation**
 - The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
   light or dark theme; the photo viewer is always dark.
-- Home has two tabs, **Stories** and **Moments** (renamed from Journal / Unsorted on Oct 19, 2026). Stories is the
-  timeline, newest first, with **only story cards**. Moments shows **every photo**, also those in stories or tagged
-  (asked Oct 19, 2026; on iOS since Oct 21, 2026). A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
-  or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
+- Home has three tabs: **Storyline**, **Moments** and **Explore**. (Journal / Unsorted until Oct 19, 2026, then
+  Stories / Moments; Explore from Oct 20; Storyline replaced Stories on Oct 21, 2026.) Moments shows **every photo**,
+  also those tagged or written about.
 - Moments are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
 - Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first, iOS since Oct 21, 2026): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
-  one photo you swipe (no peek), a filter bar of source toggles (Camera and WhatsApp on at first), and trip
-  suggestions. **Stories are never made automatically**; only + Story or Save as story does. See
-  [screens/moments.md](screens/moments.md).
-- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Stories / Moments, plus "N not backed up".
+  one photo you swipe (no peek), and a filter bar of source toggles. See [screens/moments.md](screens/moments.md).
+- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Storyline / Moments / Explore, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
-- Sub-stories (stories inside stories) were agreed in principle; when built, they show only inside their parent
-  (with a Settings option later), never on the home timeline.
-- "Day 2" labels and **+ Add <day>** buttons only for **trip-like** stories (photos within 14 days).
 
-**Choosing among many stories and tags**
-- Never a full list. Pickers are a search sheet focused for typing, with suggestions before typing (stories with
-  photos **on these days**, **nearby** within 7 days, 3 **recent**), title search (substring, one typo allowed for
-  4+ letters), and **Create "…"** first.
+**Storyline** (owner, Oct 21, 2026)
+- Stories asked the owner to sort photos ahead of time; the storyline grows by itself from what is written. **Write**
+  opens a title box and a paragraph box; on Moments and the storyline the title is above the photo and the paragraph
+  under it.
+- Every photo with writing is on the storyline, **newest first**, one photo per entry: to have the best photo of a
+  set there, open it and write on it. Sets don't show on the storyline yet; adding more photos to one entry is for
+  later.
+- **Remove from storyline** keeps the writing (it still shows in Moments); **Add to storyline** puts it back.
+- Each save keeps the earlier writing as a version (saves less than 10 minutes apart are one version); History shows
+  them with what changed, and Restore never loses anything. Moments doesn't show history.
+- Existing stories, with their groups, covers, layouts and story.md text, were **deleted**, as the owner asked; the
+  app deletes `journal/stories` (and the old `journal/events`) on start. Photos, notes, tags and crops were kept.
+- Tags stay.
 
-**Groups**
-- **Burst suggestions** are automatic: photos within **10 s** of each other, or sharing the camera's burst id (iOS
-  `burstIdentifier`; Samsung `20261008_140901_092.jpg` names), runs of **3+** photos, videos excluded. "Not now" is
-  remembered per story.
-- **Suggestions go by looks, at any time** (asked Oct 18, 2026): in a story, and inside a group (as subgroups),
-  photos that look alike are suggested together however far apart they were taken, and quick shots of different
-  things are split; two are enough. Time (10 s, 3+) is only the fallback for photos not read yet. Looks: a dHash for
+**Sets in Moments, by looks** (asked Oct 18, 2026, first for story suggestions)
+- Photos that look alike are one set however far apart they were taken, and quick shots of different things are
+  split; two are enough. Time (10 s) is only the fallback for photos not read yet. Looks: a dHash for
   near-duplicates plus each platform's own image embedding for the same scene (Vision feature print on iOS,
   MediaPipe MobileNet-V3 large on Android), zoom-aware (each photo's zoomed centers are compared with the other's
-  whole frame); a new story or group is read first. The owner chose native per platform for this, and **one shared open model**
-  (commercial use allowed, e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) later for
-  search across the library, to be decided with upload and sync. Fingerprints are a per-device cache, never synced.
-- **Group** puts the selected tiles (photos and groups) in a new group, in the story or, from a group's page, as a
-  subgroup: **groups nest**, to any depth. Undo restores the story as it was.
-- **Merge** (offered when a group is selected) joins the selected tiles into the first selected group instead; the
-  others' photos, subgroups and text move into it.
-- Ungrouping, or a group left with one tile, moves its photos, subgroups and text one level up: into the group around
-  it, or the story (its opening text), so nothing is lost.
-
-**Layout**
-- A story's days are grids **6 square cells wide**; tiles take size presets (Small 2×2, Wide 4×2, Tall 2×4, Half
-  3×3, Large 4×4, Full 6×4, or Original: full width at the photo's own ratio) and are placed by **dense packing** in
-  the story's order. Any tile can be zoomed (up to 4×) around its focus point. **The automatic size is Original**,
-  so an unarranged story is its photos full width, uncropped, one under the other. A group is one tile in its
-  story's layout; the group page itself stays automatic.
-- Arranging stores only what the owner chose (size, focus point, zoom, order) in story.json; everything else stays
-  automatic. (Before Oct 18, 2026 the automatic layout was a large tile and rows of small ones; unarranged stories
-  now show as Original.)
-- Order changes only **within a day**, so a story still reads oldest day first.
+  whole frame). The owner chose native per platform for this, and **one shared open model** (commercial use allowed,
+  e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) for search across the library, which the
+  server now has (`searchMedia`). Fingerprints are a per-device cache, never synced.
 
 **Photos are never modified**
 - The app must never change, move or delete a photo. Enforced by `PhotoSafetyTest` (scans all sources for
   MediaStore/PhotoKit write APIs and write permissions) and by the platforms (read-only permissions on Android;
-  PhotoKit deletion always asks on iOS). Story ids are validated before any file operation.
+  PhotoKit deletion always asks on iOS). Note file names are made safe before any file operation.
 
 ## Data
 
 Everything is **plain files first**: the files are the truth and any database is a rebuildable cache, so the data
 folder alone is a complete, portable journal if the server is ever lost.
 
-**On the device today** (stories and notes exist only here until sync is built), in the app's private storage
+**On the device today** (notes exist only here until sync is built), in the app's private storage
 (Android `files/journal/`, iOS `Application Support/journal/`). Uninstalling the app deletes them.
 
 ```
 journal/
-  stories/
-    2026-10-17T12-52-22.257Z/     ← id = UTC creation time; folder never renamed
-      story.json                  ← title, tiles in order (with size/focus when arranged), groups,
-                                    dismissed suggestions; format v1
-      story.md                    ← "# Title", opening text, then <!-- group:g1 --> sections
   media/
     22.json                       ← one note per photo (format v3): title, caption (the paragraph),
-                                    writtenAt, history [{title, text, savedAt}], tags, crops, Moments
-                                    set and the photo a set opens on ("front") (device id; "/" etc.
-                                    become "_")
+                                    writtenAt, history [{title, text, savedAt}], "storyline": false
+                                    when removed from it, tags, crops, Moments set and the photo a set
+                                    opens on ("front") (device id; "/" etc. become "_")
 ```
 
-- **Ids**: the UTC creation time with dashes (valid folder name everywhere). Each device issues strictly increasing
-  ids (`max(now, last + 1 ms)`, last value kept in settings). The owner chose timestamp only, **no device part**;
-  the rare cross-device same-millisecond case is handled at sync: the server refuses to overwrite an id with
-  different content and the client re-saves under a new timestamp. Older stories keep their UUID ids.
+- `stories/` (story.json, story.md) was deleted with stories on Oct 21, 2026. Set ids in Moments are still the UTC
+  time with dashes, strictly increasing on each device (`StoryIds`).
 - **Photos in files** are referenced by **device id** (MediaStore id / PHAsset local identifier), with `fileName`
   and `takenAt` kept so they can be matched to their server copy once uploads exist.
-- **story.md** is one file per story (sub-stories get their own). Group text lives in it under hidden markers so it
-  reads as one story outside the app. Sections whose group is gone are kept.
-- Old `events/<id>/event.json` folders are migrated to `stories/<id>/story.json` on load; old dates are ignored.
 
 **Planned on the server** (not built): a data folder of originals (never modified) under `media/YYYY/YYYY-MM/` with a
-JSON sidecar per file (facts, caption, tags; id = sha256 of the content, which also deduplicates), `stories/<id>/`
-folders as above but referencing photos by sha256, a generated `index.md` table of contents by date, and a
-disposable `.cache/` index rebuilt from the files.
+JSON sidecar per file (facts, the note, tags; id = sha256 of the content, which also deduplicates), a generated `index.md` table of
+contents by date, and a disposable `.cache/` index rebuilt from the files.
 
 ## Status
 
 **Built (Android and iOS, logic shared in `sharedLogic`)**
-- Photo access screen, Journal timeline, All photos (2×2 hero per day, filters), viewer (photos, video, details).
+- Photo access screen, the Storyline, Moments and Explore tabs, All photos (2×2 hero per day, filters), viewer (photos, video, details).
 - Backup to the server with its badges, the bottom pill and Settings → Backup (iOS since Oct 21, 2026; see "Upload
   and sync").
-- Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
-- Groups: burst suggestions (by time, and by looks: dHash + native embeddings), select-and-group with Undo, merging groups (with photos or each other), group page,
-  set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
-- Arranging a story's layout, on both platforms (iOS since Oct 21, 2026): sizes, Earlier/Later within a day, focus
-  point and zoom, reset.
+- Writing on a photo: a title and a paragraph, with History (versions, what changed, Restore); the storyline with
+  Remove / Add to storyline (Oct 21, 2026, both platforms). Stories, groups and layouts were removed the same day.
+- Moments' sets by looks (dHash + native embeddings), merged and split by hand.
 - Enrollment by QR code: **Scan QR code** on the code screen and `journal://enroll?code=…&server=…` links, on both
   platforms (iOS Oct 21, 2026).
-- Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
-- Search pickers for stories and tags.
+- Tags and notes per photo, Tags screen, tag page, and the tag search picker.
 - Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
   both; iOS since Oct 21, 2026).
-- Screen docs in `docs/screens/`; shared tests (187 on the JVM host, 187 on the iOS simulator).
+- Screen docs in `docs/screens/`; shared tests (158 on the JVM host after stories were removed on Oct 21, 2026).
 
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the
@@ -151,12 +123,10 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150` before that).
 
 **Not built yet**
-- On iOS: "Only on these Wi-Fi networks". Everywhere: story/note sync.
-- Sub-stories; layout templates and drag-and-drop
-  reordering; choosing a story's cover.
-- Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
-- Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).
-- Renaming/merging tags; month scrubber; similarity search across the library (shared model, see Groups).
+- On iOS: "Only on these Wi-Fi networks". Everywhere: note sync.
+- More than one photo for a storyline entry (the owner will decide how).
+- Multi-select on All photos (tag several at once; the shared logic already takes lists).
+- Renaming/merging tags; month scrubber; similarity search in the app (the server has `searchMedia`).
 
 ## Upload and sync
 
@@ -196,14 +166,14 @@ original card marks a photo the server has as private (`setPrivate`, kept in its
 files) or unmarks it. Private photos are hidden like nudity over the threshold, on every device, while "Show private
 media" is off (the default); the phone's own copy is hidden too. The server can also keep private photos from a
 device entirely (`journal-server private <serial> withhold`, off by default): they come to it as deleted from the
-change feed, and 404. Not yet anywhere: story/note sync.
+change feed, and 404. Not yet anywhere: note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
   probably run **Windows** (as an application for now, a service later), so the server stays cross-platform: no cgo,
   Windows-safe names, libvips/ffmpeg as separate programs. Backup to another machine and scrubbing come later.
 - The server's data folder is the truth: originals byte for byte under `media/YYYY/YYYY-MM/` (photo's local time) with
-  a sidecar each (`format`, `sha256`, `facts`, later `note`), `stories/<id>/`, and a rebuildable `.cache/`.
+  a sidecar each (`format`, `sha256`, `facts`, later `note`), and a rebuildable `.cache/`.
 
 **Uploading** (built on the server)
 - `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;
@@ -307,13 +277,11 @@ change feed, and 404. Not yet anywhere: story/note sync.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
   original.
 
-**Stories and notes** (not built)
+**Notes** (not built; stories were dropped from this plan on Oct 21, 2026)
 - File sync: `putFile(path, content, baseVersion)` (version = sha256 of the content; conflict returns the current
-  file), `changes(since: cursor)` pages of up to ~2,000 entries. story.json conflicts are merged by the client;
-  story.md and notes: newer wins, the other kept as a conflict copy. Notes sync as `notes/<sha256>` and are stored
-  inside the photo's sidecar. Files reference photos by sha256; a story syncs once its photos are uploaded.
+  file), `changes(since: cursor)` pages of up to ~2,000 entries. Notes sync as `notes/<sha256>` and are stored
+  inside the photo's sidecar; a note syncs once its photo is uploaded. On a conflict the newer wins and the other is
+  kept as a conflict copy; the writing's `history` lets two edits be merged instead, keeping both as versions.
 - Other devices check for changes on open and **every 15 minutes** (Android WorkManager's minimum; on iOS when the
   system allows).
-- Deleted stories go to a server trash for **6 months**. Stories made before sync may simply be deleted rather than
-  migrated (never photos).
 - Later: removing a photo from the journal, certificate renewal, search with a shared model.

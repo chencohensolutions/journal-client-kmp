@@ -71,20 +71,19 @@ private fun coverDimensions(sourceWidth: Int, sourceHeight: Int, width: Int, hei
 }
 
 /**
- * [item] cropped to fill this box, at exactly the box's size in pixels so it is drawn without scaling (times the
- * crop's zoom, which then enlarges it); empty while it loads.
+ * [item] cropped to fill this box, at exactly the box's size in pixels so it is drawn without scaling; empty while it
+ * loads.
  */
 @Composable
-internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier, crop: TileCrop = TileCrop.NONE) {
+internal fun CroppedThumbnail(item: MediaItem, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier) {
         val thumbnail = if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
-            val zoom = maxOf(crop.zoom, 1f)
-            rememberCoverThumbnail(item, (constraints.maxWidth * zoom).toInt(), (constraints.maxHeight * zoom).toInt())
+            rememberCoverThumbnail(item, constraints.maxWidth, constraints.maxHeight)
         } else {
             rememberThumbnail(item, THUMB_SMALL)
         }
         thumbnail?.let {
-            Image(it, contentDescription = null, contentScale = ContentScale.Crop, alignment = crop.alignment, modifier = Modifier.fillMaxSize().zoomAround(crop))
+            Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
     }
 }

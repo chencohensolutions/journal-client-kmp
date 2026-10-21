@@ -13,7 +13,6 @@ import com.chencohensolution.journal.stories.CropHandle
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.MAX_CROP_RATIO
 import com.chencohensolution.journal.stories.MIN_CROP_SIZE
 import com.chencohensolution.journal.stories.PhotoCrops
@@ -142,7 +141,6 @@ class CropsTest {
         library.refresh()
         val fileSystem = FakeFileSystem()
         val stories = StoriesController(
-            store = FileStoryStore(fileSystem, CROPS_ROOT),
             noteStore = FilePhotoNoteStore(fileSystem, CROPS_ROOT),
             library = library,
             settings = SettingsController(JournalSettings(CropsTestStore()), dispatcher),
@@ -156,8 +154,8 @@ class CropsTest {
         stories.setCrops("p1", crops)
         advanceUntilIdle()
         assertEquals(crops, stories.currentState.note("p1")?.crops)
-        // A crop doesn't sort a photo.
-        assertEquals(1, stories.currentState.unsortedCount)
+        // A crop alone doesn't put a photo on the storyline.
+        assertTrue(stories.currentState.storyline.isEmpty())
         assertTrue(fileSystem.exists(CROPS_ROOT / "media" / "p1.json"))
 
         stories.setCrops("p1", PhotoCrops())

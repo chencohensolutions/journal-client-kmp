@@ -6,11 +6,9 @@ import SharedLogic
 struct HomeActions {
     /// A photo of the Moments tab; the viewer swipes through its row.
     var openItem: (FeedSection, MediaItem) -> Void
-    var openStory: (String) -> Void
-    /// "Save as story" on a trip of the Moments tab, by its key.
-    var createStory: (_ title: String, _ feedKey: String) -> Void
+    /// A photo of the Storyline tab; the viewer swipes through the storyline.
+    var openStorylineItem: (MediaItem) -> Void
     var toggleSource: (MediaSource) -> Void
-    var dismissTrip: (_ key: String) -> Void
     /// Moments: the photos of the picked sets and photos become one set; a photo leaves its set.
     var merge: (_ itemIds: [String]) -> Void
     var takeOutOfSet: (_ itemId: String) -> Void
@@ -20,8 +18,8 @@ struct HomeActions {
     var restoreWriting: (_ itemId: String, _ version: NoteVersion) -> Void
     /// Crop in a photo's long-press menu: the crop screen opens here, on the Moments crop.
     var crop: (MediaItem) -> Void = { _ in }
-    var toggleStory: (_ storyId: String, _ itemIds: [String], _ add: Bool) -> Void
-    var createStoryWith: (_ title: String, _ itemIds: [String]) -> Void
+    /// "Remove from storyline" (false), or "Add to storyline" (true) for a photo with writing.
+    var setInStoryline: (_ itemId: String, _ inStoryline: Bool) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
     var openAllPhotos: () -> Void
     var openSettings: () -> Void
@@ -39,7 +37,7 @@ struct HomeActions {
     var registerAgain: () -> Void
 }
 
-/// The home screen: in the Stories tab the journal's stories as a timeline, newest first, and in the Moments tab every
+/// The home screen: in the Storyline tab every photo the user wrote about, newest first, and in the Moments tab every
 /// photo as a feed that groups itself (by day or run of photos, then time, place, source and looks), and in the Explore
 /// tab every photo by place and year. See docs/screens/journal-home.md, moments.md and explore.md.
 struct JournalHomeView: View {
@@ -52,14 +50,11 @@ struct JournalHomeView: View {
     let backupRunning: BackupProgress?
     let actions: HomeActions
 
-    private enum Tab { case stories, moments, explore }
-    @State private var tab = Tab.stories
+    private enum Tab { case storyline, moments, explore }
+    @State private var tab = Tab.storyline
     @State private var exploreView = ExploreView.places
     /// The Explore tab's towns and years, worked out off the main thread while it shows.
     @State private var explore: ExploreSummaries?
-    /// The trip whose "Save as story" was tapped, and the title to start with.
-    @State private var tripToSave: String?
-    @State private var newTitle = ""
     /// What a photo's long-press menu opened.
     @State private var sheet: FeedSheet?
     /// Photos and sets picked to merge, by their first photo's id; picking is on while any is.
@@ -74,7 +69,7 @@ struct JournalHomeView: View {
 
     var body: some View {
         let moments = tab == .moments
-        let barUnderTitle = tab != .stories
+        let barUnderTitle = tab != .storyline
         GeometryReader { geometry in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -117,20 +112,29 @@ struct JournalHomeView: View {
                             playback: playback
                         )
                     } else {
-                        if storyEntries.isEmpty && !library.days.isEmpty {
-                            Message(text: "No stories yet. Make one from a day in Moments.")
+                        if stories.storyline.isEmpty && !library.days.isEmpty {
+                            Message(text: "Nothing here yet. Open a photo and tap Write: what you write shows here.")
                         }
-                        ForEach(storyEntries, id: \.story.id) { entry in
-                            StoryCardView(story: entry.story, width: geometry.size.width)
-                                .zoomSource(ZoomID.story(entry.story.id))
-                                .onTapGesture { actions.openStory(entry.story.id) }
-                        }
+                        StorylineView(
+                            items: stories.storyline,
+                            note: { stories.note(itemId: $0) },
+                            width: geometry.size.width,
+                            openItem: actions.openStorylineItem,
+                            actions: feedActions,
+                            playback: playback
+                        )
                     }
                 }
                 .padding(.top, barUnderTitle ? 118 : 72)
                 .padding(.bottom, 150)
                 // Swiping in the viewer keeps its photo in view here, and a set turns to it.
-                .followsViewer { id in tab == .moments ? rows.place(of: id) : nil }
+                .followsViewer { id in
+                    switch tab {
+                    case .moments: return rows.place(of: id)
+                    case .storyline: return stories.storyline.contains { $0.id == id } ? PhotoPlace(section: id, tile: ZoomID.item(id)) : nil
+                    case .explore: return nil
+                    }
+                }
             }
             .scrollIndicators(.hidden)
             .onAppear { playback.viewport = viewport(geometry) }
@@ -143,14 +147,6 @@ struct JournalHomeView: View {
         .onChange(of: canPlay, initial: true) { playback.enabled = canPlay }
         .onAppear { onScreen = true }
         .onDisappear { onScreen = false }
-        .alert("New story", isPresented: Binding(get: { tripToSave != nil }, set: { if !$0 { tripToSave = nil } })) {
-            TextField("Title (optional)", text: $newTitle)
-            Button("Create") {
-                if let key = tripToSave { actions.createStory(newTitle, key) }
-                newTitle = ""
-            }
-            Button("Cancel", role: .cancel) { newTitle = "" }
-        }
         .sheet(item: $sheet, content: sheetContent)
         .background(LibraryColors.background.ignoresSafeArea())
         .overlay(alignment: .top) { topBar }
@@ -164,7 +160,6 @@ struct JournalHomeView: View {
             } else {
                 if let toast = revealToast, tab == .moments {
                     UndoBar(
-                        count: toast.count,
                         message: "Showing \(toast.count) from \(toast.source.title) on \(toast.days)",
                         actionLabel: "Hide",
                         onUndo: {
@@ -174,7 +169,7 @@ struct JournalHomeView: View {
                         onDismiss: { withAnimation { revealToast = nil } }
                     )
                 }
-                SegmentedBar(options: [(Tab.stories, "Stories"), (Tab.moments, "Moments"), (Tab.explore, "Explore")], selection: tabBinding)
+                SegmentedBar(options: [(Tab.storyline, "Storyline"), (Tab.moments, "Moments"), (Tab.explore, "Explore")], selection: tabBinding)
             }
         }
     }
@@ -196,16 +191,6 @@ struct JournalHomeView: View {
                 onSave: { actions.setWriting(id, $0, $1) },
                 onRestore: { actions.restoreWriting(id, $0) }
             )
-        case .addToStory(let ids):
-            AddToStorySheet(
-                itemIds: ids,
-                stories: stories,
-                onToggle: { storyId, add in actions.toggleStory(storyId, ids, add) },
-                onCreate: { title in
-                    self.sheet = nil
-                    actions.createStoryWith(title, ids)
-                }
-            )
         case .tag(let id):
             TagSheet(
                 itemIds: [id],
@@ -221,11 +206,6 @@ struct JournalHomeView: View {
     /// One video plays at a time, and only while the feed is what shows.
     private var canPlay: Bool { tab == .moments && onScreen && !viewerOpen && scenePhase == .active }
 
-    /// Stories shows only stories; every photo is in the Moments tab, as the feed.
-    private var storyEntries: [TimelineEntryStoryEntry] {
-        stories.timeline.compactMap { $0 as? TimelineEntryStoryEntry }
-    }
-
     /// Where videos play: below the top bar and above the bottom controls.
     private func viewport(_ geometry: GeometryProxy) -> ClosedRange<CGFloat> {
         let frame = geometry.frame(in: .global)
@@ -235,14 +215,9 @@ struct JournalHomeView: View {
     private var feedActions: FeedActions {
         FeedActions(
             openItem: actions.openItem,
-            saveTrip: { trip in
-                newTitle = trip.place ?? ""
-                tripToSave = trip.key
-            },
-            dismissTrip: actions.dismissTrip,
             write: { sheet = .write($0.id) },
             crop: actions.crop,
-            addToStory: { sheet = .addToStory([$0.id]) },
+            setInStoryline: { actions.setInStoryline($0.id, $1) },
             tag: { sheet = .tag($0.id) },
             takeOutOfSet: { actions.takeOutOfSet($0.id) },
             turnSet: actions.turnSet,
@@ -261,7 +236,6 @@ struct JournalHomeView: View {
                 if revealToast?.sectionKey == section.key && revealToast?.source == source { withAnimation { revealToast = nil } }
             },
             openRevealed: actions.openRevealed,
-            addAllToStory: { sheet = .addToStory($0) },
             alwaysShow: { section, source in
                 actions.alwaysShow(section.days, source)
                 actions.hideOnRow(section.key, source)
@@ -342,16 +316,14 @@ private func shortDays(_ span: Moment) -> String {
     return String(localized: "\(formatter.string(from: span.oldestDay.date)) – \(newest)")
 }
 
-/// What a photo's long-press menu in Moments opened, by the photo's id (or a band's photos, to add to a story).
+/// What a photo's long-press menu opened, by the photo's id.
 private enum FeedSheet: Identifiable {
     case write(String)
-    case addToStory([String])
     case tag(String)
 
     var id: String {
         switch self {
         case .write(let id): return "write-\(id)"
-        case .addToStory(let ids): return "story-\(ids.joined(separator: ","))"
         case .tag(let id): return "tag-\(id)"
         }
     }
@@ -443,3 +415,36 @@ private struct Message: View {
     }
 }
 
+/// How long a bar like "Showing 6 from WhatsApp · Hide" stays, unless closed with its ✕ first.
+let undoSeconds = 6
+
+/// A message with an action and ✕ at the bottom, for a few seconds ("Showing 6 from WhatsApp on Oct 4 · Hide").
+struct UndoBar: View {
+    let message: LocalizedStringKey
+    var actionLabel: LocalizedStringKey = "Undo"
+    let onUndo: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(message).font(.subheadline)
+            Spacer()
+            Button(actionLabel, action: onUndo)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(LibraryColors.accent)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Dismiss")
+        }
+        .foregroundStyle(LibraryColors.onInverse)
+        .padding(.leading, 16)
+        .padding(.trailing, 6)
+        .frame(height: 52)
+        .background(LibraryColors.inverse, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}

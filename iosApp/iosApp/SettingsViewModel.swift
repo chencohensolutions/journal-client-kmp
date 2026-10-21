@@ -29,14 +29,12 @@ final class SettingsViewModel: ObservableObject {
     func setSimilarityPercent(_ percent: Int) { controller.setSimilarityPercent(percent: Int32(percent)) }
     func resetSimilarity() { controller.resetSimilarity() }
 
-    /// A source on or off everywhere (Show in the app, the Moments filter bar, Explore's sheet), and a trip card not
-    /// offered again.
+    /// A source on or off everywhere (Show in the app, the Moments filter bar, Explore's sheet).
     func toggleFeedSource(_ source: MediaSource) { controller.toggleFeedSource(source: source) }
     /// "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments.
     func setSayWhatsHidden(_ say: Bool) { controller.setSayWhatsHidden(say: say) }
     /// "Always show this day": the source's photos of these days show while it is hidden.
     func alwaysShow(days: [LocalDay], source: MediaSource) { controller.alwaysShow(days: days, source: source) }
-    func dismissTrip(_ key: String) { controller.dismissTrip(key: key) }
 
     // MARK: Storage on this phone, and Private media
 

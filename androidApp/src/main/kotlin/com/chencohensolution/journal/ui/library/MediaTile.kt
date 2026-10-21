@@ -54,8 +54,6 @@ internal fun MediaTile(
     badgeSize: Dp = 22.dp,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean? = null,
-    /** Which part of the photo stays in view when it is cropped, and how closely. */
-    crop: TileCrop = TileCrop.NONE,
 ) {
     val description = itemDescription(item)
     Box(
@@ -69,7 +67,7 @@ internal fun MediaTile(
                 if (selected != null) this.selected = selected
             },
     ) {
-        CroppedThumbnail(item, Modifier.fillMaxSize(), crop)
+        CroppedThumbnail(item, Modifier.fillMaxSize())
         if (item.type == MediaType.VIDEO) {
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))
         }

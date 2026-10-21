@@ -24,11 +24,9 @@ import com.chencohensolution.journal.similarity.dHash
 import com.chencohensolution.journal.similarity.hammingDistance
 import com.chencohensolution.journal.similarity.quantize
 import com.chencohensolution.journal.similarity.shrink
+import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.StoriesController
-import com.chencohensolution.journal.stories.findSuggestions
-import com.chencohensolution.journal.stories.photosToCompare
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -149,74 +147,6 @@ class EmbeddingTest {
     }
 }
 
-class SimilarSuggestionRulesTest {
-    // dHash, embedding: "scene" photos look alike by embedding; "dup" photos by dHash.
-    private val scene = quantize(FloatArray(64) { it.toFloat() })
-    private val alsoScene = quantize(FloatArray(64) { it + 0.5f })
-    private val other = quantize(FloatArray(64) { if (it % 2 == 0) 1f else -1f })
-    private val third = quantize(FloatArray(64) { if (it < 32) -1f else 2f })
-
-    private fun looks(vararg pairs: Pair<String, PhotoFingerprint>) = PhotoLooks(pairs.toMap(), 0.9f)
-    private fun ids(suggestions: List<com.chencohensolution.journal.stories.BurstSuggestion>) = suggestions.map { s -> s.items.map { it.id } }
-
-    @Test
-    fun photosThatLookAlikeAreSuggestedWhenever() {
-        // Hours apart, with another scene in between.
-        val items = listOf(photo("a", 0), photo("x", 600), photo("b", 7_200), photo("c", 80_000))
-        val looks = looks(
-            "a" to fingerprint(0L, scene),
-            "x" to fingerprint(-1L, other),
-            "b" to fingerprint(0x5555_5555_5555_5555L, alsoScene),
-            "c" to fingerprint(0x3333_3333_3333_3333L, scene),
-        )
-        val suggestions = findSuggestions(items, emptySet(), looks)
-        assertEquals(listOf(listOf("a", "b", "c")), ids(suggestions))
-        assertTrue(suggestions.single().byLooks)
-    }
-
-    @Test
-    fun looksSplitWhatTimeWouldJoin() {
-        // One second apart, two different scenes.
-        val items = listOf(photo("a", 0), photo("x", 1), photo("b", 2), photo("y", 3))
-        val looks = looks(
-            "a" to fingerprint(0L, scene),
-            "x" to fingerprint(-1L, other),
-            "b" to fingerprint(0x5555_5555_5555_5555L, alsoScene),
-            "y" to fingerprint(0x0F0F_0F0F_0F0F_0F0FL, other),
-        )
-        assertEquals(listOf(listOf("a", "b"), listOf("x", "y")), ids(findSuggestions(items, emptySet(), looks)))
-        assertEquals(listOf(listOf("a", "x", "b", "y")), ids(findSuggestions(items, emptySet())))
-    }
-
-    @Test
-    fun aPhotoJoinsOnlyIfItLooksLikeMostOfTheSet() {
-        // "b" looks like "a" by dHash, "c" like "b" only: a chain, not a set.
-        val items = listOf(photo("a", 0), photo("b", 100), photo("c", 200))
-        val looks = looks(
-            "a" to fingerprint(0L, scene),
-            "b" to fingerprint(0xFFL, other),
-            "c" to fingerprint(0xFFFFL, third),
-        )
-        assertEquals(listOf(listOf("a", "b")), ids(findSuggestions(items, emptySet(), looks)))
-    }
-
-    @Test
-    fun photosNotReadYetGoByTime() {
-        val items = listOf(photo("a", 0), photo("b", 3), photo("c", 6), photo("d", 500), photo("e", 900))
-        val looks = looks("d" to fingerprint(0L, scene), "e" to fingerprint(-1L, alsoScene))
-        val suggestions = findSuggestions(items, emptySet(), looks)
-        assertEquals(listOf(listOf("a", "b", "c"), listOf("d", "e")), ids(suggestions))
-        assertEquals(listOf(false, true), suggestions.map { it.byLooks })
-    }
-
-    @Test
-    fun aSetWithADismissedPhotoStaysDismissed() {
-        val items = listOf(photo("a", 0), photo("b", 5_000))
-        val looks = looks("a" to fingerprint(0L, scene), "b" to fingerprint(0L, scene))
-        assertTrue(findSuggestions(items, setOf("b"), looks).isEmpty())
-    }
-}
-
 private class FakeAnalyzer(override val modelId: String = "fake-1") : PhotoAnalyzer {
     override val sameScene = 0.9f
     val analyzed = mutableListOf<String>()
@@ -281,19 +211,6 @@ class PhotoSimilarityTest {
         advanceUntilIdle()
         assertEquals(listOf("a"), analyzer.analyzed)
     }
-
-    @Test
-    fun theStoryChangedLastIsReadFirst() = runTest {
-        fun story(id: String, updatedAt: String, vararg items: MediaItem) = com.chencohensolution.journal.stories.StoryView(
-            com.chencohensolution.journal.stories.Story(
-                id, "", items.map { com.chencohensolution.journal.stories.StoryMember(it.id, it.fileName, it.takenAtMillis) }, "", updatedAt,
-            ),
-            items.toList(),
-        )
-        val old = story("old", "2026-10-01T00:00:00Z", photo("a", 0), photo("b", 9_000))
-        val new = story("new", "2026-10-18T00:00:00Z", photo("c", 0), photo("v", 1, MediaType.VIDEO), photo("a", 0))
-        assertEquals(listOf("c", "a", "b"), photosToCompare(listOf(old, new)).map { it.id })
-    }
 }
 
 private class SimilarityTestLibrary(val items: List<MediaItem>) : MediaLibrary {
@@ -306,45 +223,6 @@ private class SimilarityTestStore : KeyValueStore {
     override fun getString(key: String) = values[key]
     override fun putString(key: String, value: String?) {
         if (value == null) values.remove(key) else values[key] = value
-    }
-}
-
-class SimilarSuggestionsTest {
-    @Test
-    fun storiesSuggestPhotosThatLookAlike() = runTest {
-        // Minutes apart: by time alone no burst. "a", "b", "c" look alike; "w1" doesn't.
-        val items = listOf(photo("a", 0), photo("b", 90), photo("c", 200), photo("w1", 260))
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val library = LibraryController(SimilarityTestLibrary(items), JournalSettings(SimilarityTestStore()), dispatcher)
-        library.refresh()
-        val fileSystem = FakeFileSystem()
-        val stories = StoriesController(
-            store = FileStoryStore(fileSystem, "/data/journal".toPath()),
-            noteStore = FilePhotoNoteStore(fileSystem, "/data/journal".toPath()),
-            library = library,
-            settings = SettingsController(JournalSettings(SimilarityTestStore()), dispatcher),
-            newId = { "story-1" },
-            similarity = PhotoSimilarity(FakeAnalyzer(), FingerprintCache(fileSystem, CACHE_DIR), dispatcher),
-            dispatcher = dispatcher,
-            now = { "2026-10-17T12:00:00Z" },
-        )
-        advanceUntilIdle()
-        val storyId = assertNotNull(stories.createStoryFromDay("", DAY))
-        advanceUntilIdle()
-
-        val suggestion = stories.currentState.story(storyId)!!.suggestions.single()
-        assertEquals(listOf("a", "b", "c"), suggestion.items.map { it.id })
-        assertEquals(200, suggestion.seconds)
-
-        // Inside a group, its photos that look alike are suggested as a subgroup.
-        val groupId = assertNotNull(stories.createGroup(storyId, listOf("a", "b", "c", "w1")))
-        val inGroup = stories.currentState.story(storyId)!!.group(groupId)!!.suggestions.single()
-        assertEquals(listOf("a", "b", "c"), inGroup.items.map { it.id })
-        val subgroupId = assertNotNull(stories.acceptGroupSuggestion(storyId, groupId, inGroup.key))
-        val story = stories.currentState.story(storyId)!!
-        assertEquals(groupId, story.group(subgroupId)!!.parentId)
-        assertTrue(story.group(groupId)!!.suggestions.isEmpty())
-        stories.close()
     }
 }
 
@@ -368,7 +246,7 @@ class SimilaritySettingTest {
     }
 
     @Test
-    fun suggestionsFollowTheThreshold() = runTest {
+    fun setsInMomentsFollowTheThreshold() = runTest {
         // Embeddings with cosine 0.8 between "a" and "b"; their dHashes are far apart.
         val analyzer = object : PhotoAnalyzer {
             override val modelId = "fake"
@@ -385,23 +263,22 @@ class SimilaritySettingTest {
         val fileSystem = FakeFileSystem()
         val settings = SettingsController(JournalSettings(SimilarityTestStore()), dispatcher, defaultSimilarityPercent = 85)
         val stories = StoriesController(
-            store = FileStoryStore(fileSystem, "/data/journal".toPath()),
             noteStore = FilePhotoNoteStore(fileSystem, "/data/journal".toPath()),
             library = library,
             settings = settings,
-            newId = { "story-1" },
+            newId = { "set-1" },
             similarity = PhotoSimilarity(analyzer, FingerprintCache(fileSystem, CACHE_DIR), dispatcher),
             dispatcher = dispatcher,
             now = { "2026-10-17T12:00:00Z" },
         )
         advanceUntilIdle()
-        val storyId = assertNotNull(stories.createStoryFromDay("", DAY))
-        advanceUntilIdle()
-        assertTrue(stories.currentState.story(storyId)!!.suggestions.isEmpty())
+        fun blocks() = stories.currentState.feed.entries.filterIsInstance<FeedEntry.Section>()
+            .flatMap { it.section.moments }.flatMap { it.blocks }.map { block -> block.items.map { it.id } }
+        assertEquals(listOf(listOf("a"), listOf("b")), blocks())
 
         settings.setSimilarityPercent(75)
         advanceUntilIdle()
-        assertEquals(listOf("a", "b"), stories.currentState.story(storyId)!!.suggestions.single().items.map { it.id })
+        assertEquals(listOf(listOf("a", "b")), blocks())
         stories.close()
     }
 }

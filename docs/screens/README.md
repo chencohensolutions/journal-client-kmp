@@ -2,18 +2,16 @@
 
 One page per screen: what it's for, what it shows, how it behaves, and where the code is on each platform.
 Clickable mockups of every screen are in [mockups/](mockups/README.md): open `mockups/index.html` in a browser.
-The earlier design canvas (https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf) predates stories and is no longer
-updated.
+The earlier design canvas (https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf) is no longer updated. Stories, with
+their story and group pages, were replaced by the storyline on Oct 21, 2026 (owner's decision) and are gone.
 
 | Screen | Shown when | Doc |
 |---|---|---|
 | Enrollment wizard | The device has no identity yet | `docs/authentication.md` in journal-server-go |
 | Photo access | After enrollment, until the user answers once | [photo-access.md](photo-access.md) |
-| Journal (home) | Every launch after that | [journal-home.md](journal-home.md) |
+| Journal (home) | Every launch after that; opens on the Storyline tab | [journal-home.md](journal-home.md) |
 | Moments (feed) | The Moments tab of the Journal (Android) | [moments.md](moments.md) |
 | Explore | The Explore tab of the Journal: towns, years, a town's or year's page, the map | [explore.md](explore.md) |
-| Story | Tapping a story card, or right after creating a story | [story page](story-page.md) |
-| Group | Tapping a group tile in a story | [group.md](group.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
 | All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
 | Settings | ⋯ menu → Settings | [settings.md](settings.md) |
@@ -21,11 +19,9 @@ updated.
 | Crop | Viewer → Crop, or long press in Moments → Crop | [crop.md](crop.md) |
 
 ```
-Enrollment ──► Photo access ──► Journal ──► All photos, Settings
-                (once)            │  │           │
-                                  │  └─► Story ─► Group
-                                  │        │     │    │
-                                  └──► Viewer ◄──┴────┘
+Enrollment ──► Photo access ──► Journal ──► All photos, Settings, Tags
+                (once)            │             │
+                                  └──► Viewer ◄─┘ ──► Crop
 ```
 
 ## Shared logic
@@ -45,12 +41,13 @@ The platform part is `MediaLibrary`: MediaStore on Android
 PhotoKit on iOS ([IosMediaLibrary.kt](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/library/IosMediaLibrary.kt)).
 Thumbnails and full images are loaded by the UIs, by item id.
 
-Stories come from `StoriesController`
-([stories/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/)): it keeps stories on the
-device, along with each photo's caption and tags (`PhotoNote`), and combines them with the library into
-`StoriesState.timeline` (stories and unsorted moments, newest first), `unsortedDays` (photos in no story and without
-tags), `moments` (the same photos split as the grouping setting says, see [settings.md](settings.md)), `feed` (the
-Moments tab, every photo, see [moments.md](moments.md)) and `tags`. See [story page](story-page.md) for the file format.
+What the user adds to photos comes from `StoriesController`
+([stories/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/); the name is from when
+the app had stories): it keeps each photo's note on the device (`PhotoNote`: the title and paragraph with their
+earlier versions, tags, crops, Moments sets) and combines them with the library into `StoriesState.storyline` (the
+photos written about, newest first, see [journal-home.md](journal-home.md)), `feed` (the Moments tab, every photo,
+split as the grouping setting says, see [moments.md](moments.md) and [settings.md](settings.md)) and `tags`. The note
+file format is in [design.md](../design.md#data).
 
 Server state comes from `JournalState.health`:
 

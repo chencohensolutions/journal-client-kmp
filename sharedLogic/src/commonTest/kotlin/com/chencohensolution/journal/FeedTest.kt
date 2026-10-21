@@ -25,9 +25,7 @@ import com.chencohensolution.journal.similarity.PhotoLooks
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
-import com.chencohensolution.journal.stories.FileStoryStore
 import com.chencohensolution.journal.stories.StoriesController
-import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.buildFeed
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -156,7 +154,6 @@ class FeedTest {
             .sections().single().moments.single().blocks
         assertEquals(listOf("b1"), cropped.first().items.map { it.id })
         assertEquals(listOf("b2"), cropped[1].items.map { it.id })
-        assertEquals(listOf(listOf("b1", "b2"), listOf("x1", "x2"), listOf("t1", "t2")), feed(*items, looks = looks).similarSets(items.map { it.id }).map { set -> set.map { it.id } })
     }
 
     @Test
@@ -204,38 +201,6 @@ class FeedTest {
         val blocks = feed.sections().single().moments.map { moment -> moment.blocks.map { block -> block.items.map { it.id } } }
         // Newest moment first: "late" now shows only in the set, with "a", in the older moment.
         assertEquals(listOf(listOf(listOf("later")), listOf(listOf("a", "late"), listOf("b1"), listOf("b2"), listOf("b3"))), blocks)
-    }
-
-    @Test
-    fun daysAwayFromHomeAreOfferedAsATrip() {
-        val home = (1..20).map { pic("home$it", it, at = TEL_AVIV, day = LocalDay(2026, 9, 1)) }
-        val trip = listOf(
-            pic("t1", 600, at = HAIFA, day = LocalDay(2026, 10, 4)),
-            pic("t2", 600, at = HAIFA, day = LocalDay(2026, 10, 5)),
-            pic("t3", 600, day = LocalDay(2026, 10, 6)),
-        )
-        val back = pic("back", 600, at = TEL_AVIV, day = LocalDay(2026, 10, 7))
-        val items = home + trip + back
-        val places = Places(emptyMap(), mapOf(cellKey(HAIFA) to PlaceName(null, "Haifa")))
-        val feed = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places)
-
-        // A day without locations in the middle of a trip belongs to it; one at its end doesn't.
-        val offered = feed.entries.filterIsInstance<FeedEntry.Trip>().single().trip
-        assertEquals("trip-2026-10-04", offered.key)
-        assertEquals("Haifa", offered.place)
-        assertEquals(2, offered.days)
-        assertEquals(listOf("t1", "t2"), offered.items.map { it.id })
-        // Just above its newest day.
-        val index = feed.entries.indexOfFirst { it is FeedEntry.Trip }
-        assertEquals(LocalDay(2026, 10, 5), assertIs<FeedEntry.Section>(feed.entries[index + 1]).section.span.newestDay)
-
-        val dismissed = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places, dismissedTrips = setOf("trip-2026-10-04"))
-        assertTrue(dismissed.entries.none { it is FeedEntry.Trip })
-
-        // Once its photos are in a story, it isn't offered again; they still show in the feed.
-        val saved = buildFeed(newestFirst(*items.toTypedArray()), ALL_SOURCES, TimelineGrouping(), places, sorted = setOf("t1", "t2"))
-        assertTrue(saved.entries.none { it is FeedEntry.Trip })
-        assertTrue(saved.sections().any { section -> section.items.any { it.id == "t1" } })
     }
 }
 
@@ -319,9 +284,9 @@ private class FeedTestStore : KeyValueStore {
     }
 }
 
-class FeedStoryTest {
+class FeedControllerTest {
     @Test
-    fun aStoryFromTheFeedKeepsItsNearDuplicatesGrouped() = runTest {
+    fun setsAndSourcesAreKeptInNotes() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val items = listOf(pic("a", 0, burst = "x"), pic("b", 1, burst = "x"), pic("c", 30), pic("w", 40, MediaSource.WHATSAPP), pic("s", 50, MediaSource.SCREENSHOTS))
         val library = LibraryController(FeedTestLibrary(items), JournalSettings(FeedTestStore()), dispatcher)
@@ -329,11 +294,10 @@ class FeedStoryTest {
         val settings = SettingsController(JournalSettings(FeedTestStore()), dispatcher)
         val fileSystem = FakeFileSystem()
         val stories = StoriesController(
-            store = FileStoryStore(fileSystem, "/data/journal".toPath()),
             noteStore = FilePhotoNoteStore(fileSystem, "/data/journal".toPath()),
             library = library,
             settings = settings,
-            newId = { "story-1" },
+            newId = { "set-1" },
             dispatcher = dispatcher,
             now = { "2026-10-17T12:00:00Z" },
         )
@@ -360,11 +324,6 @@ class FeedStoryTest {
         stories.turnSet(listOf("a", "b"), "a")
         assertSame(before, stories.currentState)
 
-        val storyId = assertNotNull(stories.createStoryFromFeed("", stories.currentState.feed.sections().single().key))
-        advanceUntilIdle()
-        val story = assertNotNull(stories.currentState.story(storyId))
-        assertEquals(5, story.itemCount)
-        assertEquals(listOf("a", "b"), assertIs<StoryTile.Group>(story.tiles.first()).group.items.map { it.id })
         // Merged by hand, then one taken out: kept in the note files, so they survive a restart.
         stories.mergeInFeed(listOf("c", "w"))
         advanceUntilIdle()
@@ -374,8 +333,6 @@ class FeedStoryTest {
         val blocks = stories.currentState.feed.sections().single().moments.flatMap { it.blocks }.map { block -> block.items.map { it.id } }
         assertTrue(listOf("a") in blocks && listOf("b") in blocks, "$blocks")
 
-        // The feed shows every photo: those in a story stay in it.
         assertEquals(5, stories.currentState.feed.sections().single().items.size)
-        assertEquals(0, stories.currentState.unsortedCount)
     }
 }

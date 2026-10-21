@@ -67,10 +67,7 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
-import com.chencohensolution.journal.stories.StoryTile
-import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.StoriesState
-import com.chencohensolution.journal.stories.GroupView
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.Dispatchers
@@ -84,11 +81,8 @@ private const val CHROME_MILLIS = 3_000L
 
 internal class ViewerActions(
     val back: () -> Unit = {},
-    val openGroup: (groupId: String) -> Unit = {},
-    val setCover: (itemId: String) -> Unit = {},
-    val removeFromGroup: (itemId: String) -> Unit = {},
-    val toggleStory: (storyId: String, itemId: String, add: Boolean) -> Unit = { _, _, _ -> },
-    val createStory: (title: String, itemId: String) -> Unit = { _, _ -> },
+    /** "Remove" (false) or "Add back" (true) in the details panel's Storyline section. */
+    val setInStoryline: (itemId: String, inStoryline: Boolean) -> Unit = { _, _ -> },
     val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
     /** Back to an earlier version of the photo's writing. */
     val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
@@ -123,17 +117,12 @@ internal enum class RemovalOutcome {
     NO_PREVIEW,
 }
 
-/**
- * One photo or video at a time, swiping through [items]. [openedFrom] is the story the viewer was opened from, if
- * any, and [group] the group within it. See docs/screens/viewer.md.
- */
+/** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
 @Composable
 internal fun ViewerScreen(
     items: List<MediaItem>,
     startId: String,
     stories: StoriesState,
-    openedFrom: StoryView?,
-    group: GroupView?,
     actions: ViewerActions,
     /** The bars and buttons shown on opening (for the screen previews); a tap shows them otherwise. */
     chromeAtStart: Boolean = false,
@@ -148,7 +137,6 @@ internal fun ViewerScreen(
     var showInfo by rememberSaveable { mutableStateOf(false) }
     // The bars and buttons over the photo: hidden at first, shown by a tap for CHROME_MILLIS, hidden by the next tap.
     var chrome by remember { mutableStateOf(chromeAtStart) }
-    var choosingStory by rememberSaveable { mutableStateOf(false) }
     var choosingTag by rememberSaveable { mutableStateOf(false) }
     var editingCaption by rememberSaveable { mutableStateOf(false) }
     // The whole photo instead of its crop, until turned back (kept while swiping).
@@ -162,14 +150,10 @@ internal fun ViewerScreen(
     val current = items[pager.currentPage.coerceIn(items.indices)]
     val currentCrop = cropOf(current)
     LaunchedEffect(current.id) { actions.showing(current.id) }
-    // A group is one stop here, its cover: that photo is shared with the group's tile, so closing on it lands there.
-    val groupOfCover = remember(openedFrom, group) {
-        (group?.tiles ?: openedFrom?.tiles).orEmpty().filterIsInstance<StoryTile.Group>().associate { it.group.cover.id to it.group.id }
-    }
-    fun sharedKey(item: MediaItem) = groupOfCover[item.id]?.let(SharedKey::group) ?: SharedKey.item(item.id)
+    fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
-    LaunchedEffect(chrome, showInfo, choosingStory, choosingTag, editingCaption) {
-        if (chrome && !showInfo && !choosingStory && !choosingTag && !editingCaption) {
+    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption) {
+        if (chrome && !showInfo && !choosingTag && !editingCaption) {
             delay(CHROME_MILLIS)
             chrome = false
         }
@@ -236,19 +220,6 @@ internal fun ViewerScreen(
                     fontSize = 14.sp,
                     modifier = Modifier.weight(1f),
                 )
-                // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
-                val coverOf = if (group != null) group.coverStop(current.id) else openedFrom?.coverStop(current.id)
-                if (coverOf != null) {
-                    TextButton(onClick = { actions.openGroup(coverOf.id) }) {
-                        Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Text(
-                            stringResource(R.string.library_open_group, coverOf.itemCount),
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(start = 6.dp),
-                        )
-                    }
-                }
                 IconButton(
                     onClick = { showInfo = !showInfo },
                     colors = IconButtonDefaults.iconButtonColors(
@@ -267,13 +238,7 @@ internal fun ViewerScreen(
                 onEditCaption = { editingCaption = true },
                 onAddTag = { choosingTag = true },
                 onRemoveTag = { tag -> actions.toggleTag(current.id, tag, false) },
-                memberOf = stories.storiesContaining(current.id),
-                openedFrom = openedFrom,
-                onAddToStory = { choosingStory = true },
-                onRemove = { story -> actions.toggleStory(story.id, current.id, false) },
-                group = group,
-                onSetCover = { actions.setCover(current.id) },
-                onRemoveFromGroup = { actions.removeFromGroup(current.id) },
+                setInStoryline = { actions.setInStoryline(current.id, it) },
                 location = stories.places.location(current)?.let { point -> point to stories.places.name(point) },
                 downloadOriginal = actions.downloadOriginal,
                 deleteFromPhone = actions.deleteFromPhone,
@@ -304,18 +269,6 @@ internal fun ViewerScreen(
                 actions.restoreWriting(current.id, version)
             },
             onDismiss = { editingCaption = false },
-        )
-    }
-    if (choosingStory) {
-        AddToStorySheet(
-            itemIds = listOf(current.id),
-            stories = stories,
-            onToggle = { storyId, add -> actions.toggleStory(storyId, current.id, add) },
-            onCreate = { title ->
-                choosingStory = false
-                actions.createStory(title, current.id)
-            },
-            onDismiss = { choosingStory = false },
         )
     }
 }

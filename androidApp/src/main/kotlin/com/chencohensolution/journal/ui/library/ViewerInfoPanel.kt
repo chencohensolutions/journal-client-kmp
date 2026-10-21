@@ -58,8 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
-import com.chencohensolution.journal.stories.StoryView
-import com.chencohensolution.journal.stories.GroupView
 import com.chencohensolution.journal.stories.PhotoNote
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.MediaItem
@@ -68,9 +66,9 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
-// The viewer's info panel: caption, tags, stories, group, where the original is, and what is kept on this phone.
+// The viewer's info panel: writing, tags, the storyline, where the original is, and what is kept on this phone.
 
-/** Date, the photo's note and tags, its stories, backup status and file details. */
+/** Date, the photo's writing and tags, whether it is in the storyline, backup status and file details. */
 @Composable
 internal fun InfoPanel(
     item: MediaItem,
@@ -78,13 +76,8 @@ internal fun InfoPanel(
     onEditCaption: () -> Unit,
     onAddTag: () -> Unit,
     onRemoveTag: (String) -> Unit,
-    memberOf: List<StoryView>,
-    openedFrom: StoryView?,
-    onAddToStory: () -> Unit,
-    onRemove: (StoryView) -> Unit,
-    group: GroupView?,
-    onSetCover: () -> Unit,
-    onRemoveFromGroup: () -> Unit,
+    /** "Remove" (false) or "Add back" (true) in the Storyline section. */
+    setInStoryline: (Boolean) -> Unit,
     location: Pair<GeoPoint, PlaceName?>?,
     downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
     deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
@@ -108,11 +101,7 @@ internal fun InfoPanel(
         }
         CaptionBlock(note?.title.orEmpty(), note?.caption.orEmpty(), onEditCaption)
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
-        if (group != null) {
-            GroupRow(group, isCover = group.cover.id == item.id, onSetCover, onRemoveFromGroup)
-        } else {
-            StoriesRow(memberOf, openedFrom?.takeIf { from -> memberOf.any { it.id == from.id } }, onAddToStory, onRemove)
-        }
+        if (note?.hasWriting == true) StorylineRow(note.inStoryline, setInStoryline)
         OriginalCard(item, location, downloadOriginal, deleteFromPhone, setPrivate)
     }
 }
@@ -168,57 +157,28 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
     }
 }
 
-/** In a group: "Group: Fixing the car" with Set as cover and Remove from group. */
+/** With writing: "In the storyline" with Remove, or "Not in the storyline" with Add back. */
 @Composable
-private fun GroupRow(group: GroupView, isCover: Boolean, onSetCover: () -> Unit, onRemove: () -> Unit) {
+private fun StorylineRow(inStoryline: Boolean, setInStoryline: (Boolean) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(stringResource(R.string.library_info_group), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        Text(group.title ?: timeRange(group.items), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (isCover) {
-                Text(
-                    stringResource(R.string.library_is_cover),
-                    color = LibraryColors.OnInverseMuted,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            } else {
-                TextButton(onClick = onSetCover, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                    Text(stringResource(R.string.library_set_cover), color = LibraryColors.Accent)
-                }
-            }
-            TextButton(onClick = onRemove) {
-                Icon(LibraryIcons.Minus, null, tint = LibraryColors.Error, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.library_remove_from_group), color = LibraryColors.Error, modifier = Modifier.padding(start = 4.dp))
-            }
-        }
-    }
-}
-
-/** "In: Japan trip, Dinner" with Add to story, and Remove when opened from one of them. */
-@Composable
-private fun StoriesRow(memberOf: List<StoryView>, removable: StoryView?, onAdd: () -> Unit, onRemove: (StoryView) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(stringResource(R.string.library_info_stories), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        Text(
-            if (memberOf.isEmpty()) stringResource(R.string.library_info_no_stories) else memberOf.map { storyName(it) }.joinToString(),
-            color = LibraryColors.OnInverse,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = onAdd, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.library_add_to_story), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
-            }
-            if (removable != null) {
-                TextButton(onClick = { onRemove(removable) }) {
+        Text(stringResource(R.string.storyline_title), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(if (inStoryline) R.string.storyline_in else R.string.storyline_not_in),
+                color = LibraryColors.OnInverse,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+            )
+            if (inStoryline) {
+                TextButton(onClick = { setInStoryline(false) }) {
                     Icon(LibraryIcons.Minus, null, tint = LibraryColors.Error, modifier = Modifier.size(16.dp))
-                    Text(
-                        stringResource(R.string.library_remove_from_story, storyName(removable)),
-                        color = LibraryColors.Error,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
+                    Text(stringResource(R.string.storyline_remove_short), color = LibraryColors.Error, modifier = Modifier.padding(start = 4.dp))
+                }
+            } else {
+                TextButton(onClick = { setInStoryline(true) }) {
+                    Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.storyline_add_back), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
                 }
             }
         }

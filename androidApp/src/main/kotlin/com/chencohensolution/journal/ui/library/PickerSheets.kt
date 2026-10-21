@@ -48,73 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.StoriesState
-import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.TagSummary
-
-/**
- * Adds photos to stories or takes them out, without listing every story: before typing it suggests stories with
- * photos from the same days, nearby ones and recent ones; typing searches all of them, with "Create" first.
- */
-@Composable
-internal fun AddToStorySheet(
-    itemIds: List<String>,
-    stories: StoriesState,
-    onToggle: (storyId: String, add: Boolean) -> Unit,
-    onCreate: (title: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val contains = { story: StoryView -> itemIds.all { id -> story.story.members.any { it.deviceId == id } } }
-    PickerSheet(
-        title = stringResource(R.string.library_add_to_story),
-        hint = stringResource(R.string.library_search_stories),
-        createLabel = { stringResource(R.string.library_create_story, it) },
-        createDetail = stringResource(R.string.library_create_story_detail),
-        onCreate = onCreate,
-        onDismiss = onDismiss,
-    ) { query ->
-        val storyRow: LazyListScope.(List<StoryView>) -> Unit = { list ->
-            items(list, key = { "story-${it.id}" }) { story ->
-                val isMember = contains(story)
-                PickerRow(
-                    title = storyName(story),
-                    detail = storySummary(story),
-                    leading = { story.firstDay?.let { DateBlock(it) } },
-                    checked = isMember,
-                    onClick = { onToggle(story.id, !isMember) },
-                )
-            }
-        }
-        if (query.isBlank()) {
-            val suggestions = stories.storySuggestions(itemIds)
-            if (suggestions.onTheseDays.isNotEmpty()) {
-                item(key = "h-days") { SectionLabel(stringResource(R.string.library_picker_on_these_days)) }
-                storyRow(suggestions.onTheseDays)
-            }
-            if (suggestions.nearby.isNotEmpty()) {
-                item(key = "h-nearby") { SectionLabel(stringResource(R.string.library_picker_nearby)) }
-                storyRow(suggestions.nearby)
-            }
-            if (suggestions.recent.isNotEmpty()) {
-                item(key = "h-recent") { SectionLabel(stringResource(R.string.library_picker_recent)) }
-                storyRow(suggestions.recent)
-            }
-            item(key = "count") {
-                Text(
-                    pluralStringResource(R.plurals.library_picker_search_all, stories.stories.size, stories.stories.size),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                )
-            }
-        } else {
-            val results = stories.searchStories(query, itemIds)
-            item(key = "h-results") {
-                SectionLabel(pluralStringResource(R.plurals.library_picker_story_results, results.size, results.size))
-            }
-            storyRow(results)
-        }
-    }
-}
 
 /** Tags photos: recent tags before typing, every matching tag while typing, with "Create" for a new one. */
 @Composable

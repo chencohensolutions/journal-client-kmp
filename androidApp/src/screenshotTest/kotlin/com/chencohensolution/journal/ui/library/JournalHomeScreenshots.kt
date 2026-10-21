@@ -14,8 +14,8 @@ import com.chencohensolution.journal.library.PhotoAccess
 @Preview(name = "light", device = PHONE, showBackground = true)
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun StoriesTab() = Screen {
-    JournalHomeScreen(PreviewData.library, PreviewData.stories, ServerHealth.OK, HomeActions())
+fun StorylineTab() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions())
 }
 
 @PreviewTest
@@ -56,10 +56,10 @@ fun OfflineLimited() = Screen {
 }
 
 @PreviewTest
-@Preview(name = "not registered, no stories yet", device = PHONE, showBackground = true)
+@Preview(name = "not registered, nothing written yet", device = PHONE, showBackground = true)
 @Composable
-fun RejectedNoStories() = Screen {
-    JournalHomeScreen(PreviewData.library, PreviewData.noStories, ServerHealth.REJECTED, HomeActions())
+fun RejectedEmptyStoryline() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.stories, ServerHealth.REJECTED, HomeActions())
 }
 
 @PreviewTest

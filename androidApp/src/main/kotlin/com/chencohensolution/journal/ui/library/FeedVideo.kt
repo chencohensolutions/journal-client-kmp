@@ -99,8 +99,11 @@ internal fun LazyListState.videoToPlay(rows: List<FeedRow>, video: FeedVideo): S
     val middle = (top + bottom) / 2
     return info.visibleItemsInfo
         .mapNotNull { item ->
-            val shown = (rows.getOrNull(item.index - first) as? FeedRow.Photo)?.block?.let(video::shownIn)
-                ?.takeIf { it.type == MediaType.VIDEO } ?: return@mapNotNull null
+            val shown = when (val row = rows.getOrNull(item.index - first)) {
+                is FeedRow.Photo -> video.shownIn(row.block)
+                is FeedRow.StoryPhoto -> row.item
+                else -> null
+            }?.takeIf { it.type == MediaType.VIDEO } ?: return@mapNotNull null
             val inView = minOf(item.offset + item.size, bottom) - maxOf(item.offset, top)
             if (inView < MIN_SHOWN * minOf(item.size, bottom - top)) return@mapNotNull null
             shown to kotlin.math.abs(item.offset + item.size / 2 - middle)

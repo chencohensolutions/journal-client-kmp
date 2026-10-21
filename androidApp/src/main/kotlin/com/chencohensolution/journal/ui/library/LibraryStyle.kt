@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.LocalDay
+import com.chencohensolution.journal.library.MediaItem
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -183,4 +184,14 @@ internal fun formatDuration(millis: Long): String {
     val minutes = (total % 3600) / 60
     val seconds = total % 60
     return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
+}
+
+/** "2:09 PM", or "2:09 – 2:10 PM" when the photos span minutes. */
+internal fun timeRange(items: List<MediaItem>): String {
+    val zone = java.time.ZoneId.systemDefault()
+    val first = java.time.Instant.ofEpochMilli(items.minOf { it.takenAtMillis }).atZone(zone)
+    val last = java.time.Instant.ofEpochMilli(items.maxOf { it.takenAtMillis }).atZone(zone)
+    val start = formatDate(first, "jmm")
+    val end = formatDate(last, "jmm")
+    return if (start == end) start else "$start – $end"
 }

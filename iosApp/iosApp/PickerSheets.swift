@@ -1,55 +1,6 @@
 import SwiftUI
 import SharedLogic
 
-/// Adds photos to stories or takes them out, without listing every story: before typing it suggests stories with
-/// photos from the same days, nearby ones and recent ones; typing searches all of them, with "Create" first.
-struct AddToStorySheet: View {
-    let itemIds: [String]
-    let stories: StoriesState
-    let onToggle: (_ storyId: String, _ add: Bool) -> Void
-    let onCreate: (_ title: String) -> Void
-
-    @State private var query = ""
-
-    var body: some View {
-        PickerSheet(title: "Add to story", prompt: "Search stories, or name a new one", query: $query,
-                    createLabel: query.isBlank ? nil : String(localized: "Create “\(query.trimmed)”"),
-                    createDetail: String(localized: "New story with this photo"),
-                    onCreate: { onCreate(query.trimmed) }) {
-            if query.isBlank {
-                let suggestions = stories.storySuggestions(itemIds: itemIds)
-                section("On these days", suggestions.onTheseDays)
-                section("Nearby", suggestions.nearby)
-                section("Recent", suggestions.recent)
-                Section {
-                    Text(stories.stories.count == 1 ? "Type to search your story" : "Type to search all \(stories.stories.count) stories")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                let results = stories.searchStories(query: query, itemIds: itemIds)
-                section("\(results.count) stories · closest in time first", results)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func section(_ title: LocalizedStringKey, _ list: [StoryView]) -> some View {
-        if !list.isEmpty {
-            Section(title) {
-                ForEach(list, id: \.id) { story in
-                    let isMember = itemIds.allSatisfy { id in story.story.members.contains { $0.deviceId == id } }
-                    PickerRow(title: story.name, detail: story.summary, checked: isMember) {
-                        onToggle(story.id, !isMember)
-                    } leading: {
-                        if let first = story.firstDay { DateBlock(day: first) }
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Tags photos: recent tags before typing, every matching tag while typing, with "Create" for a new one.
 struct TagSheet: View {
     let itemIds: [String]

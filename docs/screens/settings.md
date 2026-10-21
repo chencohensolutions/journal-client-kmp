@@ -8,8 +8,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 - **Show in the app** (first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
   photos and videos", Screenshots "Screenshots and screen recordings · N", Other "Downloads, other apps · N". Camera and
   Other are on at first. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
-  [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore, Tags and the days
-  offered to a story; photos already in a story always show there; hiding never deletes anything and doesn't change
+  [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore and Tags; photos
+  you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
   (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`).
 - **Backup** (Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
@@ -67,8 +67,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     midnight, or a day out that starts before dawn, stays in one row.
   - With breaks chosen: **New row after a break of** 2, 4, 6, 8, **12** (default), 24 or 48 hours.
 - **Suggestions for similar photos:** **How alike** a slider from 50% to 99%, with the value shown: the cosine
-  similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
-  suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
+  similarity two photos' image embeddings need to be one near-duplicate set in [Moments](moments.md#how-it-is-grouped)
+  (since Oct 21, 2026 only there; it also drove story suggestions until stories were removed). Higher sets only
+  near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 - **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
   default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
@@ -78,11 +79,11 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 
 - A change applies right away; the Journal rebuilds its rows from the same photos.
 - The break length is kept while **By day** is chosen, so switching back restores it.
-- The similarity value is saved when the slider is let go; story and group suggestions update right away (no photo
-  is read again). Near-duplicates by dHash are suggested at any value. Only the default is stored as "none", so a
+- The similarity value is saved when the slider is let go; Moments' sets update right away (no photo is read again).
+  Near-duplicates by dHash are set together at any value. Only the default is stored as "none", so a
   better default later reaches everyone who didn't choose one.
-- The grouping setting changes only the rows of the Moments tab. All photos, tags and the story page stay by day, and so do
-  the "+ Add <day>" suggestions on a story page.
+- The grouping setting changes only the rows of the Moments tab (and Explore's pages). All photos and tags stay by
+  day, and the storyline has a heading for each day.
 - Backup runs in the background with WorkManager, also with the app closed: every 15 minutes, 10 s after new photos
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
@@ -140,8 +141,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 
 - Shared: `SettingsController`, `TimelineGrouping`, `SimilarityThreshold` and `PrivateMedia` in
   [settings/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/settings/SettingsController.kt);
-  the rows are `StoriesState.moments`, built by `groupMoments` in
-  [StoriesController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoriesController.kt).
+  the rows are built by `groupMoments` in
+  [Moment.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/Moment.kt).
 - Backup: [backup/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/backup/BackupController.kt)
   (`BackupController`, `BackupEngine`, `UploadLedger`, `ServerBackupApi`); Android reads originals in
   `AndroidMediaFiles.kt`, and runs it from [work/](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/BackupWorker.kt)

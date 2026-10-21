@@ -21,8 +21,6 @@ import com.chencohensolution.journal.library.MediaSource
 internal sealed interface Route {
     data object Journal : Route
     data object AllPhotos : Route
-    data class Story(val id: String) : Route
-    data class Group(val storyId: String, val groupId: String) : Route
     data object Tags : Route
     data class Tag(val name: String) : Route
     data object Settings : Route
@@ -38,28 +36,25 @@ internal sealed interface Route {
     data class Crop(val itemId: String, val kind: CropKind) : Route
 
     /**
-     * Opened from a group ([storyId] and [groupId]), a story ([storyId]), a tag ([tag]), one row of the Moments tab
+     * Opened from the storyline ([storyline]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), All photos with [filter], or Explore
      * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
      * the band of that hidden source's photos on the Moments row.
      */
     data class Viewer(
-        val storyId: String?,
-        val groupId: String?,
         val moment: String?,
         val filter: LibraryFilter,
         val itemId: String,
         val tag: String? = null,
         val scope: ExploreScope? = null,
         val revealed: MediaSource? = null,
+        val storyline: Boolean = false,
     ) : Route
 
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
     fun encode(): String = when (this) {
         Journal -> "journal"
         AllPhotos -> "all"
-        is Story -> "story|$id"
-        is Group -> "group|$storyId|$groupId"
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
@@ -69,7 +64,7 @@ internal sealed interface Route {
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
         Map -> "map"
-        is Viewer -> "viewer|${storyId.orEmpty()}|${groupId.orEmpty()}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
+        is Viewer -> "viewer|${if (storyline) "storyline" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
             "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|$itemId"
     }
 
@@ -78,8 +73,6 @@ internal sealed interface Route {
             val parts = value.split("|")
             return when (parts[0]) {
                 "all" -> AllPhotos
-                "story" -> Story(parts[1])
-                "group" -> Group(parts[1], parts[2])
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
@@ -90,14 +83,13 @@ internal sealed interface Route {
                 "year" -> Year(parts[1].toInt(), parts[2].toIntOrNull())
                 "map" -> Map
                 "viewer" -> Viewer(
-                    storyId = parts[1].ifEmpty { null },
-                    groupId = parts[2].ifEmpty { null },
-                    moment = parts[3].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
-                    filter = LibraryFilter.valueOf(parts[4]),
-                    tag = parts[5].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
-                    scope = parts[6].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
-                    revealed = MediaSource.entries.firstOrNull { it.name == parts[7] },
-                    itemId = parts.drop(8).joinToString("|"),
+                    storyline = parts[1] == "storyline",
+                    moment = parts[2].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
+                    filter = LibraryFilter.valueOf(parts[3]),
+                    tag = parts[4].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
+                    scope = parts[5].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
+                    revealed = MediaSource.entries.firstOrNull { it.name == parts[6] },
+                    itemId = parts.drop(7).joinToString("|"),
                 )
                 else -> Journal
             }
@@ -130,21 +122,20 @@ internal val BackStackSaver = listSaver<List<Route>, String>(
 /** The photo the viewer shows, for the entry at [depth] under it. */
 internal data class Landing(val depth: Int, val itemId: String)
 
-/** A back stack entry; its depth tells apart a group opened twice, from its parent and from the viewer. */
+/** A back stack entry; its depth tells apart a screen opened twice. */
 internal data class StackEntry(val depth: Int, val route: Route) {
     val contentKey get() = "$depth|${route.encode()}"
 }
 
 /**
- * The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its cover),
- * the row of the Moments tab or an Explore page (as shown there), the map's photos, or everything in the All photos filter.
+ * The items the viewer swipes through: the storyline, the row of the Moments tab or an Explore page (as shown there),
+ * the map's photos, a tag's photos, or everything in the All photos filter.
  */
 internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
     route.scope != null && route.moment != null -> stories.feedOf(scopeItems(library, stories, route.scope)).section(route.moment)?.items.orEmpty()
     route.scope != null -> scopeItems(library, stories, route.scope)
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
-    route.storyId != null && route.groupId != null -> stories.story(route.storyId)?.group(route.groupId)?.viewerItems.orEmpty()
-    route.storyId != null -> stories.story(route.storyId)?.viewerItems.orEmpty()
+    route.storyline -> stories.storyline
     route.moment != null && route.revealed != null ->
         stories.feed.section(route.moment)?.revealed?.firstOrNull { it.source == route.revealed }?.items.orEmpty()
     route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()

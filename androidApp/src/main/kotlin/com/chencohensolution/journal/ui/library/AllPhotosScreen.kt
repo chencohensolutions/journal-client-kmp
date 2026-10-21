@@ -159,7 +159,7 @@ internal fun dayGridRows(days: List<DayGroup>): List<Set<String>> =
     days.flatMap(::gridRows).map { row -> row.items.mapTo(mutableSetOf()) { it.id } }
 
 /**
- * The photo grid of [days], each day under its name: used by All photos and the story page.
+ * The photo grid of [days], each day under its name: used by All photos and a tag's page.
  * [label] names a day; by default "Today", "Tue, Oct 7"….
  */
 internal fun LazyListScope.dayGrids(

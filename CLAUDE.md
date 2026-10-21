@@ -9,11 +9,14 @@ whenever a screen changes.
 
 - `sharedLogic/` — all logic, shared. `commonMain`: controllers with a `StateFlow` state
   (`JournalController` connection, `EnrollmentController`, `LibraryController` photo library, `StoriesController`
-  stories/groups/tags/notes and the journal's moments, `SettingsController` the Settings screen, `BackupController`,
-  `FreeUpController`). The `stories/` package is split by concern: `StoriesController.kt` (edits and the rebuild),
-  `StoryView.kt` (a story as the screens draw it), `StoriesState.kt` (what is published and how it is built),
-  `StoryEditing.kt` (pure normalization of groups and layout after an edit), `Suggestions.kt`, `Timeline.kt`,
-  `MomentsFeed.kt`, `TextSearch.kt`, and the file stores (`StoryStore.kt`, `PhotoNote.kt`). `androidMain` / `iosMain`:
+  the photos' notes (writing with history, tags, crops, Moments sets), the storyline and the Moments feed,
+  `SettingsController` the Settings screen, `BackupController`, `FreeUpController`). Stories were replaced by the
+  storyline on Oct 21, 2026; `StoriesController`, `StoriesState` and the `stories/` package keep their names for now.
+  The package is split by concern: `StoriesController.kt` (edits and the rebuild), `StoriesState.kt` (what is
+  published and how it is built, the storyline among it), `PhotoNote.kt` (the note and its file store),
+  `WritingDiff.kt` (what History highlights), `MomentsFeed.kt` and `Moment.kt` (the Moments tab), `Explore.kt`,
+  `PhotoCrops.kt`, `TextSearch.kt`, `StoryIds.kt` (ids for Moments sets) and `OldStories.kt` (deletes the old
+  stories folders on start). `androidMain` / `iosMain`:
   platform pieces (mTLS client, key store, MediaStore / PhotoKit readers) and the factories (`AndroidJournal.kt`,
   `IosJournal.kt`). The connection check is the `storageUsage` query (`checkConnection` in `JournalApi.kt`).
 - `androidApp/` — Jetpack Compose UI; library screens in `ui/library/`, one `<Name>Screen.kt` per screen with its
@@ -31,7 +34,8 @@ whenever a screen changes.
   classes checked with `is`/`as?`, Kotlin default arguments are not available in Swift.
 - The library screens are always dark (`LibraryColors` on both platforms); the photo access and enrollment screens
   follow the system theme.
-- Naming: **story** (never "event"), **group**, **tag**, **note**. Stories have no dates; derive from photos.
+- Naming: **storyline**, **note** (a photo's title and paragraph, `caption` in code and files), **tag**, **moment**,
+  **set** (near-duplicates in Moments). There are no stories or groups any more.
 - Never write to the photo library. `PhotoSafetyTest` fails on MediaStore/PhotoKit write APIs or write permissions.
 - Files under `journal/` are formats other tools will read: version them (`"v": 1`), write to a temp file and rename,
   and never let a damaged file hide the others.

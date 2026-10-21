@@ -59,7 +59,7 @@ func dayPlace(of itemId: String, in days: [DayGroup]) -> PhotoPlace? {
     days.first { $0.items.contains { $0.id == itemId } }.map { PhotoPlace(section: $0.day, tile: ZoomID.item(itemId)) }
 }
 
-/// One day's photos under its name, for All photos and the story page. Days with three or more items open with a
+/// One day's photos under its name, for All photos and a tag's page. Days with three or more items open with a
 /// 2×2 photo; the rest fill rows of three.
 struct DayGrid: View {
     let day: DayGroup

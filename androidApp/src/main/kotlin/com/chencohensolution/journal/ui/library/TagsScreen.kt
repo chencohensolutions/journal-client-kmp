@@ -155,3 +155,9 @@ internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mo
         )
     }
 }
+
+/** A muted line in a list: an empty state. */
+@Composable
+private fun Note(text: String) {
+    Text(text, color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+}

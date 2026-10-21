@@ -8,7 +8,7 @@ final class JournalViewModel: ObservableObject {
     /// The device registration wizard; a successful enrollment switches this controller's identity.
     let enrollment: EnrollmentViewModel
 
-    /// Backup to the server, the device photo library (with each photo's backup status), and the stories built on it.
+    /// Backup to the server, the device photo library (with each photo's backup status), and the writing, storyline and Moments built on it.
     let backup: BackupViewModel
     let library: LibraryViewModel
     let stories: StoriesViewModel

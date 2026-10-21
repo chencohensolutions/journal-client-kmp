@@ -34,7 +34,7 @@ the library and the places found so far, and it shows the same sources as the Mo
 - **A town's or a year's page:** its photo across the top with the name and "312 photos · 2019 – 2026" (a year:
   "1,284 photos · Tel Aviv · Jaffa · Haifa"), a back button over it, then a row of choices that narrow it: **All
   years**, "2026 · 21", "2024 · 88"… for a town, **Whole year**, Oct, Sep… for a year. Under them its photos exactly
-  as in the Moments tab (day dividers, moments, near-duplicate sets, notes), without trip cards. Tapping a photo opens
+  as in the Moments tab (day dividers, moments, near-duplicate sets, writing). Tapping a photo opens
   the [viewer](viewer.md) on its row; the choice is kept while the viewer is open. Videos don't play in the list here.
 - **Map:** every located photo as a pin; pins near each other are one circle with their count, bigger for more.
   Tapping a circle zooms in until it splits; a circle left at the closest zoom (photos taken in one spot), or a pin,
@@ -71,13 +71,13 @@ Shared logic in [Explore.kt](../../sharedLogic/src/commonMain/kotlin/com/chencoh
 - `placesOf` groups photos by their place's town (`PlaceName.town`, see [moments.md](moments.md#where-locations-come-from));
   a town's country is the one most of its photos were named with (`PlaceName.country`). `countriesOf` groups the towns
   by country; a country's `covers` are the four photos of its row and `firstYear`/`lastYear` its years.
-  The **home town** is the town most photos within 10 km of home were taken in, home being the one the Moments tab
-  finds trips with (20 located photos or more). A town's photo is its newest photo (not a video).
+  The **home town** is the town most photos within 10 km of home were taken in, home being the 10 km square most
+  located photos were taken in (`home`, 20 located photos or more). A town's photo is its newest photo (not a video).
 - `yearsOf`: per year its towns (most photos first, up to four) and four photos evenly spread across it.
 - `ExploreScope` is what a page or the viewer shows: a town, a year and month, a range of years, an area of the map.
 - `StoriesState.feedOf(items)` is the Moments feed of only those photos, with the same grouping, look-alike sets and
-  hand-made sets, and no trips.
-- Places are looked up for the whole library in the background (unsorted photos first), so towns and pins fill in
+  hand-made sets.
+- Places are looked up for the whole library in the background, so towns and pins fill in
   while that runs. Names cached before countries were (cache version 1) are looked up again; photo locations are kept.
 
 ## The map's tiles

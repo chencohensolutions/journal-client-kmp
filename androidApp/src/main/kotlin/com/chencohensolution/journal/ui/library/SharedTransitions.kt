@@ -15,14 +15,9 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.first
 
-/**
- * Keys of the elements shared between screens: a photo and the viewer, a group tile and its page's cover, a story card
- * and its page. The same keys as the iOS zoom transitions.
- */
+/** Keys of the elements shared between screens: a photo and the viewer. The same keys as the iOS zoom transitions. */
 internal object SharedKey {
     fun item(id: String) = "item|$id"
-    fun story(id: String) = "story|$id"
-    fun group(id: String) = "group|$id"
 }
 
 /** Set by the library around its screens; null in previews and screenshot tests, where nothing is shared. */
@@ -36,16 +31,8 @@ internal fun Modifier.shared(key: String): Modifier {
     return with(shared) { this@shared.sharedElement(rememberSharedContentState(key), screen) }
 }
 
-/** A container that becomes another, such as a story card that grows into its page; their contents crossfade. */
-@Composable
-internal fun Modifier.sharedContainer(key: String): Modifier {
-    val shared = LocalSharedTransitionScope.current ?: return this
-    val screen = LocalNavAnimatedContentScope.current
-    return with(shared) { this@sharedContainer.sharedBounds(rememberSharedContentState(key), screen) }
-}
-
 /**
- * Screens that open out of a tile (the viewer, a story, a group) fade around the shared element instead of sliding,
+ * Screens that open out of a tile (the viewer) fade around the shared element instead of sliding,
  * when opened and closed, including while a back gesture scrubs it.
  */
 internal val FadeAroundSharedElements: Map<String, Any> =

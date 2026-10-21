@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
-import com.chencohensolution.journal.stories.FeedTrip
+import com.chencohensolution.journal.stories.PhotoNote
 import com.chencohensolution.journal.stories.MomentsFeed
 
 // Around the Moments feed: the source bar, trip cards, the selection bar and the photo menu.
@@ -96,7 +96,7 @@ internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, m
     }
 }
 
-internal enum class FeedItemChoice { WRITE, CROP, ADD_TO_STORY, TAG, SELECT, TAKE_OUT }
+internal enum class FeedItemChoice { WRITE, CROP, TAG, REMOVE_FROM_STORYLINE, ADD_TO_STORYLINE, SELECT, TAKE_OUT }
 
 /** While picking: a filled check when picked, an empty ring when not. */
 @Composable
@@ -142,11 +142,20 @@ internal fun FeedSelectionBar(count: Int, onCancel: () -> Unit, onMerge: () -> U
 }
 
 /**
- * A photo's long-press menu over the feed: the photo and what's written about it, then Write about it, Crop, Add to
- * story and Tag. Drawn in the screen (not a popup), so it shows in previews too.
+ * A photo's long-press menu over the feed: the photo and what's written about it, then Write about it, Crop, Tag,
+ * Remove from (or Add to) the storyline once it has writing, and in Moments ([inMoments]) Select and, in a set
+ * ([inSet]), Take out of set. Drawn in the screen (not a popup), so it shows in previews too.
  */
 @Composable
-internal fun FeedItemMenu(item: MediaItem, note: String?, inSet: Boolean, onDismiss: () -> Unit, onChoose: (FeedItemChoice) -> Unit) {
+internal fun FeedItemMenu(
+    item: MediaItem,
+    note: PhotoNote?,
+    inSet: Boolean,
+    onDismiss: () -> Unit,
+    onChoose: (FeedItemChoice) -> Unit,
+    inMoments: Boolean = true,
+) {
+    val written = note?.let { it.title.ifBlank { it.caption } }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(onClick = onDismiss)) {
         Column(
             Modifier
@@ -171,9 +180,9 @@ internal fun FeedItemMenu(item: MediaItem, note: String?, inSet: Boolean, onDism
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        note?.takeIf { it.isNotBlank() } ?: stringResource(R.string.feed_menu_no_note),
+                        written?.takeIf { it.isNotBlank() } ?: stringResource(R.string.feed_menu_no_note),
                         color = LibraryColors.OnInverseMuted,
-                        fontFamily = if (note.isNullOrBlank()) null else FontFamily.Serif,
+                        fontFamily = if (written.isNullOrBlank()) null else FontFamily.Serif,
                         fontSize = 14.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -181,14 +190,18 @@ internal fun FeedItemMenu(item: MediaItem, note: String?, inSet: Boolean, onDism
                 }
             }
             Spacer(Modifier.height(6.dp))
-            val hasNote = !note.isNullOrBlank()
+            val hasNote = note?.hasWriting == true
             listOf(
                 Triple(FeedItemChoice.WRITE, LibraryIcons.Edit, if (hasNote) R.string.feed_menu_edit_note else R.string.feed_menu_write),
                 Triple(FeedItemChoice.CROP, LibraryIcons.Crop, R.string.feed_menu_crop),
-                Triple(FeedItemChoice.ADD_TO_STORY, LibraryIcons.Plus, R.string.library_add_to_story),
                 Triple(FeedItemChoice.TAG, LibraryIcons.Tag, R.string.library_tag),
-                Triple(FeedItemChoice.SELECT, LibraryIcons.Check, R.string.feed_menu_select),
-                Triple(FeedItemChoice.TAKE_OUT, LibraryIcons.Minus, R.string.feed_menu_take_out).takeIf { inSet },
+                when {
+                    note?.onStoryline == true -> Triple(FeedItemChoice.REMOVE_FROM_STORYLINE, LibraryIcons.Minus, R.string.storyline_remove)
+                    hasNote -> Triple(FeedItemChoice.ADD_TO_STORYLINE, LibraryIcons.Plus, R.string.storyline_add)
+                    else -> null
+                },
+                Triple(FeedItemChoice.SELECT, LibraryIcons.Check, R.string.feed_menu_select).takeIf { inMoments },
+                Triple(FeedItemChoice.TAKE_OUT, LibraryIcons.Minus, R.string.feed_menu_take_out).takeIf { inMoments && inSet },
             ).filterNotNull().forEach { (choice, icon, label) ->
                 Row(
                     Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(12.dp)).clickable { onChoose(choice) }.padding(horizontal = 14.dp),
@@ -198,64 +211,6 @@ internal fun FeedItemMenu(item: MediaItem, note: String?, inSet: Boolean, onDism
                     Spacer(Modifier.width(16.dp))
                     Text(stringResource(label), color = LibraryColors.OnInverse, fontSize = 16.sp)
                 }
-            }
-        }
-    }
-}
-
-/** Days away from home, offered as one story; "Not now" doesn't offer it again. */
-@Composable
-internal fun TripCard(trip: FeedTrip, actions: FeedActions) {
-    Column(
-        Modifier
-            .padding(start = 12.dp, end = 12.dp, top = 24.dp)
-            .fillMaxWidth()
-            .background(LibraryColors.Inverse, RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(52.dp).background(LibraryColors.Raised, RoundedCornerShape(10.dp))) {
-                CroppedThumbnail(trip.cover, Modifier.fillMaxSize())
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.feed_trip_kicker), color = LibraryColors.OnInverseMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    trip.place ?: stringResource(R.string.feed_trip_untitled),
-                    color = LibraryColors.OnInverse,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    listOf(
-                        dateRange(trip.firstDay, trip.lastDay),
-                        pluralStringResource(R.plurals.library_story_days, trip.days, trip.days),
-                        pluralStringResource(R.plurals.library_story_items, trip.items.size, trip.items.size),
-                    ).joinToString(" · "),
-                    color = LibraryColors.OnInverseMuted,
-                    fontSize = 13.sp,
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                Modifier.weight(1f).height(40.dp).background(LibraryColors.Accent, RoundedCornerShape(50)).clickable { actions.saveTrip(trip) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.feed_trip_save), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Box(
-                Modifier
-                    .height(40.dp)
-                    .border(1.dp, LibraryColors.OnInverseMuted.copy(alpha = 0.5f), RoundedCornerShape(50))
-                    .clickable { actions.dismissTrip(trip.key) }
-                    .padding(horizontal = 18.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.library_burst_not_now), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
