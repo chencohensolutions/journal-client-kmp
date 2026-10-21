@@ -28,12 +28,12 @@ struct LibraryRootView: View {
         case settings
     }
 
-    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), one moment of the journal
-    /// (`moment`, its key), or All photos with `filter`.
+    /// Opened from a group (`storyId` and `groupId`), a story (`storyId`), a tag (`tag`), a row of Moments
+    /// (`feedSection`, its key), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         let storyId: String?
         var groupId: String? = nil
-        var moment: String? = nil
+        var feedSection: String? = nil
         let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
@@ -69,11 +69,31 @@ struct LibraryRootView: View {
                         library: library.state,
                         stories: stories.state,
                         health: journal.state.health,
+                        viewerOpen: viewer != nil,
                         actions: HomeActions(
-                            openItem: { moment, item in openViewer(ViewerRequest(storyId: nil, moment: moment.key, filter: .all, itemId: item.id)) },
+                            openItem: { section, item in
+                                openViewer(ViewerRequest(storyId: nil, feedSection: section.key, filter: .all, itemId: item.id))
+                            },
                             openStory: { path.append(.story($0)) },
-                            createStory: { title, momentKey in
-                                if let id = stories.createStory(title: title, momentKey: momentKey) { path.append(.story(id)) }
+                            createStory: { title, feedKey in
+                                if let id = stories.createStory(title: title, feedKey: feedKey) { path.append(.story(id)) }
+                            },
+                            toggleSource: settings.toggleFeedSource,
+                            dismissTrip: settings.dismissTrip,
+                            merge: stories.mergeInFeed,
+                            takeOutOfSet: stories.takeOutOfSet,
+                            turnSet: { stories.turnSet($0, to: $1) },
+                            setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
+                            // The crop screen opens here, on the photo's Moments crop.
+                            crop: { _ in },
+                            toggleStory: { storyId, itemId, add in
+                                if add { stories.add([itemId], to: storyId) } else { stories.remove([itemId], from: storyId) }
+                            },
+                            createStoryWith: { title, itemId in
+                                if let id = stories.createStory(title: title, itemIds: [itemId]) { path.append(.story(id)) }
+                            },
+                            toggleTag: { itemId, tag, add in
+                                if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
                             openAllPhotos: { path.append(.allPhotos) },
                             openSettings: { path.append(.settings) },
@@ -209,7 +229,7 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the group or story it was opened from (where a group is one stop, its
-    /// cover), the moment of the journal (only its unsorted photos, as shown there), or everything in the All photos filter.
+    /// cover), the row of Moments (its photos in the order shown), or everything in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
         if let tag = request.tag {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
@@ -220,8 +240,8 @@ struct LibraryRootView: View {
         if let storyId = request.storyId {
             return stories.state.story(id: storyId)?.viewerItems ?? []
         }
-        if let moment = request.moment {
-            return stories.state.moment(key: moment)?.items ?? []
+        if let section = request.feedSection {
+            return stories.state.feed.section(key: section)?.items ?? []
         }
         return library.state.days(filter: request.filter).flatMap { $0.items }
     }

@@ -8,7 +8,7 @@ One photo or video at a time, full screen on black.
 - Opened from a group: that group's photos, with each subgroup as one stop (its cover) and the same **Open** button.
 - Opened from a story: that story's photos, with each group as one stop (its cover) and a **⧉ 14 · Open** button
   in the top bar that opens the group.
-- Opened from a row of the Moments tab: that row's photos as shown (iOS: its unsorted items).
+- Opened from a row of the Moments tab: that row's photos as shown.
 - Opened from All photos: everything in the current filter.
 
 The list is fixed when the viewer opens, so tagging a photo or adding it to a story (which takes it out of Unsorted)

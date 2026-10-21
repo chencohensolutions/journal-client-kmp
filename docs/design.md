@@ -29,11 +29,11 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
   light or dark theme; the photo viewer is always dark.
 - Home has two tabs, **Stories** and **Moments** (renamed from Journal / Unsorted on Oct 19, 2026). Stories is the
   timeline, newest first, with **only story cards**. Moments shows **every photo**, also those in stories or tagged
-  (asked Oct 19, 2026; Android; iOS still shows only unsorted photos there). A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
+  (asked Oct 19, 2026; on iOS since Oct 21, 2026). A story sits at its **newest photo's day**, so adding to an old story moves it up. (The owner didn't choose between newest photo, first photo
   or a separate tab; newest photo is the default and is one line to change: `StoryView.timelineDay`.)
 - Moments are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
-- Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first): full-width photos at
+- Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first, iOS since Oct 21, 2026): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
   one photo you swipe (no peek), a filter bar of source toggles (Camera and WhatsApp on at first), and trip
   suggestions. **Stories are never made automatically**; only + Story or Save as story does. See
