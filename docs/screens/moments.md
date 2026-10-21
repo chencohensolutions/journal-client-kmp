@@ -62,8 +62,11 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
 (`buildFeed`, tested in `FeedTest`):
 
 - **Source** comes from the folder: `DCIM/` is Camera; a path containing "screenshot" or "screen record" is
-  Screenshots; one containing "WhatsApp" is WhatsApp; everything else is Other. On iOS, PhotoKit marks screenshots;
-  everything else counts as Camera for now.
+  Screenshots; one containing "WhatsApp" is WhatsApp; everything else is Other. iOS has no folders
+  (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album "WhatsApp" (WhatsApp saves
+  there) are WhatsApp; photos synced from a computer or in shared albums, and files the camera can't have written
+  (PNG, GIF, WebP, MP4: saved from apps) are Other; the rest (HEIC, JPEG, DNG, MOV) is Camera, so a JPEG saved from
+  Safari counts as Camera.
 - **Camera moments** split after 2 hours without a photo, or after 20 minutes when the next photo is more than 1 km
   from the last located one. A walk stays one moment; a drive to another town doesn't. Photos without GPS stay with
   their neighbors.

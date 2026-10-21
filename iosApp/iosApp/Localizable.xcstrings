@@ -7,6 +7,16 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ video" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון %@"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "he" : {
@@ -945,6 +955,16 @@
         }
       }
     },
+    "Camera" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצלמה"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "he" : {
@@ -1301,6 +1321,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קובץ"
+          }
+        }
+      }
+    },
+    "From" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקור"
           }
         }
       }
@@ -1846,6 +1876,16 @@
         }
       }
     },
+    "Other" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחר"
+          }
+        }
+      }
+    },
     "Photo, %@" : {
       "localizations" : {
         "he" : {
@@ -2096,6 +2136,16 @@
         }
       }
     },
+    "Screenshots" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צילומי מסך"
+          }
+        }
+      }
+    },
     "Search stories, or name a new one" : {
       "localizations" : {
         "he" : {
@@ -2232,6 +2282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התחברות עם התעודה החדשה"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גודל"
           }
         }
       }
@@ -2516,6 +2576,16 @@
         }
       }
     },
+    "Type" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סוג"
+          }
+        }
+      }
+    },
     "Type the code here" : {
       "localizations" : {
         "he" : {
@@ -2640,6 +2710,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ממתין להעלאה"
+          }
+        }
+      }
+    },
+    "WhatsApp" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "וואטסאפ"
           }
         }
       }

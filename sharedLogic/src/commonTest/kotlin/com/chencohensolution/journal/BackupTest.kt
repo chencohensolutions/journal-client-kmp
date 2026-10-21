@@ -23,6 +23,7 @@ import okio.ByteString.Companion.toByteString
 import okio.Path.Companion.toPath
 import okio.Source
 import okio.fakefilesystem.FakeFileSystem
+import okio.use
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

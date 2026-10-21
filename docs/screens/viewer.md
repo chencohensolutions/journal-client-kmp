@@ -38,7 +38,8 @@ doesn't pull it out from under you. If the open item is deleted from the device,
     **Create "…"** at the top. A check marks the stories the item is in; tapping one adds or removes it.
   - **Group** instead of Stories when opened from a group: its name, **Set as cover** (or "This is the cover"),
     and **− Remove from group** (the photo moves to the level above the group, even from a subgroup).
-  - **The original** (Android; iOS shows the backup status and file name, size, dimensions, length): where it is
+  - **The original** (Android; iOS shows the backup status and file name, size, dimensions, length, type and where
+    it came from): where it is
     ("On this phone and on your server", "Only on this phone", "Downloaded to this phone, and on your server", "Only
     on your server", or the upload state with % and a bar), then file name, size, dimensions, length for videos,
     type (MIME), where it came from (Camera, WhatsApp, …) and **Location** (place name and coordinates). For a photo
@@ -55,8 +56,12 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 
 ## Platform notes
 
-- **iOS** doesn't report file size cheaply, so it's not shown. The file name comes from PhotoKit when the panel
-  opens. Photos stored only in iCloud are downloaded when viewed.
+- **iOS:** file name, size and type come with the library (`IosMediaLibrary`, from each asset's PHAssetResource:
+  the edit's render for an edited photo, under the original's name with the render's extension, e.g.
+  "IMG_1234.jpg"; a Live Photo is its photo). The size is PhotoKit's `fileSize` (`dataSize` from iOS 27), no file
+  is read. Reading them takes a few ms a photo, so they are cached in `Caches/library/files.json` and, when more than
+  300 photos are new (the first start), read in the background: until then a photo shows no file name or size.
+  Photos stored only in iCloud are downloaded when viewed.
 - **Android emulator:** 4K HEVC videos from recent phones may show no first frame and fail to play, because the
   emulator's decoder can't handle them. Real devices can.
 

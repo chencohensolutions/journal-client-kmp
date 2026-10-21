@@ -238,7 +238,6 @@ private struct InfoPanel: View {
     let group: GroupView?
     let onSetCover: () -> Void
     let onRemoveFromGroup: () -> Void
-    @State private var fileName: String?
 
     var body: some View {
         ScrollView {
@@ -330,9 +329,12 @@ private struct InfoPanel: View {
                     }
                 }
                 LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 12) {
-                    if let fileName { Detail(label: "File", value: fileName) }
+                    if let fileName = item.fileName { Detail(label: "File", value: fileName) }
+                    if let size = item.sizeBytes { Detail(label: "Size", value: ByteCountFormatter.string(fromByteCount: size.int64Value, countStyle: .file)) }
                     if item.width > 0 && item.height > 0 { Detail(label: "Dimensions", value: "\(item.width) × \(item.height)") }
                     if let duration = item.duration { Detail(label: "Length", value: formatDuration(duration)) }
+                    if let mimeType = item.mimeType { Detail(label: "Type", value: typeName(mimeType)) }
+                    if item.isOnDevice { Detail(label: "From", value: item.source.label) }
                 }
             }
             .foregroundStyle(LibraryColors.onInverse)
@@ -344,7 +346,24 @@ private struct InfoPanel: View {
         .fixedSize(horizontal: false, vertical: true)
         .background(LibraryColors.inverse, in: UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
         .ignoresSafeArea(edges: .bottom)
-        .task(id: item.id) { fileName = PhotoLibraryImages.shared.originalFileName(id: item.id) }
+    }
+}
+
+/// "HEIC", "JPEG", "DNG (RAW)", "MOV video"; the MIME type itself for others.
+private func typeName(_ mimeType: String) -> String {
+    guard let kind = MediaFactsKt.mediaKind(mimeType: mimeType) else { return mimeType }
+    if kind.video { return String(localized: "\(kind.name) video") }
+    return kind.raw ? "\(kind.name) (RAW)" : kind.name
+}
+
+private extension MediaSource {
+    var label: String {
+        switch self {
+        case .whatsapp: return String(localized: "WhatsApp")
+        case .screenshots: return String(localized: "Screenshots")
+        case .other: return String(localized: "Other")
+        default: return String(localized: "Camera")
+        }
     }
 }
 
