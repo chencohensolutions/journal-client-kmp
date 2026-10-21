@@ -120,8 +120,9 @@ private let minShown: CGFloat = 0.6
 /// A video starts once it has been the one to play this long, so a fling past several doesn't open each of them.
 private let videoSettleSeconds = 0.15
 
-/// `item` playing in a loop, muted or not. Its caller keeps the poster on top until `onFirstFrame`, and for good after
-/// `onFailed`.
+/// `item` playing in a loop, muted or not; a video only on the server streams through the video cache
+/// (`ServerVideos`), so what was fetched stays for the next time. Its caller keeps the poster on top until
+/// `onFirstFrame`, and for good after `onFailed` (offline, say).
 struct InlineVideo: UIViewRepresentable {
     let item: MediaItem
     let muted: Bool

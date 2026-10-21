@@ -44,16 +44,20 @@ final class PhotoLibraryImages {
         return await ServerImages.shared.tile(item, pixels: Self.pixels(pointSize))
     }
 
-    /// What a player opens: the library's video, or the original the app downloaded; nil for one only on the server.
+    /// What a player opens: the library's video, the original the app downloaded, or one only on the server streamed
+    /// (`ServerVideos`); nil when that can't be (this device isn't registered).
+    @MainActor
     func playerItem(item: MediaItem) async -> AVPlayerItem? {
         if item.isOnDevice { return await playerItem(id: item.id) }
-        return item.keptOriginal.map { AVPlayerItem(url: URL(fileURLWithPath: $0)) }
+        return await videoAsset(item: item).map { AVPlayerItem(asset: $0) }
     }
 
-    /// The video itself (see `videoAsset(id:)`), or its downloaded original; nil for one only on the server.
+    /// The video itself (see `videoAsset(id:)`), its downloaded original, or one only on the server streamed.
+    @MainActor
     func videoAsset(item: MediaItem) async -> AVAsset? {
         if item.isOnDevice { return await videoAsset(id: item.id) }
-        return item.keptOriginal.map { AVURLAsset(url: URL(fileURLWithPath: $0)) }
+        if let kept = item.keptOriginal { return AVURLAsset(url: URL(fileURLWithPath: kept)) }
+        return ServerVideos.asset(item)
     }
 
     /// Starts loading images that will be asked for soon at this size (a swipe set's neighbors), so they show at once.

@@ -16,7 +16,6 @@ import platform.Foundation.NSURLAuthenticationMethodServerTrust
 import platform.Foundation.NSURLCredential
 import platform.Foundation.NSURLCredentialPersistence
 import platform.Foundation.NSURLSessionAuthChallengeCancelAuthenticationChallenge
-import platform.Foundation.NSURLSessionAuthChallengeDisposition
 import platform.Foundation.NSURLSessionAuthChallengePerformDefaultHandling
 import platform.Foundation.NSURLSessionAuthChallengeUseCredential
 import platform.Foundation.credentialForTrust
@@ -26,8 +25,6 @@ import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustSetAnchorCertificates
 import platform.Security.SecTrustSetAnchorCertificatesOnly
 
-private typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Unit
-
 /**
  * mTLS over URLSession, using an identity in the app Keychain: imported by [KeychainIdentities] or
  * created by enrollment (IosDeviceKeyStore).
@@ -35,17 +32,18 @@ private typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, N
 internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 
     override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient {
-        val identity = identityAlias?.let {
-            KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again")
-        }
-        val anchors: List<Any> = trustedCas.map(::secCertificateObject)
-
+        val challenges = MtlsChallenges(identityAlias, trustedCas)
         return HttpClient(Darwin) {
             engine {
                 handleChallenge { _, _, challenge, completion ->
                     when (challenge.protectionSpace.authenticationMethod) {
-                        NSURLAuthenticationMethodServerTrust -> evaluateServerTrust(challenge, anchors, completion)
-                        NSURLAuthenticationMethodClientCertificate -> presentIdentity(identity, completion)
+                        NSURLAuthenticationMethodServerTrust -> challenges.serverTrust(challenge)
+                            ?.let { completion(NSURLSessionAuthChallengeUseCredential, it) }
+                            ?: completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
+                        // No client certificate: the server accepts that for enrollment only.
+                        NSURLAuthenticationMethodClientCertificate -> challenges.clientCertificate()
+                            ?.let { completion(NSURLSessionAuthChallengeUseCredential, it) }
+                            ?: completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
                         else -> completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
                     }
                 }
@@ -54,41 +52,36 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
             install(HttpTimeout)
         }
     }
+}
 
-    private fun evaluateServerTrust(
-        challenge: NSURLAuthenticationChallenge,
-        anchors: List<Any>,
-        completion: ChallengeCompletion,
-    ) {
-        val trust = challenge.protectionSpace.serverTrust
-        if (trust == null) {
-            completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-            return
-        }
+/**
+ * The answers to a URLSession's TLS challenges as [identityAlias] (none: enrollment), trusting [trustedCas] besides the
+ * system roots. Shared by the Ktor client and the video player's own URLSession (IosServerStream).
+ */
+internal class MtlsChallenges(identityAlias: String?, trustedCas: List<ByteArray>) {
+    private val identity: Any? = identityAlias?.let {
+        KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again")
+    }
+    private val anchors: List<Any> = trustedCas.map(::secCertificateObject)
+
+    /** The server's certificate checked against the journal's CA (and the system roots); null: don't connect. */
+    fun serverTrust(challenge: NSURLAuthenticationChallenge): NSURLCredential? {
+        val trust = challenge.protectionSpace.serverTrust ?: return null
         withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
         // Keep trusting the system roots as well, like the Android client.
         SecTrustSetAnchorCertificatesOnly(trust, false)
-
-        if (SecTrustEvaluateWithError(trust, null)) {
-            completion(NSURLSessionAuthChallengeUseCredential, NSURLCredential.credentialForTrust(trust))
-        } else {
-            completion(NSURLSessionAuthChallengeCancelAuthenticationChallenge, null)
-        }
+        return if (SecTrustEvaluateWithError(trust, null)) NSURLCredential.credentialForTrust(trust) else null
     }
 
-    private fun presentIdentity(identity: Any?, completion: ChallengeCompletion) {
-        if (identity == null) {
-            // No client certificate: the server accepts that for enrollment only.
-            completion(NSURLSessionAuthChallengePerformDefaultHandling, null)
-            return
-        }
-        val credential = withCFBridge(identity) { identityRef ->
+    /** This device's certificate; null without an identity. */
+    fun clientCertificate(): NSURLCredential? {
+        val identity = identity ?: return null
+        return withCFBridge(identity) { identityRef ->
             NSURLCredential.credentialWithIdentity(
                 identity = identityRef!!.reinterpret(),
                 certificates = null,
                 persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
             )
         }
-        completion(NSURLSessionAuthChallengeUseCredential, credential)
     }
 }

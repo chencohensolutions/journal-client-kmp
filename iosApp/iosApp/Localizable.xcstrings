@@ -885,16 +885,6 @@
         }
       }
     },
-    "A video only on your server doesn’t play in the app yet; it shows a frame of it. Download the original to play it again." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סרטון שנמצא רק בשרת עדיין לא מתנגן באפליקציה; מוצגת תמונה ממנו. אפשר להוריד את המקור כדי לנגן אותו שוב."
-          }
-        }
-      }
-    },
     "About a third smaller than WebP at the same quality." : {
       "localizations" : {
         "he" : {
@@ -1929,6 +1919,16 @@
         }
       }
     },
+    "It then plays from your server, streamed; what was played stays on this phone for next time." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחר כך הסרטון מתנגן מהשרת שלך בהזרמה; מה שכבר נוגן נשמר בטלפון הזה לפעם הבאה."
+          }
+        }
+      }
+    },
     "Japan trip, Noa's birthday…" : {
       "localizations" : {
         "he" : {
@@ -2464,16 +2464,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בשרת שלך, הריצו `journal-server enroll-code` והקלידו את הכתובת והקוד שהוא מדפיס."
-          }
-        }
-      }
-    },
-    "On your server. Playing it from there comes later; download the original to play it here." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בשרת שלך. ניגון ישירות מהשרת יגיע בהמשך; אפשר להוריד את המקור כדי לנגן אותו כאן."
           }
         }
       }
@@ -3478,6 +3468,16 @@
         }
       }
     },
+    "The video can’t be played right now. Is the server reachable?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אי אפשר להפעיל את הסרטון כרגע. האם יש חיבור לשרת?"
+          }
+        }
+      }
+    },
     "This code is wrong, expired or already used." : {
       "localizations" : {
         "he" : {
@@ -3524,6 +3524,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "זה לוקח כמה שניות. השאירו את האפליקציה פתוחה."
+          }
+        }
+      }
+    },
+    "This video can only be played once the phone is registered with your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך."
           }
         }
       }
@@ -3702,6 +3712,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מאומת על ידי journal-server-ca"
+          }
+        }
+      }
+    },
+    "Video · %@ cached" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון · %@ במטמון"
+          }
+        }
+      }
+    },
+    "Video · %@ of %@ cached" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון · %1$@ מתוך %2$@ במטמון"
           }
         }
       }

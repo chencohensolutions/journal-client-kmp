@@ -149,8 +149,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 
 **Not built yet**
 - On iOS: backup (the library already reports what it needs: file name, size, type, modified date and source,
-  cached in `Caches/library`, and changes through a PhotoKit observer) and playing server-only videos (streaming
-  over mTLS). Everywhere: story/note sync (Android backup and server-only photos, and iOS server-only photos, are
+  cached in `Caches/library`, and changes through a PhotoKit observer). Everywhere: story/note sync (Android backup and server-only photos, and iOS server-only photos, are
   built, see below).
 - Sub-stories; layout templates and drag-and-drop
   reordering; choosing a story's cover.
@@ -183,8 +182,12 @@ the server: the list in `Application Support/server/media.json` (refreshed when 
 exact-size previews in `Caches/previews` decoded with ImageIO (WebP, HEIF, AVIF, JPEG XL), the viewer's original
 card with Download original (`Application Support/originals`, left out of iCloud backup) and Delete from this phone
 (PhotoKit's own prompt to Recently Deleted, only in `PhotoRemoval.swift`, approved by the owner), and Settings →
-Storage on this phone and Private media. Not yet on iOS: backup (so no library photo is "backed up" and deletable
-yet), video streaming (a server-only video shows its poster), Free up space. Not yet anywhere: story/note sync.
+Storage on this phone and Private media. Server-only videos stream on iOS too (Oct 21, 2026): `AVPlayer` reads them
+through an `AVAssetResourceLoader` that serves byte ranges from `Caches/videos/<sha256>/` (`data`, a sparse file with
+the bytes at their own offsets, and `index.json`, which ranges are kept, the length and type, when last played) and
+fetches what is missing with Range requests on a URLSession answering the mTLS challenges through the shared
+`IosServerStream`; the cache gives way whole videos, least recently played first, within `PhoneStorage.videoBudget`.
+Not yet on iOS: backup (so no library photo is "backed up" and deletable yet), Free up space. Not yet anywhere: story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -227,8 +230,10 @@ yet), video streaming (a server-only video shows its poster), Free up space. Not
   - What is kept of a photo (info panel): `PhoneStorage.keptHere` (each preview's pixels, format and quality, the
     original, a video's cached bytes); `mediaKind`, `megapixels` and `percentOf` for its wording.
   - Storage on this phone: `PhoneStorage` (one limit for previews, originals and videos; usage, Clear, the videos'
-    share). The platform's video cache implements `VideoCache` (Android: Media3's cache, keyed by sha256); a video
-    streams from `ServerPreviews.mediaUrl` with the device's mTLS client.
+    share). The platform's video cache implements `VideoCache` (Android: Media3's cache; iOS: `ServerVideoCache` in
+    Swift; both keyed by sha256); a video streams from `ServerPreviews.mediaUrl` with the device's mTLS client (on
+    iOS through `IosServerStream`, which gives Swift's URLSession the same challenge answers as the Ktor client,
+    `MtlsChallenges`).
   - Free up space: `FreeUpController` (rules, sources, checks, batches, waiting files) with `FreeUpState.summary`,
     `statusLines` and `needsConfirmation`; the platform implements `PhotoTrash` (iOS: PhotoKit, which PhotoSafetyTest must
     allow) and runs it in the background.

@@ -71,7 +71,9 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
   `ambient` with `mixWithOthers`, so music from another app keeps playing; with sound it is `playback`, and an
   interruption (another app taking the audio) mutes the feed again. The video that plays is worked out from where each
   video is on screen (the part between the top bar and the bottom controls), with the same 60% and settle delay. It
-  stops on the Stories tab, while the viewer or another screen is open, and in the background.
+  stops on the Stories tab, while the viewer or another screen is open, and in the background. A video only on the
+  server plays too (Oct 21, 2026), streamed through the same video cache as the viewer's (`ServerVideos.swift`), as
+  on Android; offline it stays its poster.
 - A new feed (places and fingerprints arriving) shows at once, also mid-scroll; Android waits for the scroll to stop.
 - The backup badge is the iOS one (see [README.md](README.md)).
 

@@ -25,6 +25,7 @@ import com.chencohensolution.journal.tls.KeychainIdentities
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.decodePemCertificates
 import com.chencohensolution.journal.server.IosServerFiles
+import com.chencohensolution.journal.server.IosServerStream
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
@@ -130,7 +131,10 @@ object IosJournal {
             KeptOriginals(serverHttp(), FileSystem.SYSTEM, directory.toPath())
         }.also { keptOriginals = it }
 
-    /** Settings → Storage on this phone: previews and downloaded originals of server photos under one limit. */
+    /**
+     * Settings → Storage on this phone: previews and downloaded originals of server photos, and the videos streamed
+     * from the server (Swift attaches its cache), under one limit.
+     */
     fun phoneStorage(): PhoneStorage =
         phoneStorage ?: JournalSettings(UserDefaultsStore()).let { settings ->
             PhoneStorage(serverPreviews()) { settings.previewCacheGigabytes.toLong() shl 30 }
@@ -139,6 +143,13 @@ object IosJournal {
     /** What Swift asks of the server's files: tile and viewer images, downloads, removal checks, storage. */
     fun serverFiles(): IosServerFiles =
         serverFiles ?: IosServerFiles(serverLibrary(), serverPreviews(), keptOriginals(), phoneStorage()).also { serverFiles = it }
+
+    private var serverStream: IosServerStream? = null
+
+    /** Where Swift streams server-only videos from, and its URLSession's mTLS answers (`ServerVideos.swift`). */
+    fun serverStream(): IosServerStream =
+        serverStream ?: IosServerStream(JournalSettings(UserDefaultsStore()), serverPreviews(), decodePemCertificates(SERVER_CA_PEM))
+            .also { serverStream = it }
 
     /** The user's choices on the Settings screen. */
     fun createSettingsController(): SettingsController = SettingsController(
