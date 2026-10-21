@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.okio.decodeFromBufferedSource
+import kotlinx.serialization.json.okio.encodeToBufferedSink
 import okio.FileSystem
 import okio.Path
 import kotlin.coroutines.cancellation.CancellationException
@@ -229,46 +232,58 @@ class ServerLibrary internal constructor(
         return true
     }
 
-    /** One sync: every page since the saved cursor. */
+    /**
+     * One sync: every page since the saved cursor. What was applied is saved and shown once at the end, also when a page
+     * fails partway, so the cursor and the list on disk always agree. Saving after every page wrote the whole list again
+     * each time, which for a large library ran the phone out of memory.
+     */
     internal suspend fun sync(): Unit = mutex.withLock {
         val alias = settings.identityAlias ?: return
         val url = settings.serverUrl
         val known = _media.value.associateByTo(LinkedHashMap()) { it.sha256 }
+        val savedCursor = cursor
         var changed = false
-        createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
-            do {
-                val response = apollo.query(ChangesQuery(Optional.presentIfNotNull(cursor), Optional.present(PAGE))).execute()
-                response.exception?.let { throw it }
-                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
-                val page = response.data?.changes ?: break
-                page.changes.forEach { change ->
-                    val sha = change.path.removePrefix("media/")
-                    val media = change.media
-                    if (change.deleted || media == null) {
-                        changed = known.remove(sha) != null || changed
-                    } else {
-                        known[media.sha256] = media.toServerMedia()
-                        changed = true
+        try {
+            createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
+                do {
+                    val response = apollo.query(ChangesQuery(Optional.presentIfNotNull(cursor), Optional.present(PAGE))).execute()
+                    response.exception?.let { throw it }
+                    response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                    val page = response.data?.changes ?: break
+                    page.changes.forEach { change ->
+                        val sha = change.path.removePrefix("media/")
+                        val media = change.media
+                        if (change.deleted || media == null) {
+                            changed = known.remove(sha) != null || changed
+                        } else {
+                            known[media.sha256] = media.toServerMedia()
+                            changed = true
+                        }
                     }
-                }
-                cursor = page.cursor
-                if (page.changes.isNotEmpty()) save(known.values.toList())
-            } while (page.hasMore)
+                    cursor = page.cursor
+                } while (page.hasMore)
+            }
+        } finally {
+            if (changed || cursor != savedCursor) withContext(NonCancellable) {
+                val list = known.values.toList()
+                save(list)
+                if (changed) _media.value = list
+            }
         }
-        if (changed) _media.value = known.values.toList()
     }
 
     private suspend fun load() = withContext(Dispatchers.IO) {
         if (!fileSystem.exists(file)) return@withContext
-        val saved = runCatching { json.decodeFromString<ServerMediaFile>(fileSystem.read(file) { readUtf8() }) }.getOrNull()
+        val saved = runCatching { fileSystem.read(file) { json.decodeFromBufferedSource(ServerMediaFile.serializer(), this) } }.getOrNull()
             ?: return@withContext
         cursor = saved.cursor
         _media.value = saved.media
     }
 
+    /** Streams the list to the file, so a large library never sits in memory as one string. */
     private suspend fun save(media: List<ServerMedia>) = withContext(Dispatchers.IO) {
         fileSystem.createDirectories(file.parent!!)
-        fileSystem.write(tempFile) { writeUtf8(json.encodeToString(ServerMediaFile.serializer(), ServerMediaFile(cursor = cursor, media = media))) }
+        fileSystem.write(tempFile) { json.encodeToBufferedSink(ServerMediaFile.serializer(), ServerMediaFile(cursor = cursor, media = media), this) }
         fileSystem.atomicMove(tempFile, file)
     }
 

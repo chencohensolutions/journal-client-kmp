@@ -41,6 +41,7 @@ kotlin {
             implementation(libs.apollo.runtime)
             implementation(libs.apollo.engine.ktor)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.serialization.json.okio)
             implementation(libs.okio)
         }
         androidMain.dependencies {
