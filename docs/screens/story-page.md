@@ -22,7 +22,8 @@ after creating a story.
 - **Photos and groups, day by day, oldest first**, so the story reads like a story. Each day is a grid six square
   cells wide. A [group](group.md) is one tile where its first photo would be. Unless the story was arranged, every
   tile is **Original**: full width at its photo's own aspect ratio (a group's cover), one under the other, so nothing
-  is cropped. In stories longer than a day each day is labeled
+  is cropped. Arranged sizes, focus points and zoom show on both platforms (arranging itself is Android only). In
+  stories longer than a day each day is labeled
   "Day 2 · Fri, Oct 9".
 
 Tapping a photo opens the [viewer](viewer.md), swiping through this story's photos, with each group as one stop
@@ -129,8 +130,8 @@ Uninstalling the app deletes these files.
 
 ## Not built yet
 
-Sub-stories, layout templates, drag-and-drop reordering, arranging on iOS (iOS still shows the automatic layout,
-see below), and choosing the story's cover.
+Sub-stories, layout templates, drag-and-drop reordering, arranging on iOS (iOS shows a layout arranged on Android
+but can't change it), and choosing the story's cover.
 
 ## Code
 
@@ -144,4 +145,6 @@ see below), and choosing the story's cover.
   [ArrangeComponents.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ArrangeComponents.kt)
 - Layout logic (sizes, packing into bands, order): [StoryLayout.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/StoryLayout.kt)
 - iOS: [StoryPageView.swift](../../iosApp/iosApp/StoryPageView.swift),
-  [StoryComponents.swift](../../iosApp/iosApp/StoryComponents.swift)
+  [StoryComponents.swift](../../iosApp/iosApp/StoryComponents.swift), the grid in
+  [GroupComponents.swift](../../iosApp/iosApp/GroupComponents.swift) (`StoryGrid`, one lazy row per band; focus and
+  zoom in `MediaTileView`)

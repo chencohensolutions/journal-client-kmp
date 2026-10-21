@@ -6,6 +6,9 @@ struct EnrollmentView: View {
     @ObservedObject var viewModel: EnrollmentViewModel
     var onOpenJournal: () -> Void
 
+    @State private var scanning = false
+    @State private var scanFailed = false
+
     var body: some View {
         VStack(spacing: 0) {
             switch viewModel.state.step {
@@ -26,6 +29,19 @@ struct EnrollmentView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $scanning) {
+            QRCodeScannerSheet(onScan: viewModel.openScanned)
+        }
+        .alert("Couldn't open the QR code scanner. Type the code instead.", isPresented: $scanFailed) {
+            Button("OK", role: .cancel) {}
+        }
+    }
+
+    /// The camera, or a note when this device can't scan (no supported camera, as on the simulator, or no access).
+    private func scan() {
+        Task {
+            if await QRCodeScannerSheet.canScan() { scanning = true } else { scanFailed = true }
+        }
     }
 
     // MARK: Steps
@@ -74,8 +90,18 @@ struct EnrollmentView: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 8)
 
+                    Button(action: scan) {
+                        Label("Scan QR code", systemImage: "qrcode")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .disabled(step.checking)
+                    .padding(.top, 24)
+
                     FieldLabel("Server address")
-                        .padding(.top, 28)
+                        .padding(.top, 20)
                     TextField("journal.example.com:56398", text: binding(\.serverAddress, viewModel.updateServerAddress))
                         .keyboardType(.URL)
                         .textContentType(.URL)

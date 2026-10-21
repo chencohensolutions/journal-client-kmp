@@ -7,6 +7,18 @@ struct ContentView: View {
     @State private var showWizard: Bool?
 
     var body: some View {
+        screen
+            // journal://enroll?code=…&server=…, the QR code `enroll-code` prints on the server, scanned with the
+            // camera: register (again) with its code.
+            .onOpenURL { url in
+                guard let link = EnrollmentControllerKt.parseEnrollmentLink(link: url.absoluteString) else { return }
+                viewModel.enrollment.openLink(link)
+                showWizard = true
+            }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
         // Decided once at launch; afterwards only "Open journal" leaves the wizard, so the
         // success screen stays visible after the identity is stored.
         if showWizard ?? (viewModel.state.identityAlias == nil) {
