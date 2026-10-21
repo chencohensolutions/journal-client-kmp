@@ -1,10 +1,10 @@
 package com.chencohensolution.journal.connection
 
-import com.chencohensolution.journal.network.ImagesResult
+import com.chencohensolution.journal.network.ConnectionResult
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.network.describe
-import com.chencohensolution.journal.network.fetchImages
+import com.chencohensolution.journal.network.checkConnection
 import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
@@ -35,14 +35,6 @@ sealed interface ConnectionStatus {
     data class Error(val message: String) : ConnectionStatus
 }
 
-data class JournalImage(
-    val id: String,
-    val title: String,
-    /** Absolute URL; fetching it requires the same mTLS identity. */
-    val url: String,
-    val description: String?,
-)
-
 /** What the library screens show about the server: nothing, an "Offline" pill, or a register-again banner. */
 enum class ServerHealth {
     /** Connected, or still checking: show nothing. */
@@ -59,8 +51,8 @@ data class JournalState(
     val serverUrl: String,
     val identityAlias: String?,
     val status: ConnectionStatus,
-    val images: List<JournalImage> = emptyList(),
-    val imagesError: String? = null,
+    /** A GraphQL error the server answered the connection check with, while the connection itself worked. */
+    val serverError: String? = null,
 ) {
     val health: ServerHealth = when (status) {
         ConnectionStatus.NotConnected, is ConnectionStatus.Connecting, ConnectionStatus.Connected -> ServerHealth.OK
@@ -76,8 +68,8 @@ fun interface ObservationHandle {
 }
 
 /**
- * Shared screen logic: holds the server URL and selected identity, connects over mTLS and loads
- * the user's images through Apollo. Platform UIs render [state] and call the action methods; they never touch networking.
+ * Shared screen logic: holds the server URL and selected identity, and checks the connection over mTLS (a small
+ * authenticated query). Platform UIs render [state] and call the action methods; they never touch networking.
  */
 class JournalController internal constructor(
     private val settings: JournalSettings,
@@ -138,15 +130,13 @@ class JournalController internal constructor(
         setStatus(ConnectionStatus.Connecting(now(), trustedCas.map(::certificateCommonName)))
         connectJob = scope.launch {
             val result = try {
-                createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
-                    fetchImages(apollo, url)
-                }
+                createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { checkConnection(it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                ImagesResult(ConnectionStatus.Error(e.describe()))
+                ConnectionResult(ConnectionStatus.Error(e.describe()))
             }
-            _state.update { it.copy(status = result.status, images = result.images, imagesError = result.imagesError) }
+            _state.update { it.copy(status = result.status, serverError = result.serverError) }
         }
     }
 

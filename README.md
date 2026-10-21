@@ -4,7 +4,7 @@ Android and iOS clients for journal-server-go. Only the logic is shared; each pl
 
 | Module | Contents |
 |---|---|
-| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), the device photo library (`LibraryController`), GraphQL via Apollo Kotlin, bundled server CA. Platform folders hold the mTLS client and the photo library (MediaStore / PhotoKit) for each OS. |
+| [sharedLogic](./sharedLogic/src) | Shared Kotlin: settings, connection state (`JournalController`), the device photo library (`LibraryController`), stories and notes (`StoriesController`), backup, GraphQL via Apollo Kotlin, bundled server CA. Platform folders hold the mTLS client and the photo library (MediaStore / PhotoKit) for each OS. |
 | [androidApp](./androidApp/src/main/kotlin) | Jetpack Compose UI. |
 | [iosApp](./iosApp/iosApp) | SwiftUI UI, using the `SharedLogic` framework. |
 
@@ -40,11 +40,11 @@ new build. The GraphQL endpoint is `/query`. To reach a server on your computer 
   `journal-server-go/graph/schema/schema.graphql`. When the server schema changes, run
   `./gradlew :sharedLogic:syncServerSchema` (add `-PjournalServerDir=<path>` if the server repo isn't a sibling
   folder) and commit the result. Don't edit the copy by hand.
-- Operations: add `.graphql` files next to it (e.g. [Images.graphql](./sharedLogic/src/commonMain/graphql/Images.graphql)).
+- Operations: add `.graphql` files next to it (e.g. [Media.graphql](./sharedLogic/src/commonMain/graphql/Media.graphql)).
   Apollo generates typed `…Query` classes in `com.chencohensolution.journal.graphql` on build
   (or `./gradlew :sharedLogic:generateApolloSources`).
 - Apollo runs on the platform mTLS Ktor client (`apollo-engine-ktor`), so requests use the selected identity.
-- Generated models are `internal`; map them to plain models (like `JournalImage`) before exposing them to the UIs.
+- Generated models are `internal`; map them to plain models (like `ServerMedia`) before exposing them to the UIs.
 
 ## Running
 

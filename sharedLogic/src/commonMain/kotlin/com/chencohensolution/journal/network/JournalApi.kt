@@ -4,11 +4,9 @@ import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.exception.ApolloHttpException
 import com.apollographql.ktor.http.KtorHttpEngine
 import com.chencohensolution.journal.connection.ConnectionStatus
-import com.chencohensolution.journal.connection.JournalImage
-import com.chencohensolution.journal.graphql.ImagesQuery
+import com.chencohensolution.journal.graphql.StorageUsageQuery
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
 import io.ktor.http.encodedPath
 
 /**
@@ -49,45 +47,26 @@ internal inline fun <T> ApolloClient.useClient(block: (ApolloClient) -> T): T =
         close()
     }
 
-internal data class ImagesResult(
+/** What a connection check found: the server answered ([ConnectionStatus.Connected]), or why not. */
+internal data class ConnectionResult(
     val status: ConnectionStatus,
-    val images: List<JournalImage> = emptyList(),
-    /** GraphQL error from the server (e.g. unreadable image folder) while the connection itself worked. */
-    val imagesError: String? = null,
+    /** A GraphQL error from the server while the connection itself worked. */
+    val serverError: String? = null,
 )
 
 /**
- * Runs the Images query. Any GraphQL response means the mTLS handshake and authentication
- * succeeded; HTTP errors (e.g. 401 for an unknown certificate) and transport errors do not.
+ * Checks the connection with the smallest authenticated query, `storageUsage`. Any GraphQL response means the mTLS
+ * handshake and authentication succeeded; HTTP errors (e.g. 401 for an unknown certificate) and transport errors
+ * do not.
  */
-internal suspend fun fetchImages(apollo: ApolloClient, serverUrl: String): ImagesResult {
-    val response = apollo.query(ImagesQuery()).execute()
+internal suspend fun checkConnection(apollo: ApolloClient): ConnectionResult {
+    val response = apollo.query(StorageUsageQuery()).execute()
     return when (val exception = response.exception) {
-        null -> ImagesResult(
-            status = ConnectionStatus.Connected,
-            images = response.data?.images.orEmpty().map { it.toJournalImage(serverUrl) },
-            imagesError = response.errors?.firstOrNull()?.message,
-        )
-        is ApolloHttpException -> ImagesResult(ConnectionStatus.Failed(exception.statusCode))
-        else -> ImagesResult(ConnectionStatus.Error(exception.describe()))
+        null -> ConnectionResult(ConnectionStatus.Connected, serverError = response.errors?.firstOrNull()?.message)
+        is ApolloHttpException -> ConnectionResult(ConnectionStatus.Failed(exception.statusCode))
+        else -> ConnectionResult(ConnectionStatus.Error(exception.describe()))
     }
 }
-
-private fun ImagesQuery.Image.toJournalImage(serverUrl: String) = JournalImage(
-    id = id,
-    title = title,
-    url = resolveServerPath(serverUrl, url),
-    description = description,
-)
-
-/** The server returns unencoded paths relative to its origin (`/images/<file name>`). */
-private fun resolveServerPath(serverUrl: String, relativePath: String): String =
-    URLBuilder(serverUrl).apply {
-        parameters.clear()
-        fragment = ""
-        encodedPath = ""
-        appendPathSegments(relativePath.split('/').filter { it.isNotEmpty() })
-    }.buildString()
 
 /**
  * The innermost cause's message: Apollo wraps failures ("No data was found" → "Failed to execute GraphQL http network

@@ -1,8 +1,0 @@
-query Images {
-  images {
-    id
-    title
-    url
-    description
-  }
-}

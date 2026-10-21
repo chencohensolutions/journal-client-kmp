@@ -2,10 +2,9 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.connection.ConnectionStatus
 import com.chencohensolution.journal.connection.JournalController
-import com.chencohensolution.journal.connection.JournalImage
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
-import com.chencohensolution.journal.network.fetchImages
+import com.chencohensolution.journal.network.checkConnection
 import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.KeyValueStore
@@ -32,12 +31,7 @@ import kotlin.test.assertNull
 
 private const val SERVER_URL = "https://10.0.2.2:8080/query"
 
-private const val IMAGES_JSON = """
-{"data":{"images":[
-  {"id":"IMG 1.jpg","title":"IMG 1","url":"/images/IMG 1.jpg","description":null},
-  {"id":"beach.png","title":"beach","url":"/images/beach.png","description":"Summer"}
-]}}
-"""
+private const val USAGE_JSON = """{"data":{"storageUsage":{"photos":2,"videos":0,"bytes":1234}}}"""
 
 private class InMemoryStore : KeyValueStore {
     val values = mutableMapOf<String, String>()
@@ -68,38 +62,30 @@ class CertificatesTest {
 
 class JournalApiTest {
     private suspend fun fetch(handler: MockRequestHandler) =
-        createApolloClient(mockClient(handler), SERVER_URL).useClient { fetchImages(it, SERVER_URL) }
+        createApolloClient(mockClient(handler), SERVER_URL).useClient { checkConnection(it) }
 
     @Test
-    fun imagesAreMappedWithAbsoluteUrls() = runTest {
-        val result = fetch(respondJson(IMAGES_JSON))
+    fun answerMeansConnected() = runTest {
+        val result = fetch(respondJson(USAGE_JSON))
         assertEquals(ConnectionStatus.Connected, result.status)
-        assertNull(result.imagesError)
-        assertEquals(
-            listOf(
-                JournalImage("IMG 1.jpg", "IMG 1", "https://10.0.2.2:8080/images/IMG%201.jpg", null),
-                JournalImage("beach.png", "beach", "https://10.0.2.2:8080/images/beach.png", "Summer"),
-            ),
-            result.images,
-        )
+        assertNull(result.serverError)
     }
 
     @Test
-    fun sendsImagesOperation() = runTest {
+    fun sendsStorageUsageOperation() = runTest {
         var body = ""
         fetch { request ->
             body = request.body.toByteArray().decodeToString()
-            respondJson(IMAGES_JSON)(request)
+            respondJson(USAGE_JSON)(request)
         }
-        assertContains(body, "\"operationName\":\"Images\"")
+        assertContains(body, "\"operationName\":\"StorageUsage\"")
     }
 
     @Test
     fun graphQlErrorStillMeansConnected() = runTest {
-        val result = fetch(respondJson("""{"errors":[{"message":"failed to read image folder"}],"data":null}"""))
+        val result = fetch(respondJson("""{"errors":[{"message":"no data_folder is configured for hen"}],"data":null}"""))
         assertEquals(ConnectionStatus.Connected, result.status)
-        assertEquals("failed to read image folder", result.imagesError)
-        assertEquals(emptyList(), result.images)
+        assertEquals("no data_folder is configured for hen", result.serverError)
     }
 
     @Test
@@ -119,7 +105,7 @@ class JournalControllerTest {
     private val store = InMemoryStore()
     private val requestedAliases = mutableListOf<String?>()
 
-    private fun TestScope.controller(handler: MockRequestHandler = respondJson(IMAGES_JSON)) = JournalController(
+    private fun TestScope.controller(handler: MockRequestHandler = respondJson(USAGE_JSON)) = JournalController(
         settings = JournalSettings(store),
         clientFactory = MtlsHttpClientFactory { alias, _ ->
             requestedAliases += alias
@@ -154,7 +140,7 @@ class JournalControllerTest {
     }
 
     @Test
-    fun connectLoadsImagesAndPersistsSettings() = runTest {
+    fun connectChecksTheServerAndPersistsSettings() = runTest {
         val controller = controller()
         controller.selectIdentity("hen")
         controller.updateServerUrl(" $SERVER_URL ")
@@ -164,7 +150,7 @@ class JournalControllerTest {
         assertEquals(listOf("journal-server-ca"), connecting.trustedCaNames)
 
         assertEquals(ConnectionStatus.Connected, controller.finalStatus())
-        assertEquals(listOf("IMG 1", "beach"), controller.currentState.images.map { it.title })
+        assertNull(controller.currentState.serverError)
         assertEquals(listOf<String?>("hen"), requestedAliases)
 
         val reloaded = controller().currentState
@@ -173,20 +159,18 @@ class JournalControllerTest {
     }
 
     @Test
-    fun failedReconnectClearsImages() = runTest {
+    fun failedReconnectIsReported() = runTest {
         var status = HttpStatusCode.OK
         val controller = controller { request ->
-            if (status == HttpStatusCode.OK) respondJson(IMAGES_JSON)(request) else respond("", status)
+            if (status == HttpStatusCode.OK) respondJson(USAGE_JSON)(request) else respond("", status)
         }
         controller.selectIdentity("hen")
         controller.connect()
-        controller.finalStatus()
-        assertEquals(2, controller.currentState.images.size)
+        assertEquals(ConnectionStatus.Connected, controller.finalStatus())
 
         status = HttpStatusCode.Unauthorized
         controller.connect()
         assertEquals(ConnectionStatus.Failed(401), controller.finalStatus())
-        assertEquals(emptyList(), controller.currentState.images)
     }
 
     @Test

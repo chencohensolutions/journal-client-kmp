@@ -6,7 +6,7 @@ import com.chencohensolution.journal.graphql.type.EnrollmentRejectedReason
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.network.describe
-import com.chencohensolution.journal.network.fetchImages
+import com.chencohensolution.journal.network.checkConnection
 import com.chencohensolution.journal.network.graphQlEndpoint
 import com.chencohensolution.journal.network.serverAddress
 import com.chencohensolution.journal.network.useClient
@@ -204,7 +204,7 @@ class EnrollmentController internal constructor(
 
                 setStep(EnrollmentStep.Registering(RegistrationProgress.TESTING_CONNECTION))
                 val test = try {
-                    createApolloClient(clientFactory.create(alias, trustedCas), endpoint).useClient { fetchImages(it, endpoint) }.status
+                    createApolloClient(clientFactory.create(alias, trustedCas), endpoint).useClient { checkConnection(it) }.status
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     ConnectionStatus.Error(e.describe())

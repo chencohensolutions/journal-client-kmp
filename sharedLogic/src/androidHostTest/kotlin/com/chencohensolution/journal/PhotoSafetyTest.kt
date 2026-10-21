@@ -39,7 +39,7 @@ class PhotoSafetyTest {
         "createTrashRequest" to setOf("PhotoRemoval.kt"),
         "MANAGE_MEDIA" to setOf("PhotoRemoval.kt", "AndroidManifest.xml"),
         "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt", "AndroidMediaFiles.kt"),
-        "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryApp.kt"),
+        "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryActions.kt"),
     )
 
     @Test

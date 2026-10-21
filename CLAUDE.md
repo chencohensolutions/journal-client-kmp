@@ -9,10 +9,18 @@ whenever a screen changes.
 
 - `sharedLogic/` — all logic, shared. `commonMain`: controllers with a `StateFlow` state
   (`JournalController` connection, `EnrollmentController`, `LibraryController` photo library, `StoriesController`
-  stories/groups/tags/notes and the journal's moments, `SettingsController` the Settings screen). `androidMain` / `iosMain`: platform pieces (mTLS client, key store, MediaStore /
-  PhotoKit readers) and the factories (`AndroidJournal.kt`, `IosJournal.kt`).
-- `androidApp/` — Jetpack Compose UI; library screens in `ui/library/`. Strings in `res/values/strings.xml`
-  (Hebrew in `values-iw/`).
+  stories/groups/tags/notes and the journal's moments, `SettingsController` the Settings screen, `BackupController`,
+  `FreeUpController`). The `stories/` package is split by concern: `StoriesController.kt` (edits and the rebuild),
+  `StoryView.kt` (a story as the screens draw it), `StoriesState.kt` (what is published and how it is built),
+  `StoryEditing.kt` (pure normalization of groups and layout after an edit), `Suggestions.kt`, `Timeline.kt`,
+  `MomentsFeed.kt`, `TextSearch.kt`, and the file stores (`StoryStore.kt`, `PhotoNote.kt`). `androidMain` / `iosMain`:
+  platform pieces (mTLS client, key store, MediaStore / PhotoKit readers) and the factories (`AndroidJournal.kt`,
+  `IosJournal.kt`). The connection check is the `storageUsage` query (`checkConnection` in `JournalApi.kt`).
+- `androidApp/` — Jetpack Compose UI; library screens in `ui/library/`, one `<Name>Screen.kt` per screen with its
+  `<Name>Actions` class. `LibraryApp.kt` is the routing table, `LibraryRoutes.kt` the back stack and what the viewer
+  shows, `LibraryActions.kt` the permission, system-prompt and server wiring the screens share, `Thumbnails.kt` the
+  loading and caching of pictures, `JournalViewModel.kt` keeps the controllers alive. Strings in
+  `res/values/strings.xml` (Hebrew in `values-iw/`).
 - `iosApp/iosApp/` — SwiftUI UI. View models wrap the Kotlin controllers (`observe` + `currentState`). Strings in
   `Localizable.xcstrings`. The Xcode project uses synchronized folders: new Swift files are picked up automatically.
 

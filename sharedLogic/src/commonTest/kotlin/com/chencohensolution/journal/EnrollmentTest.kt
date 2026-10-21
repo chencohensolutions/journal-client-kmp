@@ -171,7 +171,7 @@ private val ENROLLED_JSON =
 private fun rejectedJson(field: String, reason: String) =
     """{"data":{"$field":{"__typename":"EnrollmentRejected","reason":"$reason"}}}"""
 
-private const val IMAGES_OK = """{"data":{"images":[]}}"""
+private const val USAGE_OK = """{"data":{"storageUsage":{"photos":0,"videos":0,"bytes":0}}}"""
 
 @OptIn(ExperimentalTime::class)
 class EnrollmentControllerTest {
@@ -182,17 +182,17 @@ class EnrollmentControllerTest {
     private var enrolled: Pair<String, String>? = null
 
     /** Answers by operation name; [overrides] replaces the default answer of an operation. */
-    private fun server(overrides: Map<String, String> = emptyMap(), imagesStatus: HttpStatusCode = HttpStatusCode.OK): MockRequestHandler = { request ->
+    private fun server(overrides: Map<String, String> = emptyMap(), checkStatus: HttpStatusCode = HttpStatusCode.OK): MockRequestHandler = { request ->
         val body = request.body.toByteArray().decodeToString()
         requests += body
         val operation = Regex("\"operationName\":\"(\\w+)\"").find(body)!!.groupValues[1]
         val json = overrides[operation] ?: when (operation) {
             "EnrollmentPreview" -> PREVIEW_JSON
             "EnrollDevice" -> ENROLLED_JSON
-            else -> IMAGES_OK
+            else -> USAGE_OK
         }
-        if (operation == "Images" && imagesStatus != HttpStatusCode.OK) {
-            respond("unauthorized client certificate", imagesStatus)
+        if (operation == "StorageUsage" && checkStatus != HttpStatusCode.OK) {
+            respond("unauthorized client certificate", checkStatus)
         } else {
             respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
         }
@@ -332,7 +332,7 @@ class EnrollmentControllerTest {
 
     @Test
     fun failedConnectionTestDoesNotSwitchIdentity() = runTest {
-        val controller = controller(server(imagesStatus = HttpStatusCode.Unauthorized))
+        val controller = controller(server(checkStatus = HttpStatusCode.Unauthorized))
         controller.reachConfirm()
         controller.register()
 
