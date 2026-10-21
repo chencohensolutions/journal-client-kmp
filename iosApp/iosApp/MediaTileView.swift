@@ -1,10 +1,12 @@
 import SwiftUI
 import SharedLogic
 
-/// A square-cropped photo or video with its video length and backup badge. Size it from outside.
+/// A photo or video cropped to fill its tile (around `crop`), with its video length and backup badge. Size it from
+/// outside.
 struct MediaTileView: View {
     let item: MediaItem
     var badgeSize: CGFloat = 22
+    var crop: TileCrop = .none
 
     @State private var thumbnail: UIImage?
 
@@ -13,11 +15,7 @@ struct MediaTileView: View {
             ZStack {
                 LibraryColors.raised
                 if let thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
+                    CroppedImage(image: thumbnail, size: geometry.size, crop: crop)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -29,13 +27,38 @@ struct MediaTileView: View {
                 BackupBadge(status: item.backup, size: badgeSize).padding(5)
             }
             .task(id: item.id) {
-                thumbnail = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size)
+                // Zoomed in, the tile shows a part of a larger image.
+                let size = CGSize(width: geometry.size.width * crop.zoom, height: geometry.size.height * crop.zoom)
+                thumbnail = await PhotoLibraryImages.shared.image(id: item.id, pointSize: size)
             }
         }
         .contentShape(Rectangle())
         .accessibilityElement()
         .accessibilityLabel(item.accessibilityDescription)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// `image` scaled to cover `size`, anchored at the crop's focus point and zoomed around it, clipped to `size`.
+private struct CroppedImage: View {
+    let image: UIImage
+    let size: CGSize
+    let crop: TileCrop
+
+    var body: some View {
+        let width = max(image.size.width, 1)
+        let height = max(image.size.height, 1)
+        let scale = max(size.width / width, size.height / height)
+        let filled = CGSize(width: width * scale, height: height * scale)
+        Image(uiImage: image)
+            .resizable()
+            .frame(width: filled.width, height: filled.height)
+            .offset(x: (size.width - filled.width) * crop.x, y: (size.height - filled.height) * crop.y)
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .scaleEffect(crop.zoom, anchor: UnitPoint(x: crop.x, y: crop.y))
+            .clipped()
+            // The focus point is in the photo's own coordinates: not mirrored in Hebrew.
+            .environment(\.layoutDirection, .leftToRight)
     }
 }
 

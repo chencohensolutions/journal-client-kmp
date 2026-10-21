@@ -192,6 +192,8 @@ struct StoryPageView: View {
                     if story.items.isEmpty {
                         note("None of this story's photos are on this device.")
                     }
+                    // The grid's rows are its bands, so space goes above the first one only.
+                    Color.clear.frame(height: 6)
                     StoryGrid(
                         days: story.tileDays,
                         label: { label(for: $0, in: story) },
@@ -207,7 +209,6 @@ struct StoryPageView: View {
                             selection?.insert(key)
                         }
                     )
-                    .padding(.top, 8)
                 }
                 .padding(.bottom, 32)
                 .followsViewer { id in storyPlace(of: id, in: story.tileDays) }

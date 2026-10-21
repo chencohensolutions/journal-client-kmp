@@ -128,8 +128,9 @@ disposable `.cache/` index rebuilt from the files.
 - Groups: burst suggestions (by time, and by looks: dHash + native embeddings), select-and-group with Undo, merging groups (with photos or each other), group page,
   set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
 - Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point and zoom,
-  reset. iOS
-  shows the automatic layout (every tile full width at its ratio) and doesn't read the arrangement yet.
+  reset. iOS shows the arranged layout (sizes, focus, zoom; Oct 21, 2026) but can't change it.
+- Enrollment by QR code: **Scan QR code** on the code screen and `journal://enroll?code=…&server=…` links, on both
+  platforms (iOS Oct 21, 2026).
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
 - Search pickers for stories and tags.
 - Screen docs in `docs/screens/`; shared tests (83 on the JVM host, 81 on the iOS simulator).

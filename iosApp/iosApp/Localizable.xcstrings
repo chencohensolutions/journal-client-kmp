@@ -1045,6 +1045,16 @@
         }
       }
     },
+    "Couldn't open the QR code scanner. Type the code instead." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לפתוח את סורק קוד ה-QR. אפשר להקליד את הקוד במקום."
+          }
+        }
+      }
+    },
     "Couldn't read your photos: %@" : {
       "localizations" : {
         "he" : {
@@ -1786,6 +1796,16 @@
         }
       }
     },
+    "OK" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אישור"
+          }
+        }
+      }
+    },
     "Offline" : {
       "localizations" : {
         "he" : {
@@ -2092,6 +2112,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נשמר ב-story.md"
+          }
+        }
+      }
+    },
+    "Scan QR code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סריקת קוד QR"
           }
         }
       }

@@ -8,5 +8,18 @@
 	<string>Journal shows your photos and videos by day and backs them up to your own server.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Journal connects to your journal server on the local network.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Journal scans the enrollment QR code your server shows.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.chencohensolution.journal.enroll</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>journal</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

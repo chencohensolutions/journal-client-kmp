@@ -27,6 +27,8 @@ final class EnrollmentViewModel: ObservableObject {
     func reset() { controller.reset() }
     func checkCode() { controller.checkCode() }
     func register() { controller.register() }
+    func openLink(_ link: EnrollmentLink) { controller.openLink(link: link) }
+    func openScanned(_ text: String) { controller.openScanned(text: text) }
 
     func updateServerAddress(_ address: String) { controller.updateServerAddress(address: address) }
     func updateCode(_ code: String) { controller.updateCode(code: code) }
