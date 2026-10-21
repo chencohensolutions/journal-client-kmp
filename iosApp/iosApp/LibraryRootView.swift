@@ -176,7 +176,8 @@ struct LibraryRootView: View {
                             },
                             downloadOriginal: { item, progress in await ServerImages.shared.downloadOriginal(item, progress: progress) },
                             deleteFromPhone: { item in await ServerImages.shared.deleteFromPhone(item, refresh: library.refresh) },
-                            setPrivate: { item, isPrivate in await ServerImages.shared.setPrivate(item, isPrivate: isPrivate) }
+                            setPrivate: { item, isPrivate in await ServerImages.shared.setPrivate(item, isPrivate: isPrivate) },
+                            setZoom: { itemId, zoom in stories.setZoom(zoom, of: itemId) }
                         )
                     )
                     // The viewer is always dark, like a photo app; the rest follows the system.

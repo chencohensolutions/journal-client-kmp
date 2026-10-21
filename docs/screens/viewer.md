@@ -28,7 +28,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
   **Cropped · Show all** at the top.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS).
-- **Zoom** (asked for Oct 21, 2026, reworked the same day; Android only, iOS not built yet):
+- **Zoom** (asked for Oct 21, 2026, reworked the same day; iOS since Oct 22, see Platform notes):
   - **Double-taps step**: fitted → filling the screen (edges cut off) → the original's size (one photo pixel to one
     screen pixel) → back to fitted, zooming around the tap. A step that would add nothing is skipped (a small photo's
     own size below fitted or within 5% of filling). From a pinched zoom, a double-tap goes to the next step above it.
@@ -114,6 +114,15 @@ Swiping is not a tap; a playing video's own controls take its taps.
 
 ## Platform notes
 
+- **iOS zoom** (`ViewerZoom.swift`): UIKit's `UIScrollView` zooms the photo (pinching, panning and bouncing are its
+  own), with the same steps, snapping, minimap, remembered zoom and glide as Android, from the same note field
+  (`StoriesController.setZoom`). A cropped photo's crop is where it opens within the same zoomable view, so zooming
+  out of a crop and back is one move; at that framing a pan swipes to the next photo. Once zoomed in, the true
+  original is decoded whole (up to 48 MP, 16,384 px a side, which iOS draws directly), so there is no detail
+  decoding in parts as on Android. While zoomed, a swipe down doesn't close the viewer. Closing while zoomed uses
+  iOS's zoom transition, which shrinks the screen as it shows into the tile. The status bar and home indicator are
+  hidden while the viewer is open. A server photo's download shows the same cloud filling with progress
+  (`IosServerFiles.observeOriginalProgress`), and none when the original is here already (`hasOriginal`).
 - **iOS:** file name, size and type come with the library (`IosMediaLibrary`, from each asset's PHAssetResource:
   the edit's render for an edited photo, under the original's name with the render's extension, e.g.
   "IMG_1234.jpg"; a Live Photo is its photo). The size is PhotoKit's `fileSize` (`dataSize` from iOS 27), no file

@@ -13,8 +13,8 @@ leaves its near-duplicate set in Moments and shows on its own (unless merged int
 
 ## Opening it
 
-- Moments: long press a photo → **Crop** (opens on Moments). iOS: not wired yet; the feed sets
-  `crop = CropRequest(itemId:, kind: .moments)` in `LibraryRootView`, which presents it with `.cropCover`.
+- Moments: long press a photo → **Crop** (opens on Moments). iOS: `LibraryRootView` sets
+  `crop = CropRequest(itemId:, kind: .moments)` and presents it with `.cropCover`.
 - Viewer: **Crop** at the bottom (opens on Portrait or Landscape, as the phone is held).
 
 ## Layout

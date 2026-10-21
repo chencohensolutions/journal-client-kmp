@@ -1,4 +1,5 @@
 import AVFoundation
+import ImageIO
 import Photos
 import UIKit
 import SharedLogic
@@ -42,6 +43,37 @@ final class PhotoLibraryImages {
         if item.isOnDevice { return await image(id: item.id, pointSize: pointSize, quality: quality) }
         if quality == .fastFormat { return ServerImages.shared.inMemory(item) }
         return await ServerImages.shared.tile(item, pixels: Self.pixels(pointSize))
+    }
+
+    /// `item`'s original, upright, its longer side `maxSide` pixels (its own when smaller): what the viewer zooms into.
+    /// From PhotoKit's original data for a library photo (downloaded from iCloud if need be), else its downloaded
+    /// original or the server's (`ServerImages.fullOriginal`). Not kept in memory once the viewer lets go of it.
+    func original(item: MediaItem, maxSide: Int) async -> UIImage? {
+        guard item.isOnDevice else { return await ServerImages.shared.fullOriginal(item, maxSide: maxSide) }
+        guard let asset = asset(item.id) else { return nil }
+        let options = PHImageRequestOptions()
+        options.isNetworkAccessAllowed = true
+        options.deliveryMode = .highQualityFormat
+        options.version = .current
+        let data: Data? = await withCheckedContinuation { continuation in
+            manager.requestImageDataAndOrientation(for: asset, options: options) { data, _, _, _ in
+                continuation.resume(returning: data)
+            }
+        }
+        guard let data else { return nil }
+        return await Task.detached(priority: .userInitiated) { Self.decode(data, maxSide: maxSide) }.value
+    }
+
+    /// `data` decoded upright with its longer side at most `maxSide` pixels.
+    private static func decode(_ data: Data, maxSide: Int) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxSide,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary).map { UIImage(cgImage: $0) }
     }
 
     /// What a player opens: the library's video, the original the app downloaded, or one only on the server streamed

@@ -21,6 +21,8 @@ struct ViewerActions {
     var deleteFromPhone: (_ item: MediaItem) async -> RemovalOutcome
     /// Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached.
     var setPrivate: (_ item: MediaItem, _ isPrivate: Bool) async -> Bool
+    /// Leaving a photo: where it was zoomed in (the part on screen; nil: fitted), so it opens there next time.
+    var setZoom: (_ itemId: String, _ zoom: CropRect?) -> Void
 }
 
 /// What "Delete from this phone" did.
@@ -53,6 +55,10 @@ struct MediaViewerView: View {
     @State private var showWhole = false
     @State private var cropping: CropRequest?
     @State private var screenSize = CGSize(width: 9, height: 19.5)
+    /// Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open.
+    @StateObject private var zooms = ZoomModels()
+    /// The photo shown is zoomed in: it doesn't page, and a swipe down doesn't close the viewer.
+    @State private var zoomed = false
 
     init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions) {
         self.items = items
@@ -61,7 +67,29 @@ struct MediaViewerView: View {
         _currentId = State(initialValue: startId)
     }
 
-    private var onClose: () -> Void { actions.close }
+    /// Closing keeps the zoom of the photo shown in its note first.
+    private func onClose() {
+        saveZoom(of: currentId)
+        actions.close()
+    }
+
+    private func zoomModel(_ item: MediaItem) -> PhotoZoomModel {
+        zooms.model(for: item.id, saved: stories.note(itemId: item.id)?.zoom)
+    }
+
+    /// The photo's zoom goes into its note when it changed (nil, once back where it opens).
+    private func saveZoom(of itemId: String) {
+        guard let item = items.first(where: { $0.id == itemId }), !item.isVideo, let model = zooms.existing(itemId) else { return }
+        let part = model.zoomedPart
+        if !sameZoom(part, stories.note(itemId: itemId)?.zoom) { actions.setZoom(itemId, part) }
+    }
+
+    /// The same zoom to within a hair (a zoom shown again is worked out anew, so it is rarely exactly equal).
+    private func sameZoom(_ a: CropRect?, _ b: CropRect?) -> Bool {
+        guard let a, let b else { return a == nil && b == nil }
+        let e: Float = 0.002
+        return abs(a.x - b.x) < e && abs(a.y - b.y) < e && abs(a.w - b.w) < e && abs(a.h - b.h) < e
+    }
 
     // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
     private var screenRatio: Float { Float(screenSize.width / max(screenSize.height, 1)) }
@@ -88,9 +116,8 @@ struct MediaViewerView: View {
                             if item.isVideo {
                                 VideoPage(item: item, isCurrent: item.id == currentId, onTap: toggleChrome)
                             } else {
-                                PhotoPage(item: item, crop: showWhole ? nil : cropOf(item))
-                                    .contentShape(Rectangle())
-                                    .onTapGesture(perform: toggleChrome)
+                                // Its own taps: one shows the bars, two step the zoom.
+                                PhotoPage(item: item, crop: showWhole ? nil : cropOf(item), zoom: zoomModel(item), onTap: toggleChrome)
                             }
                         }
                         .tag(item.id)
@@ -103,8 +130,18 @@ struct MediaViewerView: View {
         .overlay(alignment: .top) {
             if chrome { topBar(index: index) }
         }
+        .overlay(alignment: .topTrailing) {
+            if let item = items[safe: index], !item.isVideo {
+                MinimapOverlay(model: zoomModel(item), chrome: chrome, hidden: showInfo).id(item.id)
+            }
+        }
+        .background {
+            if let item = items[safe: index], !item.isVideo {
+                ZoomFlag(model: zoomModel(item), zoomed: $zoomed).id(item.id)
+            }
+        }
         .overlay(alignment: .top) {
-            if chrome, !showInfo, let item = items[safe: index], cropOf(item) != nil {
+            if chrome, !showInfo, !zoomed, let item = items[safe: index], cropOf(item) != nil {
                 CropChip(showingWhole: showWhole) { showWhole.toggle() }
                     .padding(.top, 60)
             }
@@ -131,7 +168,21 @@ struct MediaViewerView: View {
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled { chrome = false }
         }
-        .onChange(of: currentId, initial: true) { actions.showing(currentId) }
+        .onChange(of: currentId, initial: true) { old, new in
+            actions.showing(new)
+            if old != new { saveZoom(of: old) }
+            // A photo zoomed in last time opens as usual, then glides to that zoom once it has landed: after the
+            // viewer's zoom transition, or the swipe to it.
+            guard let item = items.first(where: { $0.id == new }), !item.isVideo else { return }
+            let model = zoomModel(item)
+            guard model.hasSaved else { return }
+            let delay = old == new ? 0.5 : 0.15
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { if currentId == new { model.resume() } }
+        }
+        .onDisappear { saveZoom(of: currentId) }
+        .interactiveDismissDisabled(zoomed)
+        // Immersive: the home indicator goes too.
+        .persistentSystemOverlays(.hidden)
         .sheet(isPresented: $choosingTag) {
             if let item = items[safe: index] {
                 TagSheet(
@@ -205,25 +256,32 @@ struct MediaViewerView: View {
 /// preview size kept before a photo leaves the phone).
 private let serverViewerMaxSide = 2560
 
-/// The photo fitted on the screen, or only its `crop` (which has the screen's shape), filling it.
+/// The photo fitted on the screen, or at its `crop` (which has the screen's shape), filling it; zoomable from there
+/// (`ViewerZoom.swift`). Once zoomed in, the original is decoded at its own size and takes the place of what showed.
 private struct PhotoPage: View {
     let item: MediaItem
     let crop: CropRect?
+    @ObservedObject var zoom: PhotoZoomModel
+    let onTap: () -> Void
+
     @State private var image: UIImage?
+    @State private var full: UIImage?
 
     var body: some View {
         if item.hasOriginalHere {
             libraryPhoto
         } else {
-            ServerPhotoPage(item: item, crop: crop)
+            ServerPhotoPage(item: item, crop: crop, zoom: zoom, onTap: onTap)
         }
     }
 
     private var libraryPhoto: some View {
         GeometryReader { geometry in
             ZStack {
-                if let image {
-                    ViewerImage(image: image, crop: crop)
+                if let shown = full ?? image {
+                    ZoomablePhoto(image: shown, model: zoom, pixelSide: pixelSide(of: item, shown), home: crop, onTap: onTap)
+                } else {
+                    Color.clear.contentShape(Rectangle()).onTapGesture(perform: onTap)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -231,92 +289,127 @@ private struct PhotoPage: View {
                 // A quick low-quality image first, then the sharp one, large enough for a crop to stay sharp.
                 if image == nil {
                     image = await PhotoLibraryImages.shared.image(item: item, pointSize: CGSize(width: 200, height: 200))
+                    zoom.picture = image
                 }
                 let size = crop.map { CGSize(width: geometry.size.width / CGFloat($0.w), height: geometry.size.height / CGFloat($0.h)) }
                     ?? geometry.size
-                if let full = await PhotoLibraryImages.shared.image(item: item, pointSize: size) {
-                    image = full
+                if let sharp = await PhotoLibraryImages.shared.image(item: item, pointSize: size) {
+                    image = sharp
                 }
+            }
+            .task(id: zoom.isZoomed) {
+                guard zoom.isZoomed, full == nil else { return }
+                full = await PhotoLibraryImages.shared.original(item: item, maxSide: zoomDecodeSide(item))
+                zoom.atOriginalQuality = full != nil
             }
         }
         // The whole screen, so a crop (the screen's shape) fills it.
         .ignoresSafeArea()
+        // The zoom is in the photo's coordinates, which don't mirror in Hebrew.
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
-/// The photo fitted, or only its `crop` filling the space.
-private struct ViewerImage: View {
-    let image: UIImage
-    let crop: CropRect?
-
-    var body: some View {
-        if let crop {
-            CroppedImage(image: image, crop: crop)
-        } else {
-            Image(uiImage: image).resizable().scaledToFit()
-        }
-    }
+/// The longer side of `item`'s own pixels, which "original size" shows one to one; the image's when not known.
+private func pixelSide(of item: MediaItem, _ image: UIImage) -> CGFloat {
+    let side = CGFloat(max(item.width, item.height))
+    return side > 0 ? side : max(image.size.width, image.size.height) * image.scale
 }
 
 /// A photo only on the server: the best image of it already on this phone shows at once (asking the server for
-/// nothing), while its original downloads into the cache (kept there) and then fades in over it, with a small spinner
-/// meanwhile. When the phone can't decode the original, a preview at that size is asked for instead; offline, the
+/// nothing), while its original downloads into the cache (kept there) and then fades in over it. While it downloads,
+/// a cloud at the top fills with its progress (only after a moment, and not at all when the original is here
+/// already). When the phone can't decode the original, a preview at that size is asked for instead; offline, the
 /// cached image stays.
 private struct ServerPhotoPage: View {
     let item: MediaItem
     let crop: CropRect?
+    @ObservedObject var zoom: PhotoZoomModel
+    let onTap: () -> Void
+
     @State private var cached: UIImage?
     @State private var original: UIImage?
-    @State private var downloading = true
+    @State private var full: UIImage?
+    @State private var downloading = false
+    @State private var showCloud = false
+    @State private var progress: Double = 0
 
     var body: some View {
         ZStack {
-            if let base = cached ?? original {
-                ViewerImage(image: base, crop: crop)
-            }
-            if let original, cached != nil {
-                ViewerImage(image: original, crop: crop).transition(.opacity)
+            if let shown = full ?? original ?? cached {
+                ZoomablePhoto(image: shown, model: zoom, pixelSide: pixelSide(of: item, shown), home: crop, onTap: onTap)
+            } else {
+                Color.clear.contentShape(Rectangle()).onTapGesture(perform: onTap)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .topTrailing) {
-            if downloading {
-                ProgressView().tint(.white.opacity(0.8)).controlSize(.small).padding(.top, 72).padding(.trailing, 16)
+        .overlay(alignment: .topLeading) {
+            if showCloud {
+                DownloadCloud(progress: progress).padding(.top, 64).padding(.leading, 14).transition(.opacity)
             }
         }
         .ignoresSafeArea()
+        .environment(\.layoutDirection, .leftToRight)
         .task(id: item.id) {
             cached = await ServerImages.shared.cached(item)
-            let full = await ServerImages.shared.viewer(item, maxSide: serverViewerMaxSide)
-            withAnimation(.easeIn(duration: 0.25)) { original = full }
+            zoom.picture = cached
+            downloading = !(await ServerImages.shared.hasOriginal(item))
+            let watching = ServerImages.shared.observeOriginalProgress(item) { if let now = $0 { progress = now } }
+            defer { watching.cancel() }
+            let image = await ServerImages.shared.viewer(item, maxSide: serverViewerMaxSide)
+            original = image
+            if zoom.picture == nil { zoom.picture = image }
             downloading = false
+        }
+        .task(id: downloading) {
+            if downloading {
+                try? await Task.sleep(for: .milliseconds(300))
+                if Task.isCancelled { return }
+            }
+            withAnimation(.easeInOut(duration: 0.2)) { showCloud = downloading }
+        }
+        .task(id: zoom.isZoomed) {
+            guard zoom.isZoomed, full == nil else { return }
+            // Decoded again from the downloaded original, at its own size.
+            full = await ServerImages.shared.fullOriginal(item, maxSide: zoomDecodeSide(item))
+            zoom.atOriginalQuality = full != nil
         }
     }
 }
 
-/// The `crop` part of `image`, fitted in the space: the whole image is laid out at its size and moved so the crop
-/// lands on the frame.
-private struct CroppedImage: View {
-    let image: UIImage
-    let crop: CropRect
+/// The minimap at the top while the photo shown is zoomed in: as it moves and 1.5 seconds after, and with the bars.
+private struct MinimapOverlay: View {
+    @ObservedObject var model: PhotoZoomModel
+    let chrome: Bool
+    /// The details panel is open.
+    let hidden: Bool
+
+    @State private var moving = false
 
     var body: some View {
-        let ratio = image.size.width / max(image.size.height, 1) * CGFloat(crop.w / crop.h)
-        Color.clear
-            .aspectRatio(ratio, contentMode: .fit)
-            .overlay {
-                GeometryReader { geometry in
-                    let width = geometry.size.width / CGFloat(crop.w)
-                    let height = geometry.size.height / CGFloat(crop.h)
-                    Image(uiImage: image)
-                        .resizable()
-                        .frame(width: width, height: height)
-                        .offset(x: -CGFloat(crop.x) * width, y: -CGFloat(crop.y) * height)
-                }
+        ZStack {
+            if let picture = model.picture, let part = model.visible, model.isZoomed, !hidden, chrome || moving {
+                ZoomMinimap(image: picture, part: part, sharp: model.atOriginalQuality).transition(.opacity)
             }
-            .clipped()
-            // The crop is in the photo's coordinates, which don't mirror in Hebrew.
-            .environment(\.layoutDirection, .leftToRight)
+        }
+        .animation(.easeInOut(duration: 0.2), value: chrome || moving)
+        .padding(.top, 52)
+        .padding(.trailing, 12)
+        .task(id: model.moves) {
+            moving = true
+            try? await Task.sleep(for: .seconds(1.5))
+            if !Task.isCancelled { moving = false }
+        }
+    }
+}
+
+/// Tells the viewer whether the photo shown is zoomed in.
+private struct ZoomFlag: View {
+    @ObservedObject var model: PhotoZoomModel
+    @Binding var zoomed: Bool
+
+    var body: some View {
+        Color.clear.onChange(of: model.isZoomed, initial: true) { zoomed = model.isZoomed }
     }
 }
 

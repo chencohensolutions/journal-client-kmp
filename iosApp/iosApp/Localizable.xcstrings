@@ -2402,6 +2402,16 @@
         }
       }
     },
+    "Downloading the original" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המקור יורד מהשרת"
+          }
+        }
+      }
+    },
     "Downloading the original… %lld%%" : {
       "localizations" : {
         "he" : {

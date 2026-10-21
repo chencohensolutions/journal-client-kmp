@@ -34,6 +34,8 @@ final class StoriesViewModel: ObservableObject {
 
     /// The photo's crops, for looking only (the photo isn't changed); empty crops remove them.
     func setCrops(_ crops: PhotoCrops, of itemId: String) { controller.setCrops(itemId: itemId, crops: crops) }
+    /// Where the viewer was zoomed in on the photo as it was left (nil: fitted), so it opens there next time.
+    func setZoom(_ zoom: CropRect?, of itemId: String) { controller.setZoom(itemId: itemId, zoom: zoom) }
 
     // MARK: Moments
 

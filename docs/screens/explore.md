@@ -47,8 +47,8 @@ the library and the places found so far, and it shows the same sources as the Mo
 
 The same tab, pages and map, from the same shared logic, with these differences:
 
-- **Places is still the older layout** (every country with all its towns two to a row) and there is no country page:
-  the list of countries was built on Android only (Oct 21, 2026). See [ios-todo.md](../ios-todo.md).
+- Places, the list of countries and a country's page match Android since Oct 22, 2026 (`ExploreViews.swift`:
+  `HomeCountryTowns`, `CountryRow`, `CoverMosaic`, `CountryPageView`; the cover across a page is `PageCover`).
 
 - The summaries, pages and pins are worked out in a detached task, again whenever the library, the places or the
   sources shown change.

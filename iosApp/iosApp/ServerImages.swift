@@ -55,6 +55,22 @@ final class ServerImages: NSObject, ServerImageDecoding {
         return image
     }
 
+    /// The original of a server-only photo (or one downloaded and kept) at `maxSide` pixels, for zooming into: the same
+    /// file as `viewer`'s, decoded larger, and not kept in memory (a 48 MP image would push everything else out).
+    func fullOriginal(_ item: MediaItem, maxSide: Int) async -> UIImage? {
+        await awaiting { done in self.files.viewer(item: item, maxSide: Int32(maxSide), onResult: done) }
+    }
+
+    /// Whether `item`'s original is on this phone already: showing it downloads nothing.
+    func hasOriginal(_ item: MediaItem) async -> Bool {
+        await awaiting { done in self.files.hasOriginal(item: item) { done($0.boolValue) } }
+    }
+
+    /// How far `item`'s original is downloading now (0..1), or nil when it isn't; called on the main thread.
+    func observeOriginalProgress(_ item: MediaItem, onChange: @escaping (Double?) -> Void) -> ObservationHandle {
+        files.observeOriginalProgress(item: item) { onChange($0.map { Double($0.floatValue) }) }
+    }
+
     private func remember(_ image: UIImage, for item: MediaItem, key: NSString) {
         let pixels = Int(image.size.width * image.scale * image.size.height * image.scale)
         cache.setObject(image, forKey: key, cost: pixels * 4)
