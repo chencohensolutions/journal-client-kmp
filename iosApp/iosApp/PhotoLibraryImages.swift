@@ -1,6 +1,7 @@
 import AVFoundation
 import Photos
 import UIKit
+import SharedLogic
 
 /// Loads thumbnails, full images and videos from PhotoKit by `MediaItem.id` (the PHAsset local identifier).
 final class PhotoLibraryImages {
@@ -34,6 +35,27 @@ final class PhotoLibraryImages {
         }
     }
 
+    /// `item` at least `pointSize` big: from PhotoKit, or, for a photo not in the library, its downloaded original or the
+    /// server's preview at exactly those pixels (`ServerImages`). A quick (`.fastFormat`) server image is only what is
+    /// already in memory, so a second size isn't asked of the server.
+    func image(item: MediaItem, pointSize: CGSize, quality: PHImageRequestOptionsDeliveryMode = .highQualityFormat) async -> UIImage? {
+        if item.isOnDevice { return await image(id: item.id, pointSize: pointSize, quality: quality) }
+        if quality == .fastFormat { return ServerImages.shared.inMemory(item) }
+        return await ServerImages.shared.tile(item, pixels: Self.pixels(pointSize))
+    }
+
+    /// What a player opens: the library's video, or the original the app downloaded; nil for one only on the server.
+    func playerItem(item: MediaItem) async -> AVPlayerItem? {
+        if item.isOnDevice { return await playerItem(id: item.id) }
+        return item.keptOriginal.map { AVPlayerItem(url: URL(fileURLWithPath: $0)) }
+    }
+
+    /// The video itself (see `videoAsset(id:)`), or its downloaded original; nil for one only on the server.
+    func videoAsset(item: MediaItem) async -> AVAsset? {
+        if item.isOnDevice { return await videoAsset(id: item.id) }
+        return item.keptOriginal.map { AVURLAsset(url: URL(fileURLWithPath: $0)) }
+    }
+
     /// Starts loading images that will be asked for soon at this size (a swipe set's neighbors), so they show at once.
     func prefetch(ids: [String], pointSize: CGSize) {
         let assets = ids.compactMap(asset)
@@ -41,7 +63,7 @@ final class PhotoLibraryImages {
         manager.startCachingImages(for: assets, targetSize: Self.pixels(pointSize), contentMode: .aspectFill, options: Self.options(.highQualityFormat))
     }
 
-    private static func pixels(_ pointSize: CGSize) -> CGSize {
+    static func pixels(_ pointSize: CGSize) -> CGSize {
         let scale = UITraitCollection.current.displayScale
         return CGSize(width: pointSize.width * scale, height: pointSize.height * scale)
     }

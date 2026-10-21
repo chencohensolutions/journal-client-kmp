@@ -146,9 +146,10 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 `192.168.50.150` before that).
 
 **Not built yet**
-- On iOS: backup and server-only photos (the library already reports what they need: file name, size, type,
-  modified date and source, cached in `Caches/library`, and changes through a PhotoKit observer). Everywhere: playing server-only videos, downloading an original, story/note
-  sync (Android backup and server-only photos are built, see below).
+- On iOS: backup (the library already reports what it needs: file name, size, type, modified date and source,
+  cached in `Caches/library`, and changes through a PhotoKit observer) and playing server-only videos (streaming
+  over mTLS). Everywhere: story/note sync (Android backup and server-only photos, and iOS server-only photos, are
+  built, see below).
 - Sub-stories; layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
@@ -175,7 +176,13 @@ only files where both match the sha256 backup uploaded go to the phone's **trash
 "Media management" access (`MANAGE_MEDIA`), else with one system prompt at the end. No previews are kept for them on
 purpose: they are fetched as you scroll, like any server photo. See [screens/settings.md](screens/settings.md).
 Server-only videos stream from their original (HTTP Range, ExoPlayer) into `cache/videos`, keeping what was
-fetched, and their tiles show the poster frame the server makes. Not yet: iOS, story/note sync.
+fetched, and their tiles show the poster frame the server makes. **iOS** (Oct 21, 2026) has the same photos only on
+the server: the list in `Application Support/server/media.json` (refreshed when the app comes to the foreground),
+exact-size previews in `Caches/previews` decoded with ImageIO (WebP, HEIF, AVIF, JPEG XL), the viewer's original
+card with Download original (`Application Support/originals`, left out of iCloud backup) and Delete from this phone
+(PhotoKit's own prompt to Recently Deleted, only in `PhotoRemoval.swift`, approved by the owner), and Settings →
+Storage on this phone and Private media. Not yet on iOS: backup (so no library photo is "backed up" and deletable
+yet), video streaming (a server-only video shows its poster), Free up space. Not yet anywhere: story/note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -213,6 +220,8 @@ fetched, and their tiles show the poster frame the server makes. Not yet: iOS, s
     original downloaded with previews off, a preview when the device can't decode it; a video's poster),
     `ServerPreviews.viewer` (opened alone: the original, downloaded and kept) and `largestPreview` (what shows meanwhile).
     The platform passes its decoders (`ServerPreviews.Decoders`); Android's JPEG XL decoder is a library, iOS 17+ has one.
+    iOS reaches all of it through `IosServerFiles` (iosMain: callbacks Swift can await, decoders implemented in
+    Swift as `ServerImageDecoding`).
   - What is kept of a photo (info panel): `PhoneStorage.keptHere` (each preview's pixels, format and quality, the
     original, a video's cached bytes); `mediaKind`, `megapixels` and `percentOf` for its wording.
   - Storage on this phone: `PhoneStorage` (one limit for previews, originals and videos; usage, Clear, the videos'

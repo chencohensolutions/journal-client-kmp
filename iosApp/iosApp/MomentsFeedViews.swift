@@ -230,7 +230,7 @@ struct FeedPhoto: View {
             if playing && !failed {
                 MuteButton(muted: playback.muted, onToggle: playback.toggleMute).padding(4)
             } else {
-                BackupBadge(status: item.backup, size: 26).padding(10)
+                BackupBadge(status: item.backup, size: 26, originalHere: item.hasOriginalHere).padding(10)
             }
         }
         .overlay(alignment: .bottomLeading) {
@@ -244,8 +244,8 @@ struct FeedPhoto: View {
         .task(id: item.id) {
             // A quick small image first, then one as sharp as the screen.
             let full = fullSize
-            image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: CGSize(width: 160, height: 160), quality: .fastFormat)
-            if let sharp = await PhotoLibraryImages.shared.image(id: item.id, pointSize: full) { image = sharp }
+            image = await PhotoLibraryImages.shared.image(item: item, pointSize: CGSize(width: 160, height: 160), quality: .fastFormat)
+            if let sharp = await PhotoLibraryImages.shared.image(item: item, pointSize: full) { image = sharp }
         }
         .accessibilityElement()
         .accessibilityLabel(item.accessibilityDescription)

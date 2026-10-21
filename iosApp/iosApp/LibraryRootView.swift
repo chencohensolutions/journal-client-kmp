@@ -211,7 +211,9 @@ struct LibraryRootView: View {
                             setCrops: { itemId, crops in stories.setCrops(crops, of: itemId) },
                             showing: { itemId in
                                 showing = ViewerShowing(session: showing?.session ?? UUID(), itemId: itemId)
-                            }
+                            },
+                            downloadOriginal: { item, progress in await ServerImages.shared.downloadOriginal(item, progress: progress) },
+                            deleteFromPhone: { item in await ServerImages.shared.deleteFromPhone(item, refresh: library.refresh) }
                         )
                     )
                     // The viewer is always dark, like a photo app; the rest follows the system.

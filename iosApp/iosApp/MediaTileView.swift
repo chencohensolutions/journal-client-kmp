@@ -24,12 +24,12 @@ struct MediaTileView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                BackupBadge(status: item.backup, size: badgeSize).padding(5)
+                BackupBadge(status: item.backup, size: badgeSize, originalHere: item.hasOriginalHere).padding(5)
             }
             .task(id: item.id) {
                 // Zoomed in, the tile shows a part of a larger image.
                 let size = CGSize(width: geometry.size.width * crop.zoom, height: geometry.size.height * crop.zoom)
-                thumbnail = await PhotoLibraryImages.shared.image(id: item.id, pointSize: size)
+                thumbnail = await PhotoLibraryImages.shared.image(item: item, pointSize: size)
             }
         }
         .contentShape(Rectangle())
@@ -81,17 +81,21 @@ struct DurationChip: View {
     }
 }
 
-/// The corner badge; see docs/screens/README.md for what each state means.
+/// The corner badge; see docs/screens/README.md for what each state means. None when the original is only on the
+/// server (`originalHere` false).
 struct BackupBadge: View {
     let status: BackupStatus
     let size: CGFloat
+    var originalHere = true
 
     var body: some View {
-        ZStack {
-            Circle().fill(background)
-            symbol
+        if originalHere || !status.isBackedUp {
+            ZStack {
+                Circle().fill(background)
+                symbol
+            }
+            .frame(width: size, height: size)
         }
-        .frame(width: size, height: size)
     }
 
     private var background: Color {

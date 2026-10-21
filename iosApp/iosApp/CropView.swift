@@ -222,7 +222,7 @@ private struct CropCanvas: View {
             .frame(width: size.width, height: size.height)
             .position(x: box.width / 2, y: box.height / 2)
             .task(id: item.id) {
-                image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: size)
+                image = await PhotoLibraryImages.shared.image(item: item, pointSize: size)
             }
             // The crop is in the photo's coordinates, which don't mirror in Hebrew.
             .environment(\.layoutDirection, .leftToRight)

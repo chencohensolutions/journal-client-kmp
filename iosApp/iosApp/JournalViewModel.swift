@@ -19,8 +19,8 @@ final class JournalViewModel: ObservableObject {
     init() {
         controller = IosJournal.shared.createController()
         enrollment = EnrollmentViewModel(journal: controller)
-        library = LibraryViewModel()
         settings = SettingsViewModel()
+        library = LibraryViewModel(settings: settings)
         stories = StoriesViewModel(library: library, settings: settings)
         state = controller.currentState
         // The controller delivers updates on the main thread.

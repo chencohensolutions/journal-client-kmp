@@ -68,9 +68,17 @@ extension MediaItem {
     var takenAt: Date { Date(timeIntervalSince1970: TimeInterval(takenAtMillis) / 1000) }
     var duration: TimeInterval? { durationMillis.map { TimeInterval($0.int64Value) / 1000 } }
 
+    /// Where the original is: on this phone and the server, only on one of them, or on its way.
+    var originalLabel: String {
+        if !backup.isBackedUp { return backup.label }
+        if !hasOriginalHere { return String(localized: "Only on your server") }
+        if !isOnDevice { return String(localized: "Downloaded to this phone, and on your server") }
+        return String(localized: "On this phone and on your server")
+    }
+
     /// "Photo, only on this device" for VoiceOver.
     var accessibilityDescription: String {
-        let status = backup.label.lowercased()
+        let status = originalLabel.lowercased()
         return isVideo ? String(localized: "Video, \(status)") : String(localized: "Photo, \(status)")
     }
 }

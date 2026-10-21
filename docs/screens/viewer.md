@@ -38,8 +38,7 @@ doesn't pull it out from under you. If the open item is deleted from the device,
     **Create "…"** at the top. A check marks the stories the item is in; tapping one adds or removes it.
   - **Group** instead of Stories when opened from a group: its name, **Set as cover** (or "This is the cover"),
     and **− Remove from group** (the photo moves to the level above the group, even from a subgroup).
-  - **The original** (Android; iOS shows the backup status and file name, size, dimensions, length, type and where
-    it came from): where it is
+  - **The original** (both platforms; iOS since Oct 21, 2026): where it is
     ("On this phone and on your server", "Only on this phone", "Downloaded to this phone, and on your server", "Only
     on your server", or the upload state with % and a bar), then file name, size, dimensions, length for videos,
     type (MIME), where it came from (Camera, WhatsApp, …) and **Location** (place name and coordinates). For a photo
@@ -50,9 +49,16 @@ doesn't pull it out from under you. If the open item is deleted from the device,
   - **Delete from this phone** (original here and on the server), after a confirmation: first the server is asked
     again whether it has the photo, and its previews (2560 and 640 px) are kept here; without both nothing is
     removed ("Not deleted: your server didn't confirm…"). A downloaded original is then deleted; a gallery photo
-    goes to the phone's trash through Android's own prompt (`PhotoRemoval.kt`, the one exception in
-    `PhotoSafetyTest`). The photo keeps its place, its stories and note (it keeps its device id), and shows from its
-    preview.
+    goes to the phone's trash through Android's own prompt (`PhotoRemoval.kt`), or on iOS to Recently Deleted through
+    PhotoKit's own prompt (`PhotoRemoval.swift`, approved by the owner); these two files are the only exceptions in
+    `PhotoSafetyTest`. The photo keeps its place, its stories and note (it keeps its device id), and shows from its
+    preview. On iOS a library photo can't reach this yet: without iOS backup no device photo is backed up, so only a
+    downloaded original can be deleted.
+- **Photos only on the server:** the best image already on the phone shows at once (the largest decoded in memory,
+  else the largest preview kept), while the original downloads into the preview cache (at most 2560 px decoded) and
+  fades in, with a small spinner meanwhile.
+- **Videos only on the server:** Android streams them. iOS shows the poster and "On your server. Playing it from
+  there comes later; download the original to play it here." (no streaming yet); a downloaded original plays.
 
 ## Platform notes
 
@@ -61,7 +67,9 @@ doesn't pull it out from under you. If the open item is deleted from the device,
   "IMG_1234.jpg"; a Live Photo is its photo). The size is PhotoKit's `fileSize` (`dataSize` from iOS 27), no file
   is read. Reading them takes a few ms a photo, so they are cached in `Caches/library/files.json` and, when more than
   300 photos are new (the first start), read in the background: until then a photo shows no file name or size.
-  Photos stored only in iCloud are downloaded when viewed. A cropped photo is loaded large enough for its crop to
+  Photos stored only in iCloud are downloaded when viewed. Server photos are decoded with ImageIO, which reads every
+  format the server makes (WebP, HEIF, AVIF, and JPEG XL from iOS 17); the shared `IosServerFiles` picks what to
+  show, `ServerImages.swift` decodes and keeps it in memory. A cropped photo is loaded large enough for its crop to
   stay sharp (the screen size divided by the crop's), and the crop fills the whole screen, under the bars.
 - **Android emulator:** 4K HEVC videos from recent phones may show no first frame and fail to play, because the
   emulator's decoder can't handle them. Real devices can.
@@ -69,5 +77,8 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 ## Code
 
 - Android: [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt)
-- iOS: [MediaViewerView.swift](../../iosApp/iosApp/MediaViewerView.swift), loading in
-  [PhotoLibraryImages.swift](../../iosApp/iosApp/PhotoLibraryImages.swift)
+- iOS: [MediaViewerView.swift](../../iosApp/iosApp/MediaViewerView.swift), the original's card in
+  [ViewerOriginalCard.swift](../../iosApp/iosApp/ViewerOriginalCard.swift), loading in
+  [PhotoLibraryImages.swift](../../iosApp/iosApp/PhotoLibraryImages.swift) and
+  [ServerImages.swift](../../iosApp/iosApp/ServerImages.swift) (with the shared `IosServerFiles`), deletion only in
+  [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift)
