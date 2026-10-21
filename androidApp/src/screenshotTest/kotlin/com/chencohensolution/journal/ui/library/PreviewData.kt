@@ -2,12 +2,15 @@ package com.chencohensolution.journal.ui.library
 
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.DayGroup
+import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.places.PlaceName
+import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.stories.FeedBlock
@@ -300,4 +303,36 @@ internal object PreviewData {
             ).asDays(),
     )
     val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed(shown = ShownSources.DEFAULT_SOURCES))
+
+    // Explore › Places: home in Tel Aviv, more towns in Israel, and trips to other countries.
+
+    private class Town(val name: String, val country: String?, val at: GeoPoint, val count: Int, val daysAgo: Int)
+
+    private val towns = listOf(
+        Town("Tel Aviv", "Israel", GeoPoint(32.08, 34.78), 40, 0),
+        Town("Jerusalem", "Israel", GeoPoint(31.77, 35.21), 14, 60),
+        Town("Haifa", "Israel", GeoPoint(32.79, 34.99), 9, 200),
+        Town("Eilat", "Israel", GeoPoint(29.56, 34.95), 6, 500),
+        Town("Tiberias", "Israel", GeoPoint(32.79, 35.53), 3, 900),
+        Town("Paris", "France", GeoPoint(48.86, 2.35), 18, 300),
+        Town("Lyon", "France", GeoPoint(45.76, 4.84), 7, 305),
+        Town("Nice", "France", GeoPoint(43.70, 7.27), 5, 1_100),
+        Town("Annecy", "France", GeoPoint(45.90, 6.13), 4, 1_104),
+        Town("Rome", "Italy", GeoPoint(41.90, 12.50), 12, 700),
+        Town("Florence", "Italy", GeoPoint(43.77, 11.26), 6, 703),
+        Town("Athens", "Greece", GeoPoint(37.98, 23.73), 8, 1_400),
+        Town("Lisbon", "Portugal", GeoPoint(38.72, -9.14), 5, 1_800),
+        Town("Tokyo", "Japan", GeoPoint(35.68, 139.69), 4, 2_200),
+        Town("Somewhere", null, GeoPoint(10.0, 10.0), 2, 2_500),
+    )
+
+    val placesLibrary = LibraryState(
+        access = PhotoAccess.FULL,
+        days = towns.flatMap { town ->
+            List(town.count) { photo(town.daysAgo + it % 5, hour = 9 + it % 10, ratio = ratios[it % 4]).copy(location = town.at) }
+        }.asDays(),
+    )
+    val placesStories: StoriesState = exploreStories.copy(
+        places = Places.named(towns.associate { it.at to PlaceName(null, it.name, it.country) }),
+    )
 }

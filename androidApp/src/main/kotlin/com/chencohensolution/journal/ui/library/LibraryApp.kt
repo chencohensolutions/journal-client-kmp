@@ -166,6 +166,7 @@ private fun LibraryScreens(
                                         },
                                         explore = ExploreActions(
                                             openPlace = { push(Route.Place(it)) },
+                                            openCountry = { push(Route.Country(it)) },
                                             openYear = { year, month -> push(Route.Year(year, month)) },
                                             openMap = { push(Route.Map) },
                                             toggleSource = settings::toggleFeedSource,
@@ -182,6 +183,13 @@ private fun LibraryScreens(
                                     ),
                                     landing = landingHere,
                                     backupRunning = backupRunning,
+                                )
+                                is Route.Country -> CountryScreen(
+                                    country = route.country,
+                                    library = libraryState,
+                                    stories = storiesState,
+                                    onOpenPlace = { push(Route.Place(it)) },
+                                    onBack = pop,
                                 )
                                 is Route.Place -> {
                                     var year by rememberSaveable { mutableStateOf<Int?>(null) }

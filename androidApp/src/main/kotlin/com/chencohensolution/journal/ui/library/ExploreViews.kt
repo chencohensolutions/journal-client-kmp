@@ -20,12 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -89,6 +86,8 @@ internal enum class ExploreView { PLACES, YEARS }
 
 internal class ExploreActions(
     val openPlace: (town: String) -> Unit = {},
+    /** A country's page of towns; null for the towns whose country isn't known. */
+    val openCountry: (country: String?) -> Unit = {},
     /** A year's page, on one of its months when [month] is set. */
     val openYear: (year: Int, month: Int?) -> Unit = { _, _ -> },
     val openMap: () -> Unit = {},
@@ -179,66 +178,152 @@ internal fun ExploreContent(
         ShowingLine(shown, presentSources(loaded.counts, shown), onChange = { sheetOpen = true }, Modifier.padding(bottom = 4.dp))
     }
     when (view) {
-        ExploreView.PLACES -> PlacesGrid(loaded, actions, contentPadding, line)
+        ExploreView.PLACES -> PlacesList(loaded, actions, contentPadding, line)
         ExploreView.YEARS -> YearsList(loaded.years, shown, actions, contentPadding, line)
     }
     if (sheetOpen) ShowingSheet(shown, loaded.counts, actions.toggleSource, onDismiss = { sheetOpen = false })
 }
 
+/**
+ * Places: the home town and a row of the home country's other towns, then every other country as one row, so all of
+ * them fit on a screen or two. A country opens its own page of towns.
+ */
 @Composable
-private fun PlacesGrid(summaries: ExploreSummaries, actions: ExploreActions, contentPadding: PaddingValues, line: @Composable () -> Unit) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        state = rememberLazyGridState(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = contentPadding.calculateTopPadding(),
-            bottom = contentPadding.calculateBottomPadding(),
-        ),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item(key = "showing", span = { GridItemSpan(maxLineSpan) }) { line() }
+private fun PlacesList(summaries: ExploreSummaries, actions: ExploreActions, contentPadding: PaddingValues, line: @Composable () -> Unit) {
+    val homeCountry = summaries.countries.firstOrNull { it.home }
+    val others = summaries.countries.filter { it !== homeCountry }
+    LazyColumn(state = rememberLazyListState(), contentPadding = contentPadding) {
+        item(key = "showing") { Box(Modifier.padding(horizontal = 16.dp)) { line() } }
         if (summaries.countries.isEmpty()) {
-            item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
+            item(key = "empty") {
                 // Places are looked up in the background; until one is named there is nothing to list.
-                ExploreMessage(stringResource(if (summaries.anyLocated || summaries.years.isNotEmpty()) R.string.explore_finding_places else R.string.explore_no_places))
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    ExploreMessage(stringResource(if (summaries.anyLocated || summaries.years.isNotEmpty()) R.string.explore_finding_places else R.string.explore_no_places))
+                }
             }
         }
-        summaries.countries.forEach { country ->
-            item(key = "country:${country.country}", span = { GridItemSpan(maxLineSpan) }) { CountryHeader(country) }
-            items(country.places, key = { it.town }, span = { GridItemSpan(if (it.home) maxLineSpan else 1) }) { place ->
-                if (place.home) HomeCard(place) { actions.openPlace(place.town) } else PlaceCard(place) { actions.openPlace(place.town) }
+        homeCountry?.let { country ->
+            val (home, towns) = country.places.partition { it.home }
+            home.firstOrNull()?.let { place ->
+                item(key = "home") {
+                    Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)) { HomeCard(place) { actions.openPlace(place.town) } }
+                }
+            }
+            if (towns.isNotEmpty()) {
+                item(key = "home-country") { HomeCountryTowns(country, towns, actions) }
+            }
+        }
+        if (others.isNotEmpty()) {
+            item(key = "countries") {
+                Text(
+                    stringResource(if (homeCountry != null) R.string.explore_other_countries else R.string.explore_countries),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp).semantics { heading() },
+                )
+            }
+            items(others, key = { "country:${it.country}" }) { country -> CountryRow(country) { actions.openCountry(country.country) } }
+        }
+    }
+}
+
+/** "More in Israel", "11 places · 1,708 photos" and See all, over a row of its towns besides home to swipe through. */
+@Composable
+private fun HomeCountryTowns(country: CountrySummary, towns: List<PlaceSummary>, actions: ExploreActions) {
+    Column(Modifier.padding(top = 20.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clickable(role = Role.Button) { actions.openCountry(country.country) }.padding(start = 16.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.explore_more_in, countryName(country)),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() },
+                )
+                val photos = towns.sumOf { it.items.size }
+                Text(
+                    stringResource(
+                        R.string.feed_place_time,
+                        pluralStringResource(R.plurals.explore_country_places, towns.size, towns.size),
+                        pluralStringResource(R.plurals.library_story_items, photos, photos),
+                    ),
+                    color = LibraryColors.Muted,
+                    fontSize = 13.sp,
+                )
+            }
+            Row(Modifier.height(44.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.explore_see_all), color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(18.dp))
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = 10.dp),
+        ) {
+            items(towns, key = { it.town }) { place -> PlaceCard(place, Modifier.width(140.dp)) { actions.openPlace(place.town) } }
+        }
+    }
+}
+
+/** A country in the list: a few of its photos, its name, its main towns ("Paris, Lyon, Nice +3"), its count and years. */
+@Composable
+private fun CountryRow(country: CountrySummary, onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverMosaic(country.covers, Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
+        Column(Modifier.weight(1f)) {
+            Text(countryName(country), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val names = country.places.take(COUNTRY_ROW_TOWNS).joinToString(", ") { it.town }
+            val more = country.places.size - COUNTRY_ROW_TOWNS
+            Text(
+                if (more > 0) stringResource(R.string.explore_towns_more, names, more) else names,
+                color = LibraryColors.Muted,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                stringResource(
+                    R.string.feed_place_time,
+                    pluralStringResource(R.plurals.library_story_items, country.photoCount, country.photoCount),
+                    yearRange(country.firstYear, country.lastYear),
+                ),
+                color = LibraryColors.Muted,
+                fontSize = 12.sp,
+            )
+        }
+        Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** The towns a country's row names before "+3". */
+private const val COUNTRY_ROW_TOWNS = 3
+
+/** Up to four photos in a square: one whole, two side by side, one beside two, or two by two. */
+@Composable
+private fun CoverMosaic(covers: List<MediaItem>, modifier: Modifier) {
+    val columns = if (covers.size <= 2) covers.map { listOf(it) } else listOf(covers.take(covers.size - 2), covers.drop(covers.size - 2))
+    Row(modifier.background(LibraryColors.Raised), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        columns.forEach { column ->
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                column.forEach { item -> CroppedThumbnail(item, Modifier.weight(1f).fillMaxWidth()) }
             }
         }
     }
 }
 
-/** A country above its towns: "France", "3 places · 1,240 photos". */
 @Composable
-private fun CountryHeader(country: CountrySummary) {
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Text(
-            country.country ?: stringResource(R.string.explore_unknown_country),
-            color = LibraryColors.OnBackground,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.semantics { heading() },
-        )
-        Text(
-            stringResource(
-                R.string.feed_place_time,
-                pluralStringResource(R.plurals.explore_country_places, country.places.size, country.places.size),
-                pluralStringResource(R.plurals.library_story_items, country.photoCount, country.photoCount),
-            ),
-            color = LibraryColors.Muted,
-            fontSize = 13.sp,
-        )
-    }
-}
+private fun countryName(country: CountrySummary): String = country.country ?: stringResource(R.string.explore_unknown_country)
 
 /** The home town, across the grid: its photo with the name written over it. */
 @Composable
@@ -267,8 +352,8 @@ private fun HomeCard(place: PlaceSummary, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun PlaceCard(place: PlaceSummary, onOpen: () -> Unit) {
-    Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun PlaceCard(place: PlaceSummary, modifier: Modifier = Modifier, onOpen: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Box(Modifier.fillMaxWidth().height(132.dp).clip(RoundedCornerShape(12.dp)).background(LibraryColors.Raised)) {
             CroppedThumbnail(place.cover, Modifier.fillMaxSize())
         }
@@ -547,21 +632,7 @@ private fun <T> ExplorePageLayout(
     val actions = FeedActions(openItem = onOpenItem)
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(state = list, contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + 48.dp)) {
-            item(key = "cover") {
-                Box(Modifier.fillMaxWidth().height(260.dp + insets.calculateTopPadding()).background(LibraryColors.Raised)) {
-                    cover?.let { CroppedThumbnail(it, Modifier.fillMaxSize()) }
-                    Column(
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .background(LibraryColors.PhotoFade)
-                            .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 16.dp),
-                    ) {
-                        Text(title, color = LibraryColors.PhotoText, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-                        subtitle?.let { Text(it, color = LibraryColors.PhotoTextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-                }
-            }
+            item(key = "cover") { PageCover(title, subtitle, cover) }
             item(key = "chips") {
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp),
@@ -578,15 +649,91 @@ private fun <T> ExplorePageLayout(
             }
             feedItems(rows, actions, landing, notes = stories.notes)
         }
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(start = 8.dp, top = 8.dp)
-                .background(LibraryColors.PillScrim, CircleShape),
-        ) {
-            Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.PhotoText)
-        }
+        PageBack(onBack)
     }
     if (sheetOpen && counts != null) ShowingSheet(shown, counts, onToggleSource, onDismiss = { sheetOpen = false })
+}
+
+/** Across the top of a page, under the status bar: its photo with the title and [subtitle] written over it. */
+@Composable
+private fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
+    val insets = WindowInsets.systemBars.asPaddingValues()
+    Box(Modifier.fillMaxWidth().height(260.dp + insets.calculateTopPadding()).background(LibraryColors.Raised)) {
+        cover?.let { CroppedThumbnail(it, Modifier.fillMaxSize()) }
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .background(LibraryColors.PhotoFade)
+                .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 16.dp),
+        ) {
+            Text(title, color = LibraryColors.PhotoText, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+            subtitle?.let { Text(it, color = LibraryColors.PhotoTextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    }
+}
+
+/** The back button over a page's photo. */
+@Composable
+private fun PageBack(onBack: () -> Unit) {
+    IconButton(
+        onClick = onBack,
+        modifier = Modifier
+            .statusBarsPadding()
+            .padding(start = 8.dp, top = 8.dp)
+            .background(LibraryColors.PillScrim, CircleShape),
+    ) {
+        Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.PhotoText)
+    }
+}
+
+/**
+ * A country's page: its photo and name, then its towns as on the Places list, the home town across the top and the
+ * others two to a row. [country] is null for the towns whose country isn't known ("Other places").
+ */
+@Composable
+internal fun CountryScreen(
+    country: String?,
+    library: LibraryState,
+    stories: StoriesState,
+    onOpenPlace: (town: String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val preview = LocalInspectionMode.current
+    fun find() = countriesOf(placesOf(exploreItems(library, stories), stories.places)).firstOrNull { it.country == country }
+    val summary by produceState(if (preview) find() else null, library, stories.places, stories.shownSources) {
+        value = withContext(Dispatchers.Default) { find() }
+    }
+    val insets = WindowInsets.systemBars.asPaddingValues()
+    val (home, towns) = summary?.places.orEmpty().partition { it.home }
+    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + 48.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item(key = "cover") {
+                PageCover(
+                    country ?: stringResource(R.string.explore_unknown_country),
+                    summary?.let {
+                        stringResource(
+                            R.string.feed_place_time,
+                            pluralStringResource(R.plurals.explore_country_places, it.places.size, it.places.size),
+                            pluralStringResource(R.plurals.library_story_items, it.photoCount, it.photoCount),
+                        )
+                    },
+                    summary?.covers?.firstOrNull(),
+                )
+            }
+            items(home, key = { it.town }) { place ->
+                Box(Modifier.padding(horizontal = 16.dp)) { HomeCard(place) { onOpenPlace(place.town) } }
+            }
+            items(towns.chunked(2), key = { it.first().town }) { pair ->
+                Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { place -> PlaceCard(place, Modifier.weight(1f)) { onOpenPlace(place.town) } }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        PageBack(onBack)
+    }
 }

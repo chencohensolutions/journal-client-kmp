@@ -556,6 +556,11 @@
     <string name="explore_finding_places">מאתרים איפה צולמו התמונות…</string>
     <string name="explore_no_places">לאף אחת מהתמונות האלה אין מיקום.</string>
     <string name="explore_unknown_country">מקומות נוספים</string>
+    <string name="explore_more_in">עוד ב%1$s</string>
+    <string name="explore_see_all">הכול</string>
+    <string name="explore_other_countries">מדינות נוספות</string>
+    <string name="explore_countries">מדינות</string>
+    <string name="explore_towns_more">%1$s +%2$d</string>
     <plurals name="explore_country_places">
         <item quantity="one">מקום אחד</item>
         <item quantity="two">%d מקומות</item>

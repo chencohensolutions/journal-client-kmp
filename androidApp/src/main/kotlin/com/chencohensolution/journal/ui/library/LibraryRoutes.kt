@@ -28,7 +28,8 @@ internal sealed interface Route {
     data object Settings : Route
     data object FreeUp : Route
 
-    /** Explore: a town's page, a year's page (on one of its months), and the map. */
+    /** Explore: a country's page (null: the towns whose country isn't known), a town's page, a year's page (on one of its months), and the map. */
+    data class Country(val country: String?) : Route
     data class Place(val town: String) : Route
     data class Year(val year: Int, val month: Int?) : Route
     data object Map : Route
@@ -64,6 +65,7 @@ internal sealed interface Route {
         Settings -> "settings"
         FreeUp -> "free-up"
         is Crop -> "crop|$kind|$itemId"
+        is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
         Map -> "map"
@@ -83,6 +85,7 @@ internal sealed interface Route {
                 "settings" -> Settings
                 "free-up" -> FreeUp
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
+                "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))
                 "year" -> Year(parts[1].toInt(), parts[2].toIntOrNull())
                 "map" -> Map

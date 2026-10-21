@@ -532,6 +532,11 @@
     <string name="explore_finding_places">Finding where your photos were taken…</string>
     <string name="explore_no_places">None of these photos has a location.</string>
     <string name="explore_unknown_country">Other places</string>
+    <string name="explore_more_in">More in %1$s</string>
+    <string name="explore_see_all">See all</string>
+    <string name="explore_other_countries">Other countries</string>
+    <string name="explore_countries">Countries</string>
+    <string name="explore_towns_more">%1$s +%2$d</string>
     <plurals name="explore_country_places">
         <item quantity="one">%d place</item>
         <item quantity="other">%d places</item>

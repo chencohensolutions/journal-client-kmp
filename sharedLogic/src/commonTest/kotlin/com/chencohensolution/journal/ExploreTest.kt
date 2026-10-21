@@ -98,6 +98,26 @@ class ExploreTest {
         assertEquals(listOf("Paris", "Lyon"), countries[1].places.map { it.town })
         assertEquals(25, countries[1].photoCount)
         assertEquals(listOf("Somewhere"), countries.last().places.map { it.town })
+        assertEquals(2024 to 2024, countries[1].firstYear to countries[1].lastYear)
+    }
+
+    @Test
+    fun aCountrysCoversAreItsTownsThenMorePhotos() {
+        val paris = (1..15).map { shot("p$it", LocalDay(2024, 5, it), PARIS) }
+        val lyon = (1..10).map { shot("l$it", LocalDay(2023, 6, it), LYON) }
+        val named = Places(
+            emptyMap(),
+            mapOf(cellKey(PARIS) to PlaceName(null, "Paris", "France"), cellKey(LYON) to PlaceName(null, "Lyon", "France")),
+        )
+        val france = countriesOf(placesOf(library(*(paris + lyon).toTypedArray()), named)).single()
+
+        // Paris's and Lyon's photos, then two more spread across the rest.
+        assertEquals(listOf("p15", "l10"), france.covers.take(2).map { it.id })
+        assertEquals(4, france.covers.distinct().size)
+        assertEquals(2023 to 2024, france.firstYear to france.lastYear)
+        // One photo in all: just that one.
+        val one = countriesOf(placesOf(library(paris.first()), named)).single()
+        assertEquals(listOf("p1"), one.covers.map { it.id })
     }
 
     @Test

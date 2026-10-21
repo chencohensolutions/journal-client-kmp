@@ -38,7 +38,25 @@ data class CountrySummary(
     val home: Boolean,
 ) {
     val photoCount: Int get() = places.sumOf { it.items.size }
+    val firstYear: Int get() = places.minOf { it.firstYear }
+    val lastYear: Int get() = places.maxOf { it.lastYear }
+
+    /**
+     * Up to four photos for its row in the list of countries: each town's photo, most photos first, then, for a
+     * country of fewer towns, more photos of the country spread across its towns' photos (photos rather than videos).
+     */
+    val covers: List<MediaItem>
+        get() {
+            val towns = places.map { it.cover }.take(COUNTRY_COVERS)
+            if (towns.size == COUNTRY_COVERS) return towns
+            val others = places.flatMap { it.items }.filter { it.type == MediaType.IMAGE && it !in towns }
+            val spread = (0 until minOf(COUNTRY_COVERS - towns.size, others.size)).map { others[it * others.size / (COUNTRY_COVERS - towns.size)] }
+            return towns + spread.distinct()
+        }
 }
+
+/** A country's row in the list of countries shows this many photos. */
+internal const val COUNTRY_COVERS = 4
 
 /** A year's photos, newest first. */
 data class YearSummary(

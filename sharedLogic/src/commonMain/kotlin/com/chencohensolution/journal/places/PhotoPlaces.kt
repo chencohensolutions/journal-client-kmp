@@ -67,6 +67,9 @@ class Places internal constructor(
 
     companion object {
         val NONE = Places(emptyMap(), emptyMap())
+
+        /** Places already named, for the screen previews: photos carry their own locations there. */
+        fun named(names: Map<GeoPoint, PlaceName>): Places = Places(emptyMap(), names.mapKeys { cellKey(it.key) })
     }
 }
 

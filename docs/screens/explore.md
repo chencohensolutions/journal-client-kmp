@@ -16,12 +16,19 @@ the library and the places found so far, and it shows the same sources as the Mo
 - **Hidden in a year:** the year says "+2,410 WhatsApp hidden". A year with only hidden photos stays, with "0 photos"
   and "Only WhatsApp photos this year (412) · Show them", which turns those sources on everywhere; it has no covers or
   months and can't be opened.
-- **Places**, by country (asked Oct 21, 2026): the home country first, then the others by number of photos, and
-  "Other places" last for towns whose country isn't known. Each country has its name as a heading with "3 places ·
-  1,240 photos" under it, then its towns. The home town is across the top of its country, its photo with "HOME", the
-  name and "4,812 photos · 2017 – 2026" written over it; then the other towns two to a row, most photos first: a photo, the name and "312 · 2019 – 2026". Until a
-  place is named it reads "Finding where your photos were taken…" ("None of these photos has a location." when none
-  has one). Tapping a town opens its page.
+- **Places**, by country (asked Oct 21, 2026; the other countries as one row each since Oct 21, 2026, so they no
+  longer sit below every town of the home country): the home town across the top, its photo with "HOME", the name
+  and "4,812 photos · 2017 – 2026" written over it. Under it **More in Israel** with "11 places · 1,708 photos" and
+  **See all**, over a row of the home country's other towns to swipe through, most photos first: a photo, the name
+  and "312 · 2019 – 2026". Then **Other countries** (**Countries** when no town is home), by number of photos, with
+  "Other places" last for towns whose country isn't known: each a row with four of its photos in a square (each
+  town's photo, most photos first, then more of the country's photos for a country of fewer towns), its name, its
+  first three towns ("Paris, Lyon, Nice +3") and "640 photos · 2016 – 2025". Until a place is named it reads
+  "Finding where your photos were taken…" ("None of these photos has a location." when none has one). Tapping a
+  town opens its page; a country or See all opens the country's page.
+- **A country's page:** its first photo across the top with the name and "6 places · 640 photos", a back button
+  over it, then its towns: the home town across the top for the home country, the others two to a row as above.
+  Tapping a town opens its page.
 - **Years**, newest first: the year, its count, the towns most of it was taken in ("Tel Aviv · Jaffa · Haifa"), four
   photos spread across the year, and its months. Tapping the year opens its page; a month opens it on that month.
 - **A town's or a year's page:** its photo across the top with the name and "312 photos · 2019 – 2026" (a year:
@@ -39,6 +46,9 @@ the library and the places found so far, and it shows the same sources as the Mo
 ## iOS
 
 The same tab, pages and map, from the same shared logic, with these differences:
+
+- **Places is still the older layout** (every country with all its towns two to a row) and there is no country page:
+  the list of countries was built on Android only (Oct 21, 2026). See [ios-todo.md](../ios-todo.md).
 
 - The summaries, pages and pins are worked out in a detached task, again whenever the library, the places or the
   sources shown change.
@@ -60,7 +70,7 @@ Shared logic in [Explore.kt](../../sharedLogic/src/commonMain/kotlin/com/chencoh
 
 - `placesOf` groups photos by their place's town (`PlaceName.town`, see [moments.md](moments.md#where-locations-come-from));
   a town's country is the one most of its photos were named with (`PlaceName.country`). `countriesOf` groups the towns
-  by country.
+  by country; a country's `covers` are the four photos of its row and `firstYear`/`lastYear` its years.
   The **home town** is the town most photos within 10 km of home were taken in, home being the one the Moments tab
   finds trips with (20 located photos or more). A town's photo is its newest photo (not a video).
 - `yearsOf`: per year its towns (most photos first, up to four) and four photos evenly spread across it.
