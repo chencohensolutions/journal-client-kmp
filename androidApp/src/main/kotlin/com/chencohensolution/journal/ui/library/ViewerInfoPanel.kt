@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -384,6 +385,7 @@ private fun typeName(mimeType: String): String {
 @Composable
 private fun ShownHereFacts(item: MediaItem) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val storage = LocalPhoneStorage.current
     val kept by produceState<KeptHere?>(null, item.sha256) {
         val sha = item.sha256 ?: return@produceState
@@ -393,7 +395,7 @@ private fun ShownHereFacts(item: MediaItem) {
     val original = item.sizeBytes ?: 0
     fun sizeText(bytes: Long): String {
         val size = Formatter.formatShortFileSize(context, bytes)
-        return percentOf(bytes, original)?.let { context.getString(R.string.library_info_of_original, size, it) } ?: size
+        return percentOf(bytes, original)?.let { resources.getString(R.string.library_info_of_original, size, it) } ?: size
     }
 
     InfoHeading(stringResource(R.string.library_info_shown_title))

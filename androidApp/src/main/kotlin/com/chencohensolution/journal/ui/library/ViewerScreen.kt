@@ -422,11 +422,11 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
 private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Unit) {
     val context = LocalContext.current
     var player by remember(item.id) { mutableStateOf<ExoPlayer?>(null) }
-    var failed by remember(item.id) { mutableStateOf<String?>(null) }
+    var failed by remember(item.id) { mutableStateOf<Int?>(null) }
     LaunchedEffect(item.id) {
         val playable = withContext(Dispatchers.IO) { runCatching { ServerVideos.playable(context, item) }.getOrNull() }
         if (playable == null) {
-            failed = context.getString(R.string.library_viewer_video_unavailable)
+            failed = R.string.library_viewer_video_unavailable
             return@LaunchedEffect
         }
         player = ExoPlayer.Builder(context)
@@ -435,7 +435,7 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
             .apply {
                 addListener(object : Player.Listener {
                     override fun onPlayerError(error: PlaybackException) {
-                        failed = context.getString(R.string.library_viewer_video_failed)
+                        failed = R.string.library_viewer_video_failed
                     }
                 })
                 setMediaItem(playable.item, startAt)
@@ -460,6 +460,6 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
-        failed?.let { Text(it, color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
+        failed?.let { Text(stringResource(it), color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
     }
 }
