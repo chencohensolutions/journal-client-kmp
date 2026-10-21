@@ -141,7 +141,11 @@ struct LibraryRootView: View {
                                     dismissSuggestion: { stories.dismissSuggestion($0, in: id) },
                                     ungroup: { stories.ungroup($0, in: id) },
                                     removeItems: { stories.remove($0, from: id) },
-                                    resetGroups: { stories.resetGroups(in: id) }
+                                    resetGroups: { stories.resetGroups(in: id) },
+                                    setTileSize: { stories.setTileSize($1, of: $0, in: id) },
+                                    setTileFocus: { stories.setTileFocus($1, of: $0, in: id) },
+                                    moveTile: { stories.moveTile($0, by: $1, in: id) },
+                                    resetLayout: { stories.resetLayout(in: id) }
                                 )
                             )
                             .navigationTransition(.zoom(sourceID: ZoomID.story(id), in: zoom))

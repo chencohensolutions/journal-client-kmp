@@ -127,8 +127,8 @@ disposable `.cache/` index rebuilt from the files.
 - Stories: create from a day or from the viewer, add neighboring days, rename, delete, story text.
 - Groups: burst suggestions (by time, and by looks: dHash + native embeddings), select-and-group with Undo, merging groups (with photos or each other), group page,
   set cover, remove, ungroup, group text; groups inside groups (select on a group's page).
-- Arranging a story's layout (**Android only** so far): sizes, Earlier/Later within a day, focus point and zoom,
-  reset. iOS shows the arranged layout (sizes, focus, zoom; Oct 21, 2026) but can't change it.
+- Arranging a story's layout, on both platforms (iOS since Oct 21, 2026): sizes, Earlier/Later within a day, focus
+  point and zoom, reset.
 - Enrollment by QR code: **Scan QR code** on the code screen and `journal://enroll?code=…&server=…` links, on both
   platforms (iOS Oct 21, 2026).
 - Tags and notes per photo, Tags screen, tag page; tagged photos leave Unsorted.
@@ -149,7 +149,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 - On iOS: backup and server-only photos (the library already reports what they need: file name, size, type,
   modified date and source, cached in `Caches/library`, and changes through a PhotoKit observer). Everywhere: playing server-only videos, downloading an original, story/note
   sync (Android backup and server-only photos are built, see below).
-- Sub-stories; layout on iOS (render the shared bands, then the arrange mode); layout templates and drag-and-drop
+- Sub-stories; layout templates and drag-and-drop
   reordering; choosing a story's cover.
 - Story side **+ Add photos** picker and "N new photos from these days" suggestion (canvas screens 11–12).
 - Multi-select on the Journal / All photos (tag or add several at once; the shared logic already takes lists).

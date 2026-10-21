@@ -67,9 +67,9 @@ extension TileCrop {
 }
 
 /// A story's grid, day by day, each day packed onto the 6-column grid (`StoryDay.bands`): tiles are as large as the
-/// owner arranged them (arranging is Android only for now), or automatic (full width at the photo's own ratio),
-/// cropped around their focus point. Each band is one row of the lazy stack, so a long day still scrolls lazily.
-/// With `selection` (tile keys), tapping a photo or group toggles it.
+/// owner arranged them, or automatic (full width at the photo's own ratio), cropped around their focus point. Each
+/// band is one row of the lazy stack, so a long day still scrolls lazily. With `selection` (tile keys), tapping a
+/// photo or group toggles it; with `arranging`, tapping any tile picks it.
 struct StoryGrid: View {
     let days: [StoryDay]
     let label: (StoryDay) -> String
@@ -79,6 +79,7 @@ struct StoryGrid: View {
     let onOpenGroup: (GroupView) -> Void
     let onToggle: (String) -> Void
     let onLongPress: (String) -> Void
+    var arranging: GridArranging?
 
     /// Same as the stack's spacing between bands.
     private let gap: CGFloat = 2
@@ -149,19 +150,30 @@ struct StoryGrid: View {
             case let group as StoryTileGroup:
                 GroupTileView(group: group.group, large: true, crop: TileCrop(placed))
                     .zoomSource(ZoomID.group(group.group.id))
-                    .onTapGesture { selection == nil ? onOpenGroup(group.group) : onToggle(key) }
+                    .onTapGesture { tap(key) { onOpenGroup(group.group) } }
             case let media as StoryTileMedia:
                 MediaTileView(item: media.item, crop: TileCrop(placed))
                     .zoomSource(ZoomID.item(media.item.id))
-                    .onTapGesture { selection == nil ? onOpenItem(media.item) : onToggle(key) }
+                    .onTapGesture { tap(key) { onOpenItem(media.item) } }
             default:
                 EmptyView()
             }
         }
         .overlay {
             if let selection { SelectionOverlay(selected: selection.contains(key)) }
+            if arranging?.selectedKey == key { Rectangle().strokeBorder(LibraryColors.warning, lineWidth: 3) }
         }
-        .onLongPressGesture { onLongPress(key) }
+        .onLongPressGesture { if arranging == nil { onLongPress(key) } }
+    }
+
+    private func tap(_ key: String, open: () -> Void) {
+        if let arranging {
+            arranging.select(key)
+        } else if selection != nil {
+            onToggle(key)
+        } else {
+            open()
+        }
     }
 
 }

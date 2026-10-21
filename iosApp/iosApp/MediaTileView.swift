@@ -15,7 +15,7 @@ struct MediaTileView: View {
             ZStack {
                 LibraryColors.raised
                 if let thumbnail {
-                    CroppedImage(image: thumbnail, size: geometry.size, crop: crop)
+                    TileImage(image: thumbnail, size: geometry.size, crop: crop)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -40,7 +40,7 @@ struct MediaTileView: View {
 }
 
 /// `image` scaled to cover `size`, anchored at the crop's focus point and zoomed around it, clipped to `size`.
-private struct CroppedImage: View {
+struct TileImage: View {
     let image: UIImage
     let size: CGSize
     let crop: TileCrop

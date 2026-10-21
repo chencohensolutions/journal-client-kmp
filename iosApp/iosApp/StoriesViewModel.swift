@@ -77,6 +77,23 @@ final class StoriesViewModel: ObservableObject {
     }
     func ungroup(_ groupId: String, in storyId: String) { controller.ungroup(storyId: storyId, groupId: groupId) }
 
+    // MARK: Layout
+
+    /// A tile's (`StoryTile.key`) size on the story's grid; nil goes back to the automatic size.
+    func setTileSize(_ size: TileSize?, of tileKey: String, in storyId: String) {
+        controller.setTileSize(storyId: storyId, tileKey: tileKey, size: size)
+    }
+    /// The point of the tile's photo that stays in view, and how much closer than filling the tile to show it.
+    func setTileFocus(_ crop: TileCrop, of tileKey: String, in storyId: String) {
+        controller.setTileFocus(storyId: storyId, tileKey: tileKey, x: Float(crop.x), y: Float(crop.y), zoom: Float(crop.zoom))
+    }
+    /// `offset` places later (negative: earlier) among the tiles of its day.
+    func moveTile(_ tileKey: String, by offset: Int32, in storyId: String) {
+        controller.moveTile(storyId: storyId, tileKey: tileKey, offset: offset)
+    }
+    /// Back to the automatic layout: sizes, focus points and order.
+    func resetLayout(in storyId: String) { controller.resetLayout(storyId: storyId) }
+
     // MARK: Captions and tags
 
     func setCaption(_ text: String, of itemId: String) { controller.setCaption(itemId: itemId, text: text) }
