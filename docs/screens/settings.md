@@ -18,7 +18,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
-- **Storage on this phone** (Android; asked for Oct 20, 2026):
+- **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026, without Free up space. iOS
+  writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
+  every format itself, JPEG XL from iOS 17):
   - **Previews from your server** switch (on by default; asked for Oct 20, 2026). On: the server makes each photo at
     the exact pixels it is drawn at, in a **Format** (WebP default, HEIF, AVIF, JPEG XL, JPEG; a line says what each is
     good for) and **Quality** (Low, Medium, **High**, Max), and every size is kept as its own file: a size the phone
@@ -55,7 +57,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   similarity two photos' image embeddings need for a "Look alike" suggestion (see [group.md](group.md)). Higher
   suggests only near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
-- **Private media** (Android; iOS doesn't show server photos yet): **Show private media**, a switch, **off** by
+- **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
   default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
   server's scan must reach for a photo or video to be hidden.
 
@@ -115,4 +117,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   only in [PhotoRemoval.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhotoRemoval.kt)
   (`AndroidPhotoTrash`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
-- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift).
+- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
+  (also `serverUsage`, the **On your server** line, for when iOS backup shows it); storage through the shared
+  `IosServerFiles` (`usedBytes`, `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list
+  in `Application Support/server/media.json`, downloaded originals in `Application Support/originals` (left out of
+  iCloud backup).

@@ -154,7 +154,7 @@ struct InlineVideo: UIViewRepresentable {
 
         func start(item: MediaItem, in view: PlayerView, muted: Bool, onFirstFrame: @escaping () -> Void, onFailed: @escaping () -> Void) {
             task = Task { @MainActor [weak self, weak view] in
-                guard let asset = await PhotoLibraryImages.shared.videoAsset(id: item.id) else {
+                guard let asset = await PhotoLibraryImages.shared.videoAsset(item: item) else {
                     onFailed()
                     return
                 }

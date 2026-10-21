@@ -22,6 +22,20 @@ import com.chencohensolution.journal.similarity.IosPhotoAnalyzer
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
+import com.chencohensolution.journal.tls.SERVER_CA_PEM
+import com.chencohensolution.journal.tls.decodePemCertificates
+import com.chencohensolution.journal.server.IosServerFiles
+import com.chencohensolution.journal.server.KeptOriginals
+import com.chencohensolution.journal.server.ServerHttp
+import com.chencohensolution.journal.server.ServerLibrary
+import com.chencohensolution.journal.server.ServerPreviews
+import com.chencohensolution.journal.settings.PrivateMedia
+import com.chencohensolution.journal.storage.PhoneStorage
+import kotlinx.coroutines.flow.StateFlow
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSNumber
+import platform.Foundation.NSURL
+import platform.Foundation.NSURLIsExcludedFromBackupKey
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
@@ -51,12 +65,80 @@ object IosJournal {
             onEnrolled = journal::useEnrolledIdentity,
         )
 
-    /** The device photo library (PhotoKit). Its photos' file names, sizes and types are cached in Caches (`library`). */
-    fun createLibraryController(): LibraryController =
+    /**
+     * The device photo library (PhotoKit), with the photos that are only on the server from [server] and the originals
+     * downloaded into [originals]; what [privateMedia] hides is left out. Its photos' file names, sizes and types are
+     * cached in Caches (`library`).
+     */
+    fun createLibraryController(
+        server: ServerLibrary?,
+        originals: KeptOriginals?,
+        privateMedia: StateFlow<PrivateMedia>?,
+    ): LibraryController =
         LibraryController(
             library = IosMediaLibrary(FileFactsCache(FileSystem.SYSTEM, cachesDir().toPath() / "library")),
             settings = JournalSettings(UserDefaultsStore()),
+            server = server,
+            originals = originals,
+            privateMedia = privateMedia,
         )
+
+    private var serverLibrary: ServerLibrary? = null
+    private var serverPreviews: ServerPreviews? = null
+    private var keptOriginals: KeptOriginals? = null
+    private var serverHttp: ServerHttp? = null
+    private var phoneStorage: PhoneStorage? = null
+    private var serverFiles: IosServerFiles? = null
+
+    // One of each per process, asked for on the main thread (by the view models).
+    private fun serverHttp(): ServerHttp =
+        serverHttp ?: ServerHttp(JournalSettings(UserDefaultsStore()), IosMtlsHttpClientFactory(), decodePemCertificates(SERVER_CA_PEM))
+            .also { serverHttp = it }
+
+    /** What the server holds, kept in Application Support (`server/media.json`). */
+    fun serverLibrary(): ServerLibrary =
+        serverLibrary ?: ServerLibrary(
+            settings = JournalSettings(UserDefaultsStore()),
+            clientFactory = IosMtlsHttpClientFactory(),
+            trustedCas = decodePemCertificates(SERVER_CA_PEM),
+            fileSystem = FileSystem.SYSTEM,
+            directory = supportDir().toPath() / "server",
+        ).also { serverLibrary = it }
+
+    /** Previews of server-only photos, cached in Caches (`previews`), up to the limit in Settings (10 GB by default). */
+    private fun serverPreviews(): ServerPreviews =
+        serverPreviews ?: JournalSettings(UserDefaultsStore()).let { settings ->
+            ServerPreviews(
+                http = serverHttp(),
+                fileSystem = FileSystem.SYSTEM,
+                directory = cachesDir().toPath() / "previews",
+                maxBytes = { settings.previewCacheGigabytes.toLong() shl 30 },
+                options = { settings.previewOptions },
+            )
+        }.also { serverPreviews = it }
+
+    /**
+     * Originals downloaded from the server ("Download original"), kept in Application Support (`originals`), never
+     * trimmed, and left out of the phone's iCloud backup (the server has them).
+     */
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    fun keptOriginals(): KeptOriginals =
+        keptOriginals ?: run {
+            val directory = supportDir() + "/originals"
+            NSFileManager.defaultManager.createDirectoryAtPath(directory, withIntermediateDirectories = true, attributes = null, error = null)
+            NSURL.fileURLWithPath(directory).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+            KeptOriginals(serverHttp(), FileSystem.SYSTEM, directory.toPath())
+        }.also { keptOriginals = it }
+
+    /** Settings → Storage on this phone: previews and downloaded originals of server photos under one limit. */
+    fun phoneStorage(): PhoneStorage =
+        phoneStorage ?: JournalSettings(UserDefaultsStore()).let { settings ->
+            PhoneStorage(serverPreviews()) { settings.previewCacheGigabytes.toLong() shl 30 }
+        }.also { phoneStorage = it }
+
+    /** What Swift asks of the server's files: tile and viewer images, downloads, removal checks, storage. */
+    fun serverFiles(): IosServerFiles =
+        serverFiles ?: IosServerFiles(serverLibrary(), serverPreviews(), keptOriginals(), phoneStorage()).also { serverFiles = it }
 
     /** The user's choices on the Settings screen. */
     fun createSettingsController(): SettingsController = SettingsController(
@@ -81,6 +163,8 @@ object IosJournal {
             places = PhotoPlaces(IosPlaceReader(), PlaceCache(FileSystem.SYSTEM, caches.toPath() / "places")),
         )
     }
+
+    private fun supportDir() = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
 
     private fun cachesDir() = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String
 

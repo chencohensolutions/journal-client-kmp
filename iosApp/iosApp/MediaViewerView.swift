@@ -16,6 +16,24 @@ struct ViewerActions {
     var setCrops: (_ itemId: String, _ crops: PhotoCrops) -> Void
     /// The photo now shown, on opening and on each swipe: the one that zooms back into its tile on closing.
     var showing: (_ itemId: String) -> Void
+    /// Downloads the original from the server and keeps it here; `progress` gets each percent. False when it couldn't.
+    var downloadOriginal: (_ item: MediaItem, _ progress: @escaping (Int) -> Void) async -> Bool
+    /// Removes the original from this phone, keeping it on the server and its preview here.
+    var deleteFromPhone: (_ item: MediaItem) async -> RemovalOutcome
+}
+
+/// What "Delete from this phone" did.
+enum RemovalOutcome {
+    /// Removed: an original the app had kept, or a library photo the user let iOS delete.
+    case deleted
+    /// The user said no to iOS's prompt.
+    case declined
+    /// Nothing removed: the server can't be reached.
+    case unreachable
+    /// Nothing removed: the server answered and doesn't have this photo.
+    case notOnServer
+    /// Nothing removed: no preview could be kept to show it by (a video whose frame can't be read).
+    case noPreview
 }
 
 /// One photo or video at a time, swiping through `items`. `openedFrom` is the story the viewer was opened from, if
@@ -145,7 +163,10 @@ struct MediaViewerView: View {
                     onRemove: { actions.toggleStory($0.id, item.id, false) },
                     group: group,
                     onSetCover: { actions.setCover(item.id) },
-                    onRemoveFromGroup: { actions.removeFromGroup(item.id) }
+                    onRemoveFromGroup: { actions.removeFromGroup(item.id) },
+                    location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
+                    downloadOriginal: actions.downloadOriginal,
+                    deleteFromPhone: actions.deleteFromPhone
                 )
             }
         }
@@ -185,6 +206,10 @@ struct MediaViewerView: View {
     }
 }
 
+/// Longest side, in pixels, of a server photo's original decoded for the viewer (Android's VIEWER_MAX_SIDE, and the
+/// preview size kept before a photo leaves the phone).
+private let serverViewerMaxSide = 2560
+
 /// The photo fitted on the screen, or only its `crop` (which has the screen's shape), filling it.
 private struct PhotoPage: View {
     let item: MediaItem
@@ -192,31 +217,85 @@ private struct PhotoPage: View {
     @State private var image: UIImage?
 
     var body: some View {
+        if item.hasOriginalHere {
+            libraryPhoto
+        } else {
+            ServerPhotoPage(item: item, crop: crop)
+        }
+    }
+
+    private var libraryPhoto: some View {
         GeometryReader { geometry in
             ZStack {
                 if let image {
-                    if let crop {
-                        CroppedImage(image: image, crop: crop)
-                    } else {
-                        Image(uiImage: image).resizable().scaledToFit()
-                    }
+                    ViewerImage(image: image, crop: crop)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .task(id: "\(item.id)|\(crop != nil)") {
                 // A quick low-quality image first, then the sharp one, large enough for a crop to stay sharp.
                 if image == nil {
-                    image = await PhotoLibraryImages.shared.image(id: item.id, pointSize: CGSize(width: 200, height: 200))
+                    image = await PhotoLibraryImages.shared.image(item: item, pointSize: CGSize(width: 200, height: 200))
                 }
                 let size = crop.map { CGSize(width: geometry.size.width / CGFloat($0.w), height: geometry.size.height / CGFloat($0.h)) }
                     ?? geometry.size
-                if let full = await PhotoLibraryImages.shared.image(id: item.id, pointSize: size) {
+                if let full = await PhotoLibraryImages.shared.image(item: item, pointSize: size) {
                     image = full
                 }
             }
         }
         // The whole screen, so a crop (the screen's shape) fills it.
         .ignoresSafeArea()
+    }
+}
+
+/// The photo fitted, or only its `crop` filling the space.
+private struct ViewerImage: View {
+    let image: UIImage
+    let crop: CropRect?
+
+    var body: some View {
+        if let crop {
+            CroppedImage(image: image, crop: crop)
+        } else {
+            Image(uiImage: image).resizable().scaledToFit()
+        }
+    }
+}
+
+/// A photo only on the server: the best image of it already on this phone shows at once (asking the server for
+/// nothing), while its original downloads into the cache (kept there) and then fades in over it, with a small spinner
+/// meanwhile. When the phone can't decode the original, a preview at that size is asked for instead; offline, the
+/// cached image stays.
+private struct ServerPhotoPage: View {
+    let item: MediaItem
+    let crop: CropRect?
+    @State private var cached: UIImage?
+    @State private var original: UIImage?
+    @State private var downloading = true
+
+    var body: some View {
+        ZStack {
+            if let base = cached ?? original {
+                ViewerImage(image: base, crop: crop)
+            }
+            if let original, cached != nil {
+                ViewerImage(image: original, crop: crop).transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topTrailing) {
+            if downloading {
+                ProgressView().tint(.white.opacity(0.8)).controlSize(.small).padding(.top, 72).padding(.trailing, 16)
+            }
+        }
+        .ignoresSafeArea()
+        .task(id: item.id) {
+            cached = await ServerImages.shared.cached(item)
+            let full = await ServerImages.shared.viewer(item, maxSide: serverViewerMaxSide)
+            withAnimation(.easeIn(duration: 0.25)) { original = full }
+            downloading = false
+        }
     }
 }
 
@@ -286,7 +365,8 @@ private struct ViewerAction: View {
     }
 }
 
-/// Shows the poster frame until Play is tapped; stops when swiped away.
+/// Shows the poster frame until Play is tapped; stops when swiped away. A video only on the server shows its poster
+/// and that it plays from the server later (streaming isn't built on iOS); its downloaded original plays.
 private struct VideoPage: View {
     let item: MediaItem
     let isCurrent: Bool
@@ -299,13 +379,26 @@ private struct VideoPage: View {
             ZStack {
                 if let player {
                     VideoPlayer(player: player)
+                } else if !item.hasOriginalHere {
+                    if let poster {
+                        Image(uiImage: poster).resizable().scaledToFit()
+                    }
+                    Label("On your server. Playing it from there comes later; download the original to play it here.", systemImage: "icloud")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(LibraryColors.pillScrim, in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 24)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 96)
                 } else {
                     if let poster {
                         Image(uiImage: poster).resizable().scaledToFit()
                     }
                     Button {
                         Task {
-                            if let playerItem = await PhotoLibraryImages.shared.playerItem(id: item.id) {
+                            if let playerItem = await PhotoLibraryImages.shared.playerItem(item: item) {
                                 let player = AVPlayer(playerItem: playerItem)
                                 self.player = player
                                 player.play()
@@ -323,7 +416,10 @@ private struct VideoPage: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .task(id: item.id) {
-                poster = await PhotoLibraryImages.shared.image(id: item.id, pointSize: geometry.size)
+                // A video only on the server shows the poster already kept (a tile's), asking for no new size.
+                poster = item.hasOriginalHere
+                    ? await PhotoLibraryImages.shared.image(item: item, pointSize: geometry.size)
+                    : await ServerImages.shared.cached(item)
             }
         }
         .onChange(of: isCurrent) { _, current in
@@ -349,6 +445,9 @@ private struct InfoPanel: View {
     let group: GroupView?
     let onSetCover: () -> Void
     let onRemoveFromGroup: () -> Void
+    let location: (GeoPoint, PlaceName?)?
+    let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
+    let deleteFromPhone: (MediaItem) async -> RemovalOutcome
 
     var body: some View {
         ScrollView {
@@ -394,18 +493,6 @@ private struct InfoPanel: View {
                             .frame(height: 32)
                     }
                 }
-                HStack(spacing: 10) {
-                    BackupBadge(status: item.backup, size: 22)
-                    Text(item.backup.label).font(.subheadline.weight(.semibold))
-                    Spacer()
-                    if let uploading = item.backup as? BackupStatusUploading {
-                        Text("\(Int(uploading.progress * 100))%")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(LibraryColors.accent)
-                    }
-                }
-                .padding(14)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16))
                 if let group {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Group").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
@@ -439,14 +526,7 @@ private struct InfoPanel: View {
                         .padding(.top, 4)
                     }
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 12) {
-                    if let fileName = item.fileName { Detail(label: "File", value: fileName) }
-                    if let size = item.sizeBytes { Detail(label: "Size", value: ByteCountFormatter.string(fromByteCount: size.int64Value, countStyle: .file)) }
-                    if item.width > 0 && item.height > 0 { Detail(label: "Dimensions", value: "\(item.width) × \(item.height)") }
-                    if let duration = item.duration { Detail(label: "Length", value: formatDuration(duration)) }
-                    if let mimeType = item.mimeType { Detail(label: "Type", value: typeName(mimeType)) }
-                    if item.isOnDevice { Detail(label: "From", value: item.source.label) }
-                }
+                OriginalCard(item: item, location: location, downloadOriginal: downloadOriginal, deleteFromPhone: deleteFromPhone)
             }
             .foregroundStyle(LibraryColors.onInverse)
             .padding(20)
@@ -461,13 +541,13 @@ private struct InfoPanel: View {
 }
 
 /// "HEIC", "JPEG", "DNG (RAW)", "MOV video"; the MIME type itself for others.
-private func typeName(_ mimeType: String) -> String {
+func typeName(_ mimeType: String) -> String {
     guard let kind = MediaFactsKt.mediaKind(mimeType: mimeType) else { return mimeType }
     if kind.video { return String(localized: "\(kind.name) video") }
     return kind.raw ? "\(kind.name) (RAW)" : kind.name
 }
 
-private extension MediaSource {
+extension MediaSource {
     var label: String {
         switch self {
         case .whatsapp: return String(localized: "WhatsApp")
@@ -478,7 +558,7 @@ private extension MediaSource {
     }
 }
 
-private struct Detail: View {
+struct Detail: View {
     let label: LocalizedStringKey
     let value: String
 

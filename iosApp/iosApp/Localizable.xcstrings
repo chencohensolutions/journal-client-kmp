@@ -7,6 +7,26 @@
     "!" : {
       "shouldTranslate" : false
     },
+    "%@ in all" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ בסך הכל"
+          }
+        }
+      }
+    },
+    "%@ of %lld GB used. Photos from your server are fetched again when you scroll to them." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ מתוך %2$lld GB בשימוש. תמונות מהשרת נטענות שוב כשגוללים אליהן."
+          }
+        }
+      }
+    },
     "%@ video" : {
       "localizations" : {
         "he" : {
@@ -23,6 +43,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@ of the original" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ מהמקור"
           }
         }
       }
@@ -194,11 +224,24 @@
     "%d" : {
       "shouldTranslate" : false
     },
+    "%d × %d · %@ · %@" : {
+      "shouldTranslate" : false
+    },
     "%lld" : {
       "shouldTranslate" : false
     },
     "%lld / %lld" : {
       "shouldTranslate" : false
+    },
+    "%lld GB" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld GB"
+          }
+        }
+      }
     },
     "%lld days" : {
       "localizations" : {
@@ -842,6 +885,26 @@
         }
       }
     },
+    "A video only on your server doesn’t play in the app yet; it shows a frame of it. Download the original to play it again." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרטון שנמצא רק בשרת עדיין לא מתנגן באפליקציה; מוצגת תמונה ממנו. אפשר להוריד את המקור כדי לנגן אותו שוב."
+          }
+        }
+      }
+    },
+    "About a third smaller than WebP at the same quality." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קטן בכשליש מ־WebP באותה איכות."
+          }
+        }
+      }
+    },
     "Account" : {
       "localizations" : {
         "he" : {
@@ -1144,6 +1207,16 @@
         }
       }
     },
+    "Clear" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניקוי"
+          }
+        }
+      }
+    },
     "Code %@ · expires in %lld min" : {
       "localizations" : {
         "he" : {
@@ -1220,6 +1293,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא ניתן לקרוא את התמונות שלך: %@"
+          }
+        }
+      }
+    },
+    "Couldn’t download it. Check the connection to your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן להוריד. יש לבדוק את החיבור לשרת."
+          }
+        }
+      }
+    },
+    "Counting…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סופר…"
           }
         }
       }
@@ -1344,6 +1437,26 @@
         }
       }
     },
+    "Delete from this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחיקה מהטלפון"
+          }
+        }
+      }
+    },
+    "Delete from this phone?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק מהטלפון?"
+          }
+        }
+      }
+    },
     "Delete story" : {
       "localizations" : {
         "he" : {
@@ -1400,6 +1513,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סיום"
+          }
+        }
+      }
+    },
+    "Download original" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורדת המקור"
+          }
+        }
+      }
+    },
+    "Downloaded to this phone, and on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורד לטלפון הזה, ונמצא בשרת שלך"
+          }
+        }
+      }
+    },
+    "Downloading the original… %lld%%" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוריד את המקור… %lld%%"
           }
         }
       }
@@ -1540,6 +1683,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מיקוד"
+          }
+        }
+      }
+    },
+    "Format" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פורמט"
           }
         }
       }
@@ -1706,6 +1859,26 @@
         }
       }
     },
+    "Hide from" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרה החל מ־"
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גבוהה"
+          }
+        }
+      }
+    },
     "Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike." : {
       "localizations" : {
         "he" : {
@@ -1732,6 +1905,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "רמת דמיון"
+          }
+        }
+      }
+    },
+    "How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמה השרת צריך להיות בטוח שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום."
           }
         }
       }
@@ -1835,6 +2018,16 @@
     "K7QM-4XPD" : {
       "shouldTranslate" : false
     },
+    "Kept on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמור בטלפון הזה"
+          }
+        }
+      }
+    },
     "Key" : {
       "localizations" : {
         "he" : {
@@ -1885,6 +2078,16 @@
         }
       }
     },
+    "Location" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיקום"
+          }
+        }
+      }
+    },
     "Look alike" : {
       "localizations" : {
         "he" : {
@@ -1905,12 +2108,42 @@
         }
       }
     },
+    "Low" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נמוכה"
+          }
+        }
+      }
+    },
     "Map" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מפה"
+          }
+        }
+      }
+    },
+    "Max" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מרבית"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בינונית"
           }
         }
       }
@@ -2065,12 +2298,52 @@
         }
       }
     },
+    "None yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין"
+          }
+        }
+      }
+    },
     "Not backed up" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא מגובות"
+          }
+        }
+      }
+    },
+    "Not deleted: can’t reach your server. Try again when connected to it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נמחק: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור."
+          }
+        }
+      }
+    },
+    "Not deleted: couldn’t keep a picture of it to show here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נמחק: לא ניתן לשמור תמונה שלו להצגה כאן."
+          }
+        }
+      }
+    },
+    "Not deleted: your server doesn’t have this photo. It uploads again with the next backup." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נמחק: התמונה לא נמצאת בשרת שלך. היא תועלה שוב בגיבוי הבא."
           }
         }
       }
@@ -2135,6 +2408,16 @@
         }
       }
     },
+    "Nothing yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין כלום"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "he" : {
@@ -2165,12 +2448,32 @@
         }
       }
     },
+    "On this phone and on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בטלפון הזה ובשרת שלך"
+          }
+        }
+      }
+    },
     "On your server, run `journal-server enroll-code` and type the address and code it prints." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "בשרת שלך, הריצו `journal-server enroll-code` והקלידו את הכתובת והקוד שהוא מדפיס."
+          }
+        }
+      }
+    },
+    "On your server. Playing it from there comes later; download the original to play it here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת שלך. ניגון ישירות מהשרת יגיע בהמשך; אפשר להוריד את המקור כדי לנגן אותו כאן."
           }
         }
       }
@@ -2195,6 +2498,16 @@
         }
       }
     },
+    "Only on your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק בשרת שלך"
+          }
+        }
+      }
+    },
     "Open journal" : {
       "localizations" : {
         "he" : {
@@ -2211,6 +2524,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מקורי"
+          }
+        }
+      }
+    },
+    "Original · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המקור · %@"
           }
         }
       }
@@ -2255,6 +2578,16 @@
         }
       }
     },
+    "Pixels" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פיקסלים"
+          }
+        }
+      }
+    },
     "Places" : {
       "localizations" : {
         "he" : {
@@ -2281,6 +2614,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לאורך"
+          }
+        }
+      }
+    },
+    "Preview on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תצוגה מקדימה בטלפון"
+          }
+        }
+      }
+    },
+    "Previews from your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תצוגות מקדימות מהשרת"
+          }
+        }
+      }
+    },
+    "Private media" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מדיה פרטית"
+          }
+        }
+      }
+    },
+    "Quality" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איכות"
+          }
+        }
+      }
+    },
+    "Quick to make and to show." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מהיר להכנה ולהצגה."
           }
         }
       }
@@ -2695,6 +3078,16 @@
         }
       }
     },
+    "Show private media" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת מדיה פרטית"
+          }
+        }
+      }
+    },
     "Show them as one?" : {
       "localizations" : {
         "he" : {
@@ -2711,6 +3104,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מוצג בשרת, כדי שתוכלו להבחין בין מכשירים ולבטל מכשיר בהמשך."
+          }
+        }
+      }
+    },
+    "Shown on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוצג בטלפון הזה"
           }
         }
       }
@@ -2791,6 +3194,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שלב %1$lld מתוך 3 · %2$@"
+          }
+        }
+      }
+    },
+    "Storage on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחסון בטלפון הזה"
           }
         }
       }
@@ -2935,6 +3348,16 @@
         }
       }
     },
+    "The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המקור שהורד יימחק מהטלפון. הוא נשאר בשרת שלך, והתמונה תמשיך להופיע כאן מהתצוגה המקדימה שלה."
+          }
+        }
+      }
+    },
     "The key created for this attempt was deleted from the device." : {
       "localizations" : {
         "he" : {
@@ -2945,12 +3368,42 @@
         }
       }
     },
+    "The most detail for its size." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכי הרבה פרטים ביחס לגודל."
+          }
+        }
+      }
+    },
+    "The original files are downloaded and kept in the space below. Videos are not downloaded." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים המקוריים יורדים ונשמרים במקום שלמטה. סרטונים לא יורדים."
+          }
+        }
+      }
+    },
     "The photo itself isn't changed." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "התמונה עצמה לא משתנה."
+          }
+        }
+      }
+    },
+    "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, in its stories, from its preview." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן ובסיפורים שלה מהתצוגה המקדימה."
           }
         }
       }
@@ -2985,12 +3438,32 @@
         }
       }
     },
+    "The server makes each photo at the size it is shown, in the format and quality below." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת מכין כל תמונה בגודל שבו היא מוצגת, בפורמט ובאיכות שלמטה."
+          }
+        }
+      }
+    },
     "The server rejected %@. It may be mistyped, expired or already used. Each code works once, for 10 minutes." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "השרת דחה את %@. ייתכן שהוקלד לא נכון, שתוקפו פג או שכבר השתמשו בו. כל קוד עובד פעם אחת, למשך 10 דקות."
+          }
+        }
+      }
+    },
+    "The smallest files; the server takes longer to make them." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים הקטנים ביותר; לשרת לוקח יותר זמן להכין אותם."
           }
         }
       }
@@ -3193,6 +3666,16 @@
         }
       }
     },
+    "Up to" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עד"
+          }
+        }
+      }
+    },
     "Upload failed: %@" : {
       "localizations" : {
         "he" : {
@@ -3263,6 +3746,16 @@
         }
       }
     },
+    "When off, photos and videos the server found nudity in are hidden everywhere, and not downloaded to this phone." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשכבוי, תמונות וסרטונים שהשרת מצא בהם עירום מוסתרים בכל מקום, ולא יורדים לטלפון הזה."
+          }
+        }
+      }
+    },
     "Whole year" : {
       "localizations" : {
         "he" : {
@@ -3279,6 +3772,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "רחב"
+          }
+        }
+      }
+    },
+    "Works everywhere; the largest files." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עובד בכל מקום; הקבצים הגדולים ביותר."
           }
         }
       }
@@ -3429,6 +3932,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "זום"
+          }
+        }
+      }
+    },
+    "made on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נוצר בטלפון הזה"
           }
         }
       }

@@ -185,8 +185,8 @@ struct FocusEditor: View {
         }
         .background(LibraryColors.background.ignoresSafeArea())
         .task(id: tile.tile.key) {
-            let id = (tile.tile as? StoryTileGroup)?.group.cover.id ?? (tile.tile as? StoryTileMedia)?.item.id
-            if let id { image = await PhotoLibraryImages.shared.image(id: id, pointSize: CGSize(width: 800, height: 800)) }
+            let item = (tile.tile as? StoryTileGroup)?.group.cover ?? (tile.tile as? StoryTileMedia)?.item
+            if let item { image = await PhotoLibraryImages.shared.image(item: item, pointSize: CGSize(width: 800, height: 800)) }
         }
     }
 

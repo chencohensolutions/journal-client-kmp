@@ -63,7 +63,7 @@ Server state comes from `JournalState.health`:
 ## Backup badges
 
 The bottom-right badge (on grid tiles and on the Moments tab's photos) says where the original is (asked for Oct 20, 2026, Android; iOS still shows a check for
-backed up):
+backed up, and since Oct 21, 2026 no badge for a photo only on the server):
 
 | Badge | State | Meaning |
 |---|---|---|
