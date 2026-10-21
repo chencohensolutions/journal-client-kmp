@@ -66,6 +66,7 @@ data class BackupState(
     /** Where [item] is in the backup process. */
     fun status(item: MediaItem): BackupStatus {
         val running = (activity as? BackupActivity.Running)?.progress
+        running?.uploading?.get(item.id)?.let { return BackupStatus.Uploading(it) }
         if (running?.currentId == item.id) return BackupStatus.Uploading(running.currentFraction)
         val entry = entries[item.id]
         return when {

@@ -4,15 +4,16 @@ package com.chencohensolution.journal.backup
 
 import com.chencohensolution.journal.network.answerChallenge
 import com.chencohensolution.journal.tls.KeychainIdentities
-import com.chencohensolution.journal.tls.toNSData
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.IOException
@@ -32,18 +33,19 @@ import platform.Foundation.NSURLSessionTaskDelegateProtocol
 import platform.Foundation.NSURLSessionUploadTask
 import platform.Foundation.setHTTPMethod
 import platform.Foundation.setValue
-import platform.Foundation.writeToFile
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.AtomicReference
+import kotlin.time.TimeSource
 
 /**
  * Sends each piece with a background URLSession, which iOS carries on while the app is suspended, and even after the
- * system ended it: iOS relaunches the app in the background when the piece is answered ([handleEvents]), and the run
- * goes on from the server's offset. A piece is written to a file in [directory] first (a background session uploads
- * only from files) and removed once answered. The client certificate is the one in the Keychain under [identityAlias],
+ * system ended it: iOS relaunches the app in the background when pieces are answered ([handleEvents]), and the run
+ * goes on from the server's offset. Many files are with iOS at once ([MAX_FILES], [MAX_BYTES]), so a closed app's
+ * wake sends a batch rather than one piece. A piece is written to a file in [directory] first (a background session
+ * uploads only from files) and removed once answered. The client certificate is the one in the Keychain under [identityAlias],
  * the server's must chain to [anchors]; Wi-Fi only ([wifiOnly]) is left to iOS, so a piece waits for Wi-Fi rather than
  * use mobile data or a hotspot.
  */
@@ -57,11 +59,20 @@ internal class BackgroundPieceSender(
     // iOS wakes a closed app about once per finished piece, so the largest piece the server takes means the fewest waits.
     override val pieceSize: Long get() = PIECE_BYTES
 
+    // Many files at once, so iOS has a batch to send while the app is closed (see MAX_FILES).
+    override val maxFilesInFlight: Int get() = MAX_FILES
+    override val maxBytesInFlight: Long get() = MAX_BYTES
+
     private val pieces = InFlightPieces()
     private val ready = CompletableDeferred<Unit>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val eventsDone = AtomicReference<(() -> Unit)?>(null)
-    private val delivered = AtomicInt(0)
+
+    /** [handedOver] when the session delivered its events before iOS told the app; -1 otherwise. */
+    private val deliveredAt = AtomicInt(-1)
+
+    /** Pieces handed to iOS since launch. */
+    private val handedOver = AtomicInt(0)
     private val delegate = Delegate()
     private val queue = NSOperationQueue().apply { maxConcurrentOperationCount = 1 }
     private val session: NSURLSession
@@ -86,12 +97,20 @@ internal class BackgroundPieceSender(
         }
     }
 
-    override suspend fun send(url: String, contentRange: String, bytes: ByteArray, onSent: (Long) -> Unit): PieceResponse {
+    override suspend fun send(url: String, contentRange: String, body: PieceBody, onSent: (Long) -> Unit): PieceResponse {
         ready.await()
         return pieces.send(url, contentRange, onSent) {
-            fileSystem.createDirectories(directory)
             val file = directory / "${url.substringAfterLast('/')}-${contentRange.substringAfter(' ').substringBefore('-')}.piece"
-            if (!bytes.toNSData().writeToFile(file.toString(), atomically = true)) throw IOException("Can't write the piece to $file")
+            // Streamed from the photo's file to the piece's: many pieces wait with iOS, none of them in memory.
+            withContext(Dispatchers.IO) {
+                fileSystem.createDirectories(directory)
+                try {
+                    fileSystem.write(file) { body.writeTo(this) }
+                } catch (e: Throwable) {
+                    runCatching { fileSystem.delete(file) }
+                    throw e
+                }
+            }
             val request = NSMutableURLRequest.requestWithURL(NSURL(string = url)).apply {
                 setHTTPMethod("PUT")
                 setValue(contentRange, forHTTPHeaderField = "Content-Range")
@@ -103,29 +122,46 @@ internal class BackgroundPieceSender(
             val task: NSURLSessionUploadTask = session.uploadTaskWithRequest(request, fromFile = NSURL.fileURLWithPath(file.toString()))
             task.taskDescription = listOf(url, contentRange, file.name).joinToString("\n")
             task.resume()
+            handedOver.incrementAndGet()
         }
     }
 
     /**
      * iOS woke the app for this session's events ([completion] from `handleEventsForBackgroundURLSession`). It is
-     * called once the events are delivered and the run that resumed has handed the next piece to iOS (or after a few
-     * seconds), so iOS keeps the app suspended only while a piece is on its way.
+     * called once the events are delivered and the run that resumed has topped iOS's queue back up: it handed iOS new
+     * pieces and none for [QUIET_MILLIS], or the queue is full (or after [TOP_UP_WAIT_MILLIS]). iOS then suspends the
+     * app and sends the queue on its own.
      */
     fun handleEvents(completion: () -> Unit) {
         eventsDone.value = completion
         // The session may have delivered them before iOS told the app.
-        if (delivered.compareAndSet(1, 0)) eventsDelivered()
+        val at = deliveredAt.getAndSet(-1)
+        if (at >= 0) topUp(at)
     }
 
     private fun eventsDelivered() {
-        val completion = eventsDone.getAndSet(null)
-        if (completion == null) {
-            delivered.value = 1
-            return
-        }
+        val at = handedOver.value
+        if (eventsDone.value == null) deliveredAt.value = at else topUp(at)
+    }
+
+    /** Calls the events' completion once pieces handed over since [handedAt] (that count) have settled. */
+    private fun topUp(handedAt: Int) {
+        val completion = eventsDone.getAndSet(null) ?: return
         scope.launch {
-            withTimeoutOrNull(NEXT_PIECE_WAIT_MILLIS) {
-                while (pieces.count == 0) delay(200)
+            withTimeoutOrNull(TOP_UP_WAIT_MILLIS) {
+                var last = handedOver.value
+                var quietSince = TimeSource.Monotonic.markNow()
+                while (true) {
+                    delay(200)
+                    val handed = handedOver.value
+                    if (handed != last) {
+                        last = handed
+                        quietSince = TimeSource.Monotonic.markNow()
+                    }
+                    if (pieces.handingOver) continue
+                    if (pieces.count >= MAX_FILES) break
+                    if (handed != handedAt && quietSince.elapsedNow().inWholeMilliseconds >= QUIET_MILLIS) break
+                }
             }
             completion()
         }
@@ -183,7 +219,25 @@ internal class BackgroundPieceSender(
         /** 64 MB, the server's limit (journal-server-go media/upload.go MaxChunkSize); it asks for 16 MB. */
         private const val PIECE_BYTES = 64L shl 20
 
-        /** How long a background wake waits for the run to hand iOS the next piece. */
-        private const val NEXT_PIECE_WAIT_MILLIS = 15_000L
+        /**
+         * Files with iOS at once. A closed app is woken about once per finished task, and iOS spaces the wakes out
+         * (about a minute apart in a test), so the queue is what moves while the app is closed: 50 photos per wake
+         * rather than one. Far below the thousands of tasks Apple warns slow a background session down, and few enough
+         * to top up within one wake (each needs a PhotoKit copy and a startUpload).
+         */
+        private const val MAX_FILES = 50
+
+        /**
+         * What the files with iOS at once may add up to. Each has a full copy in `Caches/backup/files` and one piece
+         * (up to 64 MB) in `Caches/backup/pieces`, so backup holds about 1 GB of Caches at most (more only for a single
+         * larger video, which goes alone): 50 photos, or 8 videos of 64 MB.
+         */
+        private const val MAX_BYTES = 512L shl 20
+
+        /** The longest a background wake waits for the run to top the queue back up (iOS allows about 30 s). */
+        private const val TOP_UP_WAIT_MILLIS = 20_000L
+
+        /** No new piece for this long after some were handed over: the run has topped the queue up. */
+        private const val QUIET_MILLIS = 2_000L
     }
 }

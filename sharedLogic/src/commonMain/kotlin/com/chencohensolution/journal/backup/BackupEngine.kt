@@ -1,21 +1,36 @@
+@file:OptIn(ExperimentalAtomicApi::class)
+
 package com.chencohensolution.journal.backup
 
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.Buffer
+import okio.BufferedSource
 import okio.EOFException
 import okio.HashingSink
 import okio.Source
 import okio.blackholeSink
 import okio.buffer
 import okio.use
-import kotlin.coroutines.coroutineContext
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.coroutines.ContinuationInterceptor
+import kotlin.coroutines.cancellation.CancellationException
 
 /** The platform's read access to the photos' bytes. */
 internal interface MediaFiles {
@@ -25,17 +40,24 @@ internal interface MediaFiles {
     /** When [item] was taken, RFC 3339 with the device's UTC offset at that moment. */
     fun takenAt(item: MediaItem): String
 
+    /** The run is done reading [item] for now (hashed it, or its upload ended): what was copied to read it can go. */
+    fun release(item: MediaItem) {}
+
     /** A run ended: what was copied out of the library to read it can go. */
     fun runEnded() {}
 }
 
-/** Where a run is: [done] of [total] files, and the bytes of the files still to send. */
+/**
+ * Where a run is: [done] of [total] files finished, and the bytes of the files still to send. Several files are sent
+ * at once ([uploading]); [currentId] is the earliest of them still on its way (or the file being read before any is).
+ */
 data class BackupProgress(
     val done: Int,
     val total: Int,
+    /** Bytes of the finished files, and what has arrived of the ones on their way. */
     val bytesDone: Long,
     val bytesTotal: Long,
-    /** The file being read or sent. */
+    /** The earliest file still on its way, else the file being read. */
     val currentId: String? = null,
     val currentName: String? = null,
     /** 0..1 of the current file. */
@@ -44,6 +66,8 @@ data class BackupProgress(
     val bytesSent: Long = 0,
     /** How fast bytes leave, over the last few seconds; null until it is known. */
     val bytesPerSecond: Long? = null,
+    /** The files on their way, by device id, in the order they started: 0..1 of each. */
+    val uploading: Map<String, Float> = emptyMap(),
 ) {
     /** 0..1 of the whole run, by bytes. */
     val fraction: Float get() = if (bytesTotal > 0) (bytesDone.toFloat() / bytesTotal).coerceIn(0f, 1f) else 0f
@@ -63,90 +87,238 @@ internal fun backupQueue(items: List<MediaItem>, settings: BackupSettings): List
 
 /**
  * One backup run: reads the photos not known to be on the server (sha256), asks the server which it lacks, and sends
- * those in pieces, continuing from where the server says it stopped. Network errors are thrown, so the caller can
- * retry later; a refused or changed file is skipped and tried again on the next run.
+ * those in pieces, continuing from where the server says it stopped. Several files go at once, as many as the
+ * platform's sender takes ([BackupApi.maxFilesInFlight], [BackupApi.maxBytesInFlight]); they start in the queue's
+ * order, and each file's pieces go one after another. A refused or changed file is skipped and tried again on the
+ * next run. A network error starts no more files: the ones on their way finish, then it is thrown, so the caller can
+ * retry later. A refused certificate stops everything at once.
  */
 internal class BackupEngine(
     private val files: MediaFiles,
     private val ledger: UploadLedger,
     private val api: BackupApi,
     private val locate: suspend (MediaItem) -> GeoPoint? = { null },
+    /** Where files are read. */
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun run(items: List<MediaItem>, settings: BackupSettings, onProgress: (BackupProgress) -> Unit): BackupRunResult {
         val pending = backupQueue(items, settings).filterNot { ledger.isUploaded(it) }
-        var progress = BackupProgress(done = 0, total = pending.size, bytesDone = 0, bytesTotal = pending.sumOf { it.sizeBytes ?: 0 })
-        onProgress(progress)
-        var uploaded = 0
-        var sent = 0L
-        var already = 0
-        var failed = 0
+        // The run's own bookkeeping happens on one thread at a time; the reading and sending go on elsewhere.
+        val caller = currentCoroutineContext()[ContinuationInterceptor] as? CoroutineDispatcher ?: Dispatchers.Default
+        return withContext(caller.limitedParallelism(1)) { Run(pending, onProgress).go() }
+    }
 
-        for (batch in pending.chunked(BATCH)) {
-            val entries = batch.mapNotNull { item ->
-                progress = progress.copy(currentId = item.id, currentName = item.fileName, currentFraction = 0f)
-                onProgress(progress)
-                val entry = try {
-                    hashed(item)
-                } catch (e: EOFException) {
-                    // Not the size the library reported: changed since it was listed. Read again next time.
-                    ledger.forget(item.id)
-                    failed++
-                    progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + (item.sizeBytes ?: 0), currentId = null, currentName = null)
-                    onProgress(progress)
-                    null
-                }
-                entry?.let { item to it }
+    /** A file on its way: how far the server is, and how many bytes this run moved (not what it had before). */
+    private class Sending(val item: MediaItem) {
+        val offset = AtomicLong(0)
+        val sent = AtomicLong(0)
+        private var seen = -1L
+
+        /** Called from the transport's callbacks, one piece at a time. */
+        fun moved(to: Long) {
+            if (seen < 0) seen = to
+            if (to > seen) {
+                sent.addAndFetch(to - seen)
+                seen = to
             }
-            val missing = api.missing(entries.map { it.second.sha256 })
-            for ((item, entry) in entries) {
-                val size = item.sizeBytes ?: 0
-                val outcome = if (entry.sha256 !in missing) {
-                    ledger.record(entry.copy(uploaded = true, rejected = null))
-                    Outcome.ALREADY
-                } else {
-                    // Bytes the server had from an earlier try aren't sent now: only what moves past them counts.
-                    var seen = -1L
-                    upload(item, entry) { offset ->
-                        if (seen < 0) seen = offset
-                        if (offset > seen) {
-                            sent += offset - seen
-                            seen = offset
+            offset.store(to)
+        }
+
+        val fraction: Float get() = offset.load().toFloat() / (item.sizeBytes ?: 1).coerceAtLeast(1)
+    }
+
+    private inner class Run(private val pending: List<MediaItem>, private val onProgress: (BackupProgress) -> Unit) {
+        private val bytesTotal = pending.sumOf { it.sizeBytes ?: 0 }
+        private var done = 0
+        private var finishedBytes = 0L
+        private var finishedSent = 0L
+        private var uploaded = 0
+        private var already = 0
+        private var failed = 0
+        private var reading: MediaItem? = null
+        private val sending = LinkedHashMap<String, Sending>()
+        private var sendingBytes = 0L
+
+        /** Files of this run by sha256: the same bytes under two device ids are sent once. */
+        private val bySha = mutableMapOf<String, Deferred<Outcome?>>()
+
+        /** The first network or server error; no file starts after it. */
+        private var error: Throwable? = null
+        private val slotFreed = Channel<Unit>(Channel.CONFLATED)
+        private val progressQueued = AtomicBoolean(false)
+        private lateinit var scope: CoroutineScope
+
+        suspend fun go(): BackupRunResult {
+            emit()
+            coroutineScope {
+                scope = this
+                try {
+                    produce()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    stopStarting(e)
+                }
+            }
+            error?.let { throw it }
+            return BackupRunResult(uploaded, already, failed)
+        }
+
+        /** Reads the queue in batches of [BATCH] and starts the files the server lacks, in order, as slots free up. */
+        private suspend fun produce() {
+            for (batch in pending.chunked(BATCH)) {
+                val entries = batch.mapNotNull { item ->
+                    if (error != null) return
+                    read(item)?.let { item to it }
+                }
+                reading = null
+                val missing = api.missing(entries.map { it.second.sha256 }.filter { it !in bySha }.distinct())
+                for ((item, entry) in entries) {
+                    if (error != null) return
+                    val earlier = bySha[entry.sha256]
+                    when {
+                        earlier != null -> sameBytes(item, entry, earlier)
+                        entry.sha256 !in missing -> {
+                            ledger.record(entry.copy(uploaded = true, rejected = null))
+                            finish(item, Outcome.ALREADY, null)
                         }
-                        onProgress(
-                            progress.copy(
-                                currentId = item.id,
-                                currentName = item.fileName,
-                                bytesDone = progress.bytesDone + offset,
-                                currentFraction = offset.toFloat() / size,
-                                bytesSent = sent,
-                            ),
-                        )
+                        else -> {
+                            awaitSlot(item.sizeBytes ?: 0)
+                            if (error != null) return
+                            start(item, entry)
+                        }
                     }
                 }
-                when (outcome) {
-                    Outcome.UPLOADED -> uploaded++
-                    Outcome.ALREADY -> already++
-                    Outcome.FAILED -> failed++
-                }
-                progress = progress.copy(done = progress.done + 1, bytesDone = progress.bytesDone + size, currentId = null, currentName = null, currentFraction = 0f, bytesSent = sent)
-                onProgress(progress)
             }
         }
-        return BackupRunResult(uploaded, already, failed)
+
+        /** The ledger's entry for [item], or null when it isn't the size the library said (counted as failed). */
+        private suspend fun read(item: MediaItem): LedgerEntry? {
+            reading = item
+            emit()
+            return try {
+                hashed(item)
+            } catch (e: EOFException) {
+                // Not the size the library reported: changed since it was listed. Read again next time.
+                ledger.forget(item.id)
+                finish(item, Outcome.FAILED, null)
+                null
+            } finally {
+                files.release(item)
+            }
+        }
+
+        private suspend fun awaitSlot(size: Long) {
+            while (sending.size >= api.maxFilesInFlight || (sending.isNotEmpty() && sendingBytes + size > api.maxBytesInFlight)) {
+                slotFreed.receive()
+                if (error != null) return
+            }
+        }
+
+        private fun start(item: MediaItem, entry: LedgerEntry) {
+            val file = Sending(item)
+            val size = item.sizeBytes ?: 0
+            sending[item.id] = file
+            sendingBytes += size
+            bySha[entry.sha256] = scope.async {
+                val outcome = try {
+                    upload(item, entry) { offset ->
+                        file.moved(offset)
+                        progressChanged()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: BackupServerException) {
+                    if (e.unauthorized) throw e // Fails the run, which cancels the other files.
+                    stopStarting(e)
+                    null
+                } catch (e: Exception) {
+                    stopStarting(e)
+                    null
+                } finally {
+                    files.release(item)
+                }
+                sending.remove(item.id)
+                sendingBytes -= size
+                slotFreed.trySend(Unit)
+                finish(item, outcome, file)
+                outcome
+            }
+            emit()
+        }
+
+        /** [item] has the bytes of a file this run already sends: it is on the server once that one is. */
+        private fun sameBytes(item: MediaItem, entry: LedgerEntry, earlier: Deferred<Outcome?>) {
+            scope.launch {
+                val outcome = when (earlier.await()) {
+                    Outcome.UPLOADED, Outcome.ALREADY -> Outcome.ALREADY.also { ledger.record(entry.copy(uploaded = true, rejected = null)) }
+                    Outcome.FAILED -> Outcome.FAILED
+                    null -> null
+                }
+                finish(item, outcome, null)
+            }
+        }
+
+        /** [outcome] is null when the file stopped on a network error: it doesn't count as done. */
+        private fun finish(item: MediaItem, outcome: Outcome?, file: Sending?) {
+            finishedSent += file?.sent?.load() ?: 0
+            when (outcome) {
+                Outcome.UPLOADED -> uploaded++
+                Outcome.ALREADY -> already++
+                Outcome.FAILED -> failed++
+                null -> Unit
+            }
+            if (outcome != null) {
+                done++
+                finishedBytes += item.sizeBytes ?: 0
+            }
+            emit()
+        }
+
+        private fun stopStarting(e: Throwable) {
+            if (error == null) error = e
+            slotFreed.trySend(Unit)
+        }
+
+        /** From the transport's threads: reports progress once the run's thread is free, many callbacks in one. */
+        private fun progressChanged() {
+            if (progressQueued.compareAndSet(false, true)) {
+                scope.launch {
+                    progressQueued.store(false)
+                    emit()
+                }
+            }
+        }
+
+        private fun emit() {
+            val first = sending.values.firstOrNull()
+            val current = first?.item ?: reading
+            onProgress(
+                BackupProgress(
+                    done = done,
+                    total = pending.size,
+                    bytesDone = finishedBytes + sending.values.sumOf { it.offset.load() },
+                    bytesTotal = bytesTotal,
+                    currentId = current?.id,
+                    currentName = current?.fileName,
+                    currentFraction = first?.fraction ?: 0f,
+                    bytesSent = finishedSent + sending.values.sumOf { it.sent.load() },
+                    uploading = sending.mapValues { it.value.fraction },
+                ),
+            )
+        }
     }
 
     /** The ledger's entry for [item] as it is now, reading the file when it is new or changed. */
     private suspend fun hashed(item: MediaItem): LedgerEntry {
         val previous = ledger.entry(item.id)
         if (previous != null && previous.matches(item)) return previous
-        val sha = sha256(item)
+        val sha = files.sha256(item, io)
         // Same device photo, new bytes: an edit saved in place. It points at the version the server has.
         val versionOf = previous?.let { if (it.uploaded) it.sha256 else it.versionOf }?.takeIf { it != sha }
         return LedgerEntry(id = item.id, size = item.sizeBytes ?: 0, modifiedMillis = item.modifiedMillis, sha256 = sha, versionOf = versionOf)
             .also { ledger.record(it) }
     }
-
-    private suspend fun sha256(item: MediaItem): String = files.sha256(item)
 
     private enum class Outcome { UPLOADED, ALREADY, FAILED }
 
@@ -177,20 +349,36 @@ internal class BackupEngine(
             if (offset >= size) return Outcome.FAILED // The server has every byte but no file; nothing left to send.
             onSent(offset)
             val piece: PieceResult = try {
-                withContext(Dispatchers.IO) {
-                    files.open(item, offset).buffer().use { source ->
+                withContext(io) {
+                    // Read on from one source; opened again where the server is when a piece wasn't read from it (one
+                    // already on its way) or the server is elsewhere.
+                    var source: BufferedSource? = null
+                    var position = -1L
+                    try {
                         var last: PieceResult
                         do {
-                            coroutineContext.ensureActive()
-                            val bytes = source.readByteArray(minOf(chunk, size - offset))
+                            currentCoroutineContext().ensureActive()
+                            if (source == null || position != offset) {
+                                source?.close()
+                                source = files.open(item, offset).buffer()
+                                position = offset
+                            }
+                            val from: BufferedSource = source
+                            val length = minOf(chunk, size - offset)
+                            val body = PieceBody(length) { sink ->
+                                sink.write(from, length)
+                                position += length
+                            }
                             val pieceStart = offset
-                            last = api.put(start.url, offset, bytes, size) { inPiece -> onSent(pieceStart + inPiece) }
+                            last = api.put(start.url, offset, body, size) { inPiece -> onSent(pieceStart + inPiece) }
                             if (last is PieceResult.Accepted) {
                                 offset = last.offset
                                 onSent(offset)
                             }
                         } while (last is PieceResult.Accepted && !last.complete && offset < size)
                         last
+                    } finally {
+                        source?.close()
                     }
                 }
             } catch (e: EOFException) {
@@ -241,14 +429,14 @@ internal class BackupEngine(
     }
 }
 
-/** The sha256 of [item]'s bytes as they are now, read from the start. */
-internal suspend fun MediaFiles.sha256(item: MediaItem): String = withContext(Dispatchers.IO) {
+/** The sha256 of [item]'s bytes as they are now, read from the start on [io]. */
+internal suspend fun MediaFiles.sha256(item: MediaItem, io: CoroutineDispatcher = Dispatchers.IO): String = withContext(io) {
     val hashing = HashingSink.sha256(blackholeSink())
     val buffer = Buffer()
     open(item, 0).use { source ->
         while (source.read(buffer, READ_SIZE) != -1L) {
             hashing.write(buffer, buffer.size)
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
         }
     }
     hashing.hash.hex()
