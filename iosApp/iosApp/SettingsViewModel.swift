@@ -28,6 +28,10 @@ final class SettingsViewModel: ObservableObject {
     func setSimilarityPercent(_ percent: Int) { controller.setSimilarityPercent(percent: Int32(percent)) }
     func resetSimilarity() { controller.resetSimilarity() }
 
+    /// Moments: a source of the filter bar on or off, and a trip card not offered again.
+    func toggleFeedSource(_ source: MediaSource) { controller.toggleFeedSource(source: source) }
+    func dismissTrip(_ key: String) { controller.dismissTrip(key: key) }
+
     /// What the similarity slider offers.
     static var similarityRange: ClosedRange<Double> {
         let range = SimilarityThreshold.Companion.shared.RANGE

@@ -24,7 +24,8 @@ final class StoriesViewModel: ObservableObject {
 
     /// Returns the new story's id, or nil when the title is blank.
     @discardableResult
-    func createStory(title: String, momentKey: String) -> String? { controller.createStoryFromMoment(title: title, key: momentKey) }
+    /// A row of Moments or a trip ("Save as story"), by its key; near-duplicate sets become groups.
+    func createStory(title: String, feedKey: String) -> String? { controller.createStoryFromFeed(title: title, key: feedKey) }
 
     @discardableResult
     func createStory(title: String, itemIds: [String]) -> String? { controller.createStory(title: title, itemIds: itemIds) }
@@ -79,6 +80,14 @@ final class StoriesViewModel: ObservableObject {
     // MARK: Captions and tags
 
     func setCaption(_ text: String, of itemId: String) { controller.setCaption(itemId: itemId, text: text) }
+
+    // MARK: Moments
+
+    /// The photos of the picked sets and photos become one set you swipe.
+    func mergeInFeed(_ itemIds: [String]) { controller.mergeInFeed(itemIds: itemIds) }
+    func takeOutOfSet(_ itemId: String) { controller.takeOutOfSet(itemId: itemId) }
+    /// The set of `itemIds` was turned to `itemId`: it opens there next time.
+    func turnSet(_ itemIds: [String], to itemId: String) { controller.turnSet(itemIds: itemIds, itemId: itemId) }
 
     @discardableResult
     func addTag(_ tag: String, to itemIds: [String]) -> String? { controller.addTag(itemIds: itemIds, tag: tag) }

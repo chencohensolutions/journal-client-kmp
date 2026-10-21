@@ -17,12 +17,12 @@
         }
       }
     },
-    "%@ · %@ – %@" : {
+    "%@ · %lld" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$@ – %3$@"
+            "value" : "%1$@ · %2$lld"
           }
         }
       }
@@ -185,6 +185,9 @@
       "shouldTranslate" : false
     },
     "%lld" : {
+      "shouldTranslate" : false
+    },
+    "%lld / %lld" : {
       "shouldTranslate" : false
     },
     "%lld days" : {
@@ -669,34 +672,6 @@
         }
       }
     },
-    "%lld unsorted" : {
-      "localizations" : {
-        "he" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "תמונה אחת לא ממוינת"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld לא ממוינות"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld לא ממוינות"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld · Open" : {
       "localizations" : {
         "he" : {
@@ -739,6 +714,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שורה חדשה מתחילה אחרי הפסקה בלי תמונות, כך שערב שנמשך אחרי חצות נשאר בשורה אחת."
+          }
+        }
+      }
+    },
+    "A trip" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טיול"
           }
         }
       }
@@ -945,6 +930,16 @@
         }
       }
     },
+    "Camera" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצלמה"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "he" : {
@@ -1125,6 +1120,16 @@
         }
       }
     },
+    "Crop" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיתוך"
+          }
+        }
+      }
+    },
     "Day %lld · %@" : {
       "localizations" : {
         "he" : {
@@ -1231,6 +1236,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עריכה"
+          }
+        }
+      }
+    },
+    "Edit what you wrote" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עריכת מה שנכתב"
           }
         }
       }
@@ -1586,6 +1601,16 @@
         }
       }
     },
+    "Looks like a trip" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נראה כמו טיול"
+          }
+        }
+      }
+    },
     "Merge" : {
       "localizations" : {
         "he" : {
@@ -1642,16 +1667,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סיפור חדש"
-          }
-        }
-      }
-    },
-    "New story from %@" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סיפור חדש מ-%@"
           }
         }
       }
@@ -1786,6 +1801,16 @@
         }
       }
     },
+    "Nothing to show. Turn on a source above." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מה להציג. אפשר להפעיל מקור למעלה."
+          }
+        }
+      }
+    },
     "Offline" : {
       "localizations" : {
         "he" : {
@@ -1842,6 +1867,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פתיחת היומן"
+          }
+        }
+      }
+    },
+    "Other" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחר"
           }
         }
       }
@@ -2076,6 +2111,16 @@
         }
       }
     },
+    "Save as story" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמירה כסיפור"
+          }
+        }
+      }
+    },
     "Save certificate" : {
       "localizations" : {
         "he" : {
@@ -2092,6 +2137,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נשמר ב-story.md"
+          }
+        }
+      }
+    },
+    "Screenshots" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צילומי מסך"
           }
         }
       }
@@ -2142,6 +2197,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חומרה מאובטחת (TEE)"
+          }
+        }
+      }
+    },
+    "Select" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בחירה"
           }
         }
       }
@@ -2276,16 +2341,6 @@
         }
       }
     },
-    "Story" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "סיפור"
-          }
-        }
-      }
-    },
     "StrongBox security chip" : {
       "localizations" : {
         "he" : {
@@ -2322,6 +2377,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תגיות"
+          }
+        }
+      }
+    },
+    "Take out of this set" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוצאה מהקבוצה"
           }
         }
       }
@@ -2496,6 +2561,16 @@
         }
       }
     },
+    "Title (optional)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כותרת (לא חובה)"
+          }
+        }
+      }
+    },
     "Today" : {
       "localizations" : {
         "he" : {
@@ -2512,6 +2587,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "יותר מדי קודים שגויים. חכו דקה ונסו שוב."
+          }
+        }
+      }
+    },
+    "Turn sound off" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השתקה"
+          }
+        }
+      }
+    },
+    "Turn sound on" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפעלת צליל"
           }
         }
       }
@@ -2644,6 +2739,26 @@
         }
       }
     },
+    "WhatsApp" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "וואטסאפ"
+          }
+        }
+      }
+    },
+    "Write about it" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לכתוב עליה"
+          }
+        }
+      }
+    },
     "Write about this moment…" : {
       "localizations" : {
         "he" : {
@@ -2730,6 +2845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הרגעים שלך, יום אחרי יום"
+          }
+        }
+      }
+    },
+    "more" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד"
           }
         }
       }
