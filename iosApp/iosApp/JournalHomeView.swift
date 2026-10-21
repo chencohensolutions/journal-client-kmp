@@ -16,7 +16,8 @@ struct HomeActions {
     var takeOutOfSet: (_ itemId: String) -> Void
     var turnSet: (_ itemIds: [String], _ itemId: String) -> Void
     /// From a photo's long-press menu in Moments.
-    var setCaption: (_ itemId: String, _ text: String) -> Void
+    var setWriting: (_ itemId: String, _ title: String, _ text: String) -> Void
+    var restoreWriting: (_ itemId: String, _ version: NoteVersion) -> Void
     /// Crop in a photo's long-press menu: the crop screen opens here, on the Moments crop.
     var crop: (MediaItem) -> Void = { _ in }
     var toggleStory: (_ storyId: String, _ itemIds: [String], _ add: Bool) -> Void
@@ -190,9 +191,11 @@ struct JournalHomeView: View {
     private func sheetContent(_ sheet: FeedSheet) -> some View {
         switch sheet {
         case .write(let id):
-            WritingEditor(title: String(localized: "Note"), initial: stories.note(itemId: id)?.caption ?? "") {
-                actions.setCaption(id, $0)
-            }
+            NoteEditor(
+                note: stories.note(itemId: id),
+                onSave: { actions.setWriting(id, $0, $1) },
+                onRestore: { actions.restoreWriting(id, $0) }
+            )
         case .addToStory(let ids):
             AddToStorySheet(
                 itemIds: ids,

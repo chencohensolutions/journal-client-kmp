@@ -121,7 +121,7 @@ private fun LibraryScreens(
     SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
-        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge) {
             NavDisplay(
                 backStack = stack.mapIndexed(::StackEntry),
                 onBack = pop,
@@ -152,7 +152,8 @@ private fun LibraryScreens(
                                         allowAccess = actions.requestAccess,
                                         changeSelection = actions.changeSelection,
                                         registerAgain = onRegisterAgain,
-                                        setCaption = { itemId, text -> stories.setCaption(itemId, text) },
+                                        setWriting = stories::setWriting,
+                                        restoreWriting = stories::restoreWriting,
                                         crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
                                         merge = stories::mergeInFeed,
                                         takeOutOfSet = stories::takeOutOfSet,
@@ -316,6 +317,7 @@ private fun LibraryScreens(
                                             resetSimilarity = settings::resetSimilarity,
                                             setShowPrivateMedia = settings::setShowPrivateMedia,
                                             setPrivateThresholdPercent = settings::setPrivateThresholdPercent,
+                                            setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             back = pop,
                                         ),
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
@@ -355,7 +357,8 @@ private fun LibraryScreens(
                                             if (add) stories.addItems(storyId, listOf(itemId)) else stories.removeItems(storyId, listOf(itemId))
                                         },
                                         createStory = { title, itemId -> stories.createStory(title, listOf(itemId)) },
-                                        setCaption = { itemId, text -> stories.setCaption(itemId, text) },
+                                        setWriting = stories::setWriting,
+                                        restoreWriting = stories::restoreWriting,
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },

@@ -89,7 +89,7 @@ class TagsTest {
         assertEquals(6, stories.currentState.unsortedCount)
 
         assertEquals("Receipts", stories.addTag(listOf("o1", "o3"), "  Receipts "))
-        stories.setCaption("o5", "Only a caption")
+        stories.setWriting("o5", "", "Only a caption")
         val state = stories.currentState
         assertEquals(4, state.unsortedCount)
         assertTrue(state.unsortedDays.none { day -> day.items.any { it.id == "o1" || it.id == "o3" } })
@@ -114,11 +114,11 @@ class TagsTest {
         val setup = setup()
         val stories = setup.stories
         stories.addTag(listOf("o1"), "Dog")
-        stories.setCaption("o1", "Good boy")
+        stories.setWriting("o1", "", "Good boy")
         assertTrue(setup.fileSystem.exists(TAGS_ROOT / "media" / "o1.json"))
 
         stories.removeTag(listOf("o1"), "DOG")
-        stories.setCaption("o1", "")
+        stories.setWriting("o1", "", "")
         assertNull(stories.currentState.note("o1"))
         assertFalse(setup.fileSystem.exists(TAGS_ROOT / "media" / "o1.json"))
         assertEquals(6, stories.currentState.unsortedCount)
@@ -129,7 +129,7 @@ class TagsTest {
         val fileSystem = FakeFileSystem()
         val first = setup(fileSystem).stories
         first.addTag(listOf("o1"), "Dog")
-        first.setCaption("o1", "Good boy")
+        first.setWriting("o1", "", "Good boy")
         val note = assertNotNull(setup(fileSystem).stories.currentState.note("o1"))
         assertEquals(listOf("Dog"), note.tags)
         assertEquals("Good boy", note.caption)

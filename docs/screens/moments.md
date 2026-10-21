@@ -32,8 +32,8 @@ also those already in a story or tagged, read like a story that arranged itself.
   - Other sources: "WhatsApp · 6 · 14:02 – 17:30": one moment per source per row.
 - **Photos** are edge to edge and full width, at their own shape (never cropped to squares), or at their Moments
   [crop](crop.md). A video shows its length.
-- **Notes:** a photo's note is written above it in serif, up to 4 lines and then **more**. In a near-duplicate set,
-  the note of the photo shown.
+- **Writing** (Oct 21, 2026): a photo's title is above it (semibold), its paragraph under it in serif, up to 4 lines
+  and then **more**. In a near-duplicate set, the writing of the photo shown.
 - **Long press** a photo for **Write about it** (or **Edit what you wrote**), **Crop**, **Add to story**, **Tag**,
   **Select**, and in a set **Take out of this set**.
 - **Merging (asked Oct 19, 2026):** **Select** starts picking: tapping a photo or set picks it (a check at its

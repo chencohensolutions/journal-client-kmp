@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -76,7 +77,13 @@ internal fun MediaTile(
             if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.PhotoText))
             SelectionCheck(selected, Modifier.align(Alignment.TopStart).padding(7.dp))
         } else {
-            BackupBadge(item.backup, badgeSize, Modifier.align(Alignment.BottomEnd).padding(5.dp), originalHere = item.hasOriginalHere)
+            BackupBadge(
+                item.backup,
+                badgeSize,
+                Modifier.align(Alignment.BottomEnd).padding(5.dp),
+                originalHere = item.hasOriginalHere,
+                showOnPhone = LocalShowOnPhoneBadge.current,
+            )
         }
     }
 }
@@ -111,13 +118,23 @@ internal fun DurationChip(durationMillis: Long?, modifier: Modifier = Modifier) 
     }
 }
 
+/** Settings → Badges, "Show the phone badge", for the tiles and Moments; off unless provided. */
+internal val LocalShowOnPhoneBadge = staticCompositionLocalOf { false }
+
 /**
- * The corner badge: a phone when the original is on this phone and on the server, the upload state while it is only
- * here, nothing when it is only on the server ([originalHere] false). See docs/screens/README.md.
+ * The corner badge: a phone when the original is on this phone and on the server (only if [showOnPhone]), the upload
+ * state while it is only here, nothing when it is only on the server ([originalHere] false). See
+ * docs/screens/README.md.
  */
 @Composable
-internal fun BackupBadge(status: BackupStatus, size: Dp, modifier: Modifier = Modifier, originalHere: Boolean = true) {
-    if (!originalHere && status == BackupStatus.BackedUp) return
+internal fun BackupBadge(
+    status: BackupStatus,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    originalHere: Boolean = true,
+    showOnPhone: Boolean = true,
+) {
+    if ((!originalHere || !showOnPhone) && status == BackupStatus.BackedUp) return
     val background = when (status) {
         is BackupStatus.Uploading -> LibraryColors.Accent
         BackupStatus.BackedUp -> LibraryColors.Accent.copy(alpha = 0.85f)

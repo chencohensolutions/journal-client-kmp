@@ -106,7 +106,7 @@ internal fun InfoPanel(
             Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.OnInverse, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(formatDate(taken, "jmm"), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
         }
-        CaptionBlock(note?.caption.orEmpty(), onEditCaption)
+        CaptionBlock(note?.title.orEmpty(), note?.caption.orEmpty(), onEditCaption)
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
         if (group != null) {
             GroupRow(group, isCover = group.cover.id == item.id, onSetCover, onRemoveFromGroup)
@@ -117,9 +117,9 @@ internal fun InfoPanel(
     }
 }
 
-/** The photo's own text, wherever it appears; tap to write or edit. */
+/** The photo's own title and paragraph, wherever it appears; tap to write or edit. */
 @Composable
-private fun CaptionBlock(caption: String, onEdit: () -> Unit) {
+private fun CaptionBlock(title: String, caption: String, onEdit: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -129,7 +129,8 @@ private fun CaptionBlock(caption: String, onEdit: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(stringResource(R.string.library_note_title), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        Text(
+        if (title.isNotBlank()) Text(title, color = LibraryColors.OnInverse, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        if (caption.isNotBlank() || title.isBlank()) Text(
             caption.ifBlank { stringResource(R.string.library_note_prompt) },
             color = if (caption.isBlank()) LibraryColors.OnInverseMuted else LibraryColors.OnInverse,
             fontFamily = FontFamily.Serif,

@@ -398,8 +398,20 @@ class StoriesController internal constructor(
 
     // MARK: Captions and tags
 
-    /** The photo's caption, shown wherever the photo appears. */
-    fun setCaption(itemId: String, text: String) = changeNotes(listOf(itemId)) { it.copy(caption = text.trim()) }
+    /**
+     * The photo's title and paragraph, shown wherever the photo appears; what was there before is kept as a version
+     * (see [PhotoNote.withWriting]).
+     */
+    fun setWriting(itemId: String, title: String, text: String) {
+        val time = now()
+        changeNotes(listOf(itemId)) { it.withWriting(title, text, time) }
+    }
+
+    /** Back to an earlier version of the photo's writing; what it replaces becomes a version too, so nothing is lost. */
+    fun restoreWriting(itemId: String, version: NoteVersion) {
+        val time = now()
+        changeNotes(listOf(itemId)) { it.withWriting(version.title, version.text, time, keepPrevious = true) }
+    }
 
     /**
      * Moments: [itemIds] (the photos of the sets and photos picked) become one set you swipe, shown where its oldest

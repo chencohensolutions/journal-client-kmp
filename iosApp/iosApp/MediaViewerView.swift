@@ -10,7 +10,9 @@ struct ViewerActions {
     var removeFromGroup: (_ itemId: String) -> Void
     var toggleStory: (_ storyId: String, _ itemId: String, _ add: Bool) -> Void
     var createStory: (_ title: String, _ itemId: String) -> Void
-    var setCaption: (_ itemId: String, _ text: String) -> Void
+    var setWriting: (_ itemId: String, _ title: String, _ text: String) -> Void
+    /// Back to an earlier version of the photo's writing.
+    var restoreWriting: (_ itemId: String, _ version: NoteVersion) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
     /// Saves the photo's crops (Done on the crop screen).
     var setCrops: (_ itemId: String, _ crops: PhotoCrops) -> Void
@@ -49,6 +51,8 @@ struct MediaViewerView: View {
 
     @State private var currentId: String
     @State private var showInfo = false
+    /// The bars and buttons over the photo: hidden at first, shown by a tap for 3 seconds, hidden by the next tap.
+    @State private var chrome = false
     @State private var choosingStory = false
     @State private var choosingTag = false
     @State private var editingCaption = false
@@ -91,9 +95,11 @@ struct MediaViewerView: View {
                     ForEach(items, id: \.id) { item in
                         Group {
                             if item.isVideo {
-                                VideoPage(item: item, isCurrent: item.id == currentId)
+                                VideoPage(item: item, isCurrent: item.id == currentId, onTap: toggleChrome)
                             } else {
                                 PhotoPage(item: item, crop: showWhole ? nil : cropOf(item))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture(perform: toggleChrome)
                             }
                         }
                         .tag(item.id)
@@ -104,45 +110,16 @@ struct MediaViewerView: View {
             }
         }
         .overlay(alignment: .top) {
-            HStack {
-                Button(action: onClose) {
-                    Image(systemName: "chevron.backward").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Back")
-                if let item = items[safe: index] {
-                    Text("\(index + 1) of \(items.count) · \(item.day.label)")
-                        .font(.subheadline)
-                        .foregroundStyle(Color(white: 0.75))
-                }
-                Spacer()
-                // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
-                if let item = items[safe: index],
-                   let coverOf = group.map({ $0.coverStop(itemId: item.id) }) ?? openedFrom?.coverStop(itemId: item.id) {
-                    Button { actions.openGroup(coverOf.id) } label: {
-                        Label("\(Int(coverOf.itemCount)) · Open", systemImage: "square.on.square")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-                Button { showInfo.toggle() } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 20))
-                        .frame(width: 44, height: 44)
-                        .background(showInfo ? Color.white.opacity(0.16) : .clear, in: Circle())
-                }
-                .accessibilityLabel("Details")
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 4)
-            .background(LibraryColors.topFade.ignoresSafeArea())
+            if chrome { topBar(index: index) }
         }
         .overlay(alignment: .top) {
-            if !showInfo, let item = items[safe: index], cropOf(item) != nil {
+            if chrome, !showInfo, let item = items[safe: index], cropOf(item) != nil {
                 CropChip(showingWhole: showWhole) { showWhole.toggle() }
                     .padding(.top, 60)
             }
         }
         .overlay(alignment: .bottom) {
-            if !showInfo, let item = items[safe: index] {
+            if chrome, !showInfo, let item = items[safe: index] {
                 HStack(spacing: 10) {
                     ViewerAction(icon: "square.and.pencil", label: "Write") { editingCaption = true }
                     if !item.isVideo {
@@ -152,26 +129,16 @@ struct MediaViewerView: View {
                 .padding(.bottom, 20)
             }
             if showInfo, let item = items[safe: index] {
-                let memberOf = stories.storiesContaining(itemId: item.id)
-                InfoPanel(
-                    item: item,
-                    note: stories.note(itemId: item.id),
-                    onEditCaption: { editingCaption = true },
-                    onAddTag: { choosingTag = true },
-                    onRemoveTag: { actions.toggleTag(item.id, $0, false) },
-                    memberOf: memberOf,
-                    removable: openedFrom.flatMap { from in memberOf.contains { $0.id == from.id } ? from : nil },
-                    onAddToStory: { choosingStory = true },
-                    onRemove: { actions.toggleStory($0.id, item.id, false) },
-                    group: group,
-                    onSetCover: { actions.setCover(item.id) },
-                    onRemoveFromGroup: { actions.removeFromGroup(item.id) },
-                    location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
-                    downloadOriginal: actions.downloadOriginal,
-                    deleteFromPhone: actions.deleteFromPhone,
-                    setPrivate: actions.setPrivate
-                )
+                infoPanel(item: item)
             }
+        }
+        .animation(.easeInOut(duration: 0.2), value: chrome)
+        // They stay while the details panel, a sheet, the note editor or the crop screen is open, and for the full
+        // time again after it closes.
+        .task(id: [chrome, showInfo, choosingStory, choosingTag, editingCaption, cropping != nil]) {
+            guard chrome, !showInfo, !choosingStory, !choosingTag, !editingCaption, cropping == nil else { return }
+            try? await Task.sleep(for: .seconds(3))
+            if !Task.isCancelled { chrome = false }
         }
         .onChange(of: currentId, initial: true) { actions.showing(currentId) }
         .sheet(isPresented: $choosingStory) {
@@ -199,13 +166,75 @@ struct MediaViewerView: View {
         }
         .sheet(isPresented: $editingCaption) {
             if let item = items[safe: index] {
-                WritingEditor(title: String(localized: "Note"), initial: stories.note(itemId: item.id)?.caption ?? "") {
-                    actions.setCaption(item.id, $0)
-                }
+                NoteEditor(
+                    note: stories.note(itemId: item.id),
+                    onSave: { actions.setWriting(item.id, $0, $1) },
+                    onRestore: { actions.restoreWriting(item.id, $0) }
+                )
             }
         }
         .cropCover($cropping, stories: stories, save: actions.setCrops)
         .statusBarHidden(!showInfo)
+    }
+
+    private func toggleChrome() {
+        showInfo = false
+        chrome.toggle()
+    }
+
+    private func topBar(index: Int) -> some View {
+        HStack {
+            Button(action: onClose) {
+                Image(systemName: "chevron.backward").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Back")
+            if let item = items[safe: index] {
+                Text("\(index + 1) of \(items.count) · \(item.day.label)")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(white: 0.75))
+            }
+            Spacer()
+            // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
+            if let item = items[safe: index],
+               let coverOf = group.map({ $0.coverStop(itemId: item.id) }) ?? openedFrom?.coverStop(itemId: item.id) {
+                Button { actions.openGroup(coverOf.id) } label: {
+                    Label("\(Int(coverOf.itemCount)) · Open", systemImage: "square.on.square")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            Button { showInfo.toggle() } label: {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 20))
+                    .frame(width: 44, height: 44)
+                    .background(showInfo ? Color.white.opacity(0.16) : .clear, in: Circle())
+            }
+            .accessibilityLabel("Details")
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 4)
+        .background(LibraryColors.topFade.ignoresSafeArea())
+    }
+
+    private func infoPanel(item: MediaItem) -> some View {
+        let memberOf = stories.storiesContaining(itemId: item.id)
+        return InfoPanel(
+            item: item,
+            note: stories.note(itemId: item.id),
+            onEditCaption: { editingCaption = true },
+            onAddTag: { choosingTag = true },
+            onRemoveTag: { actions.toggleTag(item.id, $0, false) },
+            memberOf: memberOf,
+            removable: openedFrom.flatMap { from in memberOf.contains { $0.id == from.id } ? from : nil },
+            onAddToStory: { choosingStory = true },
+            onRemove: { actions.toggleStory($0.id, item.id, false) },
+            group: group,
+            onSetCover: { actions.setCover(item.id) },
+            onRemoveFromGroup: { actions.removeFromGroup(item.id) },
+            location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
+            downloadOriginal: actions.downloadOriginal,
+            deleteFromPhone: actions.deleteFromPhone,
+            setPrivate: actions.setPrivate
+        )
     }
 }
 
@@ -373,6 +402,8 @@ private struct ViewerAction: View {
 private struct VideoPage: View {
     let item: MediaItem
     let isCurrent: Bool
+    /// A tap on the poster, or on the playing video (which also shows the player's own controls).
+    var onTap: () -> Void = {}
 
     @State private var player: AVPlayer?
     @State private var poster: UIImage?
@@ -384,6 +415,7 @@ private struct VideoPage: View {
             ZStack {
                 if let player {
                     VideoPlayer(player: player)
+                        .simultaneousGesture(TapGesture().onEnded(onTap))
                 } else {
                     if let poster {
                         Image(uiImage: poster).resizable().scaledToFit()
@@ -410,6 +442,8 @@ private struct VideoPage: View {
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
+            .contentShape(Rectangle())
+            .onTapGesture { if player == nil { onTap() } }
             .task(id: item.id) {
                 // A video only on the server shows the poster already kept (a tile's), asking for no new size.
                 poster = item.hasOriginalHere
@@ -484,10 +518,22 @@ private struct InfoPanel: View {
                 Button(action: onEditCaption) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Note").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
-                        Text(note?.caption.isBlank == false ? note!.caption : String(localized: "Write about this photo…"))
-                            .font(.system(size: 16, design: .serif))
-                            .foregroundStyle(note?.caption.isBlank == false ? LibraryColors.onInverse : LibraryColors.onInverseMuted)
-                            .multilineTextAlignment(.leading)
+                        if let note, !note.title.isBlank {
+                            Text(note.title)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(LibraryColors.onInverse)
+                                .multilineTextAlignment(.leading)
+                        }
+                        if let note, !note.caption.isBlank {
+                            Text(note.caption)
+                                .font(.system(size: 16, design: .serif))
+                                .foregroundStyle(LibraryColors.onInverse)
+                                .multilineTextAlignment(.leading)
+                        } else if note?.hasWriting != true {
+                            Text("Write about this photo…")
+                                .font(.system(size: 16, design: .serif))
+                                .foregroundStyle(LibraryColors.onInverseMuted)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)

@@ -27,6 +27,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
+- **Badges** (both platforms, asked for Oct 21, 2026): **Show the phone badge**, a switch, **off** by default: the
+  green phone on grid tiles and Moments photos that are on this phone and backed up (see
+  [README.md](README.md#backup-badges)). Off, a photo just taken and uploaded has no badge; waiting, uploading and
+  failed photos always have one, and the viewer's details always say where the original is (`show_on_phone_badge`).
 - **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
   writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
   every format itself, JPEG XL from iOS 17):

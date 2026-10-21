@@ -22,6 +22,7 @@ struct SettingsView: View {
         Form {
             shownSourcesSection
             backupSections
+            badgesSection
             storageSection
             freeUpSection
             Section {
@@ -279,6 +280,22 @@ extension SettingsView {
             }
         } header: {
             Text("Free up space")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// "Show the phone badge" (off by default): the phone on photos that are on this phone and backed up.
+    private var badgesSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { settings.state.showOnPhoneBadge }, set: settings.setShowOnPhoneBadge)) {
+                ModeLabel(
+                    title: "Show the phone badge",
+                    detail: "Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge."
+                )
+            }
+            .tint(LibraryColors.accent)
+        } header: {
+            Text("Badges")
         }
         .listRowBackground(LibraryColors.raised)
     }

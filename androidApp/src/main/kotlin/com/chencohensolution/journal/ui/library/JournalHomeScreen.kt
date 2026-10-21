@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.FeedBlock
+import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.FeedReveal
 import com.chencohensolution.journal.stories.RevealedPhotos
 import com.chencohensolution.journal.stories.FeedSection
@@ -106,7 +107,8 @@ internal class HomeActions(
     /** A swipe set (its photos, in order) was turned to a photo: it opens there next time. */
     val turnSet: (itemIds: List<String>, itemId: String) -> Unit = { _, _ -> },
     /** From a photo's long-press menu in Moments, by item id. */
-    val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
+    val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
+    val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
     val crop: (itemId: String) -> Unit = {},
     /** From a photo's menu, or a band's "Add to a story" with all its photos. */
     val toggleStory: (storyId: String, itemIds: List<String>, add: Boolean) -> Unit = { _, _, _ -> },
@@ -349,7 +351,7 @@ internal fun JournalHomeScreen(
             val block = feedRows.firstNotNullOfOrNull { row -> (row as? FeedRow.Photo)?.block?.takeIf { block -> block.items.any { it.id == item.id } } }
             FeedItemMenu(
                 item,
-                note = stories.notes[item.id]?.caption,
+                note = stories.notes[item.id]?.let { it.title.ifBlank { it.caption } },
                 inSet = block is FeedBlock.Similar,
                 onDismiss = { menuItem = null },
                 onChoose = { choice ->
@@ -368,12 +370,15 @@ internal fun JournalHomeScreen(
     }
 
     writingFor?.let { id ->
-        WritingEditor(
-            title = stringResource(R.string.library_note_title),
-            initial = stories.notes[id]?.caption.orEmpty(),
-            onSave = {
+        NoteEditor(
+            note = stories.notes[id],
+            onSave = { title, text ->
                 writingFor = null
-                actions.setCaption(id, it)
+                actions.setWriting(id, title, text)
+            },
+            onRestore = { version ->
+                writingFor = null
+                actions.restoreWriting(id, version)
             },
             onDismiss = { writingFor = null },
         )

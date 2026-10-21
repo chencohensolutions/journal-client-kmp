@@ -19,7 +19,7 @@ are gathered into **stories** with the owner's writing, grouped into moments, an
 | **Story** | A title (optional; an untitled story is named by its dates) over a set of photos, with text: a trip, a birthday, "Our dog". **No dates of its own**; the span shown comes from its photos. A photo can be in many stories. Was called "event" until it was renamed. |
 | **Group** | Photos of one moment shown as one tile inside a story (a burst, or picked by hand), with its own text. Groups nest: a group's tiles are its photos and its subgroups. Within a story a photo is directly in at most one group. |
 | **Tag** | A label on a photo, for photos that belong somewhere but don't deserve a story. Free text, compared ignoring case. |
-| **Note** | A photo's own text (caption), shown wherever the photo appears. |
+| **Note** | A photo's own writing, a title and a paragraph (`caption`) with earlier versions, shown wherever the photo appears. |
 | **Unsorted** | Photos in no story **and** without tags. A note alone doesn't sort a photo. Neighboring days on a story page offer only these. |
 
 ## Decisions (and why)
@@ -100,8 +100,10 @@ journal/
                                     dismissed suggestions; format v1
       story.md                    ← "# Title", opening text, then <!-- group:g1 --> sections
   media/
-    22.json                       ← one note per photo: caption, tags, crops, Moments set and the
-                                    photo a set opens on ("front") (device id; "/" etc. become "_")
+    22.json                       ← one note per photo (format v3): title, caption (the paragraph),
+                                    writtenAt, history [{title, text, savedAt}], tags, crops, Moments
+                                    set and the photo a set opens on ("front") (device id; "/" etc.
+                                    become "_")
 ```
 
 - **Ids**: the UTC creation time with dashes (valid folder name everywhere). Each device issues strictly increasing

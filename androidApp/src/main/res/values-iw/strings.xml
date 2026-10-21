@@ -187,6 +187,19 @@
     <string name="library_info_tags">תגיות</string>
     <string name="library_note_title">הערה</string>
     <string name="library_note_prompt">כתבו על התמונה הזו…</string>
+    <string name="note_writing">כתיבה</string>
+    <string name="note_title_hint">כותרת</string>
+    <string name="note_no_title">ללא כותרת</string>
+    <string name="note_history">היסטוריה</string>
+    <string name="note_restore">שחזור הגרסה הזו</string>
+    <string name="note_discard_title">לבטל את השינויים?</string>
+    <string name="note_discard">ביטול השינויים</string>
+    <string name="note_keep_editing">המשך עריכה</string>
+    <plurals name="note_edited">
+        <item quantity="one">נערך פעם אחת · לאחרונה %2$s</item>
+        <item quantity="two">נערך פעמיים · לאחרונה %2$s</item>
+        <item quantity="other">נערך %1$d פעמים · לאחרונה %2$s</item>
+    </plurals>
 
     <!-- Enrollment wizard -->
     <string name="enroll_welcome_title">חיבור המכשיר הזה ליומן שלך</string>
@@ -267,6 +280,9 @@
     <string name="settings_similarity_label">רמת דמיון</string>
     <string name="settings_similarity_body">גבוה יותר: רק תמונות שנראות כמעט זהות מוצעות יחד. נמוך יותר: יותר תמונות בכל הצעה, אבל פחות דומות.</string>
     <string name="settings_similarity_reset">איפוס ל־%d%%</string>
+    <string name="settings_badges_title">סימוני גיבוי</string>
+    <string name="settings_on_phone_badge">הצגת תגית הטלפון</string>
+    <string name="settings_on_phone_badge_body">מסמנת תמונות שנמצאות בטלפון הזה וגם מגובות. לתמונות שממתינות להעלאה, בהעלאה או שההעלאה שלהן נכשלה תמיד יש תגית.</string>
     <string name="settings_private_title">מדיה פרטית</string>
     <string name="settings_private_switch">הצגת מדיה פרטית</string>
     <string name="settings_private_switch_body">כשכבוי, תמונות וסרטונים שסימנת כפרטיים, ואלה שהשרת מצא בהם עירום, מוסתרים בכל מקום, ולא יורדים לטלפון הזה.</string>

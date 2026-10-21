@@ -95,7 +95,8 @@ struct LibraryRootView: View {
                             merge: stories.mergeInFeed,
                             takeOutOfSet: stories.takeOutOfSet,
                             turnSet: { stories.turnSet($0, to: $1) },
-                            setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
+                            setWriting: { itemId, title, text in stories.setWriting(title: title, text: text, of: itemId) },
+                            restoreWriting: { itemId, version in stories.restoreWriting(version, of: itemId) },
                             // The crop screen, on the photo's Moments crop.
                             crop: { item in crop = CropRequest(itemId: item.id, kind: .moments) },
                             toggleStory: { storyId, itemIds, add in
@@ -215,6 +216,7 @@ struct LibraryRootView: View {
                     }
                 }
                 .environment(\.zoomNamespace, zoom)
+                .environment(\.showOnPhoneBadge, settings.state.showOnPhoneBadge)
                 .cropCover($crop, stories: stories.state) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in
@@ -245,7 +247,8 @@ struct LibraryRootView: View {
                                 if add { stories.add([itemId], to: storyId) } else { stories.remove([itemId], from: storyId) }
                             },
                             createStory: { title, itemId in stories.createStory(title: title, itemIds: [itemId]) },
-                            setCaption: { itemId, text in stories.setCaption(text, of: itemId) },
+                            setWriting: { itemId, title, text in stories.setWriting(title: title, text: text, of: itemId) },
+                            restoreWriting: { itemId, version in stories.restoreWriting(version, of: itemId) },
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },

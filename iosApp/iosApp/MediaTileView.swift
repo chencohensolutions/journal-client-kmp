@@ -7,6 +7,7 @@ struct MediaTileView: View {
     let item: MediaItem
     var badgeSize: CGFloat = 22
     var crop: TileCrop = .none
+    @Environment(\.showOnPhoneBadge) private var showOnPhoneBadge
 
     @State private var thumbnail: UIImage?
 
@@ -24,7 +25,8 @@ struct MediaTileView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                BackupBadge(status: item.backup, size: badgeSize, originalHere: item.hasOriginalHere).padding(5)
+                BackupBadge(status: item.backup, size: badgeSize, originalHere: item.hasOriginalHere, showOnPhone: showOnPhoneBadge)
+                    .padding(5)
             }
             .task(id: item.id) {
                 // Zoomed in, the tile shows a part of a larger image.
@@ -81,16 +83,23 @@ struct DurationChip: View {
     }
 }
 
+extension EnvironmentValues {
+    /// Settings → Badges, "Show the phone badge", for the tiles and Moments; set by the library root.
+    @Entry var showOnPhoneBadge = false
+}
+
 /// The corner badge; see docs/screens/README.md for what each state means. None when the original is only on the
-/// server (`originalHere` false).
+/// server (`originalHere` false), or backed up while the phone badge is off (`showOnPhone` false).
 struct BackupBadge: View {
     let status: BackupStatus
     let size: CGFloat
     /// False for a photo only on the server: backed up, it has no badge.
     var originalHere = true
+    /// False to leave out the phone a backed-up photo on this phone would have.
+    var showOnPhone = true
 
     var body: some View {
-        if !(status.isBackedUp && !originalHere) {
+        if !(status.isBackedUp && !(originalHere && showOnPhone)) {
             ZStack {
                 Circle().fill(background)
                 symbol

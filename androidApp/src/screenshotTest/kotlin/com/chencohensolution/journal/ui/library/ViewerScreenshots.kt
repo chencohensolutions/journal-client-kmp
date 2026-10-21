@@ -11,7 +11,7 @@ import com.android.tools.screenshot.PreviewTest
 @Composable
 fun ViewerCropped() = Screen {
     LibraryTheme(dark = true) {
-        ViewerScreen(listOf(PreviewData.tripPhoto), PreviewData.tripPhoto.id, PreviewData.feedStories, null, null, ViewerActions())
+        ViewerScreen(listOf(PreviewData.tripPhoto), PreviewData.tripPhoto.id, PreviewData.feedStories, null, null, ViewerActions(), chromeAtStart = true)
     }
 }
 
@@ -20,6 +20,6 @@ fun ViewerCropped() = Screen {
 @Composable
 fun ViewerWhole() = Screen {
     LibraryTheme(dark = true) {
-        ViewerScreen(listOf(PreviewData.notedPhoto), PreviewData.notedPhoto.id, PreviewData.feedStories, null, null, ViewerActions())
+        ViewerScreen(listOf(PreviewData.notedPhoto), PreviewData.notedPhoto.id, PreviewData.feedStories, null, null, ViewerActions(), chromeAtStart = true)
     }
 }

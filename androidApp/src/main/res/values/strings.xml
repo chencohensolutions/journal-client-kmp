@@ -175,6 +175,18 @@
     <string name="library_info_tags">Tags</string>
     <string name="library_note_title">Note</string>
     <string name="library_note_prompt">Write about this photo…</string>
+    <string name="note_writing">Writing</string>
+    <string name="note_title_hint">Title</string>
+    <string name="note_no_title">No title</string>
+    <string name="note_history">History</string>
+    <string name="note_restore">Restore this version</string>
+    <string name="note_discard_title">Discard changes?</string>
+    <string name="note_discard">Discard</string>
+    <string name="note_keep_editing">Keep editing</string>
+    <plurals name="note_edited">
+        <item quantity="one">Edited once · last %2$s</item>
+        <item quantity="other">Edited %1$d times · last %2$s</item>
+    </plurals>
 
     <!-- Enrollment wizard -->
     <string name="enroll_welcome_title">Connect this device to your journal</string>
@@ -255,6 +267,9 @@
     <string name="settings_similarity_label">How alike</string>
     <string name="settings_similarity_body">Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike.</string>
     <string name="settings_similarity_reset">Reset to %d%%</string>
+    <string name="settings_badges_title">Badges</string>
+    <string name="settings_on_phone_badge">Show the phone badge</string>
+    <string name="settings_on_phone_badge_body">Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge.</string>
     <string name="settings_private_title">Private media</string>
     <string name="settings_private_switch">Show private media</string>
     <string name="settings_private_switch_body">When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone.</string>

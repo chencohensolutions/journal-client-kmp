@@ -16,8 +16,13 @@ doesn't pull it out from under you. If the open item is deleted from the device,
 
 ## Layout
 
+The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar, the bottom buttons and the
+crop chip for 3 seconds, and another tap hides them sooner. They stay while the details panel, a sheet or the note
+editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
+Swiping is not a tap; a playing video's own controls take its taps.
+
 - **Top bar:** back, the position ("4 of 29 · Yesterday"), and the **ⓘ** button.
-- **Bottom:** **Write** (the note editor) and **Crop** (photos only; opens the [crop screen](crop.md) on
+- **Bottom:** **Write** (the note editor, below) and **Crop** (photos only; opens the [crop screen](crop.md) on
   Portrait or Landscape, as the phone is held). Hidden while the details panel is open.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top.
@@ -27,7 +32,15 @@ doesn't pull it out from under you. If the open item is deleted from the device,
   controls, iOS `VideoPlayer`). Swiping away stops it.
 - **Details panel** (ⓘ, hidden by default):
   - The date ("Friday, October 16, 2026") and time.
-  - **Note:** the photo's own text (serif), shown wherever the photo appears. Tap to write or edit.
+  - **Note:** the photo's title (semibold) and paragraph (serif), shown wherever the photo appears. Tap to write or
+    edit.
+- **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
+  box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save
+  keeps what was written before as a version, unless it was saved less than 10 minutes earlier (a quick fix is the
+  same version). With versions, a line under the boxes, "Edited 3 times · last Oct 21, 14:02", opens **History**:
+  the versions newest first (when, title or "No title", the start of the paragraph). One opens in full, with what
+  the version after it (or the writing now) no longer has highlighted, and **Restore this version**, which saves it
+  as the writing and keeps what it replaced as a version too, so nothing is lost. Moments doesn't show history.
   - **Tags:** chips with ×, and **+ Tag**, which opens the same kind of search sheet for tags (recent tags before
     typing, **Create tag "…"** for a new one). See [tags.md](tags.md).
   - **Stories:** the stories the item is in ("Car trouble, Walk with the dog", or "Not in any story"),

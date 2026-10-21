@@ -79,6 +79,7 @@ final class SettingsViewModel: ObservableObject {
 
     func setShowPrivateMedia(_ show: Bool) { controller.setShowPrivateMedia(show: show) }
     func setPrivateThresholdPercent(_ percent: Int) { controller.setPrivateThresholdPercent(percent: Int32(percent)) }
+    func setShowOnPhoneBadge(_ show: Bool) { controller.setShowOnPhoneBadge(show: show) }
 
     /// What the limit offers, in GB.
     static var previewLimitOptions: [Int] { SettingsState.Companion.shared.PREVIEW_CACHE_GB_OPTIONS.map { $0.intValue } }

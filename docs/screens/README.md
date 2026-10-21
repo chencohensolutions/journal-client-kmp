@@ -67,7 +67,7 @@ with backup):
 
 | Badge | State | Meaning |
 |---|---|---|
-| Phone, green | `BackedUp`, original here | On this phone (in the gallery, or downloaded and kept) and on the server |
+| Phone, green | `BackedUp`, original here | On this phone (in the gallery, or downloaded and kept) and on the server. Grid tiles and Moments show it only with Settings → Badges → **Show the phone badge** on (off by default, Oct 21, 2026); the viewer's details always do |
 | Cloud with a slash, dark | `NotBackedUp` | Only on this phone, not uploaded yet |
 | Dashed ring, dark | `Queued` | Waiting to upload (for example, for Wi-Fi) |
 | Ring filling up, green | `Uploading(progress)` | Uploading; exact % in the viewer |

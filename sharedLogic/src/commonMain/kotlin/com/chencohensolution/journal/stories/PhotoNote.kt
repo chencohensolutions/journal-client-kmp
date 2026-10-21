@@ -7,9 +7,12 @@ import kotlinx.serialization.json.jsonObject
 import okio.FileSystem
 import okio.IOException
 import okio.Path
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
- * What the user wrote about one photo or video, wherever it appears: a caption and tags, and how it is cropped for
+ * What the user wrote about one photo or video, wherever it appears: a title and a paragraph ([caption]) with their
+ * earlier versions ([history]), tags, and how it is cropped for
  * looking at ([crops]; the photo itself is never changed). Like story members, it is
  * identified by device id until uploads exist; [fileName] and [takenAtMillis] help match it to its server copy.
  */
@@ -17,6 +20,7 @@ data class PhotoNote(
     val deviceId: String,
     val fileName: String?,
     val takenAtMillis: Long,
+    /** The paragraph: shown under the photo in Moments (the title is above it). */
     val caption: String = "",
     /** As the user typed them; compared ignoring case. */
     val tags: List<String> = emptyList(),
@@ -29,9 +33,42 @@ data class PhotoNote(
     val apart: Boolean = false,
     /** The photo its set in Moments opens on: the one it was last turned to (never its first, where it opens anyway). */
     val front: Boolean = false,
+    /** Shown above the photo in Moments. */
+    val title: String = "",
+    /** When [title] and [caption] were saved (RFC 3339); null for a note written before titles existed. */
+    val writtenAt: String? = null,
+    /** Earlier versions of the title and paragraph, oldest first. */
+    val history: List<NoteVersion> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = caption.isBlank() && tags.isEmpty() && crops.isEmpty && feedSet == null && !apart && !front
+    val isEmpty: Boolean
+        get() = caption.isBlank() && title.isBlank() && history.isEmpty() && tags.isEmpty() && crops.isEmpty &&
+            feedSet == null && !apart && !front
+
+    val hasWriting: Boolean get() = title.isNotBlank() || caption.isNotBlank()
+
+    /**
+     * The note with [title] and [text] saved at [now]. What was written before becomes a version in [history], unless
+     * it was saved less than [VERSION_GAP] ago (a quick fix is part of the same version) or [keepPrevious] is false
+     * and it was. A restored version always keeps what it replaces ([keepPrevious] true).
+     */
+    fun withWriting(title: String, text: String, now: String, keepPrevious: Boolean = false): PhotoNote {
+        val newTitle = title.trim()
+        val newText = text.trim()
+        if (newTitle == this.title && newText == caption) return this
+        val previousAt = writtenAt ?: updatedAt
+        val recent = writtenAt?.let { at -> runCatching { Instant.parse(now) - Instant.parse(at) < VERSION_GAP }.getOrNull() } == true
+        val kept = if (hasWriting && (keepPrevious || !recent)) history + NoteVersion(this.title, caption, previousAt) else history
+        return copy(title = newTitle, caption = newText, writtenAt = now, history = kept)
+    }
+
+    companion object {
+        /** Saves closer together than this are one version. */
+        val VERSION_GAP = 10.minutes
+    }
 }
+
+/** An earlier title and paragraph of a note, and when they were saved (RFC 3339). */
+data class NoteVersion(val title: String, val text: String, val savedAt: String)
 
 /** Where photo notes are kept until they can be synced to the server. */
 internal interface PhotoNoteStore {
@@ -88,7 +125,10 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
 
     private companion object {
         /** The fields this version writes; everything else in a file is kept as it was. */
-        val NOTE_KEYS = setOf("v", "deviceId", "fileName", "takenAt", "caption", "tags", "crops", "set", "apart", "front", "updatedAt")
+        val NOTE_KEYS = setOf(
+            "v", "deviceId", "fileName", "takenAt", "title", "caption", "writtenAt", "history", "tags", "crops", "set", "apart", "front",
+            "updatedAt",
+        )
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
 
         /** [file] over [previous], keeping [previous]'s unknown fields, also inside "crops". */
@@ -109,14 +149,20 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
     }
 }
 
-/** media/<id>.json, format version 2 (version 1 had no crops, sets, apart or front). */
+/**
+ * media/<id>.json, format version 3 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt or
+ * history). "caption" is the paragraph.
+ */
 @Serializable
 private data class NoteFile(
-    val v: Int = 2,
+    val v: Int = 3,
     val deviceId: String,
     val fileName: String? = null,
     val takenAt: Long = 0,
+    val title: String? = null,
     val caption: String = "",
+    val writtenAt: String? = null,
+    val history: List<VersionFile>? = null,
     val tags: List<String> = emptyList(),
     val crops: CropsFile? = null,
     /** The set merged by hand in Moments; "apart": taken out of one. */
@@ -126,14 +172,22 @@ private data class NoteFile(
     val front: Boolean? = null,
     val updatedAt: String = "",
 ) {
-    fun toNote() = PhotoNote(deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true, front == true)
+    fun toNote() = PhotoNote(
+        deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true, front == true,
+        title = title.orEmpty(),
+        writtenAt = writtenAt,
+        history = history.orEmpty().map { NoteVersion(it.title.orEmpty(), it.text.orEmpty(), it.savedAt) },
+    )
 
     companion object {
         fun of(note: PhotoNote) = NoteFile(
             deviceId = note.deviceId,
             fileName = note.fileName,
             takenAt = note.takenAtMillis,
+            title = note.title.ifEmpty { null },
             caption = note.caption,
+            writtenAt = note.writtenAt,
+            history = note.history.takeIf { it.isNotEmpty() }?.map { VersionFile(it.title.ifEmpty { null }, it.text.ifEmpty { null }, it.savedAt) },
             tags = note.tags,
             crops = note.crops.takeIf { !it.isEmpty }?.let(CropsFile::of),
             set = note.feedSet,
@@ -143,6 +197,10 @@ private data class NoteFile(
         )
     }
 }
+
+/** One of "history": an earlier title and paragraph and when they were saved. */
+@Serializable
+private data class VersionFile(val title: String? = null, val text: String? = null, val savedAt: String)
 
 /** "crops": {"moments": {...}, "portrait": {...}, "landscape": {...}}, each missing when not set. */
 @Serializable

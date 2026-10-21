@@ -1893,6 +1893,16 @@
         }
       }
     },
+    "Badges" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סימוני גיבוי"
+          }
+        }
+      }
+    },
     "By breaks between photos" : {
       "localizations" : {
         "he" : {
@@ -2289,6 +2299,26 @@
         }
       }
     },
+    "Discard" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול השינויים"
+          }
+        }
+      }
+    },
+    "Discard changes?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לבטל את השינויים?"
+          }
+        }
+      }
+    },
     "Dismiss" : {
 
     },
@@ -2388,6 +2418,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עריכת מה שנכתב"
+          }
+        }
+      }
+    },
+    "Edited %lld times · last %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נערך %lld פעמים · לאחרונה %@"
+          }
+        }
+      }
+    },
+    "Edited 1 time · last %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נערך פעם אחת · לאחרונה %@"
           }
         }
       }
@@ -2774,6 +2824,16 @@
         }
       }
     },
+    "History" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היסטוריה"
+          }
+        }
+      }
+    },
     "Home" : {
       "localizations" : {
         "he" : {
@@ -2914,6 +2974,16 @@
     "K7QM-4XPD" : {
       "shouldTranslate" : false
     },
+    "Keep editing" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך עריכה"
+          }
+        }
+      }
+    },
     "Keep the newest" : {
       "localizations" : {
         "he" : {
@@ -3050,6 +3120,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מפה"
+          }
+        }
+      }
+    },
+    "Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסמנת תמונות שנמצאות בטלפון הזה וגם מגובות. לתמונות שממתינות להעלאה, בהעלאה או שההעלאה שלהן נכשלה תמיד יש תגית."
           }
         }
       }
@@ -3260,6 +3340,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עדיין אין תגיות. הקלידו תגית למעלה כדי ליצור אותה."
+          }
+        }
+      }
+    },
+    "No title" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ללא כותרת"
           }
         }
       }
@@ -4013,6 +4103,16 @@
     "journal.example.com:56398" : {
 
     },
+    "Restore this version" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחזור הגרסה הזו"
+          }
+        }
+      }
+    },
     "Rows in Moments" : {
       "localizations" : {
         "he" : {
@@ -4259,6 +4359,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הצגת מדיה פרטית"
+          }
+        }
+      }
+    },
+    "Show the phone badge" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת תגית הטלפון"
           }
         }
       }
@@ -5183,6 +5293,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כתבו על הסיפור הזה…"
+          }
+        }
+      }
+    },
+    "Writing" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כתיבה"
           }
         }
       }

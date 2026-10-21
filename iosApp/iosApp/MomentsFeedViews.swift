@@ -166,7 +166,7 @@ struct FeedRowsView: View {
         let crop = item.isVideo ? nil : note(item.id)?.crops.moments
         let ratio = crop.map { CGFloat($0.ratioOn(photoRatio: Float(item.ratio))) } ?? item.ratio
         return VStack(spacing: 0) {
-            FeedNoteText(caption: note(item.id)?.caption)
+            FeedNoteTitle(title: note(item.id)?.title)
             FeedPhoto(item: item, size: CGSize(width: width, height: width / ratio), crop: crop, playback: playback)
                 .overlay { if !selection.isEmpty { SelectionOverlay(selected: selection.contains(block.key)) } }
                 .zoomSource(ZoomID.item(item.id))
@@ -174,6 +174,7 @@ struct FeedRowsView: View {
                 .onTapGesture { tap(item, block: block, in: section) }
                 .contextMenu { menu(for: item, block: block) }
                 .modifier(ReportsVideo(active: item.isVideo, key: block.key, itemId: item.id, playback: playback))
+            FeedNoteText(caption: note(item.id)?.caption)
         }
         .padding(.bottom, tileGap)
     }
@@ -193,7 +194,7 @@ struct FeedRowsView: View {
     private func menu(for item: MediaItem, block: FeedBlock) -> some View {
         if selection.isEmpty && actions.menus {
             Section("\(item.day.label) · \(item.takenAt.formatted(date: .omitted, time: .shortened))") {
-                let written = note(item.id)?.caption.isBlank == false
+                let written = note(item.id)?.hasWriting == true
                 Button { actions.write(item) } label: {
                     Label(written ? "Edit what you wrote" : "Write about it", systemImage: "pencil")
                 }
@@ -247,6 +248,7 @@ struct FeedPhoto: View {
     let size: CGSize
     var crop: CropRect? = nil
     @ObservedObject var playback: FeedPlayback
+    @Environment(\.showOnPhoneBadge) private var showOnPhoneBadge
 
     @State private var image: UIImage?
     @State private var showing = false
@@ -269,7 +271,8 @@ struct FeedPhoto: View {
             if playing && !failed {
                 MuteButton(muted: playback.muted, onToggle: playback.toggleMute).padding(4)
             } else {
-                BackupBadge(status: item.backup, size: 26, originalHere: item.hasOriginalHere).padding(10)
+                BackupBadge(status: item.backup, size: 26, originalHere: item.hasOriginalHere, showOnPhone: showOnPhoneBadge)
+                    .padding(10)
             }
         }
         .overlay(alignment: .bottomLeading) {
@@ -351,7 +354,7 @@ private struct FeedSet: View {
         let index = items.firstIndex { $0.id == current } ?? 0
         let height = width / items[0].ratio
         VStack(spacing: 0) {
-            FeedNoteText(caption: note(items[index].id)?.caption)
+            FeedNoteTitle(title: note(items[index].id)?.title)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
                     ForEach(items, id: \.id) { item in
@@ -378,6 +381,7 @@ private struct FeedSet: View {
             .modifier(ReportsVideo(
                 active: items.contains { $0.isVideo }, key: block.key, itemId: items[index].isVideo ? items[index].id : nil, playback: playback
             ))
+            FeedNoteText(caption: note(items[index].id)?.caption)
         }
         .onAppear { prefetch(around: index, height: height) }
         .onChange(of: current) { _, id in
@@ -437,8 +441,25 @@ private struct FeedSet: View {
 
 private let maxDots = 8
 
-/// The photo's note above it, in the serif of written text: up to four lines, then "more" (tap to read it all).
-/// Nothing when it has none.
+/// The title the user gave a photo, above it. Nothing when it has none.
+private struct FeedNoteTitle: View {
+    let title: String?
+
+    var body: some View {
+        if let title, !title.isBlank {
+            Text(title)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(LibraryColors.onBackground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 10)
+        }
+    }
+}
+
+/// The paragraph the user wrote about a photo, under it, in the serif of written text: up to four lines, then "more"
+/// (tap to read it all). Nothing when it has none.
 private struct FeedNoteText: View {
     let caption: String?
 
@@ -467,7 +488,7 @@ private struct FeedNoteText: View {
             .contentShape(Rectangle())
             .onTapGesture { if cut || expanded { expanded.toggle() } }
             .padding(.horizontal, 16)
-            .padding(.top, 4)
+            .padding(.top, 10)
             .padding(.bottom, 12)
         }
     }

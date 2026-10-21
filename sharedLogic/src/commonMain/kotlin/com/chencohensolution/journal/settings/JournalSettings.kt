@@ -150,6 +150,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_PRIVATE_THRESHOLD_PERCENT, value.thresholdPercent.toString())
         }
 
+    /** "Show the phone badge" (Settings → Badges): off by default. */
+    var showOnPhoneBadge: Boolean
+        get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
+        set(value) = store.putString(KEY_SHOW_ON_PHONE_BADGE, value.toString())
+
     /** The rule "Free up space" used last ("all", "days:365" or "keep:10"). */
     var freeUpRule: FreeUpRule
         get() {
@@ -201,5 +206,6 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_PREVIEW_QUALITY = "preview_quality"
         private const val KEY_SHOW_PRIVATE_MEDIA = "show_private_media"
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
+        private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
     }
 }

@@ -96,7 +96,10 @@ final class StoriesViewModel: ObservableObject {
 
     // MARK: Captions and tags
 
-    func setCaption(_ text: String, of itemId: String) { controller.setCaption(itemId: itemId, text: text) }
+    /// The photo's title and paragraph; what was there before is kept as a version.
+    func setWriting(title: String, text: String, of itemId: String) { controller.setWriting(itemId: itemId, title: title, text: text) }
+    /// Back to an earlier version; what it replaces is kept too.
+    func restoreWriting(_ version: NoteVersion, of itemId: String) { controller.restoreWriting(itemId: itemId, version: version) }
 
     /// The photo's crops, for looking only (the photo isn't changed); empty crops remove them.
     func setCrops(_ crops: PhotoCrops, of itemId: String) { controller.setCrops(itemId: itemId, crops: crops) }

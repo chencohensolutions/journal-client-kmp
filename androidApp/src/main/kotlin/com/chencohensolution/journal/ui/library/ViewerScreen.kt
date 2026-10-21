@@ -8,6 +8,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.core.tween
@@ -60,6 +66,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
+import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoryTile
 import com.chencohensolution.journal.stories.StoryView
 import com.chencohensolution.journal.stories.StoriesState
@@ -72,6 +79,9 @@ import kotlinx.coroutines.withContext
 /** Longest side of a photo decoded for the viewer. */
 private const val VIEWER_MAX_SIDE = 2560
 
+/** How long the bars and buttons stay after a tap on the photo. */
+private const val CHROME_MILLIS = 3_000L
+
 internal class ViewerActions(
     val back: () -> Unit = {},
     val openGroup: (groupId: String) -> Unit = {},
@@ -79,7 +89,9 @@ internal class ViewerActions(
     val removeFromGroup: (itemId: String) -> Unit = {},
     val toggleStory: (storyId: String, itemId: String, add: Boolean) -> Unit = { _, _, _ -> },
     val createStory: (title: String, itemId: String) -> Unit = { _, _ -> },
-    val setCaption: (itemId: String, text: String) -> Unit = { _, _ -> },
+    val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
+    /** Back to an earlier version of the photo's writing. */
+    val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
     val showing: (itemId: String) -> Unit = {},
@@ -123,6 +135,8 @@ internal fun ViewerScreen(
     openedFrom: StoryView?,
     group: GroupView?,
     actions: ViewerActions,
+    /** The bars and buttons shown on opening (for the screen previews); a tap shows them otherwise. */
+    chromeAtStart: Boolean = false,
 ) {
     val onBack = actions.back
     if (items.isEmpty()) {
@@ -132,6 +146,8 @@ internal fun ViewerScreen(
     }
     val pager = rememberPagerState(initialPage = items.indexOfFirst { it.id == startId }.coerceAtLeast(0)) { items.size }
     var showInfo by rememberSaveable { mutableStateOf(false) }
+    // The bars and buttons over the photo: hidden at first, shown by a tap for CHROME_MILLIS, hidden by the next tap.
+    var chrome by remember { mutableStateOf(chromeAtStart) }
     var choosingStory by rememberSaveable { mutableStateOf(false) }
     var choosingTag by rememberSaveable { mutableStateOf(false) }
     var editingCaption by rememberSaveable { mutableStateOf(false) }
@@ -151,9 +167,27 @@ internal fun ViewerScreen(
         (group?.tiles ?: openedFrom?.tiles).orEmpty().filterIsInstance<StoryTile.Group>().associate { it.group.cover.id to it.group.id }
     }
     fun sharedKey(item: MediaItem) = groupOfCover[item.id]?.let(SharedKey::group) ?: SharedKey.item(item.id)
+    // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
+    LaunchedEffect(chrome, showInfo, choosingStory, choosingTag, editingCaption) {
+        if (chrome && !showInfo && !choosingStory && !choosingTag && !editingCaption) {
+            delay(CHROME_MILLIS)
+            chrome = false
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(pager, key = { items[it].id }, modifier = Modifier.fillMaxSize()) { page ->
+        HorizontalPager(
+            pager,
+            key = { items[it].id },
+            // A tap on the photo (not a swipe, nor one the play button or the player takes); the details panel and
+            // the bars are drawn over it and keep their own taps.
+            modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+                detectTapGestures {
+                    showInfo = false
+                    chrome = !chrome
+                }
+            },
+        ) { page ->
             val item = items[page]
             if (item.type == MediaType.VIDEO) {
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
@@ -162,18 +196,21 @@ internal fun ViewerScreen(
             }
         }
 
-        if (currentCrop != null && !showInfo) {
-            CropChip(
-                showingWhole = showWhole,
-                onToggle = { showWhole = !showWhole },
-                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 60.dp),
-            )
+        AnimatedVisibility(
+            chrome && currentCrop != null && !showInfo,
+            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 60.dp),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            CropChip(showingWhole = showWhole, onToggle = { showWhole = !showWhole })
         }
-        if (!showInfo) {
-            Row(
-                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+        AnimatedVisibility(
+            chrome && !showInfo,
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
                 if (current.type != MediaType.VIDEO) {
                     ViewerAction(LibraryIcons.Crop, stringResource(R.string.viewer_crop)) { actions.crop(current.id, cropKind) }
@@ -181,44 +218,45 @@ internal fun ViewerScreen(
             }
         }
 
-        Row(
-            Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .background(LibraryColors.TopFade)
-                .statusBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
-            }
-            Text(
-                stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
-                color = Color(0xFFB8C2BF),
-                fontSize = 14.sp,
-                modifier = Modifier.weight(1f),
-            )
-            // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
-            val coverOf = if (group != null) group.coverStop(current.id) else openedFrom?.coverStop(current.id)
-            if (coverOf != null) {
-                TextButton(onClick = { actions.openGroup(coverOf.id) }) {
-                    Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Text(
-                        stringResource(R.string.library_open_group, coverOf.itemCount),
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
-                }
-            }
-            IconButton(
-                onClick = { showInfo = !showInfo },
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (showInfo) Color.White.copy(alpha = 0.16f) else Color.Transparent,
-                ),
+        AnimatedVisibility(chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(LibraryColors.TopFade)
+                    .statusBarsPadding()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(LibraryIcons.Info, stringResource(R.string.library_viewer_details), tint = Color.White)
+                IconButton(onClick = onBack) {
+                    Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+                }
+                Text(
+                    stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
+                    color = Color(0xFFB8C2BF),
+                    fontSize = 14.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                // In a story or a group, a group inside it is one stop, shown as its cover; this opens the rest of it.
+                val coverOf = if (group != null) group.coverStop(current.id) else openedFrom?.coverStop(current.id)
+                if (coverOf != null) {
+                    TextButton(onClick = { actions.openGroup(coverOf.id) }) {
+                        Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Text(
+                            stringResource(R.string.library_open_group, coverOf.itemCount),
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = { showInfo = !showInfo },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = if (showInfo) Color.White.copy(alpha = 0.16f) else Color.Transparent,
+                    ),
+                ) {
+                    Icon(LibraryIcons.Info, stringResource(R.string.library_viewer_details), tint = Color.White)
+                }
             }
         }
 
@@ -255,12 +293,15 @@ internal fun ViewerScreen(
         )
     }
     if (editingCaption) {
-        WritingEditor(
-            title = stringResource(R.string.library_note_title),
-            initial = stories.note(current.id)?.caption.orEmpty(),
-            onSave = {
+        NoteEditor(
+            note = stories.note(current.id),
+            onSave = { title, text ->
                 editingCaption = false
-                actions.setCaption(current.id, it)
+                actions.setWriting(current.id, title, text)
+            },
+            onRestore = { version ->
+                editingCaption = false
+                actions.restoreWriting(current.id, version)
             },
             onDismiss = { editingCaption = false },
         )

@@ -61,6 +61,7 @@ internal class SettingsActions(
     val resetSimilarity: () -> Unit = {},
     val setShowPrivateMedia: (Boolean) -> Unit = {},
     val setPrivateThresholdPercent: (Int) -> Unit = {},
+    val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
@@ -91,6 +92,15 @@ internal fun SettingsScreen(
         ) {
             ShownSourcesSection(settings.shownSources, sourceCounts, actions)
             if (backup != null) BackupSection(backup, backupActions)
+            SectionTitle(stringResource(R.string.settings_badges_title))
+            Card {
+                SwitchRow(
+                    title = stringResource(R.string.settings_on_phone_badge),
+                    body = stringResource(R.string.settings_on_phone_badge_body),
+                    checked = settings.showOnPhoneBadge,
+                    onChange = actions.setShowOnPhoneBadge,
+                )
+            }
             if (storage != null) StorageSection(storage, storageActions)
             SectionTitle(stringResource(R.string.settings_grouping_title))
             Column(

@@ -209,7 +209,7 @@ internal fun LazyListScope.feedItems(
             is FeedRow.Label -> MomentLabel(row)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
-                    PhotoNoteText(notes[block.item.id]?.caption)
+                    PhotoTitle(notes[block.item.id]?.title)
                     Box {
                         FullWidthPhoto(
                             block.item,
@@ -222,6 +222,7 @@ internal fun LazyListScope.feedItems(
                         )
                         if (selection.active) SelectMark(block.key in selection.keys, Modifier.align(Alignment.TopStart).padding(10.dp))
                     }
+                    PhotoNoteText(notes[block.item.id]?.caption)
                 }
                 is FeedBlock.Similar -> SimilarPhotos(
                     block,
@@ -440,9 +441,22 @@ private fun MomentLabel(label: FeedRow.Label) {
 private fun timeRange(start: String, end: String): String =
     if (start == end) start else stringResource(R.string.feed_time_range, start, end)
 
+/** The title of the photo's writing, above it. Nothing when it has none. */
+@Composable
+private fun PhotoTitle(title: String?) {
+    if (title.isNullOrBlank()) return
+    Text(
+        title,
+        color = LibraryColors.OnBackground,
+        fontSize = 19.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
+    )
+}
+
 /**
- * The photo's note above it, in the serif of written text: up to four lines, then "more" (tap to read it all).
- * Nothing when it has none.
+ * The paragraph of the photo's writing, under it, in the serif of written text: up to four lines, then "more" (tap to
+ * read it all). Nothing when it has none.
  */
 @Composable
 private fun PhotoNoteText(caption: String?) {
@@ -450,7 +464,7 @@ private fun PhotoNoteText(caption: String?) {
     var expanded by remember(caption) { mutableStateOf(false) }
     val style = TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 16.sp, lineHeight = 24.sp)
     val measurer = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp)) {
         // Measured here, not after drawing, so "more" is there in the first frame.
         val cut = remember(caption, constraints.maxWidth) {
             measurer.measure(caption, style, maxLines = NOTE_LINES, constraints = Constraints(maxWidth = constraints.maxWidth)).hasVisualOverflow
@@ -508,7 +522,13 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
             MuteButton(video.muted, video.toggleMute, Modifier.align(Alignment.BottomEnd).padding(4.dp))
         } else {
             // Where the original is, as on the grids: none for a photo only on the server.
-            BackupBadge(item.backup, 26.dp, Modifier.align(Alignment.BottomEnd).padding(10.dp), originalHere = item.hasOriginalHere)
+            BackupBadge(
+                item.backup,
+                26.dp,
+                Modifier.align(Alignment.BottomEnd).padding(10.dp),
+                originalHere = item.hasOriginalHere,
+                showOnPhone = LocalShowOnPhoneBadge.current,
+            )
         }
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
     }
@@ -562,8 +582,9 @@ private fun SimilarPhotos(
         video.showPage(block, block.items[pager.currentPage.coerceIn(block.items.indices)].id)
     }
     val pageWidth = feedWidth()
+    val shown = notes[block.items[pager.currentPage.coerceIn(block.items.indices)].id]
     Column(modifier) {
-        PhotoNoteText(notes[block.items[pager.currentPage.coerceIn(block.items.indices)].id]?.caption)
+        PhotoTitle(shown?.title)
         Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
             // The photos beside the one shown are ready before a swipe; one only on the server is fetched only once it
             // is next to the one shown (the pager's own look-ahead gets an empty page instead), not the whole set.
@@ -604,6 +625,7 @@ private fun SimilarPhotos(
             }
             if (selected != null) SelectMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
         }
+        PhotoNoteText(shown?.caption)
     }
 }
 

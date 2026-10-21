@@ -90,6 +90,11 @@ data class SettingsState(
     val previewOptions: PreviewOptions = PreviewOptions(),
     /** "Show private media" and its threshold. */
     val privateMedia: PrivateMedia = PrivateMedia(),
+    /**
+     * Whether a photo's corner badge shows the phone once it is on this phone and backed up (off by default: only
+     * photos still to upload, uploading or failed have a badge).
+     */
+    val showOnPhoneBadge: Boolean = false,
 ) {
     companion object {
         /** What the Settings screen offers for [previewCacheGigabytes]. */
@@ -115,6 +120,7 @@ class SettingsController internal constructor(
             previewCacheGigabytes = settings.previewCacheGigabytes,
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
+            showOnPhoneBadge = settings.showOnPhoneBadge,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -201,6 +207,12 @@ class SettingsController internal constructor(
         settings.privateMedia = privateMedia
         _state.update { it.copy(privateMedia = privateMedia) }
         _privateMedia.value = privateMedia
+    }
+
+    /** The phone badge on photos that are on this phone and backed up, on or off. */
+    fun setShowOnPhoneBadge(show: Boolean) {
+        settings.showOnPhoneBadge = show
+        _state.update { it.copy(showOnPhoneBadge = show) }
     }
 
     /** Back to the platform's own threshold. */
