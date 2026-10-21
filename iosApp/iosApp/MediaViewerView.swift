@@ -54,7 +54,7 @@ struct MediaViewerView: View {
 
     private func cropOf(_ item: MediaItem) -> CropRect? {
         guard !item.isVideo else { return nil }
-        return stories.note(itemId: item.id)?.crops.get(kind: cropKind)?.fittedTo(screenRatio: screenRatio, photoRatio: item.ratio)
+        return stories.note(itemId: item.id)?.crops.get(kind: cropKind)?.fittedTo(screenRatio: screenRatio, photoRatio: item.photoRatio)
     }
 
     var body: some View {

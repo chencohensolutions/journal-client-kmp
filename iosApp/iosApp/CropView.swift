@@ -45,8 +45,8 @@ extension GeometryProxy {
 }
 
 extension MediaItem {
-    /// The photo's shape (width / height), 4:3 when unknown.
-    var ratio: Float { width > 0 && height > 0 ? Float(width) / Float(height) : 4 / 3 }
+    /// The photo's shape (width / height) for the shared crop math, 4:3 when unknown.
+    var photoRatio: Float { width > 0 && height > 0 ? Float(width) / Float(height) : 4 / 3 }
 }
 
 /// The shape (width / height) a crop of `kind` is locked to on a screen of `screenRatio` upright, or nil for any.
@@ -86,8 +86,8 @@ struct CropView: View {
 
     private func suggestion(_ mode: CropKind) -> CropRect {
         switch mode {
-        case .portrait: CropRect.companion.largest(ratio: screenRatio, photoRatio: item.ratio, around: drafts.moments ?? drafts.landscape)
-        case .landscape: CropRect.companion.largest(ratio: 1 / screenRatio, photoRatio: item.ratio, around: drafts.moments ?? drafts.portrait)
+        case .portrait: CropRect.companion.largest(ratio: screenRatio, photoRatio: item.photoRatio, around: drafts.moments ?? drafts.landscape)
+        case .landscape: CropRect.companion.largest(ratio: 1 / screenRatio, photoRatio: item.photoRatio, around: drafts.moments ?? drafts.portrait)
         default: CropRect.companion.WHOLE
         }
     }
@@ -95,7 +95,7 @@ struct CropView: View {
     /// A saved crop made for another screen is shown fitted to this one; an unset one starts from a suggestion.
     private var frame: CropRect {
         guard let rect = drafts.get(kind: kind) else { return suggestion(kind) }
-        return lockedRatio(kind, screenRatio: screenRatio).map { rect.fittedTo(screenRatio: $0, photoRatio: item.ratio) } ?? rect
+        return lockedRatio(kind, screenRatio: screenRatio).map { rect.fittedTo(screenRatio: $0, photoRatio: item.photoRatio) } ?? rect
     }
 
     /// What Done saves: the drafts, plus the suggestion of each Portrait or Landscape opened and left as suggested.
@@ -199,7 +199,7 @@ private struct CropCanvas: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let photoRatio = CGFloat(item.ratio)
+            let photoRatio = CGFloat(item.photoRatio)
             let box = geometry.size
             let size = photoRatio >= box.width / max(box.height, 1)
                 ? CGSize(width: box.width, height: box.width / photoRatio)
@@ -267,7 +267,7 @@ private struct CropCanvas: View {
                     handle: handle,
                     dx: Float(dx / size.width),
                     dy: Float(dy / size.height),
-                    photoRatio: item.ratio,
+                    photoRatio: item.photoRatio,
                     lockedRatio: locked.map { KotlinFloat(value: $0) }
                 ))
             }
