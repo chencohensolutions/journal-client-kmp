@@ -544,19 +544,21 @@ private fun ProgressRow(title: String, detail: String, state: Int, last: Boolean
 
 /** Line icons used by the wizard (Material icons are not a dependency of this app). */
 private object Icons {
-    private fun icon(name: String, vararg paths: String) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
-        paths.forEach { data ->
-            addPath(
-                pathData = PathParser().parsePathString(data).toNodes(),
-                stroke = SolidColor(Color.Black),
-                strokeLineWidth = 2f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round,
-            )
-        }
-    }.build()
+    /** [mirrored] icons point along the reading direction, so they flip in right-to-left layouts (Hebrew). */
+    private fun icon(name: String, vararg paths: String, mirrored: Boolean = false) =
+        ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f, autoMirror = mirrored).apply {
+            paths.forEach { data ->
+                addPath(
+                    pathData = PathParser().parsePathString(data).toNodes(),
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                )
+            }
+        }.build()
 
-    val ArrowBack = icon("ArrowBack", "M19 12H5", "M11 6l-6 6 6 6")
+    val ArrowBack = icon("ArrowBack", "M19 12H5", "M11 6l-6 6 6 6", mirrored = true)
     val Check = icon("Check", "M5 12l5 5 9-10")
     val Shield = icon("Shield", "M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z", "M12 9a2 2 0 1 0 0.01 0", "M12 13v3")
     val Lock = icon("Lock", "M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z", "M8 11V8a4 4 0 0 1 8 0v3")

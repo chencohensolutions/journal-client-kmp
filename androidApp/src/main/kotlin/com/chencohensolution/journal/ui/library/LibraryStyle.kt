@@ -99,8 +99,9 @@ internal fun LibraryTheme(dark: Boolean = isSystemInDarkTheme(), content: @Compo
 
 /** Line icons (Material icons are not a dependency of this app). */
 internal object LibraryIcons {
-    private fun icon(name: String, filled: Boolean, vararg paths: String) =
-        ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
+    /** [mirrored] icons point along the reading direction, so they flip in right-to-left layouts (Hebrew). */
+    private fun icon(name: String, filled: Boolean, vararg paths: String, mirrored: Boolean = false) =
+        ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f, autoMirror = mirrored).apply {
             paths.forEach { data ->
                 val nodes = PathParser().parsePathString(data).toNodes()
                 if (filled) {
@@ -124,7 +125,7 @@ internal object LibraryIcons {
     val Download = icon("Download", false, "M12 4v11", "M7.5 10.5L12 15l4.5-4.5", "M5 20h14")
     val Play = icon("Play", true, "M7 4v16l13-8z")
     val More = icon("More", true, "M12 3a2 2 0 1 0 0.01 0z", "M12 10a2 2 0 1 0 0.01 0z", "M12 17a2 2 0 1 0 0.01 0z")
-    val Back = icon("Back", false, "M19 12H5", "M12 19l-7-7 7-7")
+    val Back = icon("Back", false, "M19 12H5", "M12 19l-7-7 7-7", mirrored = true)
     val Info = icon("Info", false, "M12 3a9 9 0 1 0 0.01 0", "M12 11v5", "M12 8h0.01")
     val Grid = icon("Grid", false, "M4 3h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z", "M14 3h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z", "M4 13h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z", "M14 13h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z")
     val Calendar = icon("Calendar", false, "M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M3 9h18", "M8 2v4", "M16 2v4")
@@ -141,7 +142,7 @@ internal object LibraryIcons {
     val Eye = icon("Eye", false, "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 9a3 3 0 1 0 0.01 0")
     val Clock = icon("Clock", false, "M12 3a9 9 0 1 0 0.01 0", "M12 7v5l3 2")
     val Crop = icon("Crop", false, "M6 2v14a2 2 0 0 0 2 2h14", "M18 22V8a2 2 0 0 0-2-2H2")
-    val ChevronRight = icon("ChevronRight", false, "M9 6l6 6-6 6")
+    val ChevronRight = icon("ChevronRight", false, "M9 6l6 6-6 6", mirrored = true)
     val ChevronDown = icon("ChevronDown", false, "M6 9l6 6 6-6")
     val Map = icon("Map", false, "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z", "M9 4v14", "M15 6v14")
     val Photo = icon("Photo", false, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0.01 0", "M21 15l-5-5L5 21")
