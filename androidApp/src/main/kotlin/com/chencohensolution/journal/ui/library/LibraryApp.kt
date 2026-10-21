@@ -111,7 +111,9 @@ private fun LibraryScreens(
     val pop: () -> Unit = { stack = stack.dropLast(1) }
     actions.openFreeUp = { push(Route.FreeUp) }
     var previewBytes by actions.previewBytes
-    val storageUi = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, actions.canTrashWithoutAsking, settingsState.previewOptions)
+    // A function, not a value: each screen on the back stack keeps the content it was first given, so it has to read
+    // the state when it draws.
+    fun storageUi() = StorageUi(previewBytes, settingsState.previewCacheGigabytes, freeUpState, actions.canTrashWithoutAsking, settingsState.previewOptions)
 
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
@@ -293,13 +295,13 @@ private fun LibraryScreens(
                                         ),
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
                                         backupActions = actions.backup,
-                                        storage = storageUi,
+                                        storage = storageUi(),
                                         storageActions = actions.storage,
                                     )
                                 }
                                 Route.FreeUp -> {
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }
-                                    FreeUpScreen(ui = storageUi, actions = actions.storage, back = pop)
+                                    FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
                                 is Route.Tag -> TagScreen(
