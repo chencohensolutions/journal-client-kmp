@@ -47,11 +47,14 @@ struct MediaViewerView: View {
     @State private var sharing = false
     @State private var shareFailed = false
 
-    init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions) {
+    /// `chrome` and `showInfo` open it with the buttons or the details showing (the UI lab).
+    init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions, chrome: Bool = false, showInfo: Bool = false) {
         self.items = items
         self.stories = stories
         self.actions = actions
         _currentId = State(initialValue: startId)
+        _chrome = State(initialValue: chrome)
+        _showInfo = State(initialValue: showInfo)
     }
 
     /// Closing keeps the zoom of the photo shown in its note first.

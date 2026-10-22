@@ -62,3 +62,36 @@ reach a controller do nothing.
 
 Gradle needs a JDK (17 or newer). The script uses `JAVA_HOME`, else Homebrew's `openjdk@21`
 (`brew install openjdk@21`), else the JDK bundled with Android Studio.
+
+## The UI lab on iOS (on the simulator)
+
+The same lab in SwiftUI, with the same screen and option ids, for reviewing designs on the simulator, which is
+lighter on the Mac than the emulator.
+
+```bash
+./scripts/ui-lab-ios.sh                    # build, install on a booted simulator, open the list of screens
+./scripts/ui-lab-ios.sh moments            # a screen's options
+./scripts/ui-lab-ios.sh moments current    # one option (ids in LabScreens.swift)
+SIMULATOR="iPhone Air" ./scripts/ui-lab-ios.sh   # another booted simulator (default: iPhone 18 Pro, else the first booted)
+```
+
+The first build takes about 40 seconds; later ones only rebuild what changed. Shake (⌃⌘Z in the Simulator) goes
+back a page. In Xcode, Debug builds take the same launch arguments (`-uiLab YES -labScreen moments -labOption
+current`, in the scheme's Run › Arguments), and the `UI lab` preview in `UiLab.swift` shows it in the canvas with
+live updates as you type.
+
+The list is [LabScreens.swift](../iosApp/iosApp/Lab/LabScreens.swift). A suggestion is a view in
+`<Screen>Suggestions.swift` in `iosApp/iosApp/Lab/`, added to its screen's list as a `LabOption` after `current`.
+When one is chosen, its code moves into the real view and it leaves the list. The lab shows the real views, with
+`HomeActions.lab` and `ViewerActions.lab` doing nothing. A screen opens on a tab or with its details showing through
+the view's own parameters (`JournalHomeView(tab:)`, `MediaViewerView(chrome:showInfo:)`).
+
+- The made-up data is [LabData.kt](../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/lab/LabData.kt) in
+  the shared logic's `iosMain`, a copy of Android's `PreviewData` (Swift can't use Kotlin's default arguments or
+  `copy`). Keep the two in step when one changes.
+- Pictures are drawn by `LabPictures.swift` (the same colors as Android's placeholders): while the lab is on
+  (`UiLab.isOn`, also in Xcode previews) `PhotoLibraryImages` returns them and reads nothing from PhotoKit, and
+  backup doesn't start.
+- Everything in `Lab/` is inside `#if DEBUG`, so release builds don't compile it (`LabData` is in the framework but
+  unused).
+- Settings isn't in the iOS lab: its SwiftUI view reads the live view models rather than a state value.

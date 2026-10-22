@@ -8,10 +8,18 @@ struct iOSApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if UiLab.isOn {
+                UiLabView()
+            } else {
+                ContentView()
+            }
+            #else
             ContentView()
+            #endif
         }
         .onChange(of: scenePhase) { _, phase in
-            BackupService.shared.sceneChanged(active: phase == .active)
+            if !UiLab.isOn { BackupService.shared.sceneChanged(active: phase == .active) }
         }
     }
 }
@@ -19,7 +27,7 @@ struct iOSApp: App {
 /// Backup's part of the app's life: its background tasks, and the upload session's news while the app was away.
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        BackupService.shared.start()
+        if !UiLab.isOn { BackupService.shared.start() }
         return true
     }
 

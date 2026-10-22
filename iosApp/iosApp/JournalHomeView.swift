@@ -37,6 +37,8 @@ struct HomeActions {
     var registerAgain: () -> Void
 }
 
+enum HomeTab { case storyline, moments, explore }
+
 /// The home screen: in the Storyline tab every photo the user wrote about, newest first, and in the Moments tab every
 /// photo as a feed that groups itself (by day or run of photos, then time, place, source and looks), and in the Explore
 /// tab every photo by place and year. See docs/screens/journal-home.md, moments.md and explore.md.
@@ -52,9 +54,9 @@ struct JournalHomeView: View {
     let backupRunning: BackupProgress?
     let actions: HomeActions
 
-    private enum Tab { case storyline, moments, explore }
-    @State private var tab = Tab.storyline
-    @State private var exploreView = ExploreView.places
+    /// The tab and Explore view it opens on (the UI lab opens others).
+    @State var tab = HomeTab.storyline
+    @State var exploreView = ExploreView.places
     /// The Explore tab's towns and years, worked out off the main thread while it shows.
     @State private var explore: ExploreSummaries?
     /// What a photo's long-press menu opened.
@@ -177,13 +179,13 @@ struct JournalHomeView: View {
                         onDismiss: { withAnimation { revealToast = nil } }
                     )
                 }
-                SegmentedBar(options: [(Tab.storyline, "Storyline"), (Tab.moments, "Moments"), (Tab.explore, "Explore")], selection: tabBinding)
+                SegmentedBar(options: [(HomeTab.storyline, "Storyline"), (HomeTab.moments, "Moments"), (HomeTab.explore, "Explore")], selection: tabBinding)
             }
         }
     }
 
     /// Changing tabs stops picking.
-    private var tabBinding: Binding<Tab> {
+    private var tabBinding: Binding<HomeTab> {
         Binding(get: { tab }, set: { newTab in
             selection = []
             tab = newTab

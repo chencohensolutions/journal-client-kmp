@@ -13,6 +13,9 @@ final class PhotoLibraryImages {
     private let lock = NSLock()
 
     func asset(_ id: String) -> PHAsset? {
+        #if DEBUG
+        if UiLab.isOn { return nil }
+        #endif
         lock.lock()
         defer { lock.unlock() }
         if let asset = assets[id] { return asset }
@@ -40,6 +43,9 @@ final class PhotoLibraryImages {
     /// server's preview at exactly those pixels (`ServerImages`). A quick (`.fastFormat`) server image is only what is
     /// already in memory, so a second size isn't asked of the server.
     func image(item: MediaItem, pointSize: CGSize, quality: PHImageRequestOptionsDeliveryMode = .highQualityFormat) async -> UIImage? {
+        #if DEBUG
+        if UiLab.isOn { return LabPictures.image(item) }
+        #endif
         if item.isOnDevice { return await image(id: item.id, pointSize: pointSize, quality: quality) }
         if quality == .fastFormat { return ServerImages.shared.inMemory(item) }
         return await ServerImages.shared.tile(item, pixels: Self.pixels(pointSize))
@@ -49,6 +55,9 @@ final class PhotoLibraryImages {
     /// From PhotoKit's original data for a library photo (downloaded from iCloud if need be), else its downloaded
     /// original or the server's (`ServerImages.fullOriginal`). Not kept in memory once the viewer lets go of it.
     func original(item: MediaItem, maxSide: Int) async -> UIImage? {
+        #if DEBUG
+        if UiLab.isOn { return LabPictures.image(item) }
+        #endif
         guard item.isOnDevice else { return await ServerImages.shared.fullOriginal(item, maxSide: maxSide) }
         guard let asset = asset(item.id) else { return nil }
         let options = PHImageRequestOptions()

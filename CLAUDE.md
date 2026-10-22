@@ -81,6 +81,8 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./gradlew :androidApp:assembleDebug
 ./scripts/android-run.sh phone|emulator|<serial>    # build, install on one device, open (also VS Code tasks)
 ./scripts/screenshots.sh                            # render the screen previews to PNGs (docs/previews.md)
+./scripts/ui-lab.sh [screen] [option]               # UI lab on the emulator (docs/previews.md)
+./scripts/ui-lab-ios.sh [screen] [option]           # the same UI lab on a booted iOS simulator
 cd iosApp && xcodebuild -project iosApp.xcodeproj -scheme iosApp \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
 ```
