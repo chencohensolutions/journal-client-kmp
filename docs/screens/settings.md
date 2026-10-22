@@ -72,8 +72,18 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 - **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
-  default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
-  server's scan must reach for a photo or video to be hidden.
+  default; then **Hidden collections** (Android, Oct 22, 2026; a row with a lock, "WhatsApp and screenshots by app,
+  hidden on all your devices", see below). While Show private media is off, **Hide from** a slider from 10% to 95% in
+  steps of 5 (default **50%**): the nudity score the server's scan must reach for a photo or video to be hidden.
+- **Hidden collections** (its own screen, asked for Oct 22, 2026; Android first): opens only after the phone's lock
+  (fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential), every time it
+  opens and again after the app was in the background; a phone without a screen lock can't open it. An intro says
+  hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
+  off shows them again. **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
+  N", **Find an app** (filters the list), then a switch per app with its screenshots, most first ("Bumble · 1,458
+  screenshots"). On means hidden. The list and the choice live on the server (`hiddenCollections`,
+  `setHiddenCollections`); each switch is saved at once and the library syncs; while saving, the switches wait, and
+  if the server can't be reached the switch goes back with "Not changed: can't reach your server".
 - **Search** (both platforms, Oct 22, 2026): **Photos per page**, 50, 100, **200** (default), 500 or 1000: how many
   photos a [search](search.md) shows at first; scrolling near the end shows the next page. Applies from the next page.
 
@@ -137,6 +147,13 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   and no preview or original of it is downloaded; the phone's own copy (same sha256, or same name and size) is left
   out too. It is never a tag. Turning the switch on, or moving the slider, applies at once. A file not scanned yet is
   shown.
+- Hidden collections: the server hides them, not the app (journal-server-go docs/media.md "Hidden collections"):
+  hidden files come in the change feed as deleted, so the library drops them like deleted files; "On your server"
+  and search don't count them. Whatever the phone keeps of a file the server drops (previews, a downloaded original,
+  a kept original, the streamed video on Android) is deleted then (`ServerLibrary`'s `removed`,
+  `PhoneStorage.remove`). The phone's own gallery is never touched: a hidden screenshot still on the phone can still
+  show, unless Show in the app → Screenshots is off (the default). Changing the choice makes every device read the
+  whole change feed again on its next sync.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
 
 ## Code
@@ -160,7 +177,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   `IosPhotoTrash` in [iosMain/storage/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/storage/IosFreeUp.kt)
   (factory `IosJournal.freeUp`, sharing backup's ledger), and the deletion only in
   [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift) (`moveToRecentlyDeleted(checked:)`; see PhotoSafetyTest).
-- Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt).
+- Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt);
+  Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
+  behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
+  (`PhoneLocked`), with the shared `HiddenCollections` and `ServerLibrary.hiddenCollections` / `setHiddenCollections`.
 - iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
   (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
   `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list in

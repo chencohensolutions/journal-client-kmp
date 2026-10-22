@@ -518,4 +518,29 @@
         <item quantity="one">Show %d photo</item>
         <item quantity="other">Show %d photos</item>
     </plurals>
+    <string name="settings_hidden_title">Hidden collections</string>
+    <string name="settings_hidden_row_body">WhatsApp and screenshots by app, hidden on all your devices</string>
+    <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
+    <string name="hidden_whatsapp_title">WhatsApp</string>
+    <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
+    <string name="hidden_screenshots_title">Screenshots</string>
+    <string name="hidden_without_app">Without an app name</string>
+    <string name="hidden_find_app">Find an app</string>
+    <string name="hidden_no_apps">No screenshot on your server names its app yet.</string>
+    <string name="hidden_loading">Loading…</string>
+    <string name="hidden_unreachable">Can’t reach your server right now.</string>
+    <string name="hidden_retry">Try again</string>
+    <string name="hidden_not_changed">Not changed: can’t reach your server. Try again when connected to it.</string>
+    <plurals name="hidden_files">
+        <item quantity="one">%s photo or video</item>
+        <item quantity="other">%s photos and videos</item>
+    </plurals>
+    <plurals name="hidden_screenshots">
+        <item quantity="one">%s screenshot</item>
+        <item quantity="other">%s screenshots</item>
+    </plurals>
+    <string name="phone_lock_locked">Locked. Unlock with your phone’s lock to see what is hidden.</string>
+    <string name="phone_lock_unlock">Unlock</string>
+    <string name="phone_lock_prompt">Use your fingerprint, face or screen lock</string>
+    <string name="phone_lock_none">Set a screen lock on this phone (PIN, pattern or password) to open Hidden collections.</string>
 </resources>

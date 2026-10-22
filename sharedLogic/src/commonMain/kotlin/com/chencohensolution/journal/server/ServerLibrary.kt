@@ -2,6 +2,8 @@ package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
+import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
 import com.chencohensolution.journal.graphql.SetPrivateMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
 import com.chencohensolution.journal.graphql.type.MediaKind
@@ -132,6 +134,11 @@ class ServerLibrary internal constructor(
     private val fileSystem: FileSystem,
     directory: Path,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    /**
+     * Called with the files the server took off its list (deleted, or hidden: see [HiddenCollections]) after a sync
+     * applied them, so this phone deletes what it keeps of them (previews, originals, videos).
+     */
+    private val removed: suspend (List<String>) -> Unit = {},
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val file = directory / "media.json"
@@ -232,6 +239,46 @@ class ServerLibrary internal constructor(
         return true
     }
 
+    /** What the user hides on every device; null when the server couldn't be reached or refused. */
+    suspend fun hiddenCollections(): HiddenCollections? {
+        val alias = settings.identityAlias ?: return null
+        return try {
+            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+                val response = apollo.query(HiddenCollectionsQuery()).execute()
+                response.exception?.let { throw it }
+                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                response.data?.hiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Replaces what the user hides on every device with [choice], then syncs, so the library drops what is now hidden
+     * and gets back what is shown again. The server's answer, or null when it couldn't be reached or refused.
+     */
+    suspend fun setHiddenCollections(choice: HiddenCollections): HiddenCollections? {
+        val alias = settings.identityAlias ?: return null
+        return try {
+            val saved = createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+                val response = apollo.mutation(SetHiddenCollectionsMutation(choice.toInput())).execute()
+                response.exception?.let { throw it }
+                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                response.data?.setHiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
+            }
+            syncJob?.join()
+            runCatching { sync() }.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            saved
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /**
      * One sync: every page since the saved cursor. What was applied is saved and shown once at the end, also when a page
      * fails partway, so the cursor and the list on disk always agree. Saving after every page wrote the whole list again
@@ -243,6 +290,7 @@ class ServerLibrary internal constructor(
         val known = _media.value.associateByTo(LinkedHashMap()) { it.sha256 }
         val savedCursor = cursor
         var changed = false
+        val gone = mutableListOf<String>()
         try {
             createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
                 do {
@@ -254,7 +302,10 @@ class ServerLibrary internal constructor(
                         val sha = change.path.removePrefix("media/")
                         val media = change.media
                         if (change.deleted || media == null) {
-                            changed = known.remove(sha) != null || changed
+                            if (known.remove(sha) != null) {
+                                changed = true
+                                gone += sha
+                            }
                         } else {
                             known[media.sha256] = media.toServerMedia()
                             changed = true
@@ -268,6 +319,7 @@ class ServerLibrary internal constructor(
                 val list = known.values.toList()
                 save(list)
                 if (changed) _media.value = list
+                if (gone.isNotEmpty()) runCatching { removed(gone) }
             }
         }
     }

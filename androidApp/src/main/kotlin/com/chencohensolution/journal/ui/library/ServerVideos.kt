@@ -49,6 +49,7 @@ internal object ServerVideos {
                 override fun cachedBytes(sha256: String) = videos.getCachedSpans(sha256).sumOf { it.length }
                 override fun clear() = videos.keys.toList().forEach(videos::removeResource)
             })
+            storage.attachVideoRemoval(videos::removeResource)
         }
     }
 

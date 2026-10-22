@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -20,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
@@ -61,6 +64,8 @@ internal class SettingsActions(
     val resetSimilarity: () -> Unit = {},
     val setShowPrivateMedia: (Boolean) -> Unit = {},
     val setPrivateThresholdPercent: (Int) -> Unit = {},
+    /** Opens Hidden collections (behind the phone's lock). */
+    val openHidden: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Search: photos per page of results. */
     val setSearchPageSize: (Int) -> Unit = {},
@@ -311,6 +316,18 @@ private fun PrivateMediaCard(privateMedia: PrivateMedia, actions: SettingsAction
             checked = privateMedia.show,
             onChange = actions.setShowPrivateMedia,
         )
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = actions.openHidden).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, fontSize = 13.sp)
+            }
+            Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
+            Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
+        }
         if (privateMedia.show) return@Card
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         var dragging by remember(privateMedia.thresholdPercent) { mutableFloatStateOf(privateMedia.thresholdPercent.toFloat()) }

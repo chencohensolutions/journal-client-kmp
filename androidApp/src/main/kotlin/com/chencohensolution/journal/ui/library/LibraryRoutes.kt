@@ -27,6 +27,7 @@ internal sealed interface Route {
     data class Tag(val name: String) : Route
     data object Settings : Route
     data object FreeUp : Route
+    data object Hidden : Route
 
     /**
      * Explore: a country's page (null: the towns whose country isn't known), a town's page, a year's page (on one of its
@@ -65,6 +66,7 @@ internal sealed interface Route {
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
         FreeUp -> "free-up"
+        Hidden -> "hidden"
         is Crop -> "crop|$kind|$itemId"
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
@@ -83,6 +85,7 @@ internal sealed interface Route {
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
                 "free-up" -> FreeUp
+                "hidden" -> Hidden
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))

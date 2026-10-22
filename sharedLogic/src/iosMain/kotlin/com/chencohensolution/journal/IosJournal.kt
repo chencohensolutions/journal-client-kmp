@@ -137,6 +137,12 @@ object IosJournal {
             trustedCas = decodePemCertificates(SERVER_CA_PEM),
             fileSystem = FileSystem.SYSTEM,
             directory = supportDir().toPath() / "server",
+            // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too;
+            // streamed videos stay until their cache trims them (Swift's cache attaches no removal yet).
+            removed = { sha256s ->
+                phoneStorage().remove(sha256s)
+                sha256s.forEach { keptOriginals().delete(it) }
+            },
         ).also { serverLibrary = it }
 
     /** Previews of server-only photos, cached in Caches (`previews`), up to the limit in Settings (10 GB by default). */

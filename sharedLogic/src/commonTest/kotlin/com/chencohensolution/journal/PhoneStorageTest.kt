@@ -61,6 +61,27 @@ class PhoneStorageTest {
     private val storage = PhoneStorage(previews) { 10 * gb }
 
     @Test
+    fun removingAFileDeletesOnlyWhatIsKeptOfIt() = runTest {
+        val gone = "/cache/previews/ab/ab12".toPath()
+        val kept = "/cache/previews/cd/cd34".toPath()
+        for (dir in listOf(gone, kept)) {
+            fs.createDirectories(dir)
+            fs.write(dir / "640x640-contain-high.webp") { write(ByteArray(1000)) }
+        }
+        fs.write(gone / "original.jpg") { write(ByteArray(500)) }
+        val videos = FakeVideos().apply { bytes["ab12"] = 5000; bytes["cd34"] = 7000 }
+        storage.attachVideos(videos)
+        storage.attachVideoRemoval { videos.bytes.remove(it) }
+        assertEquals(14_500, storage.usedBytes())
+
+        storage.remove(listOf("ab12"))
+        assertFalse(fs.exists(gone))
+        assertTrue(fs.exists(kept / "640x640-contain-high.webp"))
+        assertEquals(mapOf("cd34" to 7000L), videos.bytes)
+        assertEquals(8000, storage.usedBytes())
+    }
+
+    @Test
     fun previewsAndVideosShareOneLimitAndOneClear() = runTest {
         val dir = "/cache/previews/ab/ab12".toPath()
         fs.createDirectories(dir)

@@ -1,0 +1,19 @@
+fragment CollectionFields on Collection {
+  name
+  files
+  hidden
+}
+
+fragment HiddenCollectionsFields on HiddenCollections {
+  whatsapp { ...CollectionFields }
+  screenshotsWithoutApp { ...CollectionFields }
+  screenshotApps { ...CollectionFields }
+}
+
+query HiddenCollections {
+  hiddenCollections { ...HiddenCollectionsFields }
+}
+
+mutation SetHiddenCollections($input: HiddenCollectionsInput!) {
+  setHiddenCollections(input: $input) { ...HiddenCollectionsFields }
+}

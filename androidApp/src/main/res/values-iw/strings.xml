@@ -540,4 +540,31 @@
         <item quantity="two">הצגת %d תמונות</item>
         <item quantity="other">הצגת %d תמונות</item>
     </plurals>
+    <string name="settings_hidden_title">אוספים מוסתרים</string>
+    <string name="settings_hidden_row_body">וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך</string>
+    <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
+    <string name="hidden_whatsapp_title">וואטסאפ</string>
+    <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
+    <string name="hidden_screenshots_title">צילומי מסך</string>
+    <string name="hidden_without_app">בלי שם אפליקציה</string>
+    <string name="hidden_find_app">חיפוש אפליקציה</string>
+    <string name="hidden_no_apps">עדיין אין בשרת צילום מסך ששמו מציין אפליקציה.</string>
+    <string name="hidden_loading">טוען…</string>
+    <string name="hidden_unreachable">אין גישה לשרת כרגע.</string>
+    <string name="hidden_retry">לנסות שוב</string>
+    <string name="hidden_not_changed">לא שונה: אין גישה לשרת. נסו שוב כשתהיו מחוברים אליו.</string>
+    <plurals name="hidden_files">
+        <item quantity="one">תמונה או סרטון אחד</item>
+        <item quantity="two">%s תמונות וסרטונים</item>
+        <item quantity="other">%s תמונות וסרטונים</item>
+    </plurals>
+    <plurals name="hidden_screenshots">
+        <item quantity="one">צילום מסך אחד</item>
+        <item quantity="two">%s צילומי מסך</item>
+        <item quantity="other">%s צילומי מסך</item>
+    </plurals>
+    <string name="phone_lock_locked">נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר.</string>
+    <string name="phone_lock_unlock">פתיחה</string>
+    <string name="phone_lock_prompt">טביעת אצבע, פנים או נעילת המסך</string>
+    <string name="phone_lock_none">הגדירו נעילת מסך בטלפון הזה (קוד, קו ביטול נעילה או סיסמה) כדי לפתוח את האוספים המוסתרים.</string>
 </resources>

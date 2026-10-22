@@ -330,6 +330,20 @@ class ServerPreviews internal constructor(
         }
     }
 
+    /**
+     * Deletes everything kept of [sha256] (previews, posters, a downloaded original), for a file the server no longer
+     * lists: deleted there, or hidden by the user.
+     */
+    suspend fun remove(sha256: String) = withContext(Dispatchers.IO) {
+        cacheMutex.withLock {
+            val dir = directory / sha256.take(2) / sha256
+            if (!fileSystem.exists(dir)) return@withLock
+            val bytes = fileSystem.listRecursively(dir).sumOf { fileSystem.metadataOrNull(it)?.size ?: 0 }
+            fileSystem.deleteRecursively(dir)
+            cachedBytes = cachedBytes?.let { (it - bytes).coerceAtLeast(0) }
+        }
+    }
+
     /** Deletes every preview; they are fetched again as photos are shown. */
     suspend fun clear() = withContext(Dispatchers.IO) {
         cacheMutex.withLock {

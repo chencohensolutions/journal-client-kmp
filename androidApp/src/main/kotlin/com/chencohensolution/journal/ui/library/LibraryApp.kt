@@ -280,6 +280,7 @@ private fun LibraryScreens(
                                             resetSimilarity = settings::resetSimilarity,
                                             setShowPrivateMedia = settings::setShowPrivateMedia,
                                             setPrivateThresholdPercent = settings::setPrivateThresholdPercent,
+                                            openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             setSearchPageSize = settings::setSearchPageSize,
                                             back = pop,
@@ -294,6 +295,7 @@ private fun LibraryScreens(
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
+                                Route.Hidden -> HiddenScreen(server.library, back = pop)
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,

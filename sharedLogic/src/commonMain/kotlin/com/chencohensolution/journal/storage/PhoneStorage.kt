@@ -29,11 +29,23 @@ class PhoneStorage internal constructor(
     private val limitBytes: () -> Long,
 ) {
     private var videos: VideoCache? = null
+    private var removeVideo: ((String) -> Unit)? = null
 
     /** The platform's video cache, counted toward the limit from now on. */
     fun attachVideos(cache: VideoCache) {
         videos = cache
         previews.otherBytes = { cache.usedBytes() }
+    }
+
+    /** How to delete one video from the platform's cache, for [remove] (Android; iOS doesn't attach one yet). */
+    fun attachVideoRemoval(remove: (sha256: String) -> Unit) {
+        removeVideo = remove
+    }
+
+    /** Deletes what is kept of these files (previews, originals, videos), which the server no longer lists. */
+    suspend fun remove(sha256s: List<String>) {
+        sha256s.forEach { previews.remove(it) }
+        withContext(Dispatchers.IO) { removeVideo?.let { remove -> sha256s.forEach { runCatching { remove(it) } } } }
     }
 
     /** What may be kept in all. */

@@ -116,6 +116,11 @@ fun serverLibrary(context: Context): ServerLibrary =
         trustedCas = decodePemCertificates(SERVER_CA_PEM),
         fileSystem = FileSystem.SYSTEM,
         directory = context.filesDir.toOkioPath() / "server",
+        // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too.
+        removed = { sha256s ->
+            phoneStorage(context).remove(sha256s)
+            sha256s.forEach { keptOriginals(context).delete(it) }
+        },
     ).also { serverLibrary = it }
 
 /** Previews of server-only photos, cached in `cache/previews` (up to the limit in Settings, 10 GB by default). One per process. */
