@@ -24,6 +24,12 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   row, the screen's full width**, at their own shape (wide panoramas cropped to 3:1, tall ones to 0.6:1, about a
   screen), each with its **date** (bold), **time**, and **📍 town, country** under it (no place line for a photo
   without one, or whose place isn't named yet).
+- **Sets and moments** (Oct 22, 2026): almost identical photos (a burst, a pose taken again) are one row at the
+  best one's shape that you swipe, with "2 / 5" at the top and dots at the bottom, as in Moments; the caption is the
+  photo shown. Sets taken within two hours of each other stay together, each such moment placed by its best photo and
+  its sets in their own order. The server decides both (see its docs/search.md: at least 0.93 alike and within ten
+  minutes for a set), so they work for every source, whatever Moments shows. The viewer swipes through the photos in
+  this order, set by set.
 - **Filter sheet** (chosen in the UI lab, Oct 22, 2026, from five ways to filter): once there are matches to narrow, a
   **Filter** pill floats above the field ("Filter · 2", dark, while a year and a town are chosen). It opens a sheet:
   **Year**, the matches' years as a grid of four across with how many each (newest first), and **Place**, their towns

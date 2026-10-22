@@ -1,6 +1,8 @@
 query SearchMedia($text: String!, $limit: Int, $years: [Int!], $area: GeoAreaInput) {
   searchMedia(text: $text, limit: $limit, years: $years, area: $area) {
     hits {
+      set
+      moment
       media {
         sha256
       }

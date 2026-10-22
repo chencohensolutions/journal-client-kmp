@@ -34,7 +34,8 @@ import kotlin.coroutines.cancellation.CancellationException
 // Text search: a sentence ("a dog on the beach at sunset") sent to the server, which answers with the photos and
 // videos it describes best (`searchMedia`, see the server's docs/search.md). The answer is a list of sha256s; they are
 // shown as the library shows those photos, so what the library hides (private files, nudity over the threshold) stays
-// hidden here too. The year and town chips narrow it: the server picks the best of that year or place.
+// hidden here too. The filter's years and towns narrow it: the server picks the best of that year or place. The server
+// also groups the hits: almost identical photos as one set you swipe, and sets taken close together as one moment.
 
 enum class SearchStatus {
     /** Nothing searched yet, or cleared. */
@@ -60,8 +61,13 @@ data class SearchState(
     /** What was searched for, as typed. */
     val query: String = "",
     val status: SearchStatus = SearchStatus.IDLE,
-    /** The photos found, best first, as the library shows them; of [year] and [town] when chosen. */
+    /**
+     * The photos found as the library shows them, of [year] and [town] when chosen: moments by their best photo, each
+     * moment's sets by theirs, each set best first. What the viewer swipes through.
+     */
     val items: List<MediaItem> = emptyList(),
+    /** [items] as shown: each set of almost identical photos is one row you swipe (a set of one, a single photo). */
+    val sets: List<List<MediaItem>> = emptyList(),
     /** How many of the user's files the server has read so far; the others can't be found yet. */
     val indexed: Int = 0,
     /** How many files the user has on the server. */
@@ -80,8 +86,20 @@ data class SearchState(
     val stillReading: Boolean get() = status == SearchStatus.DONE && indexed < total
 }
 
-/** The server's answer: the files found, best first, and how far it has read the library. */
-internal data class SearchAnswer(val sha256s: List<String>, val indexed: Int, val total: Int)
+/**
+ * The server's answer: the files found, best first, and how far it has read the library. [sets] and [moments] number
+ * each file's set of almost identical photos and its moment (empty: each its own).
+ */
+internal data class SearchAnswer(
+    val sha256s: List<String>,
+    val indexed: Int,
+    val total: Int,
+    val sets: List<Int> = emptyList(),
+    val moments: List<Int> = emptyList(),
+) {
+    /** The first [n] hits. */
+    fun take(n: Int) = copy(sha256s = sha256s.take(n), sets = sets.take(n), moments = moments.take(n))
+}
 
 /**
  * Asks the server for the [limit] best matches of [text], of [years] and inside [area] when given; throws when it can't
@@ -117,7 +135,7 @@ internal class ApolloSearchApi(
             }
             response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
             val found = response.data?.searchMedia ?: throw IllegalStateException("No answer")
-            SearchAnswer(found.hits.map { it.media.sha256 }, found.indexed, found.total)
+            SearchAnswer(found.hits.map { it.media.sha256 }, found.indexed, found.total, found.hits.map { it.set }, found.hits.map { it.moment })
         }
     }
 }
@@ -141,11 +159,14 @@ class SearchController internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
 
-    /** The first answer's files, best first: what the chips count. */
+    /** The first answer's files, best first: what the filter counts. */
     private var candidates: List<String> = emptyList()
 
+    /** The first answer, for showing its best again when the filter is dropped. */
+    private var firstAnswer = SearchAnswer(emptyList(), 0, 0)
+
     /** The files shown: the first answer's best, or the answer for the chosen year and town. */
-    private var shown: List<String> = emptyList()
+    private var shown = SearchAnswer(emptyList(), 0, 0)
 
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
@@ -165,7 +186,8 @@ class SearchController internal constructor(
         _state.update { SearchState(query = query, status = SearchStatus.SEARCHING) }
         run { answer ->
             candidates = answer.sha256s
-            shown = answer.sha256s.take(SHOWN)
+            firstAnswer = answer
+            shown = answer.take(SHOWN)
         }
     }
 
@@ -179,7 +201,8 @@ class SearchController internal constructor(
     fun clear() {
         searchJob?.cancel()
         candidates = emptyList()
-        shown = emptyList()
+        firstAnswer = SearchAnswer(emptyList(), 0, 0)
+        shown = firstAnswer
         _state.value = SearchState()
     }
 
@@ -198,13 +221,13 @@ class SearchController internal constructor(
         if (year == null && town == null) {
             // The first answer has the best of all already.
             searchJob?.cancel()
-            shown = candidates.take(SHOWN)
+            shown = firstAnswer.take(SHOWN)
             _state.update { it.copy(status = SearchStatus.DONE) }
             refresh()
             return
         }
         _state.update { it.copy(status = SearchStatus.SEARCHING) }
-        run(years = year?.let(::listOf), area = town?.let(::areaOf)) { answer -> shown = answer.sha256s }
+        run(years = year?.let(::listOf), area = town?.let(::areaOf)) { answer -> shown = answer }
     }
 
     /** Asks the server for the query (with [years] and [area]) and shows its answer through [apply]. */
@@ -229,8 +252,8 @@ class SearchController internal constructor(
     }
 
     private fun fail(error: SearchError, detail: String?) {
-        shown = emptyList()
-        _state.update { it.copy(status = SearchStatus.FAILED, items = emptyList(), error = error, errorDetail = detail) }
+        shown = SearchAnswer(emptyList(), 0, 0)
+        _state.update { it.copy(status = SearchStatus.FAILED, items = emptyList(), sets = emptyList(), error = error, errorDetail = detail) }
     }
 
     /** The items and chips again, from the answers kept, through the library and places as they are now. */
@@ -240,7 +263,7 @@ class SearchController internal constructor(
         val resolve = resolver()
         val town = current.town
         // A town is asked for as a box, which can reach into the next town.
-        val items = resolve(shown).filter { town == null || townOf(it) == town }
+        val sets = grouped(shown, resolve) { town == null || townOf(it) == town }
         val matches = resolve(candidates)
         val yearChips = matches.filter { town == null || townOf(it) == town }
             .groupingBy { it.day.year }.eachCount()
@@ -249,7 +272,24 @@ class SearchController internal constructor(
             .mapNotNull(::townOf).groupingBy { it }.eachCount()
             .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .map { SearchChip(it.key, it.value) }
-        _state.update { it.copy(items = items, yearChips = yearChips, townChips = townChips) }
+        _state.update { it.copy(items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips) }
+    }
+
+    /**
+     * [answer]'s files as the library has them ([keep] ones only), in sets: the moments in the order of their best
+     * photo, each moment's sets in the order of theirs, each set best first.
+     */
+    private fun grouped(answer: SearchAnswer, resolve: (List<String>) -> List<MediaItem>, keep: (MediaItem) -> Boolean): List<List<MediaItem>> {
+        val moments = LinkedHashMap<Int, LinkedHashMap<Int, MutableList<MediaItem>>>()
+        answer.sha256s.forEachIndexed { i, sha ->
+            val item = resolve(listOf(sha)).firstOrNull()?.takeIf(keep) ?: return@forEachIndexed
+            // Without the server's numbers (an older server) each photo is its own.
+            val set = answer.sets.getOrNull(i) ?: (-1 - i)
+            val moment = answer.moments.getOrNull(i) ?: (-1 - i)
+            moments.getOrPut(moment) { LinkedHashMap() }.getOrPut(set) { mutableListOf() }.add(item)
+        }
+        val seen = HashSet<String>()
+        return moments.values.flatMap { it.values }.map { set -> set.filter { seen.add(it.id) } }.filter { it.isNotEmpty() }
     }
 
     private fun townOf(item: MediaItem): String? {

@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -73,7 +75,8 @@ import com.chencohensolution.journal.search.SearchStatus
 import java.text.NumberFormat
 
 // The home screen's search: the 🔍 beside the tabs turns the bottom bar into a field, and the page lists the photos the
-// server finds for the sentence typed, best first, each across the screen with its date, time and place under it. A
+// server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
+// almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
 // Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
 // keeping the search for next time. See docs/screens/search.md.
 
@@ -91,7 +94,7 @@ internal class SearchActions(
 @Composable
 internal fun SearchContent(search: SearchState, places: Places, landing: String?, actions: SearchActions, contentPadding: PaddingValues) {
     val list = rememberLazyListState()
-    list.LandOn(landing, search.items.size) { id -> search.items.indexOfFirst { it.id == id } }
+    list.LandOn(landing, search.sets.size) { id -> search.sets.indexOfFirst { set -> set.any { it.id == id } } }
     LazyColumn(state = list, contentPadding = contentPadding) {
         when (search.status) {
             SearchStatus.IDLE -> item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
@@ -112,7 +115,13 @@ internal fun SearchContent(search: SearchState, places: Places, landing: String?
         // Last, so landing from the viewer can count them from the end. Kept while a new search runs; the field shows its
         // spinner.
         if (search.status == SearchStatus.DONE || search.status == SearchStatus.SEARCHING) {
-            items(search.items, key = { it.id }) { item -> FoundPhoto(item, places, onClick = { actions.openItem(item) }) }
+            items(search.sets, key = { it.first().id }) { set ->
+                if (set.size == 1) {
+                    FoundPhoto(set.first(), places, onClick = { actions.openItem(set.first()) })
+                } else {
+                    FoundSet(set, places, landing, actions.openItem)
+                }
+            }
         }
     }
 }
@@ -158,24 +167,79 @@ private fun FoundNote(search: SearchState) {
 /** A photo found: the screen's full width at its own shape (very tall ones kept to about a screen), and when and where under it. */
 @Composable
 private fun FoundPhoto(item: MediaItem, places: Places, onClick: () -> Unit) {
-    val ratio = if (item.width > 0 && item.height > 0) item.width.toFloat() / item.height else 1f
     Column(Modifier.padding(bottom = 14.dp)) {
-        MediaTile(item, onClick, Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(MIN_RATIO, MAX_RATIO)))
-        Row(
-            Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(dayLabel(item.day), color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(timeLabel(item.takenAtMillis), color = LibraryColors.Muted, fontSize = 14.sp)
-            Box(Modifier.weight(1f))
-            placeLabel(item, places)?.let { place ->
-                Icon(LibraryIcons.Pin, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
-                Text(place, color = LibraryColors.Muted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        MediaTile(item, onClick, Modifier.fillMaxWidth().aspectRatio(shapeOf(item)))
+        Caption(item, places)
+    }
+}
+
+/** Its shape (width / height), very tall and very wide ones cropped to [MIN_RATIO] and [MAX_RATIO]. */
+private fun shapeOf(item: MediaItem): Float =
+    (if (item.width > 0 && item.height > 0) item.width.toFloat() / item.height else 1f).coerceIn(MIN_RATIO, MAX_RATIO)
+
+/** "Thu, Oct 8  9:03 PM", and "📍 Herzliya, Israel" at the end. */
+@Composable
+private fun Caption(item: MediaItem, places: Places) {
+    Row(
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(dayLabel(item.day), color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(timeLabel(item.takenAtMillis), color = LibraryColors.Muted, fontSize = 14.sp)
+        Box(Modifier.weight(1f))
+        placeLabel(item, places)?.let { place ->
+            Icon(LibraryIcons.Pin, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
+            Text(place, color = LibraryColors.Muted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
+
+/**
+ * Almost identical photos as one, at the best one's shape: swipe for the others ("2 / 4" and dots), with the date, time
+ * and place of the one shown. Turns to the photo the viewer closes on.
+ */
+@Composable
+private fun FoundSet(set: List<MediaItem>, places: Places, landing: String?, onOpen: (MediaItem) -> Unit) {
+    val pager = rememberPagerState { set.size }
+    LaunchedEffect(landing) {
+        val page = set.indexOfFirst { it.id == landing }
+        if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
+    }
+    val shown = set[pager.currentPage.coerceIn(set.indices)]
+    Column(Modifier.padding(bottom = 14.dp)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(shapeOf(set.first()))) {
+            HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP, beyondViewportPageCount = 1) { page ->
+                MediaTile(set[page], onClick = { onOpen(set[page]) }, modifier = Modifier.fillMaxSize())
+            }
+            Row(
+                Modifier.align(Alignment.TopEnd).padding(10.dp)
+                    .background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
+                Text(
+                    stringResource(R.string.feed_similar_position, pager.currentPage + 1, set.size),
+                    color = LibraryColors.PhotoText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                repeat(set.size.coerceAtMost(MAX_DOTS)) { i ->
+                    val current = i == pager.currentPage.coerceAtMost(MAX_DOTS - 1)
+                    Box(Modifier.size(if (current) 7.dp else 6.dp).background(Color.White.copy(alpha = if (current) 1f else 0.5f), CircleShape))
+                }
+            }
+        }
+        Caption(shown, places)
+    }
+}
+
+/** A set longer than this shows this many dots, the last one standing for the rest. */
+private const val MAX_DOTS = 8
 
 /** "Haifa, Israel"; null until the place is looked up, or for a photo without one. */
 private fun placeLabel(item: MediaItem, places: Places): String? {

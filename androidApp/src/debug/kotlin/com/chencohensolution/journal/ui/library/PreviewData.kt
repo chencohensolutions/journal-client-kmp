@@ -278,6 +278,8 @@ internal object PreviewData {
             query = "a dog on the beach at sunset",
             status = SearchStatus.DONE,
             items = items,
+            // The first three as one set you swipe, the rest one each.
+            sets = listOf(items.take(3)) + items.drop(3).map(::listOf),
             indexed = 12_480,
             total = 14_200,
             yearChips = items.groupingBy { it.day.year }.eachCount().entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) },
@@ -286,5 +288,5 @@ internal object PreviewData {
     }
 
     /** [searchFound] narrowed to 2025 (the chip chosen). */
-    val searchIn2025: SearchState = searchFound.copy(year = 2025, items = searchFound.items.filter { it.day.year == 2025 })
+    val searchIn2025: SearchState = searchFound.items.filter { it.day.year == 2025 }.let { items -> searchFound.copy(year = 2025, items = items, sets = items.map(::listOf)) }
 }

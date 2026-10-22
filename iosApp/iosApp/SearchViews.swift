@@ -2,7 +2,8 @@ import SwiftUI
 import SharedLogic
 
 // The home screen's search: the 🔍 beside the tabs turns the bottom bar into a field, and the page lists the photos the
-// server finds for the sentence typed, best first, each across the screen with its date, time and place under it. A
+// server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
+// almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
 // Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
 // keeping the search for next time. See docs/screens/search.md. As Android's SearchViews.kt.
 
@@ -47,14 +48,20 @@ struct SearchResultsView: View {
             }
             // Kept while a new search runs; the field shows its spinner.
             if search.status == .done || search.status == .searching {
-                ForEach(search.items, id: \.id) { item in
-                    FoundPhoto(item: item, place: placeLabel(item), width: width) { actions.openItem(item) }
-                        .id(item.id)
+                ForEach(search.sets, id: \.first!.id) { set in
+                    Group {
+                        if set.count == 1 {
+                            FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width) { actions.openItem(set[0]) }
+                        } else {
+                            FoundSet(items: set, place: placeLabel, width: width, onOpen: actions.openItem)
+                        }
+                    }
+                    .id(set[0].id)
                 }
             }
         }
         .followsViewer { id in
-            search.items.contains { $0.id == id } ? PhotoPlace(section: id, tile: ZoomID.item(id)) : nil
+            search.sets.first { set in set.contains { $0.id == id } }.map { PhotoPlace(section: $0[0].id, tile: ZoomID.item(id)) }
         }
     }
 
@@ -108,25 +115,117 @@ private struct FoundPhoto: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MediaTileView(item: item, badgeSize: 22)
-                .frame(width: width, height: width / min(max(item.ratio, 0.6), 3))
+                .frame(width: width, height: width / foundShape(item))
                 .clipped()
                 .zoomSource(ZoomID.item(item.id))
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onOpen)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(item.day.label).font(.subheadline.weight(.semibold)).foregroundStyle(LibraryColors.onBackground)
-                Text(item.takenAt.formatted(date: .omitted, time: .shortened)).font(.subheadline).foregroundStyle(LibraryColors.muted)
-                Spacer(minLength: 8)
-                if let place {
-                    Label(place, systemImage: "mappin.and.ellipse")
-                        .font(.subheadline)
-                        .foregroundStyle(LibraryColors.muted)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 16)
+            FoundCaption(item: item, place: place)
         }
         .padding(.bottom, 14)
+    }
+}
+
+/// Almost identical photos as one, at the best one's shape: swipe for the others ("2 / 4" and dots), with the date, time
+/// and place of the one shown. Turns to the photo the viewer shows, so closing it lands on its own page.
+private struct FoundSet: View {
+    let items: [MediaItem]
+    let place: (MediaItem) -> String?
+    let width: CGFloat
+    let onOpen: (MediaItem) -> Void
+
+    /// The photo shown; the scroll view tracks it only when it starts on one.
+    @State private var current: String?
+    @Environment(\.viewerShowing) private var viewerShowing
+
+    init(items: [MediaItem], place: @escaping (MediaItem) -> String?, width: CGFloat, onOpen: @escaping (MediaItem) -> Void) {
+        self.items = items
+        self.place = place
+        self.width = width
+        self.onOpen = onOpen
+        _current = State(initialValue: items.first?.id)
+    }
+
+    var body: some View {
+        let index = items.firstIndex { $0.id == current } ?? 0
+        let height = width / foundShape(items[0])
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: tileGap) {
+                    ForEach(items, id: \.id) { item in
+                        // The zoom source inside, as Moments' sets have it: it sets its own id, and the page's id must
+                        // stay the photo's for the scroll position.
+                        ZStack {
+                            MediaTileView(item: item, badgeSize: 22)
+                                .frame(width: width, height: height)
+                                .clipped()
+                                .zoomSource(ZoomID.item(item.id))
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { onOpen(item) }
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollPosition(id: $current)
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+            .scrollIndicators(.hidden)
+            .frame(width: width, height: height)
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 5) {
+                    Image(systemName: "square.stack").font(.system(size: 11, weight: .semibold))
+                    Text("\(index + 1) / \(items.count)").font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(LibraryColors.photoText)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(LibraryColors.badgeScrim, in: Capsule())
+                .padding(10)
+                .accessibilityElement(children: .combine)
+            }
+            .overlay(alignment: .bottom) {
+                HStack(spacing: 5) {
+                    ForEach(0..<min(items.count, maxSetDots), id: \.self) { dot in
+                        let shown = dot == min(index, maxSetDots - 1)
+                        Circle().fill(.white.opacity(shown ? 1 : 0.5)).frame(width: shown ? 7 : 6, height: shown ? 7 : 6)
+                    }
+                }
+                .padding(.bottom, 10)
+                .accessibilityHidden(true)
+            }
+            FoundCaption(item: items[index], place: place(items[index]))
+        }
+        .padding(.bottom, 14)
+        .onChange(of: viewerShowing) { _, showing in
+            if let id = showing?.itemId, id != current, items.contains(where: { $0.id == id }) { current = id }
+        }
+    }
+}
+
+/// A set longer than eight shows eight dots, the last one standing for the rest.
+private let maxSetDots = 8
+
+/// Its shape (width / height), very tall and very wide ones cropped to 0.6 and 3.
+private func foundShape(_ item: MediaItem) -> CGFloat { min(max(item.ratio, 0.6), 3) }
+
+/// "Thu, 8 Oct 21:03", and "📍 Herzliya, Israel" at the end.
+private struct FoundCaption: View {
+    let item: MediaItem
+    let place: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(item.day.label).font(.subheadline.weight(.semibold)).foregroundStyle(LibraryColors.onBackground)
+            Text(item.takenAt.formatted(date: .omitted, time: .shortened)).font(.subheadline).foregroundStyle(LibraryColors.muted)
+            Spacer(minLength: 8)
+            if let place {
+                Label(place, systemImage: "mappin.and.ellipse")
+                    .font(.subheadline)
+                    .foregroundStyle(LibraryColors.muted)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 16)
     }
 }
 

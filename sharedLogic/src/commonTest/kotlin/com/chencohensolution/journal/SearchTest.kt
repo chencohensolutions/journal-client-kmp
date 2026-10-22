@@ -197,5 +197,21 @@ class SearchTest {
         search.close()
     }
 
+    @Test
+    fun keepsEachMomentsSetsTogetherAndEachSetAsOneRow() = runTest {
+        val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b')), item("3", sha('c')), item("4", sha('d')), item("5", sha('e'))))
+        // b is best in its moment, but a's moment (a, c and d) has the best photo of all; c is almost identical to a.
+        // e is hidden by the library.
+        val search = SearchController(library, { _, _, _, _ ->
+            SearchAnswer(listOf(sha('a'), sha('b'), sha('c'), sha('z'), sha('d')), 5, 5, sets = listOf(0, 1, 0, 2, 3), moments = listOf(0, 1, 0, 0, 0))
+        }, dispatcher = StandardTestDispatcher(testScheduler))
+        search.search("a toast")
+        advanceUntilIdle()
+        assertEquals(listOf(listOf("1", "3"), listOf("4"), listOf("2")), search.currentState.sets.map { set -> set.map { it.id } })
+        // The viewer swipes through them in that order.
+        assertEquals(listOf("1", "3", "4", "2"), search.currentState.items.map { it.id })
+        search.close()
+    }
+
     private fun Double.round() = kotlin.math.round(this * 100) / 100
 }

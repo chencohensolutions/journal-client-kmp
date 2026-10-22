@@ -70,6 +70,14 @@
             "problemMatcher": []
         },
         {
+            "label": "Android: run on phone (arm64 only)",
+            "detail": "Build an APK with only arm64 native libraries (a third of the size), install on the first real device and open the app",
+            "type": "shell",
+            "command": "ABI=arm64-v8a ./scripts/android-run.sh phone",
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+            "problemMatcher": []
+        },
+        {
             "label": "Android: run on emulator",
             "detail": "Build, install on the running emulator and open the app",
             "type": "shell",

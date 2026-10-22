@@ -272,6 +272,8 @@ object LabData {
             query = "a dog on the beach at sunset",
             status = SearchStatus.DONE,
             items = items,
+            // The first three as one set you swipe, the rest one each.
+            sets = listOf(items.take(3)) + items.drop(3).map(::listOf),
             indexed = 12_480,
             total = 14_200,
             yearChips = items.groupingBy { it.day.year }.eachCount().entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) },

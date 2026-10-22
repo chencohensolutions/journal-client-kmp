@@ -57,6 +57,9 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        // -Pabi=arm64-v8a (scripts/android-run.sh with ABI=…) packs only that processor's native libraries: about a third of
+        // the debug APK's 200 MB, for a faster install on one phone. Without it, every ABI (emulators and old phones too).
+        (findProperty("abi") as String?)?.let { abis -> ndk { abiFilters += abis.split(",") } }
     }
     packaging {
         resources {

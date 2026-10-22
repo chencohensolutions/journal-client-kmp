@@ -3,6 +3,8 @@
 #   ./scripts/android-run.sh phone      first real device (USB or wireless debugging)
 #   ./scripts/android-run.sh emulator   first running emulator
 #   ./scripts/android-run.sh <serial>   a specific device from `adb devices`
+# ABI=arm64-v8a packs only that processor's native libraries (a smaller APK, quicker to install over wireless
+# debugging); otherwise the APK has every ABI.
 # Installing over an existing copy keeps its data (stories, tags, enrollment).
 set -euo pipefail
 
@@ -32,9 +34,17 @@ if [[ -z "$serial" ]]; then
 fi
 echo "Device: $serial ($("$adb" -s "$serial" shell getprop ro.product.model | tr -d '\r'))"
 
-./gradlew --console=plain :androidApp:assembleDebug
+./gradlew --console=plain :androidApp:assembleDebug ${ABI:+-Pabi=$ABI}
 apk=androidApp/build/outputs/apk/debug/androidApp-debug.apk
+# Pushed compressed (zstd), then installed from the device: a debug APK is mostly stored uncompressed (code and native
+# libraries), and `adb install` streams it as is, so over wireless debugging this takes about half as long (a 102 MB APK:
+# 21 s → 12 s on the owner's phone).
+remote=/data/local/tmp/journal-debug.apk
+install() {
+    "$adb" -s "$serial" push -z zstd "$apk" "$remote" && "$adb" -s "$serial" shell pm install -r -t "$remote"
+}
 # The first install over wireless debugging often fails while the connection wakes up; the retry succeeds.
-"$adb" -s "$serial" install -r "$apk" || { echo "Install failed, retrying once..." >&2; sleep 2; "$adb" -s "$serial" install -r "$apk"; }
+install || { echo "Install failed, retrying once..." >&2; sleep 2; install; }
+"$adb" -s "$serial" shell rm -f "$remote"
 "$adb" -s "$serial" shell am start -S -n com.chencohensolution.journal/.MainActivity # -S: stop the old process so the new build runs
 echo "Running on $serial"

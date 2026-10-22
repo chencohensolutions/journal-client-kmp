@@ -81,6 +81,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./gradlew :sharedLogic:iosSimulatorArm64Test        # shared tests on the iOS simulator
 ./gradlew :androidApp:assembleDebug
 ./scripts/android-run.sh phone|emulator|<serial>    # build, install on one device, open (also VS Code tasks)
+ABI=arm64-v8a ./scripts/android-run.sh phone        # the same with only arm64 libraries: half the APK, quicker over Wi-Fi
 ./scripts/screenshots.sh                            # render the screen previews to PNGs (docs/previews.md)
 ./scripts/ui-lab.sh [screen] [option]               # UI lab on the emulator (docs/previews.md)
 ./scripts/ui-lab-ios.sh [screen] [option]           # the same UI lab on a booted iOS simulator
