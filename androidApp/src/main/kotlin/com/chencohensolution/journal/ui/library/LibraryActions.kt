@@ -163,7 +163,7 @@ internal fun libraryActions(
     )
 
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { item, isPrivate ->
-        val sha = item.sha256
+        val sha = server.library.sha256Of(item)
         sha != null && server.library.setPrivate(listOf(sha), isPrivate)
     }
     // "Free up space": checked files that wait go to the trash with one system prompt, shown when a run has ended (the

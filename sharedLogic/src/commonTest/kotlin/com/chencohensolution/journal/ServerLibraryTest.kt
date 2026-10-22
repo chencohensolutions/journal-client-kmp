@@ -7,14 +7,20 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.mergeWithServer
+import com.chencohensolution.journal.network.MtlsHttpClientFactory
+import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.parseTimestamp
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsController
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import okio.Path.Companion.toPath
+import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,6 +38,27 @@ class ServerLibraryTest {
 
     private fun device(id: String, name: String, size: Long) =
         MediaItem(id, MediaType.IMAGE, 0, LocalDay(2026, 10, 8), null, 3000, 4000, size, name, modifiedMillis = 1)
+
+    @Test
+    fun aPhotoBackupDidNotReadIsFoundOnTheServerByNameAndSize() = runTest {
+        // Imported on the server, so this phone's backup never read it: no sha256 of its own.
+        val imported = server('a', "20261008_210329.heic", 714_000)
+        val files = FakeFileSystem().apply {
+            createDirectories("/server".toPath())
+            write("/server/media.json".toPath()) { writeUtf8("{\"v\":1,\"media\":[${Json.encodeToString(ServerMedia.serializer(), imported)}]}") }
+        }
+        val store = object : KeyValueStore {
+            override fun getString(key: String): String? = null
+            override fun putString(key: String, value: String?) {}
+        }
+        val factory = MtlsHttpClientFactory { _, _ -> error("no network in this test") }
+        val library = ServerLibrary(JournalSettings(store), factory, emptyList(), files, "/server".toPath(), StandardTestDispatcher(testScheduler))
+        library.media.first { it.isNotEmpty() }
+
+        assertEquals(imported.sha256, library.sha256Of(device("1", "20261008_210329.HEIC", 714_000)))
+        assertEquals("b".repeat(64), library.sha256Of(device("2", "other.jpg", 1).copy(sha256 = "b".repeat(64))))
+        assertNull(library.sha256Of(device("3", "20261008_210329.heic", 1)))
+    }
 
     @Test
     fun parsesTheServersTimesWithTheirOwnDay() {

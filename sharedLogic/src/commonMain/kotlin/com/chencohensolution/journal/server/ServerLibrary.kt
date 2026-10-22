@@ -237,6 +237,17 @@ class ServerLibrary internal constructor(
     }
 
     /**
+     * [item]'s sha256 on the server: its own once this device's backup read it, otherwise the server file with its name
+     * and size, as the library and search match them (a photo that reached the server another way: an import, an
+     * earlier install). Null when the server has no such file.
+     */
+    fun sha256Of(item: MediaItem): String? {
+        item.sha256?.let { return it }
+        val name = item.fileName?.lowercase() ?: return null
+        return _media.value.firstOrNull { it.fileName.lowercase() == name && it.size == item.sizeBytes }?.sha256
+    }
+
+    /**
      * Marks [sha256s] private ([isPrivate]), or no longer private, on the server (with their edits and paired files), then syncs so
      * the library follows. False when the server couldn't be reached or refused.
      */

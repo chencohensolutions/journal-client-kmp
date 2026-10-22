@@ -84,7 +84,7 @@ class IosServerFiles internal constructor(
 
     /** Marks [item] private on the server ([isPrivate]), or no longer private; [onDone] gets whether it worked. */
     fun setPrivate(item: MediaItem, isPrivate: Boolean, onDone: (Boolean) -> Unit): ObservationHandle = run({ onDone(it ?: false) }) {
-        val sha = item.sha256 ?: return@run false
+        val sha = library.sha256Of(item) ?: return@run false
         library.setPrivate(listOf(sha), isPrivate)
     }
 
