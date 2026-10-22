@@ -528,6 +528,9 @@
     <string name="search_nothing">לא נמצא כלום. נסו מילים אחרות.</string>
     <string name="search_offline">אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת.</string>
     <string name="search_server_error">השרת לא הצליח לחפש: %1$s</string>
+    <string name="settings_search_title">חיפוש</string>
+    <string name="settings_search_page">תמונות בעמוד</string>
+    <string name="settings_search_page_body">כמה תמונות החיפוש מציג בהתחלה. גלילה לקראת הסוף מציגה את העמוד הבא.</string>
     <string name="search_filter">סינון</string>
     <string name="search_filter_count">סינון · %1$d</string>
     <string name="search_filter_year">שנה</string>

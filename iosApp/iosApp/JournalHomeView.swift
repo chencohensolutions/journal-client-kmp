@@ -191,9 +191,7 @@ struct JournalHomeView: View {
 
     /// Nothing searched yet when the parent has no search.
     private var shownSearch: SearchState {
-        search ?? SearchState(
-            query: "", status: .idle, items: [], sets: [], indexed: 0, total: 0, error: nil, errorDetail: nil, year: nil, town: nil, yearChips: [], townChips: []
-        )
+        search ?? SearchState.Companion.shared.NONE
     }
 
     private var bottomControls: some View {

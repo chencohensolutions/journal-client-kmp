@@ -41,6 +41,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +88,8 @@ internal class SearchActions(
     /** A year or town in the filter sheet, or null to drop it. */
     val chooseYear: (Int?) -> Unit = {},
     val chooseTown: (String?) -> Unit = {},
+    /** The next page of results, when the list nears its end. */
+    val loadMore: () -> Unit = {},
     /** A photo of the results; the viewer swipes through the results. */
     val openItem: (MediaItem) -> Unit = {},
 )
@@ -95,6 +99,15 @@ internal class SearchActions(
 internal fun SearchContent(search: SearchState, places: Places, landing: String?, actions: SearchActions, contentPadding: PaddingValues) {
     val list = rememberLazyListState()
     list.LandOn(landing, search.sets.size) { id -> search.sets.indexOfFirst { set -> set.any { it.id == id } } }
+    // The next page once the last rows come into view: a few rows ahead, so it is usually there by the end.
+    val currentSearch by rememberUpdatedState(search)
+    val currentActions by rememberUpdatedState(actions)
+    LaunchedEffect(list) {
+        snapshotFlow { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index to list.layoutInfo.totalItemsCount }
+            .collect { (last, total) ->
+                if (last != null && last >= total - LOAD_AHEAD_ROWS && currentSearch.canLoadMore && !currentSearch.loadingMore) currentActions.loadMore()
+            }
+    }
     LazyColumn(state = list, contentPadding = contentPadding) {
         when (search.status) {
             SearchStatus.IDLE -> item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
@@ -120,6 +133,11 @@ internal fun SearchContent(search: SearchState, places: Places, landing: String?
                     FoundPhoto(set.first(), places, onClick = { actions.openItem(set.first()) })
                 } else {
                     FoundSet(set, places, landing, actions.openItem)
+                }
+            }
+            if (search.loadingMore) item(key = "more") {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = LibraryColors.Muted, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -424,6 +442,9 @@ private fun TownRow(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
         if (selected) Icon(LibraryIcons.Check, null, tint = LibraryColors.Accent, modifier = Modifier.size(20.dp))
     }
 }
+
+/** The next page is asked for when the list is this many rows from its end. */
+private const val LOAD_AHEAD_ROWS = 5
 
 /** Years per row of the filter sheet. */
 private const val YEAR_COLUMNS = 4

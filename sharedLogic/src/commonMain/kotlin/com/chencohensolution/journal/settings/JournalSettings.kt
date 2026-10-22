@@ -104,6 +104,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         }
 
     /** How much the previews of server photos may take up on this device, in GB (Settings → Storage on this phone). */
+    /** Photos per page of search results (Settings › Search); one of [SettingsState.SEARCH_PAGE_OPTIONS]. */
+    var searchPageSize: Int
+        get() = store.getString(KEY_SEARCH_PAGE_SIZE)?.toIntOrNull()?.takeIf { it in 1..1000 } ?: DEFAULT_SEARCH_PAGE_SIZE
+        set(value) = store.putString(KEY_SEARCH_PAGE_SIZE, value.toString())
+
     var previewCacheGigabytes: Int
         get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
         set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
@@ -180,6 +185,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
 
     companion object {
         const val DEFAULT_PREVIEW_CACHE_GB = 10
+        const val DEFAULT_SEARCH_PAGE_SIZE = 200
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
@@ -199,6 +205,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_CHARGING_ONLY = "backup_charging_only"
         private const val KEY_BACKUP_ORDER = "backup_order"
         private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
+        private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"

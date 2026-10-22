@@ -81,9 +81,18 @@ data class SearchState(
     /** The years of the matches, newest first, and their towns, most matches first; each counted within the other's choice. */
     val yearChips: List<SearchChip> = emptyList(),
     val townChips: List<SearchChip> = emptyList(),
+    /** More matches can be shown ([SearchController.loadMore]): scrolling near the end asks for them. */
+    val canLoadMore: Boolean = false,
+    /** The next page is being asked for. */
+    val loadingMore: Boolean = false,
 ) {
     /** The server hasn't read every file yet, so some can't be found. */
     val stillReading: Boolean get() = status == SearchStatus.DONE && indexed < total
+
+    companion object {
+        /** Nothing searched yet; for Swift, which has no default arguments. */
+        val NONE = SearchState()
+    }
 }
 
 /**
@@ -97,16 +106,22 @@ internal data class SearchAnswer(
     val sets: List<Int> = emptyList(),
     val moments: List<Int> = emptyList(),
 ) {
+    val size: Int get() = sha256s.size
+
     /** The first [n] hits. */
     fun take(n: Int) = copy(sha256s = sha256s.take(n), sets = sets.take(n), moments = moments.take(n))
+
+    /** [next] (the page after these) added at the end, with its counts. */
+    operator fun plus(next: SearchAnswer) =
+        SearchAnswer(sha256s + next.sha256s, next.indexed, next.total, sets + next.sets, moments + next.moments)
 }
 
 /**
- * Asks the server for the [limit] best matches of [text], of [years] and inside [area] when given; throws when it can't
- * be reached ([SearchUnreachable]) or answers with an error.
+ * Asks the server for the [limit] best matches of [text] after the first [offset], of [years] and inside [area] when
+ * given; throws when it can't be reached ([SearchUnreachable]) or answers with an error.
  */
 internal fun interface SearchApi {
-    suspend fun search(text: String, limit: Int, years: List<Int>?, area: GeoArea?): SearchAnswer
+    suspend fun search(text: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer
 }
 
 /** The server couldn't be reached, or this device has no identity to ask with. */
@@ -118,12 +133,14 @@ internal class ApolloSearchApi(
     private val clientFactory: MtlsHttpClientFactory,
     private val trustedCas: List<ByteArray>,
 ) : SearchApi {
-    override suspend fun search(text: String, limit: Int, years: List<Int>?, area: GeoArea?): SearchAnswer {
+    override suspend fun search(text: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer {
         val alias = settings.identityAlias ?: throw SearchUnreachable("This device isn't registered")
         return createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
             val query = SearchMediaQuery(
                 text = text,
                 limit = Optional.present(limit),
+                // Left out for a first page, so a server from before pages still answers it.
+                offset = Optional.presentIfNotNull(offset.takeIf { it > 0 }),
                 years = Optional.presentIfNotNull(years),
                 area = Optional.presentIfNotNull(area?.let { GeoAreaInput(it.south, it.west, it.north, it.east) }),
             )
@@ -142,8 +159,9 @@ internal class ApolloSearchApi(
 
 /**
  * The Search screen's logic: [search] asks the server for the photos a sentence describes and [state] lists them, best
- * first, as the library has them. The first answer is the best [CANDIDATES]; their years and towns become the chips,
- * and [chooseYear] / [chooseTown] ask the server again for the best of that year or town (a town is sent as the box
+ * first, as the library has them, a page ([pageSize]) at a time: [loadMore] shows the next. The first answer is the best
+ * [CANDIDATES]; their years and towns are what the filter offers, and its first pages come from it. [chooseYear] /
+ * [chooseTown] ask the server again for the best of that year or town, a page at a time (a town is sent as the box
  * around this device's photos of it, since the server has no place names). When the library or the places change (a
  * photo made private, a town named) the same answers are shown again through them. A new request replaces one running.
  */
@@ -154,19 +172,28 @@ class SearchController internal constructor(
     private val server: StateFlow<List<ServerMedia>>? = null,
     /** The stories' places (where photos were taken and the towns' names), for the town chips. */
     private val stories: StateFlow<StoriesState>? = null,
+    /** Photos per page (Settings › Search); read for each page. */
+    private val pageSize: () -> Int = { JournalSettings.DEFAULT_SEARCH_PAGE_SIZE },
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
 
-    /** The first answer's files, best first: what the filter counts. */
-    private var candidates: List<String> = emptyList()
+    /** The first answer: what the filter counts, and the pages without a filter. */
+    private var firstAnswer = NOTHING
 
-    /** The first answer, for showing its best again when the filter is dropped. */
-    private var firstAnswer = SearchAnswer(emptyList(), 0, 0)
+    /** The matches fetched for what is chosen now: [firstAnswer] without a filter, else its pages so far. */
+    private var loaded = NOTHING
 
-    /** The files shown: the first answer's best, or the answer for the chosen year and town. */
-    private var shown = SearchAnswer(emptyList(), 0, 0)
+    /** Where each page shown so far ends in [loaded]; the last is how many are shown. */
+    private var pageEnds: List<Int> = emptyList()
+
+    /** Whether the server may have more after [loaded]: its last answer was a full one. */
+    private var serverHasMore = false
+
+    /** The filter of [loaded], sent with each next page. */
+    private var years: List<Int>? = null
+    private var area: GeoArea? = null
 
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
@@ -184,10 +211,11 @@ class SearchController internal constructor(
         val query = text.trim()
         if (query.isEmpty()) return clear()
         _state.update { SearchState(query = query, status = SearchStatus.SEARCHING) }
-        run { answer ->
-            candidates = answer.sha256s
+        years = null
+        area = null
+        fetch(limit = CANDIDATES) { answer ->
             firstAnswer = answer
-            shown = answer.take(SHOWN)
+            show(answer, full = answer.size == CANDIDATES)
         }
     }
 
@@ -197,12 +225,46 @@ class SearchController internal constructor(
     /** The best matches in [town] (null: anywhere), of the chosen year if one is. */
     fun chooseTown(town: String?) = choose(_state.value.year, town)
 
+    /**
+     * The next page: from what was fetched already, or from the server once that is all shown. Nothing while a page
+     * is coming, or when there are no more.
+     */
+    fun loadMore() {
+        val current = _state.value
+        if (current.status != SearchStatus.DONE || current.loadingMore || !current.canLoadMore) return
+        val shown = pageEnds.lastOrNull() ?: 0
+        if (shown < loaded.size) {
+            pageEnds = pageEnds + minOf(loaded.size, shown + pageSize())
+            refresh()
+            return
+        }
+        val limit = minOf(pageSize(), MAX_DEPTH - loaded.size)
+        if (limit < 1) return
+        _state.update { it.copy(loadingMore = true) }
+        searchJob = scope.launch {
+            try {
+                val next = api.search(current.query, limit, loaded.size, years, area)
+                loaded = loaded + next
+                pageEnds = pageEnds + loaded.size
+                serverHasMore = next.size == limit
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Offline or refused: what is shown stays, and no more is offered until the next search.
+                serverHasMore = false
+            }
+            _state.update { it.copy(loadingMore = false) }
+            refresh()
+        }
+    }
+
     /** Back to nothing searched. */
     fun clear() {
         searchJob?.cancel()
-        candidates = emptyList()
-        firstAnswer = SearchAnswer(emptyList(), 0, 0)
-        shown = firstAnswer
+        firstAnswer = NOTHING
+        loaded = NOTHING
+        pageEnds = emptyList()
+        serverHasMore = false
         _state.value = SearchState()
     }
 
@@ -216,28 +278,39 @@ class SearchController internal constructor(
 
     private fun choose(year: Int?, town: String?) {
         val current = _state.value
-        if (current.query.isEmpty() || candidates.isEmpty()) return
+        if (current.query.isEmpty() || firstAnswer.size == 0) return
         _state.update { it.copy(year = year, town = town) }
+        years = year?.let(::listOf)
+        area = town?.let(::areaOf)
         if (year == null && town == null) {
             // The first answer has the best of all already.
             searchJob?.cancel()
-            shown = firstAnswer.take(SHOWN)
-            _state.update { it.copy(status = SearchStatus.DONE) }
+            show(firstAnswer, full = firstAnswer.size == CANDIDATES)
+            _state.update { it.copy(status = SearchStatus.DONE, loadingMore = false) }
             refresh()
             return
         }
-        _state.update { it.copy(status = SearchStatus.SEARCHING) }
-        run(years = year?.let(::listOf), area = town?.let(::areaOf)) { answer -> shown = answer }
+        _state.update { it.copy(status = SearchStatus.SEARCHING, loadingMore = false) }
+        val limit = pageSize()
+        fetch(limit) { answer -> show(answer, full = answer.size == limit) }
     }
 
-    /** Asks the server for the query (with [years] and [area]) and shows its answer through [apply]. */
-    private fun run(years: List<Int>? = null, area: GeoArea? = null, apply: (SearchAnswer) -> Unit) {
+    /** Shows [answer]'s first page; [full]: the server may have more after it. */
+    private fun show(answer: SearchAnswer, full: Boolean) {
+        loaded = answer
+        pageEnds = listOf(minOf(answer.size, pageSize()))
+        serverHasMore = full
+    }
+
+    /** Asks the server for the first [limit] matches of the query (with [years] and [area]) and shows them through [apply]. */
+    private fun fetch(limit: Int, apply: (SearchAnswer) -> Unit) {
         searchJob?.cancel()
         val query = _state.value.query
-        val limit = if (years == null && area == null) CANDIDATES else SHOWN
+        val years = years
+        val area = area
         searchJob = scope.launch {
             try {
-                val answer = api.search(query, limit, years, area)
+                val answer = api.search(query, limit, 0, years, area)
                 apply(answer)
                 _state.update { it.copy(status = SearchStatus.DONE, indexed = answer.indexed, total = answer.total, error = null, errorDetail = null) }
                 refresh()
@@ -252,8 +325,10 @@ class SearchController internal constructor(
     }
 
     private fun fail(error: SearchError, detail: String?) {
-        shown = SearchAnswer(emptyList(), 0, 0)
-        _state.update { it.copy(status = SearchStatus.FAILED, items = emptyList(), sets = emptyList(), error = error, errorDetail = detail) }
+        loaded = NOTHING
+        pageEnds = emptyList()
+        serverHasMore = false
+        _state.update { it.copy(status = SearchStatus.FAILED, items = emptyList(), sets = emptyList(), canLoadMore = false, error = error, errorDetail = detail) }
     }
 
     /** The items and chips again, from the answers kept, through the library and places as they are now. */
@@ -263,8 +338,8 @@ class SearchController internal constructor(
         val resolve = resolver()
         val town = current.town
         // A town is asked for as a box, which can reach into the next town.
-        val sets = grouped(shown, resolve) { town == null || townOf(it) == town }
-        val matches = resolve(candidates)
+        val sets = grouped(resolve) { town == null || townOf(it) == town }
+        val matches = resolve(firstAnswer.sha256s)
         val yearChips = matches.filter { town == null || townOf(it) == town }
             .groupingBy { it.day.year }.eachCount()
             .entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) }
@@ -272,24 +347,41 @@ class SearchController internal constructor(
             .mapNotNull(::townOf).groupingBy { it }.eachCount()
             .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .map { SearchChip(it.key, it.value) }
-        _state.update { it.copy(items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips) }
+        val canLoadMore = (pageEnds.lastOrNull() ?: 0) < loaded.size || (serverHasMore && loaded.size < MAX_DEPTH)
+        _state.update { it.copy(items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips, canLoadMore = canLoadMore) }
     }
 
     /**
-     * [answer]'s files as the library has them ([keep] ones only), in sets: the moments in the order of their best
-     * photo, each moment's sets in the order of theirs, each set best first.
+     * The pages shown of [loaded], as the library has them ([keep] ones only), in sets: in each page the moments in the
+     * order of their best photo, each moment's sets in the order of theirs, each set best first. A page never moves
+     * what the pages before it showed: its photos of a set shown already join that set (more dots), and its other
+     * photos come after.
      */
-    private fun grouped(answer: SearchAnswer, resolve: (List<String>) -> List<MediaItem>, keep: (MediaItem) -> Boolean): List<List<MediaItem>> {
-        val moments = LinkedHashMap<Int, LinkedHashMap<Int, MutableList<MediaItem>>>()
-        answer.sha256s.forEachIndexed { i, sha ->
-            val item = resolve(listOf(sha)).firstOrNull()?.takeIf(keep) ?: return@forEachIndexed
-            // Without the server's numbers (an older server) each photo is its own.
-            val set = answer.sets.getOrNull(i) ?: (-1 - i)
-            val moment = answer.moments.getOrNull(i) ?: (-1 - i)
-            moments.getOrPut(moment) { LinkedHashMap() }.getOrPut(set) { mutableListOf() }.add(item)
-        }
+    private fun grouped(resolve: (List<String>) -> List<MediaItem>, keep: (MediaItem) -> Boolean): List<List<MediaItem>> {
+        val rows = mutableListOf<MutableList<MediaItem>>()
+        val rowOfSet = HashMap<Int, MutableList<MediaItem>>()
         val seen = HashSet<String>()
-        return moments.values.flatMap { it.values }.map { set -> set.filter { seen.add(it.id) } }.filter { it.isNotEmpty() }
+        var start = 0
+        for (end in pageEnds) {
+            val moments = LinkedHashMap<Int, LinkedHashMap<Int, MutableList<MediaItem>>>()
+            for (i in start until minOf(end, loaded.size)) {
+                val item = resolve(listOf(loaded.sha256s[i])).firstOrNull()?.takeIf(keep) ?: continue
+                if (!seen.add(item.id)) continue
+                // Without the server's numbers (an older server) each photo is its own.
+                val set = loaded.sets.getOrNull(i) ?: (-1 - i)
+                val moment = loaded.moments.getOrNull(i) ?: (-1 - i)
+                val shownSet = rowOfSet[set]
+                if (shownSet != null) shownSet.add(item) else moments.getOrPut(moment) { LinkedHashMap() }.getOrPut(set) { mutableListOf() }.add(item)
+            }
+            for (sets in moments.values) {
+                for ((set, items) in sets) {
+                    rows.add(items)
+                    rowOfSet[set] = items
+                }
+            }
+            start = end
+        }
+        return rows
     }
 
     private fun townOf(item: MediaItem): String? {
@@ -333,11 +425,13 @@ class SearchController internal constructor(
     }
 
     private companion object {
-        /** The first answer: the best this many, whose years and towns the chips count (the server allows up to 1000). */
+        /** The first answer: the best this many, whose years and towns the filter counts (the server allows up to 1000). */
         const val CANDIDATES = 1000
 
-        /** Photos shown per search, best first. */
-        const val SHOWN = 100
+        /** How far down the matches pages may go (offset + limit on the server). */
+        const val MAX_DEPTH = 10_000
+
+        val NOTHING = SearchAnswer(emptyList(), 0, 0)
 
         /** Degrees added around a town's photos (about a kilometer). */
         const val AREA_MARGIN = 0.01

@@ -101,14 +101,20 @@ object IosJournal {
 
     /**
      * Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet),
-     * with [stories]' places for the town chips.
+     * with [stories]' places for the filter's towns, a page of [settings]' size at a time.
      */
-    fun createSearchController(library: LibraryController, server: ServerLibrary, stories: StoriesController): SearchController =
+    fun createSearchController(
+        library: LibraryController,
+        server: ServerLibrary,
+        stories: StoriesController,
+        settings: SettingsController,
+    ): SearchController =
         SearchController(
             library = library.state,
             api = ApolloSearchApi(JournalSettings(UserDefaultsStore()), IosMtlsHttpClientFactory(), decodePemCertificates(SERVER_CA_PEM)),
             server = server.media,
             stories = stories.state,
+            pageSize = { settings.currentState.searchPageSize },
         )
 
     private var serverLibrary: ServerLibrary? = null

@@ -24,6 +24,10 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   row, the screen's full width**, at their own shape (wide panoramas cropped to 3:1, tall ones to 0.6:1, about a
   screen), each with its **date** (bold), **time**, and **📍 town, country** under it (no place line for a photo
   without one, or whose place isn't named yet).
+- **Pages** (Oct 22, 2026): a search shows a page of photos (Settings › Search › Photos per page: 50, 100, **200** by
+  default, 500 or 1000). A few rows before the end the next page follows, with a spinner at the bottom while it comes;
+  the count above says how many are shown so far. A page never moves what is shown: its photos of a set shown
+  already join that set (more dots), the rest come after.
 - **Sets and moments** (Oct 22, 2026): almost identical photos (a burst, a pose taken again) are one row at the
   best one's shape that you swipe, with "2 / 5" at the top and dots at the bottom, as in Moments; the caption is the
   photo shown. Sets taken within two hours of each other stay together, each such moment placed by its best photo and
@@ -44,8 +48,9 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
 
 ## What is shown
 
-A search first asks for the best 1000 matches (only their sha256s); the first 100 are shown, and the filter counts all
-1000. A choice in it asks again with `years` or `area` (at most 100): the server applies them before picking the best. A town
+A search first asks for the best 1000 matches (only their sha256s); the filter counts all 1000, and the pages come
+from them while they last, then from the server (`offset`, up to 10000 down). With a year or town, every page comes
+from the server. A choice in it asks again with `years` or `area` (at most 100): the server applies them before picking the best. A town
 is sent as a box of latitudes and longitudes around this device's photos of it, a kilometer wider, since the server
 has no place names; what the box catches of a neighboring town is left out here. Dropping both shows the first answer
 again without asking. The server answers with sha256s. They are shown as the library has those photos, so what the
@@ -58,7 +63,7 @@ results follow without searching again. All sources are searched, whatever Momen
 
 - Shared: `SearchController`, `SearchState` in
   [search/SearchController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/search/SearchController.kt)
-  (`search(text)`, `chooseYear`, `chooseTown`, `clear()`; `status` IDLE / SEARCHING / DONE / FAILED, `error` OFFLINE
+  (`search(text)`, `chooseYear`, `chooseTown`, `loadMore()`, `clear()`; `status` IDLE / SEARCHING / DONE / FAILED, `error` OFFLINE
   or SERVER, `yearChips` / `townChips`, the filter sheet's counts), the query in
   `graphql/Search.graphql`, the schema copied to `graphql/search.graphqls`. Made by `createSearchController` (Android)
   and `IosJournal.createSearchController`. Tests: `SearchTest`.

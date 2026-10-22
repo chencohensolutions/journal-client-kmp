@@ -94,8 +94,13 @@ data class SettingsState(
      * photos still to upload, uploading or failed have a badge).
      */
     val showOnPhoneBadge: Boolean = false,
+    /** Photos per page of search results; scrolling near the end shows the next page. */
+    val searchPageSize: Int = JournalSettings.DEFAULT_SEARCH_PAGE_SIZE,
 ) {
     companion object {
+        /** What the Settings screen offers for [searchPageSize] (the server sends at most 1000 at a time). */
+        val SEARCH_PAGE_OPTIONS: List<Int> = listOf(50, 100, 200, 500, 1000)
+
         /** What the Settings screen offers for [previewCacheGigabytes]. */
         val PREVIEW_CACHE_GB_OPTIONS: List<Int> = listOf(1, 2, 5, 10, 20, 50)
     }
@@ -119,6 +124,7 @@ class SettingsController internal constructor(
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
+            searchPageSize = settings.searchPageSize,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -162,6 +168,13 @@ class SettingsController internal constructor(
         val shown = transform(_state.value.shownSources)
         settings.shownSources = shown
         _state.update { it.copy(shownSources = shown) }
+    }
+
+    /** Photos per page of search results; values outside 1–1000 are ignored. Applies from the next page. */
+    fun setSearchPageSize(size: Int) {
+        if (size !in 1..1000) return
+        settings.searchPageSize = size
+        _state.update { it.copy(searchPageSize = size) }
     }
 
     /** The previews' limit; the platform trims them to it. Values below 1 are ignored. */

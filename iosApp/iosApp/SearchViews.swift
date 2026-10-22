@@ -14,6 +14,8 @@ struct SearchActions {
     /// A year or town in the filter sheet, or nil to drop it.
     var chooseYear: (Int?) -> Void = { _ in }
     var chooseTown: (String?) -> Void = { _ in }
+    /// The next page of results, when the list nears its end.
+    var loadMore: () -> Void = {}
     /// A photo of the results; the viewer swipes through the results.
     var openItem: (MediaItem) -> Void = { _ in }
 }
@@ -48,7 +50,8 @@ struct SearchResultsView: View {
             }
             // Kept while a new search runs; the field shows its spinner.
             if search.status == .done || search.status == .searching {
-                ForEach(search.sets, id: \.first!.id) { set in
+                let loadFrom = max(search.sets.count - loadAheadRows, 0)
+                ForEach(Array(search.sets.enumerated()), id: \.element.first!.id) { index, set in
                     Group {
                         if set.count == 1 {
                             FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width) { actions.openItem(set[0]) }
@@ -57,6 +60,11 @@ struct SearchResultsView: View {
                         }
                     }
                     .id(set[0].id)
+                    // The next page once the last rows come into view: a few ahead, so it is usually there by the end.
+                    .onAppear { if index >= loadFrom && search.canLoadMore && !search.loadingMore { actions.loadMore() } }
+                }
+                if search.loadingMore {
+                    ProgressView().tint(LibraryColors.muted).frame(maxWidth: .infinity).padding(24)
                 }
             }
         }
@@ -73,6 +81,9 @@ struct SearchResultsView: View {
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 }
+
+/// The next page is asked for when a row this close to the end appears.
+private let loadAheadRows = 5
 
 /// "36 photos, best first", or "Nothing found", and how far the server has read the library while it still is.
 private struct FoundNote: View {

@@ -50,6 +50,7 @@ struct SettingsView: View {
             .listRowBackground(LibraryColors.raised)
             similaritySection
             privateMediaSection
+            searchSection
         }
         // Counted on open (and again when the limit changes or Clear is tapped).
         .task {
@@ -296,6 +297,23 @@ extension SettingsView {
             .tint(LibraryColors.accent)
         } header: {
             Text("Badges")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// Photos per page of search results.
+    private var searchSection: some View {
+        Section {
+            Picker("Photos per page", selection: Binding(get: { Int(settings.state.searchPageSize) }, set: settings.setSearchPageSize)) {
+                ForEach(SettingsViewModel.searchPageOptions, id: \.self) { size in
+                    Text("\(size)").tag(size)
+                }
+            }
+            .foregroundStyle(LibraryColors.onBackground)
+        } header: {
+            Text("Search")
+        } footer: {
+            Text("How many photos a search shows at first. Scrolling near the end shows the next page.")
         }
         .listRowBackground(LibraryColors.raised)
     }

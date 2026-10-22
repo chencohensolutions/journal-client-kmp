@@ -507,6 +507,9 @@
     <string name="search_nothing">Nothing found. Try other words.</string>
     <string name="search_offline">Can\'t reach your server. Search works when the server can be reached.</string>
     <string name="search_server_error">The server couldn\'t search: %1$s</string>
+    <string name="settings_search_title">Search</string>
+    <string name="settings_search_page">Photos per page</string>
+    <string name="settings_search_page_body">How many photos a search shows at first. Scrolling near the end shows the next page.</string>
     <string name="search_filter">Filter</string>
     <string name="search_filter_count">Filter · %1$d</string>
     <string name="search_filter_year">Year</string>

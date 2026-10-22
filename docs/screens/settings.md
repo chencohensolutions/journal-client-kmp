@@ -74,6 +74,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 - **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
   default. While off, **Hide from** a slider from 10% to 95% in steps of 5 (default **50%**): the nudity score the
   server's scan must reach for a photo or video to be hidden.
+- **Search** (both platforms, Oct 22, 2026): **Photos per page**, 50, 100, **200** (default), 500 or 1000: how many
+  photos a [search](search.md) shows at first; scrolling near the end shows the next page. Applies from the next page.
 
 ## Behavior
 

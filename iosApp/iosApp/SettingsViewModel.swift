@@ -26,6 +26,8 @@ final class SettingsViewModel: ObservableObject {
 
     func setGroupingMode(_ mode: GroupingMode) { controller.setGroupingMode(mode: mode) }
     func setGapHours(_ hours: Int) { controller.setGapHours(hours: Int32(hours)) }
+    /// Photos per page of search results; applies from the next page.
+    func setSearchPageSize(_ size: Int) { controller.setSearchPageSize(size: Int32(size)) }
     func setSimilarityPercent(_ percent: Int) { controller.setSimilarityPercent(percent: Int32(percent)) }
     func resetSimilarity() { controller.resetSimilarity() }
 
@@ -96,4 +98,5 @@ final class SettingsViewModel: ObservableObject {
 
     /// What the gap picker offers.
     static var gapHoursOptions: [Int] { TimelineGrouping.Companion.shared.GAP_HOURS_OPTIONS.map { $0.intValue } }
+    static var searchPageOptions: [Int] { SettingsState.Companion.shared.SEARCH_PAGE_OPTIONS.map { $0.intValue } }
 }

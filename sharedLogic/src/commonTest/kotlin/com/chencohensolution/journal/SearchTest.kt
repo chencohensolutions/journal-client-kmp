@@ -44,7 +44,7 @@ class SearchTest {
     fun showsTheLibrarysPhotosInTheServersOrder() = runTest {
         val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b')), item("3", sha('c'))))
         var asked: Pair<String, Int>? = null
-        val search = SearchController(library, { text, limit, _, _ ->
+        val search = SearchController(library, { text, limit, _, _, _ ->
             asked = text to limit
             SearchAnswer(listOf(sha('c'), sha('z'), sha('a')), indexed = 80, total = 100)
         }, dispatcher = StandardTestDispatcher(testScheduler))
@@ -66,7 +66,7 @@ class SearchTest {
     @Test
     fun followsTheLibraryAfterTheAnswer() = runTest {
         val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b'))))
-        val search = SearchController(library, { _, _, _, _ -> SearchAnswer(listOf(sha('a'), sha('b')), 2, 2) }, dispatcher = StandardTestDispatcher(testScheduler))
+        val search = SearchController(library, { _, _, _, _, _ -> SearchAnswer(listOf(sha('a'), sha('b')), 2, 2) }, dispatcher = StandardTestDispatcher(testScheduler))
         search.search("snow")
         advanceUntilIdle()
         assertEquals(listOf("1", "2"), search.currentState.items.map { it.id })
@@ -82,7 +82,7 @@ class SearchTest {
     fun findsADevicePhotoBackupHasntReadByNameAndSize() = runTest {
         val library = MutableStateFlow(library(item("7", sha256 = null, name = "20261008_190157.heic", size = 541_212)))
         val server = MutableStateFlow(listOf(serverFile('a', "20261008_190157.HEIC", 541_212)))
-        val search = SearchController(library, { _, _, _, _ -> SearchAnswer(listOf(sha('a')), 1, 1) }, server, dispatcher = StandardTestDispatcher(testScheduler))
+        val search = SearchController(library, { _, _, _, _, _ -> SearchAnswer(listOf(sha('a')), 1, 1) }, server, dispatcher = StandardTestDispatcher(testScheduler))
         search.search("sunset")
         advanceUntilIdle()
         assertEquals(listOf("7"), search.currentState.items.map { it.id })
@@ -93,7 +93,7 @@ class SearchTest {
     fun saysWhyASearchFailed() = runTest {
         val library = MutableStateFlow(library(item("1", sha('a'))))
         var fail: Exception = SearchUnreachable("timeout")
-        val search = SearchController(library, { _, _, _, _ -> throw fail }, dispatcher = StandardTestDispatcher(testScheduler))
+        val search = SearchController(library, { _, _, _, _, _ -> throw fail }, dispatcher = StandardTestDispatcher(testScheduler))
 
         search.search("cat")
         advanceUntilIdle()
@@ -113,7 +113,7 @@ class SearchTest {
     fun aNewSearchReplacesOneRunningAndBlankClears() = runTest {
         val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b'))))
         val first = CompletableDeferred<SearchAnswer>()
-        val search = SearchController(library, { text, _, _, _ ->
+        val search = SearchController(library, { text, _, _, _, _ ->
             if (text == "slow") first.await() else SearchAnswer(listOf(sha('b')), 2, 2)
         }, dispatcher = StandardTestDispatcher(testScheduler))
 
@@ -147,7 +147,7 @@ class SearchTest {
     fun chipsCountTheMatchesYearsAndTownsEachWithinTheOthersChoice() = runTest {
         val library = MutableStateFlow(library(at("1", 'a', 2026, telAviv), at("2", 'b', 2025, paris), at("3", 'c', 2025, telAviv), at("4", 'd', 2019, jaffa)))
         val asked = mutableListOf<Triple<Int, List<Int>?, GeoArea?>>()
-        val search = SearchController(library, { _, limit, years, area ->
+        val search = SearchController(library, { _, limit, _, years, area ->
             asked += Triple(limit, years, area)
             when {
                 years == null && area == null -> SearchAnswer(listOf(sha('a'), sha('b'), sha('c'), sha('d')), 4, 4)
@@ -165,7 +165,7 @@ class SearchTest {
         search.chooseYear(2025)
         assertEquals(SearchStatus.SEARCHING, search.currentState.status)
         advanceUntilIdle()
-        assertEquals(Triple(100, listOf(2025), null), asked.last())
+        assertEquals(Triple(200, listOf(2025), null), asked.last())
         assertEquals(listOf("3", "2"), search.currentState.items.map { it.id })
         // Ties by name.
         assertEquals(listOf(SearchChip("Paris", 1), SearchChip("Tel Aviv", 1)), search.currentState.townChips)
@@ -176,7 +176,7 @@ class SearchTest {
         search.chooseTown("Tel Aviv")
         advanceUntilIdle()
         val (limit, years, area) = asked.last()
-        assertEquals(100, limit)
+        assertEquals(200, limit)
         assertNull(years)
         assertEquals(GeoArea(32.04, 34.74, 32.09, 34.79), area?.let { GeoArea(it.south.round(), it.west.round(), it.north.round(), it.east.round()) })
         assertEquals(listOf("4", "1"), search.currentState.items.map { it.id })
@@ -202,7 +202,7 @@ class SearchTest {
         val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b')), item("3", sha('c')), item("4", sha('d')), item("5", sha('e'))))
         // b is best in its moment, but a's moment (a, c and d) has the best photo of all; c is almost identical to a.
         // e is hidden by the library.
-        val search = SearchController(library, { _, _, _, _ ->
+        val search = SearchController(library, { _, _, _, _, _ ->
             SearchAnswer(listOf(sha('a'), sha('b'), sha('c'), sha('z'), sha('d')), 5, 5, sets = listOf(0, 1, 0, 2, 3), moments = listOf(0, 1, 0, 0, 0))
         }, dispatcher = StandardTestDispatcher(testScheduler))
         search.search("a toast")
@@ -210,6 +210,52 @@ class SearchTest {
         assertEquals(listOf(listOf("1", "3"), listOf("4"), listOf("2")), search.currentState.sets.map { set -> set.map { it.id } })
         // The viewer swipes through them in that order.
         assertEquals(listOf("1", "3", "4", "2"), search.currentState.items.map { it.id })
+        search.close()
+    }
+
+    @Test
+    fun showsAPageAtATimeFirstFromTheFirstAnswerThenFromTheServer() = runTest {
+        val items = ('a'..'e').mapIndexed { i, c -> at((i + 1).toString(), c, 2025, paris) }
+        val library = MutableStateFlow(library(*items.toTypedArray()))
+        val asked = mutableListOf<Pair<Int, Int>>()
+        val search = SearchController(library, { _, limit, offset, years, _ ->
+            asked += limit to offset
+            if (years == null) {
+                SearchAnswer(listOf(sha('a'), sha('b'), sha('c'), sha('d'), sha('e')), 5, 5, sets = listOf(0, 1, 2, 0, 3), moments = listOf(0, 0, 0, 0, 0))
+            } else {
+                // The year's matches, two at a time; the set numbers carry on from the first page.
+                val all = listOf(sha('e'), sha('d'), sha('c'))
+                SearchAnswer(all.drop(offset).take(limit), 5, 5, sets = listOf(0, 1, 0).drop(offset).take(limit), moments = listOf(0, 0, 0).drop(offset).take(limit))
+            }
+        }, stories = placed, pageSize = { 2 }, dispatcher = StandardTestDispatcher(testScheduler))
+
+        search.search("bread")
+        advanceUntilIdle()
+        assertEquals(listOf(1000 to 0), asked)
+        assertEquals(listOf(listOf("1"), listOf("2")), search.currentState.sets.map { set -> set.map { it.id } })
+        assertTrue(search.currentState.canLoadMore)
+
+        // From the first answer, without asking; d is almost identical to a, shown already: it joins a's set.
+        search.loadMore()
+        assertEquals(listOf(listOf("1", "4"), listOf("2"), listOf("3")), search.currentState.sets.map { set -> set.map { it.id } })
+        search.loadMore()
+        assertEquals(listOf("1", "4", "2", "3", "5"), search.currentState.items.map { it.id })
+        assertEquals(false, search.currentState.canLoadMore)
+        assertEquals(1, asked.size)
+
+        // With a year, the server's pages: a full one may have more after it.
+        search.chooseYear(2025)
+        advanceUntilIdle()
+        assertEquals(2 to 0, asked.last())
+        assertEquals(listOf("5", "4"), search.currentState.items.map { it.id })
+        assertTrue(search.currentState.canLoadMore)
+        search.loadMore()
+        assertTrue(search.currentState.loadingMore)
+        advanceUntilIdle()
+        assertEquals(2 to 2, asked.last())
+        assertEquals(listOf(listOf("5", "3"), listOf("4")), search.currentState.sets.map { set -> set.map { it.id } })
+        assertEquals(false, search.currentState.canLoadMore)
+        assertEquals(false, search.currentState.loadingMore)
         search.close()
     }
 

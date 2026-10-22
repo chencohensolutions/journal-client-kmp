@@ -1,5 +1,5 @@
-query SearchMedia($text: String!, $limit: Int, $years: [Int!], $area: GeoAreaInput) {
-  searchMedia(text: $text, limit: $limit, years: $years, area: $area) {
+query SearchMedia($text: String!, $limit: Int, $offset: Int, $years: [Int!], $area: GeoAreaInput) {
+  searchMedia(text: $text, limit: $limit, offset: $offset, years: $years, area: $area) {
     hits {
       set
       moment
