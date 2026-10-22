@@ -86,6 +86,7 @@ private fun LibraryScreens(
     val freeUpState by freeUp.state.collectAsStateWithLifecycle()
     val backupState by backup.state.collectAsStateWithLifecycle()
     val serverUsage by server.library.usage.collectAsStateWithLifecycle()
+    val syncProgress by server.library.syncProgress.collectAsStateWithLifecycle()
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
@@ -289,6 +290,7 @@ private fun LibraryScreens(
                                         backupActions = actions.backup,
                                         storage = storageUi(),
                                         storageActions = actions.storage,
+                                        syncProgress = syncProgress,
                                     )
                                 }
                                 Route.FreeUp -> {

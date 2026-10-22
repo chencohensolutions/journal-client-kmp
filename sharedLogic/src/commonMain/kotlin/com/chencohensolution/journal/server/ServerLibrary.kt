@@ -118,6 +118,9 @@ internal fun parseTimestamp(text: String): Timestamp? {
 /** What the user's originals take up on the server. */
 data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
 
+/** How far a sync of more than one page has read the server's change feed: [done] of [total] changes. */
+data class SyncProgress(val done: Int, val total: Int)
+
 @Serializable
 private data class ServerMediaFile(val v: Int = 1, val cursor: String? = null, val media: List<ServerMedia> = emptyList())
 
@@ -150,6 +153,14 @@ class ServerLibrary internal constructor(
     private val _media = MutableStateFlow<List<ServerMedia>>(emptyList())
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
 
+    private val _syncProgress = MutableStateFlow<SyncProgress?>(null)
+
+    /**
+     * While a sync reads more than one page (a new device, or every device after the hidden collections changed), how
+     * far it is; null otherwise.
+     */
+    val syncProgress: StateFlow<SyncProgress?> = _syncProgress.asStateFlow()
+
     init {
         scope.launch { mutex.withLock { load() } }
     }
@@ -157,7 +168,15 @@ class ServerLibrary internal constructor(
     /** Asks the server what changed, unless a sync is running; offline, nothing changes. */
     fun refresh() {
         if (syncJob?.isActive == true) return
+        launchSync(after = null)
+    }
+
+    /** Syncs once more after the sync running now, if any, which may have asked before a change made on the server. */
+    fun syncAgain() = launchSync(after = syncJob)
+
+    private fun launchSync(after: Job?) {
         syncJob = scope.launch {
+            after?.join()
             try {
                 sync()
             } catch (e: CancellationException) {
@@ -257,21 +276,19 @@ class ServerLibrary internal constructor(
     }
 
     /**
-     * Replaces what the user hides on every device with [choice], then syncs, so the library drops what is now hidden
-     * and gets back what is shown again. The server's answer, or null when it couldn't be reached or refused.
+     * Replaces what the user hides on every device with [choice]. The server's answer, or null when it couldn't be
+     * reached or refused. It doesn't sync: every change makes the whole change feed come again, so the screen calls
+     * [syncAgain] once, when it is left, for the library to drop what is now hidden and get back what is shown again.
      */
     suspend fun setHiddenCollections(choice: HiddenCollections): HiddenCollections? {
         val alias = settings.identityAlias ?: return null
         return try {
-            val saved = createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
                 val response = apollo.mutation(SetHiddenCollectionsMutation(choice.toInput())).execute()
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                 response.data?.setHiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
             }
-            syncJob?.join()
-            runCatching { sync() }.exceptionOrNull()?.let { if (it is CancellationException) throw it }
-            saved
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -291,6 +308,7 @@ class ServerLibrary internal constructor(
         val savedCursor = cursor
         var changed = false
         val gone = mutableListOf<String>()
+        var done = 0
         try {
             createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
                 do {
@@ -312,9 +330,12 @@ class ServerLibrary internal constructor(
                         }
                     }
                     cursor = page.cursor
+                    done += page.changes.size
+                    if (page.hasMore || _syncProgress.value != null) _syncProgress.value = SyncProgress(done, done + page.remaining)
                 } while (page.hasMore)
             }
         } finally {
+            _syncProgress.value = null
             if (changed || cursor != savedCursor) withContext(NonCancellable) {
                 val list = known.values.toList()
                 save(list)

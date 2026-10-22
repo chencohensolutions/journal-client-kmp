@@ -195,6 +195,16 @@ final class ServerVideoCache: NSObject, VideoCache {
     /// Counts the cache in Settings → Storage on this phone and its Clear, and under the limit. Main thread.
     func attach() {
         storage.attachVideos(cache: self)
+        storage.attachVideoRemoval { [weak self] sha in self?.remove(sha) }
+    }
+
+    /// Deletes one video, which the server no longer lists (deleted, or in a hidden collection); kept while it is open.
+    func remove(_ sha: String) {
+        locked {
+            guard open[sha] == nil, entries[sha] != nil else { return }
+            try? FileManager.default.removeItem(at: folder(sha))
+            entries[sha] = nil
+        }
     }
 
     func retain(_ sha: String) {

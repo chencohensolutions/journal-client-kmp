@@ -31,6 +31,7 @@ query Changes($since: String, $limit: Int) {
   changes(since: $since, limit: $limit) {
     cursor
     hasMore
+    remaining
     changes {
       kind
       path

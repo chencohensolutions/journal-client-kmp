@@ -56,6 +56,9 @@ import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
+import androidx.compose.material3.LinearProgressIndicator
+import com.chencohensolution.journal.server.SyncProgress
+import java.text.NumberFormat
 
 internal class SettingsActions(
     val setGroupingMode: (GroupingMode) -> Unit = {},
@@ -87,6 +90,8 @@ internal fun SettingsScreen(
     backupActions: BackupActions = BackupActions(),
     storage: StorageUi? = null,
     storageActions: StorageActions = StorageActions(),
+    /** How far the library's sync is, shown on Hidden collections' row (after a change there); null when not syncing. */
+    syncProgress: SyncProgress? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val grouping = settings.grouping
@@ -153,7 +158,7 @@ internal fun SettingsScreen(
             SectionTitle(stringResource(R.string.settings_similarity_title))
             SimilarityCard(settings.similarity, actions)
             SectionTitle(stringResource(R.string.settings_private_title))
-            PrivateMediaCard(settings.privateMedia, actions)
+            PrivateMediaCard(settings.privateMedia, syncProgress, actions)
             SectionTitle(stringResource(R.string.settings_search_title))
             Card {
                 Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
@@ -306,9 +311,12 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
     }
 }
 
-/** "Show private media" (off by default) and, while off, the score from which photos are hidden. */
+/**
+ * "Show private media" (off by default) and, while off, the score from which photos are hidden; and Hidden collections,
+ * with how far the library is in reading the server's list again after a change there.
+ */
 @Composable
-private fun PrivateMediaCard(privateMedia: PrivateMedia, actions: SettingsActions) {
+private fun PrivateMediaCard(privateMedia: PrivateMedia, syncProgress: SyncProgress?, actions: SettingsActions) {
     Card {
         SwitchRow(
             title = stringResource(R.string.settings_private_switch),
@@ -324,6 +332,21 @@ private fun PrivateMediaCard(privateMedia: PrivateMedia, actions: SettingsAction
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, fontSize = 13.sp)
+                if (syncProgress != null) {
+                    val format = NumberFormat.getIntegerInstance()
+                    Text(
+                        stringResource(R.string.settings_hidden_syncing, format.format(syncProgress.done), format.format(syncProgress.total)),
+                        color = LibraryColors.OnBackground,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    LinearProgressIndicator(
+                        progress = { syncProgress.done.toFloat() / syncProgress.total.coerceAtLeast(1) },
+                        color = LibraryColors.OnBackground,
+                        trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 12.dp),
+                    )
+                }
             }
             Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
             Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))

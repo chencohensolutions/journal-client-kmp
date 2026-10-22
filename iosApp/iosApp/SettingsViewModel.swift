@@ -21,6 +21,7 @@ final class SettingsViewModel: ObservableObject {
     deinit {
         observation?.cancel()
         usageObservation?.cancel()
+        syncObservation?.cancel()
         controller.close()
     }
 
@@ -44,14 +45,18 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var previewBytes: Int64?
     /// What the user's originals take up on the server (shown with backup); nil until it answered.
     @Published private(set) var serverUsage: StorageUsage?
+    /// How far the library's sync is (after a change in Hidden collections); nil when not syncing.
+    @Published private(set) var syncProgress: SyncProgress?
 
     private let serverFiles = ServerImages.shared.files
     private var usageObservation: ObservationHandle?
+    private var syncObservation: ObservationHandle?
 
     /// Settings opened: asks the server for its usage, and counts (after trimming to the limit) what is kept here.
     func refreshStorage() {
         if usageObservation == nil {
             usageObservation = serverFiles.observeUsage { [weak self] usage in self?.serverUsage = usage }
+            syncObservation = serverFiles.observeSyncProgress { [weak self] progress in self?.syncProgress = progress }
         }
         serverFiles.library.refreshUsage()
         countPreviews()

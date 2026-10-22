@@ -17,9 +17,12 @@ struct SettingsView: View {
     var body: some View {
         SettingsScreen(
             settings: settings.state, backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts,
-            previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions
+            previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions,
+            syncProgress: settings.syncProgress
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
+        } hiddenScreen: {
+            HiddenView()
         }
         // Counted on open (and again when the limit changes or Clear is tapped).
         .task {
@@ -72,7 +75,7 @@ struct SettingsActions {
 
 /// The user's choices, kept on this device. Drawn from the states alone, so the UI lab shows it too. See
 /// docs/screens/settings.md.
-struct SettingsScreen<FreeUp: View>: View {
+struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     let settings: SettingsState
     let backup: BackupState
     /// Photos of the chosen sources not on the server yet.
@@ -86,8 +89,12 @@ struct SettingsScreen<FreeUp: View>: View {
     /// For the Free up space row: what it would free, or what it is doing.
     let freeUp: FreeUpState
     let actions: SettingsActions
+    /// How far the library's sync is, shown on Hidden collections' row (after a change there); nil when not syncing.
+    var syncProgress: SyncProgress?
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
+    /// Hidden collections, opened from Private media.
+    @ViewBuilder let hiddenScreen: () -> Hidden
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
     /// The private media slider's value while it is dragged.
@@ -389,7 +396,7 @@ extension SettingsScreen {
         .listRowBackground(LibraryColors.raised)
     }
 
-    /// "Show private media" (off by default) and, while off, the score from which photos are hidden.
+    /// "Show private media" (off by default) and, while off, the score from which photos are hidden; and Hidden collections.
     private var privateMediaSection: some View {
         let privateMedia = settings.privateMedia
         let shown = Int(privateThreshold ?? Double(privateMedia.thresholdPercent))
@@ -422,6 +429,21 @@ extension SettingsScreen {
                     Text("How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.")
                         .font(.footnote)
                         .foregroundStyle(LibraryColors.muted)
+                }
+            }
+            NavigationLink {
+                hiddenScreen()
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    ModeLabel(title: "Hidden collections", detail: "WhatsApp and screenshots by app, hidden on all your devices")
+                    if let syncProgress {
+                        Text("Updating your library: \(Int(syncProgress.done).formatted()) of \(Int(syncProgress.total).formatted())")
+                            .font(.footnote)
+                            .monospacedDigit()
+                            .foregroundStyle(LibraryColors.onBackground)
+                        ProgressView(value: Double(syncProgress.done), total: Double(max(syncProgress.total, 1)))
+                            .tint(LibraryColors.onBackground)
+                    }
                 }
             }
         } header: {

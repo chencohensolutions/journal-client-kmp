@@ -18,7 +18,10 @@ import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.search.SearchChip
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
+import com.chencohensolution.journal.server.HiddenCollections
+import com.chencohensolution.journal.server.HiddenCollectionsState
 import com.chencohensolution.journal.server.StorageUsage
+import com.chencohensolution.journal.server.SyncProgress
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.ShownSources
@@ -290,12 +293,38 @@ object LabData {
     val previewBytes = 1_840_000_000L
     val serverUsage = StorageUsage(photos = 48_210, videos = 1_204, bytes = 214_300_000_000)
 
+    /** The library reading the server's list again after a change in Hidden collections. */
+    val syncProgress = SyncProgress(done = 38_000, total = 95_412)
+
     /** Free up space, counted: the backed-up photos of [library], as 24 MB files. */
     val freeUp = FreeUpState(
         plan = FreeUpPlan(
             library.days.flatMap { it.items }.filter { it.backup == BackupStatus.BackedUp }.map { FreeUpGroup(listOf(it.copy(sizeBytes = 24_000_000))) },
         ),
     )
+
+    /** Hidden collections: WhatsApp shown, the dating apps hidden, the rest shown, most files first. */
+    val hiddenCollections: HiddenCollectionsState = run {
+        val apps = listOf(
+            HiddenCollections.Collection("Bumble", 1_458, hidden = true),
+            HiddenCollections.Collection("Microsoft Remote Desktop", 842, hidden = false),
+            HiddenCollections.Collection("OkCupid", 476, hidden = true),
+            HiddenCollections.Collection("Chrome", 311, hidden = false),
+            HiddenCollections.Collection("Tinder", 108, hidden = true),
+            HiddenCollections.Collection("Maps", 64, hidden = false),
+        )
+        HiddenCollectionsState.Ready(
+            collections = HiddenCollections(
+                whatsapp = HiddenCollections.Collection("WhatsApp", 9_870, hidden = false),
+                screenshotsWithoutApp = HiddenCollections.Collection("", 1_204, hidden = false),
+                screenshotApps = apps,
+            ),
+            query = "",
+            shownApps = apps,
+            saving = false,
+            notChanged = false,
+        )
+    }
 
     /** What a search for "a dog on the beach at sunset" found: photos of the places library, best first, the server still reading. */
     val searchFound: SearchState = run {

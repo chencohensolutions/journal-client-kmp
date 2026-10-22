@@ -37,7 +37,7 @@ class PhoneStorage internal constructor(
         previews.otherBytes = { cache.usedBytes() }
     }
 
-    /** How to delete one video from the platform's cache, for [remove] (Android; iOS doesn't attach one yet). */
+    /** How to delete one video from the platform's cache, for [remove]. */
     fun attachVideoRemoval(remove: (sha256: String) -> Unit) {
         removeVideo = remove
     }

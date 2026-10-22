@@ -10,6 +10,8 @@
 	<string>Journal connects to your journal server on the local network.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Journal scans the enrollment QR code your server shows.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Journal uses Face ID to open Hidden collections.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

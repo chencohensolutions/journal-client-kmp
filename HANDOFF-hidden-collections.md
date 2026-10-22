@@ -63,6 +63,17 @@ Decisions the owner made (don't reopen them):
 - Strings are in `values/strings.xml` and `values-iw/strings.xml` (`settings_hidden_*`, `hidden_*`, `phone_lock_*`).
 - Docs: `docs/screens/settings.md` (Private media, Hidden collections, Behavior, Code) and `docs/design.md`.
 
+## Done on the Mac (Oct 22, 2026)
+
+Steps 1 to 3 are built, not committed yet. The iOS app builds, and the shared tests and the Android build pass.
+`HiddenCollectionsController` and `ScreenLock` are shared, with tests in `HiddenCollectionsTest`. The Android
+`HiddenScreen` now only draws the state. iOS has `HiddenView.swift`, a row in Settings → Private media, a UI lab
+screen called "hidden", Hebrew strings, `NSFaceIDUsageDescription`, and `ServerVideoCache.remove`, which is attached
+at start. Tried on the iPhone 18 Pro simulator against the local test server: the Face ID lock, loading, saving to
+`settings.json`, "Not changed" while the server was off, and locking again after going to the background. That
+server has no WhatsApp files or screenshots, so the per-app list and the library dropping files were not seen yet.
+**Left: steps 4 and 5** (the owner's data folder, and real phones).
+
 ## Steps
 
 1. **Pull both repos and build iOS first.** The changes to `IosJournal.kt` (the `removed` wiring) were never compiled:

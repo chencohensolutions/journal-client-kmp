@@ -458,6 +458,58 @@
         }
       }
     },
+    "%lld screenshots" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld screenshot"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld screenshots"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "צילום מסך אחד"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld צילומי מסך"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld צילומי מסך"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld צילומי מסך"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld · Open" : {
       "localizations" : {
         "he" : {
@@ -1899,6 +1951,16 @@
         }
       }
     },
+    "All WhatsApp photos and videos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל התמונות והסרטונים מוואטסאפ"
+          }
+        }
+      }
+    },
     "All years" : {
       "localizations" : {
         "he" : {
@@ -2281,6 +2343,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ביטול הבחירה"
+          }
+        }
+      }
+    },
+    "Can’t reach your server right now." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין גישה לשרת כרגע."
           }
         }
       }
@@ -3068,6 +3140,16 @@
         }
       }
     },
+    "Find an app" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש אפליקציה"
+          }
+        }
+      }
+    },
     "Finding where your photos were taken…" : {
       "localizations" : {
         "he" : {
@@ -3346,6 +3428,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "גובה"
+          }
+        }
+      }
+    },
+    "Hidden collections" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אוספים מוסתרים"
+          }
+        }
+      }
+    },
+    "Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות."
           }
         }
       }
@@ -3730,12 +3832,32 @@
         }
       }
     },
+    "Loading…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען…"
+          }
+        }
+      }
+    },
     "Location" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מיקום"
+          }
+        }
+      }
+    },
+    "Locked. Unlock with your phone’s lock to see what is hidden." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר."
           }
         }
       }
@@ -3906,6 +4028,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא"
+          }
+        }
+      }
+    },
+    "No screenshot on your server names its app yet." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין בשרת צילום מסך ששמו מציין אפליקציה."
           }
         }
       }
@@ -5353,6 +5485,16 @@
         }
       }
     },
+    "Set a passcode on this phone to open Hidden collections." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדירו קוד גישה בטלפון הזה כדי לפתוח את האוספים המוסתרים."
+          }
+        }
+      }
+    },
     "Set as cover" : {
       "localizations" : {
         "he" : {
@@ -6242,6 +6384,16 @@
         }
       }
     },
+    "Try again" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לנסות שוב"
+          }
+        }
+      }
+    },
     "Turn sound off" : {
       "localizations" : {
         "he" : {
@@ -6350,6 +6502,26 @@
         }
       }
     },
+    "Unlock" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פתיחה"
+          }
+        }
+      }
+    },
+    "Unlock to see what is hidden." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פתחו כדי לראות מה מוסתר."
+          }
+        }
+      }
+    },
     "Untitled story" : {
 
     },
@@ -6359,6 +6531,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "עד"
+          }
+        }
+      }
+    },
+    "Updating your library: %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעדכן את הספרייה: %1$@ מתוך %2$@"
           }
         }
       }
@@ -6533,6 +6715,16 @@
         }
       }
     },
+    "WhatsApp and screenshots by app, hidden on all your devices" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך"
+          }
+        }
+      }
+    },
     "When" : {
       "localizations" : {
         "he" : {
@@ -6579,6 +6771,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "רוחב"
+          }
+        }
+      }
+    },
+    "Without an app name" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלי שם אפליקציה"
           }
         }
       }

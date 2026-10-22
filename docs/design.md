@@ -166,7 +166,7 @@ original card marks a photo the server has as private (`setPrivate`, kept in its
 files) or unmarks it. Private photos are hidden like nudity over the threshold, on every device, while "Show private
 media" is off (the default); the phone's own copy is hidden too. The server can also keep private photos from a
 device entirely (`journal-server private <serial> withhold`, off by default): they come to it as deleted from the
-change feed, and 404. **Hidden collections** (asked for Oct 22, 2026; Android, iOS later): Settings → Private media →
+change feed, and 404. **Hidden collections** (asked for Oct 22, 2026; Android and iOS): Settings → Private media →
 Hidden collections, behind the phone's lock, hides all of WhatsApp, or the screenshots of chosen apps (the server
 reads the app from a screenshot's name, `Media.app`), on every device. The server does the hiding: hidden files come
 as deleted, aren't counted or found by search, and 404; the app drops them like deleted files, with its cached

@@ -92,6 +92,8 @@ class PhotoSafetyTest {
             "android.permission.ACCESS_FINE_LOCATION",
             "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.ACCESS_BACKGROUND_LOCATION",
+            // Not about photos: Hidden collections opens behind the phone's lock (BiometricPrompt).
+            "android.permission.USE_BIOMETRIC",
         )
         assertTrue(permissions.isNotEmpty() && allowed.containsAll(permissions), "unexpected permissions: ${permissions - allowed}")
     }

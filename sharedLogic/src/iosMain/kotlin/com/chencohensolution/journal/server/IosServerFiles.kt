@@ -113,6 +113,8 @@ class IosServerFiles internal constructor(
 
     fun observeUsage(onChange: (StorageUsage?) -> Unit): ObservationHandle = observe(library.usage, onChange)
 
+    fun observeSyncProgress(onChange: (SyncProgress?) -> Unit): ObservationHandle = observe(library.syncProgress, onChange)
+
     fun observeMedia(onChange: (List<ServerMedia>) -> Unit): ObservationHandle = observe(library.media, onChange)
 
     /** The sha256 of each original kept here. */

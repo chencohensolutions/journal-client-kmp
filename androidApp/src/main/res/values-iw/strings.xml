@@ -541,6 +541,7 @@
         <item quantity="other">הצגת %d תמונות</item>
     </plurals>
     <string name="settings_hidden_title">אוספים מוסתרים</string>
+    <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
     <string name="settings_hidden_row_body">וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך</string>
     <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
     <string name="hidden_whatsapp_title">וואטסאפ</string>

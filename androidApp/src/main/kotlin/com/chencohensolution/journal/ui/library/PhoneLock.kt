@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.settings.ScreenLock
 
 /**
  * Shows [content] only after the phone's own lock is passed (fingerprint, face, PIN, pattern or password: whatever the
@@ -43,10 +44,11 @@ import com.chencohensolution.journal.R
 @Composable
 internal fun PhoneLocked(title: String, back: () -> Unit, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    var unlocked by remember { mutableStateOf(false) }
+    val lock = remember { ScreenLock() }
+    val unlocked by lock.state.collectAsStateWithLifecycle()
     var attempt by remember { mutableIntStateOf(0) }
     val secure = remember { context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { unlocked = false }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { lock.wentToBackground() }
 
     if (unlocked) {
         content()
@@ -54,7 +56,7 @@ internal fun PhoneLocked(title: String, back: () -> Unit, content: @Composable (
     }
     if (secure) {
         DisposableEffect(attempt) {
-            val cancel = askForPhoneLock(context, title) { unlocked = true }
+            val cancel = askForPhoneLock(context, title, lock::unlocked)
             onDispose { cancel.cancel() }
         }
     }
