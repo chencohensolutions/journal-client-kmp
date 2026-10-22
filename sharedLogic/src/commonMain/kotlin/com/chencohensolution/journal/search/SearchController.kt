@@ -143,6 +143,9 @@ internal class ApolloSearchApi(
                 offset = Optional.presentIfNotNull(offset.takeIf { it > 0 }),
                 years = Optional.presentIfNotNull(years),
                 area = Optional.presentIfNotNull(area?.let { GeoAreaInput(it.south, it.west, it.north, it.east) }),
+                // The server leaves private files out unless asked. Sent only while they are shown, so a server from
+                // before the argument still answers.
+                includePrivate = Optional.presentIfNotNull(true.takeIf { settings.privateMedia.show }),
             )
             val response = apollo.query(query).execute()
             when (val exception = response.exception) {
