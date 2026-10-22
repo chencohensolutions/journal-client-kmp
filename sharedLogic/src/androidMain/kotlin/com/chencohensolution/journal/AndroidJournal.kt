@@ -46,6 +46,7 @@ fun createJournalController(context: Context): JournalController =
     JournalController(
         settings = JournalSettings(SharedPreferencesStore(context)),
         clientFactory = AndroidMtlsHttpClientFactory(context),
+        http = serverHttp(context),
     )
 
 /** The enrollment wizard; a successful enrollment switches [journal] to the new identity. */
@@ -91,7 +92,7 @@ fun createSearchController(
 ): SearchController =
     SearchController(
         library = library.state,
-        api = ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), AndroidMtlsHttpClientFactory(context), decodePemCertificates(SERVER_CA_PEM)),
+        api = ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), serverHttp(context)),
         server = server.media,
         stories = stories.state,
         pageSize = { settings.currentState.searchPageSize },
@@ -112,8 +113,7 @@ private fun serverHttp(context: Context): ServerHttp =
 fun serverLibrary(context: Context): ServerLibrary =
     serverLibrary ?: ServerLibrary(
         settings = JournalSettings(SharedPreferencesStore(context)),
-        clientFactory = AndroidMtlsHttpClientFactory(context),
-        trustedCas = decodePemCertificates(SERVER_CA_PEM),
+        http = serverHttp(context),
         fileSystem = FileSystem.SYSTEM,
         directory = context.filesDir.toOkioPath() / "server",
         // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too.

@@ -4,6 +4,7 @@ import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.server.HiddenCollections
 import com.chencohensolution.journal.server.HiddenCollectionsController
 import com.chencohensolution.journal.server.HiddenCollectionsState
+import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.SyncProgress
 import com.chencohensolution.journal.settings.JournalSettings
@@ -71,8 +72,7 @@ class HiddenCollectionsTest {
         }
         val settings = JournalSettings(HiddenStore()).apply { identityAlias = "hen" }
         val removed = mutableListOf<String>()
-        val library = ServerLibrary(
-            settings, factory, emptyList(), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler),
+        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler),
             removed = { removed += it },
         )
         library.sync()
@@ -106,7 +106,7 @@ class HiddenCollectionsTest {
     fun unreachableIsNull() = runTest {
         val factory = MtlsHttpClientFactory { _, _ -> HttpClient(MockEngine { respond("", HttpStatusCode.ServiceUnavailable) }) }
         val settings = JournalSettings(HiddenStore()).apply { identityAlias = "hen" }
-        val library = ServerLibrary(settings, factory, emptyList(), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler))
+        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler))
         assertNull(library.hiddenCollections())
     }
 
@@ -127,7 +127,7 @@ class HiddenCollectionsTest {
         }
         val settings = JournalSettings(HiddenStore()).apply { identityAlias = "hen" }
         val dispatcher = StandardTestDispatcher(testScheduler)
-        val library = ServerLibrary(settings, factory, emptyList(), FakeFileSystem(), "/server".toPath(), dispatcher)
+        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), dispatcher)
         return HiddenCollectionsController(library, dispatcher) to library
     }
 
@@ -182,7 +182,7 @@ class HiddenCollectionsTest {
             })
         }
         val settings = JournalSettings(HiddenStore()).apply { identityAlias = "hen" }
-        val library = ServerLibrary(settings, factory, emptyList(), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler))
+        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), StandardTestDispatcher(testScheduler))
         val progress = async { library.syncProgress.filterNotNull().first() }
         library.sync()
         assertEquals(SyncProgress(done = 1, total = 2), progress.await())

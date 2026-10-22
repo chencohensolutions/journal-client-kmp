@@ -181,7 +181,8 @@ previews, originals and videos of them. Not yet anywhere: note sync.
 
 **Uploading** (built on the server)
 - `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;
-  resumable (`HEAD`, or `startUpload` again), deduplicated by sha256, verified before the file is placed.
+  resumable (`HEAD`, or `startUpload` again), deduplicated by sha256, verified before the file is placed. The server
+  keeps the bytes of a piece that breaks off (Oct 23, 2026), so the next piece goes on from where they ended.
 - On Android the hash is of the **unredacted** original (`setRequireOriginal`), or GPS is missing from the bytes.
 - **Edits**: same device id with new content uploads as a new file with `versionOf` (iOS keeps the original and the
   edit in one asset, so it always knows; on Android only in-place edits are known). Saved copies stay separate photos.
@@ -254,7 +255,11 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   backup has read a device photo, so a new device doesn't show each photo twice); a photo only on the server
   (`MediaItem.isOnDevice` false; it keeps the device id it had, else `server:<sha256>`) shows the server's preview,
   or its downloaded original. Videos stream (see Upload and sync above). A new device downloads only the journal data (paged change
-  feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings). Previews are optional (Oct 20,
+  feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings). Everything goes over one
+  mTLS client per device identity (`ServerHttp`: previews, originals, verify and GraphQL), so the phone keeps one
+  HTTP/2 connection to the server instead of a handshake per call (Oct 23, 2026). When the hidden collections or
+  the device's private setting change, the server sends only the files that changed visibility, then goes on; a
+  cursor it can't read starts the feed again, so the app never has to clear one. Previews are optional (Oct 20,
   2026): off, the originals are downloaded into the same cache instead; on, their format (WebP, HEIF, AVIF, JPEG XL,
   JPEG) and quality (Low–Max) are chosen in Settings. The server keeps no previews unless the user's `preview_cache`
   is on in its config.json.

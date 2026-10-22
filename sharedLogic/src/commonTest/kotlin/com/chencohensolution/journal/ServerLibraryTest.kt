@@ -8,6 +8,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.mergeWithServer
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
+import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.parseTimestamp
@@ -52,7 +53,7 @@ class ServerLibraryTest {
             override fun putString(key: String, value: String?) {}
         }
         val factory = MtlsHttpClientFactory { _, _ -> error("no network in this test") }
-        val library = ServerLibrary(JournalSettings(store), factory, emptyList(), files, "/server".toPath(), StandardTestDispatcher(testScheduler))
+        val library = ServerLibrary(JournalSettings(store), ServerHttp(JournalSettings(store), factory, emptyList()), files, "/server".toPath(), StandardTestDispatcher(testScheduler))
         library.media.first { it.isNotEmpty() }
 
         assertEquals(imported.sha256, library.sha256Of(device("1", "20261008_210329.HEIC", 714_000)))

@@ -271,14 +271,6 @@ class ServerPreviews internal constructor(
         withContext(Dispatchers.IO) { if (fileSystem.exists(directory)) markNoMedia(fileSystem, directory) }
     }
 
-    /**
-     * Keeps [bytes], a picture made on this device, as [sha256]'s preview: a video's frame, while the server makes no
-     * posters for videos. [extension] is its format's (iOS can't write WebP, so it keeps a JPEG).
-     */
-    suspend fun keepPoster(sha256: String, bytes: ByteArray, width: Int, height: Int, extension: String = "webp") {
-        store(directory / sha256.take(2) / sha256 / "${width}x$height-poster.$extension", bytes)
-    }
-
     /** A preview kept on this device: its file and size. */
     data class Kept(val file: String, val bytes: Long)
 

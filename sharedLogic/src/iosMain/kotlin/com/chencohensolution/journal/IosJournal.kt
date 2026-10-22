@@ -65,6 +65,7 @@ object IosJournal {
         JournalController(
             settings = JournalSettings(UserDefaultsStore()),
             clientFactory = IosMtlsHttpClientFactory(),
+            http = serverHttp(),
         )
 
     /** The enrollment wizard; a successful enrollment switches [journal] to the new identity. */
@@ -111,7 +112,7 @@ object IosJournal {
     ): SearchController =
         SearchController(
             library = library.state,
-            api = ApolloSearchApi(JournalSettings(UserDefaultsStore()), IosMtlsHttpClientFactory(), decodePemCertificates(SERVER_CA_PEM)),
+            api = ApolloSearchApi(JournalSettings(UserDefaultsStore()), serverHttp()),
             server = server.media,
             stories = stories.state,
             pageSize = { settings.currentState.searchPageSize },
@@ -133,8 +134,7 @@ object IosJournal {
     fun serverLibrary(): ServerLibrary =
         serverLibrary ?: ServerLibrary(
             settings = JournalSettings(UserDefaultsStore()),
-            clientFactory = IosMtlsHttpClientFactory(),
-            trustedCas = decodePemCertificates(SERVER_CA_PEM),
+            http = serverHttp(),
             fileSystem = FileSystem.SYSTEM,
             directory = supportDir().toPath() / "server",
             // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too;

@@ -13,9 +13,6 @@ import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
-import com.chencohensolution.journal.network.MtlsHttpClientFactory
-import com.chencohensolution.journal.network.createApolloClient
-import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -132,8 +129,7 @@ private data class ServerMediaFile(val v: Int = 1, val cursor: String? = null, v
  */
 class ServerLibrary internal constructor(
     private val settings: JournalSettings,
-    private val clientFactory: MtlsHttpClientFactory,
-    private val trustedCas: List<ByteArray>,
+    private val http: ServerHttp,
     private val fileSystem: FileSystem,
     directory: Path,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
@@ -156,8 +152,8 @@ class ServerLibrary internal constructor(
     private val _syncProgress = MutableStateFlow<SyncProgress?>(null)
 
     /**
-     * While a sync reads more than one page (a new device, or every device after the hidden collections changed), how
-     * far it is; null otherwise.
+     * While a sync reads more than one page (a new device, or a change of the hidden collections with many files),
+     * how far it is; null otherwise.
      */
     val syncProgress: StateFlow<SyncProgress?> = _syncProgress.asStateFlow()
 
@@ -187,29 +183,6 @@ class ServerLibrary internal constructor(
         }
     }
 
-    /** Syncs now and says whether the server has [sha256]. */
-    suspend fun confirms(sha256: String): Confirmation {
-        try {
-            syncJob?.join()
-            sync()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            return Confirmation.UNREACHABLE
-        }
-        return if (_media.value.any { it.sha256 == sha256 }) Confirmation.HAS_IT else Confirmation.MISSING
-    }
-
-    enum class Confirmation {
-        HAS_IT,
-
-        /** The server answered, and it doesn't have the photo (for example, another server or data folder). */
-        MISSING,
-
-        /** Offline, or the server didn't answer. */
-        UNREACHABLE,
-    }
-
     private val _usage = MutableStateFlow<StorageUsage?>(null)
 
     /** The last answer of [refreshUsage]; null until the server answered once. */
@@ -227,13 +200,10 @@ class ServerLibrary internal constructor(
         }
     }
 
-    private suspend fun fetchUsage(): StorageUsage? {
-        val alias = settings.identityAlias ?: return null
-        return createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
-            val response = apollo.query(StorageUsageQuery()).execute()
-            response.exception?.let { throw it }
-            response.data?.storageUsage?.let { StorageUsage(it.photos, it.videos, it.bytes) }
-        }
+    private suspend fun fetchUsage(): StorageUsage? = http.graphql { apollo ->
+        val response = apollo.query(StorageUsageQuery()).execute()
+        response.exception?.let { throw it }
+        response.data?.storageUsage?.let { StorageUsage(it.photos, it.videos, it.bytes) }
     }
 
     /**
@@ -252,13 +222,12 @@ class ServerLibrary internal constructor(
      * the library follows. False when the server couldn't be reached or refused.
      */
     suspend fun setPrivate(sha256s: List<String>, isPrivate: Boolean): Boolean {
-        val alias = settings.identityAlias ?: return false
         try {
-            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+            http.graphql { apollo ->
                 val response = apollo.mutation(SetPrivateMutation(sha256s, isPrivate)).execute()
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
-            }
+            } ?: return false
             syncJob?.join()
             sync()
         } catch (e: CancellationException) {
@@ -271,9 +240,8 @@ class ServerLibrary internal constructor(
 
     /** What the user hides on every device; null when the server couldn't be reached or refused. */
     suspend fun hiddenCollections(): HiddenCollections? {
-        val alias = settings.identityAlias ?: return null
         return try {
-            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+            http.graphql { apollo ->
                 val response = apollo.query(HiddenCollectionsQuery()).execute()
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
@@ -288,13 +256,12 @@ class ServerLibrary internal constructor(
 
     /**
      * Replaces what the user hides on every device with [choice]. The server's answer, or null when it couldn't be
-     * reached or refused. It doesn't sync: every change makes the whole change feed come again, so the screen calls
-     * [syncAgain] once, when it is left, for the library to drop what is now hidden and get back what is shown again.
+     * reached or refused. It doesn't sync: the screen calls [syncAgain] once, when it is left, for the library to drop
+     * what is now hidden and get back what is shown again (the server sends only those).
      */
     suspend fun setHiddenCollections(choice: HiddenCollections): HiddenCollections? {
-        val alias = settings.identityAlias ?: return null
         return try {
-            createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+            http.graphql { apollo ->
                 val response = apollo.mutation(SetHiddenCollectionsMutation(choice.toInput())).execute()
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
@@ -313,15 +280,13 @@ class ServerLibrary internal constructor(
      * each time, which for a large library ran the phone out of memory.
      */
     internal suspend fun sync(): Unit = mutex.withLock {
-        val alias = settings.identityAlias ?: return
-        val url = settings.serverUrl
         val known = _media.value.associateByTo(LinkedHashMap()) { it.sha256 }
         val savedCursor = cursor
         var changed = false
         val gone = mutableListOf<String>()
         var done = 0
         try {
-            createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { apollo ->
+            http.graphql { apollo ->
                 do {
                     val response = apollo.query(ChangesQuery(Optional.presentIfNotNull(cursor), Optional.present(PAGE))).execute()
                     response.exception?.let { throw it }

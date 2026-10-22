@@ -38,7 +38,7 @@ sealed interface HiddenCollectionsState {
 /**
  * Settings → Private media → Hidden collections: reads the user's choice from the server and saves each switch at
  * once. Nothing is kept on this device. The library syncs once, when the screen is left ([close]), not after each
- * switch: every change makes the whole change feed come again. One per opening of the screen.
+ * switch: each change makes the server send the files it affects at the next sync. One per opening of the screen.
  */
 class HiddenCollectionsController internal constructor(
     private val library: ServerLibrary,

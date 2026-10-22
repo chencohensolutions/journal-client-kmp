@@ -8,11 +8,9 @@ import com.chencohensolution.journal.graphql.SearchMediaQuery
 import com.chencohensolution.journal.graphql.type.GeoAreaInput
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
-import com.chencohensolution.journal.network.MtlsHttpClientFactory
-import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.network.describe
-import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.server.ServerMedia
+import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
@@ -130,12 +128,10 @@ internal class SearchUnreachable(message: String) : Exception(message)
 /** [SearchApi] over GraphQL, as this device's identity. */
 internal class ApolloSearchApi(
     private val settings: JournalSettings,
-    private val clientFactory: MtlsHttpClientFactory,
-    private val trustedCas: List<ByteArray>,
+    private val http: ServerHttp,
 ) : SearchApi {
     override suspend fun search(text: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer {
-        val alias = settings.identityAlias ?: throw SearchUnreachable("This device isn't registered")
-        return createApolloClient(clientFactory.create(alias, trustedCas), settings.serverUrl).useClient { apollo ->
+        return http.graphql { apollo ->
             val query = SearchMediaQuery(
                 text = text,
                 limit = Optional.present(limit),
@@ -156,7 +152,7 @@ internal class ApolloSearchApi(
             response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
             val found = response.data?.searchMedia ?: throw IllegalStateException("No answer")
             SearchAnswer(found.hits.map { it.media.sha256 }, found.indexed, found.total, found.hits.map { it.set }, found.hits.map { it.moment })
-        }
+        } ?: throw SearchUnreachable("This device isn't registered")
     }
 }
 

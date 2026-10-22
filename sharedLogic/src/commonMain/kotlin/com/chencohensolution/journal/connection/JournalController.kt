@@ -2,10 +2,9 @@ package com.chencohensolution.journal.connection
 
 import com.chencohensolution.journal.network.ConnectionResult
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
-import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.network.checkConnection
-import com.chencohensolution.journal.network.useClient
+import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.certificateCommonName
@@ -77,6 +76,8 @@ class JournalController internal constructor(
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val trustedCas: List<ByteArray> = decodePemCertificates(SERVER_CA_PEM),
     private val now: () -> String = ::currentTimestamp,
+    /** The app's one client for the server, shared with the library and previews; its own when not given (tests). */
+    private val http: ServerHttp = ServerHttp(settings, clientFactory, trustedCas),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var connectJob: Job? = null
@@ -130,7 +131,7 @@ class JournalController internal constructor(
         setStatus(ConnectionStatus.Connecting(now(), trustedCas.map(::certificateCommonName)))
         connectJob = scope.launch {
             val result = try {
-                createApolloClient(clientFactory.create(alias, trustedCas), url).useClient { checkConnection(it) }
+                http.graphql { checkConnection(it) } ?: ConnectionResult(ConnectionStatus.MissingIdentity)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

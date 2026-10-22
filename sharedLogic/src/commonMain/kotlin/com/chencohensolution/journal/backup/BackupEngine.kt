@@ -418,8 +418,8 @@ internal class BackupEngine(
     )
 
     private companion object {
-        /** Hashes asked about in one missingMedia call (the server takes up to 1000). */
-        const val BATCH = 100
+        /** Hashes asked about in one missingMedia call: as many as the server takes (journal-server-go maxHashesPerQuery). */
+        const val BATCH = 1000
         const val MIN_CHUNK = 256L shl 10
         /** The largest piece the server takes (journal-server-go media/upload.go MaxChunkSize). */
         const val MAX_CHUNK = 64L shl 20
