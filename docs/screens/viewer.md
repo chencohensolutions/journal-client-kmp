@@ -21,9 +21,13 @@ crop chip for 3 seconds, and another tap hides them sooner. They stay while the 
 editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
-- **Top bar:** back, the position ("4 of 29 · Yesterday"), and the **ⓘ** button.
-- **Bottom:** **Write** (the note editor, below) and **Crop** (photos only; opens the [crop screen](crop.md) on
-  Portrait or Landscape, as the phone is held). Hidden while the details panel is open.
+- **Top bar:** back and the position ("4 of 29 · Yesterday"). When the viewer wasn't opened from Moments, the day
+  is a chip, "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab,
+  scrolled to the photo (Oct 22, 2026; chosen in the UI lab over a third pill, a link under the pills, a toolbar and
+  an icon).
+- **Bottom:** **Write** (the note editor, below) and **Details** (the details panel; Oct 22, 2026 it moved here
+  from an ⓘ at the top). Hidden while the details panel is open; back or a tap on the photo closes the panel. The
+  viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
@@ -64,10 +68,10 @@ Swiping is not a tap; a playing video's own controls take its taps.
     same middle, zoomed so that part fills the screen as far as it can.
 - **Videos:** the first frame with a play button. Play starts the system player (Android `VideoView` with media
   controls, iOS `VideoPlayer`). Swiping away stops it.
-- **Details panel** (ⓘ, hidden by default):
+- **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
+  text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.
-  - **Note:** the photo's title (semibold) and paragraph (serif), shown wherever the photo appears. Tap to write or
-    edit.
+  - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
 - **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
   box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save
   keeps what was written before as a version, unless it was saved less than 10 minutes earlier (a quick fix is the
@@ -81,22 +85,23 @@ Swiping is not a tap; a playing video's own controls take its taps.
     or "Not in the storyline" with **Add back**. Removing keeps the writing, which still shows in Moments. The
     Stories and Group sections, **Add to story**, and the **⧉ 14 · Open** button for a group's cover went with
     stories the same day.
+  - **Where it was taken** (when known): a still map with a pin (MapLibre's snapshotter draws it once into a
+    picture: a live map view in the viewer's window stopped the screen updating on Android), the place ("Haifa,
+    Israel") and coordinates under it. A tap opens the [map](explore.md) on that spot, close up.
   - **The original** (both platforms; iOS since Oct 21, 2026): where it is
     ("On this phone and on your server", "Only on this phone", "Downloaded to this phone, and on your server", "Only
     on your server", or the upload state with % and a bar), then file name, size, dimensions, length for videos,
-    type (MIME), where it came from (Camera, WhatsApp, …) and **Location** (place name and coordinates). For a photo
-    only on the server: **Preview on this phone** (the largest kept, "2560 × 1920 · 635 kB", or "None yet").
-  - **Download original** (only on the server): downloads it, checks its sha256, and keeps it in the app's storage
-    (`files/originals`), outside the 10 GB preview cache, so it is never trimmed. While it is here nothing is fetched
-    for the photo; it shows and plays from that file.
-  - **Delete from this phone** (original here and on the server), after a confirmation: first the server is asked
-    again whether it has the photo, and its previews (2560 and 640 px) are kept here; without both nothing is
-    removed ("Not deleted: your server didn't confirm…"). A downloaded original is then deleted; a gallery photo
-    goes to the phone's trash through Android's own prompt (`PhotoRemoval.kt`), or on iOS to Recently Deleted through
-    PhotoKit's own prompt (`PhotoRemoval.swift`, approved by the owner); these two files are the only exceptions in
-    `PhotoSafetyTest`. The photo keeps its place and its note (it keeps its device id), and shows from its
-    preview. On iOS a library photo can't reach this yet: without iOS backup no device photo is backed up, so only a
-    downloaded original can be deleted.
+    type, and where it came from (Camera, WhatsApp, …). For a photo only on the server: **Preview on this phone**
+    (the largest kept, "2560 × 1920 · 635 kB", or "None yet"). Then **Mark private**.
+  - **Camera details** (photos) or **Video details** (videos), read from the original on this phone (the gallery's
+    file, or the one the viewer downloaded; never from the server). A photo: make and model, the lens, and chips for
+    ISO, 35 mm focal length, f-number, shutter and exposure bias; **All EXIF (n)** opens every tag, by section
+    (Camera, Exposure, Image, Date, GPS, Other). A video: codec · 4K · fps, the profile, HDR transfer and audio codec,
+    chips for frame rate, bitrate, HDR and audio; **All video details (n)** opens Video, Audio and File. Until the
+    original is here: "Shown when the original has downloaded."
+  - **Download original** and **Delete from this phone** were removed Oct 22, 2026: the viewer downloads originals
+    by itself, and Settings' Free up space frees the phone. Originals an earlier version downloaded
+    (`files/originals`) are still shown and played from there.
 - **Photos only on the server:** the best image already on the phone shows at once (the largest decoded in memory,
   else the largest preview kept), while the original downloads into the preview cache (at most 2560 px decoded) and
   fades in. While it **downloads** (asked for Oct 21, 2026, in place of a spinner), a small **cloud** at the top

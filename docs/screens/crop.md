@@ -15,7 +15,6 @@ leaves its near-duplicate set in Moments and shows on its own (unless merged int
 
 - Moments: long press a photo → **Crop** (opens on Moments). iOS: `LibraryRootView` sets
   `crop = CropRequest(itemId:, kind: .moments)` and presents it with `.cropCover`.
-- Viewer: **Crop** at the bottom (opens on Portrait or Landscape, as the phone is held).
 
 ## Layout
 

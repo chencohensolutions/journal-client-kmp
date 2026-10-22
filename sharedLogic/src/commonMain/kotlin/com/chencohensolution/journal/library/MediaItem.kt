@@ -145,7 +145,7 @@ data class MediaItem(
     val sha256: String? = null,
     /** False for a photo that isn't in the device's library: it is shown from the server, never read from the library. */
     val isOnDevice: Boolean = true,
-    /** For a photo not in the library: the original downloaded from the server and kept in the app's storage. */
+    /** For a photo not in the library: an original an earlier version downloaded on request and kept in the app's storage. */
     val keptOriginal: String? = null,
     /** The user marked it private on the server; shown only while "Show private media" is on. */
     val isPrivate: Boolean = false,

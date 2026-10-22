@@ -24,21 +24,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.backup.BackupController
-import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
-import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
-import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.FreeUpState
 import com.chencohensolution.journal.work.FreeUpWorker
 import com.chencohensolution.journal.work.currentWifiName
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 // What the library screens can do that needs Android permissions, system prompts or the server's files. Wired once
 // here, so the screens only render state and call into it.
@@ -52,19 +47,12 @@ internal val PHOTO_PERMISSIONS = arrayOf(
     Manifest.permission.ACCESS_MEDIA_LOCATION,
 )
 
-/** The longer side of the frame kept for a video that leaves the phone. */
-private const val VIDEO_POSTER_SIDE = 1920
-
 internal class LibraryActions(
     /** Asks for photo access, or opens the app's settings page once Android stops asking. */
     val requestAccess: () -> Unit,
     /** With limited access: lets the user change which photos the app sees. */
     val changeSelection: () -> Unit,
     val backup: BackupActions,
-    /** Downloads the original of a server photo into `files/originals`, reporting progress 0–1. */
-    val downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
-    /** "Delete from this phone": only after the server confirms it has the file and a preview is kept. */
-    val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
     /** Marks a photo on the server private, or no longer private; false when the server couldn't be reached. */
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean,
     backgroundLocation: State<Boolean>,
@@ -172,45 +160,10 @@ internal fun libraryActions(
         backUpNow = backup::backUpNow,
     )
 
-    // "Delete from this phone": Android's own prompt moves a library photo to the gallery's trash.
-    val trashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { library.refresh() }
-    val downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean = { item, onProgress ->
-        val sha = item.sha256
-        sha != null && server.originals.download(sha, item.fileName ?: sha, onProgress)
-    }
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { item, isPrivate ->
         val sha = item.sha256
         sha != null && server.library.setPrivate(listOf(sha), isPrivate)
     }
-    val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = remove@{ item ->
-        val sha = item.sha256
-        if (sha == null || item.backup != BackupStatus.BackedUp) return@remove RemovalOutcome.NOT_ON_SERVER
-        // Never without the server confirming it has these bytes, and a preview kept to show instead.
-        when (server.library.confirms(sha)) {
-            ServerLibrary.Confirmation.UNREACHABLE -> return@remove RemovalOutcome.UNREACHABLE
-            ServerLibrary.Confirmation.MISSING -> {
-                backup.uploadAgain(item)
-                return@remove RemovalOutcome.NOT_ON_SERVER
-            }
-            ServerLibrary.Confirmation.HAS_IT -> Unit
-        }
-        val previewKept = if (item.type == MediaType.VIDEO) {
-            // Keep a frame of it, made here from the video itself (the server makes posters too, once online).
-            withContext(Dispatchers.IO) { videoPoster(context.contentResolver, item, VIDEO_POSTER_SIDE) }
-                ?.let { (bytes, width, height) -> server.previews.keepPoster(sha, bytes, width, height); true } ?: false
-        } else {
-            server.previews.keepForViewing(sha)
-        }
-        if (!previewKept) return@remove RemovalOutcome.NO_PREVIEW
-        if (!item.isOnDevice) {
-            server.originals.delete(sha)
-            RemovalOutcome.DELETED
-        } else {
-            trashLauncher.launch(IntentSenderRequest.Builder(moveToTrashRequest(context, item)).build())
-            RemovalOutcome.ASKED
-        }
-    }
-
     // "Free up space": checked files that wait go to the trash with one system prompt, shown when a run has ended (the
     // notification at its end opens the app), or from Settings.
     val freeUpTrashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -255,8 +208,6 @@ internal fun libraryActions(
         requestAccess = requestAccess,
         changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
         backup = backupActions,
-        downloadOriginal = downloadOriginal,
-        deleteFromPhone = deleteFromPhone,
         setPrivate = setPrivate,
         backgroundLocation = backgroundLocationState,
         canTrashWithoutAsking = canTrashWithoutAskingState,

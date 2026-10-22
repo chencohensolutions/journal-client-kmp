@@ -28,7 +28,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,22 +68,22 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
-// The viewer's info panel: writing, tags, the storyline, where the original is, and what is kept on this phone.
+// The viewer's info panel: tags, the storyline, where it was taken, where the original is, what is kept on this phone,
+// and the original's camera or video details.
 
-/** Date, the photo's writing and tags, whether it is in the storyline, backup status and file details. */
+/** Date, the photo's tags, whether it is in the storyline, where it was taken, backup status, file and camera details. */
 @Composable
 internal fun InfoPanel(
     item: MediaItem,
     note: PhotoNote?,
-    onEditCaption: () -> Unit,
     onAddTag: () -> Unit,
     onRemoveTag: (String) -> Unit,
     /** "Remove" (false) or "Add back" (true) in the Storyline section. */
     setInStoryline: (Boolean) -> Unit,
     location: Pair<GeoPoint, PlaceName?>?,
-    downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
-    deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
     setPrivate: suspend (MediaItem, Boolean) -> Boolean,
+    /** The map screen on where it was taken: a tap on the map. */
+    openMap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val taken = Instant.ofEpochMilli(item.takenAtMillis).atZone(ZoneId.systemDefault())
@@ -98,33 +101,113 @@ internal fun InfoPanel(
             Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.OnInverse, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(formatDate(taken, "jmm"), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
         }
-        CaptionBlock(note?.title.orEmpty(), note?.caption.orEmpty(), onEditCaption)
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
         if (note?.hasWriting == true) StorylineRow(note.inStoryline, setInStoryline)
-        OriginalCard(item, location, downloadOriginal, deleteFromPhone, setPrivate)
+        if (location != null) LocationCard(location, openMap)
+        OriginalCard(item, setPrivate)
+        DetailsCard(item)
     }
 }
 
-/** The photo's own title and paragraph, wherever it appears; tap to write or edit. */
+/** The panel's cards: a tint of its text color, so they read in light and dark. */
+private val CardColor: Color @Composable get() = LibraryColors.OnInverse.copy(alpha = 0.06f)
+
+/** Where it was taken: a map with a pin, the place and coordinates under it. A tap opens the map screen there. */
 @Composable
-private fun CaptionBlock(title: String, caption: String, onEdit: () -> Unit) {
+private fun LocationCard(location: Pair<GeoPoint, PlaceName?>, openMap: (GeoPoint) -> Unit) {
+    val (point, name) = location
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(14.dp))
-            .clickable(onClickLabel = stringResource(R.string.library_writing_edit), onClick = onEdit)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardColor)
+            .clickable(onClickLabel = stringResource(R.string.library_info_open_map)) { openMap(point) }
+            .padding(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(stringResource(R.string.library_note_title), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        if (title.isNotBlank()) Text(title, color = LibraryColors.OnInverse, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-        if (caption.isNotBlank() || title.isBlank()) Text(
-            caption.ifBlank { stringResource(R.string.library_note_prompt) },
-            color = if (caption.isBlank()) LibraryColors.OnInverseMuted else LibraryColors.OnInverse,
-            fontFamily = FontFamily.Serif,
-            fontSize = 16.sp,
-            lineHeight = 23.sp,
+        LocationMap(point, Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(12.dp)))
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp)) {
+            val place = listOfNotNull(name?.label, name?.city, name?.country).distinct().joinToString(", ")
+            if (place.isNotEmpty()) Text(place, color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude), color = LibraryColors.OnInverseMuted, fontSize = 13.sp)
+        }
+    }
+}
+
+/**
+ * "Camera details" (a photo's EXIF) or "Video details" (codecs, rates, HDR), read from the original on this phone:
+ * the usual facts, and a link that opens every tag. Until the viewer has downloaded the original, a line says so; the
+ * details show when the download ends.
+ */
+@Composable
+private fun DetailsCard(item: MediaItem) {
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val progress by (previews?.originalProgress ?: remember { MutableStateFlow(emptyMap<String, Float>()) }).collectAsState()
+    val downloading = item.sha256?.let { it in progress } == true
+    // Unit while reading; null when the original isn't here.
+    val details by produceState<Any?>(Unit, item.id, item.keptOriginal, downloading) {
+        value = readOriginalDetails(context, previews, item)
+    }
+    val video = item.type == MediaType.VIDEO
+    val shown = details as? OriginalDetails
+    if (details == Unit || (shown != null && shown.count == 0)) return
+    var open by remember(item.id) { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxWidth().background(CardColor, RoundedCornerShape(16.dp)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        InfoHeading(stringResource(if (video) R.string.library_info_video_details else R.string.library_info_camera_details))
+        if (shown == null) {
+            Text(stringResource(R.string.library_info_details_waiting), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+            return@Column
+        }
+        if (shown.title != null || shown.subtitle != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                shown.title?.let { Text(it, color = LibraryColors.OnInverse, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
+                shown.subtitle?.let { Text(it, color = LibraryColors.OnInverseMuted, fontSize = 13.sp) }
+            }
+        }
+        if (shown.chips.isNotEmpty()) DetailChips(shown.chips)
+        Text(
+            when {
+                open -> stringResource(if (video) R.string.library_info_video_details_hide else R.string.library_info_exif_hide)
+                else -> stringResource(if (video) R.string.library_info_video_details_all else R.string.library_info_exif_all, shown.count)
+            },
+            color = LibraryColors.Accent,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable { open = !open }.padding(vertical = 6.dp),
         )
+        if (open) {
+            shown.sections.forEach { section ->
+                Text(section.name, color = LibraryColors.OnInverseMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                section.rows.forEach { (label, value) ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 13.sp, modifier = Modifier.width(130.dp))
+                        Text(value, color = LibraryColors.OnInverse, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DetailChips(chips: List<String>) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        chips.forEach { chip ->
+            Text(
+                chip,
+                color = LibraryColors.OnInverse,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .background(LibraryColors.Accent.copy(alpha = 0.10f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
@@ -186,22 +269,16 @@ private fun StorylineRow(inStoryline: Boolean, setInStoryline: (Boolean) -> Unit
 
 /**
  * Where the original is (this phone, the server, or both; upload progress), its facts (file, size, dimensions, length,
- * type, source, where it was taken), the preview kept here for a photo only on the server, and "Download original" or
- * "Delete from this phone".
+ * type, source), the preview kept here for a photo only on the server, and "Mark private".
  */
 @Composable
 private fun OriginalCard(
     item: MediaItem,
-    location: Pair<GeoPoint, PlaceName?>?,
-    downloadOriginal: suspend (MediaItem, (Float) -> Unit) -> Boolean,
-    deleteFromPhone: suspend (MediaItem) -> RemovalOutcome,
     setPrivate: suspend (MediaItem, Boolean) -> Boolean,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val status = item.backup
-    var downloading by remember(item.id) { mutableStateOf<Float?>(null) }
-    var confirmingDelete by remember(item.id) { mutableStateOf(false) }
     var confirmingPrivate by remember(item.id) { mutableStateOf(false) }
     var markingPrivate by remember(item.id) { mutableStateOf(false) }
     fun markPrivate(isPrivate: Boolean) {
@@ -214,7 +291,7 @@ private fun OriginalCard(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(16.dp))
+            .background(CardColor, RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -250,36 +327,8 @@ private fun OriginalCard(
             add(stringResource(R.string.library_info_source) to sourceName(item.source))
         }
         FactGrid(details)
-        if (location != null) {
-            val (point, name) = location
-            val coordinates = String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude)
-            val place = listOfNotNull(name?.label, name?.city?.takeIf { it != name.label }).joinToString(", ")
-            InfoFact(stringResource(R.string.library_info_location), if (place.isEmpty()) coordinates else "$place\n$coordinates")
-        }
         if (!item.hasOriginalHere) ShownHereFacts(item)
 
-        downloading?.let { progress ->
-            Text(stringResource(R.string.library_original_downloading, (progress * 100).roundToInt()), color = LibraryColors.OnInverseMuted, fontSize = 13.sp)
-            LinearProgressIndicator(
-                progress = { progress },
-                color = LibraryColors.Accent,
-                trackColor = LibraryColors.Accent.copy(alpha = 0.15f),
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-            )
-        }
-        when {
-            !item.hasOriginalHere && item.sha256 != null && downloading == null ->
-                OriginalButton(LibraryIcons.Download, stringResource(R.string.library_original_download)) {
-                    downloading = 0f
-                    scope.launch {
-                        val ok = downloadOriginal(item) { downloading = it }
-                        downloading = null
-                        if (!ok) Toast.makeText(context, R.string.library_original_download_failed, Toast.LENGTH_LONG).show()
-                    }
-                }
-            item.hasOriginalHere && status == BackupStatus.BackedUp ->
-                OriginalButton(LibraryIcons.Trash, stringResource(R.string.library_original_delete)) { confirmingDelete = true }
-        }
         // Only a photo the server has can be marked: the mark is kept there, for every device.
         if (item.sha256 != null && status == BackupStatus.BackedUp && !markingPrivate) {
             if (item.isPrivate) {
@@ -301,30 +350,6 @@ private fun OriginalCard(
                 }) { Text(stringResource(R.string.library_private_mark_confirm)) }
             },
             dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
-        )
-    }
-    if (confirmingDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmingDelete = false },
-            title = { Text(stringResource(R.string.library_original_delete_title)) },
-            text = {
-                val body = stringResource(if (item.isOnDevice) R.string.library_original_delete_body_gallery else R.string.library_original_delete_body)
-                Text(if (item.type == MediaType.VIDEO) body + "\n\n" + stringResource(R.string.library_original_delete_video) else body)
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingDelete = false
-                    scope.launch {
-                        when (deleteFromPhone(item)) {
-                            RemovalOutcome.UNREACHABLE -> Toast.makeText(context, R.string.library_original_unreachable, Toast.LENGTH_LONG).show()
-                            RemovalOutcome.NOT_ON_SERVER -> Toast.makeText(context, R.string.library_original_not_on_server, Toast.LENGTH_LONG).show()
-                            RemovalOutcome.NO_PREVIEW -> Toast.makeText(context, R.string.library_original_no_preview, Toast.LENGTH_LONG).show()
-                            RemovalOutcome.DELETED, RemovalOutcome.ASKED -> Unit
-                        }
-                    }
-                }) { Text(stringResource(R.string.library_original_delete_confirm)) }
-            },
-            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(stringResource(R.string.library_cancel)) } },
         )
     }
 }

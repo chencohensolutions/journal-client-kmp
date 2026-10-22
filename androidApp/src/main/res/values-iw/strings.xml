@@ -60,6 +60,7 @@
     <string name="library_backup_done">מגובה</string>
     <string name="library_backup_failed">ההעלאה נכשלה: %s</string>
     <string name="library_viewer_position">%1$d מתוך %2$d · %3$s</string>
+    <string name="library_viewer_position_count">%1$d מתוך %2$d ·</string>
     <string name="library_viewer_details">פרטים</string>
     <string name="library_viewer_play">הפעלת הסרטון</string>
     <string name="library_viewer_video_unavailable">אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך.</string>
@@ -81,7 +82,6 @@
 
     <!-- Groups -->
     <string name="library_remove">הסרה</string>
-    <string name="library_writing_edit">עריכה</string>
 
     <!-- Story and tag pickers, photo notes, tags -->
     <string name="library_picker_recent">אחרונים</string>
@@ -99,7 +99,6 @@
     <string name="library_tag">תגית</string>
     <string name="library_remove_tag">הסרת התגית %s</string>
     <string name="library_info_tags">תגיות</string>
-    <string name="library_note_title">הערה</string>
     <string name="library_note_prompt">כתבו על התמונה הזו…</string>
     <string name="note_writing">כתיבה</string>
     <string name="note_title_hint">כותרת</string>
@@ -248,7 +247,6 @@
     <string name="crop_untouched">התמונה עצמה לא משתנה.</string>
     <!-- מציג התמונות -->
     <string name="viewer_write">כתיבה</string>
-    <string name="viewer_crop">חיתוך</string>
     <string name="viewer_cropped">חתוכה</string>
     <string name="viewer_show_all">הצגת הכול</string>
     <string name="viewer_show_crop">הצגת החיתוך</string>
@@ -299,27 +297,14 @@
     <string name="library_original_both">בטלפון הזה ובשרת שלך</string>
     <string name="library_original_kept">הורד לטלפון הזה, ונמצא בשרת שלך</string>
     <string name="library_original_server_only">רק בשרת שלך</string>
-    <string name="library_original_download">הורדת המקור</string>
-    <string name="library_original_downloading">מוריד את המקור… %d%%</string>
-    <string name="library_original_download_failed">לא ניתן להוריד. יש לבדוק את החיבור לשרת.</string>
-    <string name="library_original_delete">מחיקה מהטלפון</string>
-    <string name="library_original_delete_title">למחוק מהטלפון?</string>
-    <string name="library_original_delete_body">המקור שהורד יימחק מהטלפון. הוא נשאר בשרת שלך, והתמונה תמשיך להופיע כאן מהתצוגה המקדימה שלה.</string>
-    <string name="library_original_delete_body_gallery">התמונה תעבור לסל המחזור של הטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן ובסיפורים שלה מהתצוגה המקדימה.</string>
-    <string name="library_original_delete_confirm">מחיקה</string>
-    <string name="library_original_unreachable">לא נמחק: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
-    <string name="library_original_no_preview">לא נמחק: לא ניתן לשמור תמונה שלו להצגה כאן.</string>
     <string name="library_private_mark">סימון כפרטי</string>
     <string name="library_private_unmark">ביטול סימון כפרטי</string>
     <string name="library_private_mark_title">לסמן כפרטי?</string>
     <string name="library_private_mark_body">הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_mark_confirm">סימון כפרטי</string>
     <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
-    <string name="library_original_delete_video">אחר כך הסרטון מתנגן מהשרת שלך בהזרמה; מה שכבר נוגן נשמר בטלפון הזה לפעם הבאה.</string>
-    <string name="library_original_not_on_server">לא נמחק: התמונה לא נמצאת בשרת שלך. היא תועלה שוב בגיבוי הבא.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>
-    <string name="library_info_location">מיקום</string>
     <string name="library_info_preview">תצוגה מקדימה בטלפון</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">עדיין אין</string>
@@ -432,6 +417,15 @@
     <string name="free_up_summary_older">צולמו לפני יותר מ־%1$s</string>
     <string name="free_up_summary_keep">הכל חוץ מ־%1$s החדשים ביותר</string>
     <string name="library_info_original_title">המקור</string>
+    <string name="library_show_in_moments">הצגה ב״רגעים״</string>
+    <string name="library_info_open_map">פתיחה במפה</string>
+    <string name="library_info_camera_details">פרטי המצלמה</string>
+    <string name="library_info_video_details">פרטי הסרטון</string>
+    <string name="library_info_exif_all">כל נתוני ה־EXIF ‏(%d)</string>
+    <string name="library_info_exif_hide">הסתרת נתוני ה־EXIF</string>
+    <string name="library_info_video_details_all">כל פרטי הסרטון ‏(%d)</string>
+    <string name="library_info_video_details_hide">הסתרת פרטי הסרטון</string>
+    <string name="library_info_details_waiting">יוצג אחרי שהמקור יורד.</string>
     <string name="library_info_shown_title">מוצג בטלפון הזה</string>
     <string name="library_info_type_video">סרטון %1$s</string>
     <string name="library_info_format">פורמט</string>

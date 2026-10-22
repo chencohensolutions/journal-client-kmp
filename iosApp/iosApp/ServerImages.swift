@@ -119,14 +119,13 @@ final class ServerImages: NSObject, ServerImageDecoding {
     }
 }
 
-// MARK: The viewer's Download original, Delete from this phone and Mark private
+// MARK: The viewer's original details and Mark private
 
 extension ServerImages {
-    /// Downloads `item`'s original and keeps it in Application Support; `progress` gets each percent.
-    func downloadOriginal(_ item: MediaItem, progress: @escaping (Int) -> Void) async -> Bool {
-        await awaiting { done in
-            self.files.downloadOriginal(item: item, onProgress: { progress($0.intValue) }, onDone: { done($0.boolValue) })
-        }
+    /// The file of `item`'s original on this phone (kept, or downloaded into the cache by the viewer); nil while it
+    /// isn't here.
+    func originalPath(_ item: MediaItem) async -> String? {
+        await awaiting { done in self.files.originalPath(item: item, onResult: done) }
     }
 
     /// Marks `item` private on the server, or no longer private; the library follows once the server's list is synced.
@@ -134,43 +133,6 @@ extension ServerImages {
         await awaiting { done in
             self.files.setPrivate(item: item, isPrivate: isPrivate, onDone: { done($0.boolValue) })
         }
-    }
-
-    /// "Delete from this phone": only once the server confirms it has the file and a preview is kept here
-    /// (`IosServerFiles.prepareRemoval`); a library photo then goes through iOS's own prompt (`PhotoRemoval`), after
-    /// which `refresh` re-reads the library.
-    func deleteFromPhone(_ item: MediaItem, refresh: @escaping () -> Void) async -> RemovalOutcome {
-        // A video keeps a frame of it, made here (the server makes posters too, once it can).
-        var poster: (data: Data, width: Int, height: Int)?
-        if item.isVideo, let frame = await Self.posterFrame(item), let data = frame.jpegData(compressionQuality: 0.9) {
-            poster = (data, Int(frame.size.width * frame.scale), Int(frame.size.height * frame.scale))
-        }
-        let check = await awaiting { done in
-            self.files.prepareRemoval(
-                item: item, poster: poster?.data, posterWidth: Int32(poster?.width ?? 0), posterHeight: Int32(poster?.height ?? 0), onDone: done
-            )
-        }
-        switch check {
-        case .deleted: return .deleted
-        case .ask:
-            let deleted = await PhotoRemoval.moveToRecentlyDeleted(item)
-            refresh()
-            return deleted ? .deleted : .declined
-        case .notOnServer: return .notOnServer
-        case .noPreview: return .noPreview
-        default: return .unreachable
-        }
-    }
-
-    /// The longer side of the frame kept for a video that leaves the phone (Android's VIDEO_POSTER_SIDE).
-    private static let posterSide: CGFloat = 1920
-
-    private static func posterFrame(_ item: MediaItem) async -> UIImage? {
-        if let kept = item.keptOriginal {
-            return await Task.detached { videoFrame(url: URL(fileURLWithPath: kept), maxSide: posterSide) }.value
-        }
-        let scale = UITraitCollection.current.displayScale
-        return await PhotoLibraryImages.shared.image(item: item, pointSize: CGSize(width: posterSide / scale, height: posterSide / scale))
     }
 }
 

@@ -63,6 +63,23 @@ internal val labScreens: List<LabScreen> = listOf(
             }
         },
     )),
+    LabScreen("viewer-info", "Viewer info panel", listOf(
+        current {
+            LabInfoBackdrop { modifier ->
+                InfoPanel(
+                    labInfoItem,
+                    note = labInfoNote,
+                    onAddTag = {},
+                    onRemoveTag = {},
+                    setInStoryline = {},
+                    location = labInfoLocation,
+                    setPrivate = { _, _ -> true },
+                    openMap = {},
+                    modifier = modifier,
+                )
+            }
+        },
+    )),
     LabScreen("crop", "Crop", listOf(
         current {
             val crops = PreviewData.marketCrops

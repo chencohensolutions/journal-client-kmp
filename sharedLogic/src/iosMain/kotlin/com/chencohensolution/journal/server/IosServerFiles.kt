@@ -3,7 +3,6 @@
 package com.chencohensolution.journal.server
 
 import com.chencohensolution.journal.connection.ObservationHandle
-import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.storage.PhoneStorage
@@ -22,7 +21,6 @@ import kotlinx.coroutines.withContext
 import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.UIKit.UIImage
-import platform.posix.memcpy
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.ceil
 
@@ -35,27 +33,9 @@ interface ServerImageDecoding {
     fun decodeData(data: NSData): UIImage?
 }
 
-/** What "Delete from this phone" found before removing anything. */
-enum class RemovalCheck {
-    /** Removed already: an original the app had kept. */
-    DELETED,
-
-    /** The server has it and its preview is kept: the photo may now go to the library's trash (iOS asks). */
-    ASK,
-
-    /** Nothing removed: the server can't be reached. */
-    UNREACHABLE,
-
-    /** Nothing removed: the server answered and doesn't have this photo. */
-    NOT_ON_SERVER,
-
-    /** Nothing removed: no preview could be kept to show it by. */
-    NO_PREVIEW,
-}
-
 /**
  * The server's files as Swift asks for them: images of server-only photos ([ServerPreviews.tile], [ServerPreviews.viewer]),
- * "Download original", the checks before "Delete from this phone", what is kept here, and Settings → Storage. Swift
+ * where an original is on this phone, Mark private, what is kept here, and Settings → Storage. Swift
  * can't await Kotlin's suspend functions on its own threads safely, so each takes a callback, called on the main thread
  * (with null when cancelled), and returns a handle that cancels it.
  */
@@ -102,55 +82,11 @@ class IosServerFiles internal constructor(
         previews.largestPreview(sha)?.let { bytes -> withContext(Dispatchers.IO) { decoding.decodeData(bytes.toNSData()) } }
     }
 
-    /** "Download original": kept in Application Support. [onProgress] gets each new percent; [onDone] whether it worked. */
-    fun downloadOriginal(item: MediaItem, onProgress: (Int) -> Unit, onDone: (Boolean) -> Unit): ObservationHandle = run({ onDone(it ?: false) }) {
-        val sha = item.sha256 ?: return@run false
-        var shown = -1
-        originals.download(sha, item.fileName ?: sha) { fraction ->
-            val percent = (fraction * 100).toInt()
-            if (percent != shown) {
-                shown = percent
-                scope.launch { onProgress(percent) }
-            }
-        }
-    }
-
     /** Marks [item] private on the server ([isPrivate]), or no longer private; [onDone] gets whether it worked. */
     fun setPrivate(item: MediaItem, isPrivate: Boolean, onDone: (Boolean) -> Unit): ObservationHandle = run({ onDone(it ?: false) }) {
         val sha = item.sha256 ?: return@run false
         library.setPrivate(listOf(sha), isPrivate)
     }
-
-    /**
-     * Before "Delete from this phone", as on Android: never without the server confirming it has these bytes
-     * ([ServerLibrary.confirms]) and a preview kept to show instead ([ServerPreviews.keepForViewing]; a video keeps
-     * [poster], a JPEG frame of it made on this phone, [posterWidth] × [posterHeight]). A downloaded original is then
-     * deleted here; a library photo is [RemovalCheck.ASK]: the app asks PhotoKit, which asks the user.
-     */
-    fun prepareRemoval(item: MediaItem, poster: NSData?, posterWidth: Int, posterHeight: Int, onDone: (RemovalCheck) -> Unit): ObservationHandle =
-        run({ onDone(it ?: RemovalCheck.UNREACHABLE) }) {
-            val sha = item.sha256
-            if (sha == null || item.backup != BackupStatus.BackedUp) return@run RemovalCheck.NOT_ON_SERVER
-            when (library.confirms(sha)) {
-                ServerLibrary.Confirmation.UNREACHABLE -> return@run RemovalCheck.UNREACHABLE
-                // Android also has backup send it again; iOS backup isn't built yet.
-                ServerLibrary.Confirmation.MISSING -> return@run RemovalCheck.NOT_ON_SERVER
-                ServerLibrary.Confirmation.HAS_IT -> Unit
-            }
-            val previewKept = if (item.type == MediaType.VIDEO) {
-                poster?.let { previews.keepPoster(sha, it.toByteArray(), posterWidth, posterHeight, extension = "jpg"); true } ?: false
-            } else {
-                previews.keepForViewing(sha)
-            }
-            when {
-                !previewKept -> RemovalCheck.NO_PREVIEW
-                !item.isOnDevice -> {
-                    originals.delete(sha)
-                    RemovalCheck.DELETED
-                }
-                else -> RemovalCheck.ASK
-            }
-        }
 
     /** What is kept here of [item] (a server-only photo or video): [PhoneStorage.keptHere]. */
     fun keptHere(item: MediaItem, onResult: (KeptHere?) -> Unit): ObservationHandle = run(onResult) {
@@ -192,6 +128,14 @@ class IosServerFiles internal constructor(
     /** Whether [item]'s original is on this phone already (kept, or in the cache): showing it downloads nothing. */
     fun hasOriginal(item: MediaItem, onResult: (Boolean) -> Unit): ObservationHandle = run({ onResult(it ?: false) }) {
         item.keptOriginal != null || item.sha256?.let { previews.cachedOriginal(it) } != null
+    }
+
+    /**
+     * The file of [item]'s original on this phone, to read its details (EXIF, codecs) from: the kept original, else the
+     * one downloaded into the preview cache; null while it isn't here (nothing is downloaded for this).
+     */
+    fun originalPath(item: MediaItem, onResult: (String?) -> Unit): ObservationHandle = run(onResult) {
+        item.keptOriginal ?: item.sha256?.let { previews.cachedOriginal(it) }
     }
 
     private fun <T> observe(flow: StateFlow<T>, onChange: (T) -> Unit): ObservationHandle {
@@ -237,9 +181,3 @@ private fun coverSize(item: MediaItem, width: Int, height: Int): Pair<Int, Int> 
 
 private fun ByteArray.toNSData(): NSData =
     if (isEmpty()) NSData() else usePinned { NSData.create(bytes = it.addressOf(0), length = size.toULong()) }
-
-private fun NSData.toByteArray(): ByteArray {
-    val bytes = ByteArray(length.toInt())
-    if (bytes.isNotEmpty()) bytes.usePinned { memcpy(it.addressOf(0), this.bytes, length) }
-    return bytes
-}

@@ -11,6 +11,13 @@ struct ViewerShowing: Equatable {
     let itemId: String
 }
 
+/// "Show in Moments" from the viewer's details: the photo to land on. A new one each time (`id`), so the same photo
+/// can be asked for twice.
+struct PhotoRequest: Equatable {
+    let id = UUID()
+    let itemId: String
+}
+
 /// Where a screen shows a photo: the row of its lazy stack, which the stack can always scroll to, and the tile in it.
 struct PhotoPlace {
     let section: AnyHashable
@@ -32,6 +39,25 @@ extension View {
     /// Goes on a scroll view's lazy stack; `place` finds a photo on this screen, or nil.
     func followsViewer(_ place: @escaping (String) -> PhotoPlace?) -> some View {
         ScrollViewReader { proxy in modifier(FollowViewer(proxy: proxy, place: place)) }
+    }
+
+    /// Scrolls to `request`'s photo once it is asked for (after the screen has switched to the rows that hold it):
+    /// first its row, then its tile, in the middle. Nothing when `place` doesn't find it (its source hidden).
+    func landsOn(_ request: PhotoRequest?, _ place: @escaping (String) -> PhotoPlace?) -> some View {
+        ScrollViewReader { proxy in
+            onChange(of: request) { _, request in
+                guard let request else { return }
+                Task { @MainActor in
+                    // After the viewer has closed and the rows of the tab just switched to are laid out.
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard let target = place(request.itemId) else { return }
+                    proxy.scrollTo(section: target.section, anchor: .center)
+                    // In a set, the page with the photo.
+                    try? await Task.sleep(for: .milliseconds(100))
+                    proxy.scrollTo(target.tile, anchor: .center)
+                }
+            }
+        }
     }
 }
 
@@ -71,9 +97,17 @@ private struct FollowViewer: ViewModifier {
                 proxy.scrollTo(target.tile)
             } else {
                 // A lazy stack lays out only rows near the screen: first the row, then the tile in it.
-                proxy.scrollTo(target.section)
+                proxy.scrollTo(section: target.section)
                 DispatchQueue.main.async { proxy.scrollTo(target.tile) }
             }
         }
+    }
+}
+
+private extension ScrollViewProxy {
+    /// Scrolls to a row by its id kept as AnyHashable: the id itself is passed, as a ForEach's String id doesn't match
+    /// an AnyHashable one.
+    func scrollTo(section: AnyHashable, anchor: UnitPoint? = nil) {
+        if let id = section.base as? String { scrollTo(id, anchor: anchor) } else { scrollTo(section, anchor: anchor) }
     }
 }

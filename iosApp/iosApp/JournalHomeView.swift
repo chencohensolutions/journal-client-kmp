@@ -46,6 +46,8 @@ struct JournalHomeView: View {
     let health: ServerHealth
     /// Videos of the feed stop while the viewer is over it.
     let viewerOpen: Bool
+    /// "Show in Moments" from the viewer: the Moments tab, landed on that photo.
+    var showInMoments: PhotoRequest? = nil
     /// The backup run, for the bottom pill.
     let backupRunning: BackupProgress?
     let actions: HomeActions
@@ -135,12 +137,18 @@ struct JournalHomeView: View {
                     case .explore: return nil
                     }
                 }
+                .landsOn(showInMoments) { rows.place(of: $0) }
             }
             .scrollIndicators(.hidden)
             .onAppear { playback.viewport = viewport(geometry) }
             .onChange(of: geometry.size) { playback.viewport = viewport(geometry) }
         }
         .onChange(of: stories.feed, initial: true) { rows = stories.feed.rows }
+        .onChange(of: showInMoments) { _, request in
+            guard request != nil else { return }
+            selection = []
+            tab = .moments
+        }
         .task(id: tab == .explore ? ExploreInput(library, stories) : nil) {
             if tab == .explore { explore = await ExploreSummaries.of(library, stories) }
         }

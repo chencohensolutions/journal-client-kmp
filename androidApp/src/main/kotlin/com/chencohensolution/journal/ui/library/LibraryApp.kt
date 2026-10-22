@@ -104,6 +104,8 @@ private fun LibraryScreens(
     var stack by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(listOf<Route>(Route.Journal)) }
     // The photo the viewer shows, for the screen under it: that screen scrolls its tile into view to land on.
     var landing by remember { mutableStateOf<Landing?>(null) }
+    // "Show in Moments" from the viewer: back to the journal, on its Moments tab at that photo.
+    var showInMoments by remember { mutableStateOf<ShowInMoments?>(null) }
     val push: (Route) -> Unit = {
         landing = null
         stack = stack + it
@@ -164,7 +166,7 @@ private fun LibraryScreens(
                                             openPlace = { push(Route.Place(it)) },
                                             openCountry = { push(Route.Country(it)) },
                                             openYear = { year, month -> push(Route.Year(year, month)) },
-                                            openMap = { push(Route.Map) },
+                                            openMap = { push(Route.Map()) },
                                             toggleSource = settings::toggleFeedSource,
                                         ),
                                         showOnRow = stories::showOnRow,
@@ -178,6 +180,7 @@ private fun LibraryScreens(
                                         },
                                     ),
                                     landing = landingHere,
+                                    showInMoments = showInMoments,
                                     backupRunning = backupRunning,
                                 )
                                 is Route.Country -> CountryScreen(
@@ -215,9 +218,10 @@ private fun LibraryScreens(
                                         onToggleSource = settings::toggleFeedSource,
                                     )
                                 }
-                                Route.Map -> MapScreen(
+                                is Route.Map -> MapScreen(
                                     library = libraryState,
                                     stories = storiesState,
+                                    at = route.at,
                                     actions = MapActions(
                                         back = pop,
                                         toggleSource = settings::toggleFeedSource,
@@ -299,10 +303,13 @@ private fun LibraryScreens(
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },
                                         showing = { landing = Landing(entry.depth - 1, it) },
-                                        crop = { itemId, kind -> push(Route.Crop(itemId, kind)) },
-                                        downloadOriginal = actions.downloadOriginal,
-                                        deleteFromPhone = actions.deleteFromPhone,
                                         setPrivate = actions.setPrivate,
+                                        openMap = { push(Route.Map(it)) },
+                                        showInMoments = { itemId: String ->
+                                            landing = null
+                                            showInMoments = ShowInMoments(itemId)
+                                            stack = listOf(Route.Journal)
+                                        }.takeUnless { route.moment != null && route.scope == null },
                                         setZoom = stories::setZoom,
                                     ),
                                 )

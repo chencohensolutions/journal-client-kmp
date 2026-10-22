@@ -90,12 +90,15 @@ internal class MapActions(
     val toggleSource: (MediaSource) -> Unit = {},
 )
 
-private const val LIGHT_STYLE = "https://tiles.openfreemap.org/styles/liberty"
-private const val DARK_STYLE = "https://tiles.openfreemap.org/styles/dark"
+internal const val LIGHT_STYLE = "https://tiles.openfreemap.org/styles/liberty"
+internal const val DARK_STYLE = "https://tiles.openfreemap.org/styles/dark"
 private const val SOURCE = "photos"
 private const val CLUSTERS = "photo-clusters"
 private const val COUNTS = "photo-counts"
 private const val PINS = "photo-pins"
+
+/** How close the map opens on a photo's place. */
+private const val PLACE_ZOOM = 15.0
 
 /** Past this zoom pins aren't joined any more; a circle left is photos taken in one spot. */
 private const val CLUSTER_MAX_ZOOM = 16
@@ -108,7 +111,7 @@ private class Pin(val item: MediaItem, val point: GeoPoint)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: MapActions) {
+internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: MapActions, at: GeoPoint? = null) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
     val insets = WindowInsets.systemBars.asPaddingValues()
@@ -129,7 +132,8 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
     // The years shown and where the map looks, kept while the viewer is open above it.
     var fromYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var toYear by rememberSaveable { mutableStateOf<Int?>(null) }
-    var camera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
+    // Opened from a photo's details: on its place, close up.
+    var camera by rememberSaveable { mutableStateOf(at?.let { doubleArrayOf(it.latitude, it.longitude, PLACE_ZOOM) }) }
     if (years == null) {
         MapEmpty(pins, actions) {
             ShowingLine(shownSources, presentSources(counts, shownSources), onChange = { sheetOpen = true })

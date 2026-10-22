@@ -10,6 +10,7 @@ import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
@@ -26,11 +27,14 @@ internal sealed interface Route {
     data object Settings : Route
     data object FreeUp : Route
 
-    /** Explore: a country's page (null: the towns whose country isn't known), a town's page, a year's page (on one of its months), and the map. */
+    /**
+     * Explore: a country's page (null: the towns whose country isn't known), a town's page, a year's page (on one of its
+     * months), and the map (on [Map.at] close up, from a photo's details; else showing every photo).
+     */
     data class Country(val country: String?) : Route
     data class Place(val town: String) : Route
     data class Year(val year: Int, val month: Int?) : Route
-    data object Map : Route
+    data class Map(val at: GeoPoint? = null) : Route
 
     /** The crop screen for one photo, opened on [kind]. */
     data class Crop(val itemId: String, val kind: CropKind) : Route
@@ -63,7 +67,7 @@ internal sealed interface Route {
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
-        Map -> "map"
+        is Map -> "map|${at?.let { "${it.latitude},${it.longitude}" }.orEmpty()}"
         is Viewer -> "viewer|${if (storyline) "storyline" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
             "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|$itemId"
     }
@@ -81,7 +85,7 @@ internal sealed interface Route {
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))
                 "year" -> Year(parts[1].toInt(), parts[2].toIntOrNull())
-                "map" -> Map
+                "map" -> Map(parts.getOrNull(1)?.split(",")?.mapNotNull { it.toDoubleOrNull() }?.takeIf { it.size == 2 }?.let { (lat, lng) -> GeoPoint(lat, lng) })
                 "viewer" -> Viewer(
                     storyline = parts[1] == "storyline",
                     moment = parts[2].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },

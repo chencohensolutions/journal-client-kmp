@@ -141,7 +141,7 @@ fun phoneStorage(context: Context): PhoneStorage =
 /** Originals downloaded from the server and kept in `files/originals`. One per process. */
 @Synchronized
 fun keptOriginals(context: Context): KeptOriginals =
-    keptOriginals ?: KeptOriginals(serverHttp(context), FileSystem.SYSTEM, context.filesDir.toOkioPath() / "originals")
+    keptOriginals ?: KeptOriginals(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "originals")
         .also { keptOriginals = it }
 
 private var backupController: BackupController? = null

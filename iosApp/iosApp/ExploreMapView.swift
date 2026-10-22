@@ -14,9 +14,18 @@ struct MapPin: Equatable {
     let longitude: Double
 }
 
+/// A place to open the map on, close up (a photo's location from the viewer's details).
+struct MapCenter: Hashable, Identifiable {
+    let latitude: Double
+    let longitude: Double
+    var id: String { "\(latitude),\(longitude)" }
+}
+
 struct ExploreMapView: View {
     let library: LibraryState
     let stories: StoriesState
+    /// Opens close up on this place (zoom 15) instead of fitting every photo.
+    var at: MapCenter? = nil
     /// A source on or off everywhere, from the "Showing" sheet.
     let toggleSource: (MediaSource) -> Void
     /// The viewer on the photos the scope takes in, starting at a photo (or the newest of them).
@@ -44,6 +53,7 @@ struct ExploreMapView: View {
                 let inView = area.map { area in shown.count { area.contains(point: GeoPoint(latitude: $0.latitude, longitude: $0.longitude)) } } ?? 0
                 PhotoMap(
                     pins: shown,
+                    at: at,
                     dark: colorScheme == .dark,
                     onArea: { area = $0 },
                     onOpen: { area, itemId in openPhotos(.of(fromYear: from, toYear: to, area: area), itemId) }
@@ -237,8 +247,13 @@ private struct YearRangeSlider: View {
     }
 }
 
-private let lightStyle = URL(string: "https://tiles.openfreemap.org/styles/liberty")!
-private let darkStyle = URL(string: "https://tiles.openfreemap.org/styles/dark")!
+/// The maps' styles (OpenFreeMap), for Explore's map and the viewer's location card.
+enum MapStyles {
+    static let light = URL(string: "https://tiles.openfreemap.org/styles/liberty")!
+    static let dark = URL(string: "https://tiles.openfreemap.org/styles/dark")!
+
+    static func url(dark: Bool) -> URL { dark ? Self.dark : light }
+}
 private let sourceId = "photos"
 private let clustersId = "photo-clusters"
 private let countsId = "photo-counts"
@@ -253,6 +268,8 @@ private let tapSlop: CGFloat = 24
 /// MapLibre's map with the photos as a clustered shape source and three layers, as on Android.
 private struct PhotoMap: UIViewRepresentable {
     let pins: [MapPin]
+    /// Where it opens, close up; nil: it fits the pins.
+    let at: MapCenter?
     let dark: Bool
     let onArea: (GeoArea) -> Void
     let onOpen: (GeoArea, _ itemId: String?) -> Void
@@ -260,7 +277,7 @@ private struct PhotoMap: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let map = MLNMapView(frame: .zero, styleURL: dark ? darkStyle : lightStyle)
+        let map = MLNMapView(frame: .zero, styleURL: MapStyles.url(dark: dark))
         map.delegate = context.coordinator
         map.isRotateEnabled = false
         map.isPitchEnabled = false
@@ -276,13 +293,17 @@ private struct PhotoMap: UIViewRepresentable {
         }
         map.addGestureRecognizer(tap)
         context.coordinator.parent = self
+        if let at {
+            map.setCenter(CLLocationCoordinate2D(latitude: at.latitude, longitude: at.longitude), zoomLevel: 15, animated: false)
+            context.coordinator.placed = true
+        }
         return map
     }
 
     func updateUIView(_ map: MLNMapView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
-        let style = dark ? darkStyle : lightStyle
+        let style = MapStyles.url(dark: dark)
         if map.styleURL != style {
             // The new style comes without the photos; they are added again once it loads.
             coordinator.source = nil
@@ -296,8 +317,9 @@ private struct PhotoMap: UIViewRepresentable {
         var parent: PhotoMap?
         var source: MLNShapeSource?
         private var shownIds: [String]?
-        /// The map fits the pins the first time they arrive; after that it stays where it was put.
-        private var fitted = false
+        /// The map fits the pins the first time they arrive (unless it opened on a place); after that it stays where
+        /// it was put.
+        var placed = false
 
         func mapView(_ map: MLNMapView, didFinishLoading style: MLNStyle) {
             guard let parent else { return }
@@ -352,8 +374,8 @@ private struct PhotoMap: UIViewRepresentable {
                 feature.attributes = ["id": pin.id]
                 return feature
             })
-            if !fitted && !pins.isEmpty {
-                fitted = true
+            if !placed && !pins.isEmpty {
+                placed = true
                 fit(pins, on: map)
             }
             report(map)

@@ -40,7 +40,7 @@ the library and the places found so far, and it shows the same sources as the Mo
   Tapping a circle zooms in until it splits; a circle left at the closest zoom (photos taken in one spot), or a pin,
   opens the viewer on the photos in view. A sheet at the bottom shows the years ("All years", "2019 – 2024"), "312
   photos here" with **Show** (the viewer on them), and a slider over the years with photos to narrow them. The map
-  opens fitted to all pins, keeps where it was while the viewer is open, and follows the system theme. No rotating or
+  opens fitted to all pins (from a photo's details, on that photo's spot, close up), keeps where it was while the viewer is open, and follows the system theme. No rotating or
   tilting.
 
 ## iOS

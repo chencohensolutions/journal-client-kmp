@@ -2,22 +2,16 @@ import SwiftUI
 import SharedLogic
 
 // The viewer's "The original" card: where the original is, its facts, what is kept on this phone of a photo only on
-// the server, and Download original / Delete from this phone / Mark private. Like Android's OriginalCard
-// (ViewerInfoPanel.kt).
+// the server, and Mark private. Like Android's OriginalCard (ViewerInfoPanel.kt). The viewer downloads originals by
+// itself, so there is no "Download original"; "Delete from this phone" is gone too (Settings' Free up space remains).
 
 /// Where the original is (this phone, the server, or both; upload progress), its facts (file, size, dimensions,
-/// length, type, source, where it was taken), what is kept here of a photo only on the server, and "Download
-/// original" or "Delete from this phone", and "Mark private" for a photo the server has.
+/// length, type, source), what is kept here of a photo only on the server, and "Mark private" for a photo the server
+/// has.
 struct OriginalCard: View {
     let item: MediaItem
-    let location: (GeoPoint, PlaceName?)?
-    let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
-    let deleteFromPhone: (MediaItem) async -> RemovalOutcome
     let setPrivate: (MediaItem, Bool) async -> Bool
 
-    /// The download's percent while it runs.
-    @State private var downloading: Int?
-    @State private var confirmingDelete = false
     @State private var confirmingPrivate = false
     @State private var markingPrivate = false
     @State private var message: String?
@@ -53,29 +47,8 @@ struct OriginalCard: View {
                 if let mimeType = item.mimeType { Detail(label: "Type", value: typeName(mimeType)) }
                 Detail(label: "From", value: item.source.label)
             }
-            if let (point, name) = location {
-                let coordinates = String(format: "%.5f, %.5f", locale: Locale(identifier: "en_US_POSIX"), point.latitude, point.longitude)
-                let place = [name?.label, name?.city.flatMap { $0 == name?.label ? nil : $0 }].compactMap { $0 }.joined(separator: ", ")
-                Detail(label: "Location", value: place.isEmpty ? coordinates : "\(place)\n\(coordinates)")
-            }
             if !item.hasOriginalHere { ShownHereFacts(item: item) }
 
-            if let downloading {
-                Text("Downloading the original… \(downloading)%").font(.footnote).foregroundStyle(LibraryColors.onInverseMuted)
-                ProgressView(value: Double(downloading), total: 100).tint(LibraryColors.accent)
-            }
-            if !item.hasOriginalHere && item.sha256 != nil && downloading == nil {
-                OriginalButton(icon: "arrow.down.circle", label: "Download original") {
-                    downloading = 0
-                    Task {
-                        let ok = await downloadOriginal(item) { downloading = $0 }
-                        downloading = nil
-                        if !ok { message = String(localized: "Couldn’t download it. Check the connection to your server.") }
-                    }
-                }
-            } else if item.hasOriginalHere && item.backup.isBackedUp {
-                OriginalButton(icon: "trash", label: "Delete from this phone") { confirmingDelete = true }
-            }
             // Only a photo the server has can be marked: the mark is kept there, for every device.
             if item.sha256 != nil && item.backup.isBackedUp && !markingPrivate {
                 if item.isPrivate {
@@ -88,22 +61,7 @@ struct OriginalCard: View {
         .foregroundStyle(LibraryColors.onInverse)
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 16))
-        .alert("Delete from this phone?", isPresented: $confirmingDelete) {
-            Button("Delete", role: .destructive) {
-                Task {
-                    switch await deleteFromPhone(item) {
-                    case .unreachable: message = String(localized: "Not deleted: can’t reach your server. Try again when connected to it.")
-                    case .notOnServer: message = String(localized: "Not deleted: your server doesn’t have this photo. It uploads again with the next backup.")
-                    case .noPreview: message = String(localized: "Not deleted: couldn’t keep a picture of it to show here.")
-                    case .deleted, .declined: break
-                    }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(deleteBody)
-        }
+        .background(LibraryColors.panelCard, in: RoundedRectangle(cornerRadius: 16))
         .alert("Mark private?", isPresented: $confirmingPrivate) {
             Button("Mark private") { markPrivate(true) }
             Button("Cancel", role: .cancel) {}
@@ -123,14 +81,6 @@ struct OriginalCard: View {
             }
             markingPrivate = false
         }
-    }
-
-    private var deleteBody: String {
-        let body = item.isOnDevice
-            ? String(localized: "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, with what you wrote, from its preview.")
-            : String(localized: "The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview.")
-        guard item.isVideo else { return body }
-        return body + "\n\n" + String(localized: "It then plays from your server, streamed; what was played stays on this phone for next time.")
     }
 }
 

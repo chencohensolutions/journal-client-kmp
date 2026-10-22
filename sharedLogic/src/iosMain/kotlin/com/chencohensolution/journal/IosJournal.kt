@@ -141,7 +141,7 @@ object IosJournal {
             val directory = supportDir() + "/originals"
             NSFileManager.defaultManager.createDirectoryAtPath(directory, withIntermediateDirectories = true, attributes = null, error = null)
             NSURL.fileURLWithPath(directory).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
-            KeptOriginals(serverHttp(), FileSystem.SYSTEM, directory.toPath())
+            KeptOriginals(FileSystem.SYSTEM, directory.toPath())
         }.also { keptOriginals = it }
 
     /**

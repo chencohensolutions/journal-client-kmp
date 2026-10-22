@@ -58,6 +58,7 @@
     <string name="library_backup_done">Backed up</string>
     <string name="library_backup_failed">Upload failed: %s</string>
     <string name="library_viewer_position">%1$d of %2$d · %3$s</string>
+    <string name="library_viewer_position_count">%1$d of %2$d ·</string>
     <string name="library_viewer_details">Details</string>
     <string name="library_viewer_play">Play video</string>
     <string name="library_viewer_video_unavailable">This video can only be played once the phone is registered with your server.</string>
@@ -78,7 +79,6 @@
 
     <!-- Groups -->
     <string name="library_remove">Remove</string>
-    <string name="library_writing_edit">Edit</string>
 
     <!-- Story and tag pickers, photo notes, tags -->
     <string name="library_picker_recent">Recent</string>
@@ -96,7 +96,6 @@
     <string name="library_tag">Tag</string>
     <string name="library_remove_tag">Remove tag %s</string>
     <string name="library_info_tags">Tags</string>
-    <string name="library_note_title">Note</string>
     <string name="library_note_prompt">Write about this photo…</string>
     <string name="note_writing">Writing</string>
     <string name="note_title_hint">Title</string>
@@ -243,7 +242,6 @@
     <string name="crop_untouched">The photo itself isn\'t changed.</string>
     <!-- Viewer -->
     <string name="viewer_write">Write</string>
-    <string name="viewer_crop">Crop</string>
     <string name="viewer_cropped">Cropped</string>
     <string name="viewer_show_all">Show all</string>
     <string name="viewer_show_crop">Show crop</string>
@@ -303,27 +301,14 @@
     <string name="library_original_both">On this phone and on your server</string>
     <string name="library_original_kept">Downloaded to this phone, and on your server</string>
     <string name="library_original_server_only">Only on your server</string>
-    <string name="library_original_download">Download original</string>
-    <string name="library_original_downloading">Downloading the original… %d%%</string>
-    <string name="library_original_download_failed">Couldn’t download it. Check the connection to your server.</string>
-    <string name="library_original_delete">Delete from this phone</string>
-    <string name="library_original_delete_title">Delete from this phone?</string>
-    <string name="library_original_delete_body">The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview.</string>
-    <string name="library_original_delete_body_gallery">The photo moves to this phone’s trash. The original stays on your server, and the photo keeps showing here, in its stories, from its preview.</string>
-    <string name="library_original_delete_confirm">Delete</string>
-    <string name="library_original_unreachable">Not deleted: can’t reach your server. Try again when connected to it.</string>
-    <string name="library_original_no_preview">Not deleted: couldn’t keep a picture of it to show here.</string>
     <string name="library_private_mark">Mark private</string>
     <string name="library_private_unmark">Unmark private</string>
     <string name="library_private_mark_title">Mark private?</string>
     <string name="library_private_mark_body">It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
     <string name="library_private_mark_confirm">Mark private</string>
     <string name="library_private_unreachable">Not changed: can’t reach your server. Try again when connected to it.</string>
-    <string name="library_original_delete_video">It then plays from your server, streamed; what was played stays on this phone for next time.</string>
-    <string name="library_original_not_on_server">Not deleted: your server doesn’t have this photo. It uploads again with the next backup.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>
-    <string name="library_info_location">Location</string>
     <string name="library_info_preview">Preview on this phone</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">None yet</string>
@@ -416,6 +401,15 @@
     <string name="free_up_summary_older">Taken more than %1$s ago</string>
     <string name="free_up_summary_keep">All but the newest %1$s</string>
     <string name="library_info_original_title">Original</string>
+    <string name="library_show_in_moments">Show in Moments</string>
+    <string name="library_info_open_map">Open in the map</string>
+    <string name="library_info_camera_details">Camera details</string>
+    <string name="library_info_video_details">Video details</string>
+    <string name="library_info_exif_all">All EXIF (%d)</string>
+    <string name="library_info_exif_hide">Hide all EXIF</string>
+    <string name="library_info_video_details_all">All video details (%d)</string>
+    <string name="library_info_video_details_hide">Hide video details</string>
+    <string name="library_info_details_waiting">Shown when the original has downloaded.</string>
     <string name="library_info_shown_title">Shown on this phone</string>
     <string name="library_info_type_video">%1$s video</string>
     <string name="library_info_format">Format</string>

@@ -17,12 +17,32 @@
         }
       }
     },
+    "%@ audio" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמע %@"
+          }
+        }
+      }
+    },
     "%@ hidden" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ מוסתרים"
+          }
+        }
+      }
+    },
+    "%@ profile" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרופיל %@"
           }
         }
       }
@@ -290,12 +310,52 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "%lld channels" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ערוצים"
+          }
+        }
+      }
+    },
     "%lld here" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld כאן"
+          }
+        }
+      }
+    },
+    "%lld m above sea level" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld מ׳ מעל פני הים"
+          }
+        }
+      }
+    },
+    "%lld m below sea level" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld מ׳ מתחת לפני הים"
+          }
+        }
+      }
+    },
+    "%lld of %lld ·" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld מתוך %2$lld ·"
           }
         }
       }
@@ -1518,6 +1578,16 @@
     "%lld%%" : {
       "shouldTranslate" : false
     },
+    "%lld-bit HDR" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR ‏%lld סיביות"
+          }
+        }
+      }
+    },
     "+%lld" : {
 
     },
@@ -1597,6 +1667,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חשבון"
+          }
+        }
+      }
+    },
+    "Accuracy" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דיוק"
           }
         }
       }
@@ -1743,12 +1823,32 @@
         }
       }
     },
+    "All EXIF (%lld)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל ה-EXIF (%lld)"
+          }
+        }
+      }
+    },
     "All photos" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל התמונות"
+          }
+        }
+      }
+    },
+    "All video details (%lld)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל פרטי הווידאו (%lld)"
           }
         }
       }
@@ -1793,6 +1893,16 @@
         }
       }
     },
+    "Altitude" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גובה מעל פני הים"
+          }
+        }
+      }
+    },
     "Always show this day" : {
       "localizations" : {
         "he" : {
@@ -1809,6 +1919,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל צורה. כך התמונה תופיע ברגעים."
+          }
+        }
+      }
+    },
+    "Aperture priority" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיפות צמצם"
+          }
+        }
+      }
+    },
+    "Aperture value" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערך צמצם"
+          }
+        }
+      }
+    },
+    "Apple spatial audio" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמע מרחבי של Apple"
           }
         }
       }
@@ -1853,12 +1993,42 @@
         }
       }
     },
+    "Audio" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמע"
+          }
+        }
+      }
+    },
     "Auto" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "אוטומטי"
+          }
+        }
+      }
+    },
+    "Auto bracket" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סדרת חשיפות אוטומטית"
+          }
+        }
+      }
+    },
+    "Average" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממוצע"
           }
         }
       }
@@ -1943,6 +2113,36 @@
         }
       }
     },
+    "Bit depth" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עומק סיביות"
+          }
+        }
+      }
+    },
+    "Bitrate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קצב נתונים"
+          }
+        }
+      }
+    },
+    "Brightness value" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערך בהירות"
+          }
+        }
+      }
+    },
     "By breaks between photos" : {
       "localizations" : {
         "he" : {
@@ -1969,6 +2169,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מצלמה"
+          }
+        }
+      }
+    },
+    "Camera details" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטי המצלמה"
           }
         }
       }
@@ -2009,6 +2219,16 @@
         }
       }
     },
+    "Center-weighted average" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממוצע משוקלל למרכז"
+          }
+        }
+      }
+    },
     "Certificate valid until" : {
       "localizations" : {
         "he" : {
@@ -2025,6 +2245,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שינוי"
+          }
+        }
+      }
+    },
+    "Channels" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערוצים"
           }
         }
       }
@@ -2055,6 +2285,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קוד %1$@ · בתוקף עוד %2$lld דק׳"
+          }
+        }
+      }
+    },
+    "Codec" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקודד"
+          }
+        }
+      }
+    },
+    "Color matrix" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מטריצת צבע"
+          }
+        }
+      }
+    },
+    "Color model" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מודל צבע"
+          }
+        }
+      }
+    },
+    "Color primaries" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צבעי יסוד"
+          }
+        }
+      }
+    },
+    "Color profile" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרופיל צבע"
+          }
+        }
+      }
+    },
+    "Color range" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טווח צבע"
+          }
+        }
+      }
+    },
+    "Color space" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מרחב צבע"
           }
         }
       }
@@ -2105,16 +2405,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אין גישה לשרת: %@"
-          }
-        }
-      }
-    },
-    "Couldn’t download it. Check the connection to your server." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא ניתן להוריד. יש לבדוק את החיבור לשרת."
           }
         }
       }
@@ -2259,42 +2549,12 @@
         }
       }
     },
-    "Delete" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מחיקה"
-          }
-        }
-      }
-    },
     "Delete \"%@\"?" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "למחוק את ״%@״?"
-          }
-        }
-      }
-    },
-    "Delete from this phone" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מחיקה מהטלפון"
-          }
-        }
-      }
-    },
-    "Delete from this phone?" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "למחוק מהטלפון?"
           }
         }
       }
@@ -2339,12 +2599,42 @@
         }
       }
     },
+    "Did not fire" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא הופעל"
+          }
+        }
+      }
+    },
+    "Digitized" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עבר דיגיטציה"
+          }
+        }
+      }
+    },
     "Dimensions" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מידות"
+          }
+        }
+      }
+    },
+    "Direction" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כיוון צילום"
           }
         }
       }
@@ -2382,16 +2672,6 @@
         }
       }
     },
-    "Download original" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הורדת המקור"
-          }
-        }
-      }
-    },
     "Downloaded to this phone, and on your server" : {
       "localizations" : {
         "he" : {
@@ -2412,22 +2692,22 @@
         }
       }
     },
-    "Downloading the original… %lld%%" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מוריד את המקור… %lld%%"
-          }
-        }
-      }
-    },
     "Downloads, other apps · %lld" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "הורדות, אפליקציות אחרות · %lld"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משך"
           }
         }
       }
@@ -2592,12 +2872,72 @@
         }
       }
     },
+    "EXIF, more" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EXIF, נוספים"
+          }
+        }
+      }
+    },
     "Explore" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "גילוי"
+          }
+        }
+      }
+    },
+    "Exposure bias" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פיצוי חשיפה"
+          }
+        }
+      }
+    },
+    "Exposure mode" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב חשיפה"
+          }
+        }
+      }
+    },
+    "Exposure program" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית חשיפה"
+          }
+        }
+      }
+    },
+    "Exposure time" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זמן חשיפה"
+          }
+        }
+      }
+    },
+    "F-number" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צמצם"
           }
         }
       }
@@ -2622,6 +2962,46 @@
         }
       }
     },
+    "Fired" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הופעל"
+          }
+        }
+      }
+    },
+    "Flash" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מבזק"
+          }
+        }
+      }
+    },
+    "Focal length" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אורך מוקד"
+          }
+        }
+      }
+    },
+    "Focal length (35 mm)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אורך מוקד (35 מ״מ)"
+          }
+        }
+      }
+    },
     "Focus" : {
       "localizations" : {
         "he" : {
@@ -2638,6 +3018,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פורמט"
+          }
+        }
+      }
+    },
+    "Frame rate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קצב פריימים"
           }
         }
       }
@@ -2834,6 +3224,16 @@
         }
       }
     },
+    "Height" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גובה"
+          }
+        }
+      }
+    },
     "Hide" : {
       "localizations" : {
         "he" : {
@@ -2854,12 +3254,32 @@
         }
       }
     },
+    "Hide all EXIF" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרת כל ה-EXIF"
+          }
+        }
+      }
+    },
     "Hide from" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "הסתרה החל מ־"
+          }
+        }
+      }
+    },
+    "Hide video details" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסתרת פרטי הווידאו"
           }
         }
       }
@@ -2924,6 +3344,16 @@
         }
       }
     },
+    "Image" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונה"
+          }
+        }
+      }
+    },
     "In the storyline" : {
       "localizations" : {
         "he" : {
@@ -2940,16 +3370,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הונפקה על ידי journal-server-ca"
-          }
-        }
-      }
-    },
-    "It then plays from your server, streamed; what was played stays on this phone for next time." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אחר כך הסרטון מתנגן מהשרת שלך בהזרמה; מה שכבר נוגן נשמר בטלפון הזה לפעם הבאה."
           }
         }
       }
@@ -3104,6 +3524,16 @@
         }
       }
     },
+    "Landscape mode" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב נוף"
+          }
+        }
+      }
+    },
     "Large" : {
       "localizations" : {
         "he" : {
@@ -3124,6 +3554,16 @@
         }
       }
     },
+    "Latitude" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קו רוחב"
+          }
+        }
+      }
+    },
     "Length" : {
       "localizations" : {
         "he" : {
@@ -3134,12 +3574,62 @@
         }
       }
     },
+    "Lens" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדשה"
+          }
+        }
+      }
+    },
+    "Lens ID" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מזהה עדשה"
+          }
+        }
+      }
+    },
+    "Lens make" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצרן העדשה"
+          }
+        }
+      }
+    },
+    "Limited" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוגבל"
+          }
+        }
+      }
+    },
     "Location" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מיקום"
+          }
+        }
+      }
+    },
+    "Longitude" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קו אורך"
           }
         }
       }
@@ -3174,6 +3664,96 @@
         }
       }
     },
+    "Make" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצרן"
+          }
+        }
+      }
+    },
+    "Maker notes (%@)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הערות יצרן (%@)"
+          }
+        }
+      }
+    },
+    "Manual" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ידני"
+          }
+        }
+      }
+    },
+    "Metadata" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מטא-נתונים"
+          }
+        }
+      }
+    },
+    "Metering mode" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב מדידת אור"
+          }
+        }
+      }
+    },
+    "Mirrored" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משוקף"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דגם"
+          }
+        }
+      }
+    },
+    "Modified" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שונה"
+          }
+        }
+      }
+    },
+    "mono" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מונו"
+          }
+        }
+      }
+    },
     "More in %@" : {
       "localizations" : {
         "he" : {
@@ -3184,12 +3764,236 @@
         }
       }
     },
+    "Multi-spot" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רב-נקודתי"
+          }
+        }
+      }
+    },
+    "Night" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לילה"
+          }
+        }
+      }
+    },
+    "No" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא"
+          }
+        }
+      }
+    },
+    "Normal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רגיל"
+          }
+        }
+      }
+    },
+    "Normal program" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית רגילה"
+          }
+        }
+      }
+    },
+    "Open in the map" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פתיחה במפה"
+          }
+        }
+      }
+    },
+    "Orientation" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כיוון"
+          }
+        }
+      }
+    },
     "Other countries" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מדינות נוספות"
+          }
+        }
+      }
+    },
+    "Overall bitrate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קצב נתונים כולל"
+          }
+        }
+      }
+    },
+    "Partial" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חלקי"
+          }
+        }
+      }
+    },
+    "Pattern" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תבנית"
+          }
+        }
+      }
+    },
+    "Portrait mode" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב דיוקן"
+          }
+        }
+      }
+    },
+    "Recorded" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צולם"
+          }
+        }
+      }
+    },
+    "Resolution" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רזולוציה"
+          }
+        }
+      }
+    },
+    "Rotated 180°" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסובב ב-180°"
+          }
+        }
+      }
+    },
+    "Rotated 90° clockwise" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסובב ב-90° עם כיוון השעון"
+          }
+        }
+      }
+    },
+    "Rotated 90° counterclockwise" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסובב ב-90° נגד כיוון השעון"
+          }
+        }
+      }
+    },
+    "Rotation" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיבוב"
+          }
+        }
+      }
+    },
+    "Sample rate" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קצב דגימה"
+          }
+        }
+      }
+    },
+    "Scene type" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סוג סצנה"
+          }
+        }
+      }
+    },
+    "scene.landscape" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landscape"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נוף"
+          }
+        }
+      }
+    },
+    "scene.portrait" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portrait"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דיוקן"
           }
         }
       }
@@ -3494,36 +4298,6 @@
         }
       }
     },
-    "Not deleted: can’t reach your server. Try again when connected to it." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא נמחק: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור."
-          }
-        }
-      }
-    },
-    "Not deleted: couldn’t keep a picture of it to show here." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא נמחק: לא ניתן לשמור תמונה שלו להצגה כאן."
-          }
-        }
-      }
-    },
-    "Not deleted: your server doesn’t have this photo. It uploads again with the next backup." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "לא נמחק: התמונה לא נמצאת בשרת שלך. היא תועלה שוב בגיבוי הבא."
-          }
-        }
-      }
-    },
     "Not in any story" : {
       "localizations" : {
         "he" : {
@@ -3550,16 +4324,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא עכשיו"
-          }
-        }
-      }
-    },
-    "Note" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הערה"
           }
         }
       }
@@ -4413,6 +5177,16 @@
         }
       }
     },
+    "Serial number" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מספר סידורי"
+          }
+        }
+      }
+    },
     "Server" : {
       "localizations" : {
         "he" : {
@@ -4479,6 +5253,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הצגת החיתוך"
+          }
+        }
+      }
+    },
+    "Show in Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגה ב״רגעים״"
           }
         }
       }
@@ -4573,6 +5357,36 @@
         }
       }
     },
+    "Shown when the original has downloaded" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יוצג כשהמקור יורד לטלפון"
+          }
+        }
+      }
+    },
+    "Shutter priority" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיפות תריס"
+          }
+        }
+      }
+    },
+    "Shutter speed value" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערך מהירות תריס"
+          }
+        }
+      }
+    },
     "Signed by the new key, with your enrollment code" : {
       "localizations" : {
         "he" : {
@@ -4623,6 +5437,16 @@
         }
       }
     },
+    "Software" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנה"
+          }
+        }
+      }
+    },
     "Software (Simulator)" : {
       "localizations" : {
         "he" : {
@@ -4643,6 +5467,36 @@
         }
       }
     },
+    "Speed" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מהירות"
+          }
+        }
+      }
+    },
+    "Spot" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נקודתי"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רגיל"
+          }
+        }
+      }
+    },
     "Starts with your earliest photos." : {
       "localizations" : {
         "he" : {
@@ -4659,6 +5513,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שלב %1$lld מתוך 3 · %2$@"
+          }
+        }
+      }
+    },
+    "stereo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סטריאו"
           }
         }
       }
@@ -4766,6 +5630,16 @@
         }
       }
     },
+    "Taken" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צולם"
+          }
+        }
+      }
+    },
     "Taken more than %@ ago" : {
       "localizations" : {
         "he" : {
@@ -4846,16 +5720,6 @@
         }
       }
     },
-    "The downloaded original is removed from this phone. It stays on your server, and the photo keeps showing here from its preview." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "המקור שהורד יימחק מהטלפון. הוא נשאר בשרת שלך, והתמונה תמשיך להופיע כאן מהתצוגה המקדימה שלה."
-          }
-        }
-      }
-    },
     "The key created for this attempt was deleted from the device." : {
       "localizations" : {
         "he" : {
@@ -4902,26 +5766,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התמונה עצמה לא משתנה."
-          }
-        }
-      }
-    },
-    "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, in its stories, from its preview." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן ובסיפורים שלה מהתצוגה המקדימה."
-          }
-        }
-      }
-    },
-    "The photo moves to this phone’s Recently Deleted. The original stays on your server, and the photo keeps showing here, with what you wrote, from its preview." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התמונה תעבור ל„נמחקו לאחרונה” בטלפון. המקור נשאר בשרת שלך, והתמונה תמשיך להופיע כאן, עם מה שכתבת, מהתצוגה המקדימה."
           }
         }
       }
@@ -5076,6 +5920,36 @@
         }
       }
     },
+    "Time (UTC)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שעה (UTC)"
+          }
+        }
+      }
+    },
+    "Time zone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אזור זמן"
+          }
+        }
+      }
+    },
+    "Timecode" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוד זמן"
+          }
+        }
+      }
+    },
     "Title" : {
       "localizations" : {
         "he" : {
@@ -5112,6 +5986,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "יותר מדי קודים שגויים. חכו דקה ונסו שוב."
+          }
+        }
+      }
+    },
+    "Tracks" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רצועות"
+          }
+        }
+      }
+    },
+    "Transfer function" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פונקציית העברה"
+          }
+        }
+      }
+    },
+    "Transparency" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שקיפות"
           }
         }
       }
@@ -5194,6 +6098,16 @@
         }
       }
     },
+    "Uncalibrated" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא מכויל"
+          }
+        }
+      }
+    },
     "Undo" : {
       "localizations" : {
         "he" : {
@@ -5253,6 +6167,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מאומת על ידי journal-server-ca"
+          }
+        }
+      }
+    },
+    "Vertical resolution" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רזולוציה אנכית"
+          }
+        }
+      }
+    },
+    "Video" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "וידאו"
+          }
+        }
+      }
+    },
+    "Video details" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטי הווידאו"
           }
         }
       }
@@ -5377,6 +6321,16 @@
         }
       }
     },
+    "White balance" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איזון לבן"
+          }
+        }
+      }
+    },
     "Whole year" : {
       "localizations" : {
         "he" : {
@@ -5393,6 +6347,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "רחב"
+          }
+        }
+      }
+    },
+    "Width" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רוחב"
           }
         }
       }
@@ -5473,6 +6437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שנים"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כן"
           }
         }
       }

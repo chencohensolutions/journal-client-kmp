@@ -11,32 +11,17 @@ struct ViewerActions {
     /// "Remove" (false) or "Add back" (true) in the details' Storyline.
     var setInStoryline: (_ itemId: String, _ inStoryline: Bool) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
-    /// Saves the photo's crops (Done on the crop screen).
-    var setCrops: (_ itemId: String, _ crops: PhotoCrops) -> Void
     /// The photo now shown, on opening and on each swipe: the one that zooms back into its tile on closing.
     var showing: (_ itemId: String) -> Void
-    /// Downloads the original from the server and keeps it here; `progress` gets each percent. False when it couldn't.
-    var downloadOriginal: (_ item: MediaItem, _ progress: @escaping (Int) -> Void) async -> Bool
-    /// Removes the original from this phone, keeping it on the server and its preview here.
-    var deleteFromPhone: (_ item: MediaItem) async -> RemovalOutcome
+    /// The map screen, close up on where a photo was taken (a tap on the details' map), over the viewer.
+    var openMap: (_ at: GeoPoint) -> Void
+    /// "Show in Moments": the viewer and every screen over the home close, and Moments lands on the photo; nil when the
+    /// viewer was opened from Moments.
+    var showInMoments: ((_ itemId: String) -> Void)?
     /// Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached.
     var setPrivate: (_ item: MediaItem, _ isPrivate: Bool) async -> Bool
     /// Leaving a photo: where it was zoomed in (the part on screen; nil: fitted), so it opens there next time.
     var setZoom: (_ itemId: String, _ zoom: CropRect?) -> Void
-}
-
-/// What "Delete from this phone" did.
-enum RemovalOutcome {
-    /// Removed: an original the app had kept, or a library photo the user let iOS delete.
-    case deleted
-    /// The user said no to iOS's prompt.
-    case declined
-    /// Nothing removed: the server can't be reached.
-    case unreachable
-    /// Nothing removed: the server answered and doesn't have this photo.
-    case notOnServer
-    /// Nothing removed: no preview could be kept to show it by (a video whose frame can't be read).
-    case noPreview
 }
 
 /// One photo or video at a time, swiping through `items`. See docs/screens/viewer.md.
@@ -53,7 +38,6 @@ struct MediaViewerView: View {
     @State private var editingCaption = false
     /// The whole photo instead of its crop, until turned back (kept while swiping).
     @State private var showWhole = false
-    @State private var cropping: CropRequest?
     @State private var screenSize = CGSize(width: 9, height: 19.5)
     /// Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open.
     @StateObject private var zooms = ZoomModels()
@@ -147,24 +131,27 @@ struct MediaViewerView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if chrome, !showInfo, let item = items[safe: index] {
+            if chrome, !showInfo, items[safe: index] != nil {
                 HStack(spacing: 10) {
                     ViewerAction(icon: "square.and.pencil", label: "Write") { editingCaption = true }
-                    if !item.isVideo {
-                        ViewerAction(icon: "crop", label: "Crop") { cropping = CropRequest(itemId: item.id, kind: cropKind) }
-                    }
+                    ViewerAction(icon: "info.circle", label: "Details") { showInfo = true }
                 }
                 .padding(.bottom, 20)
             }
             if showInfo, let item = items[safe: index] {
+                // Slides up from the bottom edge, fading in; down and out on closing.
                 infoPanel(item: item)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: chrome)
-        // They stay while the details panel, a sheet, the note editor or the crop screen is open, and for the full
-        // time again after it closes.
-        .task(id: [chrome, showInfo, choosingTag, editingCaption, cropping != nil]) {
-            guard chrome, !showInfo, !choosingTag, !editingCaption, cropping == nil else { return }
+        // Every way the panel opens or closes (Details, a tap on the photo, back) animates, and Write/Details fade
+        // back with it.
+        .animation(.easeInOut(duration: 0.25), value: showInfo)
+        // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it
+        // closes.
+        .task(id: [chrome, showInfo, choosingTag, editingCaption]) {
+            guard chrome, !showInfo, !choosingTag, !editingCaption else { return }
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled { chrome = false }
         }
@@ -202,7 +189,6 @@ struct MediaViewerView: View {
                 )
             }
         }
-        .cropCover($cropping, stories: stories, save: actions.setCrops)
         .statusBarHidden(!showInfo)
     }
 
@@ -213,23 +199,27 @@ struct MediaViewerView: View {
 
     private func topBar(index: Int) -> some View {
         HStack {
-            Button(action: onClose) {
+            // Back closes the details panel first.
+            Button { if showInfo { showInfo = false } else { onClose() } } label: {
                 Image(systemName: "chevron.backward").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44)
             }
             .accessibilityLabel("Back")
             if let item = items[safe: index] {
-                Text("\(index + 1) of \(items.count) · \(item.day.label)")
-                    .font(.subheadline)
-                    .foregroundStyle(Color(white: 0.75))
+                if let showInMoments = actions.showInMoments {
+                    // Not opened from Moments: the day is a chip that shows the photo there.
+                    HStack(spacing: 6) {
+                        Text("\(index + 1) of \(items.count) ·")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(white: 0.75))
+                        DayChip(day: item.day.label) { showInMoments(item.id) }
+                    }
+                } else {
+                    Text("\(index + 1) of \(items.count) · \(item.day.label)")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(white: 0.75))
+                }
             }
             Spacer()
-            Button { showInfo.toggle() } label: {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 20))
-                    .frame(width: 44, height: 44)
-                    .background(showInfo ? Color.white.opacity(0.16) : .clear, in: Circle())
-            }
-            .accessibilityLabel("Details")
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 4)
@@ -240,13 +230,11 @@ struct MediaViewerView: View {
         InfoPanel(
             item: item,
             note: stories.note(itemId: item.id),
-            onEditCaption: { editingCaption = true },
             onAddTag: { choosingTag = true },
             onRemoveTag: { actions.toggleTag(item.id, $0, false) },
             setInStoryline: { actions.setInStoryline(item.id, $0) },
             location: stories.places.location(item: item).map { ($0, stories.places.name(point: $0)) },
-            downloadOriginal: actions.downloadOriginal,
-            deleteFromPhone: actions.deleteFromPhone,
+            openMap: actions.openMap,
             setPrivate: actions.setPrivate
         )
     }
@@ -413,6 +401,28 @@ private struct ZoomFlag: View {
     }
 }
 
+/// The day in the top bar as a chip ("Thu, Oct 8 ›"): Show in Moments.
+private struct DayChip: View {
+    let day: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(day).font(.system(size: 14, weight: .semibold))
+                Image(systemName: "chevron.right").font(.system(size: 14))
+            }
+            .foregroundStyle(.white)
+            .padding(.leading, 10)
+            .padding(.trailing, 6)
+            .padding(.vertical, 5)
+            .background(Color.white.opacity(0.14), in: Capsule())
+        }
+        .accessibilityLabel("Show in Moments")
+        .accessibilityValue(day)
+    }
+}
+
 /// "Cropped · Show all" over a cropped photo, or "Show crop" while the whole photo shows.
 private struct CropChip: View {
     let showingWhole: Bool
@@ -435,7 +445,7 @@ private struct CropChip: View {
     }
 }
 
-/// A round-ended button over the photo: Write, Crop.
+/// A round-ended button over the photo: Write, Details.
 private struct ViewerAction: View {
     let icon: String
     let label: LocalizedStringKey
@@ -542,18 +552,18 @@ private struct VideoPage: View {
     }
 }
 
-/// Date, writing, tags, storyline, backup status and file details of the current item.
+/// Date, tags, storyline, where it was taken (on a map), the original (where it is, its file facts) and its details
+/// read from the original file (camera and exposure, codecs), as Android's ViewerInfoPanel. Writing is reached from the
+/// viewer's Write button.
 private struct InfoPanel: View {
     let item: MediaItem
     let note: PhotoNote?
-    let onEditCaption: () -> Void
     let onAddTag: () -> Void
     let onRemoveTag: (String) -> Void
     /// "Remove" (false) or "Add back" (true).
     let setInStoryline: (Bool) -> Void
     let location: (GeoPoint, PlaceName?)?
-    let downloadOriginal: (MediaItem, @escaping (Int) -> Void) async -> Bool
-    let deleteFromPhone: (MediaItem) async -> RemovalOutcome
+    let openMap: (GeoPoint) -> Void
     let setPrivate: (MediaItem, Bool) async -> Bool
 
     var body: some View {
@@ -566,31 +576,6 @@ private struct InfoPanel: View {
                         .font(.subheadline)
                         .foregroundStyle(LibraryColors.onInverseMuted)
                 }
-                Button(action: onEditCaption) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Note").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
-                        if let note, !note.title.isBlank {
-                            Text(note.title)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(LibraryColors.onInverse)
-                                .multilineTextAlignment(.leading)
-                        }
-                        if let note, !note.caption.isBlank {
-                            Text(note.caption)
-                                .font(.system(size: 16, design: .serif))
-                                .foregroundStyle(LibraryColors.onInverse)
-                                .multilineTextAlignment(.leading)
-                        } else if note?.hasWriting != true {
-                            Text("Write about this photo…")
-                                .font(.system(size: 16, design: .serif))
-                                .foregroundStyle(LibraryColors.onInverseMuted)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
-                }
-                .accessibilityHint("Edit")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Tags").font(.caption).foregroundStyle(LibraryColors.onInverseMuted)
                     FlowLayout(spacing: 6) {
@@ -627,10 +612,13 @@ private struct InfoPanel: View {
                         .font(.subheadline.weight(.semibold))
                     }
                 }
-                OriginalCard(
-                    item: item, location: location, downloadOriginal: downloadOriginal, deleteFromPhone: deleteFromPhone,
-                    setPrivate: setPrivate
-                )
+                if let (point, name) = location {
+                    Button { openMap(point) } label: { LocationCard(point: point, name: name) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open in the map")
+                }
+                OriginalCard(item: item, setPrivate: setPrivate)
+                DetailsCard(item: item)
             }
             .foregroundStyle(LibraryColors.onInverse)
             .padding(20)

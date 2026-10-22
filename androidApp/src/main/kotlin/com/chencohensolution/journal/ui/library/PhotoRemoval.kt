@@ -17,15 +17,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * The one place the app may take photos out of the phone's library (allowed by the owner on Oct 20, 2026: "Delete from
- * this phone" in a photo's details, and "Free up space" in Settings). It never deletes anything itself: it asks Android
- * to move photos to the gallery's trash (kept there 30 days). Android shows its own prompt, which the user confirms,
- * unless the user gave the app "Media management" access ([MediaStore.canManageMedia]). The caller must first have the
- * server confirm it holds each photo (by sha256; "Free up space" also hashes both copies again). See PhotoSafetyTest.
+ * The one place the app may take photos out of the phone's library (allowed by the owner on Oct 20, 2026, for "Free up
+ * space" in Settings; a photo's "Delete from this phone" used it too until Oct 22, 2026). It never deletes anything
+ * itself: it asks Android to move photos to the gallery's trash (kept there 30 days), with one prompt for all of
+ * [items]. Android shows its own prompt, which the user confirms, unless the user gave the app "Media management" access
+ * ([MediaStore.canManageMedia]). The caller must first have the server confirm it holds each photo (by sha256, and hash
+ * both copies again). See PhotoSafetyTest.
  */
-internal fun moveToTrashRequest(context: Context, item: MediaItem): IntentSender = moveToTrashRequest(context, listOf(item))
-
-/** One prompt for all of [items]. */
 internal fun moveToTrashRequest(context: Context, items: List<MediaItem>): IntentSender {
     require(items.all { it.isOnDevice }) { "only photos in the library can be moved to its trash" }
     return MediaStore.createTrashRequest(context.contentResolver, items.map { it.contentUri() }, true).intentSender

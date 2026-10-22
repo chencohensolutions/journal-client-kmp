@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.database)
     implementation(libs.maplibre.android)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.play.services.code.scanner)
 
     implementation(libs.androidx.compose.ui.tooling.preview)

@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -12,6 +13,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.delay
@@ -67,6 +70,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -90,6 +96,7 @@ import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.Dispatchers
@@ -121,35 +128,18 @@ internal class ViewerActions(
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
     val showing: (itemId: String) -> Unit = {},
-    /** Opens the crop screen for the photo, on the crop for how the phone is held. */
-    val crop: (itemId: String, kind: CropKind) -> Unit = { _, _ -> },
-    /** Downloads the original from the server and keeps it here; [onProgress] gets 0..1. False when it couldn't. */
-    val downloadOriginal: suspend (item: MediaItem, onProgress: (Float) -> Unit) -> Boolean = { _, _ -> false },
-    /** Removes the original from this phone, keeping it on the server and its preview here. */
-    val deleteFromPhone: suspend (MediaItem) -> RemovalOutcome = { RemovalOutcome.UNREACHABLE },
+    /**
+     * Back to the Moments tab, scrolled to the photo: the day in the top bar, as a chip. Null when the viewer was
+     * opened from Moments (closing it lands there already).
+     */
+    val showInMoments: ((itemId: String) -> Unit)? = null,
+    /** The map screen, on where the photo was taken (a tap on the details panel's map). */
+    val openMap: (GeoPoint) -> Unit = {},
     /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { _, _ -> false },
     /** Leaving a photo: where it was zoomed in (the part on screen; null: fitted), so it opens there next time. */
     val setZoom: (itemId: String, zoom: CropRect?) -> Unit = { _, _ -> },
 )
-
-/** What "Delete from this phone" did. */
-internal enum class RemovalOutcome {
-    /** Removed (an original the app had kept). */
-    DELETED,
-
-    /** Android's prompt to move it to the gallery's trash is showing. */
-    ASKED,
-
-    /** Nothing removed: the server can't be reached, or its preview couldn't be kept. */
-    UNREACHABLE,
-
-    /** Nothing removed: the server answered and doesn't have this photo. */
-    NOT_ON_SERVER,
-
-    /** Nothing removed: no preview could be kept to show it by (a video whose frame can't be read). */
-    NO_PREVIEW,
-}
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
 @Composable
@@ -286,9 +276,7 @@ internal fun ViewerScreen(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
-                if (current.type != MediaType.VIDEO) {
-                    ViewerAction(LibraryIcons.Crop, stringResource(R.string.viewer_crop)) { actions.crop(current.id, cropKind) }
-                }
+                ViewerAction(LibraryIcons.Info, stringResource(R.string.library_viewer_details)) { showInfo = true }
             }
         }
 
@@ -317,36 +305,41 @@ internal fun ViewerScreen(
                 IconButton(onClick = onBack) {
                     Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
                 }
-                Text(
-                    stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
-                    color = Color(0xFFB8C2BF),
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = { showInfo = !showInfo },
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (showInfo) Color.White.copy(alpha = 0.16f) else Color.Transparent,
-                    ),
-                ) {
-                    Icon(LibraryIcons.Info, stringResource(R.string.library_viewer_details), tint = Color.White)
+                val showInMoments = actions.showInMoments
+                if (showInMoments == null) {
+                    Text(
+                        stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
+                        color = PositionColor,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    // Opened from elsewhere: the day is a chip that shows the photo in Moments.
+                    Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 14.sp)
+                    MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
+                    Box(Modifier.weight(1f))
                 }
             }
         }
 
-        if (showInfo) {
+        // The Details button is in the bottom bar, under the panel: back or a tap on the photo closes it.
+        BackHandler(showInfo) { showInfo = false }
+        // Slides up from the bottom edge, and back down when it closes.
+        AnimatedVisibility(
+            showInfo,
+            Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(tween(PANEL_MILLIS)) { it } + fadeIn(tween(PANEL_MILLIS)),
+            exit = slideOutVertically(tween(PANEL_MILLIS)) { it } + fadeOut(tween(PANEL_MILLIS)),
+        ) {
             InfoPanel(
                 current,
                 note = stories.note(current.id),
-                onEditCaption = { editingCaption = true },
                 onAddTag = { choosingTag = true },
                 onRemoveTag = { tag -> actions.toggleTag(current.id, tag, false) },
                 setInStoryline = { actions.setInStoryline(current.id, it) },
                 location = stories.places.location(current)?.let { point -> point to stories.places.name(point) },
-                downloadOriginal = actions.downloadOriginal,
-                deleteFromPhone = actions.deleteFromPhone,
                 setPrivate = actions.setPrivate,
-                modifier = Modifier.align(Alignment.BottomCenter),
+                openMap = actions.openMap,
             )
         }
     }
@@ -597,6 +590,30 @@ private fun CropChip(showingWhole: Boolean, onToggle: () -> Unit, modifier: Modi
 }
 
 /** A round-ended button over the photo: Write, Crop. */
+/** How long the details panel takes to slide in or out. */
+private const val PANEL_MILLIS = 250
+
+/** The top bar's position and day ("4 of 29 · Yesterday"). */
+private val PositionColor = Color(0xFFB8C2BF)
+
+/** The top bar's day as a chip ("Thu, Oct 8 ›"): a tap shows the photo in Moments. */
+@Composable
+private fun MomentsDayChip(day: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val label = stringResource(R.string.library_show_in_moments)
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.14f))
+            .clickable(onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = "$label, $day" }
+            .padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(day, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Icon(LibraryIcons.ChevronRight, null, tint = Color.White, modifier = Modifier.padding(start = 2.dp).size(14.dp))
+    }
+}
+
 @Composable
 private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Row(

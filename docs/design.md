@@ -151,8 +151,8 @@ Server-only videos stream from their original (HTTP Range, ExoPlayer) into `cach
 fetched, and their tiles show the poster frame the server makes. **iOS** (Oct 21, 2026) has the same photos only on
 the server: the list in `Application Support/server/media.json` (refreshed when the app comes to the foreground),
 exact-size previews in `Caches/previews` decoded with ImageIO (WebP, HEIF, AVIF, JPEG XL), the viewer's original
-card with Download original (`Application Support/originals`, left out of iCloud backup) and Delete from this phone
-(PhotoKit's own prompt to Recently Deleted, only in `PhotoRemoval.swift`, approved by the owner), and Settings →
+card (its Download original and Delete from this phone went Oct 22, 2026; originals downloaded before stay in
+`Application Support/originals`, left out of iCloud backup), and Settings →
 Storage on this phone and Private media. **iOS backup** is built too (see "iOS backup" below). Server-only videos
 stream on iOS too (Oct 21, 2026): `AVPlayer` reads them
 through an `AVAssetResourceLoader` that serves byte ranges from `Caches/videos/<sha256>/` (`data`, a sparse file with

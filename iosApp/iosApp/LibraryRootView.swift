@@ -12,6 +12,8 @@ struct LibraryRootView: View {
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
+    /// The system's scheme: the map over the always-dark viewer follows it, as the map from Explore does.
+    @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Route] = []
     @State private var filter = LibraryFilter.all
     @State private var viewer: ViewerRequest?
@@ -19,6 +21,10 @@ struct LibraryRootView: View {
     @State private var showing: ViewerShowing?
     /// Set to open the crop screen over the journal, e.g. `crop = CropRequest(itemId: id, kind: .moments)`.
     @State private var crop: CropRequest?
+    /// The map opened from the viewer's details, over the viewer (back returns to the photo).
+    @State private var viewerMap: MapCenter?
+    /// "Show in Moments": the home's Moments tab, landed on the photo.
+    @State private var momentsRequest: PhotoRequest?
     /// Photos mark themselves in it; the viewer zooms out of them.
     @Namespace private var zoom
 
@@ -76,6 +82,7 @@ struct LibraryRootView: View {
                         stories: stories.state,
                         health: journal.state.health,
                         viewerOpen: viewer != nil,
+                        showInMoments: momentsRequest,
                         backupRunning: backup.running,
                         actions: HomeActions(
                             openItem: { section, item in
@@ -170,16 +177,30 @@ struct LibraryRootView: View {
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
-                            setCrops: { itemId, crops in stories.setCrops(crops, of: itemId) },
                             showing: { itemId in
                                 showing = ViewerShowing(session: showing?.session ?? UUID(), itemId: itemId)
                             },
-                            downloadOriginal: { item, progress in await ServerImages.shared.downloadOriginal(item, progress: progress) },
-                            deleteFromPhone: { item in await ServerImages.shared.deleteFromPhone(item, refresh: library.refresh) },
+                            openMap: { point in viewerMap = MapCenter(latitude: point.latitude, longitude: point.longitude) },
+                            // Opened from Moments (a row, not an Explore page's): it is there already.
+                            showInMoments: request.feedSection != nil && request.scope == nil ? nil : { itemId in
+                                viewer = nil
+                                path = []
+                                momentsRequest = PhotoRequest(itemId: itemId)
+                            },
                             setPrivate: { item, isPrivate in await ServerImages.shared.setPrivate(item, isPrivate: isPrivate) },
                             setZoom: { itemId, zoom in stories.setZoom(zoom, of: itemId) }
                         )
                     )
+                    // The map from the details, close up on the place; a photo opened on it takes the viewer's place.
+                    .fullScreenCover(item: $viewerMap) { center in
+                        ExploreMapView(library: library.state, stories: stories.state, at: center, toggleSource: settings.toggleFeedSource) { scope, itemId in
+                            guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
+                            viewerMap = nil
+                            openViewer(ViewerRequest(filter: .all, itemId: first, scope: scope))
+                        }
+                        .environment(\.colorScheme, colorScheme)
+                        .preferredColorScheme(colorScheme)
+                    }
                     // The viewer is always dark, like a photo app; the rest follows the system.
                     .preferredColorScheme(.dark)
                     .navigationTransition(.zoom(sourceID: zoomSource(request), in: zoom))

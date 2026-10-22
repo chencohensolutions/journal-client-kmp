@@ -137,6 +137,8 @@ internal fun JournalHomeScreen(
     initialTab: HomeTab = HomeTab.STORYLINE,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
+    /** "Show in Moments" from the viewer: the Moments tab, scrolled to that photo. */
+    showInMoments: ShowInMoments? = null,
     /** The backup run in progress, for the bottom pill. */
     backupRunning: BackupProgress? = null,
     /** The photo whose long-press menu is open at first; previews use it. */
@@ -190,7 +192,9 @@ internal fun JournalHomeScreen(
         HomeTab.STORYLINE -> storyRows
         HomeTab.EXPLORE -> emptyList()
     }
-    list.LandOn(landing, rows.size) { id -> rows.rowOf(id) }
+    LaunchedEffect(showInMoments) { if (showInMoments != null) tab = HomeTab.MOMENTS }
+    val shownPhoto = showInMoments?.itemId?.takeIf { moments }
+    list.LandOn(shownPhoto ?: landing, rows.size) { id -> rows.rowOf(id) }
     // Sharp photos decode once the list slows down; until then each shows its quick image, loaded ahead of the scroll.
     val scrollSettled = rememberScrollSettled(list)
     PrefetchFirstImages(list, rows, { it.key }) { row ->
@@ -559,3 +563,6 @@ private fun Message(text: String) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp),
     )
 }
+
+/** A request to show [itemId] in the Moments tab; a new one each time, so the same photo can be asked for again. */
+internal class ShowInMoments(val itemId: String)

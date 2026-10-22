@@ -14,6 +14,8 @@ enum LibraryColors {
     static let inverse = dynamic(light: 0x17201F, dark: 0xF5F6F4)
     static let onInverse = dynamic(light: 0xF5F6F4, dark: 0x17201F)
     static let onInverseMuted = dynamic(light: 0xA9B4B1, dark: 0x5E6866)
+    /// A card on an `inverse` surface (the viewer's details panel), readable in either theme.
+    static let panelCard = onInverse.opacity(0.06)
     static let warning = dynamic(light: 0xB45309, dark: 0xF2B84B)
     static let error = hex(0xC2410C)
     /// Behind what the sources setting hides or says about: Explore's "… hidden · Change", Moments' chips and bands.
