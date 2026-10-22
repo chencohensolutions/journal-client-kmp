@@ -2429,6 +2429,16 @@
         }
       }
     },
+    "Couldn’t get the original to share. Check the connection to your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן להביא את המקור לשיתוף. יש לבדוק את החיבור לשרת."
+          }
+        }
+      }
+    },
     "Counting…" : {
       "localizations" : {
         "he" : {
@@ -5223,6 +5233,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Share" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיתוף"
           }
         }
       }

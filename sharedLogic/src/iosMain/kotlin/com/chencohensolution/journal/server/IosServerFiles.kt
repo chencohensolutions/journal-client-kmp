@@ -138,6 +138,15 @@ class IosServerFiles internal constructor(
         item.keptOriginal ?: item.sha256?.let { previews.cachedOriginal(it) }
     }
 
+    /**
+     * The file of [item]'s original on this phone, downloaded into the preview cache first when it isn't here
+     * ([ServerPreviews.original], checked against its sha256), as the viewer does: what Share sends. Null offline, or
+     * when the server doesn't have it.
+     */
+    fun fetchOriginal(item: MediaItem, onResult: (String?) -> Unit): ObservationHandle = run(onResult) {
+        item.keptOriginal ?: item.sha256?.let { previews.original(it, item.fileName ?: it) }
+    }
+
     private fun <T> observe(flow: StateFlow<T>, onChange: (T) -> Unit): ObservationHandle {
         val job = scope.launch { flow.collect(onChange) }
         return ObservationHandle { job.cancel() }

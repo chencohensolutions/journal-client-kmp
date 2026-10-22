@@ -55,6 +55,8 @@ internal class LibraryActions(
     val backup: BackupActions,
     /** Marks a photo on the server private, or no longer private; false when the server couldn't be reached. */
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean,
+    /** The viewer's Share: the original to another app; false when it can't be had. */
+    val share: suspend (MediaItem) -> Boolean,
     backgroundLocation: State<Boolean>,
     canTrashWithoutAsking: State<Boolean>,
     /** What previews, originals and videos take on this phone; the Settings screen counts it. */
@@ -209,6 +211,7 @@ internal fun libraryActions(
         changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
         backup = backupActions,
         setPrivate = setPrivate,
+        share = { item -> shareOriginal(context, server.previews, item) },
         backgroundLocation = backgroundLocationState,
         canTrashWithoutAsking = canTrashWithoutAskingState,
         previewBytes = previewBytes,

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the viewer's Share hands to other apps: a copy of one original, under its own file name (ShareOriginal.kt). -->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>

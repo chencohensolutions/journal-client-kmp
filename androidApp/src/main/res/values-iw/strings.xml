@@ -62,6 +62,8 @@
     <string name="library_viewer_position">%1$d מתוך %2$d · %3$s</string>
     <string name="library_viewer_position_count">%1$d מתוך %2$d ·</string>
     <string name="library_viewer_details">פרטים</string>
+    <string name="library_share">שיתוף</string>
+    <string name="library_share_failed">לא ניתן להביא את המקור לשיתוף. יש לבדוק את החיבור לשרת.</string>
     <string name="library_viewer_play">הפעלת הסרטון</string>
     <string name="library_viewer_video_unavailable">אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך.</string>
     <string name="library_viewer_video_failed">אי אפשר להפעיל את הסרטון כרגע. האם יש חיבור לשרת?</string>

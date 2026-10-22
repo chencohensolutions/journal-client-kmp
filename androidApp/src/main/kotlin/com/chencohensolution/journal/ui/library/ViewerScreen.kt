@@ -1,5 +1,8 @@
 package com.chencohensolution.journal.ui.library
 
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackException
@@ -133,6 +136,8 @@ internal class ViewerActions(
      * opened from Moments (closing it lands there already).
      */
     val showInMoments: ((itemId: String) -> Unit)? = null,
+    /** Shares the original with another app through the share sheet; false when it can't be had (offline). */
+    val share: suspend (MediaItem) -> Boolean = { false },
     /** The map screen, on where the photo was taken (a tap on the details panel's map). */
     val openMap: (GeoPoint) -> Unit = {},
     /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
@@ -277,6 +282,7 @@ internal fun ViewerScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
                 ViewerAction(LibraryIcons.Info, stringResource(R.string.library_viewer_details)) { showInfo = true }
+                ShareButton(current, actions.share)
             }
         }
 
@@ -611,6 +617,35 @@ private fun MomentsDayChip(day: String, modifier: Modifier = Modifier, onClick: 
     ) {
         Text(day, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Icon(LibraryIcons.ChevronRight, null, tint = Color.White, modifier = Modifier.padding(start = 2.dp).size(14.dp))
+    }
+}
+
+/** A round Share button after the pills; a spinner while an original only on the server is fetched to share. */
+@Composable
+private fun ShareButton(item: MediaItem, share: suspend (MediaItem) -> Boolean) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember(item.id) { mutableStateOf(false) }
+    Box(
+        Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(LibraryColors.PillScrim)
+            .clickable(enabled = !sharing, onClickLabel = stringResource(R.string.library_share)) {
+                sharing = true
+                scope.launch {
+                    if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+                    sharing = false
+                }
+            }
+            .semantics { contentDescription = context.getString(R.string.library_share) },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (sharing) {
+            CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+        } else {
+            Icon(LibraryIcons.Share, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
     }
 }
 

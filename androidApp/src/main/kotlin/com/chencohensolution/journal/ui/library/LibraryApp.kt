@@ -305,6 +305,7 @@ private fun LibraryScreens(
                                         showing = { landing = Landing(entry.depth - 1, it) },
                                         setPrivate = actions.setPrivate,
                                         openMap = { push(Route.Map(it)) },
+                                        share = actions.share,
                                         showInMoments = { itemId: String ->
                                             landing = null
                                             showInMoments = ShowInMoments(itemId)

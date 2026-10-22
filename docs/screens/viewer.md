@@ -25,8 +25,12 @@ Swiping is not a tap; a playing video's own controls take its taps.
   is a chip, "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab,
   scrolled to the photo (Oct 22, 2026; chosen in the UI lab over a third pill, a link under the pills, a toolbar and
   an icon).
-- **Bottom:** **Write** (the note editor, below) and **Details** (the details panel; Oct 22, 2026 it moved here
-  from an ⓘ at the top). Hidden while the details panel is open; back or a tap on the photo closes the panel. The
+- **Bottom:** **Write** (the note editor, below), **Details** (the details panel; Oct 22, 2026 it moved here
+  from an ⓘ at the top), and a round **Share** button (Oct 22, 2026, chosen in the UI lab): the system share sheet
+  with the original. A gallery photo shares the gallery's own file; one only on the server shares the original the
+  viewer downloaded (downloaded now when it isn't here, with a spinner on the button), as a copy named as the photo
+  (`cache/shared/`, only the latest kept, `ShareOriginal.kt`; iOS through `UIActivityViewController`). Offline
+  without the original: "Couldn’t get the original to share." Hidden while the details panel is open; back or a tap on the photo closes the panel. The
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top.

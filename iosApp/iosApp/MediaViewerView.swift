@@ -43,6 +43,9 @@ struct MediaViewerView: View {
     @StateObject private var zooms = ZoomModels()
     /// The photo shown is zoomed in: it doesn't page, and a swipe down doesn't close the viewer.
     @State private var zoomed = false
+    /// Share is getting the original ready.
+    @State private var sharing = false
+    @State private var shareFailed = false
 
     init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions) {
         self.items = items
@@ -131,10 +134,11 @@ struct MediaViewerView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if chrome, !showInfo, items[safe: index] != nil {
+            if chrome, !showInfo, let item = items[safe: index] {
                 HStack(spacing: 10) {
                     ViewerAction(icon: "square.and.pencil", label: "Write") { editingCaption = true }
                     ViewerAction(icon: "info.circle", label: "Details") { showInfo = true }
+                    ShareButton(busy: sharing) { share(item) }
                 }
                 .padding(.bottom, 20)
             }
@@ -148,10 +152,10 @@ struct MediaViewerView: View {
         // Every way the panel opens or closes (Details, a tap on the photo, back) animates, and Write/Details fade
         // back with it.
         .animation(.easeInOut(duration: 0.25), value: showInfo)
-        // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it
-        // closes.
-        .task(id: [chrome, showInfo, choosingTag, editingCaption]) {
-            guard chrome, !showInfo, !choosingTag, !editingCaption else { return }
+        // They stay while the details panel, a sheet or the note editor is open, or Share gets the original, and for
+        // the full time again after it closes.
+        .task(id: [chrome, showInfo, choosingTag, editingCaption, sharing]) {
+            guard chrome, !showInfo, !choosingTag, !editingCaption, !sharing else { return }
             try? await Task.sleep(for: .seconds(3))
             if !Task.isCancelled { chrome = false }
         }
@@ -190,6 +194,19 @@ struct MediaViewerView: View {
             }
         }
         .statusBarHidden(!showInfo)
+        .alert("Couldn’t get the original to share. Check the connection to your server.", isPresented: $shareFailed) {
+            Button("OK", role: .cancel) {}
+        }
+    }
+
+    /// Share: the original file to the system share sheet, once it is here (`ShareOriginal`).
+    private func share(_ item: MediaItem) {
+        sharing = true
+        Task {
+            let file = await ShareOriginal.file(for: item)
+            sharing = false
+            if let file { ShareOriginal.present(file) } else { shareFailed = true }
+        }
     }
 
     private func toggleChrome() {
@@ -460,6 +477,29 @@ private struct ViewerAction: View {
                 .frame(height: 44)
                 .background(LibraryColors.pillScrim, in: Capsule())
         }
+    }
+}
+
+/// The round Share button after the pills; a spinner while the original is fetched.
+private struct ShareButton: View {
+    let busy: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if busy {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 18, weight: .semibold))
+                }
+            }
+            .foregroundStyle(.white)
+            .frame(width: 44, height: 44)
+            .background(LibraryColors.pillScrim, in: Circle())
+        }
+        .disabled(busy)
+        .accessibilityLabel("Share")
     }
 }
 
