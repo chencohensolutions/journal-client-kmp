@@ -4,6 +4,7 @@ import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.search.SearchChip
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
 import com.chencohensolution.journal.library.LocalDay
@@ -269,11 +270,21 @@ internal object PreviewData {
     )
 
     /** What a search for "a dog on the beach at sunset" found: photos of the places library, best first, the server still reading. */
-    val searchFound = SearchState(
-        query = "a dog on the beach at sunset",
-        status = SearchStatus.DONE,
-        items = placesLibrary.days.flatMap { it.items }.filterIndexed { i, _ -> i % 3 == 1 }.take(20),
-        indexed = 12_480,
-        total = 14_200,
-    )
+    val searchFound: SearchState = run {
+        // Over every town and year of the places library, so the year and place chips have something to choose.
+        val items = placesLibrary.days.flatMap { it.items }.filterIndexed { i, _ -> i % 4 == 1 }
+        fun town(item: MediaItem) = placesStories.places.location(item)?.let(placesStories.places::name)?.town
+        SearchState(
+            query = "a dog on the beach at sunset",
+            status = SearchStatus.DONE,
+            items = items,
+            indexed = 12_480,
+            total = 14_200,
+            yearChips = items.groupingBy { it.day.year }.eachCount().entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) },
+            townChips = items.mapNotNull(::town).groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { SearchChip(it.key, it.value) },
+        )
+    }
+
+    /** [searchFound] narrowed to 2025 (the chip chosen). */
+    val searchIn2025: SearchState = searchFound.copy(year = 2025, items = searchFound.items.filter { it.day.year == 2025 })
 }

@@ -1,6 +1,16 @@
 package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +55,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,31 +66,36 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.places.Places
+import com.chencohensolution.journal.search.SearchChip
 import com.chencohensolution.journal.search.SearchError
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
 import java.text.NumberFormat
 
 // The home screen's search: the 🔍 beside the tabs turns the bottom bar into a field, and the page lists the photos the
-// server finds for the sentence typed, best first, each across the screen with its date, time and place under it. ✕ goes
-// back to the tab, keeping the search for next time. See docs/screens/search.md.
+// server finds for the sentence typed, best first, each across the screen with its date, time and place under it. A
+// Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
+// keeping the search for next time. See docs/screens/search.md.
 
 internal class SearchActions(
     val search: (text: String) -> Unit = {},
     val clear: () -> Unit = {},
+    /** A year or town in the filter sheet, or null to drop it. */
+    val chooseYear: (Int?) -> Unit = {},
+    val chooseTown: (String?) -> Unit = {},
     /** A photo of the results; the viewer swipes through the results. */
     val openItem: (MediaItem) -> Unit = {},
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
 @Composable
-internal fun SearchContent(search: SearchState, places: Places, landing: String?, onOpen: (MediaItem) -> Unit, contentPadding: PaddingValues) {
+internal fun SearchContent(search: SearchState, places: Places, landing: String?, actions: SearchActions, contentPadding: PaddingValues) {
     val list = rememberLazyListState()
     list.LandOn(landing, search.items.size) { id -> search.items.indexOfFirst { it.id == id } }
     LazyColumn(state = list, contentPadding = contentPadding) {
         when (search.status) {
             SearchStatus.IDLE -> item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
-            SearchStatus.SEARCHING -> if (search.items.isEmpty()) item(key = "searching") {
+            SearchStatus.SEARCHING -> if (search.items.isEmpty() && search.yearChips.isEmpty()) item(key = "searching") {
                 Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = LibraryColors.OnBackground)
                 }
@@ -90,12 +106,13 @@ internal fun SearchContent(search: SearchState, places: Places, landing: String?
                     else stringResource(R.string.search_server_error, search.errorDetail.orEmpty()),
                 )
             }
-            SearchStatus.DONE -> item(key = "found") { FoundNote(search) }
+            SearchStatus.DONE -> Unit
         }
+        if (search.status == SearchStatus.DONE) item(key = "found") { FoundNote(search) }
         // Last, so landing from the viewer can count them from the end. Kept while a new search runs; the field shows its
         // spinner.
         if (search.status == SearchStatus.DONE || search.status == SearchStatus.SEARCHING) {
-            items(search.items, key = { it.id }) { item -> FoundPhoto(item, places, onClick = { onOpen(item) }) }
+            items(search.items, key = { it.id }) { item -> FoundPhoto(item, places, onClick = { actions.openItem(item) }) }
         }
     }
 }
@@ -191,11 +208,165 @@ internal fun SearchTopBar(modifier: Modifier = Modifier) {
 }
 
 /**
- * The tab bar turned into the field: [onSearch] when the keyboard's search key is pressed, ✕ ([onClose]) back to the
- * tabs. It opens with the keyboard up when nothing was searched yet.
+ * The tab bar turned into the field: the search when the keyboard's search key is pressed, ✕ ([onClose]) back to the
+ * tabs, and above it the Filter pill once there are matches to narrow. It opens with the keyboard up when nothing was
+ * searched yet.
  */
 @Composable
-internal fun SearchBottomBar(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit, onClose: () -> Unit) {
+internal fun SearchBottomBar(search: SearchState, actions: SearchActions, onClose: () -> Unit) {
+    var filtering by rememberSaveable { mutableStateOf(false) }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (search.canFilter) FilterPill(search) { filtering = true }
+        SearchField(search, actions.search, actions.clear, onClose)
+    }
+    if (filtering) FilterSheet(search, actions) { filtering = false }
+}
+
+/** Whether there is a year or a town to choose: more than one of either among the matches, or one chosen already. */
+private val SearchState.canFilter: Boolean
+    get() = (status == SearchStatus.DONE || status == SearchStatus.SEARCHING) && (showsYears || showsTowns)
+private val SearchState.showsYears: Boolean get() = yearChips.size > 1 || year != null
+private val SearchState.showsTowns: Boolean get() = townChips.size > 1 || town != null
+
+/** "Filter", or "Filter · 2" with a year and a town chosen, dark while any is. */
+@Composable
+private fun FilterPill(search: SearchState, onClick: () -> Unit) {
+    val chosen = listOfNotNull(search.year, search.town).size
+    val color = if (chosen > 0) LibraryColors.OnInverse else LibraryColors.OnBackground
+    Row(
+        Modifier
+            .height(36.dp)
+            .shadow(8.dp, RoundedCornerShape(50))
+            .background(if (chosen > 0) LibraryColors.Inverse else LibraryColors.Raised, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(LibraryIcons.Settings, null, tint = color, modifier = Modifier.size(18.dp))
+        Text(
+            if (chosen > 0) stringResource(R.string.search_filter_count, chosen) else stringResource(R.string.search_filter),
+            color = color,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/**
+ * The years of the matches as a grid and their towns as a list, each with how many; a tap narrows to it at once (the
+ * server finds the best of that year or town) and a second drops it. "Show N photos" closes the sheet.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FilterSheet(search: SearchState, actions: SearchActions, onDone: () -> Unit) {
+    // Opened whole, as the tag sheets are: half open, "Show N photos" would be below the screen's edge.
+    ModalBottomSheet(
+        onDismissRequest = onDone,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = LibraryColors.Background,
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.search_filter),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                TextButton(
+                    onClick = {
+                        actions.chooseYear(null)
+                        actions.chooseTown(null)
+                    },
+                    enabled = search.year != null || search.town != null,
+                ) { Text(stringResource(R.string.search_clear)) }
+            }
+            if (search.showsYears) {
+                SheetLabel(stringResource(R.string.search_filter_year))
+                val year = search.year?.toString()
+                search.yearChips.chunked(YEAR_COLUMNS).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { chip ->
+                            YearCell(chip, selected = chip.value == year, Modifier.weight(1f)) {
+                                actions.chooseYear(if (chip.value == year) null else chip.value.toInt())
+                            }
+                        }
+                        repeat(YEAR_COLUMNS - row.size) { Box(Modifier.weight(1f)) }
+                    }
+                }
+            }
+            if (search.showsTowns) {
+                SheetLabel(stringResource(R.string.search_filter_place))
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    search.townChips.forEach { chip ->
+                        TownRow(chip, selected = chip.value == search.town) {
+                            actions.chooseTown(if (chip.value == search.town) null else chip.value)
+                        }
+                    }
+                }
+            }
+            Button(
+                onClick = onDone,
+                colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Accent, contentColor = Color.White),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                if (search.status == SearchStatus.SEARCHING) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                } else {
+                    Text(pluralStringResource(R.plurals.search_filter_show, search.items.size, search.items.size), fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetLabel(text: String) {
+    Text(text, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+}
+
+@Composable
+private fun YearCell(chip: SearchChip, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val color = if (selected) LibraryColors.OnInverse else LibraryColors.OnBackground
+    Column(
+        modifier
+            .height(48.dp)
+            .background(if (selected) LibraryColors.Inverse else LibraryColors.Raised, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .semantics { this.selected = selected },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(chip.value, color = color, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(chip.count.toString(), color = color.copy(alpha = 0.7f), fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun TownRow(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics { this.selected = selected }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(chip.value, color = LibraryColors.OnBackground, fontSize = 16.sp)
+        Text(chip.count.toString(), color = LibraryColors.Muted, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        if (selected) Icon(LibraryIcons.Check, null, tint = LibraryColors.Accent, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Years per row of the filter sheet. */
+private const val YEAR_COLUMNS = 4
+
+/** The field itself, with its clear button or spinner, and ✕. */
+@Composable
+private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit, onClose: () -> Unit) {
     var text by rememberSaveable { mutableStateOf(search.query) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }

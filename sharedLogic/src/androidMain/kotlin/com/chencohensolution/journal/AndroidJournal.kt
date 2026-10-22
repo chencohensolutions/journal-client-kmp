@@ -78,12 +78,16 @@ fun createLibraryController(
         privateMedia = privateMedia,
     )
 
-/** Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet). */
-fun createSearchController(context: Context, library: LibraryController, server: ServerLibrary): SearchController =
+/**
+ * Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet), with
+ * [stories]' places for the town chips.
+ */
+fun createSearchController(context: Context, library: LibraryController, server: ServerLibrary, stories: StoriesController): SearchController =
     SearchController(
         library = library.state,
         api = ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), AndroidMtlsHttpClientFactory(context), decodePemCertificates(SERVER_CA_PEM)),
         server = server.media,
+        stories = stories.state,
     )
 
 private var serverLibrary: ServerLibrary? = null

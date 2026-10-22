@@ -185,6 +185,8 @@ private fun LibraryScreens(
                                         search = SearchActions(
                                             search = search::search,
                                             clear = search::clear,
+                                            chooseYear = search::chooseYear,
+                                            chooseTown = search::chooseTown,
                                             openItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, search = true)) },
                                         ),
                                     ),

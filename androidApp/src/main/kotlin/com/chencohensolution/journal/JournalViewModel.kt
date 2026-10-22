@@ -32,7 +32,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val library: LibraryController = createLibraryController(application, backup, server.library, server.originals, settings.privateMedia)
     val stories: StoriesController = createStoriesController(application, library, settings)
     val freeUp: FreeUpController = freeUp(application)
-    val search: SearchController = createSearchController(application, library, server.library)
+    val search: SearchController = createSearchController(application, library, server.library, stories)
 
     init {
         // The video cache counts toward the same limit as previews from the start (Media3 reads its index here).

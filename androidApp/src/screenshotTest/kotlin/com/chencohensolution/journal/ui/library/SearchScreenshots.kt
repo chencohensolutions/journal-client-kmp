@@ -22,6 +22,13 @@ fun SearchResults() = Screen {
 @PreviewTest
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
+fun SearchOneYear() = Screen {
+    JournalHomeScreen(PreviewData.placesLibrary, PreviewData.placesStories, ServerHealth.OK, HomeActions(), search = PreviewData.searchIn2025, initialSearching = true)
+}
+
+@PreviewTest
+@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
 fun SearchBeforeTyping() = Screen {
     JournalHomeScreen(PreviewData.placesLibrary, PreviewData.placesStories, ServerHealth.OK, HomeActions(), initialSearching = true)
 }

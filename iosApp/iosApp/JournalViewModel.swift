@@ -26,7 +26,7 @@ final class JournalViewModel: ObservableObject {
         settings = SettingsViewModel()
         library = LibraryViewModel(backup: backup, settings: settings)
         stories = StoriesViewModel(library: library, settings: settings)
-        search = SearchViewModel(library: library)
+        search = SearchViewModel(library: library, stories: stories)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in

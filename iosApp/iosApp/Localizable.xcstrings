@@ -3048,6 +3048,26 @@
         }
       }
     },
+    "Filter" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סינון"
+          }
+        }
+      }
+    },
+    "Filter · %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סינון · %lld"
+          }
+        }
+      }
+    },
     "Finding where your photos were taken…" : {
       "localizations" : {
         "he" : {
@@ -3976,6 +3996,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תבנית"
+          }
+        }
+      }
+    },
+    "Place" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקום"
           }
         }
       }
@@ -5363,6 +5393,52 @@
         }
       }
     },
+    "Show %lld photos" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show %lld photo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show %lld photos"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הצגת תמונה אחת"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הצגת %lld תמונות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הצגת %lld תמונות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Show all" : {
       "localizations" : {
         "he" : {
@@ -6573,6 +6649,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כתיבה"
+          }
+        }
+      }
+    },
+    "Year" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שנה"
           }
         }
       }

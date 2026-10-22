@@ -528,4 +528,13 @@
     <string name="search_nothing">לא נמצא כלום. נסו מילים אחרות.</string>
     <string name="search_offline">אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת.</string>
     <string name="search_server_error">השרת לא הצליח לחפש: %1$s</string>
+    <string name="search_filter">סינון</string>
+    <string name="search_filter_count">סינון · %1$d</string>
+    <string name="search_filter_year">שנה</string>
+    <string name="search_filter_place">מקום</string>
+    <plurals name="search_filter_show">
+        <item quantity="one">הצגת תמונה אחת</item>
+        <item quantity="two">הצגת %d תמונות</item>
+        <item quantity="other">הצגת %d תמונות</item>
+    </plurals>
 </resources>

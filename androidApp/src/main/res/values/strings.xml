@@ -507,4 +507,12 @@
     <string name="search_nothing">Nothing found. Try other words.</string>
     <string name="search_offline">Can\'t reach your server. Search works when the server can be reached.</string>
     <string name="search_server_error">The server couldn\'t search: %1$s</string>
+    <string name="search_filter">Filter</string>
+    <string name="search_filter_count">Filter · %1$d</string>
+    <string name="search_filter_year">Year</string>
+    <string name="search_filter_place">Place</string>
+    <plurals name="search_filter_show">
+        <item quantity="one">Show %d photo</item>
+        <item quantity="other">Show %d photos</item>
+    </plurals>
 </resources>

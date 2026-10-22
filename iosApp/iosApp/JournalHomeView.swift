@@ -84,7 +84,7 @@ struct JournalHomeView: View {
         GeometryReader { geometry in
             ScrollView {
                 if searching {
-                    SearchResultsView(search: shownSearch, places: stories.places, width: geometry.size.width, openItem: actions.search.openItem)
+                    SearchResultsView(search: shownSearch, places: stories.places, width: geometry.size.width, actions: actions.search)
                         .padding(.top, 80)
                         .padding(.bottom, 150)
                 } else {
@@ -179,7 +179,7 @@ struct JournalHomeView: View {
         .overlay(alignment: .bottom) {
             if searching {
                 BottomControls(summary: nil) {
-                    SearchFieldBar(search: shownSearch, onSearch: actions.search.search, onClear: actions.search.clear) {
+                    SearchFieldBar(search: shownSearch, actions: actions.search) {
                         withAnimation { searching = false }
                     }
                 }
@@ -191,7 +191,9 @@ struct JournalHomeView: View {
 
     /// Nothing searched yet when the parent has no search.
     private var shownSearch: SearchState {
-        search ?? SearchState(query: "", status: .idle, items: [], indexed: 0, total: 0, error: nil, errorDetail: nil)
+        search ?? SearchState(
+            query: "", status: .idle, items: [], indexed: 0, total: 0, error: nil, errorDetail: nil, year: nil, town: nil, yearChips: [], townChips: []
+        )
     }
 
     private var bottomControls: some View {

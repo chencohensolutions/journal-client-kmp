@@ -124,6 +124,8 @@ struct LibraryRootView: View {
                             search: SearchActions(
                                 search: search.search,
                                 clear: search.clear,
+                                chooseYear: search.chooseYear,
+                                chooseTown: search.chooseTown,
                                 openItem: { item in openViewer(ViewerRequest(search: true, filter: .all, itemId: item.id)) }
                             )
                         ),

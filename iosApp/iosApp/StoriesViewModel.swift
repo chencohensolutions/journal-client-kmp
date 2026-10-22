@@ -6,7 +6,8 @@ import SharedLogic
 final class StoriesViewModel: ObservableObject {
     @Published private(set) var state: StoriesState
 
-    private let controller: StoriesController
+    /// Shared with `SearchViewModel`, whose town chips use the places worked out here.
+    let controller: StoriesController
     private var observation: ObservationHandle?
 
     init(library: LibraryViewModel, settings: SettingsViewModel) {

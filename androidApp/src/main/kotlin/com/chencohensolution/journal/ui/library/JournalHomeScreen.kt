@@ -281,7 +281,7 @@ internal fun JournalHomeScreen(
                 search,
                 stories.places,
                 landing,
-                actions.search.openItem,
+                actions.search,
                 PaddingValues(top = insets.calculateTopPadding() + 80.dp, bottom = insets.calculateBottomPadding() + 150.dp),
             )
         } else if (tab == HomeTab.EXPLORE) {
@@ -338,7 +338,7 @@ internal fun JournalHomeScreen(
                 summary = null,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             ) {
-                SearchBottomBar(search, actions.search.search, actions.search.clear, onClose = { searching = false })
+                SearchBottomBar(search, actions.search, onClose = { searching = false })
             }
         } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
             if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
