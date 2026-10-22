@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Build the debug app, install it on a booted iOS simulator and open the UI lab (debug builds only): the app's screens
-# and suggested designs for them, with made-up data. The iOS twin of ui-lab.sh; the ids are the same. See docs/previews.md.
+# Build the UI Lab app and open it on a booted iOS simulator: the app's screens and suggested designs for them, with
+# made-up data. It is the debug app under another name and bundle id that always opens the lab, so it sits beside
+# Journal on the simulator without replacing it. The iOS twin of ui-lab.sh; the ids are the same. See docs/previews.md.
 #   ./scripts/ui-lab-ios.sh                    the list of screens
 #   ./scripts/ui-lab-ios.sh moments            a screen's options: the current one first, then the suggestions
 #   ./scripts/ui-lab-ios.sh moments current    one option (ids in iosApp/iosApp/Lab/LabScreens.swift)
@@ -23,12 +24,15 @@ fi
 
 derived=build/ios-lab
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug \
-    -destination "id=$udid" -derivedDataPath "$derived" -quiet build
-app="$derived/Build/Products/Debug-iphonesimulator/Journal.app"
+    -destination "id=$udid" -derivedDataPath "$derived" -quiet build \
+    PRODUCT_NAME="UI Lab" PRODUCT_BUNDLE_IDENTIFIER=com.chencohensolution.journal.uilab \
+    INFOPLIST_FILE=Configuration/UiLab-Info.plist INFOPLIST_KEY_CFBundleDisplayName="UI Lab" \
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS="DEBUG UI_LAB_APP"
+app="$derived/Build/Products/Debug-iphonesimulator/UI Lab.app"
 bundle=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")
 
 xcrun simctl install "$udid" "$app"
 # Launch arguments become UserDefaults for this run only; the app reads them in UiLab.swift.
 xcrun simctl launch --terminate-running-process "$udid" "$bundle" \
-    -uiLab YES ${screen:+-labScreen "$screen"} ${option:+-labOption "$option"} >/dev/null
-open -a Simulator
+    ${screen:+-labScreen "$screen"} ${option:+-labOption "$option"} >/dev/null
+open -a Simulator 2>/dev/null || true

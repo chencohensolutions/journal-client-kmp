@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// The UI lab, on when the app is launched with `-uiLab YES` (`scripts/ui-lab-ios.sh`, or the scheme's arguments in
-/// Xcode), and in Xcode's previews, which have no photo library either; never in a release build.
+/// The UI lab, always on in the UI Lab app (`scripts/ui-lab-ios.sh` builds it with UI_LAB_APP), on in Journal when it
+/// is launched with `-uiLab YES` (the scheme's arguments in Xcode), and in Xcode's previews, which have no photo library
+/// either; never in a release build.
 enum UiLab {
-    #if DEBUG
+    #if UI_LAB_APP && DEBUG
+    static let isOn = true
+    #elseif DEBUG
     static let isOn = UserDefaults.standard.bool(forKey: "uiLab") || ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     #else
     static let isOn = false
@@ -29,6 +32,7 @@ struct UiLabView: View {
         Group {
             if let option {
                 NavigationStack { option.content() }
+                    .safeAreaInset(edge: .top, spacing: 0) { LabBackButton(title: screen?.title ?? "") { optionId = nil } }
             } else if let screen {
                 LabList(
                     title: screen.title,
@@ -68,6 +72,33 @@ struct LabOption {
         self.title = title
         self.note = note
         self.content = { AnyView(content()) }
+    }
+}
+
+/// "◀ Search" over an option, as iOS shows "◀ Journal" after one app opens another: back to the screen's options. It
+/// sits on its own strip under the status bar (which keeps taps for itself), so the screen below starts a little lower.
+private struct LabBackButton: View {
+    let title: String
+    let onBack: () -> Void
+
+    var body: some View {
+        HStack {
+            Button(action: onBack) {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrowtriangle.backward.fill").font(.system(size: 9))
+                    Text(title).font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(LibraryColors.onBackground)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(.ultraThinMaterial, in: Capsule())
+                .contentShape(Capsule())
+            }
+            .accessibilityLabel("Back to \(title)")
+            Spacer()
+        }
+        .padding(.leading, 10)
+        .padding(.vertical, 2)
     }
 }
 

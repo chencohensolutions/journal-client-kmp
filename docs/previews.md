@@ -75,10 +75,15 @@ lighter on the Mac than the emulator.
 SIMULATOR="iPhone Air" ./scripts/ui-lab-ios.sh   # another booted simulator (default: iPhone 18 Pro, else the first booted)
 ```
 
-The first build takes about 40 seconds; later ones only rebuild what changed. Shake (⌃⌘Z in the Simulator) goes
-back a page. In Xcode, Debug builds take the same launch arguments (`-uiLab YES -labScreen moments -labOption
-current`, in the scheme's Run › Arguments), and the `UI lab` preview in `UiLab.swift` shows it in the canvas with
-live updates as you type.
+The script builds a separate app, **UI Lab**: the debug app under its own name and bundle id
+(`com.chencohensolution.journal.uilab`), compiled with `UI_LAB_APP` so it always opens the lab, and with
+`iosApp/Configuration/UiLab-Info.plist` so it doesn't take the simulator's `journal://` enrollment links. It sits
+beside Journal on the simulator and doesn't replace it; once installed, tap its icon to open the list of screens.
+
+The first build takes about 40 seconds; later ones only rebuild what changed. Shake (⌃⌘Z in the Simulator, or
+Device › Shake) goes back a page. In Xcode, Journal's Debug builds open the lab with launch arguments (`-uiLab YES
+-labScreen moments -labOption current`, in the scheme's Run › Arguments), and the `UI lab` preview in `UiLab.swift`
+shows it in the canvas with live updates as you type.
 
 The list is [LabScreens.swift](../iosApp/iosApp/Lab/LabScreens.swift). A suggestion is a view in
 `<Screen>Suggestions.swift` in `iosApp/iosApp/Lab/`, added to its screen's list as a `LabOption` after `current`.

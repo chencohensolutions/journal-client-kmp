@@ -31,6 +31,14 @@ let labScreens: [LabScreen] = [
     LabScreen(id: "explore-years", title: "Explore by years", options: [
         current { labHome(data.exploreLibrary, data.exploreStories, tab: .explore, exploreView: .years) },
     ]),
+    LabScreen(id: "search", title: "Search", options: [
+        current { labHome(data.library, data.feedStories) },
+        LabOption(id: "bottom", title: "Field at the bottom", note: "The tab bar turns into the field; two columns") { SearchBottomSuggestion() },
+        LabOption(id: "rows", title: "One per row, caption below", note: "Each photo across the page; date, time, place under it") { SearchRowsCaptionSuggestion() },
+        LabOption(id: "rows-full", title: "One per row, full width", note: "Each photo edge to edge; date, time, place under it") { SearchRowsFullSuggestion() },
+        LabOption(id: "rows-list", title: "One per row, as a list", note: "Thumbnail left; date, time, place right") { SearchRowsListSuggestion() },
+        LabOption(id: "rows-over", title: "One per row, caption over", note: "Each photo across the page; date, time, place over it") { SearchRowsOverlaySuggestion() },
+    ]),
     LabScreen(id: "country", title: "Country", options: [
         current { CountryPageView(country: "France", library: data.placesLibrary, stories: data.placesStories, openPlace: { _ in }) },
     ]),
