@@ -23,8 +23,6 @@ final class FreeUpViewModel: ObservableObject {
         observation?.cancel()
     }
 
-    var running: Bool { state.activity is FreeUpActivityRunning }
-
     func refreshPlan() { controller.refreshPlan() }
     func setRule(_ rule: FreeUpRule) { controller.setRule(rule: rule) }
     func toggleSource(_ source: MediaSource) { controller.toggleSource(source: source) }
@@ -49,10 +47,15 @@ final class FreeUpViewModel: ObservableObject {
         service.dismissNotification()
         confirming = false
     }
+}
+
+extension FreeUpState {
+    /// A run is checking files.
+    var running: Bool { activity is FreeUpActivityRunning }
 
     /// The Settings row ([FreeUpState.summary]): what Free up space would free, or what it is doing.
     var rowText: String {
-        switch state.summary {
+        switch summary {
         case let checking as FreeUpSummaryChecking:
             return String(localized: "Checking \(Int(checking.number)) of \(Int(checking.total))")
         case let waiting as FreeUpSummaryWaiting:
@@ -68,7 +71,7 @@ final class FreeUpViewModel: ObservableObject {
 
     /// [FreeUpState.statusLines] as text: the run going on, why it stopped, or what the last one did; and what waits.
     var statusText: String? {
-        let lines = state.statusLines.map { line -> String in
+        let lines = statusLines.map { line -> String in
             switch line {
             case let checking as FreeUpLineChecking:
                 let text = String(localized: "Checking \(Int(checking.number)) of \(Int(checking.total))")

@@ -1,5 +1,9 @@
 package com.chencohensolution.journal.lab
 
+import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupProgress
+import com.chencohensolution.journal.backup.BackupSettings
+import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
@@ -14,8 +18,13 @@ import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.search.SearchChip
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
+import com.chencohensolution.journal.server.StorageUsage
 import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.storage.FreeUpGroup
+import com.chencohensolution.journal.storage.FreeUpPlan
+import com.chencohensolution.journal.storage.FreeUpState
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
@@ -261,6 +270,31 @@ object LabData {
     val infoStories: StoriesState = feedStories.copy(
         itemsById = feedStories.itemsById + (infoPhoto.id to infoPhoto),
         places = Places.named(mapOf(infoPhoto.location!! to PlaceName(area = "Bahá'í Gardens", city = "Haifa", country = "Israel"))),
+    )
+
+    // Settings and Free up space: the choices as at first, backup on and running, the counts of a large library.
+
+    val settings = SettingsState()
+
+    /** Backup on for the camera and WhatsApp, 41 of 120 photos sent. */
+    val backup = BackupState(
+        settings = BackupSettings(enabled = true, sources = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP)),
+        activity = BackupActivity.Running(
+            BackupProgress(done = 41, total = 120, bytesDone = 182_000_000, bytesTotal = 512_000_000, bytesPerSecond = 5_100_000),
+        ),
+    )
+
+    /** Photos per source, shown or not, for Show in the app. */
+    val sourceCounts: Map<MediaSource, Int> = hiddenStories.feed.counts
+    val notBackedUp = 79
+    val previewBytes = 1_840_000_000L
+    val serverUsage = StorageUsage(photos = 48_210, videos = 1_204, bytes = 214_300_000_000)
+
+    /** Free up space, counted: the backed-up photos of [library], as 24 MB files. */
+    val freeUp = FreeUpState(
+        plan = FreeUpPlan(
+            library.days.flatMap { it.items }.filter { it.backup == BackupStatus.BackedUp }.map { FreeUpGroup(listOf(it.copy(sizeBytes = 24_000_000))) },
+        ),
     )
 
     /** What a search for "a dog on the beach at sunset" found: photos of the places library, best first, the server still reading. */

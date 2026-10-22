@@ -1,24 +1,57 @@
 import SwiftUI
 import SharedLogic
 
-/// Free up space, opened from Settings: one button that checks everything this phone backed up (from the chosen
-/// sources), with "Older than" and "Keep the newest" under More options. Each file is hashed on the phone and on the
-/// server; those that pass wait for Move to trash, and iOS's own prompt, to go to Recently Deleted. See
-/// docs/screens/settings.md.
+/// Free up space, opened from Settings, on the live `FreeUpViewModel`: counted again on open and on coming back to
+/// the app (photos taken or deleted meanwhile).
 struct FreeUpView: View {
     @ObservedObject var freeUp: FreeUpViewModel
     /// The library reads PhotoKit again once photos have left it.
     let refreshLibrary: () -> Void
-    @State private var moreOptions: Bool?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        let state = freeUp.state
+        FreeUpScreen(
+            state: freeUp.state,
+            confirming: freeUp.confirming,
+            actions: FreeUpActions(
+                setRule: freeUp.setRule,
+                toggleSource: freeUp.toggleSource,
+                freeUp: freeUp.freeUp,
+                moveToTrash: { await freeUp.moveWaitingToTrash(refreshLibrary: refreshLibrary) }
+            )
+        )
+        .task { freeUp.refreshPlan() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { freeUp.refreshPlan() } }
+    }
+}
+
+/// What Free up space can ask for.
+struct FreeUpActions {
+    var setRule: (FreeUpRule) -> Void
+    var toggleSource: (MediaSource) -> Void
+    /// "Free up 14 GB": checks every file on the phone and on the server; those that pass wait for Move to trash.
+    var freeUp: () -> Void
+    /// Move to trash: iOS's one prompt for the files that wait.
+    var moveToTrash: @MainActor () async -> Void
+}
+
+/// Free up space: one button that checks everything this phone backed up (from the chosen sources), with "Older than"
+/// and "Keep the newest" under More options. Each file is hashed on the phone and on the server; those that pass wait
+/// for Move to trash, and iOS's own prompt, to go to Recently Deleted. Drawn from `state` alone, so the UI lab shows it
+/// too. See docs/screens/settings.md.
+struct FreeUpScreen: View {
+    let state: FreeUpState
+    /// iOS's prompt for the waiting files is open.
+    var confirming = false
+    let actions: FreeUpActions
+    @State private var moreOptions: Bool?
+
+    var body: some View {
         Form {
             summarySection(state)
             Section {
                 ForEach(MediaSource.entries, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in freeUp.toggleSource(source) }))
+                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in actions.toggleSource(source) }))
                         .tint(LibraryColors.accent)
                 }
             } header: {
@@ -37,9 +70,6 @@ struct FreeUpView: View {
             }
             .listRowBackground(LibraryColors.raised)
         }
-        .task { freeUp.refreshPlan() }
-        // Back in the app (photos taken or deleted meanwhile): counted again.
-        .onChange(of: scenePhase) { _, phase in if phase == .active { freeUp.refreshPlan() } }
         .scrollContentBackground(.hidden)
         .background(LibraryColors.background.ignoresSafeArea())
         .navigationTitle("Free up space")
@@ -67,7 +97,7 @@ struct FreeUpView: View {
                         .font(.subheadline)
                         .foregroundStyle(LibraryColors.muted)
                 }
-                Button(action: freeUp.freeUp) {
+                Button(action: actions.freeUp) {
                     Text(canFree ? String(localized: "Free up \(formatBytes(plan?.bytes ?? 0))") : String(localized: "Free up space"))
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 52)
@@ -75,23 +105,23 @@ struct FreeUpView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(LibraryColors.onInverse)
                 .background(LibraryColors.inverse, in: Capsule())
-                .opacity(freeUp.running || !canFree ? 0.4 : 1)
-                .disabled(freeUp.running || !canFree)
+                .opacity(state.running || !canFree ? 0.4 : 1)
+                .disabled(state.running || !canFree)
                 .padding(.top, 12)
                 Text("Each file is hashed again on this phone and on your server first. Then you confirm them all at once, and they go to Recently Deleted, where they stay for 30 days.")
                     .font(.footnote)
                     .foregroundStyle(LibraryColors.muted)
                     .padding(.top, 8)
-                if let status = freeUp.statusText {
+                if let status = state.statusText {
                     Text(status).font(.subheadline).monospacedDigit().foregroundStyle(LibraryColors.onBackground).padding(.top, 8)
                 }
             }
             .padding(.vertical, 8)
-            if !freeUp.running && state.waitingCount > 0 {
+            if !state.running && state.waitingCount > 0 {
                 Button("Move to trash") {
-                    Task { await freeUp.moveWaitingToTrash(refreshLibrary: refreshLibrary) }
+                    Task { await actions.moveToTrash() }
                 }
-                .disabled(freeUp.confirming)
+                .disabled(confirming)
                 .foregroundStyle(LibraryColors.onBackground)
             }
         }
@@ -101,7 +131,7 @@ struct FreeUpView: View {
     /// Everything backed up, Older than, Keep the newest; each choice's values show under it while it is chosen.
     @ViewBuilder private func ruleOptions(_ rule: FreeUpRule) -> some View {
         Picker("Free up", selection: Binding(get: { RuleKind(rule) }, set: { kind in
-            if kind != RuleKind(rule) { freeUp.setRule(kind.defaultRule) }
+            if kind != RuleKind(rule) { actions.setRule(kind.defaultRule) }
         })) {
             RuleLabel(title: "Everything backed up", detail: "Every photo and video this phone backed up to your server.")
                 .tag(RuleKind.everything)
@@ -113,13 +143,13 @@ struct FreeUpView: View {
         .pickerStyle(.inline)
         .labelsHidden()
         if let older = rule as? FreeUpRuleOlderThan {
-            Picker("Older than", selection: Binding(get: { Int(older.days) }, set: { freeUp.setRule(FreeUpRuleOlderThan(days: Int32($0))) })) {
+            Picker("Older than", selection: Binding(get: { Int(older.days) }, set: { actions.setRule(FreeUpRuleOlderThan(days: Int32($0))) })) {
                 ForEach(FreeUpRuleCompanion.shared.DAYS_OPTIONS.map(\.intValue), id: \.self) { Text(ageText($0)).tag($0) }
             }
             .foregroundStyle(LibraryColors.onBackground)
         }
         if let keep = rule as? FreeUpRuleKeepNewest {
-            Picker("Keep the newest", selection: Binding(get: { Int(keep.gigabytes) }, set: { freeUp.setRule(FreeUpRuleKeepNewest(gigabytes: Int32($0))) })) {
+            Picker("Keep the newest", selection: Binding(get: { Int(keep.gigabytes) }, set: { actions.setRule(FreeUpRuleKeepNewest(gigabytes: Int32($0))) })) {
                 ForEach(FreeUpRuleCompanion.shared.GIGABYTES_OPTIONS.map(\.intValue), id: \.self) { Text("\($0) GB").tag($0) }
             }
             .foregroundStyle(LibraryColors.onBackground)

@@ -63,7 +63,23 @@ let labScreens: [LabScreen] = [
                 .preferredColorScheme(.dark)
         },
     ]),
+    LabScreen(id: "settings", title: "Settings", options: [
+        current { labSettings() },
+    ]),
+    LabScreen(id: "free-up", title: "Free up space", options: [
+        current { FreeUpScreen(state: data.freeUp, actions: .lab) },
+    ]),
 ]
+
+/// Settings as the app pushes it, with backup running; its Free up space row opens the lab's Free up space.
+private func labSettings() -> some View {
+    SettingsScreen(
+        settings: data.settings, backup: data.backup, notBackedUp: Int(data.notBackedUp), sourceCounts: data.sourceCounts,
+        previewBytes: data.previewBytes, serverUsage: data.serverUsage, freeUp: data.freeUp, actions: .lab
+    ) {
+        FreeUpScreen(state: data.freeUp, actions: .lab)
+    }
+}
 
 /// The home screen as the library root shows it, on `tab`.
 private func labHome(
@@ -87,6 +103,22 @@ extension HomeActions {
         explore: ExploreActions(openPlace: { _ in }, openCountry: { _ in }, openYear: { _, _ in }, openMap: {}, toggleSource: { _ in }),
         allowAccess: {}, registerAgain: {}
     )
+}
+
+extension SettingsActions {
+    /// Does nothing: the lab has no controllers.
+    static let lab = SettingsActions(
+        setGroupingMode: { _ in }, setGapHours: { _ in }, setSimilarityPercent: { _ in }, resetSimilarity: {}, toggleFeedSource: { _ in },
+        setSayWhatsHidden: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
+        setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in }, setPrivateThresholdPercent: { _ in },
+        setShowOnPhoneBadge: { _ in }, setSearchPageSize: { _ in }, setBackupEnabled: { _ in }, toggleBackupSource: { _ in },
+        setWifiOnly: { _ in }, setChargingOnly: { _ in }, setOrder: { _ in }, backUpNow: {}
+    )
+}
+
+extension FreeUpActions {
+    /// Does nothing: the lab has no controllers.
+    static let lab = FreeUpActions(setRule: { _ in }, toggleSource: { _ in }, freeUp: {}, moveToTrash: {})
 }
 
 extension ViewerActions {

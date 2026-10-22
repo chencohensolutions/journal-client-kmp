@@ -88,7 +88,7 @@ shows it in the canvas with live updates as you type.
 The list is [LabScreens.swift](../iosApp/iosApp/Lab/LabScreens.swift). A suggestion is a view in
 `<Screen>Suggestions.swift` in `iosApp/iosApp/Lab/`, added to its screen's list as a `LabOption` after `current`.
 When one is chosen, its code moves into the real view and it leaves the list. The lab shows the real views, with
-`HomeActions.lab` and `ViewerActions.lab` doing nothing. A screen opens on a tab or with its details showing through
+`HomeActions.lab`, `ViewerActions.lab`, `SettingsActions.lab` and `FreeUpActions.lab` doing nothing. A screen opens on a tab or with its details showing through
 the view's own parameters (`JournalHomeView(tab:)`, `MediaViewerView(chrome:showInfo:)`).
 
 - The made-up data is [LabData.kt](../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/lab/LabData.kt) in
@@ -99,4 +99,8 @@ the view's own parameters (`JournalHomeView(tab:)`, `MediaViewerView(chrome:show
   backup doesn't start.
 - Everything in `Lab/` is inside `#if DEBUG`, so release builds don't compile it (`LabData` is in the framework but
   unused).
-- Settings isn't in the iOS lab: its SwiftUI view reads the live view models rather than a state value.
+- A screen the lab shows is drawn from state values, not view models. Settings and Free up space are split that way:
+  `SettingsScreen` and `FreeUpScreen` take the states and an actions struct, and the app's `SettingsView` and
+  `FreeUpView` are thin wrappers that feed them from the view models and refresh on open. A new screen that reads
+  view models needs the same split before it can join the lab; suggestions for Settings are views like
+  `SettingsScreen`.

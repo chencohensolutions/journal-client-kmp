@@ -1,7 +1,8 @@
 import SwiftUI
 import SharedLogic
 
-/// The user's choices, kept on this device. See docs/screens/settings.md.
+/// Settings on the live view models: the user's choices, backup, and Free up space (its row and its screen). Counts
+/// the storage on open.
 struct SettingsView: View {
     @ObservedObject var settings: SettingsViewModel
     @ObservedObject var backup: BackupViewModel
@@ -12,13 +13,88 @@ struct SettingsView: View {
     /// The library reads PhotoKit again once Free up space removed photos.
     var refreshLibrary: () -> Void = {}
     @StateObject private var freeUp = FreeUpViewModel()
+
+    var body: some View {
+        SettingsScreen(
+            settings: settings.state, backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts,
+            previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions
+        ) {
+            FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
+        }
+        // Counted on open (and again when the limit changes or Clear is tapped).
+        .task {
+            settings.refreshStorage()
+            freeUp.refreshPlan()
+        }
+    }
+
+    private var actions: SettingsActions {
+        SettingsActions(
+            setGroupingMode: settings.setGroupingMode, setGapHours: settings.setGapHours, setSimilarityPercent: settings.setSimilarityPercent,
+            resetSimilarity: settings.resetSimilarity, toggleFeedSource: settings.toggleFeedSource, setSayWhatsHidden: settings.setSayWhatsHidden,
+            setPreviewsEnabled: settings.setPreviewsEnabled, setPreviewFormat: settings.setPreviewFormat,
+            setPreviewQuality: settings.setPreviewQuality, setPreviewLimit: settings.setPreviewLimit, clearPreviews: settings.clearPreviews,
+            setShowPrivateMedia: settings.setShowPrivateMedia, setPrivateThresholdPercent: settings.setPrivateThresholdPercent,
+            setShowOnPhoneBadge: settings.setShowOnPhoneBadge, setSearchPageSize: settings.setSearchPageSize,
+            setBackupEnabled: backup.setEnabled, toggleBackupSource: backup.toggleSource, setWifiOnly: backup.setWifiOnly,
+            setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow
+        )
+    }
+}
+
+/// What Settings can ask for: the user's choices (`SettingsViewModel`) and backup's (`BackupViewModel`).
+struct SettingsActions {
+    var setGroupingMode: (GroupingMode) -> Void
+    var setGapHours: (Int) -> Void
+    var setSimilarityPercent: (Int) -> Void
+    var resetSimilarity: () -> Void
+    /// Show in the app: a source on or off everywhere (the Moments filter bar, Explore's sheet), and "Say what's hidden".
+    var toggleFeedSource: (MediaSource) -> Void
+    var setSayWhatsHidden: (Bool) -> Void
+    /// Storage on this phone: how server photos are shown, the space they may take here, and "Clear".
+    var setPreviewsEnabled: (Bool) -> Void
+    var setPreviewFormat: (PreviewFormat) -> Void
+    var setPreviewQuality: (PreviewQuality) -> Void
+    var setPreviewLimit: (_ gigabytes: Int) -> Void
+    var clearPreviews: () -> Void
+    var setShowPrivateMedia: (Bool) -> Void
+    var setPrivateThresholdPercent: (Int) -> Void
+    var setShowOnPhoneBadge: (Bool) -> Void
+    var setSearchPageSize: (Int) -> Void
+    // Backup.
+    var setBackupEnabled: (Bool) -> Void
+    var toggleBackupSource: (MediaSource) -> Void
+    var setWifiOnly: (Bool) -> Void
+    var setChargingOnly: (Bool) -> Void
+    var setOrder: (UploadOrder) -> Void
+    var backUpNow: () -> Void
+}
+
+/// The user's choices, kept on this device. Drawn from the states alone, so the UI lab shows it too. See
+/// docs/screens/settings.md.
+struct SettingsScreen<FreeUp: View>: View {
+    let settings: SettingsState
+    let backup: BackupState
+    /// Photos of the chosen sources not on the server yet.
+    let notBackedUp: Int
+    /// Photos per source on this device and the server, shown or not (Show in the app).
+    let sourceCounts: [MediaSource: KotlinInt]
+    /// What previews and downloaded originals of server photos take here; nil while counting.
+    let previewBytes: Int64?
+    /// What the user's originals take up on the server; nil until it answered.
+    let serverUsage: StorageUsage?
+    /// For the Free up space row: what it would free, or what it is doing.
+    let freeUp: FreeUpState
+    let actions: SettingsActions
+    /// The Free up space screen, opened from its row.
+    @ViewBuilder let freeUpScreen: () -> FreeUp
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
     /// The private media slider's value while it is dragged.
     @State private var privateThreshold: Double?
 
     var body: some View {
-        let grouping = settings.state.grouping
+        let grouping = settings.grouping
         Form {
             shownSourcesSection
             backupSections
@@ -26,7 +102,7 @@ struct SettingsView: View {
             storageSection
             freeUpSection
             Section {
-                Picker("Grouping", selection: Binding(get: { grouping.mode }, set: settings.setGroupingMode)) {
+                Picker("Grouping", selection: Binding(get: { grouping.mode }, set: actions.setGroupingMode)) {
                     ModeLabel(title: "By day", detail: "One row for each calendar day.")
                         .tag(GroupingMode.byDay)
                     ModeLabel(
@@ -38,7 +114,7 @@ struct SettingsView: View {
                 .pickerStyle(.inline)
                 .labelsHidden()
                 if grouping.mode == .byGap {
-                    Picker("New row after a break of", selection: Binding(get: { Int(grouping.gapHours) }, set: settings.setGapHours)) {
+                    Picker("New row after a break of", selection: Binding(get: { Int(grouping.gapHours) }, set: actions.setGapHours)) {
                         ForEach(SettingsViewModel.gapHoursOptions, id: \.self) { hours in
                             Text("\(hours) hours").tag(hours)
                         }
@@ -52,11 +128,6 @@ struct SettingsView: View {
             privateMediaSection
             searchSection
         }
-        // Counted on open (and again when the limit changes or Clear is tapped).
-        .task {
-            settings.refreshStorage()
-            freeUp.refreshPlan()
-        }
         .scrollContentBackground(.hidden)
         .background(LibraryColors.background.ignoresSafeArea())
         .navigationTitle("Settings")
@@ -65,14 +136,14 @@ struct SettingsView: View {
     }
 }
 
-extension SettingsView {
+extension SettingsScreen {
     /// Show in the app: a switch per source (the same as the Moments filter bar and Explore's "Showing" sheet), and
     /// "Say what's hidden" (the "+6 WhatsApp" chips in Moments).
     private var shownSourcesSection: some View {
-        let shown = settings.state.shownSources
+        let shown = settings.shownSources
         return Section {
             ForEach(MediaSource.entries, id: \.self) { source in
-                Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in settings.toggleFeedSource(source) })) {
+                Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in actions.toggleFeedSource(source) })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(source.title).foregroundStyle(LibraryColors.onBackground)
                         Text(verbatim: sourceDetail(source, count: sourceCounts[source]?.intValue ?? 0))
@@ -83,7 +154,7 @@ extension SettingsView {
                 }
                 .tint(LibraryColors.accent)
             }
-            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: settings.setSayWhatsHidden)) {
+            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
                 ModeLabel(title: "Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
             }
             .tint(LibraryColors.accent)
@@ -111,9 +182,9 @@ extension SettingsView {
     /// Backup: on or off with its status, then what uploads, when, and in which order. "On your server" (storage
     /// used there) and "Only on these Wi-Fi networks" are Android only for now; see docs/screens/settings.md.
     @ViewBuilder private var backupSections: some View {
-        let state = backup.state.settings
+        let state = backup.settings
         Section {
-            Toggle(isOn: Binding(get: { state.enabled }, set: backup.setEnabled)) {
+            Toggle(isOn: Binding(get: { state.enabled }, set: actions.setBackupEnabled)) {
                 ModeLabel(
                     title: "Back up to your server",
                     detail: "Photos keep uploading in the background. Swiping the app away stops it until you open it again."
@@ -126,13 +197,13 @@ extension SettingsView {
                     .monospacedDigit()
                     .foregroundStyle(LibraryColors.muted)
                 Spacer()
-                if state.enabled && backup.running == nil {
-                    Button("Back up now", action: backup.backUpNow).foregroundStyle(LibraryColors.onBackground)
+                if state.enabled && !(backup.activity is BackupActivityRunning) {
+                    Button("Back up now", action: actions.backUpNow).foregroundStyle(LibraryColors.onBackground)
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("On your server").foregroundStyle(LibraryColors.onBackground)
-                Text(serverUsageText(settings.serverUsage))
+                Text(serverUsageText(serverUsage))
                     .font(.footnote)
                     .monospacedDigit()
                     .foregroundStyle(LibraryColors.muted)
@@ -144,7 +215,7 @@ extension SettingsView {
         if state.enabled {
             Section {
                 ForEach(MediaSource.entries, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in backup.toggleSource(source) }))
+                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in actions.toggleBackupSource(source) }))
                         .tint(LibraryColors.accent)
                 }
             } header: {
@@ -152,18 +223,18 @@ extension SettingsView {
             }
             .listRowBackground(LibraryColors.raised)
             Section {
-                Toggle(isOn: Binding(get: { state.wifiOnly }, set: backup.setWifiOnly)) {
+                Toggle(isOn: Binding(get: { state.wifiOnly }, set: actions.setWifiOnly)) {
                     ModeLabel(title: "Only on Wi-Fi", detail: "Never on mobile data.")
                 }
                 .tint(LibraryColors.accent)
-                Toggle("Only while charging", isOn: Binding(get: { state.chargingOnly }, set: backup.setChargingOnly))
+                Toggle("Only while charging", isOn: Binding(get: { state.chargingOnly }, set: actions.setChargingOnly))
                     .tint(LibraryColors.accent)
             } header: {
                 Text("When")
             }
             .listRowBackground(LibraryColors.raised)
             Section {
-                Picker("Order", selection: Binding(get: { state.order }, set: backup.setOrder)) {
+                Picker("Order", selection: Binding(get: { state.order }, set: actions.setOrder)) {
                     ModeLabel(title: "Oldest first", detail: "Starts with your earliest photos.").tag(UploadOrder.oldestFirst)
                     ModeLabel(title: "Newest first", detail: "Your latest photos are safe soonest.").tag(UploadOrder.newestFirst)
                 }
@@ -178,7 +249,7 @@ extension SettingsView {
 
     /// How alike photos must be for a "Look alike" suggestion.
     private var similaritySection: some View {
-        let threshold = settings.state.similarity
+        let threshold = settings.similarity
         let shown = Int(similarity ?? Double(threshold.percent))
         return Section {
             VStack(alignment: .leading, spacing: 8) {
@@ -193,7 +264,7 @@ extension SettingsView {
                     step: 1
                 ) { editing in
                     if !editing, let similarity {
-                        settings.setSimilarityPercent(Int(similarity))
+                        actions.setSimilarityPercent(Int(similarity))
                         self.similarity = nil
                     }
                 }
@@ -203,7 +274,7 @@ extension SettingsView {
                     .foregroundStyle(LibraryColors.muted)
             }
             if !threshold.isDefault {
-                Button("Reset to \(Int(threshold.defaultPercent))%") { settings.resetSimilarity() }
+                Button("Reset to \(Int(threshold.defaultPercent))%") { actions.resetSimilarity() }
                     .foregroundStyle(LibraryColors.onBackground)
             }
         } header: {
@@ -213,13 +284,13 @@ extension SettingsView {
     }
 }
 
-extension SettingsView {
+extension SettingsScreen {
     /// How server photos are shown (previews in a format and quality, or originals) and the space they may take here.
     private var storageSection: some View {
-        let options = settings.state.previewOptions
-        let limit = Int(settings.state.previewCacheGigabytes)
+        let options = settings.previewOptions
+        let limit = Int(settings.previewCacheGigabytes)
         return Section {
-            Toggle(isOn: Binding(get: { options.enabled }, set: settings.setPreviewsEnabled)) {
+            Toggle(isOn: Binding(get: { options.enabled }, set: actions.setPreviewsEnabled)) {
                 ModeLabel(
                     title: "Previews from your server",
                     detail: options.enabled
@@ -230,7 +301,7 @@ extension SettingsView {
             .tint(LibraryColors.accent)
             if options.enabled {
                 VStack(alignment: .leading, spacing: 8) {
-                    Picker("Format", selection: Binding(get: { options.format }, set: settings.setPreviewFormat)) {
+                    Picker("Format", selection: Binding(get: { options.format }, set: actions.setPreviewFormat)) {
                         ForEach(PreviewFormat.shownInSettings, id: \.self) { Text($0.label).tag($0) }
                     }
                     .foregroundStyle(LibraryColors.onBackground)
@@ -238,7 +309,7 @@ extension SettingsView {
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Quality").foregroundStyle(LibraryColors.onBackground)
-                    Picker("Quality", selection: Binding(get: { options.quality }, set: settings.setPreviewQuality)) {
+                    Picker("Quality", selection: Binding(get: { options.quality }, set: actions.setPreviewQuality)) {
                         ForEach(PreviewQuality.shownInSettings, id: \.self) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -248,7 +319,7 @@ extension SettingsView {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Kept on this phone").foregroundStyle(LibraryColors.onBackground)
                 Group {
-                    if let bytes = settings.previewBytes {
+                    if let bytes = previewBytes {
                         Text("\(fileSize(bytes)) of \(limit) GB used. Photos from your server are fetched again when you scroll to them.")
                     } else {
                         Text("Counting…")
@@ -257,11 +328,11 @@ extension SettingsView {
                 .font(.footnote)
                 .foregroundStyle(LibraryColors.muted)
             }
-            Picker("Up to", selection: Binding(get: { limit }, set: settings.setPreviewLimit)) {
+            Picker("Up to", selection: Binding(get: { limit }, set: actions.setPreviewLimit)) {
                 ForEach(SettingsViewModel.previewLimitOptions, id: \.self) { Text("\($0) GB").tag($0) }
             }
             .foregroundStyle(LibraryColors.onBackground)
-            Button("Clear", action: settings.clearPreviews).foregroundStyle(LibraryColors.onBackground)
+            Button("Clear", action: actions.clearPreviews).foregroundStyle(LibraryColors.onBackground)
         } header: {
             Text("Storage on this phone")
         }
@@ -272,7 +343,7 @@ extension SettingsView {
     private var freeUpSection: some View {
         Section {
             NavigationLink {
-                FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
+                freeUpScreen()
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Free up space").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
@@ -288,7 +359,7 @@ extension SettingsView {
     /// "Show the phone badge" (off by default): the phone on photos that are on this phone and backed up.
     private var badgesSection: some View {
         Section {
-            Toggle(isOn: Binding(get: { settings.state.showOnPhoneBadge }, set: settings.setShowOnPhoneBadge)) {
+            Toggle(isOn: Binding(get: { settings.showOnPhoneBadge }, set: actions.setShowOnPhoneBadge)) {
                 ModeLabel(
                     title: "Show the phone badge",
                     detail: "Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge."
@@ -304,7 +375,7 @@ extension SettingsView {
     /// Photos per page of search results.
     private var searchSection: some View {
         Section {
-            Picker("Photos per page", selection: Binding(get: { Int(settings.state.searchPageSize) }, set: settings.setSearchPageSize)) {
+            Picker("Photos per page", selection: Binding(get: { Int(settings.searchPageSize) }, set: actions.setSearchPageSize)) {
                 ForEach(SettingsViewModel.searchPageOptions, id: \.self) { size in
                     Text("\(size)").tag(size)
                 }
@@ -320,10 +391,10 @@ extension SettingsView {
 
     /// "Show private media" (off by default) and, while off, the score from which photos are hidden.
     private var privateMediaSection: some View {
-        let privateMedia = settings.state.privateMedia
+        let privateMedia = settings.privateMedia
         let shown = Int(privateThreshold ?? Double(privateMedia.thresholdPercent))
         return Section {
-            Toggle(isOn: Binding(get: { privateMedia.show }, set: settings.setShowPrivateMedia)) {
+            Toggle(isOn: Binding(get: { privateMedia.show }, set: actions.setShowPrivateMedia)) {
                 ModeLabel(
                     title: "Show private media",
                     detail: "When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone."
@@ -343,7 +414,7 @@ extension SettingsView {
                         step: 5
                     ) { editing in
                         if !editing, let privateThreshold {
-                            settings.setPrivateThresholdPercent(Int(privateThreshold))
+                            actions.setPrivateThresholdPercent(Int(privateThreshold))
                             self.privateThreshold = nil
                         }
                     }

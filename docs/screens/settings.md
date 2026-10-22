@@ -181,7 +181,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`), with the shared `HiddenCollections` and `ServerLibrary.hiddenCollections` / `setHiddenCollections`.
-- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
+- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift) (`SettingsScreen`, drawn from state so the UI lab
+  shows it; `SettingsView` feeds it from the view models), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
   (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
   `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list in
   `Application Support/server/media.json`, downloaded originals in `Application Support/originals` (left out of

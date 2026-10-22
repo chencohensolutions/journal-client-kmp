@@ -31,11 +31,13 @@ final class BackupViewModel: ObservableObject {
     func setChargingOnly(_ chargingOnly: Bool) { controller.setChargingOnly(chargingOnly: chargingOnly) }
     func setOrder(_ order: UploadOrder) { controller.setOrder(order: order) }
     func backUpNow() { controller.backUpNow() }
+}
 
+extension BackupState {
     /// The line under the switch: off, running, waiting, stopped, or what is left (`waiting`: photos not backed up).
     func statusText(waiting: Int) -> String {
-        if !state.settings.enabled { return String(localized: "Off. Nothing is uploaded.") }
-        switch state.activity {
+        if !settings.enabled { return String(localized: "Off. Nothing is uploaded.") }
+        switch activity {
         case let running as BackupActivityRunning:
             let progress = running.progress
             let bytes = String(localized: "\(formatBytes(progress.bytesDone)) of \(formatBytes(progress.bytesTotal))")
