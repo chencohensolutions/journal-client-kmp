@@ -32,7 +32,7 @@ struct UiLabView: View {
         Group {
             if let option {
                 NavigationStack { option.content() }
-                    .safeAreaInset(edge: .top, spacing: 0) { LabBackButton(title: screen?.title ?? "") { optionId = nil } }
+                    .overlay(alignment: .topLeading) { LabBackButton(title: screen?.title ?? "") { optionId = nil } }
             } else if let screen {
                 LabList(
                     title: screen.title,
@@ -75,8 +75,9 @@ struct LabOption {
     }
 }
 
-/// "◀ Search" over an option, as iOS shows "◀ Journal" after one app opens another: back to the screen's options. It
-/// sits on its own strip under the status bar (which keeps taps for itself), so the screen below starts a little lower.
+/// "◀ Search" over an option, as iOS shows "◀ Journal" after one app opens another: back to the screen's options. For
+/// finding one's way in the lab only, so it floats over the screen, half see-through, without moving anything; just
+/// under the status bar, which keeps taps for itself.
 private struct LabBackButton: View {
     let title: String
     let onBack: () -> Void
@@ -98,7 +99,7 @@ private struct LabBackButton: View {
             Spacer()
         }
         .padding(.leading, 10)
-        .padding(.vertical, 2)
+        .opacity(0.6)
     }
 }
 
