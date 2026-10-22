@@ -512,4 +512,20 @@
     <string name="settings_first_image_size">רוחב, מתוך רוחב המסך</string>
     <string name="settings_first_image_off">ללא</string>
     <string name="settings_first_image_percent">%1$d%%</string>
+    <!-- Search: a sentence sent to the server, which answers with the photos it describes best. -->
+    <string name="search_title">חיפוש</string>
+    <string name="search_open">חיפוש</string>
+    <string name="search_close">חזרה ללשוניות</string>
+    <string name="search_clear">ניקוי</string>
+    <string name="search_field_hint">תארו תמונה</string>
+    <string name="search_hint">תארו במילים שלכם מה יש בתמונה: \"כלב על החוף בשקיעה\", \"עוגת יום הולדת\", \"שלג בהרים\". החיפוש מסתכל על התמונות עצמן, לא על השמות שלהן.</string>
+    <plurals name="search_found">
+        <item quantity="one">תמונה אחת, הטובה ביותר ראשונה</item>
+        <item quantity="two">%d תמונות, הטובות ביותר ראשונות</item>
+        <item quantity="other">%d תמונות, הטובות ביותר ראשונות</item>
+    </plurals>
+    <string name="search_still_reading">עדיין קורא את התמונות שלך: %1$s מתוך %2$s</string>
+    <string name="search_nothing">לא נמצא כלום. נסו מילים אחרות.</string>
+    <string name="search_offline">אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת.</string>
+    <string name="search_server_error">השרת לא הצליח לחפש: %1$s</string>
 </resources>

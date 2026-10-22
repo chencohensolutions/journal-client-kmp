@@ -11,6 +11,8 @@ import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.places.PlaceName
 import com.chencohensolution.journal.places.Places
+import com.chencohensolution.journal.search.SearchState
+import com.chencohensolution.journal.search.SearchStatus
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.stories.CropRect
@@ -258,5 +260,14 @@ object LabData {
     val infoStories: StoriesState = feedStories.copy(
         itemsById = feedStories.itemsById + (infoPhoto.id to infoPhoto),
         places = Places.named(mapOf(infoPhoto.location!! to PlaceName(area = "Bahá'í Gardens", city = "Haifa", country = "Israel"))),
+    )
+
+    /** What a search for "a dog on the beach at sunset" found: photos of the places library, best first, the server still reading. */
+    val searchFound = SearchState(
+        query = "a dog on the beach at sunset",
+        status = SearchStatus.DONE,
+        items = placesLibrary.days.flatMap { it.items }.filterIndexed { i, _ -> i % 3 == 1 }.take(20),
+        indexed = 12_480,
+        total = 14_200,
     )
 }

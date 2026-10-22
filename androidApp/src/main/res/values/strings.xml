@@ -492,4 +492,19 @@
     <string name="settings_first_image_size">Width, of the screen\'s</string>
     <string name="settings_first_image_off">None</string>
     <string name="settings_first_image_percent">%1$d%%</string>
+    <!-- Search: a sentence sent to the server, which answers with the photos it describes best. -->
+    <string name="search_title">Search</string>
+    <string name="search_open">Search</string>
+    <string name="search_close">Back to the tabs</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_field_hint">Describe a photo</string>
+    <string name="search_hint">Describe what\'s in the photo, in your own words: \"a dog on the beach at sunset\", \"birthday cake\", \"snow in the mountains\". Search looks at the pictures themselves, not their names.</string>
+    <plurals name="search_found">
+        <item quantity="one">%d photo, best first</item>
+        <item quantity="other">%d photos, best first</item>
+    </plurals>
+    <string name="search_still_reading">Still reading your photos: %1$s of %2$s</string>
+    <string name="search_nothing">Nothing found. Try other words.</string>
+    <string name="search_offline">Can\'t reach your server. Search works when the server can be reached.</string>
+    <string name="search_server_error">The server couldn\'t search: %1$s</string>
 </resources>

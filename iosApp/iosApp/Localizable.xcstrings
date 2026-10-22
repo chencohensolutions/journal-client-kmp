@@ -412,6 +412,52 @@
         }
       }
     },
+    "%lld photos, best first" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo, best first"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos, best first"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת, הטובה ביותר ראשונה"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, הטובות ביותר ראשונות"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, הטובות ביותר ראשונות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld · Open" : {
       "localizations" : {
         "he" : {
@@ -2043,6 +2089,16 @@
         }
       }
     },
+    "Back to the tabs" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חזרה ללשוניות"
+          }
+        }
+      }
+    },
     "Back up now" : {
       "localizations" : {
         "he" : {
@@ -2179,6 +2235,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פרטי המצלמה"
+          }
+        }
+      }
+    },
+    "Can't reach your server. Search works when the server can be reached." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת."
           }
         }
       }
@@ -2575,6 +2641,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מחיקת הסיפור"
+          }
+        }
+      }
+    },
+    "Describe a photo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תארו תמונה"
+          }
+        }
+      }
+    },
+    "Describe what's in the photo, in your own words: \"a dog on the beach at sunset\", \"birthday cake\", \"snow in the mountains\". Search looks at the pictures themselves, not their names." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תארו במילים שלכם מה יש בתמונה: \"כלב על החוף בשקיעה\", \"עוגת יום הולדת\", \"שלג בהרים\". החיפוש מסתכל על התמונות עצמן, לא על השמות שלהן."
           }
         }
       }
@@ -3824,6 +3910,16 @@
         }
       }
     },
+    "Nothing found. Try other words." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא נמצא כלום. נסו מילים אחרות."
+          }
+        }
+      }
+    },
     "Open in the map" : {
       "localizations" : {
         "he" : {
@@ -4004,6 +4100,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "דיוקן"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש"
           }
         }
       }
@@ -5547,6 +5653,16 @@
         }
       }
     },
+    "Still reading your photos: %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין קורא את התמונות שלך: %1$@ מתוך %2$@"
+          }
+        }
+      }
+    },
     "Stopped: %@" : {
       "localizations" : {
         "he" : {
@@ -5806,6 +5922,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "השרת לא הצליח לעבד את בקשת התעודה של המכשיר הזה."
+          }
+        }
+      }
+    },
+    "The server couldn't search: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת לא הצליח לחפש: %@"
           }
         }
       }

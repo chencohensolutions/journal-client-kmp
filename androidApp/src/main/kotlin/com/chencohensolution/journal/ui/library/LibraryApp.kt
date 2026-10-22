@@ -35,6 +35,7 @@ import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
@@ -61,9 +62,10 @@ fun LibraryApp(
     backup: BackupController,
     server: ServerFiles,
     freeUp: FreeUpController,
+    search: SearchController,
     onRegisterAgain: () -> Unit,
 ) = CompositionLocalProvider(LocalServerPreviews provides server.previews, LocalPhoneStorage provides server.storage) {
-    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, onRegisterAgain)
+    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, onRegisterAgain)
 }
 
 /** The routing table: each [Route] on the back stack rendered as its screen, with the actions wired to the controllers. */
@@ -76,9 +78,11 @@ private fun LibraryScreens(
     backup: BackupController,
     server: ServerFiles,
     freeUp: FreeUpController,
+    search: SearchController,
     onRegisterAgain: () -> Unit,
 ) {
     val journalState by journal.state.collectAsStateWithLifecycle()
+    val searchState by search.state.collectAsStateWithLifecycle()
     val freeUpState by freeUp.state.collectAsStateWithLifecycle()
     val backupState by backup.state.collectAsStateWithLifecycle()
     val serverUsage by server.library.usage.collectAsStateWithLifecycle()
@@ -178,10 +182,16 @@ private fun LibraryScreens(
                                         openRevealed = { section, source, item ->
                                             push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, revealed = source))
                                         },
+                                        search = SearchActions(
+                                            search = search::search,
+                                            clear = search::clear,
+                                            openItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, search = true)) },
+                                        ),
                                     ),
                                     landing = landingHere,
                                     showInMoments = showInMoments,
                                     backupRunning = backupRunning,
+                                    search = searchState,
                                 )
                                 is Route.Country -> CountryScreen(
                                     country = route.country,
@@ -290,7 +300,7 @@ private fun LibraryScreens(
                                 )
                                 is Route.Viewer -> ViewerScreen(
                                     // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
-                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route).map { it.id } }
+                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route, searchState).map { it.id } }
                                         .mapNotNull { storiesState.itemsById[it] },
                                     startId = route.itemId,
                                     stories = storiesState,

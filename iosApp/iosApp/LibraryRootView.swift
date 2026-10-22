@@ -9,6 +9,7 @@ struct LibraryRootView: View {
     @ObservedObject var stories: StoriesViewModel
     @ObservedObject var settings: SettingsViewModel
     @ObservedObject var backup: BackupViewModel
+    @ObservedObject var search: SearchViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -43,9 +44,10 @@ struct LibraryRootView: View {
 
     /// Opened from the storyline (`storyline`), a tag (`tag`), a row of Moments (`feedSection`, its key, with
     /// `revealed` a band of hidden photos on it), Explore (`scope`: the map's photos, or with `feedSection` a row of a
-    /// town's or a year's page), or All photos with `filter`.
+    /// town's or a year's page), the search's results (`search`), or All photos with `filter`.
     private struct ViewerRequest: Identifiable {
         var storyline = false
+        var search = false
         var feedSection: String? = nil
         /// With `feedSection`: the band of this hidden source's photos shown on that row.
         var revealed: MediaSource? = nil
@@ -118,8 +120,14 @@ struct LibraryRootView: View {
                                 toggleSource: settings.toggleFeedSource
                             ),
                             allowAccess: requestOrOpenSettings,
-                            registerAgain: onRegisterAgain
-                        )
+                            registerAgain: onRegisterAgain,
+                            search: SearchActions(
+                                search: search.search,
+                                clear: search.clear,
+                                openItem: { item in openViewer(ViewerRequest(search: true, filter: .all, itemId: item.id)) }
+                            )
+                        ),
+                        search: search.state
                     )
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: Route.self) { route in
@@ -229,8 +237,11 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the storyline, a tag's photos, the row of Moments or an Explore page (its
-    /// photos in the order shown), the map's photos, or everything in the All photos filter.
+    /// photos in the order shown), the map's photos, what the search found, or everything in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
+        if request.search {
+            return search.state.items
+        }
         if let scope = request.scope {
             let items = scopeItems(library.state, stories.state, scope)
             guard let section = request.feedSection else { return items }

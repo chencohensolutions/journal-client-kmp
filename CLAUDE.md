@@ -10,7 +10,8 @@ whenever a screen changes.
 - `sharedLogic/` — all logic, shared. `commonMain`: controllers with a `StateFlow` state
   (`JournalController` connection, `EnrollmentController`, `LibraryController` photo library, `StoriesController`
   the photos' notes (writing with history, tags, crops, Moments sets), the storyline and the Moments feed,
-  `SettingsController` the Settings screen, `BackupController`, `FreeUpController`). Stories were replaced by the
+  `SettingsController` the Settings screen, `BackupController`, `FreeUpController`, `SearchController` text search on
+  the server). Stories were replaced by the
   storyline on Oct 21, 2026; `StoriesController`, `StoriesState` and the `stories/` package keep their names for now.
   The package is split by concern: `StoriesController.kt` (edits and the rebuild), `StoriesState.kt` (what is
   published and how it is built, the storyline among it), `PhotoNote.kt` (the note and its file store),

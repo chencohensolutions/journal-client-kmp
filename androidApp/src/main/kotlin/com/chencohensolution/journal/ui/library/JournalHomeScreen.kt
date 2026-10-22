@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -75,6 +79,7 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.settings.GroupingMode
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -119,12 +124,14 @@ internal class HomeActions(
     val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
     /** A photo of a band; the viewer swipes through the band. */
     val openRevealed: (FeedSection, MediaSource, MediaItem) -> Unit = { _, _, _ -> },
+    /** Search, from the 🔍 beside the tabs. */
+    val search: SearchActions = SearchActions(),
 )
 
 /**
  * The home screen: in the Storyline tab every photo written about, newest first, and in the Moments tab every photo
- * as a feed that groups itself (by day or run of photos, then time, place, source and looks). See
- * docs/screens/journal-home.md and docs/screens/moments.md.
+ * as a feed that groups itself (by day or run of photos, then time, place, source and looks). The 🔍 beside the tabs
+ * opens search over them, until its ✕. See docs/screens/journal-home.md, moments.md and search.md.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -149,8 +156,14 @@ internal fun JournalHomeScreen(
     initialReveal: FeedReveal? = null,
     /** Places or Years at first in the Explore tab; previews use it. */
     initialExploreView: ExploreView = ExploreView.PLACES,
+    /** The last search and what it found. */
+    search: SearchState = SearchState(),
+    /** Search open at first, over the tab; previews use it. */
+    initialSearching: Boolean = false,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
+    // Search covers the tab until its ✕ (or back), and the tab is as it was.
+    var searching by rememberSaveable { mutableStateOf(initialSearching) }
     var exploreView by rememberSaveable { mutableStateOf(initialExploreView) }
     // The photo whose long-press menu is open, and the one being written about or tagged from it.
     var menuItem by rememberSaveable { mutableStateOf(initialMenuItem) }
@@ -159,6 +172,7 @@ internal fun JournalHomeScreen(
     // Photos and sets picked to merge; back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
     BackHandler(enabled = selection.active) { selection.clear() }
+    BackHandler(enabled = searching && !selection.active) { searching = false }
     // The band just shown, for its note above the tabs: "Showing 6 from WhatsApp on Oct 4 · Hide".
     var reveal by remember { mutableStateOf(initialReveal) }
     val inPreview = LocalInspectionMode.current
@@ -192,9 +206,14 @@ internal fun JournalHomeScreen(
         HomeTab.STORYLINE -> storyRows
         HomeTab.EXPLORE -> emptyList()
     }
-    LaunchedEffect(showInMoments) { if (showInMoments != null) tab = HomeTab.MOMENTS }
+    LaunchedEffect(showInMoments) {
+        if (showInMoments != null) {
+            searching = false
+            tab = HomeTab.MOMENTS
+        }
+    }
     val shownPhoto = showInMoments?.itemId?.takeIf { moments }
-    list.LandOn(shownPhoto ?: landing, rows.size) { id -> rows.rowOf(id) }
+    list.LandOn(shownPhoto ?: landing.takeUnless { searching }, rows.size) { id -> rows.rowOf(id) }
     // Sharp photos decode once the list slows down; until then each shows its quick image, loaded ahead of the scroll.
     val scrollSettled = rememberScrollSettled(list)
     PrefetchFirstImages(list, rows, { it.key }) { row ->
@@ -207,7 +226,7 @@ internal fun JournalHomeScreen(
     }
     // One video plays at a time, the one most in view, and only while the app is in front (not in previews).
     val resumed by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val canPlay = tab != HomeTab.EXPLORE && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
+    val canPlay = tab != HomeTab.EXPLORE && !searching && resumed.isAtLeast(Lifecycle.State.RESUMED) && !LocalInspectionMode.current
     // Watched in a coroutine, not read here: a change redraws only the videos, not the whole screen (which took 20 ms).
     val playingId = remember { mutableStateOf<String?>(null) }
     val currentRows by rememberUpdatedState(rows)
@@ -257,7 +276,15 @@ internal fun JournalHomeScreen(
     }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        if (tab == HomeTab.EXPLORE) {
+        if (searching) {
+            SearchContent(
+                search,
+                stories.places,
+                landing,
+                actions.search.openItem,
+                PaddingValues(top = insets.calculateTopPadding() + 80.dp, bottom = insets.calculateBottomPadding() + 150.dp),
+            )
+        } else if (tab == HomeTab.EXPLORE) {
             ExploreContent(
                 library,
                 stories,
@@ -305,12 +332,20 @@ internal fun JournalHomeScreen(
             }
         }
 
-        TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
+        if (searching) {
+            SearchTopBar(Modifier.align(Alignment.TopCenter))
+            BottomControls(
+                summary = null,
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+            ) {
+                SearchBottomBar(search, actions.search.search, actions.search.clear, onClose = { searching = false })
+            }
+        } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
             if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp))
         }
 
-        BottomControls(
+        if (!searching) BottomControls(
             summary = backupSummary(library, backupRunning).takeIf { !selection.active },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
         ) {
@@ -334,18 +369,25 @@ internal fun JournalHomeScreen(
                         actions.hideOnRow(section.key, photos.source)
                     }
                 }
-                SegmentedBar(
-                    options = listOf(
-                        HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
-                        HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
-                        HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
-                    ),
-                    selected = tab,
-                    onSelect = {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    SegmentedBar(
+                        options = listOf(
+                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
+                            HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                            HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
+                        ),
+                        selected = tab,
+                        onSelect = {
+                            selection.clear()
+                            tab = it
+                        },
+                    )
+                    SearchButton {
                         selection.clear()
-                        tab = it
-                    },
-                )
+                        reveal = null
+                        searching = true
+                    }
+                }
             }
         }
 

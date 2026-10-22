@@ -35,13 +35,16 @@ struct HomeActions {
     var explore: ExploreActions
     var allowAccess: () -> Void
     var registerAgain: () -> Void
+    /// Search, from the 🔍 beside the tabs.
+    var search = SearchActions()
 }
 
 enum HomeTab { case storyline, moments, explore }
 
 /// The home screen: in the Storyline tab every photo the user wrote about, newest first, and in the Moments tab every
 /// photo as a feed that groups itself (by day or run of photos, then time, place, source and looks), and in the Explore
-/// tab every photo by place and year. See docs/screens/journal-home.md, moments.md and explore.md.
+/// tab every photo by place and year. The 🔍 beside the tabs opens search over them, until its ✕. See
+/// docs/screens/journal-home.md, moments.md, explore.md and search.md.
 struct JournalHomeView: View {
     let library: LibraryState
     let stories: StoriesState
@@ -53,10 +56,14 @@ struct JournalHomeView: View {
     /// The backup run, for the bottom pill.
     let backupRunning: BackupProgress?
     let actions: HomeActions
+    /// The last search and what it found; nil before the first.
+    var search: SearchState? = nil
 
     /// The tab and Explore view it opens on (the UI lab opens others).
     @State var tab = HomeTab.storyline
     @State var exploreView = ExploreView.places
+    /// Search covers the tab until its ✕, and the tab is as it was (the UI lab opens on it).
+    @State var searching = false
     /// The Explore tab's towns and years, worked out off the main thread while it shows.
     @State private var explore: ExploreSummaries?
     /// What a photo's long-press menu opened.
@@ -76,6 +83,11 @@ struct JournalHomeView: View {
         let barUnderTitle = tab != .storyline
         GeometryReader { geometry in
             ScrollView {
+                if searching {
+                    SearchResultsView(search: shownSearch, places: stories.places, width: geometry.size.width, openItem: actions.search.openItem)
+                        .padding(.top, 80)
+                        .padding(.bottom, 150)
+                } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if health == .rejected {
                         RegisterAgainCard(onRegister: actions.registerAgain)
@@ -140,6 +152,7 @@ struct JournalHomeView: View {
                     }
                 }
                 .landsOn(showInMoments) { rows.place(of: $0) }
+                }
             }
             .scrollIndicators(.hidden)
             .onAppear { playback.viewport = viewport(geometry) }
@@ -149,6 +162,7 @@ struct JournalHomeView: View {
         .onChange(of: showInMoments) { _, request in
             guard request != nil else { return }
             selection = []
+            searching = false
             tab = .moments
         }
         .task(id: tab == .explore ? ExploreInput(library, stories) : nil) {
@@ -159,8 +173,25 @@ struct JournalHomeView: View {
         .onDisappear { onScreen = false }
         .sheet(item: $sheet, content: sheetContent)
         .background(LibraryColors.background.ignoresSafeArea())
-        .overlay(alignment: .top) { topBar }
-        .overlay(alignment: .bottom) { bottomControls }
+        .overlay(alignment: .top) {
+            if searching { SearchTitleBar() } else { topBar }
+        }
+        .overlay(alignment: .bottom) {
+            if searching {
+                BottomControls(summary: nil) {
+                    SearchFieldBar(search: shownSearch, onSearch: actions.search.search, onClear: actions.search.clear) {
+                        withAnimation { searching = false }
+                    }
+                }
+            } else {
+                bottomControls
+            }
+        }
+    }
+
+    /// Nothing searched yet when the parent has no search.
+    private var shownSearch: SearchState {
+        search ?? SearchState(query: "", status: .idle, items: [], indexed: 0, total: 0, error: nil, errorDetail: nil)
     }
 
     private var bottomControls: some View {
@@ -179,7 +210,14 @@ struct JournalHomeView: View {
                         onDismiss: { withAnimation { revealToast = nil } }
                     )
                 }
-                SegmentedBar(options: [(HomeTab.storyline, "Storyline"), (HomeTab.moments, "Moments"), (HomeTab.explore, "Explore")], selection: tabBinding)
+                HStack(spacing: 10) {
+                    SegmentedBar(options: [(HomeTab.storyline, "Storyline"), (HomeTab.moments, "Moments"), (HomeTab.explore, "Explore")], selection: tabBinding)
+                    SearchButton {
+                        selection = []
+                        revealToast = nil
+                        withAnimation { searching = true }
+                    }
+                }
             }
         }
     }
@@ -214,7 +252,7 @@ struct JournalHomeView: View {
     private var canRead: Bool { library.access == .full || library.access == .limited }
 
     /// One video plays at a time, and only while the feed is what shows.
-    private var canPlay: Bool { tab == .moments && onScreen && !viewerOpen && scenePhase == .active }
+    private var canPlay: Bool { tab == .moments && !searching && onScreen && !viewerOpen && scenePhase == .active }
 
     /// Where videos play: below the top bar and above the bottom controls.
     private func viewport(_ geometry: GeometryProxy) -> ClosedRange<CGFloat> {

@@ -32,12 +32,10 @@ let labScreens: [LabScreen] = [
         current { labHome(data.exploreLibrary, data.exploreStories, tab: .explore, exploreView: .years) },
     ]),
     LabScreen(id: "search", title: "Search", options: [
-        current { labHome(data.library, data.feedStories) },
-        LabOption(id: "bottom", title: "Field at the bottom", note: "The tab bar turns into the field; two columns") { SearchBottomSuggestion() },
-        LabOption(id: "rows", title: "One per row, caption below", note: "Each photo across the page; date, time, place under it") { SearchRowsCaptionSuggestion() },
-        LabOption(id: "rows-full", title: "One per row, full width", note: "Each photo edge to edge; date, time, place under it") { SearchRowsFullSuggestion() },
-        LabOption(id: "rows-list", title: "One per row, as a list", note: "Thumbnail left; date, time, place right") { SearchRowsListSuggestion() },
-        LabOption(id: "rows-over", title: "One per row, caption over", note: "Each photo across the page; date, time, place over it") { SearchRowsOverlaySuggestion() },
+        current { labHome(data.placesLibrary, data.placesStories, search: data.searchFound, searching: true) },
+    ]),
+    LabScreen(id: "search-empty", title: "Search, before typing", options: [
+        current { labHome(data.placesLibrary, data.placesStories, searching: true) },
     ]),
     LabScreen(id: "country", title: "Country", options: [
         current { CountryPageView(country: "France", library: data.placesLibrary, stories: data.placesStories, openPlace: { _ in }) },
@@ -69,10 +67,12 @@ let labScreens: [LabScreen] = [
 
 /// The home screen as the library root shows it, on `tab`.
 private func labHome(
-    _ library: LibraryState, _ stories: StoriesState, health: ServerHealth = .ok, tab: HomeTab = .storyline, exploreView: ExploreView = .places
+    _ library: LibraryState, _ stories: StoriesState, health: ServerHealth = .ok, tab: HomeTab = .storyline, exploreView: ExploreView = .places,
+    search: SearchState? = nil, searching: Bool = false
 ) -> some View {
     JournalHomeView(
-        library: library, stories: stories, health: health, viewerOpen: false, backupRunning: nil, actions: .lab, tab: tab, exploreView: exploreView
+        library: library, stories: stories, health: health, viewerOpen: false, backupRunning: nil, actions: .lab, search: search, tab: tab,
+        exploreView: exploreView, searching: searching
     )
     .toolbar(.hidden, for: .navigationBar)
 }

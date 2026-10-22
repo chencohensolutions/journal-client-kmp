@@ -146,6 +146,7 @@ internal object LibraryIcons {
     val Share = icon(
         "Share", false, "M18 2a3 3 0 1 0 0.01 0", "M6 9a3 3 0 1 0 0.01 0", "M18 16a3 3 0 1 0 0.01 0", "M8.6 13.5l6.8 4", "M15.4 6.5l-6.8 4",
     )
+    val Pin = icon("Pin", false, "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z", "M12 7.5a2 2 0 1 0 0.01 0")
     val Map = icon("Map", false, "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z", "M9 4v14", "M15 6v14")
     val Photo = icon("Photo", false, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0.01 0", "M21 15l-5-5L5 21")
 }

@@ -1,0 +1,30 @@
+# --- Text search ----------------------------------------------------------------
+# Photos and videos found by a description in words, with a SigLIP 2 model on the server; see docs/search.md.
+
+type SearchHit {
+  media: Media!
+  """
+  How close the file is to the text: the cosine similarity of their vectors, -1 to 1. Only the order means much;
+  a good match is often 0.1 to 0.2.
+  """
+  score: Float!
+}
+
+type MediaSearch {
+  "Best first."
+  hits: [SearchHit!]!
+  "How many of the user's files the server has read so far; the others can't be found yet."
+  indexed: Int!
+  "How many files the user has."
+  total: Int!
+  "The model that searched, e.g. siglip2-base-patch16-256."
+  model: String!
+}
+
+extend type Query {
+  """
+  The photos and videos that text describes best ("a dog on the beach at sunset"), best first. At most 1000.
+  Fails when text search is off on the server.
+  """
+  searchMedia(text: String!, limit: Int = 100): MediaSearch!
+}

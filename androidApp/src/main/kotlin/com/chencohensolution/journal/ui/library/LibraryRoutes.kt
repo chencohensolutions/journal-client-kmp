@@ -15,6 +15,7 @@ import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.search.SearchState
 
 // The library's screens as a back stack of routes (saved as strings across rotation), and what the viewer shows for each.
 
@@ -43,7 +44,7 @@ internal sealed interface Route {
      * Opened from the storyline ([storyline]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), All photos with [filter], or Explore
      * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
-     * the band of that hidden source's photos on the Moments row.
+     * the band of that hidden source's photos on the Moments row. With [search], the photos the last search found.
      */
     data class Viewer(
         val moment: String?,
@@ -53,6 +54,7 @@ internal sealed interface Route {
         val scope: ExploreScope? = null,
         val revealed: MediaSource? = null,
         val storyline: Boolean = false,
+        val search: Boolean = false,
     ) : Route
 
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
@@ -68,7 +70,7 @@ internal sealed interface Route {
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
         is Map -> "map|${at?.let { "${it.latitude},${it.longitude}" }.orEmpty()}"
-        is Viewer -> "viewer|${if (storyline) "storyline" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
+        is Viewer -> "viewer|${if (storyline) "storyline" else if (search) "search" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
             "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|$itemId"
     }
 
@@ -88,6 +90,7 @@ internal sealed interface Route {
                 "map" -> Map(parts.getOrNull(1)?.split(",")?.mapNotNull { it.toDoubleOrNull() }?.takeIf { it.size == 2 }?.let { (lat, lng) -> GeoPoint(lat, lng) })
                 "viewer" -> Viewer(
                     storyline = parts[1] == "storyline",
+                    search = parts[1] == "search",
                     moment = parts[2].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     filter = LibraryFilter.valueOf(parts[3]),
                     tag = parts[4].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
@@ -133,9 +136,10 @@ internal data class StackEntry(val depth: Int, val route: Route) {
 
 /**
  * The items the viewer swipes through: the storyline, the row of the Moments tab or an Explore page (as shown there),
- * the map's photos, a tag's photos, or everything in the All photos filter.
+ * the map's photos, a tag's photos, what [search] found, or everything in the All photos filter.
  */
-internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer): List<MediaItem> = when {
+internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState): List<MediaItem> = when {
+    route.search -> search.items
     route.scope != null && route.moment != null -> stories.feedOf(scopeItems(library, stories, route.scope)).section(route.moment)?.items.orEmpty()
     route.scope != null -> scopeItems(library, stories, route.scope)
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }

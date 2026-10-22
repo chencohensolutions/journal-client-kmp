@@ -4,6 +4,8 @@ import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.search.SearchState
+import com.chencohensolution.journal.search.SearchStatus
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
@@ -264,5 +266,14 @@ internal object PreviewData {
     )
     val placesStories: StoriesState = exploreStories.copy(
         places = Places.named(towns.associate { it.at to PlaceName(null, it.name, it.country) }),
+    )
+
+    /** What a search for "a dog on the beach at sunset" found: photos of the places library, best first, the server still reading. */
+    val searchFound = SearchState(
+        query = "a dog on the beach at sunset",
+        status = SearchStatus.DONE,
+        items = placesLibrary.days.flatMap { it.items }.filterIndexed { i, _ -> i % 3 == 1 }.take(20),
+        indexed = 12_480,
+        total = 14_200,
     )
 }

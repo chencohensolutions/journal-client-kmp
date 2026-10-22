@@ -5,6 +5,8 @@ on iOS since Oct 21, 2026). **Storyline** (it replaced the Stories tab on Oct 21
 stories themselves were deleted) holds every photo you wrote about. **Moments** holds **every photo**, in rows: one
 row per day, or with the [grouping setting](settings.md) one row per run of photos without a long break.
 
+A round **🔍** beside the tabs opens [search](search.md) over them (Oct 22, 2026).
+
 ## Layout
 
 Photos fill the screen on the page background (light or dark with the system); the controls float on top.

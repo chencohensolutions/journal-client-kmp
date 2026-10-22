@@ -37,6 +37,8 @@ import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.PrivateMedia
+import com.chencohensolution.journal.search.ApolloSearchApi
+import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.IosFreeUp
 import com.chencohensolution.journal.storage.PhoneStorage
@@ -95,6 +97,14 @@ object IosJournal {
             server = server,
             originals = originals,
             privateMedia = privateMedia,
+        )
+
+    /** Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet). */
+    fun createSearchController(library: LibraryController, server: ServerLibrary): SearchController =
+        SearchController(
+            library = library.state,
+            api = ApolloSearchApi(JournalSettings(UserDefaultsStore()), IosMtlsHttpClientFactory(), decodePemCertificates(SERVER_CA_PEM)),
+            server = server.media,
         )
 
     private var serverLibrary: ServerLibrary? = null

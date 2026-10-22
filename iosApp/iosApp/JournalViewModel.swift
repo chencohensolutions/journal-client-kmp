@@ -13,6 +13,8 @@ final class JournalViewModel: ObservableObject {
     let library: LibraryViewModel
     let stories: StoriesViewModel
     let settings: SettingsViewModel
+    /// Text search on the server.
+    let search: SearchViewModel
 
     private let controller: JournalController
     private var observation: ObservationHandle?
@@ -24,6 +26,7 @@ final class JournalViewModel: ObservableObject {
         settings = SettingsViewModel()
         library = LibraryViewModel(backup: backup, settings: settings)
         stories = StoriesViewModel(library: library, settings: settings)
+        search = SearchViewModel(library: library)
         state = controller.currentState
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in

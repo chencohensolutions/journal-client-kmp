@@ -1,0 +1,11 @@
+query SearchMedia($text: String!, $limit: Int) {
+  searchMedia(text: $text, limit: $limit) {
+    hits {
+      media {
+        sha256
+      }
+    }
+    indexed
+    total
+  }
+}

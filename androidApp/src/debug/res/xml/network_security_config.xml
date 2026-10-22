@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: also trust the local test server's CA (~/Projects/journal/local-test-server/certs/ca.pem), so
+     the emulator can test against it at https://localhost:56460 (after `adb reverse tcp:56460 tcp:56460`). The real
+     server's CA is compiled in (SERVER_CA_PEM) and trusted in every build. -->
+<network-security-config>
+    <base-config>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/test_server_ca" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

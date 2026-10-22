@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
                         backup = viewModel.backup,
                         server = viewModel.server,
                         freeUp = viewModel.freeUp,
+                        search = viewModel.search,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true
