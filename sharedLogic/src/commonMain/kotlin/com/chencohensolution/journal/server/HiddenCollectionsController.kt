@@ -76,10 +76,22 @@ class HiddenCollectionsController internal constructor(
      * Hides or shows [collection] (one of the current state's own: they are matched by identity). The switch moves at
      * once; if the server doesn't take it, it goes back and the state says "not changed". Ignored while saving.
      */
-    fun set(collection: HiddenCollections.Collection, hidden: Boolean) {
+    fun set(collection: HiddenCollections.Collection, hidden: Boolean) = save { it.with(collection, hidden) }
+
+    /** Hides nudity, or shows it; like [set]. */
+    fun setNudityHidden(hidden: Boolean) = save { it.withNudity(hidden) }
+
+    /** The score from which nudity is hidden; values outside [HiddenCollections.Nudity.RANGE] are ignored. Like [set]. */
+    fun setNudityFromPercent(percent: Int) {
+        if (percent !in HiddenCollections.Nudity.RANGE) return
+        save { it.withNudity(hidden = true, fromPercent = percent) }
+    }
+
+    private fun save(change: (HiddenCollections) -> HiddenCollections) {
         val before = _state.value as? HiddenCollectionsState.Ready ?: return
         if (before.saving) return
-        val choice = before.collections.with(collection, hidden)
+        val choice = change(before.collections)
+        if (choice == before.collections) return
         _state.value = ready(choice, before.query).copy(saving = true)
         saving = scope.launch {
             // Finished even when the screen is left meanwhile: [close] syncs after it.

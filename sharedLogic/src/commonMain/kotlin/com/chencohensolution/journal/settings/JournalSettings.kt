@@ -144,16 +144,13 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_FIRST_IMAGE_WIDTH_PERCENT, value.firstWidthPercent.toString())
         }
 
-    /** "Show private media" and its threshold (Settings → Private media); off by default. */
+    /** "Show private media" (Settings → Private media); off by default. */
     var privateMedia: PrivateMedia
-        get() = PrivateMedia(
-            show = store.getString(KEY_SHOW_PRIVATE_MEDIA) == "true",
-            thresholdPercent = store.getString(KEY_PRIVATE_THRESHOLD_PERCENT)?.toIntOrNull()?.takeIf { it in PrivateMedia.RANGE }
-                ?: PrivateMedia.DEFAULT_THRESHOLD_PERCENT,
-        )
+        get() = PrivateMedia(show = store.getString(KEY_SHOW_PRIVATE_MEDIA) == "true")
         set(value) {
             store.putString(KEY_SHOW_PRIVATE_MEDIA, value.show.toString())
-            store.putString(KEY_PRIVATE_THRESHOLD_PERCENT, value.thresholdPercent.toString())
+            // The nudity threshold kept here before the server hid nudity.
+            store.putString(KEY_PRIVATE_THRESHOLD_PERCENT, null)
         }
 
     /** "Show the phone badge" (Settings → Badges): off by default. */
@@ -214,6 +211,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_FIRST_IMAGE_FORMAT = "first_image_format"
         private const val KEY_FIRST_IMAGE_WIDTH_PERCENT = "first_image_width_percent"
         private const val KEY_SHOW_PRIVATE_MEDIA = "show_private_media"
+        /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
     }

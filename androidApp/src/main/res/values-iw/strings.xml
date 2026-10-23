@@ -200,9 +200,7 @@
     <string name="settings_on_phone_badge_body">מסמנת תמונות שנמצאות בטלפון הזה וגם מגובות. לתמונות שממתינות להעלאה, בהעלאה או שההעלאה שלהן נכשלה תמיד יש תגית.</string>
     <string name="settings_private_title">מדיה פרטית</string>
     <string name="settings_private_switch">הצגת מדיה פרטית</string>
-    <string name="settings_private_switch_body">כשכבוי, תמונות וסרטונים שסימנת כפרטיים, ואלה שהשרת מצא בהם עירום, מוסתרים בכל מקום, ולא יורדים לטלפון הזה.</string>
-    <string name="settings_private_threshold">הסתרה החל מ־</string>
-    <string name="settings_private_threshold_body">כמה השרת צריך להיות בטוח שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום.</string>
+    <string name="settings_private_switch_body">כשכבוי, תמונות וסרטונים שסימנת כפרטיים מוסתרים בכל מקום, ולא יורדים לטלפון הזה.</string>
     <string name="settings_gap_title">שורה חדשה אחרי הפסקה של</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">שעה אחת</item>
@@ -542,11 +540,20 @@
     </plurals>
     <string name="settings_hidden_title">אוספים מוסתרים</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
-    <string name="settings_hidden_row_body">וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך</string>
+    <string name="settings_hidden_row_body">עירום, וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך</string>
     <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
     <string name="hidden_whatsapp_title">וואטסאפ</string>
     <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
     <string name="hidden_screenshots_title">צילומי מסך</string>
+    <string name="hidden_nudity_title">עירום</string>
+    <string name="hidden_nudity">תמונות וסרטונים עם עירום</string>
+    <string name="hidden_nudity_from">הסתרה החל מ־</string>
+    <string name="hidden_nudity_from_body">כמה הסריקה בשרת צריכה להיות בטוחה שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום.</string>
+    <plurals name="hidden_nudity_not_scanned">
+        <item quantity="one">אחד עוד לא נסרק</item>
+        <item quantity="two">%s עוד לא נסרקו</item>
+        <item quantity="other">%s עוד לא נסרקו</item>
+    </plurals>
     <string name="hidden_without_app">בלי שם אפליקציה</string>
     <string name="hidden_find_app">חיפוש אפליקציה</string>
     <string name="hidden_no_apps">עדיין אין בשרת צילום מסך ששמו מציין אפליקציה.</string>

@@ -113,25 +113,17 @@ class ServerLibraryTest {
     }
 
     @Test
-    fun privateMediaIsLeftOutUnlessShown() {
+    fun theDevicesOwnCopyOfWhatTheServerHidesIsLeftOut() {
         val backedUp = device("22", "IMG_1.heic", 999)
         val notReadYet = device("23", "IMG_2.heic", 555)
         val entries = mapOf("22" to LedgerEntry("22", 999, 1, "b".repeat(64), uploaded = true))
-        val server = listOf(
-            server('b', "IMG_1.heic", 999, nudity = 0.9), // the device photo backup read (same sha256)
-            server('d', "IMG_2.heic", 555, nudity = 0.7), // a device photo matched by name and size
-            server('c', "only.heic", 123, nudity = 0.5), // only on the server, at the threshold
-            server('e', "beach.heic", 321, nudity = 0.49), // below it
-            server('f', "new.heic", 456), // not scanned yet
-        )
-        val hidden = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia())
-        assertEquals(listOf("server:" + "e".repeat(64), "server:" + "f".repeat(64)), hidden.map { it.id })
-
-        val stricter = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(thresholdPercent = 80))
-        assertEquals(listOf("23", "server:" + "c".repeat(64), "server:" + "e".repeat(64), "server:" + "f".repeat(64)), stricter.map { it.id })
-
-        val shown = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true))
-        assertEquals(5, shown.size)
+        val server = listOf(server('e', "beach.heic", 321, nudity = 0.9)) // the server sends what it shows, whatever the score
+        val hiddenOnServer = setOf("b".repeat(64))
+        val merged = mergeWithServer(listOf(backedUp, notReadYet), entries, server, hiddenOnServer = hiddenOnServer)
+        // The copy backup read is left out; the one it hasn't read yet can't be matched, and shows.
+        assertEquals(listOf("23", "server:" + "e".repeat(64)), merged.map { it.id })
+        // "Show private media" doesn't bring it back: the server hides it.
+        assertEquals(merged, mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true), hiddenOnServer = hiddenOnServer))
     }
 
     @Test
@@ -164,11 +156,11 @@ class ServerLibraryTest {
         }
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = SettingsController(JournalSettings(store), dispatcher)
-        assertEquals(PrivateMedia(show = false, thresholdPercent = 50), settings.privateMedia.value)
+        values["private_threshold_percent"] = "70" // kept here before the server hid nudity
+        assertEquals(PrivateMedia(show = false), settings.privateMedia.value)
         settings.setShowPrivateMedia(true)
-        settings.setPrivateThresholdPercent(70)
-        settings.setPrivateThresholdPercent(100) // outside the range: ignored
-        assertEquals(PrivateMedia(show = true, thresholdPercent = 70), settings.currentState.privateMedia)
-        assertEquals(PrivateMedia(show = true, thresholdPercent = 70), SettingsController(JournalSettings(store), dispatcher).privateMedia.value)
+        assertEquals(PrivateMedia(show = true), settings.currentState.privateMedia)
+        assertEquals(PrivateMedia(show = true), SettingsController(JournalSettings(store), dispatcher).privateMedia.value)
+        assertEquals(null, values["private_threshold_percent"])
     }
 }

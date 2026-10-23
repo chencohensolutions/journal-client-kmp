@@ -60,21 +60,13 @@ data class SimilarityThreshold(val percent: Int = DEFAULT_PERCENT, val defaultPe
 }
 
 /**
- * Photos the user marked private, and those the server's nudity scan scored at [thresholdPercent] or more: unless [show]
- * (off by default), they are left out of the library everywhere, and nothing of them is fetched (no preview, no
- * original). Device photos the server marked or scored are left out too.
+ * Photos the user marked private: unless [show] (off by default), they are left out of the library everywhere, and
+ * nothing of them is fetched (no preview, no original). Device photos the server marked are left out too. Nudity is
+ * hidden by the server instead (Hidden collections, see HiddenCollections).
  */
-data class PrivateMedia(val show: Boolean = false, val thresholdPercent: Int = DEFAULT_THRESHOLD_PERCENT) {
-    /** Whether a photo is hidden: marked private ([isPrivate]), or with this score; one not scanned yet ([nudity] null) isn't. */
-    fun hides(nudity: Double?, isPrivate: Boolean = false): Boolean =
-        !show && (isPrivate || nudity != null && nudity * 100 >= thresholdPercent)
-
-    companion object {
-        const val DEFAULT_THRESHOLD_PERCENT = 50
-
-        /** What the Settings screen offers; anything stored outside falls back to the default. */
-        val RANGE: IntRange = 10..95
-    }
+data class PrivateMedia(val show: Boolean = false) {
+    /** Whether a photo the user marked private ([isPrivate]) or not is hidden. */
+    fun hides(isPrivate: Boolean): Boolean = !show && isPrivate
 }
 
 /** The user's choices on the Settings screen, and the Moments tab's filter bar. */
@@ -87,7 +79,7 @@ data class SettingsState(
     val previewCacheGigabytes: Int = JournalSettings.DEFAULT_PREVIEW_CACHE_GB,
     /** How server photos are shown: previews (format, quality) or their originals. */
     val previewOptions: PreviewOptions = PreviewOptions(),
-    /** "Show private media" and its threshold. */
+    /** "Show private media". */
     val privateMedia: PrivateMedia = PrivateMedia(),
     /**
      * Whether a photo's corner badge shows the phone once it is on this phone and backed up (off by default: only
@@ -205,17 +197,9 @@ class SettingsController internal constructor(
         _state.update { it.copy(previewOptions = options) }
     }
 
-    /** "Show private media" on, or off (photos over the threshold are hidden). */
-    fun setShowPrivateMedia(show: Boolean) = changePrivateMedia { it.copy(show = show) }
-
-    /** Values outside [PrivateMedia.RANGE] are ignored. */
-    fun setPrivateThresholdPercent(percent: Int) {
-        if (percent !in PrivateMedia.RANGE) return
-        changePrivateMedia { it.copy(thresholdPercent = percent) }
-    }
-
-    private fun changePrivateMedia(transform: (PrivateMedia) -> PrivateMedia) {
-        val privateMedia = transform(_state.value.privateMedia)
+    /** "Show private media" on, or off (photos marked private are hidden). */
+    fun setShowPrivateMedia(show: Boolean) {
+        val privateMedia = PrivateMedia(show)
         settings.privateMedia = privateMedia
         _state.update { it.copy(privateMedia = privateMedia) }
         _privateMedia.value = privateMedia

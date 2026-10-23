@@ -8,6 +8,7 @@ fragment HiddenCollectionsFields on HiddenCollections {
   whatsapp { ...CollectionFields }
   screenshotsWithoutApp { ...CollectionFields }
   screenshotApps { ...CollectionFields }
+  nudity { hidden from files notScanned }
 }
 
 query HiddenCollections {

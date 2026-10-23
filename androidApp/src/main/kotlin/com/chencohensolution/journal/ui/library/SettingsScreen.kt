@@ -66,7 +66,6 @@ internal class SettingsActions(
     val setSimilarityPercent: (Int) -> Unit = {},
     val resetSimilarity: () -> Unit = {},
     val setShowPrivateMedia: (Boolean) -> Unit = {},
-    val setPrivateThresholdPercent: (Int) -> Unit = {},
     /** Opens Hidden collections (behind the phone's lock). */
     val openHidden: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
@@ -312,8 +311,8 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
 }
 
 /**
- * "Show private media" (off by default) and, while off, the score from which photos are hidden; and Hidden collections,
- * with how far the library is in reading the server's list again after a change there.
+ * "Show private media" (off by default), and Hidden collections (where nudity is hidden too), with how far the library
+ * is in reading the server's list again after a change there.
  */
 @Composable
 private fun PrivateMediaCard(privateMedia: PrivateMedia, syncProgress: SyncProgress?, actions: SettingsActions) {
@@ -350,37 +349,6 @@ private fun PrivateMediaCard(privateMedia: PrivateMedia, syncProgress: SyncProgr
             }
             Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
             Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
-        }
-        if (privateMedia.show) return@Card
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-        var dragging by remember(privateMedia.thresholdPercent) { mutableFloatStateOf(privateMedia.thresholdPercent.toFloat()) }
-        val range = PrivateMedia.RANGE
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.settings_private_threshold),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Slider(
-                value = dragging,
-                onValueChange = { dragging = it },
-                onValueChangeFinished = { actions.setPrivateThresholdPercent(dragging.toInt()) },
-                valueRange = range.first.toFloat()..range.last.toFloat(),
-                steps = (range.last - range.first) / 5 - 1,
-                colors = SliderDefaults.colors(
-                    thumbColor = LibraryColors.OnBackground,
-                    activeTrackColor = LibraryColors.OnBackground,
-                    inactiveTrackColor = LibraryColors.Muted.copy(alpha = 0.3f),
-                    activeTickColor = Color.Transparent,
-                    inactiveTickColor = Color.Transparent,
-                ),
-            )
-            Text(stringResource(R.string.settings_private_threshold_body), color = LibraryColors.Muted, fontSize = 13.sp)
         }
     }
 }

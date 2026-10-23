@@ -318,6 +318,7 @@ object LabData {
                 whatsapp = HiddenCollections.Collection("WhatsApp", 9_870, hidden = false),
                 screenshotsWithoutApp = HiddenCollections.Collection("", 1_204, hidden = false),
                 screenshotApps = apps,
+                nudity = HiddenCollections.Nudity(hidden = true, fromPercent = 50, files = 312, notScanned = 1_840),
             ),
             query = "",
             shownApps = apps,

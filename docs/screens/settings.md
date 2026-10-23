@@ -72,15 +72,18 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 - **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
-  default; then **Hidden collections** (both platforms, Oct 22, 2026; a row with a lock, "WhatsApp and screenshots by app,
-  hidden on all your devices", see below). While Show private media is off, **Hide from** a slider from 10% to 95% in
-  steps of 5 (default **50%**): the nudity score the server's scan must reach for a photo or video to be hidden.
+  default, for the photos the user marked private; then **Hidden collections** (both platforms, Oct 22, 2026; a row
+  with a lock, "Nudity, WhatsApp and screenshots by app, hidden on all your devices", see below). The nudity slider
+  that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
 - **Hidden collections** (its own screen, asked for Oct 22, 2026; both platforms): opens only after the phone's lock
   (Android: fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential; iOS:
   Face ID, Touch ID or the passcode, `LAContext` `.deviceOwnerAuthentication`), every time it opens and again after
   the app was in the background; a phone without a screen lock (or passcode) can't open it. An intro says
   hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
-  off shows them again. **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
+  off shows them again. **Nudity** (Oct 23, 2026): "Photos and videos with nudity · N photos and videos · M not
+  scanned yet", **on** by default, and while on **Hide from**, a slider from 10% to 95% in steps of 5 (default
+  **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
+  **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
   N", **Find an app** (filters the list), then a switch per app with its screenshots, most first ("Bumble · 1,458
   screenshots"). On means hidden. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if
@@ -146,19 +149,21 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   prompt is never shown by itself when a run ends. A run that ends while the app is away posts a local notification
   ("120 files checked: tap to move them to the trash", as Android's), which opens the app; notification permission
   is asked when **Free up** is tapped. Either answer to the prompt clears the list and that notification.
-- Private media: the server scores files with NudeNet (`scripts/scan-nudity`, journal-server-go docs/media.md
-  "Nudity scan") and sends the score in the change feed (`Media.nudity`, null until scanned). While **Show private
-  media** is off, a file at or over the threshold is left out of the library (`mergeWithServer`), so no screen shows it
-  and no preview or original of it is downloaded; the phone's own copy (same sha256, or same name and size) is left
-  out too. It is never a tag. Turning the switch on, or moving the slider, applies at once. A file not scanned yet is
-  shown.
+- Private media: while **Show private media** is off, a file the user marked private is left out of the library
+  (`mergeWithServer`), so no screen shows it and no preview or original of it is downloaded; the phone's own copy
+  (same sha256, or same name and size) is left out too. Turning the switch on applies at once.
+- Nudity: the server scores each new file with NudeNet, by itself (journal-server-go docs/media.md "Nudity
+  scan") and, since Oct 23, 2026, hides those at or over the user's score itself, like a hidden collection (below);
+  the app used to hide them and no longer reads the score for that. It is never a tag. A file not scanned yet is
+  shown. Show private media doesn't show them: Hidden collections → Nudity off does, on every device.
 - Hidden collections: the server hides them, not the app (journal-server-go docs/media.md "Hidden collections"):
-  hidden files come in the change feed as deleted, so the library drops them like deleted files; "On your server"
-  and search don't count them. Whatever the phone keeps of a file the server drops (previews, a downloaded original,
-  a kept original, the streamed video) is deleted then (`ServerLibrary`'s `removed`,
-  `PhoneStorage.remove`). The phone's own gallery is never touched: a hidden screenshot still on the phone can still
-  show, unless Show in the app → Screenshots is off (the default). Changing the choice makes every device read the
-  whole change feed again on its next sync.
+  hidden files come in the change feed as deleted and hidden, so the library drops them like deleted files; "On your
+  server" and search don't count them. Whatever the phone keeps of a file the server drops (previews, a downloaded
+  original, a kept original, the streamed video) is deleted then (`ServerLibrary`'s `removed`,
+  `PhoneStorage.remove`). The phone's own gallery is never touched, but the library leaves out the phone's own copy
+  of a hidden file once backup has read it (its sha256 is in `ServerLibrary.hidden`, kept in `server/media.json`); a
+  photo backup hasn't read yet still shows until it has. Changing the choice makes every device read the whole change
+  feed again on its next sync.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
 
 ## Code

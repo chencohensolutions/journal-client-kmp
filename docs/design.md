@@ -163,12 +163,13 @@ fetches what is missing with Range requests on a URLSession answering the mTLS c
 that passed waits for **Move to trash**, one PhotoKit request with iOS's own prompt, to Recently Deleted (see
 [screens/settings.md](screens/settings.md)). **Mark private** (asked for Oct 21, 2026; Android and iOS): the viewer's
 original card marks a photo the server has as private (`setPrivate`, kept in its sidecar with its edits and paired
-files) or unmarks it. Private photos are hidden like nudity over the threshold, on every device, while "Show private
-media" is off (the default); the phone's own copy is hidden too. The server can also keep private photos from a
+files) or unmarks it. Private photos are hidden on every device while "Show private media" is off (the default); the
+phone's own copy is hidden too. The server can also keep private photos from a
 device entirely (`journal-server private <serial> withhold`, off by default): they come to it as deleted from the
 change feed, and 404. **Hidden collections** (asked for Oct 22, 2026; Android and iOS): Settings → Private media →
 Hidden collections, behind the phone's lock, hides all of WhatsApp, or the screenshots of chosen apps (the server
-reads the app from a screenshot's name, `Media.app`), on every device. The server does the hiding: hidden files come
+reads the app from a screenshot's name, `Media.app`), and (Oct 23, 2026) what the nudity scan scored at the chosen
+score or more (from 50% by default; the apps hid it themselves before), on every device. The server does the hiding: hidden files come
 as deleted, aren't counted or found by search, and 404; the app drops them like deleted files, with its cached
 previews, originals and videos of them. Not yet anywhere: note sync.
 

@@ -11,7 +11,10 @@ struct HiddenView: View {
         PhoneLocked(title: "Hidden collections") {
             HiddenScreen(
                 state: hidden.state,
-                actions: HiddenActions(retry: hidden.retry, set: hidden.set, setQuery: hidden.setQuery)
+                actions: HiddenActions(
+                    retry: hidden.retry, set: hidden.set, setQuery: hidden.setQuery,
+                    setNudityHidden: hidden.setNudityHidden, setNudityFromPercent: hidden.setNudityFromPercent
+                )
             )
             .task { hidden.load() }
         }
@@ -42,6 +45,8 @@ final class HiddenViewModel: ObservableObject {
     func retry() { controller.retry() }
     func set(_ collection: HiddenCollections.Collection, _ hidden: Bool) { controller.set(collection: collection, hidden: hidden) }
     func setQuery(_ text: String) { controller.setQuery(text: text) }
+    func setNudityHidden(_ hidden: Bool) { controller.setNudityHidden(hidden: hidden) }
+    func setNudityFromPercent(_ percent: Int) { controller.setNudityFromPercent(percent: Int32(percent)) }
 }
 
 /// What Hidden collections can ask for; see `HiddenCollectionsController`.
@@ -51,13 +56,19 @@ struct HiddenActions {
     var set: (HiddenCollections.Collection, Bool) -> Void
     /// "Find an app".
     var setQuery: (String) -> Void
+    /// Nudity hidden (true) or shown; like `set`.
+    var setNudityHidden: (Bool) -> Void
+    /// The score from which nudity is hidden, in percent; like `set`.
+    var setNudityFromPercent: (Int) -> Void
 }
 
-/// All of WhatsApp, and screenshots by app, hidden on every device by the server. Drawn from `state` alone, so the UI
-/// lab shows it too. See docs/screens/settings.md.
+/// Nudity, all of WhatsApp, and screenshots by app, hidden on every device by the server. Drawn from `state` alone, so
+/// the UI lab shows it too. See docs/screens/settings.md.
 struct HiddenScreen: View {
     let state: HiddenCollectionsState
     let actions: HiddenActions
+    /// The nudity slider's value while it is dragged; saved when let go.
+    @State private var nudityFrom: Double?
 
     var body: some View {
         Form {
@@ -97,6 +108,7 @@ struct HiddenScreen: View {
                 Text("Not changed: can’t reach your server. Try again when connected to it.").foregroundStyle(LibraryColors.warning)
             }
         }
+        nudity(shown.nudity, saving: ready.saving)
         Section {
             row(Text("All WhatsApp photos and videos"), shown.whatsapp, count: String(localized: "\(Int(shown.whatsapp.files)) photos and videos"))
         } header: {
@@ -122,6 +134,50 @@ struct HiddenScreen: View {
             }
         } header: {
             Text("Screenshots")
+        }
+        .listRowBackground(LibraryColors.raised)
+    }
+
+    /// Nudity: the switch, with how many files score that much (and how many aren't scanned yet), and while on, the
+    /// score from which they are hidden, saved when let go.
+    private func nudity(_ nudity: HiddenCollections.Nudity, saving: Bool) -> some View {
+        let files = String(localized: "\(Int(nudity.files)) photos and videos")
+        let count = nudity.notScanned > 0 ? files + " · " + String(localized: "\(Int(nudity.notScanned)) not scanned yet") : files
+        let shown = Int(nudityFrom ?? Double(nudity.fromPercent))
+        let range = HiddenCollections.NudityCompanion.shared.RANGE
+        return Section {
+            Toggle(isOn: Binding(get: { nudity.hidden }, set: { if !saving { actions.setNudityHidden($0) } })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Photos and videos with nudity").foregroundStyle(LibraryColors.onBackground)
+                    Text(count).font(.footnote).monospacedDigit().foregroundStyle(LibraryColors.muted)
+                }
+            }
+            .tint(LibraryColors.accent)
+            if nudity.hidden {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Hide from").foregroundStyle(LibraryColors.onBackground)
+                        Spacer()
+                        Text("\(shown)%").monospacedDigit().foregroundStyle(LibraryColors.onBackground)
+                    }
+                    Slider(
+                        value: Binding(get: { nudityFrom ?? Double(nudity.fromPercent) }, set: { nudityFrom = $0 }),
+                        in: Double(range.first)...Double(range.last),
+                        step: 5
+                    ) { editing in
+                        if !editing, let nudityFrom {
+                            if !saving { actions.setNudityFromPercent(Int(nudityFrom)) }
+                            self.nudityFrom = nil
+                        }
+                    }
+                    .tint(LibraryColors.onBackground)
+                    Text("How sure the server’s scan must be that a photo shows nudity to hide it. Lower hides more, including some that show none.")
+                        .font(.footnote)
+                        .foregroundStyle(LibraryColors.muted)
+                }
+            }
+        } header: {
+            Text("Nudity")
         }
         .listRowBackground(LibraryColors.raised)
     }

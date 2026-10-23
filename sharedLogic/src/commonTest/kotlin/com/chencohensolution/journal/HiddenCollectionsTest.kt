@@ -46,7 +46,8 @@ class HiddenCollectionsTest {
 
     private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"hidden":false},""" +
         """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"hidden":false},""" +
-        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"hidden":false}]}"""
+        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"hidden":false}],""" +
+        """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3}}"""
 
     @Test
     fun aFileTheServerHidesIsDroppedWithWhatThisPhoneKeepsOfIt() = runTest {
@@ -62,10 +63,10 @@ class HiddenCollectionsTest {
                         """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
                     }
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
-                    hidden -> """{"data":{"changes":{"cursor":"c2","hasMore":false,"remaining":0,"changes":[{"kind":"MEDIA","path":"media/$bumble","deleted":true,"media":null}]}}}"""
+                    hidden -> """{"data":{"changes":{"cursor":"c2","hasMore":false,"remaining":0,"changes":[{"kind":"MEDIA","path":"media/$bumble","deleted":true,"hidden":true,"media":null}]}}}"""
                     else -> """{"data":{"changes":{"cursor":"c1","hasMore":false,"remaining":0,"changes":[""" +
-                        """{"kind":"MEDIA","path":"media/$bumble","deleted":false,"media":${media(bumble)}},""" +
-                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"media":${media(photo)}}]}}}"""
+                        """{"kind":"MEDIA","path":"media/$bumble","deleted":false,"hidden":false,"media":${media(bumble)}},""" +
+                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"hidden":false,"media":${media(photo)}}]}}}"""
                 }
                 respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
             })
@@ -80,23 +81,27 @@ class HiddenCollectionsTest {
 
         val shown = library.hiddenCollections()!!
         assertEquals(listOf(HiddenCollections.Collection("Bumble", 1, false)), shown.screenshotApps)
+        assertEquals(HiddenCollections.Nudity(hidden = true, fromPercent = 50, files = 2, notScanned = 3), shown.nudity)
         val saved = library.setHiddenCollections(shown.with(shown.screenshotApps[0], hidden = true))!!
         assertEquals(true, saved.screenshotApps[0].hidden)
-        assert(sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it }) { sent.joinToString("\n") }
+        assert(sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it }) {
+            sent.joinToString("\n")
+        }
         // Saving doesn't sync: the screen does once, when it is left.
         assertEquals(2, library.media.value.size)
 
-        // The next sync drops it, and tells the phone to delete what it keeps of it.
+        // The next sync drops it, tells the phone to delete what it keeps of it, and to leave out its own copy.
         library.sync()
         assertEquals(listOf(photo), library.media.value.map { it.sha256 })
         assertEquals(listOf(bumble), removed)
+        assertEquals(setOf(bumble), library.hidden.value)
     }
 
     @Test
     fun withChangesOnlyTheCollectionGiven() {
         val whatsapp = HiddenCollections.Collection("WhatsApp", 3, false)
         val app = HiddenCollections.Collection("WhatsApp", 3, false)
-        val choice = HiddenCollections(whatsapp, HiddenCollections.Collection("", 0, false), listOf(app))
+        val choice = HiddenCollections(whatsapp, HiddenCollections.Collection("", 0, false), listOf(app), HiddenCollections.Nudity(true, 50, 0, 0))
         val changed = choice.with(choice.screenshotApps[0], hidden = true)
         assertEquals(false, changed.whatsapp.hidden)
         assertEquals(true, changed.screenshotApps[0].hidden)
@@ -120,7 +125,7 @@ class HiddenCollectionsTest {
                     "SetHiddenCollections" in body -> """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
                     else -> """{"data":{"changes":{"cursor":"c1","hasMore":false,"remaining":0,"changes":[""" +
-                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"media":${media(photo)}}]}}}"""
+                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"hidden":false,"media":${media(photo)}}]}}}"""
                 }
                 respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
             })
@@ -173,10 +178,10 @@ class HiddenCollectionsTest {
                 val body = (request.body as io.ktor.http.content.TextContent).text
                 val json = if ("\"c1\"" !in body) {
                     """{"data":{"changes":{"cursor":"c1","hasMore":true,"remaining":1,"changes":[""" +
-                        """{"kind":"MEDIA","path":"media/$bumble","deleted":false,"media":${media(bumble)}}]}}}"""
+                        """{"kind":"MEDIA","path":"media/$bumble","deleted":false,"hidden":false,"media":${media(bumble)}}]}}}"""
                 } else {
                     """{"data":{"changes":{"cursor":"c2","hasMore":false,"remaining":0,"changes":[""" +
-                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"media":${media(photo)}}]}}}"""
+                        """{"kind":"MEDIA","path":"media/$photo","deleted":false,"hidden":false,"media":${media(photo)}}]}}}"""
                 }
                 respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
             })
@@ -188,6 +193,22 @@ class HiddenCollectionsTest {
         assertEquals(SyncProgress(done = 1, total = 2), progress.await())
         assertNull(library.syncProgress.value)
         assertEquals(2, library.media.value.size)
+    }
+
+    @Test
+    fun nudityIsHiddenFromTheChosenScore() = runTest {
+        val (controller) = controller { true }
+        controller.load()
+        val ready = assertIs<HiddenCollectionsState.Ready>(controller.settled())
+        assertEquals(HiddenCollections.Nudity(hidden = true, fromPercent = 50, files = 2, notScanned = 3), ready.collections.nudity)
+        controller.setNudityFromPercent(5) // outside the range: ignored
+        controller.setNudityFromPercent(50) // no change: nothing is sent
+        assertEquals(false, assertIs<HiddenCollectionsState.Ready>(controller.currentState).saving)
+        controller.setNudityFromPercent(80)
+        val saving = assertIs<HiddenCollectionsState.Ready>(controller.currentState)
+        assertEquals(true, saving.saving)
+        assertEquals(80, saving.collections.nudity.fromPercent)
+        controller.close()
     }
 
     @Test

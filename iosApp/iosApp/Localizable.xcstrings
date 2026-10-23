@@ -350,6 +350,58 @@
         }
       }
     },
+    "%lld not scanned yet" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld not scanned yet"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld not scanned yet"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld עוד לא נסרקו"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "אחד עוד לא נסרק"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld עוד לא נסרקו"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld עוד לא נסרקו"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld of %lld ·" : {
       "localizations" : {
         "he" : {
@@ -3552,12 +3604,12 @@
         }
       }
     },
-    "How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none." : {
+    "How sure the server’s scan must be that a photo shows nudity to hide it. Lower hides more, including some that show none." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כמה השרת צריך להיות בטוח שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום."
+            "value" : "כמה הסריקה בשרת צריכה להיות בטוחה שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום."
           }
         }
       }
@@ -4072,6 +4124,26 @@
         }
       }
     },
+    "Nudity" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עירום"
+          }
+        }
+      }
+    },
+    "Nudity, WhatsApp and screenshots by app, hidden on all your devices" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עירום, וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך"
+          }
+        }
+      }
+    },
     "Open in the map" : {
       "localizations" : {
         "he" : {
@@ -4128,6 +4200,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תבנית"
+          }
+        }
+      }
+    },
+    "Photos and videos with nudity" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות וסרטונים עם עירום"
           }
         }
       }
@@ -6715,22 +6797,22 @@
         }
       }
     },
-    "WhatsApp and screenshots by app, hidden on all your devices" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך"
-          }
-        }
-      }
-    },
     "When" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מתי"
+          }
+        }
+      }
+    },
+    "When off, photos and videos you marked private are hidden everywhere, and not downloaded to this phone." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשכבוי, תמונות וסרטונים שסימנת כפרטיים מוסתרים בכל מקום, ולא יורדים לטלפון הזה."
           }
         }
       }
@@ -6991,16 +7073,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "„‎+6 וואטסאפ” ביום, הקשה מציגה אותן"
-          }
-        }
-      }
-    },
-    "When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "כשכבוי, תמונות וסרטונים שסימנת כפרטיים, ואלה שהשרת מצא בהם עירום, מוסתרים בכל מקום, ולא יורדים לטלפון הזה."
           }
         }
       }

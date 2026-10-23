@@ -116,7 +116,7 @@ extension SettingsActions {
     static let lab = SettingsActions(
         setGroupingMode: { _ in }, setGapHours: { _ in }, setSimilarityPercent: { _ in }, resetSimilarity: {}, toggleFeedSource: { _ in },
         setSayWhatsHidden: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
-        setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in }, setPrivateThresholdPercent: { _ in },
+        setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in },
         setShowOnPhoneBadge: { _ in }, setSearchPageSize: { _ in }, setBackupEnabled: { _ in }, toggleBackupSource: { _ in },
         setWifiOnly: { _ in }, setChargingOnly: { _ in }, setOrder: { _ in }, backUpNow: {}
     )
@@ -129,7 +129,7 @@ extension FreeUpActions {
 
 extension HiddenActions {
     /// Does nothing: the lab has no controllers.
-    static let lab = HiddenActions(retry: {}, set: { _, _ in }, setQuery: { _ in })
+    static let lab = HiddenActions(retry: {}, set: { _, _ in }, setQuery: { _ in }, setNudityHidden: { _ in }, setNudityFromPercent: { _ in })
 }
 
 extension ViewerActions {

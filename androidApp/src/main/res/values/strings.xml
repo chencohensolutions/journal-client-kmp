@@ -196,9 +196,7 @@
     <string name="settings_on_phone_badge_body">Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge.</string>
     <string name="settings_private_title">Private media</string>
     <string name="settings_private_switch">Show private media</string>
-    <string name="settings_private_switch_body">When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone.</string>
-    <string name="settings_private_threshold">Hide from</string>
-    <string name="settings_private_threshold_body">How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.</string>
+    <string name="settings_private_switch_body">When off, photos and videos you marked private are hidden everywhere, and not downloaded to this phone.</string>
     <string name="settings_gap_title">New row after a break of</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">%d hour</item>
@@ -520,11 +518,19 @@
     </plurals>
     <string name="settings_hidden_title">Hidden collections</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
-    <string name="settings_hidden_row_body">WhatsApp and screenshots by app, hidden on all your devices</string>
+    <string name="settings_hidden_row_body">Nudity, WhatsApp and screenshots by app, hidden on all your devices</string>
     <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
     <string name="hidden_whatsapp_title">WhatsApp</string>
     <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
     <string name="hidden_screenshots_title">Screenshots</string>
+    <string name="hidden_nudity_title">Nudity</string>
+    <string name="hidden_nudity">Photos and videos with nudity</string>
+    <string name="hidden_nudity_from">Hide from</string>
+    <string name="hidden_nudity_from_body">How sure the server’s scan must be that a photo shows nudity to hide it. Lower hides more, including some that show none.</string>
+    <plurals name="hidden_nudity_not_scanned">
+        <item quantity="one">%s not scanned yet</item>
+        <item quantity="other">%s not scanned yet</item>
+    </plurals>
     <string name="hidden_without_app">Without an app name</string>
     <string name="hidden_find_app">Find an app</string>
     <string name="hidden_no_apps">No screenshot on your server names its app yet.</string>

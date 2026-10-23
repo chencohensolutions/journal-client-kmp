@@ -125,6 +125,7 @@ class LibraryController internal constructor(
             }
         }
         server?.let { serverLibrary -> scope.launch { serverLibrary.media.collect { publish() } } }
+        server?.let { serverLibrary -> scope.launch { serverLibrary.hidden.collect { publish() } } }
         originals?.let { kept -> scope.launch { kept.load(); kept.kept.collect { publish() } } }
         privateMedia?.let { flow -> scope.launch { flow.collect { publish() } } }
     }
@@ -133,11 +134,14 @@ class LibraryController internal constructor(
     private fun publish() {
         val backupState = backup?.value
         val serverMedia = server?.media?.value.orEmpty()
+        val hiddenOnServer = server?.hidden?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
         val private = privateMedia?.value ?: savedPrivateMedia
-        val inputs = listOf(readItems, backupState?.entries, serverMedia, kept, private)
+        val inputs = listOf(readItems, backupState?.entries, serverMedia, hiddenOnServer, kept, private)
         if (mergedFrom == null || mergedFrom!!.indices.any { mergedFrom!![it] !== inputs[it] }) {
-            merged = groupByDay(mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private))
+            merged = groupByDay(
+                mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer),
+            )
             mergedFrom = inputs
         }
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
@@ -248,6 +252,8 @@ class LibraryController internal constructor(
  * photo that was on this device (deleted from it since) keeps its device id, so its stories and note still find it;
  * [kept] are originals the app downloaded, by sha256. What [privateMedia] hides is left out, the device's copies too
  * (matched the same way), so nothing of it is shown or fetched; what is shown of a private file is marked [MediaItem.isPrivate].
+ * The device's copies of what the server hides ([hiddenOnServer], by sha256: ServerLibrary.hidden) are left out too; a
+ * device photo backup hasn't read yet can't be matched to them, and shows until it has.
  */
 internal fun mergeWithServer(
     device: List<MediaItem>,
@@ -255,14 +261,16 @@ internal fun mergeWithServer(
     server: List<ServerMedia>,
     kept: Map<String, String> = emptyMap(),
     privateMedia: PrivateMedia = PrivateMedia(),
+    hiddenOnServer: Set<String> = emptySet(),
 ): List<MediaItem> {
     val items = device.map { item -> entries[item.id]?.takeIf { it.matches(item) }?.let { item.copy(sha256 = it.sha256) } ?: item }
+        .filter { it.sha256 == null || it.sha256 !in hiddenOnServer }
     if (server.isEmpty()) return items
     val shas = items.mapNotNullTo(HashSet()) { it.sha256 }
     val namesAndSizes = items.mapNotNullTo(HashSet()) { item -> item.fileName?.lowercase()?.let { it to item.sizeBytes } }
     val deviceIds = device.mapTo(HashSet()) { it.id }
     val formerIds = entries.values.filter { it.uploaded && it.id !in deviceIds }.associate { it.sha256 to it.id }
-    val hidden = server.filter { privateMedia.hides(it.nudity, it.isPrivate) }
+    val hidden = server.filter { privateMedia.hides(it.isPrivate) }
     val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }
     val hiddenNamesAndSizes = hidden.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
     val marked = server.filter { it.isPrivate }

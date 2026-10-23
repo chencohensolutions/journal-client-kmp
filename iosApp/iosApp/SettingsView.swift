@@ -37,7 +37,7 @@ struct SettingsView: View {
             resetSimilarity: settings.resetSimilarity, toggleFeedSource: settings.toggleFeedSource, setSayWhatsHidden: settings.setSayWhatsHidden,
             setPreviewsEnabled: settings.setPreviewsEnabled, setPreviewFormat: settings.setPreviewFormat,
             setPreviewQuality: settings.setPreviewQuality, setPreviewLimit: settings.setPreviewLimit, clearPreviews: settings.clearPreviews,
-            setShowPrivateMedia: settings.setShowPrivateMedia, setPrivateThresholdPercent: settings.setPrivateThresholdPercent,
+            setShowPrivateMedia: settings.setShowPrivateMedia,
             setShowOnPhoneBadge: settings.setShowOnPhoneBadge, setSearchPageSize: settings.setSearchPageSize,
             setBackupEnabled: backup.setEnabled, toggleBackupSource: backup.toggleSource, setWifiOnly: backup.setWifiOnly,
             setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow
@@ -61,7 +61,6 @@ struct SettingsActions {
     var setPreviewLimit: (_ gigabytes: Int) -> Void
     var clearPreviews: () -> Void
     var setShowPrivateMedia: (Bool) -> Void
-    var setPrivateThresholdPercent: (Int) -> Void
     var setShowOnPhoneBadge: (Bool) -> Void
     var setSearchPageSize: (Int) -> Void
     // Backup.
@@ -97,8 +96,6 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     @ViewBuilder let hiddenScreen: () -> Hidden
     /// The slider's value while it is dragged; saved when let go.
     @State private var similarity: Double?
-    /// The private media slider's value while it is dragged.
-    @State private var privateThreshold: Double?
 
     var body: some View {
         let grouping = settings.grouping
@@ -396,46 +393,22 @@ extension SettingsScreen {
         .listRowBackground(LibraryColors.raised)
     }
 
-    /// "Show private media" (off by default) and, while off, the score from which photos are hidden; and Hidden collections.
+    /// "Show private media" (off by default), and Hidden collections (where nudity is hidden too).
     private var privateMediaSection: some View {
         let privateMedia = settings.privateMedia
-        let shown = Int(privateThreshold ?? Double(privateMedia.thresholdPercent))
         return Section {
             Toggle(isOn: Binding(get: { privateMedia.show }, set: actions.setShowPrivateMedia)) {
                 ModeLabel(
                     title: "Show private media",
-                    detail: "When off, photos and videos you marked private, and those the server found nudity in, are hidden everywhere, and not downloaded to this phone."
+                    detail: "When off, photos and videos you marked private are hidden everywhere, and not downloaded to this phone."
                 )
             }
             .tint(LibraryColors.accent)
-            if !privateMedia.show {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Hide from").foregroundStyle(LibraryColors.onBackground)
-                        Spacer()
-                        Text("\(shown)%").monospacedDigit().foregroundStyle(LibraryColors.onBackground)
-                    }
-                    Slider(
-                        value: Binding(get: { privateThreshold ?? Double(privateMedia.thresholdPercent) }, set: { privateThreshold = $0 }),
-                        in: SettingsViewModel.privateRange,
-                        step: 5
-                    ) { editing in
-                        if !editing, let privateThreshold {
-                            actions.setPrivateThresholdPercent(Int(privateThreshold))
-                            self.privateThreshold = nil
-                        }
-                    }
-                    .tint(LibraryColors.onBackground)
-                    Text("How sure the server must be that a photo shows nudity to hide it. Lower hides more, including some that show none.")
-                        .font(.footnote)
-                        .foregroundStyle(LibraryColors.muted)
-                }
-            }
             NavigationLink {
                 hiddenScreen()
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
-                    ModeLabel(title: "Hidden collections", detail: "WhatsApp and screenshots by app, hidden on all your devices")
+                    ModeLabel(title: "Hidden collections", detail: "Nudity, WhatsApp and screenshots by app, hidden on all your devices")
                     if let syncProgress {
                         Text("Updating your library: \(Int(syncProgress.done).formatted()) of \(Int(syncProgress.total).formatted())")
                             .font(.footnote)

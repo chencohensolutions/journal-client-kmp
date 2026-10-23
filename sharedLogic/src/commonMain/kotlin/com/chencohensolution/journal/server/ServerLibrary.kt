@@ -54,9 +54,9 @@ data class ServerMedia(
     /** camera, whatsapp, screenshots, other. */
     val source: String? = null,
     val uploadedAt: String,
-    /** The server's nudity scan, 0 to 1; null until scanned. Over the user's threshold it is hidden (see PrivateMedia). */
+    /** The server's nudity scan, 0 to 1; null until scanned. The server hides what scores high (see HiddenCollections). */
     val nudity: Double? = null,
-    /** The user marked it private; hidden like nudity over the threshold (see PrivateMedia). */
+    /** The user marked it private; hidden unless "Show private media" (see PrivateMedia). */
     val isPrivate: Boolean = false,
 ) {
     /**
@@ -119,7 +119,13 @@ data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
 data class SyncProgress(val done: Int, val total: Int)
 
 @Serializable
-private data class ServerMediaFile(val v: Int = 1, val cursor: String? = null, val media: List<ServerMedia> = emptyList())
+private data class ServerMediaFile(
+    val v: Int = 1,
+    val cursor: String? = null,
+    val media: List<ServerMedia> = emptyList(),
+    /** [ServerLibrary.hidden]. */
+    val hidden: List<String> = emptyList(),
+)
 
 /**
  * What the server holds, kept on this device so the library can show photos that are only there (deleted from the
@@ -148,6 +154,14 @@ class ServerLibrary internal constructor(
 
     private val _media = MutableStateFlow<List<ServerMedia>>(emptyList())
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
+
+    private val _hidden = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * The sha256s of the files the user hides on every device (a hidden collection, or nudity: see [HiddenCollections]).
+     * The server sends nothing more of them; the library leaves out this phone's own copies of them too.
+     */
+    val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
 
     private val _syncProgress = MutableStateFlow<SyncProgress?>(null)
 
@@ -281,8 +295,10 @@ class ServerLibrary internal constructor(
      */
     internal suspend fun sync(): Unit = mutex.withLock {
         val known = _media.value.associateByTo(LinkedHashMap()) { it.sha256 }
+        val hidden = _hidden.value.toMutableSet()
         val savedCursor = cursor
         var changed = false
+        var hiddenChanged = false
         val gone = mutableListOf<String>()
         var done = 0
         try {
@@ -295,6 +311,7 @@ class ServerLibrary internal constructor(
                     page.changes.forEach { change ->
                         val sha = change.path.removePrefix("media/")
                         val media = change.media
+                        hiddenChanged = (if (change.hidden) hidden.add(sha) else hidden.remove(sha)) || hiddenChanged
                         if (change.deleted || media == null) {
                             if (known.remove(sha) != null) {
                                 changed = true
@@ -312,9 +329,10 @@ class ServerLibrary internal constructor(
             }
         } finally {
             _syncProgress.value = null
-            if (changed || cursor != savedCursor) withContext(NonCancellable) {
+            if (changed || hiddenChanged || cursor != savedCursor) withContext(NonCancellable) {
                 val list = known.values.toList()
-                save(list)
+                save(list, hidden)
+                if (hiddenChanged) _hidden.value = hidden.toSet()
                 if (changed) _media.value = list
                 if (gone.isNotEmpty()) runCatching { removed(gone) }
             }
@@ -327,12 +345,14 @@ class ServerLibrary internal constructor(
             ?: return@withContext
         cursor = saved.cursor
         _media.value = saved.media
+        _hidden.value = saved.hidden.toSet()
     }
 
     /** Streams the list to the file, so a large library never sits in memory as one string. */
-    private suspend fun save(media: List<ServerMedia>) = withContext(Dispatchers.IO) {
+    private suspend fun save(media: List<ServerMedia>, hidden: Set<String>) = withContext(Dispatchers.IO) {
         fileSystem.createDirectories(file.parent!!)
-        fileSystem.write(tempFile) { json.encodeToBufferedSink(ServerMediaFile.serializer(), ServerMediaFile(cursor = cursor, media = media), this) }
+        val saved = ServerMediaFile(cursor = cursor, media = media, hidden = hidden.sorted())
+        fileSystem.write(tempFile) { json.encodeToBufferedSink(ServerMediaFile.serializer(), saved, this) }
         fileSystem.atomicMove(tempFile, file)
     }
 

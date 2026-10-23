@@ -54,7 +54,7 @@ from the server. A choice in it asks again with `years` or `area` (at most 100):
 is sent as a box of latitudes and longitudes around this device's photos of it, a kilometer wider, since the server
 has no place names; what the box catches of a neighboring town is left out here. Dropping both shows the first answer
 again without asking. The server answers with sha256s. They are shown as the library has those photos, so what the
-library hides stays hidden: private files and nudity over the threshold while "Show private media" is off, and files
+library hides stays hidden: private files while "Show private media" is off, and files
 the server's list hasn't synced yet. A photo on this phone that backup hasn't read is matched by the server file's
 name and size, as the library matches them. When the library changes after an answer (a photo made private), the
 results follow without searching again. All sources are searched, whatever Moments shows.

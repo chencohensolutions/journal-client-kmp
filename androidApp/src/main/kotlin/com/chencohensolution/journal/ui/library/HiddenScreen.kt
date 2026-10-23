@@ -22,7 +22,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -53,7 +60,13 @@ internal fun HiddenScreen(library: ServerLibrary, back: () -> Unit) {
         LaunchedEffect(controller) { controller.load() }
         val state by controller.state.collectAsStateWithLifecycle()
         val actions = remember(controller) {
-            HiddenActions(retry = controller::retry, set = controller::set, setQuery = controller::setQuery)
+            HiddenActions(
+                retry = controller::retry,
+                set = controller::set,
+                setQuery = controller::setQuery,
+                setNudityHidden = controller::setNudityHidden,
+                setNudityFromPercent = controller::setNudityFromPercent,
+            )
         }
         HiddenContent(title, state, actions, back)
     }
@@ -64,6 +77,8 @@ internal class HiddenActions(
     val retry: () -> Unit,
     val set: (HiddenCollections.Collection, Boolean) -> Unit,
     val setQuery: (String) -> Unit,
+    val setNudityHidden: (Boolean) -> Unit = {},
+    val setNudityFromPercent: (Int) -> Unit = {},
 )
 
 /** Draws [state]; once unlocked. */
@@ -94,6 +109,8 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                     }
                     val shown = state.collections
                     val set = actions.set
+                    SectionTitle(stringResource(R.string.hidden_nudity_title))
+                    SettingsCard { NudityRows(shown.nudity, state.saving, actions) }
                     SectionTitle(stringResource(R.string.hidden_whatsapp_title))
                     SettingsCard {
                         CollectionRow(stringResource(R.string.hidden_whatsapp), shown.whatsapp, R.plurals.hidden_files, state.saving, set)
@@ -134,6 +151,59 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
             }
         }
         TitleBar(title, back, Modifier.align(Alignment.TopCenter))
+    }
+}
+
+/**
+ * Nudity: the switch, with how many files score that much (and how many aren't scanned yet), and while on, the score
+ * from which they are hidden, saved when let go. Disabled while a change is being saved.
+ */
+@Composable
+private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, actions: HiddenActions) {
+    val format = NumberFormat.getIntegerInstance()
+    val counts = buildString {
+        append(pluralStringResource(R.plurals.hidden_files, nudity.files, format.format(nudity.files)))
+        if (nudity.notScanned > 0) {
+            append(" · ")
+            append(pluralStringResource(R.plurals.hidden_nudity_not_scanned, nudity.notScanned, format.format(nudity.notScanned)))
+        }
+    }
+    SwitchRow(
+        title = stringResource(R.string.hidden_nudity),
+        body = counts,
+        checked = nudity.hidden,
+        onChange = { if (!saving) actions.setNudityHidden(it) },
+    )
+    if (!nudity.hidden) return
+    HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+    var dragging by remember(nudity.fromPercent) { mutableFloatStateOf(nudity.fromPercent.toFloat()) }
+    val range = HiddenCollections.Nudity.RANGE
+    Column(Modifier.padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.hidden_nudity_from),
+                color = LibraryColors.OnBackground,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Slider(
+            value = dragging,
+            onValueChange = { dragging = it },
+            onValueChangeFinished = { if (!saving) actions.setNudityFromPercent(dragging.toInt()) else dragging = nudity.fromPercent.toFloat() },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = (range.last - range.first) / 5 - 1,
+            colors = SliderDefaults.colors(
+                thumbColor = LibraryColors.OnBackground,
+                activeTrackColor = LibraryColors.OnBackground,
+                inactiveTrackColor = LibraryColors.Muted.copy(alpha = 0.3f),
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+            ),
+        )
+        Text(stringResource(R.string.hidden_nudity_from_body), color = LibraryColors.Muted, fontSize = 13.sp)
     }
 }
 

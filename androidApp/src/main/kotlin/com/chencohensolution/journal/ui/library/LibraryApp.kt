@@ -280,7 +280,6 @@ private fun LibraryScreens(
                                             setSimilarityPercent = settings::setSimilarityPercent,
                                             resetSimilarity = settings::resetSimilarity,
                                             setShowPrivateMedia = settings::setShowPrivateMedia,
-                                            setPrivateThresholdPercent = settings::setPrivateThresholdPercent,
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             setSearchPageSize = settings::setSearchPageSize,

@@ -36,6 +36,7 @@ query Changes($since: String, $limit: Int) {
       kind
       path
       deleted
+      hidden
       media {
         sha256
         kind
