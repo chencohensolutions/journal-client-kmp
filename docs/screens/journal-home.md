@@ -12,7 +12,11 @@ A round **🔍** beside the tabs opens [search](search.md) over them (Oct 22, 20
 Photos fill the screen on the page background (light or dark with the system); the controls float on top.
 
 - **Top bar:** "Journal", the **Offline** pill (only when the server can't be reached), a **Tags** button
-  ([tags.md](tags.md)) and a **⋯** menu with **All photos** and **Settings** ([settings.md](settings.md)).
+  ([tags.md](tags.md)) and a **Settings** button ([settings.md](settings.md)); until Oct 24, 2026 a **⋯** menu with All
+  photos and Settings (All photos, its screen and its filters were removed then). The title row and the bar under
+  it (Moments' filter bar, Explore's) slide away as the list scrolls down and come back as it scrolls up; they always
+  show at the top of the list and when the tab changes (Oct 24, 2026). The list starts under the bar: with Moments' filter bar off
+  it leaves no room for it.
 - **Cards above the timeline**, when they apply:
   - **This device isn't registered with the server · Register again**: the server answered 401, or there is no
     identity. Opens the enrollment wizard.
@@ -31,6 +35,9 @@ Photos fill the screen on the page background (light or dark with the system); t
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
+  - While the list scrolls down, the tabs and **N not backed up** slide away and only Moments' month pill stays; they
+    come back as it scrolls up, at the top of the list, and when the tab changes, the ruler opens or photos are picked
+    (Oct 24, 2026).
   - **N not backed up**, while anything isn't on the server.
   - Android: their fade runs to the bottom of the screen, under the system's gesture bar (the controls stay above it),
     so no unfaded strip of photos shows below them (Oct 24, 2026); iOS's fade already did.

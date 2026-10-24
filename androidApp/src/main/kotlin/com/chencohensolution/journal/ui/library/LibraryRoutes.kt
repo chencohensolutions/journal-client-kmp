@@ -22,7 +22,6 @@ import com.chencohensolution.journal.search.SearchState
 /** Library screens, as a back stack. Each is encoded as a string so the stack survives rotation. */
 internal sealed interface Route {
     data object Journal : Route
-    data object AllPhotos : Route
     data object Tags : Route
     data class Tag(val name: String) : Route
     data object Settings : Route
@@ -75,7 +74,6 @@ internal sealed interface Route {
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
     fun encode(): String = when (this) {
         Journal -> "journal"
-        AllPhotos -> "all"
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
@@ -99,7 +97,7 @@ internal sealed interface Route {
         fun decode(value: String): Route {
             val parts = value.split("|")
             return when (parts[0]) {
-                "all" -> AllPhotos
+                "all" -> Journal // All photos, until Oct 24, 2026
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings

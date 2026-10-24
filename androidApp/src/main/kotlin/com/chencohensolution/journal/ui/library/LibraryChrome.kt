@@ -1,5 +1,10 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.backup.BackupProgress
@@ -101,13 +106,14 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
 /**
  * The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. The fade runs to
  * the bottom of the screen, under the system's gesture bar ([insets] keep the controls above it), so no unfaded strip
- * of photos shows there.
+ * of photos shows there. While [summaryHidden] (scrolling down the home screen) the summary slides away.
  */
 @Composable
 internal fun BottomControls(
     summary: String?,
     modifier: Modifier = Modifier,
     insets: WindowInsets = WindowInsets.navigationBars,
+    summaryHidden: Boolean = false,
     bar: @Composable () -> Unit,
 ) {
     Column(
@@ -115,7 +121,16 @@ internal fun BottomControls(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (summary != null) BackupSummaryPill(summary)
+        if (summary != null) {
+            // It slides down into its own place as that closes, not over what is below it.
+            AnimatedVisibility(
+                !summaryHidden,
+                enter = expandVertically(expandFrom = Alignment.Top) + slideInVertically { it },
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically { it },
+            ) {
+                BackupSummaryPill(summary)
+            }
+        }
         bar()
     }
 }

@@ -15,9 +15,7 @@
     <!-- Journal home, All photos, viewer -->
     <string name="library_title">Journal</string>
     <string name="library_offline">Offline</string>
-    <string name="library_more">More</string>
     <string name="library_back">Back</string>
-    <string name="library_all_photos">All photos</string>
     <string name="library_today">Today</string>
     <string name="library_yesterday">Yesterday</string>
     <string name="library_tab_storyline">Storyline</string>
@@ -45,11 +43,7 @@
     <string name="library_rejected_body">The server doesn\'t accept this device\'s certificate anymore. Register it again with a new enrollment code.</string>
     <string name="library_rejected_action">Register again</string>
     <string name="library_empty">No photos or videos on this device yet.</string>
-    <string name="library_filter_empty">Nothing here.</string>
     <string name="library_load_error">Couldn\'t read your photos: %s</string>
-    <string name="library_filter_all">All</string>
-    <string name="library_filter_not_backed_up">Not backed up</string>
-    <string name="library_filter_videos">Videos</string>
     <string name="library_photo_description">Photo, %s</string>
     <string name="library_video_description">Video, %s</string>
     <string name="library_backup_not_backed_up">Only on this device</string>

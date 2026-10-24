@@ -75,8 +75,9 @@ feed scrolls to that photo, and a near-duplicate set turns to it.
 
 ## Going to a date (Oct 24, 2026)
 
-A **month pill** above the tabs, "‹ October 2026 ›", says which month the top of the feed is in, and goes to another
-year, month or day with one finger. Android and iOS.
+A **month pill** above the tabs, "‹ 24 October 2026 ›", says which day the top of the feed is in (with its month and
+year, since Oct 24, 2026; just the month while it goes to another month, and in the ruler), and goes to another year,
+month or day with one finger. Android and iOS.
 
 - **The arrows** go to the month with photos before or after (months without photos are skipped). Held, they keep
   going: after 0.4 s, then every 0.25 s, faster and faster. At the oldest or newest month that arrow is dimmed.

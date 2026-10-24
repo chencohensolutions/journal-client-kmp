@@ -20,7 +20,6 @@ struct LibraryRootView: View {
     /// The system's scheme: the map over the always-dark viewer follows it, as the map from Explore does.
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Route] = []
-    @State private var filter = LibraryFilter.all
     @State private var viewer: ViewerRequest?
     /// The photo the viewer shows; the screen under it keeps that photo's tile in view to zoom back into.
     @State private var showing: ViewerShowing?
@@ -36,7 +35,6 @@ struct LibraryRootView: View {
     @State private var similarLists: [String: [String]] = [:]
 
     private enum Route: Hashable {
-        case allPhotos
         case tags
         case tag(String)
         case settings
@@ -54,7 +52,7 @@ struct LibraryRootView: View {
 
     /// Opened from the storyline (`storyline`), a tag (`tag`), a row of Moments (`feedSection`, its key, with
     /// `revealed` a band of hidden photos on it), Explore (`scope`: the map's photos, or with `feedSection` a row of a
-    /// town's or a year's page), the search's results (`search`), or All photos with `filter`.
+    /// town's or a year's page), or the search's results (`search`).
     private struct ViewerRequest: Identifiable {
         var storyline = false
         var search = false
@@ -115,7 +113,6 @@ struct LibraryRootView: View {
                             toggleTag: { itemId, tag, add in
                                 if add { stories.addTag(tag, to: [itemId]) } else { stories.removeTag(tag, from: [itemId]) }
                             },
-                            openAllPhotos: { path.append(.allPhotos) },
                             openSettings: { path.append(.settings) },
                             openTags: { path.append(.tags) },
                             showOnRow: { stories.showOnRow($0, source: $1) },
@@ -154,12 +151,6 @@ struct LibraryRootView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: Route.self) { route in
                         switch route {
-                        case .allPhotos:
-                            AllPhotosView(
-                                library: library.state, stories: stories.state, backupRunning: backup.running, health: journal.state.health, filter: $filter
-                            ) { item in
-                                openViewer(ViewerRequest(filter: filter, itemId: item.id))
-                            }
                         case .settings:
                             SettingsView(
                                 settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount),

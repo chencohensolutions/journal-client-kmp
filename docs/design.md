@@ -40,7 +40,9 @@ stories deleted (see "Storyline" below).
 - Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first, iOS since Oct 21, 2026): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
   one photo you swipe (no peek), and a filter bar of source toggles. See [screens/moments.md](screens/moments.md).
-- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Moments / Storyline / Explore, plus "N not backed up".
+- Top bar: **Tags** and **Settings** buttons (a ⋯ menu with All photos and Settings until Oct 24, 2026, when All photos
+  was removed); the title row and the bar under it slide away while scrolling down. Bottom bar: Moments / Storyline / Explore, plus "N not
+  backed up", and over it the month pill with the day at the top of the feed.
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 
 **Storyline** (owner, Oct 21, 2026)
@@ -100,7 +102,8 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 ## Status
 
 **Built (Android and iOS, logic shared in `sharedLogic`)**
-- Photo access screen, the Storyline, Moments and Explore tabs, All photos (2×2 hero per day, filters), viewer (photos, video, details).
+- Photo access screen, the Storyline, Moments and Explore tabs, viewer (photos, video, details). (All photos, a 2×2
+  hero per day with filters, was removed Oct 24, 2026.)
 - Backup to the server with its badges, the bottom pill and Settings → Backup (iOS since Oct 21, 2026; see "Upload
   and sync").
 - Writing on a photo: a title and a paragraph, with History (versions, what changed, Restore); the storyline with
@@ -133,7 +136,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 **Not built yet**
 - On iOS: "Only on these Wi-Fi networks". Everywhere: note sync.
 - More than one photo for a storyline entry (the owner will decide how).
-- Multi-select on All photos (tag several at once; the shared logic already takes lists).
+- Multi-select in Moments for tagging (tag several at once; the shared logic already takes lists).
 - Renaming/merging tags; month scrubber; similarity search in the app (the server has `searchMedia`).
 
 ## Upload and sync

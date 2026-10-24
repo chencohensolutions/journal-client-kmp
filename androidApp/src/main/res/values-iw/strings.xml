@@ -15,9 +15,7 @@
     <!-- Journal home, All photos, viewer -->
     <string name="library_title">יומן</string>
     <string name="library_offline">לא מחובר</string>
-    <string name="library_more">עוד</string>
     <string name="library_back">חזרה</string>
-    <string name="library_all_photos">כל התמונות</string>
     <string name="library_today">היום</string>
     <string name="library_yesterday">אתמול</string>
     <string name="library_tab_storyline">הסיפור שלי</string>
@@ -47,11 +45,7 @@
     <string name="library_rejected_body">השרת כבר לא מקבל את התעודה של המכשיר הזה. רשמו אותו מחדש עם קוד רישום חדש.</string>
     <string name="library_rejected_action">רישום מחדש</string>
     <string name="library_empty">עדיין אין תמונות או סרטונים במכשיר הזה.</string>
-    <string name="library_filter_empty">אין כאן כלום.</string>
     <string name="library_load_error">לא ניתן לקרוא את התמונות שלך: %s</string>
-    <string name="library_filter_all">הכול</string>
-    <string name="library_filter_not_backed_up">לא מגובות</string>
-    <string name="library_filter_videos">סרטונים</string>
     <string name="library_photo_description">תמונה, %s</string>
     <string name="library_video_description">סרטון, %s</string>
     <string name="library_backup_not_backed_up">רק במכשיר הזה</string>

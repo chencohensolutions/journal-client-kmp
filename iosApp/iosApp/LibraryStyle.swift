@@ -213,18 +213,27 @@ struct SegmentedBar<Value: Equatable>: View {
 /// The bottom controls: the backup summary (`backupSummary`: the running backup, or what isn't backed up) above a bar.
 struct BottomControls<Bar: View>: View {
     let summary: String?
+    /// The summary slid away (scrolling down the home screen).
+    var summaryHidden = false
     @ViewBuilder let bar: Bar
 
     var body: some View {
         VStack(spacing: 10) {
+            // It slides down into its own place as that closes, not over what is below it.
             if let summary {
-                Label(summary, systemImage: "icloud.slash")
-                    .monospacedDigit()
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(LibraryColors.onBackground)
-                    .padding(.horizontal, 14)
-                    .frame(height: 36)
-                    .background(LibraryColors.onBackground.opacity(0.12), in: Capsule())
+                VStack {
+                    if !summaryHidden {
+                        Label(summary, systemImage: "icloud.slash")
+                            .monospacedDigit()
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(LibraryColors.onBackground)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(LibraryColors.onBackground.opacity(0.12), in: Capsule())
+                            .transition(.move(edge: .bottom))
+                    }
+                }
+                .clipped()
             }
             bar
         }

@@ -21,7 +21,6 @@ struct HomeActions {
     /// "Remove from storyline" (false), or "Add to storyline" (true) for a photo with writing.
     var setInStoryline: (_ itemId: String, _ inStoryline: Bool) -> Void
     var toggleTag: (_ itemId: String, _ tag: String, _ add: Bool) -> Void
-    var openAllPhotos: () -> Void
     var openSettings: () -> Void
     var openTags: () -> Void
     /// A hidden source's photos on one row of Moments ("+6 WhatsApp"), and hidden again; the setting doesn't change.
@@ -89,11 +88,14 @@ struct JournalHomeView: View {
     @State private var rowSections: [String: (index: Int, section: String)] = [:]
     /// When the pill last jumped: the rows reported just after are where the feed was, not where it went.
     @State private var jumpedAt = Date.distantPast
+    /// The top bar's controls sliding away, which follows the scroll every frame.
+    @State private var scroll = HomeScroll()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         let moments = tab == .moments
-        let barUnderTitle = tab != .storyline
+        // Room for the title, and for the bar under it when there is one.
+        let barUnderTitle = tab == .explore || (moments && stories.shownSources.showFilterBar)
         GeometryReader { geometry in
             ScrollView {
                 if searching {
@@ -177,6 +179,9 @@ struct JournalHomeView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { old, new in
+                scroll.scrolled(by: new - old, atTop: new <= 1)
+            }
             .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
                 // Reported in no set order: the top one is the first in the feed.
                 guard moments, Date().timeIntervalSince(jumpedAt) > 0.8,
@@ -190,9 +195,19 @@ struct JournalHomeView: View {
             rows = stories.feed.rows
             rowSections = rows.sectionKeys
         }
-        .onChange(of: tab) { timelineOpen = false }
-        .onChange(of: searching) { timelineOpen = false }
-        .onChange(of: selection.isEmpty) { timelineOpen = false }
+        .onChange(of: tab) {
+            timelineOpen = false
+            scroll.showTitle()
+        }
+        .onChange(of: searching) {
+            timelineOpen = false
+            scroll.showTitle()
+        }
+        .onChange(of: selection.isEmpty) {
+            timelineOpen = false
+            scroll.showTitle()
+        }
+        .onChange(of: timelineOpen) { if timelineOpen { scroll.showTitle() } }
         .onChange(of: showInMoments) { _, request in
             guard request != nil else { return }
             selection = []
@@ -240,7 +255,10 @@ struct JournalHomeView: View {
     }
 
     private var bottomControls: some View {
-        BottomControls(summary: selection.isEmpty && !timelineOpen ? backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount)) : nil) {
+        BottomControls(
+            summary: selection.isEmpty && !timelineOpen ? backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount)) : nil,
+            summaryHidden: scroll.bottomHidden
+        ) {
             if !selection.isEmpty && tab == .moments {
                 FeedSelectionBar(count: selection.count, onCancel: { selection = [] }, onMerge: merge)
             } else {
@@ -259,6 +277,7 @@ struct JournalHomeView: View {
                     TimelineBar(
                         timeline: stories.feed.timeline,
                         current: topSection.flatMap { stories.feed.timeline.monthOf(sectionKey: $0)?.intValue },
+                        day: topSection.flatMap { stories.feed.section(key: $0)?.span.newestDay },
                         open: $timelineOpen
                     ) { day in
                         // A jump doesn't report the rows it scrolled past, so the pill learns its month here.
@@ -267,6 +286,8 @@ struct JournalHomeView: View {
                         jump = RowJump(rowId: "heading-\(day.sectionKey)")
                     }
                 }
+                // Slides down off the screen while the list goes down, back on the way up; it keeps its place, so the
+                // month pill stays put.
                 HStack(spacing: 10) {
                     SegmentedBar(options: [(HomeTab.moments, "Moments"), (HomeTab.storyline, "Storyline"), (HomeTab.explore, "Explore")], selection: tabBinding)
                     SearchButton {
@@ -275,6 +296,8 @@ struct JournalHomeView: View {
                         withAnimation { searching = true }
                     }
                 }
+                .offset(y: scroll.bottomHidden ? 140 : 0)
+                .allowsHitTesting(!scroll.bottomHidden)
             }
         }
     }
@@ -360,46 +383,48 @@ struct JournalHomeView: View {
     }
 
     private var topBar: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Journal")
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(LibraryColors.onBackground)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer()
-                if health == .offline { OfflinePill() }
-                Button(action: actions.openTags) {
-                    Image(systemName: "tag")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(LibraryColors.onBackground)
-                        .frame(width: 44, height: 44)
+        // The title row and the bar under it (the filter bar, Explore's) slide away together.
+        CollapsingTitle(scroll: scroll) {
+            VStack(alignment: .leading, spacing: 4) {
+                titleRow
+                if tab == .moments {
+                    if stories.shownSources.showFilterBar { FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource) }
+                } else if tab == .explore {
+                    ExploreBar(view: $exploreView, people: people != nil, onMap: actions.explore.openMap)
                 }
-                .accessibilityLabel("Tags")
-                Menu {
-                    Button(action: actions.openAllPhotos) {
-                        Label("All photos", systemImage: "square.grid.2x2")
-                    }
-                    Button(action: actions.openSettings) {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(LibraryColors.onBackground)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("More")
-            }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            if tab == .moments {
-                if stories.shownSources.showFilterBar { FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource) }
-            } else if tab == .explore {
-                ExploreBar(view: $exploreView, people: people != nil, onMap: actions.explore.openMap)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 24)
         .background(LibraryColors.topFade.ignoresSafeArea())
+    }
+
+    /// "Journal", the offline pill, Tags and Settings.
+    private var titleRow: some View {
+        HStack {
+            Text("Journal")
+                .font(.system(size: 30, weight: .bold))
+                .foregroundStyle(LibraryColors.onBackground)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            if health == .offline { OfflinePill() }
+            Button(action: actions.openTags) {
+                Image(systemName: "tag")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Tags")
+            Button(action: actions.openSettings) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Settings")
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
     }
 }
 

@@ -51,6 +51,8 @@ import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.stories.StoriesState
 
+// The photo grid of a tag's page: each day under its name, a 2×2 photo first when it has three or more.
+
 /** One row of the grid: a large photo with two small ones beside it, or up to three small ones. */
 private sealed interface GridRow {
     val key: String
@@ -78,91 +80,6 @@ private fun gridRows(day: DayGroup): List<GridRow> {
  * Every photo and video the sources setting shows, edge to edge, newest first. The backup pill still counts every
  * photo not backed up: hiding doesn't change what is backed up. See docs/screens/all-photos.md.
  */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun AllPhotosScreen(
-    library: LibraryState,
-    stories: StoriesState,
-    health: ServerHealth,
-    filter: LibraryFilter,
-    onFilter: (LibraryFilter) -> Unit,
-    onOpenItem: (MediaItem) -> Unit,
-    onBack: () -> Unit,
-    /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
-    landing: String? = null,
-    /** The backup run in progress, for the bottom pill. */
-    backupRunning: BackupProgress? = null,
-) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
-    val days = remember(library, stories.shownSources, filter) { stories.shownDays(library.days(filter)) }
-    // Composes rows ahead in spare time between frames, as the feed does.
-    val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
-    val rows = remember(days) { dayGridRows(days) }
-    list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
-
-    CompositionLocalProvider(LocalScrollSettled provides rememberDayGridsLoading(list, days)) {
-        Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-            LazyColumn(
-                state = list,
-                contentPadding = PaddingValues(
-                    top = insets.calculateTopPadding() + 64.dp,
-                    bottom = insets.calculateBottomPadding() + 150.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(TILE_GAP),
-            ) {
-                if (days.isEmpty() && !library.loading) {
-                    item(key = "empty") {
-                        Text(
-                            stringResource(R.string.library_filter_empty),
-                            color = LibraryColors.Muted,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(24.dp),
-                        )
-                    }
-                }
-                dayGrids(days, onOpen = onOpenItem)
-            }
-
-            Row(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .background(LibraryColors.TopFade)
-                    .statusBarsPadding()
-                    .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
-                }
-                Text(
-                    stringResource(R.string.library_all_photos),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                if (health == ServerHealth.OFFLINE) OfflinePill()
-            }
-
-            BottomControls(
-                summary = backupSummary(library, backupRunning),
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            ) {
-                SegmentedBar(
-                    options = listOf(
-                        LibraryFilter.ALL to stringResource(R.string.library_filter_all),
-                        LibraryFilter.NOT_BACKED_UP to stringResource(R.string.library_filter_not_backed_up),
-                        LibraryFilter.VIDEOS to stringResource(R.string.library_filter_videos),
-                    ),
-                    selected = filter,
-                    onSelect = onFilter,
-                )
-            }
-        }
-    }
-}
-
 /**
  * What [dayGrids] needs of the list it is in: its large tiles' first images loaded ahead of the scroll, and whether the
  * list has slowed down enough for sharp images ([LocalScrollSettled]).
@@ -179,7 +96,7 @@ internal fun dayGridRows(days: List<DayGroup>): List<Set<String>> =
     days.flatMap(::gridRows).map { row -> row.items.mapTo(mutableSetOf()) { it.id } }
 
 /**
- * The photo grid of [days], each day under its name: used by All photos and a tag's page.
+ * The photo grid of [days], each day under its name: a tag's page (All photos had it too, until Oct 24, 2026).
  * [label] names a day; by default "Today", "Tue, Oct 7"….
  */
 internal fun LazyListScope.dayGrids(

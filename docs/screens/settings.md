@@ -1,6 +1,6 @@
 # Settings
 
-The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Opened from the Journal's **⋯** menu.
+The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Opened from the Journal's **Settings** button (the **⋯** menu until Oct 24, 2026).
 
 ## Layout
 
@@ -12,7 +12,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   source stays listed so it can be shown again. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
   [Moments](moments.md) chips on or off, and **Filter bar in Moments** ("The row of sources above the feed. When off,
   choose them here."; on; asked Oct 24, 2026; `ShownSources.showFilterBar`, kept as `show_filter_bar`), which hides
-  the Moments filter bar. Under them: it applies to Moments, All photos, Explore and Tags; photos
+  the Moments filter bar. Under them: it applies to Moments, Explore and Tags; photos
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
   (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
@@ -117,12 +117,12 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 - The similarity value is saved when the slider is let go; Moments' sets update right away (no photo is read again).
   Near-duplicates by dHash are set together at any value. Only the default is stored as "none", so a
   better default later reaches everyone who didn't choose one.
-- The grouping setting changes only the rows of the Moments tab (and Explore's pages). All photos and tags stay by
+- The grouping setting changes only the rows of the Moments tab (and Explore's pages). Tags stay by
   day, and the storyline has a heading for each day.
 - Backup runs in the background with WorkManager, also with the app closed: every 15 minutes, 10 s after new photos
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
-  with a Stop action) and in the bottom pill of the Journal and All photos ("Backing up 3 of 120", else "N not backed
+  with a Stop action) and in the bottom pill of the Journal ("Backing up 3 of 120", else "N not backed
   up", counting only the chosen sources while backup is on). Several files upload at once (3 on Android, up to 50 on
   iOS): the count is of finished files plus one ("3 of 120" = 2 finished, the next on its way), the percent includes
   what has arrived of the files on their way, and the notification names the earliest of them. Each photo's badge
@@ -131,7 +131,7 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   relaunches the app when it is answered; runs start when the app opens, on **Back up now**, 10 s after the library
   changes, on those relaunches, and in background tasks iOS schedules (BGProcessingTask, BGAppRefreshTask). Wi-Fi only
   is checked before a run (`NWPathMonitor`) and set on every piece; charging only is checked with the battery state
-  and asked of the processing task. Progress shows in the bottom pill of the Journal and All photos ("Backing up 3 of
+  and asked of the processing task. Progress shows in the bottom pill of the Journal ("Backing up 3 of
   120 · 42% · 5.1 MB/s") and in this section; there is no notification. See [design.md](../design.md), "iOS backup".
 - What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (iOS: Application Support
   `backup/ledger.jsonl`) (sha256 per photo), so a photo is

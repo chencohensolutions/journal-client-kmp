@@ -207,7 +207,6 @@ private fun LibraryScreens(
                                         openStoryline = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
                                         toggleSource = settings::toggleFeedSource,
-                                        openAllPhotos = { push(Route.AllPhotos) },
                                         openSettings = { push(Route.Settings) },
                                         allowAccess = actions.requestAccess,
                                         changeSelection = actions.changeSelection,
@@ -313,20 +312,6 @@ private fun LibraryScreens(
                                         },
                                     ),
                                 )
-                                Route.AllPhotos -> {
-                                    var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
-                                    AllPhotosScreen(
-                                        library = libraryState,
-                                        stories = storiesState,
-                                        health = journalState.health,
-                                        filter = filter,
-                                        onFilter = { filter = it },
-                                        onOpenItem = { push(Route.Viewer(null, filter, it.id)) },
-                                        onBack = pop,
-                                        landing = landingHere,
-                                        backupRunning = backupRunning,
-                                    )
-                                }
                                 Route.Settings -> {
                                     // Search's row says how the server's reading of this user's photos is going.
                                     LaunchedEffect(features?.indexing) { if (features?.indexing == true) serverIndexing.refresh() }

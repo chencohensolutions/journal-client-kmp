@@ -119,7 +119,7 @@ extension HomeActions {
     static let lab = HomeActions(
         openItem: { _, _ in }, openStorylineItem: { _ in }, toggleSource: { _ in }, merge: { _ in }, takeOutOfSet: { _ in },
         turnSet: { _, _ in }, setWriting: { _, _, _ in }, restoreWriting: { _, _ in }, setInStoryline: { _, _ in },
-        toggleTag: { _, _, _ in }, openAllPhotos: {}, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
+        toggleTag: { _, _, _ in }, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
         alwaysShow: { _, _ in }, openRevealed: { _, _, _ in },
         explore: ExploreActions(openPlace: { _ in }, openCountry: { _ in }, openYear: { _, _ in }, openMap: {}, toggleSource: { _ in }),
         allowAccess: {}, registerAgain: {}
