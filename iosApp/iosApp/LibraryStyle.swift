@@ -33,7 +33,6 @@ enum LibraryColors {
     /// Behind the floating top bar: the page color at the edge, fading into the content.
     static let topFade = LinearGradient(
         colors: [background.opacity(0.95), background.opacity(0.75), .clear], startPoint: .top, endPoint: .bottom)
-    static let bottomFade = LinearGradient(colors: [.clear, background.opacity(0.9)], startPoint: .top, endPoint: .bottom)
     /// Under text written over the top or bottom of a photo.
     static let labelFade = LinearGradient(colors: [scrim.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
     static let photoFade = LinearGradient(colors: [.clear, scrim.opacity(0.9)], startPoint: .top, endPoint: .bottom)
@@ -237,9 +236,9 @@ struct BottomControls<Bar: View>: View {
             }
             bar
         }
-        .padding(.top, 48)
+        .padding(.top, 12)
         .padding(.bottom, 8)
+        // No fade behind them (removed Oct 24, 2026): they float over the photos.
         .frame(maxWidth: .infinity)
-        .background(LibraryColors.bottomFade.ignoresSafeArea())
     }
 }

@@ -104,9 +104,9 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
 }
 
 /**
- * The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. The fade runs to
- * the bottom of the screen, under the system's gesture bar ([insets] keep the controls above it), so no unfaded strip
- * of photos shows there. While [summaryHidden] (scrolling down the home screen) the summary slides away.
+ * The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar], floating over the
+ * photos with no fade behind them (removed Oct 24, 2026); [insets] keep them above the system's gesture bar. While
+ * [summaryHidden] (scrolling down the home screen) the summary slides away.
  */
 @Composable
 internal fun BottomControls(
@@ -117,7 +117,7 @@ internal fun BottomControls(
     bar: @Composable () -> Unit,
 ) {
     Column(
-        modifier.background(LibraryColors.BottomFade).windowInsetsPadding(insets).padding(top = 48.dp, bottom = 16.dp),
+        modifier.windowInsetsPadding(insets).padding(top = 12.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

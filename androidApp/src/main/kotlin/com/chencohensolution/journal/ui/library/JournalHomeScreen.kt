@@ -562,7 +562,8 @@ private fun TopBar(
     modifier: Modifier = Modifier,
     below: @Composable () -> Unit = {},
 ) {
-    Column(modifier.fillMaxWidth().background(LibraryColors.TopFade).statusBarsPadding().padding(top = 8.dp, bottom = 24.dp)) {
+    // No fade behind it (removed Oct 24, 2026): its controls float over the photos.
+    Column(modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, bottom = 8.dp)) {
         // The title row and the bar under it (the filter bar, Explore's) slide away together.
         Column(
             Modifier

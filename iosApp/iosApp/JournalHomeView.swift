@@ -400,8 +400,8 @@ struct JournalHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 24)
-        .background(LibraryColors.topFade.ignoresSafeArea())
+        // No fade behind it (removed Oct 24, 2026): its controls float over the photos.
+        .padding(.bottom, 8)
     }
 
     /// "Journal", the offline pill, Tags and Settings.

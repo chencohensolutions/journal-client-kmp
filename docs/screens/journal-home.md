@@ -40,8 +40,8 @@ Photos fill the screen on the page background (light or dark with the system); t
     come back as it scrolls up, at the top of the list, and when the tab changes, the ruler opens or photos are picked
     (Oct 24, 2026).
   - **N not backed up**, while anything isn't on the server.
-  - Android: their fade runs to the bottom of the screen, under the system's gesture bar (the controls stay above it),
-    so no unfaded strip of photos shows below them (Oct 24, 2026); iOS's fade already did.
+  - No fade behind them, nor behind the top bar (both removed Oct 24, 2026): the controls float over the photos, above
+    the system's gesture bar.
   - **Moments / Storyline / Explore** switch (Moments first, and the tab home opens on, since Oct 24, 2026): Moments
     every photo, Storyline the photos you wrote about,
     Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,

@@ -29,7 +29,8 @@ stories deleted (see "Storyline" below).
 ## Decisions (and why)
 
 **Look and navigation**
-- The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
+- The library screens are immersive: photos edge to edge, controls floating over them (over a fade, except on the
+  home screen, whose fades were removed Oct 24, 2026). They follow the system
   light or dark theme; the photo viewer is always dark.
 - Home has three tabs: **Moments**, **Storyline** and **Explore**, and opens on Moments (first and the default since
   Oct 24, 2026, as the owner asked; Storyline was before). (Journal / Unsorted until Oct 19, 2026, then Stories /
