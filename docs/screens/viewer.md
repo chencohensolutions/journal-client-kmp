@@ -80,7 +80,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
     names, "Who's this?" with a ? for a group; a tap opens their page), **Text in this photo** (the lines read in it,
     Hebrew right to left, with **Copy**) and **Looks like this** (eight similar photos, a tap opens them in the viewer;
     **More** a page of all of them). Asked when the panel opens (`media(sha256:)`, `similarMedia`); offline, from
-    what On this phone keeps.
+    what On device search keeps.
   - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
 - **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
   box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save

@@ -51,7 +51,7 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   with the named people's faces (most photos first, 16); a tap puts the person in a chip over the results (× takes
   them out) and shows their photos, the last taken first; words then find the best matches among them
   (`searchMedia(people:, text:)`). With people chosen there is no year or town filter.
-- **On this phone** (Oct 24, 2026): with Settings › Search › On this phone keeping text search, the phone searches
+- **On this phone** (Oct 24, 2026): with Settings › Search › On device search keeping text search, the phone searches
   itself (offline too); offline it says "Searched on this phone: your server can't be reached." See
   [settings.md](settings.md#search--on-this-phone).
 - Tapping a photo opens the viewer, which swipes through the results in their order; closing it lands back on that

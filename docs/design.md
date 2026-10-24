@@ -115,7 +115,7 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 - The server's new features (Oct 24, 2026, both apps; [plans/server-features.md](plans/server-features.md)): People in
   Explore with a person's page and "Who's this?" ([screens/people.md](screens/people.md)), search by person, what the
   server found in a photo in its details (people, text, similar photos), the best-looking photo for a set's front,
-  covers and Best first, "Getting search ready…", and Settings › Search › On this phone (the server's indexes kept to
+  covers and Best first, "Getting search ready…", and Settings › Search › On device search (the server's indexes kept to
   search without it, with the search model on ONNX Runtime). Each is offered only when `serverInfo` says the server
   has it.
 

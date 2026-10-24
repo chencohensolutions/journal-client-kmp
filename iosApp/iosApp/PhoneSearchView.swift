@@ -1,22 +1,10 @@
 import SwiftUI
 import SharedLogic
 
-/// Settings › Search › On this phone on the live `LocalIndexes`: which of the server's indexes this phone keeps, to
-/// search without the server, offline too. As Android's PhoneSearchScreen; see docs/screens/settings.md.
-struct PhoneSearchView: View {
-    @ObservedObject var model: PhoneSearchViewModel
-
-    var body: some View {
-        PhoneSearchScreen(
-            state: model.state,
-            set: model.set, setWifiOnly: model.setWifiOnly, updateNow: model.updateNow, pause: model.pause
-        )
-        .task { model.refresh() }
-    }
-}
-
-/// Drawn from the state alone.
-struct PhoneSearchScreen: View {
+/// Settings › Search › On device search: which of the server's indexes this phone keeps, to search without the server,
+/// offline too. Sections of the Search screen's form, drawn from the state alone. As Android's PhoneSearchSection; see
+/// docs/screens/settings.md.
+struct PhoneSearchSections: View {
     let state: PhoneSearchState
     let set: (PhoneIndexKind, Bool) -> Void
     let setWifiOnly: (Bool) -> Void
@@ -24,45 +12,38 @@ struct PhoneSearchScreen: View {
     let pause: () -> Void
 
     var body: some View {
-        Form {
-            Section {
-            } footer: {
-                Text("Keep what search needs on this phone, to search without your server, offline too. Your server sends it once, then only what’s new.")
-            }
-            if !state.kept.isEmpty {
-                Section("Status") { status }
-                    .listRowBackground(LibraryColors.raised)
-            }
-            Section("Keep on this phone") {
-                ForEach(state.indexes.filter(\.available), id: \.kind) { index in
-                    Toggle(isOn: Binding(get: { index.on }, set: { set(index.kind, $0) })) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(index.kind.title).fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
-                            Text(index.body).font(.footnote).foregroundStyle(LibraryColors.muted)
-                        }
-                    }
-                    .tint(LibraryColors.accent)
-                }
-            }
-            .listRowBackground(LibraryColors.raised)
-            Section {
-                Toggle(isOn: Binding(get: { state.wifiOnly }, set: setWifiOnly)) {
+        Section {
+            if !state.kept.isEmpty { status }
+        } header: {
+            Text("On device search")
+        } footer: {
+            Text("Keep what search needs on this phone, to search without your server, offline too. Your server sends it once, then only what’s new.")
+        }
+        .listRowBackground(LibraryColors.raised)
+        Section {
+            ForEach(state.indexes.filter(\.available), id: \.kind) { index in
+                Toggle(isOn: Binding(get: { index.on }, set: { set(index.kind, $0) })) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Only on Wi-Fi").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
-                        Text("Download only on Wi-Fi. Searching works anywhere.").font(.footnote).foregroundStyle(LibraryColors.muted)
+                        Text(index.kind.title).fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                        Text(index.body).font(.footnote).foregroundStyle(LibraryColors.muted)
                     }
                 }
                 .tint(LibraryColors.accent)
-            } header: {
-                Text("Downloading")
-            } footer: {
-                Text("Uses \(byteText(state.keptBytes)) of this phone · \(byteText(state.freeBytes)) free")
             }
-            .listRowBackground(LibraryColors.raised)
         }
-        .scrollContentBackground(.hidden)
-        .background(LibraryColors.background)
-        .navigationTitle("On this phone")
+        .listRowBackground(LibraryColors.raised)
+        Section {
+            Toggle(isOn: Binding(get: { state.wifiOnly }, set: setWifiOnly)) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Only on Wi-Fi").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text("Download only on Wi-Fi. Searching works anywhere.").font(.footnote).foregroundStyle(LibraryColors.muted)
+                }
+            }
+            .tint(LibraryColors.accent)
+        } footer: {
+            Text("Uses \(byteText(state.keptBytes)) of this phone · \(byteText(state.freeBytes)) free")
+        }
+        .listRowBackground(LibraryColors.raised)
     }
 
     @ViewBuilder
@@ -132,14 +113,5 @@ extension PhoneSearchState {
         guard let updated = updatedAtMillis else { return String(localized: "Not downloaded yet") }
         let date = Date(timeIntervalSince1970: TimeInterval(updated.int64Value) / 1000)
         return String(localized: "Updated \(date.formatted(.relative(presentation: .named)))")
-    }
-
-    /// Settings' row: "3 kept · 839 MB · Updated 2 hours ago", or "Off: search needs your server".
-    var rowText: String {
-        if kept.isEmpty { return String(localized: "Off: search needs your server") }
-        if let download { return String(localized: "Downloading: \(Int(download.doneBytes * 100 / max(download.totalBytes, 1)))%") }
-        let when = updatedAtMillis.map { Date(timeIntervalSince1970: TimeInterval($0.int64Value) / 1000).formatted(.relative(presentation: .named)) }
-            ?? String(localized: "not downloaded yet")
-        return String(localized: "\(kept.count) kept · \(byteText(keptBytes)) · Updated \(when)")
     }
 }

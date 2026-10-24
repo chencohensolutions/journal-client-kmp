@@ -14,6 +14,8 @@ struct SettingsView: View {
     var refreshLibrary: () -> Void = {}
     /// Search › On this phone, when the server lets phones keep its indexes; nil: no row.
     var phoneSearch: PhoneSearchViewModel?
+    /// Search › On your server, when the server offers it; nil: none.
+    var indexing: ServerIndexingViewModel?
     @StateObject private var freeUp = FreeUpViewModel()
 
     var body: some View {
@@ -22,7 +24,10 @@ struct SettingsView: View {
             previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions,
             syncProgress: settings.syncProgress,
             phoneSearch: phoneSearch?.state,
-            phoneSearchScreen: phoneSearch.map { model in { AnyView(PhoneSearchView(model: model)) } }
+            indexing: indexing?.state,
+            searchScreen: { [settings, indexing, phoneSearch] in
+                AnyView(SearchSettingsView(settings: settings, indexing: indexing, phoneSearch: phoneSearch))
+            }
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
         } hiddenScreen: {
@@ -32,6 +37,8 @@ struct SettingsView: View {
         .task {
             settings.refreshStorage()
             freeUp.refreshPlan()
+            // Search's row says how the server's reading of this user's photos is going.
+            indexing?.refresh()
         }
     }
 
@@ -94,9 +101,11 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     let actions: SettingsActions
     /// How far the library's sync is, shown on Hidden collections' row (after a change there); nil when not syncing.
     var syncProgress: SyncProgress?
-    /// Search › On this phone's row, and its screen; nil: no row.
+    /// For Search's row: what this phone keeps, and how the server's reading goes; nil when the server has none.
     var phoneSearch: PhoneSearchState? = nil
-    var phoneSearchScreen: (() -> AnyView)? = nil
+    var indexing: ServerIndexingState? = nil
+    /// Settings › Search, opened from its row.
+    var searchScreen: () -> AnyView = { AnyView(EmptyView()) }
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
     /// Hidden collections, opened from Private media.
@@ -383,29 +392,21 @@ extension SettingsScreen {
         .listRowBackground(LibraryColors.raised)
     }
 
-    /// Photos per page of search results.
+    /// Search's row: how the server's reading goes, or photos per page and what this phone keeps.
     private var searchSection: some View {
-        Section {
-            Picker("Photos per page", selection: Binding(get: { Int(settings.searchPageSize) }, set: actions.setSearchPageSize)) {
-                ForEach(SettingsViewModel.searchPageOptions, id: \.self) { size in
-                    Text("\(size)").tag(size)
+        let kept = phoneSearch?.kept.count ?? 0
+        let detail = indexing?.rowText
+            ?? (kept > 0 ? String(localized: "\(Int(settings.searchPageSize)) per page · \(kept) kept on this phone")
+                : String(localized: "\(Int(settings.searchPageSize)) per page"))
+        return Section {
+            NavigationLink {
+                searchScreen()
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Search").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text(detail).font(.footnote).foregroundStyle(LibraryColors.muted)
                 }
             }
-            .foregroundStyle(LibraryColors.onBackground)
-            if let phoneSearch, let phoneSearchScreen {
-                NavigationLink {
-                    phoneSearchScreen()
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("On this phone").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
-                        Text(phoneSearch.rowText).font(.footnote).foregroundStyle(LibraryColors.muted)
-                    }
-                }
-            }
-        } header: {
-            Text("Search")
-        } footer: {
-            Text("How many photos a search shows at first. Scrolling near the end shows the next page.")
         }
         .listRowBackground(LibraryColors.raised)
     }

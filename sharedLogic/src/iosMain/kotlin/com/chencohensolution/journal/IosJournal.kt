@@ -30,10 +30,12 @@ import com.chencohensolution.journal.similarity.IosPhotoAnalyzer
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
+import com.chencohensolution.journal.server.HttpIndexingApi
 import com.chencohensolution.journal.server.IosServerFiles
 import com.chencohensolution.journal.server.IosServerStream
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerHttp
+import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.PrivateMedia
@@ -122,6 +124,11 @@ object IosJournal {
     var onWifi: () -> Boolean = { true }
 
     private var localIndexes: LocalIndexes? = null
+    private var serverIndexing: ServerIndexing? = null
+
+    /** Settings › Search › On your server: the reading of this user's photos for the server's indexes. One per process. */
+    fun serverIndexing(): ServerIndexing =
+        serverIndexing ?: ServerIndexing(HttpIndexingApi(serverHttp())).also { serverIndexing = it }
 
     /**
      * Settings › Search › On this phone: the server's indexes kept in Application Support (`local`), out of the

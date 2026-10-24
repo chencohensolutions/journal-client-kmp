@@ -29,8 +29,8 @@ internal sealed interface Route {
     data object FreeUp : Route
     data object Hidden : Route
 
-    /** Settings › Search › On this phone. */
-    data object PhoneSearch : Route
+    /** Settings › Search. */
+    data object SearchSettings : Route
 
     /** A person's page, or a group's ("Who's this?"). */
     data class Person(val id: String) : Route
@@ -78,7 +78,7 @@ internal sealed interface Route {
         Settings -> "settings"
         FreeUp -> "free-up"
         Hidden -> "hidden"
-        PhoneSearch -> "phone-search"
+        SearchSettings -> "search-settings"
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
@@ -101,7 +101,8 @@ internal sealed interface Route {
                 "settings" -> Settings
                 "free-up" -> FreeUp
                 "hidden" -> Hidden
-                "phone-search" -> PhoneSearch
+                "search-settings" -> SearchSettings
+                "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))

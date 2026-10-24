@@ -1,6 +1,10 @@
 package com.chencohensolution.journal.ui.library
 
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.server.IndexingCount
+import com.chencohensolution.journal.server.IndexingLastRun
+import com.chencohensolution.journal.server.IndexingRunState
+import com.chencohensolution.journal.server.ServerIndexingState
 import com.chencohensolution.journal.local.PhoneDownload
 import com.chencohensolution.journal.local.PhoneIndex
 import com.chencohensolution.journal.local.PhoneIndexKind
@@ -136,4 +140,38 @@ internal object PeopleLabData {
 
     /** Never turned on. */
     val phoneSearchOff = PhoneSearchState(indexes.map { PhoneIndex(it.kind, false, bytes = it.bytes, modelBytes = it.modelBytes) }, freeBytes = 48_000 * MB)
+
+    private val indexingCounts = listOf(
+        IndexingCount("nudity", 412, 0),
+        IndexingCount("faces", 410, 2),
+        IndexingCount("search", 412, 0),
+        IndexingCount("ocr", 412, 0),
+    )
+    private val tonightAt3 = System.currentTimeMillis() + 9 * 3_600_000L
+
+    /** Settings › Search › On your server: the user's run going. */
+    val indexingRunning = ServerIndexingState(
+        run = IndexingRunState.RUNNING, done = 412, total = 1_280, indexes = indexingCounts,
+        nextNightlyMillis = tonightAt3, loaded = true,
+    )
+
+    /** The nightly run reading the user's photos. */
+    val indexingNightly = indexingRunning.copy(nightly = true)
+
+    /** Paused from the phone. */
+    val indexingPaused = indexingRunning.copy(run = IndexingRunState.PAUSED)
+
+    /** Waiting behind another user's run. */
+    val indexingQueued = ServerIndexingState(run = IndexingRunState.QUEUED, queuedBehind = 1, nextNightlyMillis = tonightAt3, loaded = true)
+
+    /** Nothing going: the last run, last night. */
+    val indexingIdle = ServerIndexingState(
+        lastRun = IndexingLastRun(
+            startedAtMillis = System.currentTimeMillis() - 8 * 3_600_000L,
+            finishedAtMillis = System.currentTimeMillis() - 7 * 3_600_000L,
+            files = 312, failed = 0, stopped = false, error = null,
+        ),
+        nextNightlyMillis = tonightAt3,
+        loaded = true,
+    )
 }

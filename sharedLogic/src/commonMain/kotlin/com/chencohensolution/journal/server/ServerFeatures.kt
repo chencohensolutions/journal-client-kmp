@@ -31,6 +31,8 @@ data class ServerFeatures(
     val aesthetic: Boolean = false,
     /** Phones may keep the indexes and search themselves (Settings › Search › On this phone). */
     val localIndexes: Boolean = false,
+    /** A phone can start, follow and pause the reading of its user's photos (Settings › Search › On your server). */
+    val indexing: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */
@@ -50,6 +52,7 @@ internal fun ServerInfoQuery.ServerInfo.toFeatures() = ServerFeatures(
     similar = similar,
     aesthetic = aesthetic,
     localIndexes = localIndexes,
+    indexing = indexing,
 )
 
 /**
@@ -64,6 +67,7 @@ internal object ServerErrorCode {
     const val WITHHELD = "WITHHELD"
     const val SIMILAR_OFF = "SIMILAR_OFF"
     const val NOT_READ_YET = "NOT_READ_YET"
+    const val INDEXING_OFF = "INDEXING_OFF"
 }
 
 /** The error's `extensions.code`; null for a plain error. */

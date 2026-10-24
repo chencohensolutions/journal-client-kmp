@@ -2,21 +2,14 @@ package com.chencohensolution.journal.ui.library
 
 import android.text.format.DateUtils
 import android.text.format.Formatter
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -35,11 +28,10 @@ import com.chencohensolution.journal.local.PhoneIndex
 import com.chencohensolution.journal.local.PhoneIndexKind
 import com.chencohensolution.journal.local.PhoneSearchState
 
-// Settings › Search › On this phone (docs/screens/settings.md): which of the server's indexes this phone keeps, to
+// Settings › Search › On device search (docs/screens/settings.md): which of the server's indexes this phone keeps, to
 // search without the server, offline too. The state comes from the shared LocalIndexes.
 
 internal class PhoneSearchActions(
-    val back: () -> Unit = {},
     val set: (PhoneIndexKind, Boolean) -> Unit = { _, _ -> },
     val setWifiOnly: (Boolean) -> Unit = {},
     val updateNow: () -> Unit = {},
@@ -47,60 +39,51 @@ internal class PhoneSearchActions(
 )
 
 /**
- * On this phone: what it is for, then a switch per index with its size, Only on Wi-Fi, and how up to date it is (a
- * download's progress, "Waiting for Wi-Fi", or "Updated 2 hours ago" with Update now), and the space it takes.
+ * On device search, a section of Settings › Search: what it is for, how up to date it is (a download's progress,
+ * "Waiting for Wi-Fi", or "Updated 2 hours ago" with Update now), a switch per index with its size, Only on Wi-Fi,
+ * and the space it takes.
  */
 @Composable
-internal fun PhoneSearchScreen(state: PhoneSearchState, actions: PhoneSearchActions) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+internal fun PhoneSearchSection(state: PhoneSearchState, actions: PhoneSearchActions) {
     val context = LocalContext.current
     fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            Text(
-                stringResource(R.string.phone_search_intro),
-                color = LibraryColors.Muted,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 4.dp),
-            )
-            if (state.kept.isNotEmpty()) {
-                SectionTitle(stringResource(R.string.phone_search_status_title))
-                SettingsCard { StatusRows(state, actions, ::size) }
-            }
-            SectionTitle(stringResource(R.string.phone_search_keep_title))
-            SettingsCard {
-                state.indexes.filter { it.available }.forEachIndexed { i, index ->
-                    if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                    SwitchRow(
-                        title = stringResource(indexTitle(index.kind)),
-                        body = indexBody(index, ::size),
-                        checked = index.on,
-                        onChange = { actions.set(index.kind, it) },
-                    )
-                }
-            }
-            SectionTitle(stringResource(R.string.phone_search_download_title))
-            SettingsCard {
-                SwitchRow(
-                    title = stringResource(R.string.phone_search_wifi_only),
-                    body = stringResource(R.string.phone_search_wifi_only_body),
-                    checked = state.wifiOnly,
-                    onChange = actions.setWifiOnly,
-                )
-            }
-            Text(
-                stringResource(R.string.phone_search_space, size(state.keptBytes), size(state.freeBytes)),
-                color = LibraryColors.Muted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
+    SectionTitle(stringResource(R.string.phone_search_section_title))
+    Text(
+        stringResource(R.string.phone_search_intro),
+        color = LibraryColors.Muted,
+        fontSize = 14.sp,
+        modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp),
+    )
+    if (state.kept.isNotEmpty()) {
+        SettingsCard { StatusRows(state, actions, ::size) }
+        Spacer(Modifier.height(12.dp))
+    }
+    SettingsCard {
+        state.indexes.filter { it.available }.forEachIndexed { i, index ->
+            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            SwitchRow(
+                title = stringResource(indexTitle(index.kind)),
+                body = indexBody(index, ::size),
+                checked = index.on,
+                onChange = { actions.set(index.kind, it) },
             )
         }
-        TitleBar(stringResource(R.string.phone_search_title), actions.back, Modifier.align(Alignment.TopCenter))
     }
+    Spacer(Modifier.height(12.dp))
+    SettingsCard {
+        SwitchRow(
+            title = stringResource(R.string.phone_search_wifi_only),
+            body = stringResource(R.string.phone_search_wifi_only_body),
+            checked = state.wifiOnly,
+            onChange = actions.setWifiOnly,
+        )
+    }
+    Text(
+        stringResource(R.string.phone_search_space, size(state.keptBytes), size(state.freeBytes)),
+        color = LibraryColors.Muted,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
+    )
 }
 
 private fun indexTitle(kind: PhoneIndexKind): Int = when (kind) {
@@ -191,37 +174,5 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
 private fun StatusButton(label: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.padding(top = 2.dp)) {
         Text(label, color = LibraryColors.OnBackground, fontWeight = FontWeight.Bold)
-    }
-}
-
-/** Settings' row for it, under Search: "3 kept · 760 MB · Updated 2 hours ago", or "Off: search needs your server". */
-@Composable
-internal fun PhoneSearchRow(state: PhoneSearchState?, onOpen: () -> Unit) {
-    val context = LocalContext.current
-    val kept = state?.kept.orEmpty()
-    val download = state?.download
-    val body = when {
-        state == null || kept.isEmpty() -> stringResource(R.string.phone_search_row_off)
-        download != null -> stringResource(
-            R.string.phone_search_row_downloading,
-            (download.doneBytes * 100 / download.totalBytes.coerceAtLeast(1)).toInt(),
-        )
-        else -> stringResource(
-            R.string.phone_search_row_kept,
-            kept.size,
-            Formatter.formatShortFileSize(context, state.keptBytes),
-            state.updatedAtMillis?.let { DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString() }
-                ?: stringResource(R.string.phone_search_never_short),
-        )
-    }
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.phone_search_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
-        }
-        Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
     }
 }

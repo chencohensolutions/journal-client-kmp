@@ -47,6 +47,7 @@ import com.chencohensolution.journal.createPersonController
 import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.KeptOriginals
+import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.SettingsController
@@ -76,13 +77,14 @@ fun LibraryApp(
     people: PeopleController,
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
+    serverIndexing: ServerIndexing,
     onRegisterAgain: () -> Unit,
 ) = CompositionLocalProvider(
     LocalServerPreviews provides server.previews,
     LocalPhoneStorage provides server.storage,
     LocalServerMedia provides server.library.media,
 ) {
-    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, onRegisterAgain)
+    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, onRegisterAgain)
 }
 
 /** The routing table: each [Route] on the back stack rendered as its screen, with the actions wired to the controllers. */
@@ -99,9 +101,11 @@ private fun LibraryScreens(
     people: PeopleController,
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
+    serverIndexing: ServerIndexing,
     onRegisterAgain: () -> Unit,
 ) {
     val phoneSearchState by localIndexes.state.collectAsStateWithLifecycle()
+    val indexingState by serverIndexing.state.collectAsStateWithLifecycle()
     val journalState by journal.state.collectAsStateWithLifecycle()
     val features by server.library.features.collectAsStateWithLifecycle()
     val peopleState by people.state.collectAsStateWithLifecycle()
@@ -322,6 +326,8 @@ private fun LibraryScreens(
                                     )
                                 }
                                 Route.Settings -> {
+                                    // Search's row says how the server's reading of this user's photos is going.
+                                    LaunchedEffect(features?.indexing) { if (features?.indexing == true) serverIndexing.refresh() }
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
@@ -344,11 +350,11 @@ private fun LibraryScreens(
                                             setShowPrivateMedia = settings::setShowPrivateMedia,
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
-                                            setSearchPageSize = settings::setSearchPageSize,
-                                            openPhoneSearch = { push(Route.PhoneSearch) },
+                                            openSearch = { push(Route.SearchSettings) },
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
+                                        indexing = indexingState.takeIf { features?.indexing == true && it.loaded },
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
@@ -361,16 +367,28 @@ private fun LibraryScreens(
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
                                 Route.Hidden -> HiddenScreen(server.library, back = pop)
-                                Route.PhoneSearch -> {
+                                Route.SearchSettings -> {
                                     LaunchedEffect(Unit) { localIndexes.refresh() }
-                                    PhoneSearchScreen(
-                                        state = phoneSearchState,
-                                        actions = PhoneSearchActions(
+                                    // Asked every 2 s while a run goes, every 30 s otherwise, while the screen shows.
+                                    DisposableEffect(features?.indexing) {
+                                        val watch = if (features?.indexing == true) serverIndexing.watch() else null
+                                        onDispose { watch?.cancel() }
+                                    }
+                                    SearchSettingsScreen(
+                                        searchPageSize = settingsState.searchPageSize,
+                                        indexing = indexingState.takeIf { features?.indexing == true },
+                                        phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
+                                        actions = SearchSettingsActions(
                                             back = pop,
-                                            set = localIndexes::set,
-                                            setWifiOnly = localIndexes::setWifiOnly,
-                                            updateNow = localIndexes::updateNow,
-                                            pause = localIndexes::pause,
+                                            setSearchPageSize = settings::setSearchPageSize,
+                                            startIndexing = serverIndexing::start,
+                                            pauseIndexing = serverIndexing::pause,
+                                            phoneSearch = PhoneSearchActions(
+                                                set = localIndexes::set,
+                                                setWifiOnly = localIndexes::setWifiOnly,
+                                                updateNow = localIndexes::updateNow,
+                                                pause = localIndexes::pause,
+                                            ),
                                         ),
                                     )
                                 }

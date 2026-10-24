@@ -1,0 +1,25 @@
+# Settings › Search › On your server: the reading of this user's photos for the server's indexes.
+
+fragment IndexingFields on Indexing {
+  state
+  nightly
+  done
+  total
+  startedAt
+  queuedBehind
+  indexes { name read failed }
+  lastRun { startedAt finishedAt files failed stopped error }
+  nextNightly
+}
+
+query ServerIndexing {
+  indexing { ...IndexingFields }
+}
+
+mutation StartIndexing {
+  startIndexing { ...IndexingFields }
+}
+
+mutation PauseIndexing {
+  pauseIndexing { ...IndexingFields }
+}

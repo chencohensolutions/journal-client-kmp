@@ -593,11 +593,8 @@
     <string name="findings_copy">Copy</string>
     <string name="findings_similar">Looks like this</string>
     <string name="findings_more">More</string>
-    <string name="phone_search_title">On this phone</string>
+    <string name="phone_search_section_title">On device search</string>
     <string name="phone_search_intro">Keep what search needs on this phone, to search without your server, offline too. Your server sends it once, then only what’s new.</string>
-    <string name="phone_search_status_title">Status</string>
-    <string name="phone_search_keep_title">Keep on this phone</string>
-    <string name="phone_search_download_title">Downloading</string>
     <string name="phone_search_words">Search by words</string>
     <string name="phone_search_words_body">Find photos by describing them</string>
     <string name="phone_search_people">People</string>
@@ -621,15 +618,11 @@
     <string name="phone_search_download_now">Download now</string>
     <string name="phone_search_updated">Updated %1$s</string>
     <string name="phone_search_never">Not downloaded yet</string>
-    <string name="phone_search_never_short">not downloaded yet</string>
     <string name="phone_search_new">%1$d new photos on your server, not here yet</string>
     <string name="phone_search_up_to_date">Everything your server has read is here</string>
     <string name="phone_search_update_now">Update now</string>
     <string name="phone_search_error">The last update didn’t finish: %1$s</string>
     <string name="search_on_phone">Searched on this phone: your server can’t be reached.</string>
-    <string name="phone_search_row_off">Off: search needs your server</string>
-    <string name="phone_search_row_downloading">Downloading: %1$d%%</string>
-    <string name="phone_search_row_kept">%1$d kept · %2$s · Updated %3$s</string>
     <string name="face_this_is">This is %1$s</string>
     <string name="face_open_page">Open %1$s’s page</string>
     <string name="face_who_is_it">Who is it?</string>
@@ -645,4 +638,36 @@
         <item quantity="one">%1$d marked not %2$s</item>
         <item quantity="other">%1$d marked not %2$s</item>
     </plurals>
+    <!-- Settings › Search (docs/screens/settings.md "Search") -->
+    <string name="search_settings_row_page">%1$d per page</string>
+    <string name="search_settings_row_kept">%1$d per page · %2$d kept on this phone</string>
+    <string name="search_settings_row_reading">Server: reading %1$s of %2$s</string>
+    <string name="search_settings_row_paused">Server: paused at %1$s of %2$s</string>
+    <string name="search_settings_row_waiting">Server: waiting to read your photos</string>
+    <string name="search_settings_results_title">Results</string>
+    <string name="indexing_title">Indexing</string>
+    <string name="indexing_intro">Your server reads each new photo once so search can find it: by words, people, text in the photo, and alike photos. It does this every night; you can start it now, and pause it.</string>
+    <string name="indexing_reading">Reading your photos</string>
+    <string name="indexing_reading_nightly">Nightly run: reading your photos</string>
+    <string name="indexing_of">%1$s of %2$s</string>
+    <string name="indexing_waiting">Waiting for other runs</string>
+    <plurals name="indexing_waiting_body">
+        <item quantity="one">%d run ahead of yours. Only one runs at a time, to keep the server\'s memory free.</item>
+        <item quantity="other">%d runs ahead of yours. Only one runs at a time, to keep the server\'s memory free.</item>
+    </plurals>
+    <string name="indexing_paused">Paused at %1$s of %2$s</string>
+    <string name="indexing_paused_body">The server let go of its models while paused. Resume goes on from here.</string>
+    <string name="indexing_last">Last read %1$s: %2$s photos</string>
+    <string name="indexing_last_stopped">Stopped %1$s after %2$s photos</string>
+    <string name="indexing_never">No run yet</string>
+    <string name="indexing_up_to_date">New photos are read every night.</string>
+    <string name="indexing_could_not_read">%d couldn\'t be read</string>
+    <string name="indexing_failed">It couldn\'t go on: %s</string>
+    <string name="indexing_next">Next nightly run: %s</string>
+    <string name="indexing_error">Can\'t reach the server: %s</string>
+    <string name="indexing_start">Read new photos now</string>
+    <string name="indexing_pause">Pause</string>
+    <string name="indexing_resume">Resume</string>
+    <string name="indexing_nudity">Nudity scan</string>
+    <string name="indexing_paused_body_live">New photos wait to be read until you resume.</string>
 </resources>

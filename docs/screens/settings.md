@@ -92,8 +92,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   switch, because every change makes the whole change feed come again. While that sync reads more than one page, the
   Hidden collections row in Settings shows "Updating your library: 38,000 of 95,412" with a bar
   (`ServerLibrary.syncProgress`, from the feed's `remaining`).
-- **Search** (both platforms, Oct 22, 2026): **Photos per page**, 50, 100, **200** (default), 500 or 1000: how many
-  photos a [search](search.md) shows at first; scrolling near the end shows the next page. Applies from the next page.
+- **Search** (both platforms; its own screen since Oct 24, 2026, see "Search" below): one row, "Server: reading 40 of
+  200", "Server: paused at 40 of 200", "Server: waiting to read your photos", or "200 per page · 3 kept on this
+  phone".
 
 ## Behavior
 
@@ -166,20 +167,51 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   feed again on its next sync.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
 
-## Search › On this phone
+## Search
+
+(Oct 24, 2026, Android and iOS.) Every search setting, opened from Settings' Search row:
+
+- **Indexing** (shown when the server offers it, `serverInfo.indexing`; called "On your server" until the owner renamed
+  it on Oct 24, 2026): the server reads each new photo once
+  for search (words, people, text in photos, similar, best-looking, the nudity scan), nightly or as they come. One
+  card, by the run's state (`indexing`, journal-server-go docs/indexes.md "Started, followed and paused from a
+  phone"):
+  - **Reading your photos** (or **Nightly run: reading your photos**): "412 of 1,280", a bar, what each index read
+    ("Nudity scan 412 · People 410 · Search by words 412 · 2 couldn't be read"), and **Pause**.
+  - **Waiting for other runs**: "1 ahead of yours. Only one runs at a time, to keep the server's memory free.", and
+    **Pause** (takes it off the queue).
+  - **Paused at 412 of 1,280**, a grey bar, "The server let go of its models while paused. Resume goes on from here."
+    (on a server that reads as photos come: "New photos wait to be read until you resume."), and **Resume**.
+  - Otherwise the last run, "Last read 7 hours ago: 312 photos" (or "Stopped … after … photos", or "No run yet"),
+    "New photos are read every night.", why it couldn't go on if it couldn't, and **Read new photos now**.
+  - Under the card: "Next nightly run: Sunday 3:00 AM". A failed call shows "Can't reach the server: …" and keeps
+    what was shown.
+  - A phone sees and acts on its own user's run only. Pausing a nightly run pauses it for this user alone; the other
+    users' runs go on.
+  - The screen asks the server every 2 s while a run goes or waits, every 30 s otherwise, and only while it shows;
+    Settings asks once when it opens, for its row. Start and pause answer with the new state at once, and the screen
+    follows a run just started every 2 s from then (not after the 30 s wait it was in).
+- **Results**: **Photos per page**, 50, 100, **200** (default), 500 or 1000: how many photos a [search](search.md)
+  shows at first; scrolling near the end shows the next page. Applies from the next page.
+- **On device search**: the indexes kept on this phone (below), as sections of this screen. It was a screen of its
+  own, "On this phone", until the owner moved it here on Oct 24, 2026.
+- Code: `ServerIndexing` in [server/ServerIndexing.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/ServerIndexing.kt)
+  (with `ServerIndexingTest`); Android `SearchSettingsScreen.kt`, iOS `SearchSettingsView.swift` and
+  `ServerIndexingViewModel` in `PeopleViewModels.swift`.
+
+## Search › On device search
 
 (Oct 24, 2026, Android and iOS; shown when the server offers indexes, `serverInfo.localIndexes`.) Keeps the server's
 indexes on the phone, to search without the server, offline too (journal-server-go `docs/search.md` "On the phone").
 
-- **Settings › Search** gets a row: "3 kept · 839 MB · Updated 2 hours ago", "Downloading: 40%", or "Off: search
-  needs your server".
-- The screen: what it is for; **Status** (while something is kept): "Downloading Similar photos, 61 MB of 152 MB" with
+- Settings' Search row says how many are kept ("200 per page · 3 kept on this phone").
+- The section, under Results: its title, what it is for; a status card (while something is kept): "Downloading Similar photos, 61 MB of 152 MB" with
   a bar and **Pause**, "Waiting for Wi-Fi" with **Download now**, or "Updated 2 hours ago · 12 new photos on your
-  server, not here yet" with **Update now** (and the last error, if any); **Keep on this phone**: a switch per index
+  server, not here yet" with **Update now** (and the last error, if any); a card with a switch per index
   the server offers, with what it does and its size — Search by words (with its model: the 8-bit one when the server
   has it, about 290 MB, else the full 1.13 GB), People, Text in photos, Similar photos, Best-looking photos (on at
-  first: 4 MB, and it picks a set's best photo, covers and Best first); **Only on Wi-Fi** (on); "Uses 839 MB of this
-  phone · 48 GB free".
+  first: 4 MB, and it picks a set's best photo, covers and Best first); a card with **Only on Wi-Fi** (on); and "Uses
+  839 MB of this phone · 48 GB free".
 - Turning one on downloads it (now, or on Wi-Fi); turning it off deletes it. Each index catches up when the app comes
   back a day after the last look, and on Update now: only what was added since (the stream's cursor), and what the
   user hid or marked private since is dropped. A broken download goes on from where it broke (the model by Range).
@@ -196,7 +228,7 @@ indexes on the phone, to search without the server, offline too (journal-server-
 - Code: [local/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/local/) (`LocalIndexes`,
   `LocalIndexApi`, `LocalTables`, `LocalSearch`), the model run by `AndroidTextEncoding` (ONNX Runtime for Android) and
   `OnnxTextEncoding` in `PeopleViewModels.swift` (onnxruntime-swift-package-manager); Android
-  `PhoneSearchScreen.kt`, iOS `PhoneSearchView.swift`.
+  `PhoneSearchSection` in `PhoneSearchScreen.kt`, iOS `PhoneSearchSections` in `PhoneSearchView.swift`.
 
 ## Code
 

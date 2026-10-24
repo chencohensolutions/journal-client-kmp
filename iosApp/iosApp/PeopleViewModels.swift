@@ -105,6 +105,40 @@ final class PhoneSearchViewModel: ObservableObject {
     func updateIfDue() { indexes.updateIfDue() }
 }
 
+/// Bridges the shared `ServerIndexing` (Settings › Search › On your server) into SwiftUI.
+final class ServerIndexingViewModel: ObservableObject {
+    @Published private(set) var state: ServerIndexingState
+
+    private let indexing = IosJournal.shared.serverIndexing()
+    private var observation: ObservationHandle?
+    private var watch: ObservationHandle?
+
+    init() {
+        state = indexing.currentState
+        observation = indexing.observe { [weak self] newState in self?.state = newState }
+    }
+
+    deinit {
+        watch?.cancel()
+        observation?.cancel()
+    }
+
+    func refresh() { indexing.refresh() }
+    func start() { indexing.start() }
+    func pause() { indexing.pause() }
+
+    /// Asks the server how the run goes while the screen shows: every 2 s while it goes, every 30 s otherwise.
+    func startWatching() {
+        watch?.cancel()
+        watch = indexing.watch()
+    }
+
+    func stopWatching() {
+        watch?.cancel()
+        watch = nil
+    }
+}
+
 /// Whether the phone is on Wi-Fi (or a network that isn't expensive), for On this phone's "Only on Wi-Fi".
 final class NetworkWatch {
     static let shared = NetworkWatch()

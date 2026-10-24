@@ -57,6 +57,7 @@ import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 import androidx.compose.material3.LinearProgressIndicator
+import com.chencohensolution.journal.server.ServerIndexingState
 import com.chencohensolution.journal.server.SyncProgress
 import java.text.NumberFormat
 
@@ -69,10 +70,8 @@ internal class SettingsActions(
     /** Opens Hidden collections (behind the phone's lock). */
     val openHidden: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
-    /** Search: photos per page of results. */
-    val setSearchPageSize: (Int) -> Unit = {},
-    /** Search › On this phone. */
-    val openPhoneSearch: () -> Unit = {},
+    /** Opens Settings › Search. */
+    val openSearch: () -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
@@ -93,8 +92,10 @@ internal fun SettingsScreen(
     storageActions: StorageActions = StorageActions(),
     /** How far the library's sync is, shown on Hidden collections' row (after a change there); null when not syncing. */
     syncProgress: SyncProgress? = null,
-    /** Search › On this phone, when the server lets phones keep its indexes; null: no row. */
+    /** Search › On this phone, when the server lets phones keep its indexes; null: none. For Search's row. */
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState? = null,
+    /** Search › On your server, when the server offers it; null: none. For Search's row. */
+    indexing: ServerIndexingState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val grouping = settings.grouping
@@ -163,21 +164,7 @@ internal fun SettingsScreen(
             SectionTitle(stringResource(R.string.settings_private_title))
             PrivateMediaCard(settings.privateMedia, syncProgress, actions)
             SectionTitle(stringResource(R.string.settings_search_title))
-            Card {
-                Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-                    Text(stringResource(R.string.settings_search_page), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_search_page_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
-                    FlowRow(Modifier.padding(top = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SettingsState.SEARCH_PAGE_OPTIONS.forEach { size ->
-                            Chip(size.toString(), settings.searchPageSize == size) { actions.setSearchPageSize(size) }
-                        }
-                    }
-                }
-                if (phoneSearch != null) {
-                    HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                    PhoneSearchRow(phoneSearch, actions.openPhoneSearch)
-                }
-            }
+            Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
             if (storage != null) AdvancedSection(storage, storageActions)
         }
         TitleBar(stringResource(R.string.library_settings), actions.back, Modifier.align(Alignment.TopCenter))

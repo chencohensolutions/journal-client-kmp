@@ -16,8 +16,10 @@ import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.places.AndroidPlaceReader
+import com.chencohensolution.journal.server.HttpIndexingApi
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerHttp
+import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.places.PhotoPlaces
@@ -121,6 +123,13 @@ fun localIndexes(context: Context): LocalIndexes =
             encoding = AndroidTextEncoding(),
         )
     }.also { localIndexes = it }
+
+private var serverIndexing: ServerIndexing? = null
+
+/** Settings › Search › On your server: the reading of this user's photos for the server's indexes. One per process. */
+@Synchronized
+fun serverIndexing(context: Context): ServerIndexing =
+    serverIndexing ?: ServerIndexing(HttpIndexingApi(serverHttp(context.applicationContext))).also { serverIndexing = it }
 
 private fun localSearchApi(context: Context): LocalSearchApi {
     val settings = JournalSettings(SharedPreferencesStore(context))

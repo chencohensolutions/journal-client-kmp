@@ -13,6 +13,7 @@ import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.people.PeopleController
 import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.SearchController
+import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.ui.library.ServerFiles
 import com.chencohensolution.journal.ui.library.ServerVideos
@@ -39,6 +40,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val people: PeopleController = peopleController(application)
     val findings: PhotoFindingsController = createPhotoFindingsController(application, library)
     val localIndexes: LocalIndexes = localIndexes(application)
+    val serverIndexing: ServerIndexing = serverIndexing(application)
 
     init {
         // The video cache counts toward the same limit as previews from the start (Media3 reads its index here).

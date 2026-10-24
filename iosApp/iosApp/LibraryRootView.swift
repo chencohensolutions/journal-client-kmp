@@ -13,6 +13,7 @@ struct LibraryRootView: View {
     @ObservedObject var people: PeopleViewModel
     @ObservedObject var findings: FindingsViewModel
     @ObservedObject var phoneSearch: PhoneSearchViewModel
+    @ObservedObject var serverIndexing: ServerIndexingViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -163,7 +164,8 @@ struct LibraryRootView: View {
                             SettingsView(
                                 settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount),
                                 sourceCounts: stories.state.feed.counts, refreshLibrary: library.refresh,
-                                phoneSearch: journal.features.localIndexes ? phoneSearch : nil
+                                phoneSearch: journal.features.localIndexes ? phoneSearch : nil,
+                                indexing: journal.features.indexing ? serverIndexing : nil
                             )
                         case .place(let town):
                             PlacePageView(

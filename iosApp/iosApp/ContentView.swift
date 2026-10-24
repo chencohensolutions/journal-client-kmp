@@ -30,7 +30,8 @@ struct ContentView: View {
         } else {
             LibraryRootView(
                 journal: viewModel, library: viewModel.library, stories: viewModel.stories, settings: viewModel.settings, backup: viewModel.backup,
-                search: viewModel.search, people: viewModel.people, findings: viewModel.findings, phoneSearch: viewModel.phoneSearch
+                search: viewModel.search, people: viewModel.people, findings: viewModel.findings, phoneSearch: viewModel.phoneSearch,
+                serverIndexing: viewModel.serverIndexing
             ) {
                 viewModel.enrollment.reset()
                 showWizard = true

@@ -113,29 +113,59 @@ fun ViewerFindings() = Screen {
 @Preview(name = "light", device = PHONE, showBackground = true)
 @Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun PhoneSearch() = Screen { PhoneSearchScreen(PeopleLabData.phoneSearch, PhoneSearchActions()) }
+fun PhoneSearch() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearch, SearchSettingsActions()) }
 
 @PreviewTest
 @Preview(name = "downloading", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun PhoneSearchDownloading() = Screen { PhoneSearchScreen(PeopleLabData.phoneSearchDownloading, PhoneSearchActions()) }
+fun PhoneSearchDownloading() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchDownloading, SearchSettingsActions()) }
 
 @PreviewTest
 @Preview(name = "waiting", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun PhoneSearchWaiting() = Screen { PhoneSearchScreen(PeopleLabData.phoneSearchWaiting, PhoneSearchActions()) }
+fun PhoneSearchWaiting() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchWaiting, SearchSettingsActions()) }
 
 @PreviewTest
 @Preview(name = "off", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun PhoneSearchOff() = Screen { PhoneSearchScreen(PeopleLabData.phoneSearchOff, PhoneSearchActions()) }
+fun PhoneSearchOff() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchOff, SearchSettingsActions()) }
 
-// Settings, scrolled to Search: the On this phone row under Photos per page. Tall to reach it.
+// Settings, scrolled to Search: its row, which says how the server's reading goes. Tall to reach it.
 
 @PreviewTest
 @Preview(name = "dark", device = "spec:width=390dp,height=2200dp,dpi=420", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun SettingsPhoneSearch() = Screen { SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch) }
+fun SettingsPhoneSearch() = Screen {
+    SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch, indexing = PeopleLabData.indexingRunning)
+}
+
+// Settings › Search: the server's reading of the user's photos, photos per page, and On this phone.
+
+@PreviewTest
+@Preview(name = "running", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun SearchSettingsRunning() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) }
+
+@PreviewTest
+@Preview(name = "nightly", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun SearchSettingsNightly() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingNightly, PeopleLabData.phoneSearch, SearchSettingsActions()) }
+
+@PreviewTest
+@Preview(name = "paused", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun SearchSettingsPaused() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingPaused, PeopleLabData.phoneSearch, SearchSettingsActions()) }
+
+@PreviewTest
+@Preview(name = "queued", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun SearchSettingsQueued() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingQueued, null, SearchSettingsActions()) }
+
+@PreviewTest
+@Preview(name = "idle", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Preview(name = "idle light", device = PHONE, showBackground = true)
+@Composable
+fun SearchSettingsIdle() = Screen { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearch, SearchSettingsActions()) }
 
 // Correcting faces: a face tapped in a photo's details (Mom's, then "Who is it?"), and Edit faces with two marked.
 

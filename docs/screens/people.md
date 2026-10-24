@@ -61,7 +61,7 @@ person is known by, and a face you say isn't them keeps its lookalikes from them
 
 ## Offline
 
-With On this phone › People kept ([settings.md](settings.md)), People and a person's page are made from the people
+With On device search › People kept ([settings.md](settings.md)), People and a person's page are made from the people
 document and faces the phone keeps when the server can't be reached; naming, merging and moving need the server.
 
 ## Code

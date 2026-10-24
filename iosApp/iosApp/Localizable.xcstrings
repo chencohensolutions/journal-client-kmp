@@ -310,12 +310,32 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "%lld ahead of yours. Only one runs at a time, to keep the server’s memory free." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld לפני שלך. רק אחת רצה בכל פעם, כדי לשמור על הזיכרון של השרת."
+          }
+        }
+      }
+    },
     "%lld channels" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld ערוצים"
+          }
+        }
+      }
+    },
+    "%lld couldn’t be read" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld לא נקראו"
           }
         }
       }
@@ -408,6 +428,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld מתוך %2$lld ·"
+          }
+        }
+      }
+    },
+    "%lld per page" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld בעמוד"
+          }
+        }
+      }
+    },
+    "%lld per page · %lld kept on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld בעמוד · %2$lld שמורים בטלפון"
           }
         }
       }
@@ -2397,6 +2437,16 @@
         }
       }
     },
+    "Can’t reach the server: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין חיבור לשרת: %@"
+          }
+        }
+      }
+    },
     "Can’t reach your server right now." : {
       "localizations" : {
         "he" : {
@@ -3630,12 +3680,32 @@
         }
       }
     },
+    "Indexing" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אינדוקס"
+          }
+        }
+      }
+    },
     "Issued by journal-server-ca" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "הונפקה על ידי journal-server-ca"
+          }
+        }
+      }
+    },
+    "It couldn’t go on: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא הצליח להמשיך: %@"
           }
         }
       }
@@ -3806,6 +3876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "גדול"
+          }
+        }
+      }
+    },
+    "Last read %@: %@ photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נקראו %1$@: %2$@ תמונות"
           }
         }
       }
@@ -4026,6 +4106,206 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שונה"
+          }
+        }
+      }
+    },
+    "New photos are read every night." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות חדשות נקראות בכל לילה."
+          }
+        }
+      }
+    },
+    "New photos wait to be read until you resume." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות חדשות ימתינו לקריאה עד שתמשיך."
+          }
+        }
+      }
+    },
+    "Next nightly run: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הריצה הלילית הבאה: %@"
+          }
+        }
+      }
+    },
+    "Nightly run: reading your photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הריצה הלילית: קורא את התמונות שלך"
+          }
+        }
+      }
+    },
+    "No run yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד לא הייתה ריצה"
+          }
+        }
+      }
+    },
+    "Nudity scan" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סריקת עירום"
+          }
+        }
+      }
+    },
+    "On device search" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש במכשיר"
+          }
+        }
+      }
+    },
+    "Paused at %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מושהה ב־%1$@ מתוך %2$@"
+          }
+        }
+      }
+    },
+    "Photos per page" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות בעמוד"
+          }
+        }
+      }
+    },
+    "Read new photos now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לקרוא תמונות חדשות עכשיו"
+          }
+        }
+      }
+    },
+    "Reading your photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קורא את התמונות שלך"
+          }
+        }
+      }
+    },
+    "Results" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוצאות"
+          }
+        }
+      }
+    },
+    "Resume" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך"
+          }
+        }
+      }
+    },
+    "Server: paused at %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת: מושהה ב־%1$@ מתוך %2$@"
+          }
+        }
+      }
+    },
+    "Server: reading %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת: קורא %1$@ מתוך %2$@"
+          }
+        }
+      }
+    },
+    "Server: waiting to read your photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת: ממתין לקריאת התמונות שלך"
+          }
+        }
+      }
+    },
+    "Stopped %@ after %@ photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נעצר %1$@ אחרי %2$@ תמונות"
+          }
+        }
+      }
+    },
+    "The server let go of its models while paused. Resume goes on from here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בזמן ההשהיה השרת שחרר את המודלים מהזיכרון. המשך ימשיך מכאן."
+          }
+        }
+      }
+    },
+    "Waiting for other runs" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין לריצות אחרות"
+          }
+        }
+      }
+    },
+    "Your server reads each new photo once so search can find it: by words, people, text in the photo, and alike photos. It does this every night; you can start it now, and pause it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת קורא כל תמונה חדשה פעם אחת כדי שהחיפוש ימצא אותה: לפי מילים, אנשים, טקסט בתמונה ותמונות דומות. הוא עושה זאת בכל לילה; אפשר להתחיל עכשיו ולהשהות."
           }
         }
       }

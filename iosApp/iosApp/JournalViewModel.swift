@@ -19,6 +19,8 @@ final class JournalViewModel: ObservableObject {
     let people: PeopleViewModel
     let findings: FindingsViewModel
     let phoneSearch: PhoneSearchViewModel
+    /// Settings › Search › On your server: the reading of this user's photos for the server's indexes.
+    let serverIndexing: ServerIndexingViewModel
     /// What the server can do: People, a photo's text and similar photos, On this phone are offered only when it can.
     @Published private(set) var features = ServerFeatures.companion.NONE
     private var featuresObservation: ObservationHandle?
@@ -40,6 +42,7 @@ final class JournalViewModel: ObservableObject {
         people = PeopleViewModel()
         findings = FindingsViewModel(library: library)
         phoneSearch = PhoneSearchViewModel()
+        serverIndexing = ServerIndexingViewModel()
         state = controller.currentState
         featuresObservation = ServerImages.shared.files.observeFeatures { [weak self] in self?.features = $0 }
         // The controller delivers updates on the main thread.

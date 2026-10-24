@@ -81,11 +81,11 @@ internal val labScreens: List<LabScreen> = listOf(
         proposed { GroupScreen(PeopleLabData.groupPage, GroupActions()) },
         LabOption("typing", "Typing a name") { GroupScreen(PeopleLabData.groupTyping, GroupActions()) },
     )),
-    LabScreen("phone-search", "On this phone", listOf(
-        proposed { PhoneSearchScreen(PeopleLabData.phoneSearch, PhoneSearchActions()) },
-        LabOption("downloading", "Downloading") { PhoneSearchScreen(PeopleLabData.phoneSearchDownloading, PhoneSearchActions()) },
-        LabOption("waiting", "Waiting for Wi-Fi") { PhoneSearchScreen(PeopleLabData.phoneSearchWaiting, PhoneSearchActions()) },
-        LabOption("off", "Never turned on") { PhoneSearchScreen(PeopleLabData.phoneSearchOff, PhoneSearchActions()) },
+    LabScreen("phone-search", "On device search", listOf(
+        proposed { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearch, SearchSettingsActions()) },
+        LabOption("downloading", "Downloading") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchDownloading, SearchSettingsActions()) },
+        LabOption("waiting", "Waiting for Wi-Fi") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchWaiting, SearchSettingsActions()) },
+        LabOption("off", "Never turned on") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchOff, SearchSettingsActions()) },
     )),
     LabScreen("country", "Country", listOf(
         current { CountryScreen("France", PreviewData.placesLibrary, PreviewData.placesStories, onOpenPlace = {}, onBack = {}) },
@@ -134,8 +134,23 @@ internal val labScreens: List<LabScreen> = listOf(
     )),
     LabScreen("settings", "Settings", listOf(
         current { SettingsScreen(SettingsState(), SettingsActions()) },
-        LabOption("phone-search", "With On this phone", "Proposed: a row under Search") {
+        LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
+        },
+    )),
+    LabScreen("search-settings", "Settings › Search", listOf(
+        current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
+        LabOption("nightly", "Nightly run", "The nightly run reading this user's photos") {
+            SearchSettingsScreen(100, PeopleLabData.indexingNightly, PeopleLabData.phoneSearch, SearchSettingsActions())
+        },
+        LabOption("paused", "Paused", "Paused from the phone") {
+            SearchSettingsScreen(100, PeopleLabData.indexingPaused, PeopleLabData.phoneSearch, SearchSettingsActions())
+        },
+        LabOption("queued", "Waiting", "Behind another run") {
+            SearchSettingsScreen(100, PeopleLabData.indexingQueued, PeopleLabData.phoneSearch, SearchSettingsActions())
+        },
+        LabOption("idle", "Idle", "The last run, last night") {
+            SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearch, SearchSettingsActions())
         },
     )),
 )
