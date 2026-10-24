@@ -77,6 +77,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.roundToInt
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.FeedBlock
@@ -255,6 +257,9 @@ internal fun JournalHomeScreen(
         bottomHidden = false
     }
     val tabsAway = animateFloatAsState(if (bottomHidden) 1f else 0f, tween(BOTTOM_SLIDE_MILLIS), label = "tabs")
+    // The tabs' height and the gap above them: how far the month pill goes down to take their place.
+    val tabsRoom = remember { IntArray(1) }
+    val bottomGap = with(LocalDensity.current) { BOTTOM_GAP.roundToPx() }
     // What the list shows below its banners: the storyline's or the feed's items.
     val rows = when (tab) {
         HomeTab.MOMENTS -> feedRows
@@ -432,15 +437,20 @@ internal fun JournalHomeScreen(
                     }
                 }
                 if (moments && band == null && !timeline.isEmpty) {
-                    TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
-                        val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
-                        // The feed's rows come last in the list, after its banners.
-                        if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                    // Slides down with the tabs into their place at the bottom, and back up with them.
+                    Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
+                        TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                            val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
+                            // The feed's rows come last in the list, after its banners.
+                            if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                        }
                     }
                 }
-                // Slides down off the screen while the list goes down (keeping its place, so the month pill stays put).
+                // Slides down off the screen while the list goes down (keeping its place for the month pill to take).
                 Row(
-                    Modifier.graphicsLayer { translationY = tabsAway.value * (size.height + TABS_AWAY.toPx()) },
+                    Modifier
+                        .onSizeChanged { tabsRoom[0] = it.height + bottomGap }
+                        .graphicsLayer { translationY = tabsAway.value * (size.height + TABS_AWAY.toPx()) },
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -592,6 +602,9 @@ private const val SCROLL_DIRECTION_PX = 2f
 /** How long the tabs take to slide away or back, and how far below their place they go (past the gesture bar). */
 private const val BOTTOM_SLIDE_MILLIS = 250
 private val TABS_AWAY = 64.dp
+
+/** The gap between the bottom controls (BottomControls' spacing). */
+private val BOTTOM_GAP = 10.dp
 
 /**
  * "Today", or by breaks between photos "Today · 9:14 – 21:40" and "Sat, Oct 4 – Mon, Oct 6" for one that spans days.

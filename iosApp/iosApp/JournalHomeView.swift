@@ -90,6 +90,8 @@ struct JournalHomeView: View {
     @State private var jumpedAt = Date.distantPast
     /// The top bar's controls sliding away, which follows the scroll every frame.
     @State private var scroll = HomeScroll()
+    /// The tabs' height: how far the month pill goes down to take their place while they are slid away.
+    @State private var tabsHeight: CGFloat = 0
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -285,9 +287,11 @@ struct JournalHomeView: View {
                         jumpedAt = Date()
                         jump = RowJump(rowId: "heading-\(day.sectionKey)")
                     }
+                    // Slides down with the tabs into their place at the bottom, and back up with them.
+                    .offset(y: scroll.bottomHidden ? tabsHeight + 10 : 0)
                 }
-                // Slides down off the screen while the list goes down, back on the way up; it keeps its place, so the
-                // month pill stays put.
+                // Slides down off the screen while the list goes down, back on the way up; it keeps its place for the
+                // month pill to take.
                 HStack(spacing: 10) {
                     SegmentedBar(options: [(HomeTab.moments, "Moments"), (HomeTab.storyline, "Storyline"), (HomeTab.explore, "Explore")], selection: tabBinding)
                     SearchButton {
@@ -296,6 +300,7 @@ struct JournalHomeView: View {
                         withAnimation { searching = true }
                     }
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { tabsHeight = $0 }
                 .offset(y: scroll.bottomHidden ? 140 : 0)
                 .allowsHitTesting(!scroll.bottomHidden)
             }

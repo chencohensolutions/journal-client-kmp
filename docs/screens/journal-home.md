@@ -35,7 +35,8 @@ Photos fill the screen on the page background (light or dark with the system); t
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
-  - While the list scrolls down, the tabs and **N not backed up** slide away and only Moments' month pill stays; they
+  - While the list scrolls down, the tabs and **N not backed up** slide away and Moments' month pill slides down into
+    the tabs' place at the bottom; they
     come back as it scrolls up, at the top of the list, and when the tab changes, the ruler opens or photos are picked
     (Oct 24, 2026).
   - **N not backed up**, while anything isn't on the server.
