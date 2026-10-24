@@ -77,6 +77,8 @@ internal class SettingsActions(
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
+    /** "Filter bar in Moments". */
+    val setShowFilterBar: (Boolean) -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -228,7 +230,7 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
 
 /**
  * Show in the app: a pill per source with its count, the most photos first (asked Oct 24, 2026, when each folder
- * became a source), then "Say what's hidden", then where it applies and that hiding never deletes or changes backup.
+ * became a source), then "Say what's hidden" and "Filter bar in Moments", then where it applies and that hiding never deletes or changes backup.
  */
 @Composable
 private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
@@ -241,6 +243,13 @@ private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, In
                 body = stringResource(R.string.settings_say_hidden_body),
                 checked = shown.sayWhatsHidden,
                 onChange = actions.setSayWhatsHidden,
+            )
+            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            SwitchRow(
+                title = stringResource(R.string.settings_filter_bar),
+                body = stringResource(R.string.settings_filter_bar_body),
+                checked = shown.showFilterBar,
+                onChange = actions.setShowFilterBar,
             )
         }
     }

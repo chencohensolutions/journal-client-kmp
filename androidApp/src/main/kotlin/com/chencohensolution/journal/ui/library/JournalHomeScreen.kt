@@ -362,12 +362,13 @@ internal fun JournalHomeScreen(
             SearchTopBar(Modifier.align(Alignment.TopCenter))
             BottomControls(
                 summary = null,
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                insets = WindowInsets.navigationBars.union(WindowInsets.ime),
             ) {
                 SearchBottomBar(search, actions.search, onClose = { searching = false })
             }
         } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
-            if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
+            if (moments && stories.shownSources.showFilterBar) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
         }
 
@@ -375,7 +376,7 @@ internal fun JournalHomeScreen(
 
         if (!searching) BottomControls(
             summary = backupSummary(library, backupRunning).takeIf { !selection.active && !timelineOpen },
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         ) {
             if (selection.active && moments) {
                 FeedSelectionBar(
@@ -407,8 +408,8 @@ internal fun JournalHomeScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     SegmentedBar(
                         options = listOf(
-                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
                             HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
                             HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
                         ),
                         selected = tab,

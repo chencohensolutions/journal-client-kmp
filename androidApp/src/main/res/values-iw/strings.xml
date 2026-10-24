@@ -478,6 +478,8 @@
     <string name="settings_shown_title">מה מוצג באפליקציה</string>
     <string name="settings_say_hidden">לציין מה מוסתר</string>
     <string name="settings_say_hidden_body">„+6 וואטסאפ” ליד יום, ולחיצה מציגה אותן</string>
+    <string name="settings_filter_bar">סרגל הסינון ברגעים</string>
+    <string name="settings_filter_bar_body">שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן.</string>
     <string name="settings_shown_where">חל על רגעים, כל התמונות, גילוי, תגיות ובחירת תמונות לסיפור.</string>
     <string name="settings_shown_stories">תמונות שכבר שמת בסיפור תמיד מוצגות בו. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>

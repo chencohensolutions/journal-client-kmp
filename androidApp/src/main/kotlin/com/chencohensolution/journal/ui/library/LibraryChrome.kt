@@ -8,6 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -95,11 +98,20 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
     }
 }
 
-/** The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. */
+/**
+ * The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. The fade runs to
+ * the bottom of the screen, under the system's gesture bar ([insets] keep the controls above it), so no unfaded strip
+ * of photos shows there.
+ */
 @Composable
-internal fun BottomControls(summary: String?, modifier: Modifier = Modifier, bar: @Composable () -> Unit) {
+internal fun BottomControls(
+    summary: String?,
+    modifier: Modifier = Modifier,
+    insets: WindowInsets = WindowInsets.navigationBars,
+    bar: @Composable () -> Unit,
+) {
     Column(
-        modifier.background(LibraryColors.BottomFade).padding(top = 48.dp, bottom = 16.dp),
+        modifier.background(LibraryColors.BottomFade).windowInsetsPadding(insets).padding(top = 48.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

@@ -10,7 +10,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   and app became a source, see [Moments](moments.md) for how a photo's source is told, and a switch per source grew too
   long). Everything but WhatsApp and Screenshots is shown at first, a folder seen for the first time too; a hidden
   source stays listed so it can be shown again. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
-  [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore and Tags; photos
+  [Moments](moments.md) chips on or off, and **Filter bar in Moments** ("The row of sources above the feed. When off,
+  choose them here."; on; asked Oct 24, 2026; `ShownSources.showFilterBar`, kept as `show_filter_bar`), which hides
+  the Moments filter bar. Under them: it applies to Moments, All photos, Explore and Tags; photos
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
   (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,

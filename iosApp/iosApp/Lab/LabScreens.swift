@@ -130,7 +130,7 @@ extension SettingsActions {
     /// Does nothing: the lab has no controllers.
     static let lab = SettingsActions(
         setGroupingMode: { _ in }, setGapHours: { _ in }, setSimilarityPercent: { _ in }, resetSimilarity: {}, toggleFeedSource: { _ in },
-        setSayWhatsHidden: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
+        setSayWhatsHidden: { _ in }, setShowFilterBar: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
         setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in },
         setShowOnPhoneBadge: { _ in }, setSearchPageSize: { _ in }, setBackupEnabled: { _ in }, toggleBackupSource: { _ in },
         setWifiOnly: { _ in }, setChargingOnly: { _ in }, setOrder: { _ in }, backUpNow: {}

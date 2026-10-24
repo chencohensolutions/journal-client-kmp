@@ -62,7 +62,8 @@ struct JournalHomeView: View {
     var people: PeopleState? = nil
 
     /// The tab and Explore view it opens on (the UI lab opens others).
-    @State var tab = HomeTab.storyline
+    /// Moments on start (asked Oct 24, 2026).
+    @State var tab = HomeTab.moments
     @State var exploreView = ExploreView.places
     /// Search covers the tab until its ✕, and the tab is as it was (the UI lab opens on it).
     @State var searching = false
@@ -267,7 +268,7 @@ struct JournalHomeView: View {
                     }
                 }
                 HStack(spacing: 10) {
-                    SegmentedBar(options: [(HomeTab.storyline, "Storyline"), (HomeTab.moments, "Moments"), (HomeTab.explore, "Explore")], selection: tabBinding)
+                    SegmentedBar(options: [(HomeTab.moments, "Moments"), (HomeTab.storyline, "Storyline"), (HomeTab.explore, "Explore")], selection: tabBinding)
                     SearchButton {
                         selection = []
                         revealToast = nil
@@ -392,7 +393,7 @@ struct JournalHomeView: View {
             .padding(.leading, 16)
             .padding(.trailing, 8)
             if tab == .moments {
-                FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource)
+                if stories.shownSources.showFilterBar { FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource) }
             } else if tab == .explore {
                 ExploreBar(view: $exploreView, people: people != nil, onMap: actions.explore.openMap)
             }

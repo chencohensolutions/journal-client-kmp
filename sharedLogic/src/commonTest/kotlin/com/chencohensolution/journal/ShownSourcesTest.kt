@@ -80,6 +80,11 @@ class ShownSourcesTest {
         settings.shownSources = chosen
         assertEquals(chosen, JournalSettings(store).shownSources)
         assertEquals(null, store.values["feed_sources"])
+
+        // The filter bar is on at first, and stays off once turned off.
+        assertTrue(chosen.showFilterBar)
+        settings.shownSources = chosen.copy(showFilterBar = false)
+        assertEquals(false, JournalSettings(store).shownSources.showFilterBar)
     }
 
     @Test

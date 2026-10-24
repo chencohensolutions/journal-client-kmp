@@ -31,15 +31,16 @@ stories deleted (see "Storyline" below).
 **Look and navigation**
 - The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
   light or dark theme; the photo viewer is always dark.
-- Home has three tabs: **Storyline**, **Moments** and **Explore**. (Journal / Unsorted until Oct 19, 2026, then
-  Stories / Moments; Explore from Oct 20; Storyline replaced Stories on Oct 21, 2026.) Moments shows **every photo**,
-  also those tagged or written about.
+- Home has three tabs: **Moments**, **Storyline** and **Explore**, and opens on Moments (first and the default since
+  Oct 24, 2026, as the owner asked; Storyline was before). (Journal / Unsorted until Oct 19, 2026, then Stories /
+  Moments; Explore from Oct 20; Storyline replaced Stories on Oct 21, 2026.) Moments shows **every photo**, also those
+  tagged or written about.
 - Moments are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
 - Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first, iOS since Oct 21, 2026): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
   one photo you swipe (no peek), and a filter bar of source toggles. See [screens/moments.md](screens/moments.md).
-- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Storyline / Moments / Explore, plus "N not backed up".
+- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Moments / Storyline / Explore, plus "N not backed up".
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 
 **Storyline** (owner, Oct 21, 2026)

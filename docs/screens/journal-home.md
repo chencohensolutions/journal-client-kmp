@@ -32,7 +32,10 @@ Photos fill the screen on the page background (light or dark with the system); t
   then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
   - **N not backed up**, while anything isn't on the server.
-  - **Storyline / Moments / Explore** switch: Storyline shows the photos you wrote about, Moments every photo,
+  - Android: their fade runs to the bottom of the screen, under the system's gesture bar (the controls stay above it),
+    so no unfaded strip of photos shows below them (Oct 24, 2026); iOS's fade already did.
+  - **Moments / Storyline / Explore** switch (Moments first, and the tab home opens on, since Oct 24, 2026): Moments
+    every photo, Storyline the photos you wrote about,
     Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
     **Cancel · N selected · Merge** takes its place.
 

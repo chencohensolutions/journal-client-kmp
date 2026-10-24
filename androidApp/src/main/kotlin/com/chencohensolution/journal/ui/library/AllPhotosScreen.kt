@@ -147,7 +147,7 @@ internal fun AllPhotosScreen(
 
             BottomControls(
                 summary = backupSummary(library, backupRunning),
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             ) {
                 SegmentedBar(
                     options = listOf(

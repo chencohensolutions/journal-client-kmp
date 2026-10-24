@@ -3408,6 +3408,16 @@
         }
       }
     },
+    "Filter bar in Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרגל הסינון ברגעים"
+          }
+        }
+      }
+    },
     "Get an enrollment code" : {
       "localizations" : {
         "he" : {
@@ -4326,6 +4336,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נעצר %1$@ אחרי %2$@ תמונות"
+          }
+        }
+      }
+    },
+    "The row of sources above the feed. When off, choose them here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן."
           }
         }
       }

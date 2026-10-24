@@ -152,6 +152,9 @@ class SettingsController internal constructor(
     /** "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments. */
     fun setSayWhatsHidden(say: Boolean) = changeShownSources { it.copy(sayWhatsHidden = say) }
 
+    /** "Filter bar in Moments": the row of sources above the feed, or none. */
+    fun setShowFilterBar(show: Boolean) = changeShownSources { it.copy(showFilterBar = show) }
+
     /** "Always show this day": [source]'s photos of [days] show even while the source is hidden. */
     fun alwaysShow(days: List<LocalDay>, source: MediaSource) =
         changeShownSources { shown -> shown.copy(alwaysShown = shown.alwaysShown + days.map { DaySource(it, source) }) }

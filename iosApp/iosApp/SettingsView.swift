@@ -49,6 +49,7 @@ struct SettingsView: View {
         SettingsActions(
             setGroupingMode: settings.setGroupingMode, setGapHours: settings.setGapHours, setSimilarityPercent: settings.setSimilarityPercent,
             resetSimilarity: settings.resetSimilarity, toggleFeedSource: settings.toggleFeedSource, setSayWhatsHidden: settings.setSayWhatsHidden,
+            setShowFilterBar: settings.setShowFilterBar,
             setPreviewsEnabled: settings.setPreviewsEnabled, setPreviewFormat: settings.setPreviewFormat,
             setPreviewQuality: settings.setPreviewQuality, setPreviewLimit: settings.setPreviewLimit, clearPreviews: settings.clearPreviews,
             setShowPrivateMedia: settings.setShowPrivateMedia,
@@ -68,6 +69,7 @@ struct SettingsActions {
     /// Show in the app: a source on or off everywhere (the Moments filter bar, Explore's sheet), and "Say what's hidden".
     var toggleFeedSource: (MediaSource) -> Void
     var setSayWhatsHidden: (Bool) -> Void
+    var setShowFilterBar: (Bool) -> Void
     /// Storage on this phone: how server photos are shown, the space they may take here, and "Clear".
     var setPreviewsEnabled: (Bool) -> Void
     var setPreviewFormat: (PreviewFormat) -> Void
@@ -163,7 +165,8 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
 
 extension SettingsScreen {
     /// Show in the app: a pill per source with its count, the most photos first (the same as the Moments filter bar
-    /// and Explore's "Showing" sheet), and "Say what's hidden" (the "+6 WhatsApp" chips in Moments).
+    /// and Explore's "Showing" sheet), "Say what's hidden" (the "+6 WhatsApp" chips in Moments) and "Filter bar in
+    /// Moments".
     private var shownSourcesSection: some View {
         let shown = settings.shownSources
         return Group {
@@ -176,6 +179,10 @@ extension SettingsScreen {
             Section {
                 Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
                     ModeLabel(title: "Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
+                }
+                .tint(LibraryColors.accent)
+                Toggle(isOn: Binding(get: { shown.showFilterBar }, set: actions.setShowFilterBar)) {
+                    ModeLabel(title: "Filter bar in Moments", detail: "The row of sources above the feed. When off, choose them here.")
                 }
                 .tint(LibraryColors.accent)
             } footer: {

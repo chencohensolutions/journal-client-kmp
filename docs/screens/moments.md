@@ -14,7 +14,8 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   hides its source and it leaves the row. **+N** opens the **Showing** sheet: every source as a pill with its count,
   the most photos first, filled when shown, tapped to show or hide (also a hidden folder with no photos left). Shared:
   `MomentsFeed.bar`, `hiddenCount`, `sheet`. Everything but WhatsApp and Screenshots is shown at first (those two off
-  for everyone since Oct 21, 2026), and a folder seen for the first time is shown. It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
+  for everyone since Oct 21, 2026), and a folder seen for the first time is shown. Settings › Show in the app › **Filter bar in
+  Moments** turns the bar off (Oct 24, 2026). It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
   everywhere (`ShownSources`, kept as `hidden_sources`; an older `shown_sources` or `feed_sources` keeps its choice).
 - **What's hidden (Oct 21, 2026):** with **Say what's hidden** on, a row's divider ends with a chip per hidden
   source, "+6 WhatsApp", "+3 Screenshots", for the hidden photos of its days (each counted once, on the row of its

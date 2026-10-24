@@ -71,13 +71,14 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 val day = LocalDay.parse(entry.substringBefore(":")) ?: return@mapNotNull null
                 DaySource(day, MediaSource.parse(unescape(entry.substringAfter(":", ""))) ?: return@mapNotNull null)
             }?.toSet().orEmpty()
-            return ShownSources(hidden, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown)
+            return ShownSources(hidden, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown, store.getString(KEY_SHOW_FILTER_BAR) != "false")
         }
         set(value) {
             store.putString(KEY_HIDDEN_SOURCES, idsOf(value.hidden))
             store.putString(KEY_SHOWN_SOURCES, null)
             store.putString(KEY_FEED_SOURCES, null)
             store.putString(KEY_SAY_WHATS_HIDDEN, value.sayWhatsHidden.toString())
+            store.putString(KEY_SHOW_FILTER_BAR, value.showFilterBar.toString())
             store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${escape(it.source.id)}" }.ifEmpty { null })
         }
 
@@ -241,6 +242,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_FEED_SOURCES = "feed_sources"
         private const val KEY_SHOWN_SOURCES = "shown_sources"
         private const val KEY_HIDDEN_SOURCES = "hidden_sources"
+        private const val KEY_SHOW_FILTER_BAR = "show_filter_bar"
         private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"

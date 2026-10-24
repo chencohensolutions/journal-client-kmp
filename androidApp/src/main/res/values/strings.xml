@@ -459,6 +459,8 @@
     <string name="settings_shown_title">Show in the app</string>
     <string name="settings_say_hidden">Say what\'s hidden</string>
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
+    <string name="settings_filter_bar">Filter bar in Moments</string>
+    <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
     <string name="settings_shown_where">Applies to Moments, All photos, Explore, Tags and picking photos for a story.</string>
     <string name="settings_shown_stories">Photos you already put in a story always show there. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>

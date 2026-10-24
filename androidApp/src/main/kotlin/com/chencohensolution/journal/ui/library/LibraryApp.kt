@@ -197,6 +197,8 @@ private fun LibraryScreens(
                         LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
+                                    // Moments first and opened on start (asked Oct 24, 2026); previews keep the storyline.
+                                    initialTab = HomeTab.MOMENTS,
                                     library = libraryState,
                                     stories = storiesState,
                                     health = journalState.health,
@@ -343,6 +345,7 @@ private fun LibraryScreens(
                                         actions = SettingsActions(
                                             toggleSource = settings::toggleFeedSource,
                                             setSayWhatsHidden = settings::setSayWhatsHidden,
+                                            setShowFilterBar = settings::setShowFilterBar,
                                             setGroupingMode = settings::setGroupingMode,
                                             setGapHours = settings::setGapHours,
                                             setSimilarityPercent = settings::setSimilarityPercent,

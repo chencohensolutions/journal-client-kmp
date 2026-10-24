@@ -15,6 +15,8 @@ data class ShownSources(
     val sayWhatsHidden: Boolean = true,
     /** Days whose photos of a hidden source show anyway ("Always show this day"). */
     val alwaysShown: Set<DaySource> = emptySet(),
+    /** The filter bar above Moments (on by default); off, the sources are chosen in Settings only (asked Oct 24, 2026). */
+    val showFilterBar: Boolean = true,
 ) {
     fun shows(item: MediaItem): Boolean = isShown(item.source) || DaySource(item.day, item.source) in alwaysShown
 
