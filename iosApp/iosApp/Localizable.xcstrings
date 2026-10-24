@@ -37,6 +37,16 @@
         }
       }
     },
+    "%@ of %lld GB" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ מתוך %2$lld GB"
+          }
+        }
+      }
+    },
     "%@ profile" : {
       "localizations" : {
         "he" : {
@@ -2321,6 +2331,16 @@
         }
       }
     },
+    "Backup and storage" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גיבוי ואחסון"
+          }
+        }
+      }
+    },
     "Badges" : {
       "localizations" : {
         "he" : {
@@ -3630,6 +3650,16 @@
         }
       }
     },
+    "Higher: only photos that look nearly the same are set together. Lower: bigger sets, less alike." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גבוה יותר: רק תמונות כמעט זהות מקובצות יחד. נמוך יותר: קבוצות גדולות יותר, פחות דומות."
+          }
+        }
+      }
+    },
     "Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike." : {
       "localizations" : {
         "he" : {
@@ -3686,6 +3716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תמונה"
+          }
+        }
+      }
+    },
+    "Image quality" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איכות תמונה"
           }
         }
       }
@@ -3970,6 +4010,16 @@
         }
       }
     },
+    "Library" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ספרייה"
+          }
+        }
+      }
+    },
     "Limited" : {
       "localizations" : {
         "he" : {
@@ -4150,6 +4200,16 @@
         }
       }
     },
+    "New row after %lld hours" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורה חדשה אחרי %lld שעות"
+          }
+        }
+      }
+    },
     "Newer month" : {
       "localizations" : {
         "he" : {
@@ -4210,12 +4270,42 @@
         }
       }
     },
+    "On all your devices" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בכל המכשירים שלך"
+          }
+        }
+      }
+    },
     "On device search" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "חיפוש במכשיר"
+          }
+        }
+      }
+    },
+    "On this phone only. Applies to Moments, All photos, Explore and Tags." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בטלפון הזה בלבד. חל על רגעים, כל התמונות, גילוי ותגיות."
+          }
+        }
+      }
+    },
+    "Originals" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקוריים"
           }
         }
       }
@@ -4230,12 +4320,32 @@
         }
       }
     },
+    "Photos and videos you marked private. Off: hidden on this phone, and not downloaded." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות וסרטונים שסימנת כפרטיים. כשכבוי: מוסתרים בטלפון הזה ולא יורדים."
+          }
+        }
+      }
+    },
     "Photos per page" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "תמונות בעמוד"
+          }
+        }
+      }
+    },
+    "Privacy" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטיות"
           }
         }
       }
@@ -4280,6 +4390,26 @@
         }
       }
     },
+    "Rows" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורות"
+          }
+        }
+      }
+    },
+    "Saves the battery; uploads wait for the charger." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חוסך בסוללה; ההעלאות ממתינות למטען."
+          }
+        }
+      }
+    },
     "Server: paused at %@ of %@" : {
       "localizations" : {
         "he" : {
@@ -4310,12 +4440,42 @@
         }
       }
     },
+    "Sets of similar photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבוצות של תמונות דומות"
+          }
+        }
+      }
+    },
+    "Showing %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוצגים: %@"
+          }
+        }
+      }
+    },
     "Shows the month's days and the other months" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מציג את ימי החודש ואת שאר החודשים"
+          }
+        }
+      }
+    },
+    "similar at %lld%%" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דמיון של %lld%%"
           }
         }
       }
@@ -4330,12 +4490,32 @@
         }
       }
     },
+    "The original files are downloaded and kept in the space above. Videos are not downloaded." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים המקוריים יורדים ונשמרים במקום שלמעלה. סרטונים לא יורדים."
+          }
+        }
+      }
+    },
     "The server let go of its models while paused. Resume goes on from here." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "בזמן ההשהיה השרת שחרר את המודלים מהזיכרון. המשך ימשיך מכאן."
+          }
+        }
+      }
+    },
+    "Used" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשימוש"
           }
         }
       }

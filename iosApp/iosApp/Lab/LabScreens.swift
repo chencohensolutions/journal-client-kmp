@@ -77,17 +77,8 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "settings", title: "Settings", options: [
         current { labSettings() },
-        // Fakes: nothing; the same states as `current`, regrouped. Switches do nothing; Search's row opens nothing.
-        LabOption(id: "a", title: "Groups with pages", note: "Library, Privacy, Backup and storage, Search; each row opens its page") {
-            labSettingsA()
-        },
-        // As `a`, with no answer from the server: no usage on Backup, no sync line on Hidden collections.
-        LabOption(id: "a-offline", title: "Groups with pages, offline", note: "Option a before the server answers") {
-            labSettingsA(offline: true)
-        },
-        // Fakes: nothing; the same states as `current`.
-        LabOption(id: "b", title: "One page, regrouped", note: "Today's single scroll, ordered by purpose; storage split in two") {
-            labSettingsB()
+        LabOption(id: "offline", title: "Offline", note: "Before the server answers: no usage on Backup, no sync line") {
+            labSettings(offline: true)
         },
     ]),
     LabScreen(id: "free-up", title: "Free up space", options: [
@@ -98,12 +89,15 @@ let labScreens: [LabScreen] = [
     ]),
 ]
 
-/// Settings as the app pushes it, with backup running; its Free up space row opens the lab's Free up space.
-private func labSettings() -> some View {
+/// Settings as the app pushes it, with backup running; its rows open the lab's Free up space and Hidden collections.
+/// `offline`: no answer from the server yet.
+private func labSettings(offline: Bool = false) -> some View {
     SettingsScreen(
-        settings: data.settings, backup: data.backup, notBackedUp: Int(data.notBackedUp), sourceCounts: data.sourceCounts,
-        previewBytes: data.previewBytes, serverUsage: data.serverUsage, freeUp: data.freeUp, actions: .lab,
-        syncProgress: data.syncProgress
+        content: SettingsContent(
+            settings: data.settings, backup: data.backup, notBackedUp: Int(data.notBackedUp), sourceCounts: data.sourceCounts,
+            previewBytes: data.previewBytes, serverUsage: offline ? nil : data.serverUsage, freeUp: data.freeUp, actions: .lab,
+            syncProgress: offline ? nil : data.syncProgress
+        )
     ) {
         FreeUpScreen(state: data.freeUp, actions: .lab)
     } hiddenScreen: {

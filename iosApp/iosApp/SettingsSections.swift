@@ -1,14 +1,10 @@
-#if DEBUG
-
 import SwiftUI
 import SharedLogic
 
-// The pieces both proposed Settings layouts are built from (SettingsOptionA, SettingsOptionB): the app's Settings
-// sections, regrouped. Copies of SettingsView.swift's sections with these changes: Storage splits into "Kept on this
-// phone" and "Image quality"; the badge and private-media switches are rows that a group places; Show in the app says
-// it is for this phone only and points to Hidden collections; and each part has the one-line summary a row shows.
+// Settings' pages and rows (SettingsView.swift draws the page of groups from them): what each shows, and the one-line
+// summary its row on the first page shows. See docs/screens/settings.md.
 
-/// What Settings draws: the same states `SettingsScreen` takes.
+/// What Settings draws: the view models' states, or the UI lab's made-up ones.
 struct SettingsContent {
     let settings: SettingsState
     let backup: BackupState
@@ -315,7 +311,7 @@ struct StorageSections: View {
                 Text("Used").foregroundStyle(LibraryColors.onBackground)
                 Group {
                     if let bytes = content.previewBytes {
-                        Text("\(fileSize(bytes)) of \(limit) GB. Photos from your server are fetched again when you scroll to them.")
+                        Text("\(fileSize(bytes)) of \(limit) GB used. Photos from your server are fetched again when you scroll to them.")
                     } else {
                         Text("Counting…")
                     }
@@ -414,5 +410,3 @@ func serverUsageLine(_ usage: StorageUsage?) -> String {
     if usage.videos == 0 { return "\(size) · \(photos)" }
     return "\(size) · \(photos), " + String(localized: "\(Int(usage.videos)) videos")
 }
-
-#endif
