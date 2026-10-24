@@ -77,6 +77,18 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "settings", title: "Settings", options: [
         current { labSettings() },
+        // Fakes: nothing; the same states as `current`, regrouped. Switches do nothing; Search's row opens nothing.
+        LabOption(id: "a", title: "Groups with pages", note: "Library, Privacy, Backup and storage, Search; each row opens its page") {
+            labSettingsA()
+        },
+        // As `a`, with no answer from the server: no usage on Backup, no sync line on Hidden collections.
+        LabOption(id: "a-offline", title: "Groups with pages, offline", note: "Option a before the server answers") {
+            labSettingsA(offline: true)
+        },
+        // Fakes: nothing; the same states as `current`.
+        LabOption(id: "b", title: "One page, regrouped", note: "Today's single scroll, ordered by purpose; storage split in two") {
+            labSettingsB()
+        },
     ]),
     LabScreen(id: "free-up", title: "Free up space", options: [
         current { FreeUpScreen(state: data.freeUp, actions: .lab) },
