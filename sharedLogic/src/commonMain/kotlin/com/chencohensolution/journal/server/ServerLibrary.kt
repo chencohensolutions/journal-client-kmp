@@ -80,7 +80,7 @@ data class ServerMedia(
             sizeBytes = size,
             fileName = fileName,
             backup = BackupStatus.BackedUp,
-            source = MediaSource.entries.firstOrNull { it.name.equals(source, ignoreCase = true) } ?: MediaSource.OTHER,
+            source = source?.let(MediaSource::parse) ?: MediaSource.OTHER,
             location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
             mimeType = mimeType,
             sha256 = sha256,

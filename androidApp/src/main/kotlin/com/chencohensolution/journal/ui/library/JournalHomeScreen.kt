@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import com.chencohensolution.journal.backup.BackupProgress
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -34,8 +36,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -68,6 +68,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.FeedBlock
@@ -103,7 +111,6 @@ internal class HomeActions(
     /** A photo of the storyline; the viewer swipes through the storyline. */
     val openStoryline: (MediaItem) -> Unit = {},
     val toggleSource: (MediaSource) -> Unit = {},
-    val openAllPhotos: () -> Unit = {},
     val openSettings: () -> Unit = {},
     val openTags: () -> Unit = {},
     val allowAccess: () -> Unit = {},
@@ -214,16 +221,56 @@ internal fun JournalHomeScreen(
     LaunchedEffect(tab, searching, selection.active) { timelineOpen = false }
     val timeline = shownFeed.timeline
     val rowSections = remember(feedRows) { feedRows.sectionKeys() }
-    // The month of the row at the top, under the title: the first whose bottom is below the list's top padding (the
-    // row behind the title counts as visible). Derived, so the screen recomposes only when the month changes.
-    val topMonth by remember(feedRows, timeline) {
+    // The row at the top, under the title: the first whose bottom is below the list's top padding (the row behind the
+    // title counts as visible). Its month and day are the pill's; derived, so the screen recomposes only when they change.
+    val topSection by remember(feedRows) {
         derivedStateOf {
             val info = list.layoutInfo
             val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
-            rowSections.getOrNull(top - (info.totalItemsCount - feedRows.size))?.let(timeline::monthOf)
+            rowSections.getOrNull(top - (info.totalItemsCount - feedRows.size))
         }
     }
+    val topMonth = topSection?.let(timeline::monthOf)
+    val topDay = topSection?.let { shownFeed.section(it)?.span?.newestDay }
     val scope = rememberCoroutineScope()
+    // The title row and the bar under it slide away while the list scrolls down, and back as it scrolls up (asked Oct 24,
+    // 2026).
+    val titleHeight = remember { IntArray(1) }
+    val titleShift = remember { mutableFloatStateOf(0f) }
+    // How far the list in view has scrolled from its top, by the scrolls it reported (Explore's lists are their own).
+    val scrolledPx = remember { mutableFloatStateOf(0f) }
+    // The tabs and the backup pill slide away too, and come back on the way up; the month pill stays (asked Oct 24, 2026).
+    var bottomHidden by remember { mutableStateOf(false) }
+    val collapse = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                titleShift.floatValue = (titleShift.floatValue + available.y).coerceIn(-titleHeight[0].toFloat(), 0f)
+                if (available.y < -SCROLL_DIRECTION_PX && !bottomHidden) bottomHidden = true
+                if (available.y > SCROLL_DIRECTION_PX && bottomHidden) bottomHidden = false
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                scrolledPx.floatValue = (scrolledPx.floatValue - consumed.y).coerceAtLeast(0f)
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(tab, searching, timelineOpen, selection.active) {
+        titleShift.floatValue = 0f
+        bottomHidden = false
+    }
+    LaunchedEffect(tab, searching) { scrolledPx.floatValue = 0f }
+    // The top bar's fade fades in while the bar shows over a list scrolled from its top, and out at the top (asked Oct
+    // 24, 2026); the bar's own sliding away fades it further (TopBar).
+    val scrolledFromTop by remember {
+        derivedStateOf { if (tab == HomeTab.EXPLORE || searching) scrolledPx.floatValue > 0f else list.canScrollBackward }
+    }
+    val topFade = animateFloatAsState(if (scrolledFromTop) 1f else 0f, tween(TOP_FADE_MILLIS), label = "topFade")
+    val tabsAway = animateFloatAsState(if (bottomHidden) 1f else 0f, tween(BOTTOM_SLIDE_MILLIS), label = "tabs")
+    // The tabs' height and the gap above them: how far the month pill goes down to take their place.
+    val tabsRoom = remember { IntArray(1) }
+    val bottomGap = with(LocalDensity.current) { BOTTOM_GAP.roundToPx() }
     // What the list shows below its banners: the storyline's or the feed's items.
     val rows = when (tab) {
         HomeTab.MOMENTS -> feedRows
@@ -299,7 +346,7 @@ internal fun JournalHomeScreen(
         )
     }
 
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
+    Box(Modifier.fillMaxSize().background(LibraryColors.Background).nestedScroll(collapse)) {
         if (searching) {
             SearchContent(
                 search,
@@ -322,7 +369,8 @@ internal fun JournalHomeScreen(
             LazyColumn(
                 state = list,
                 contentPadding = PaddingValues(
-                    top = insets.calculateTopPadding() + if (moments) 118.dp else 72.dp,
+                    // Room for the title, and for the filter bar when it shows.
+                    top = insets.calculateTopPadding() + if (moments && stories.shownSources.showFilterBar) 118.dp else 72.dp,
                     bottom = insets.calculateBottomPadding() + 150.dp,
                 ),
             ) {
@@ -362,12 +410,20 @@ internal fun JournalHomeScreen(
             SearchTopBar(Modifier.align(Alignment.TopCenter))
             BottomControls(
                 summary = null,
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                insets = WindowInsets.navigationBars.union(WindowInsets.ime),
             ) {
                 SearchBottomBar(search, actions.search, onClose = { searching = false })
             }
-        } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
-            if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
+        } else TopBar(
+            health,
+            actions,
+            titleShift = { titleShift.floatValue },
+            titleHeight = titleHeight,
+            fade = { topFade.value },
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            if (moments && stories.shownSources.showFilterBar) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
         }
 
@@ -375,7 +431,8 @@ internal fun JournalHomeScreen(
 
         if (!searching) BottomControls(
             summary = backupSummary(library, backupRunning).takeIf { !selection.active && !timelineOpen },
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            summaryHidden = bottomHidden,
         ) {
             if (selection.active && moments) {
                 FeedSelectionBar(
@@ -398,17 +455,27 @@ internal fun JournalHomeScreen(
                     }
                 }
                 if (moments && band == null && !timeline.isEmpty) {
-                    TimelineBar(timeline, topMonth, timelineOpen, onOpen = { timelineOpen = it }) { day ->
-                        val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
-                        // The feed's rows come last in the list, after its banners.
-                        if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                    // Slides down with the tabs into their place at the bottom, and back up with them.
+                    Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
+                        TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                            val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
+                            // The feed's rows come last in the list, after its banners.
+                            if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                        }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Slides down off the screen while the list goes down (keeping its place for the month pill to take).
+                Row(
+                    Modifier
+                        .onSizeChanged { tabsRoom[0] = it.height + bottomGap }
+                        .graphicsLayer { translationY = tabsAway.value * (size.height + TABS_AWAY.toPx()) },
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     SegmentedBar(
                         options = listOf(
-                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
                             HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
                             HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
                         ),
                         selected = tab,
@@ -503,51 +570,66 @@ private fun RevealNote(section: FeedSection, band: RevealedPhotos, onHide: () ->
 private const val REVEAL_NOTE_MILLIS = 6_000L
 
 @Composable
-private fun TopBar(health: ServerHealth, actions: HomeActions, modifier: Modifier = Modifier, below: @Composable () -> Unit = {}) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    Column(modifier.fillMaxWidth().background(LibraryColors.TopFade).statusBarsPadding().padding(top = 8.dp, bottom = 24.dp)) {
-        Row(
-            Modifier.padding(start = 16.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.library_title),
-                color = LibraryColors.OnBackground,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            if (health == ServerHealth.OFFLINE) OfflinePill()
-            IconButton(onClick = actions.openTags) {
-                Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
-            }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(LibraryIcons.More, stringResource(R.string.library_more), tint = LibraryColors.OnBackground)
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.library_all_photos)) },
-                        leadingIcon = { Icon(LibraryIcons.Grid, null) },
-                        onClick = {
-                            menuOpen = false
-                            actions.openAllPhotos()
-                        },
+private fun TopBar(
+    health: ServerHealth,
+    actions: HomeActions,
+    /** How far the bar's controls have slid up (zero or less, in pixels), as the list scrolls. */
+    titleShift: () -> Float,
+    /** Where the controls' full height is kept for the scroll to know how far they can slide. */
+    titleHeight: IntArray,
+    /** How much of the fade behind the bar shows (0 to 1) while the bar itself shows: none at the list's top. */
+    fade: () -> Float,
+    modifier: Modifier = Modifier,
+    below: @Composable () -> Unit = {},
+) {
+    // How much of the controls shows: 1 in place, 0 slid away.
+    val shown = { if (titleHeight[0] > 0) 1f + titleShift() / titleHeight[0] else 1f }
+    Box(modifier.fillMaxWidth()) {
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = fade() * shown() }.background(LibraryColors.TopFade))
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, bottom = 8.dp)) {
+            // The title row and the bar under it (the filter bar, Explore's) slide up and fade out together, whole.
+            Column(
+                Modifier
+                    .onSizeChanged { titleHeight[0] = it.height }
+                    .graphicsLayer {
+                        translationY = titleShift()
+                        alpha = shown()
+                    },
+            ) {
+                Row(Modifier.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.library_title),
+                        color = LibraryColors.OnBackground,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).semantics { heading() },
                     )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.library_settings)) },
-                        leadingIcon = { Icon(LibraryIcons.Settings, null) },
-                        onClick = {
-                            menuOpen = false
-                            actions.openSettings()
-                        },
-                    )
+                    if (health == ServerHealth.OFFLINE) OfflinePill()
+                    IconButton(onClick = actions.openTags) {
+                        Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
+                    }
+                    IconButton(onClick = actions.openSettings) {
+                        Icon(LibraryIcons.Settings, stringResource(R.string.library_settings), tint = LibraryColors.OnBackground)
+                    }
                 }
+                below()
             }
         }
-        below()
     }
 }
+
+/** A scroll of more than this many pixels in a frame says which way the list goes, for the bottom controls. */
+private const val SCROLL_DIRECTION_PX = 2f
+
+/** How long the top bar's fade takes to fade in or out at the list's top. */
+private const val TOP_FADE_MILLIS = 250
+
+/** How long the tabs take to slide away or back, and how far below their place they go (past the gesture bar). */
+private const val BOTTOM_SLIDE_MILLIS = 250
+private val TABS_AWAY = 64.dp
+
+/** The gap between the bottom controls (BottomControls' spacing). */
+private val BOTTOM_GAP = 10.dp
 
 /**
  * "Today", or by breaks between photos "Today · 9:14 – 21:40" and "Sat, Oct 4 – Mon, Oct 6" for one that spans days.

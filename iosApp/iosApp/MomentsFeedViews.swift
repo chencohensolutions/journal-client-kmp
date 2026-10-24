@@ -53,7 +53,7 @@ enum FeedRow: Identifiable {
         case .heading(let section): return "heading-\(section.key)"
         case .label(let moment, _): return "label-\(moment.key)"
         case .photo(_, let block): return "photo-\(block.key)"
-        case let .band(section, revealed, part): return "band-\(section.key)-\(revealed.source.name)-\(part)"
+        case let .band(section, revealed, part): return "band-\(section.key)-\(revealed.source.id)-\(part)"
         }
     }
 }
@@ -764,44 +764,68 @@ func clockTime(_ millis: Int64) -> String {
     Date(timeIntervalSince1970: TimeInterval(millis) / 1000).formatted(date: .omitted, time: .shortened)
 }
 
-/// The filter bar: each source with its count, on (filled, with a check) or off (outlined). A source with no photos
-/// is hidden unless it is on.
+/// The filter bar (option h2 of the UI lab, Oct 24, 2026): one row that scrolls sideways, "+N" first (the sources hidden;
+/// a plus alone while none is), then a chip per source shown, the most photos first. Tapping a chip hides it and it
+/// leaves the row; "+N" opens the "Showing" sheet with every source as a pill.
 struct FeedSourceBar: View {
     let feed: MomentsFeed
     let onToggle: (MediaSource) -> Void
+    @State private var open = false
 
     var body: some View {
-        let shown = feed.shown
         let counts = feed.counts
+        let hidden = Int(feed.hiddenCount)
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                ForEach(MediaSource.entries.filter { shown.contains($0) || (counts[$0]?.intValue ?? 0) > 0 }, id: \.self) { source in
-                    let on = shown.contains(source)
-                    Button { onToggle(source) } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: on ? "checkmark" : source.symbol).font(.system(size: 12, weight: .semibold))
-                            Text(source.title).font(.system(size: 13, weight: .semibold))
-                            Text("\(counts[source]?.intValue ?? 0)")
-                                .font(.system(size: 13))
-                                .foregroundStyle(on ? LibraryColors.onInverseMuted : LibraryColors.muted.opacity(0.7))
-                        }
-                        .foregroundStyle(on ? LibraryColors.onInverse : LibraryColors.muted)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .background {
-                            if on {
-                                Capsule().fill(LibraryColors.inverse)
-                            } else {
-                                Capsule().stroke(LibraryColors.muted.opacity(0.45))
-                            }
-                        }
+                FilterBarChip(title: hidden > 0 ? "+\(hidden)" : "", symbol: hidden > 0 ? nil : "plus", on: false) { open = true }
+                    .accessibilityLabel(String(localized: "\(hidden) more sources"))
+                ForEach(feed.bar, id: \.self) { source in
+                    FilterBarChip(title: source.title, symbol: source.symbol, count: (counts[source]?.intValue ?? 0).formatted(), on: true) {
+                        withAnimation(.snappy) { onToggle(source) }
                     }
-                    .accessibilityAddTraits(on ? [.isSelected] : [])
                 }
             }
             .padding(.horizontal, 16)
         }
         .scrollIndicators(.hidden)
+        .sheet(isPresented: $open) {
+            ShowingPillsSheet(sources: feed.sheet, counts: counts, isOn: { feed.shown.contains($0) }, toggle: onToggle)
+        }
+    }
+}
+
+/// A chip of the filter bar: on (filled, with a ✓ in place of its icon) or off (outlined), an icon, a title and a count;
+/// "+N" is one with a title alone.
+struct FilterBarChip: View {
+    let title: String
+    var symbol: String? = nil
+    var count: String? = nil
+    let on: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let symbol { Image(systemName: on ? "checkmark" : symbol).font(.system(size: 12, weight: .semibold)) }
+                if !title.isEmpty { Text(verbatim: title).font(.system(size: 13, weight: .semibold)) }
+                if let count {
+                    Text(verbatim: count)
+                        .font(.system(size: 13))
+                        .foregroundStyle(on ? LibraryColors.onInverseMuted : LibraryColors.muted.opacity(0.7))
+                }
+            }
+            .foregroundStyle(on ? LibraryColors.onInverse : LibraryColors.muted)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background {
+                if on {
+                    Capsule().fill(LibraryColors.inverse)
+                } else {
+                    Capsule().stroke(LibraryColors.muted.opacity(0.45))
+                }
+            }
+        }
+        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 }
 
@@ -836,7 +860,15 @@ struct FeedSelectionBar: View {
 }
 
 extension MediaSource {
+    // The fixed sources, as Swift reaches them (a folder is `MediaSource.companion.folder(name:)`).
+    static let camera = MediaSource.companion.CAMERA
+    static let whatsapp = MediaSource.companion.WHATSAPP
+    static let screenshots = MediaSource.companion.SCREENSHOTS
+    static let other = MediaSource.companion.OTHER
+
+    /// A folder's own name ("Petcube", an album an app made), else the fixed source's.
     var title: String {
+        if let folder { return folder }
         switch self {
         case .whatsapp: return String(localized: "WhatsApp")
         case .screenshots: return String(localized: "Screenshots")
@@ -846,6 +878,7 @@ extension MediaSource {
     }
 
     var symbol: String {
+        if folder != nil { return "folder" }
         switch self {
         case .whatsapp: return "bubble.left"
         case .screenshots: return "iphone"

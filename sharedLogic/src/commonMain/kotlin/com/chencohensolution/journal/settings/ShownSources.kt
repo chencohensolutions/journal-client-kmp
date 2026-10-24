@@ -6,24 +6,35 @@ import com.chencohensolution.journal.library.MediaSource
 
 /**
  * Which sources the app shows (Settings › Show in the app, and the Moments filter bar): one choice for Moments, All
- * photos, Explore, Tags and the days offered to a story. Photos already in a story always show in that story. Hiding
- * never deletes anything and doesn't change backup.
+ * photos, Explore and Tags. Kept as the sources hidden, so a folder seen for the first time shows. Hiding never
+ * deletes anything and doesn't change backup.
  */
 data class ShownSources(
-    val sources: Set<MediaSource> = DEFAULT_SOURCES,
+    val hidden: Set<MediaSource> = DEFAULT_HIDDEN,
     /** "+6 WhatsApp" on a day of Moments, for the photos it leaves out. */
     val sayWhatsHidden: Boolean = true,
     /** Days whose photos of a hidden source show anyway ("Always show this day"). */
     val alwaysShown: Set<DaySource> = emptySet(),
+    /** The filter bar above Moments (on by default); off, the sources are chosen in Settings only (asked Oct 24, 2026). */
+    val showFilterBar: Boolean = true,
 ) {
-    fun shows(item: MediaItem): Boolean = item.source in sources || DaySource(item.day, item.source) in alwaysShown
+    fun shows(item: MediaItem): Boolean = isShown(item.source) || DaySource(item.day, item.source) in alwaysShown
 
-    /** Whether [source] is on; for Swift, where a Kotlin set's `contains` takes `Any`. */
-    fun isShown(source: MediaSource): Boolean = source in sources
+    /** Whether [source] is on. */
+    fun isShown(source: MediaSource): Boolean = source !in hidden
+
+    /**
+     * The pills Show in the app offers: the fixed sources, those with photos ([counts], photos per source) and those
+     * hidden (so they can be shown again), the most photos first.
+     */
+    fun choices(counts: Map<MediaSource, Int>): List<MediaSource> = MediaSource.byCount(counts, hidden)
+
+    /** Of [sources], those that are on. */
+    fun shownOf(sources: Collection<MediaSource>): Set<MediaSource> = sources.filterTo(LinkedHashSet(), ::isShown)
 
     companion object {
         /** WhatsApp and screenshots are off at first (asked Oct 21, 2026). */
-        val DEFAULT_SOURCES: Set<MediaSource> = setOf(MediaSource.CAMERA, MediaSource.OTHER)
+        val DEFAULT_HIDDEN: Set<MediaSource> = setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS)
     }
 }
 

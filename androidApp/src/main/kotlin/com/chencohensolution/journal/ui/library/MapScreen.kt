@@ -126,7 +126,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
         value = withContext(Dispatchers.Default) { sourceCounts(library.days.flatMap { it.items }) }
     }
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val shownSources = stories.shownSources.sources
+    val shownSources = stories.shownSources.shownAmong(counts)
     if (sheetOpen) ShowingSheet(shownSources, counts, actions.toggleSource, onDismiss = { sheetOpen = false })
     val years = pins?.takeIf { it.isNotEmpty() }?.let { all -> all.minOf { it.item.day.year }..all.maxOf { it.item.day.year } }
     // The years shown and where the map looks, kept while the viewer is open above it.

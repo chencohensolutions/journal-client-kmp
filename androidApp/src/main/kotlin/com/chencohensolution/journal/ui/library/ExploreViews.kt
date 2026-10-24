@@ -189,7 +189,7 @@ internal fun ExploreContent(
     }
     val loaded = summaries ?: return
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val shown = stories.shownSources.sources
+    val shown = stories.shownSources.shownAmong(loaded.counts)
     val line: @Composable () -> Unit = {
         ShowingLine(shown, presentSources(loaded.counts, shown), onChange = { sheetOpen = true }, Modifier.padding(bottom = 4.dp))
     }
@@ -661,7 +661,7 @@ private fun <T> ExplorePageLayout(
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
-    val shown = stories.shownSources.sources
+    val shown = stories.shownSources.shownAmong(counts)
     val list = rememberLazyListState()
     list.LandOn(landing, rows.size) { rows.rowOf(it) }
     val actions = FeedActions(openItem = onOpenItem)

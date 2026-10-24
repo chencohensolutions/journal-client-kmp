@@ -29,6 +29,13 @@
 
     <!-- largeHeap: search on the phone keeps the search index in memory (about 75 MB for 95,000 photos), beside the
          photos' thumbnails. -->
+    <!-- Apps with a launcher icon: the name of the app that saved a photo loose in Pictures or Download (its source). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:largeHeap="true"

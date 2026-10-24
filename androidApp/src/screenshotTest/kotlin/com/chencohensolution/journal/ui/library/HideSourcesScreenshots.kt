@@ -95,11 +95,9 @@ fun ExploreShowingSheet() = Screen {
                 .background(LibraryColors.Background, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .padding(top = 28.dp),
         ) {
-            ShowingSheetContent(
-                ShownSources.DEFAULT_SOURCES,
-                mapOf(MediaSource.CAMERA to 922, MediaSource.WHATSAPP to 31, MediaSource.OTHER to 0),
-                onToggle = {},
-            )
+            val shown = ShownSources()
+            val here = mapOf(MediaSource.CAMERA to 922, MediaSource.WHATSAPP to 31, MediaSource.folder("Petcube") to 5)
+            ShowingSheetContent(shown.choices(here), here, shown::isShown, onToggle = {}, whatsAppNote = true)
         }
     }
 }

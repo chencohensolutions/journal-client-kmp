@@ -31,6 +31,9 @@ let labScreens: [LabScreen] = [
             DatePadSuggestion()
         },
     ]),
+    LabScreen(id: "moments-filter", title: "Moments filter, many folders", options: [
+        current { labHome(data.library, data.folderStories, tab: .moments) },
+    ]),
     LabScreen(id: "moments-years", title: "Moments over seven years", options: [
         current { labHome(data.timelineLibrary, data.timelineStories, tab: .moments) },
     ]),
@@ -122,7 +125,7 @@ extension HomeActions {
     static let lab = HomeActions(
         openItem: { _, _ in }, openStorylineItem: { _ in }, toggleSource: { _ in }, merge: { _ in }, takeOutOfSet: { _ in },
         turnSet: { _, _ in }, setWriting: { _, _, _ in }, restoreWriting: { _, _ in }, setInStoryline: { _, _ in },
-        toggleTag: { _, _, _ in }, openAllPhotos: {}, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
+        toggleTag: { _, _, _ in }, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
         alwaysShow: { _, _ in }, openRevealed: { _, _, _ in },
         explore: ExploreActions(openPlace: { _ in }, openCountry: { _ in }, openYear: { _, _ in }, openMap: {}, toggleSource: { _ in }),
         allowAccess: {}, registerAgain: {}
@@ -133,7 +136,7 @@ extension SettingsActions {
     /// Does nothing: the lab has no controllers.
     static let lab = SettingsActions(
         setGroupingMode: { _ in }, setGapHours: { _ in }, setSimilarityPercent: { _ in }, resetSimilarity: {}, toggleFeedSource: { _ in },
-        setSayWhatsHidden: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
+        setSayWhatsHidden: { _ in }, setShowFilterBar: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
         setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in },
         setShowOnPhoneBadge: { _ in }, setSearchPageSize: { _ in }, setBackupEnabled: { _ in }, toggleBackupSource: { _ in },
         setWifiOnly: { _ in }, setChargingOnly: { _ in }, setOrder: { _ in }, backUpNow: {}

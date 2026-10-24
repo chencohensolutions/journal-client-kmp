@@ -15,9 +15,7 @@
     <!-- Journal home, All photos, viewer -->
     <string name="library_title">Journal</string>
     <string name="library_offline">Offline</string>
-    <string name="library_more">More</string>
     <string name="library_back">Back</string>
-    <string name="library_all_photos">All photos</string>
     <string name="library_today">Today</string>
     <string name="library_yesterday">Yesterday</string>
     <string name="library_tab_storyline">Storyline</string>
@@ -45,11 +43,7 @@
     <string name="library_rejected_body">The server doesn\'t accept this device\'s certificate anymore. Register it again with a new enrollment code.</string>
     <string name="library_rejected_action">Register again</string>
     <string name="library_empty">No photos or videos on this device yet.</string>
-    <string name="library_filter_empty">Nothing here.</string>
     <string name="library_load_error">Couldn\'t read your photos: %s</string>
-    <string name="library_filter_all">All</string>
-    <string name="library_filter_not_backed_up">Not backed up</string>
-    <string name="library_filter_videos">Videos</string>
     <string name="library_photo_description">Photo, %s</string>
     <string name="library_video_description">Video, %s</string>
     <string name="library_backup_not_backed_up">Only on this device</string>
@@ -212,6 +206,10 @@
     <string name="feed_source_other">Other</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
+    <plurals name="feed_more_sources">
+        <item quantity="one">%1$d more source</item>
+        <item quantity="other">%1$d more sources</item>
+    </plurals>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
     <string name="feed_nothing_shown">Nothing to show. Turn on a source above.</string>
@@ -452,19 +450,11 @@
     <string name="map_no_photos">No photos with a location yet.</string>
     <!-- Which sources the app shows: Settings › Show in the app, the Moments chips and band, Explore's line and sheet -->
     <string name="settings_shown_title">Show in the app</string>
-    <plurals name="settings_shown_camera">
-        <item quantity="one">%1$,d photo</item>
-        <item quantity="other">%1$,d photos</item>
-    </plurals>
-    <plurals name="settings_shown_whatsapp">
-        <item quantity="one">%1$,d photo or video</item>
-        <item quantity="other">%1$,d photos and videos</item>
-    </plurals>
-    <string name="settings_shown_screenshots">Screenshots and screen recordings · %1$,d</string>
-    <string name="settings_shown_other">Downloads, other apps · %1$,d</string>
     <string name="settings_say_hidden">Say what\'s hidden</string>
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
-    <string name="settings_shown_where">On this phone only. Applies to Moments, All photos, Explore and Tags.</string>
+    <string name="settings_filter_bar">Filter bar in Moments</string>
+    <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
+    <string name="settings_shown_where">On this phone only. Applies to Moments, Explore and Tags.</string>
     <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
@@ -480,8 +470,6 @@
     <string name="explore_show_them">Show them</string>
     <string name="explore_sheet_title">Showing</string>
     <string name="explore_sheet_body">The same in Moments, Explore and All photos.</string>
-    <string name="explore_sheet_here">%1$,d here</string>
-    <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
     <string name="settings_first_image">Quick image while scrolling</string>
     <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>

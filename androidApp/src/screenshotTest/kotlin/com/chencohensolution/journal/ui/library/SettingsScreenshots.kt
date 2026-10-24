@@ -76,11 +76,10 @@ fun SettingsMoments() = Screen {
 @Composable
 fun SettingsBackup() = Screen {
     val backup = BackupSettings(enabled = true, sources = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP), wifiNetworks = setOf("Home"))
-    SettingsScreen(
-        SettingsState(),
-        SettingsActions(),
-        page = SettingsPage.BACKUP,
-        backup = BackupUi(BackupState(backup), waitingCount = 79, canCheckNetworkInBackground = false, serverUsage = serverUsage),
+    BackupSettingsScreen(
+        BackupUi(BackupState(backup), waitingCount = 79, canCheckNetworkInBackground = false, serverUsage = serverUsage, counts = sourceCounts),
+        BackupActions(),
+        back = {},
     )
 }
 

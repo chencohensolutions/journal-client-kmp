@@ -172,7 +172,7 @@ fun yearsOf(library: List<MediaItem>, places: Places, hidden: List<MediaItem>): 
 /** How many of [items] come from each source, in [MediaSource] order, leaving out sources with none. */
 fun sourceCounts(items: List<MediaItem>): Map<MediaSource, Int> {
     val counts = items.groupingBy { it.source }.eachCount()
-    return MediaSource.entries.filter { it in counts }.associateWith { counts.getValue(it) }
+    return counts.keys.sorted().associateWith { counts.getValue(it) }
 }
 
 /** The best-looking of [items] by the server's aesthetic score; null when none is scored. Ties go to the first. */

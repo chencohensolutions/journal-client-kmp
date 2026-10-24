@@ -122,7 +122,7 @@ class FreeUpTest {
         assertEquals(60, all.bytes)
         assertEquals(NOW - 900 * DAY to NOW - DAY, all.takenRange)
 
-        val onlyWhatsApp = freeUpPlan(items, entries, FreeUpRule.Everything, NOW, setOf(com.chencohensolution.journal.library.MediaSource.WHATSAPP))
+        val onlyWhatsApp = freeUpPlan(items, entries, FreeUpRule.Everything, NOW, kept = setOf(com.chencohensolution.journal.library.MediaSource.CAMERA))
         assertEquals(listOf("wa"), onlyWhatsApp.groups.flatMap { g -> g.items.map { it.id } })
         assertNull(freeUpPlan(items, emptyMap(), FreeUpRule.Everything, NOW).takenRange)
     }

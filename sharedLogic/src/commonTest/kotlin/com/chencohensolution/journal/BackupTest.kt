@@ -235,6 +235,20 @@ class BackupTest {
     }
 
     @Test
+    fun aFolderUploadsOnlyWhenChosenAndTellsTheServerItsName() = runTest {
+        val petcube = MediaSource.folder("Petcube")
+        val camera = add(photo("1", takenAt = 1_000, size = 10), seed = 1)
+        val pet = add(photo("2", takenAt = 2_000, size = 10, source = petcube), seed = 2)
+
+        val cameraOnly = engine(files, ledger()).run(listOf(camera, pet), BackupSettings(enabled = true)) {}
+        assertEquals(1, cameraOnly.uploaded)
+
+        val withPets = engine(files, ledger()).run(listOf(camera, pet), BackupSettings(enabled = true, sources = setOf(MediaSource.CAMERA, petcube))) {}
+        assertEquals(1, withPets.uploaded)
+        assertEquals(setOf("camera", "folder:Petcube"), server.requests.values.map { it.source }.toSet())
+    }
+
+    @Test
     fun newestFirstWhenChosen() = runTest {
         val older = add(photo("1", takenAt = 1_000, size = 10), seed = 1)
         val newer = add(photo("2", takenAt = 2_000, size = 10), seed = 2)

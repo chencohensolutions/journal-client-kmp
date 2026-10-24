@@ -15,13 +15,12 @@ their story and group pages, were replaced by the storyline on Oct 21, 2026 (own
 | Search | The 🔍 beside the Journal's tabs | [search.md](search.md) |
 | People | Explore › People; a person's page, Who's this? | [people.md](people.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
-| All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
-| Settings | ⋯ menu → Settings | [settings.md](settings.md) |
+| Settings | Settings button in the top bar | [settings.md](settings.md) |
 | Viewer | Tapping any photo or video | [viewer.md](viewer.md) |
 | Crop | Viewer → Crop, or long press in Moments → Crop | [crop.md](crop.md) |
 
 ```
-Enrollment ──► Photo access ──► Journal ──► All photos, Settings, Tags
+Enrollment ──► Photo access ──► Journal ──► Settings, Tags
                 (once)            │             │
                                   └──► Viewer ◄─┘ ──► Crop
 ```
@@ -34,7 +33,6 @@ All screens after enrollment read from `LibraryController`
 - `LibraryState.access`: `NOT_DETERMINED`, `DENIED`, `LIMITED` or `FULL`. Android can't tell "never asked" from
   "denied", so the controller remembers whether the question was answered (`photoAccessRequested` in settings).
 - `LibraryState.days`: every photo and video, grouped by the day it was taken (device time zone), newest first.
-  `days(filter)` narrows it for All photos.
 - `notBackedUpCount` / `notBackedUpBytes`: what the backup summary shows.
 - `refresh()` re-checks the permission and re-reads the library. Both apps call it when they come to the foreground.
 

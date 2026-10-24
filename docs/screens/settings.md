@@ -1,6 +1,6 @@
 # Settings
 
-The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Opened from the Journal's **⋯** menu.
+The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Opened from the Journal's **Settings** button (the **⋯** menu until Oct 24, 2026).
 
 ## Layout
 
@@ -8,34 +8,48 @@ Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is 
 saying how it stands and opening a page of its own; the switches used most stay on the first page:
 
 - **Top bar:** back and "Settings" (on a page: its name).
-- **Library:** **Show in the app ›** ("Showing Camera, Other"), **Moments ›** ("By day · similar at 60%", "New row
-  after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
+- **Library:** **Show in the app ›** ("Showing Camera, Other, Petcube +2", the most photos first), **Moments ›** ("By
+  day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
 - **Privacy:** the **Show private media** switch and **Hidden collections 🔒 ›** (below).
-- **Backup and storage** (when the app has them): **Backup ›** (its status line, below), **Storage on this phone ›**
-  ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›** (its line, below).
+- **Backup and storage** (when the app has them): **Backup ›** (its status line; a screen of its own, below),
+  **Storage on this phone ›** ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›**
+  (its line, below).
 - **Search ›** on its own (its line, below).
 
 The pages, and what each holds:
 
-- **Show in the app** (a page; first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
-  photos and videos", Screenshots "Screenshots and screen recordings · N", Other "Downloads, other apps · N". Camera and
-  Other are on at first. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
-  [Moments](moments.md) chips on or off. Under them: on this phone only; it applies to Moments, All photos, Explore and Tags; photos
+- **Show in the app** (a page; first; Oct 21, 2026): a pill per source with its count ("WhatsApp · 10,282", "Petcube · 5"),
+  filled with a ✓ when shown, the most photos first (`ShownSources.choices`; pills since Oct 24, 2026, when each folder
+  and app became a source, see [Moments](moments.md) for how a photo's source is told, and a switch per source grew too
+  long). Everything but WhatsApp and Screenshots is shown at first, a folder seen for the first time too; a hidden
+  source stays listed so it can be shown again. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
+  [Moments](moments.md) chips on or off, and **Filter bar in Moments** ("The row of sources above the feed. When off,
+  choose them here."; on; asked Oct 24, 2026; `ShownSources.showFilterBar`, kept as `show_filter_bar`), which hides
+  the Moments filter bar. Under them: on this phone only; it applies to Moments, Explore and Tags; photos
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
-  (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`). Then **On all your devices**: the Hidden
+  (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
+  `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`). Then **On all your devices**: the Hidden
   collections row, for hiding on every device rather than this phone.
-- **Backup** (a page; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
+- **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
-  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):
+  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
+  A screen of its own since Oct 24, 2026 (asked when What to back up got a choice per folder and grew too long):
+  Settings has a **Backup** row with the status line below and a chevron, opening **Settings › Backup**
+  (`BackupSettingsScreen` on both platforms; Android route `backup-settings`), which holds:
   - **Back up to your server** switch (off until turned on), and a status line: "Off. Nothing is uploaded.",
     "Backing up 3 of 120", "12 photos waiting to upload", "Everything chosen is backed up", "Waiting: …" (Wi-Fi network
     not on the list, location needed to check it, register again, photo access), or "Stopped: … It tries again
     later." **Back up now** beside it while not running.
   - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
-    `storageUsage`), also with backup off. Asked when Settings opens and again when a backup run ends; "Can't reach the
+    `storageUsage`), also with backup off. Asked when Settings or Backup opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
-  - With backup on: **What to back up**, a switch per source (**Camera** on by default, WhatsApp, Screenshots, Other);
+  - With backup on: **What to back up**, a pill per source with its count ("Petcube · 5"), filled with a ✓ when on,
+    the most photos first (`BackupSettings.choices`: the fixed sources, each folder or app the phone has photos of,
+    and those chosen; **Camera** on by default). A new folder is off
+    until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
+    choices of their own, off, as the owner chose; what they uploaded stays on the server. The server is told each
+    file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder;
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging** ("Saves the battery;
     uploads wait for the charger."), and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
@@ -68,7 +82,8 @@ The pages, and what each holds:
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
     than 1 year ago", "All but the newest 10 GB"), "1,240 photos, 38 videos · Mar 2019 – Oct 2025", and one button,
     **Free up 14 GB**. No per-photo review.
-  - **From**: Camera, WhatsApp, Screenshots, Other (all on by default; at least one stays on).
+  - **From**: the same sources as What to back up, folders included (all on by default, a new folder too; kept as the
+    sources kept on the phone, `free_up_kept`; at least one stays on).
   - **More options** (open when a rule other than the default is chosen): **Everything backed up** (default), **Older
     than** 1, 3, 6 months, **1 year** or 2 years (by date taken), or **Keep the newest** 1, 2, 5, **10**, 20 or 50 GB
     (by date taken; everything on the phone counts toward what is kept, backed up or not, of any source). Each choice's
@@ -120,12 +135,12 @@ The pages, and what each holds:
 - The similarity value is saved when the slider is let go; Moments' sets update right away (no photo is read again).
   Near-duplicates by dHash are set together at any value. Only the default is stored as "none", so a
   better default later reaches everyone who didn't choose one.
-- The grouping setting changes only the rows of the Moments tab (and Explore's pages). All photos and tags stay by
+- The grouping setting changes only the rows of the Moments tab (and Explore's pages). Tags stay by
   day, and the storyline has a heading for each day.
 - Backup runs in the background with WorkManager, also with the app closed: every 15 minutes, 10 s after new photos
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
-  with a Stop action) and in the bottom pill of the Journal and All photos ("Backing up 3 of 120", else "N not backed
+  with a Stop action) and in the bottom pill of the Journal ("Backing up 3 of 120", else "N not backed
   up", counting only the chosen sources while backup is on). Several files upload at once (3 on Android, up to 50 on
   iOS): the count is of finished files plus one ("3 of 120" = 2 finished, the next on its way), the percent includes
   what has arrived of the files on their way, and the notification names the earliest of them. Each photo's badge
@@ -134,7 +149,7 @@ The pages, and what each holds:
   relaunches the app when it is answered; runs start when the app opens, on **Back up now**, 10 s after the library
   changes, on those relaunches, and in background tasks iOS schedules (BGProcessingTask, BGAppRefreshTask). Wi-Fi only
   is checked before a run (`NWPathMonitor`) and set on every piece; charging only is checked with the battery state
-  and asked of the processing task. Progress shows in the bottom pill of the Journal and All photos ("Backing up 3 of
+  and asked of the processing task. Progress shows in the bottom pill of the Journal ("Backing up 3 of
   120 · 42% · 5.1 MB/s") and in this section; there is no notification. See [design.md](../design.md), "iOS backup".
 - What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (iOS: Application Support
   `backup/ledger.jsonl`) (sha256 per photo), so a photo is
@@ -269,8 +284,9 @@ indexes on the phone, to search without the server, offline too (journal-server-
   (factory `IosJournal.freeUp`, sharing backup's ledger), and the deletion only in
   [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift) (`moveToRecentlyDeleted(checked:)`; see PhotoSafetyTest).
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt)
-  (the first page and the Show in the app and Moments pages, by `SettingsPage`; one route, `Route.SettingsPageRoute`,
-  per page), with the Backup page in `BackupSettings.kt` and Storage on this phone in `StorageSettings.kt`;
+  (the first page and the Show in the app, Moments and Storage on this phone pages, by `SettingsPage`; one route,
+  `Route.SettingsPageRoute`, per page; Storage's content in `StorageSettings.kt`), the Backup screen
+  (`Route.BackupSettings`) in `BackupSettings.kt`;
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`). Shared: `HiddenCollectionsController` (`HiddenCollectionsState`: loading, unreachable, ready with
@@ -280,7 +296,8 @@ indexes on the phone, to search without the server, offline too (journal-server-
   "hidden"; `PhoneLocked` with `LAContext`), and `ServerVideoCache.remove` for a dropped file's video.
 - iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift) (`SettingsScreen`, the first page, drawn from a
   `SettingsContent` so the UI lab shows it; `SettingsView` feeds it from the view models), the pages and each row's line
-  in [SettingsSections.swift](../../iosApp/iosApp/SettingsSections.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
+  in [SettingsSections.swift](../../iosApp/iosApp/SettingsSections.swift), the Backup screen in
+  [BackupSettingsView.swift](../../iosApp/iosApp/BackupSettingsView.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
   (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
   `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list in
   `Application Support/server/media.json`, downloaded originals in `Application Support/originals` (left out of

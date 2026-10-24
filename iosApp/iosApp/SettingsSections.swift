@@ -25,11 +25,13 @@ struct SettingsContent {
 // MARK: - Row summaries
 
 extension SettingsContent {
-    /// "Showing Camera and Other".
+    /// "Showing Camera, Other, Petcube +2", the most photos first.
     var shownSummary: String {
-        let shown = MediaSource.entries.filter { settings.shownSources.isShown(source: $0) }.map(\.title)
+        let shownSources = settings.shownSources
+        let shown = shownSources.choices(counts: sourceCounts).filter { shownSources.isShown(source: $0) }.map(\.title)
         if shown.isEmpty { return String(localized: "Nothing shown") }
-        return String(localized: "Showing \(shown.formatted(.list(type: .and)))")
+        let first = shown.prefix(3).joined(separator: ", ")
+        return String(localized: "Showing \(shown.count > 3 ? "\(first) +\(shown.count - 3)" : first)")
     }
 
     /// "By day · similar at 60%", "New row after 12 hours · similar at 80%".
@@ -62,43 +64,40 @@ extension SettingsContent {
 
 // MARK: - Library
 
-/// Show in the app: a switch per source and "Say what's hidden". For this phone only; Hidden collections hides on all
-/// devices.
+/// Show in the app: a pill per source with its count, the most photos first (the same as the Moments filter bar and
+/// Explore's "Showing" sheet), "Say what's hidden" (the "+6 WhatsApp" chips in Moments) and "Filter bar in Moments".
+/// For this phone only; Hidden collections hides on all devices.
 struct ShownSourcesSection: View {
     let content: SettingsContent
 
     var body: some View {
         let shown = content.settings.shownSources
+        let actions = content.actions
         Section {
-            ForEach(MediaSource.entries, id: \.self) { source in
-                Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in content.actions.toggleFeedSource(source) })) {
-                    SettingsLabel(verbatim: source.title, detail: sourceDetail(source, count: content.sourceCounts[source]?.intValue ?? 0))
-                }
-                .tint(LibraryColors.accent)
-            }
-            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: content.actions.setSayWhatsHidden)) {
+            SourcePills(
+                sources: shown.choices(counts: content.sourceCounts), counts: content.sourceCounts, isOn: { shown.isShown(source: $0) },
+                toggle: actions.toggleFeedSource
+            )
+        } header: {
+            Text("Show in the app")
+        }
+        .listRowBackground(LibraryColors.background)
+        Section {
+            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
                 SettingsLabel("Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
             }
             .tint(LibraryColors.accent)
-        } header: {
-            Text("Show in the app")
+            Toggle(isOn: Binding(get: { shown.showFilterBar }, set: actions.setShowFilterBar)) {
+                SettingsLabel("Filter bar in Moments", detail: "The row of sources above the feed. When off, choose them here.")
+            }
+            .tint(LibraryColors.accent)
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
-                Text("On this phone only. Applies to Moments, All photos, Explore and Tags.")
+                Text("On this phone only. Applies to Moments, Explore and Tags.")
                 Text("Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up.")
             }
         }
         .listRowBackground(LibraryColors.raised)
-    }
-
-    /// "48,210 photos", "18,458 photos and videos", "Screenshots and screen recordings · 2,388".
-    private func sourceDetail(_ source: MediaSource, count: Int) -> String {
-        switch source {
-        case .whatsapp: return String(localized: "\(count) photos and videos")
-        case .screenshots: return String(localized: "Screenshots and screen recordings · \(count)")
-        case .other: return String(localized: "Downloads, other apps · \(count)")
-        default: return String(localized: "\(count) photos")
-        }
     }
 }
 
@@ -226,75 +225,6 @@ struct HiddenCollectionsLabel: View {
 }
 
 // MARK: - Backup and storage
-
-/// Backup: on or off with its status and what the server holds, then what uploads, when, and in which order.
-struct BackupSections: View {
-    let content: SettingsContent
-
-    var body: some View {
-        let backup = content.backup
-        let state = backup.settings
-        let actions = content.actions
-        Section {
-            Toggle(isOn: Binding(get: { state.enabled }, set: actions.setBackupEnabled)) {
-                SettingsLabel(
-                    "Back up to your server",
-                    detail: "Photos keep uploading in the background. Swiping the app away stops it until you open it again."
-                )
-            }
-            .tint(LibraryColors.accent)
-            HStack {
-                Text(content.backupSummary)
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(LibraryColors.muted)
-                Spacer()
-                if state.enabled && !(backup.activity is BackupActivityRunning) {
-                    Button("Back up now", action: actions.backUpNow).foregroundStyle(LibraryColors.onBackground)
-                }
-            }
-            SettingsLabel(verbatim: String(localized: "On your server"), detail: serverUsageLine(content.serverUsage))
-        } header: {
-            Text("Backup")
-        }
-        .listRowBackground(LibraryColors.raised)
-        if state.enabled {
-            Section {
-                ForEach(MediaSource.entries, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in actions.toggleBackupSource(source) }))
-                        .tint(LibraryColors.accent)
-                }
-            } header: {
-                Text("What to back up")
-            }
-            .listRowBackground(LibraryColors.raised)
-            Section {
-                Toggle(isOn: Binding(get: { state.wifiOnly }, set: actions.setWifiOnly)) {
-                    SettingsLabel("Only on Wi-Fi", detail: "Never on mobile data.")
-                }
-                .tint(LibraryColors.accent)
-                Toggle(isOn: Binding(get: { state.chargingOnly }, set: actions.setChargingOnly)) {
-                    SettingsLabel("Only while charging", detail: "Saves the battery; uploads wait for the charger.")
-                }
-                .tint(LibraryColors.accent)
-            } header: {
-                Text("When")
-            }
-            .listRowBackground(LibraryColors.raised)
-            Section {
-                Picker("Order", selection: Binding(get: { state.order }, set: actions.setOrder)) {
-                    SettingsLabel("Oldest first", detail: "Starts with your earliest photos.").tag(UploadOrder.oldestFirst)
-                    SettingsLabel("Newest first", detail: "Your latest photos are safe soonest.").tag(UploadOrder.newestFirst)
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } header: {
-                Text("Order")
-            }
-            .listRowBackground(LibraryColors.raised)
-        }
-    }
-}
 
 /// Storage on this phone: the space photos from the server may take here (with Clear), then how they look (previews in
 /// a format and quality, or the originals).

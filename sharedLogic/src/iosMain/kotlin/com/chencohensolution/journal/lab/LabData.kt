@@ -207,9 +207,31 @@ object LabData {
                 FeedEntry.Section(yesterdaySection.cameraOnly().copy(hidden = mapOf(MediaSource.SCREENSHOTS to 2))),
             ) + feed.entries.drop(2),
             counts = mapOf(MediaSource.CAMERA to 48_210, MediaSource.WHATSAPP to 18_458, MediaSource.SCREENSHOTS to 2_388, MediaSource.OTHER to 3_104),
-            shown = ShownSources.DEFAULT_SOURCES,
+            shown = ShownSources().shownOf(MediaSource.FIXED),
         ),
         shownSources = ShownSources(),
+    )
+
+    /**
+     * Photos per source as on the owner's phone once each folder and app became a source (Oct 24, 2026): a few big
+     * ones and many small ones, for the Moments filter bar and Settings.
+     */
+    val folderCounts: Map<MediaSource, Int> = mapOf(
+        MediaSource.WHATSAPP to 10_282, MediaSource.CAMERA to 1_240, MediaSource.SCREENSHOTS to 306,
+        MediaSource.folder("Workers") to 23, MediaSource.folder("Chrome") to 22, MediaSource.OTHER to 17,
+        MediaSource.folder("Google") to 6, MediaSource.folder("Petcube") to 5, MediaSource.folder("X") to 4,
+        MediaSource.folder("Bank Hapoalim") to 3, MediaSource.folder("Youtube") to 3, MediaSource.folder("Kodi") to 2,
+        MediaSource.folder("Wikipedia") to 2, MediaSource.folder("Battle.net") to 2, MediaSource.folder("Telegram") to 2,
+        MediaSource.folder("ChatGPT") to 2, MediaSource.folder("AdobeLightroom") to 1, MediaSource.folder("Studio") to 1,
+    )
+
+    /** The Moments feed with [folderCounts]: everything shown but WhatsApp and Screenshots, as at first. */
+    val folderStories: StoriesState = hiddenStories.copy(
+        feed = hiddenStories.feed.copy(
+            counts = folderCounts,
+            shown = ShownSources().shownOf(folderCounts.keys),
+            sheet = ShownSources().choices(folderCounts),
+        ),
     )
 
     /** Photos over several years; 2016 has only WhatsApp photos. */
@@ -225,7 +247,7 @@ object LabData {
                 year(3_700, 41, MediaSource.WHATSAPP)
             ).asDays(),
     )
-    val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed(shown = ShownSources.DEFAULT_SOURCES))
+    val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed())
 
     // Explore › Places: home in Tel Aviv, more towns in Israel, and trips to other countries.
 
@@ -290,7 +312,7 @@ object LabData {
     )
 
     /** Photos per source, shown or not, for Show in the app. */
-    val sourceCounts: Map<MediaSource, Int> = hiddenStories.feed.counts
+    val sourceCounts: Map<MediaSource, Int> get() = folderCounts
     val notBackedUp = 79
     val previewBytes = 1_840_000_000L
     val serverUsage = StorageUsage(photos = 48_210, videos = 1_204, bytes = 214_300_000_000)
@@ -355,7 +377,7 @@ object LabData {
 
     val timelineStories: StoriesState by lazy {
         stories.copy(
-            feed = buildFeed(yearsOfItems, ShownSources(sources = MediaSource.entries.toSet()), TimelineGrouping()),
+            feed = buildFeed(yearsOfItems, ShownSources(hidden = emptySet()), TimelineGrouping()),
             itemsById = yearsOfItems.associateBy { it.id },
         )
     }

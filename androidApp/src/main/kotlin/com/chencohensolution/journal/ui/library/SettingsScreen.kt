@@ -69,16 +69,20 @@ internal class SettingsActions(
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
-    /** Opens one of Settings' pages (Show in the app, Moments, Backup, Storage on this phone). */
+    /** Opens one of Settings' pages (Show in the app, Moments, Storage on this phone). */
     val openPage: (SettingsPage) -> Unit = {},
+    /** Opens Settings › Backup. */
+    val openBackup: () -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
+    /** "Filter bar in Moments". */
+    val setShowFilterBar: (Boolean) -> Unit = {},
     val back: () -> Unit = {},
 )
 
-/** Settings' first page, and the pages its rows open. Free up space, Hidden collections and Search are screens of their own. */
-internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, BACKUP, STORAGE }
+/** Settings' first page, and the pages its rows open. Backup, Free up space, Hidden collections and Search are screens of their own. */
+internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, STORAGE }
 
 /**
  * The user's choices, kept on this device: on [SettingsPage.MAIN] a short page of groups (Library, Privacy, Backup and
@@ -108,7 +112,6 @@ internal fun SettingsScreen(
         SettingsPage.MAIN -> R.string.library_settings
         SettingsPage.SHOWN -> R.string.settings_shown_title
         SettingsPage.MOMENTS -> R.string.settings_moments_title
-        SettingsPage.BACKUP -> R.string.settings_backup_title
         SettingsPage.STORAGE -> R.string.settings_storage_title
     }
 
@@ -126,7 +129,6 @@ internal fun SettingsScreen(
                     Card { HiddenRow(syncProgress, actions.openHidden) }
                 }
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
-                SettingsPage.BACKUP -> if (backup != null) BackupSection(backup, backupActions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
             }
         }
@@ -149,7 +151,7 @@ private fun MainPage(
 ) {
     SectionTitle(stringResource(R.string.settings_library_title))
     Card {
-        PageRow(stringResource(R.string.settings_shown_title), shownSummary(settings.shownSources)) { actions.openPage(SettingsPage.SHOWN) }
+        PageRow(stringResource(R.string.settings_shown_title), shownSummary(settings.shownSources, sourceCounts)) { actions.openPage(SettingsPage.SHOWN) }
         RowDivider()
         PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
         RowDivider()
@@ -174,7 +176,7 @@ private fun MainPage(
     if (backup != null || storage != null) {
         SectionTitle(stringResource(R.string.settings_backup_storage_title))
         Card {
-            if (backup != null) PageRow(stringResource(R.string.settings_backup_title), backupStatus(backup)) { actions.openPage(SettingsPage.BACKUP) }
+            if (backup != null) PageRow(stringResource(R.string.settings_backup_title), backupStatus(backup), actions.openBackup)
             if (storage != null) {
                 if (backup != null) RowDivider()
                 PageRow(stringResource(R.string.settings_storage_title), storageSummary(storage)) { actions.openPage(SettingsPage.STORAGE) }
@@ -239,11 +241,13 @@ internal fun PageRow(title: String, body: String, onClick: () -> Unit) {
     }
 }
 
-/** Show in the app's row: "Showing Camera, Other". */
+/** Show in the app's row: "Showing Camera, Other, Petcube +2", the most photos first. */
 @Composable
-private fun shownSummary(shown: ShownSources): String {
-    val names = MediaSource.entries.filter { shown.isShown(it) }.map { sourceName(it) }
-    return if (names.isEmpty()) stringResource(R.string.settings_shown_none) else stringResource(R.string.settings_shown_summary, names.joinToString(", "))
+private fun shownSummary(shown: ShownSources, counts: Map<MediaSource, Int>): String {
+    val names = shown.choices(counts).filter { shown.isShown(it) }.map { sourceName(it) }
+    if (names.isEmpty()) return stringResource(R.string.settings_shown_none)
+    val first = names.take(3).joinToString(", ")
+    return stringResource(R.string.settings_shown_summary, if (names.size > 3) "$first +${names.size - 3}" else first)
 }
 
 /** Moments' row: "By day · similar at 60%", "New row after 12 hours · similar at 85%". */
@@ -312,29 +316,13 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
 }
 
 /**
- * Show in the app: a switch per source with its count, then "Say what's hidden", then where it applies and that
- * hiding never deletes or changes backup.
+ * Show in the app: a pill per source with its count, the most photos first (asked Oct 24, 2026, when each folder
+ * became a source), then "Say what's hidden" and "Filter bar in Moments", then where it applies and that hiding never deletes or changes backup.
  */
 @Composable
 private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
     SectionTitle(stringResource(R.string.settings_shown_title))
-    Card {
-        MediaSource.entries.forEachIndexed { i, source ->
-            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-            val count = counts[source] ?: 0
-            SwitchRow(
-                title = sourceName(source),
-                body = when (source) {
-                    MediaSource.CAMERA -> pluralStringResource(R.plurals.settings_shown_camera, count, count)
-                    MediaSource.WHATSAPP -> pluralStringResource(R.plurals.settings_shown_whatsapp, count, count)
-                    MediaSource.SCREENSHOTS -> stringResource(R.string.settings_shown_screenshots, count)
-                    MediaSource.OTHER -> stringResource(R.string.settings_shown_other, count)
-                },
-                checked = shown.isShown(source),
-                onChange = { actions.toggleSource(source) },
-            )
-        }
-    }
+    SourcePills(shown.choices(counts), counts, shown::isShown, actions.toggleSource)
     Column(Modifier.padding(top = 12.dp)) {
         Card {
             SwitchRow(
@@ -342,6 +330,13 @@ private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, In
                 body = stringResource(R.string.settings_say_hidden_body),
                 checked = shown.sayWhatsHidden,
                 onChange = actions.setSayWhatsHidden,
+            )
+            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            SwitchRow(
+                title = stringResource(R.string.settings_filter_bar),
+                body = stringResource(R.string.settings_filter_bar_body),
+                checked = shown.showFilterBar,
+                onChange = actions.setShowFilterBar,
             )
         }
     }

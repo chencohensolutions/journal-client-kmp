@@ -70,7 +70,7 @@ internal fun freeUpGroups(items: List<MediaItem>): List<FreeUpGroup> {
 }
 
 /**
- * What [rule] takes off the phone: of the photos in the library from [sources], the groups whose every file this
+ * What [rule] takes off the phone: of the photos in the library not from the [kept] sources, the groups whose every file this
  * device uploaded as it is now ([entries], the backup ledger). The newest that "keep newest" keeps count all photos on
  * the phone, backed up or not, of any source.
  */
@@ -79,7 +79,7 @@ internal fun freeUpPlan(
     entries: Map<String, LedgerEntry>,
     rule: FreeUpRule,
     nowMillis: Long,
-    sources: Set<MediaSource> = MediaSource.entries.toSet(),
+    kept: Set<MediaSource> = emptySet(),
 ): FreeUpPlan {
     fun backedUp(item: MediaItem) = entries[item.id]?.let { it.uploaded && it.matches(item) } == true
     val groups = freeUpGroups(items.filter { it.isOnDevice })
@@ -95,7 +95,7 @@ internal fun freeUpPlan(
             groups.dropWhile { group -> (kept + group.bytes <= keep).also { if (it) kept += group.bytes } }
         }
     }
-    return FreeUpPlan(chosen.filter { group -> group.items.all { backedUp(it) && it.source in sources } })
+    return FreeUpPlan(chosen.filter { group -> group.items.all { backedUp(it) && it.source !in kept } })
 }
 
 /** What the server found when it read its copy again (journal-server-go `POST /media/{sha256}/verify`). */

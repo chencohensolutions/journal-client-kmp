@@ -42,7 +42,7 @@ fun FreeUpOptions() = Screen {
         ui(
             FreeUpState(
                 rule = FreeUpRule.OlderThan(365),
-                sources = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP),
+                kept = setOf(MediaSource.SCREENSHOTS, MediaSource.OTHER),
                 plan = plan(),
                 waitingCount = 120,
                 waitingBytes = 3_200_000_000L,

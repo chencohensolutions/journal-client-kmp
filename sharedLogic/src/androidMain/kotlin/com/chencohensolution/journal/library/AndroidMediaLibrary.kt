@@ -47,6 +47,8 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             val name = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val folder = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
             val mime = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+            val owner = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
+            val appNames = HashMap<String, String?>()
             while (cursor.moveToNext()) {
                 val isVideo = cursor.getInt(mediaType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                 // DATE_TAKEN is missing for files without EXIF; DATE_MODIFIED is in seconds.
@@ -65,7 +67,10 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
                     sizeBytes = cursor.getLong(size).takeIf { it > 0 },
                     fileName = cursor.getString(name),
                     burstId = cursor.getString(name)?.let(::samsungBurstId),
-                    source = sourceOfFolder(cursor.getString(folder)),
+                    source = sourceOfFolder(
+                        cursor.getString(folder),
+                        cursor.getString(owner)?.takeIf(::isSourceApp)?.let { appNames.getOrPut(it) { appName(it) } },
+                    ),
                     modifiedMillis = cursor.getLong(dateModified).takeIf { it > 0 }?.let { it * 1000 },
                     mimeType = cursor.getString(mime),
                 )
@@ -82,6 +87,15 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
         resolver.registerContentObserver(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), true, observer)
         return { resolver.unregisterContentObserver(observer) }
     }
+
+    /**
+     * The name an app shows under its icon ("Petcube", "ChatGPT"), for files it saved loose in Pictures or Download;
+     * null when it isn't installed any more or can't be seen (the manifest's <queries> shows apps with a launcher icon).
+     */
+    private fun appName(packageName: String): String? = runCatching {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString().takeIf { it.isNotBlank() && it != packageName }
+    }.getOrNull()
 
     private fun granted(permission: String) =
         context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
@@ -105,6 +119,7 @@ internal class AndroidMediaLibrary(context: Context) : MediaLibrary {
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.RELATIVE_PATH,
             MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
         )
     }
 }

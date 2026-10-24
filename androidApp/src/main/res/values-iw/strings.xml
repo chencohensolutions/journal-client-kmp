@@ -15,9 +15,7 @@
     <!-- Journal home, All photos, viewer -->
     <string name="library_title">יומן</string>
     <string name="library_offline">לא מחובר</string>
-    <string name="library_more">עוד</string>
     <string name="library_back">חזרה</string>
-    <string name="library_all_photos">כל התמונות</string>
     <string name="library_today">היום</string>
     <string name="library_yesterday">אתמול</string>
     <string name="library_tab_storyline">הסיפור שלי</string>
@@ -47,11 +45,7 @@
     <string name="library_rejected_body">השרת כבר לא מקבל את התעודה של המכשיר הזה. רשמו אותו מחדש עם קוד רישום חדש.</string>
     <string name="library_rejected_action">רישום מחדש</string>
     <string name="library_empty">עדיין אין תמונות או סרטונים במכשיר הזה.</string>
-    <string name="library_filter_empty">אין כאן כלום.</string>
     <string name="library_load_error">לא ניתן לקרוא את התמונות שלך: %s</string>
-    <string name="library_filter_all">הכול</string>
-    <string name="library_filter_not_backed_up">לא מגובות</string>
-    <string name="library_filter_videos">סרטונים</string>
     <string name="library_photo_description">תמונה, %s</string>
     <string name="library_video_description">סרטון, %s</string>
     <string name="library_backup_not_backed_up">רק במכשיר הזה</string>
@@ -216,6 +210,11 @@
     <string name="feed_source_other">אחר</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
+    <plurals name="feed_more_sources">
+        <item quantity="one">עוד מקור אחד</item>
+        <item quantity="two">עוד %1$d מקורות</item>
+        <item quantity="other">עוד %1$d מקורות</item>
+    </plurals>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
     <string name="feed_nothing_shown">אין מה להציג. אפשר להפעיל מקור למעלה.</string>
@@ -470,21 +469,11 @@
     <string name="map_no_photos">עדיין אין תמונות עם מיקום.</string>
     <!-- אילו מקורות מוצגים: הגדרות › מה מוצג באפליקציה, הסימונים והרצועה ברגעים, השורה והחלונית בגילוי -->
     <string name="settings_shown_title">מה מוצג באפליקציה</string>
-    <plurals name="settings_shown_camera">
-        <item quantity="one">תמונה אחת</item>
-        <item quantity="two">שתי תמונות</item>
-        <item quantity="other">%1$,d תמונות</item>
-    </plurals>
-    <plurals name="settings_shown_whatsapp">
-        <item quantity="one">תמונה או סרטון אחד</item>
-        <item quantity="two">%1$,d תמונות וסרטונים</item>
-        <item quantity="other">%1$,d תמונות וסרטונים</item>
-    </plurals>
-    <string name="settings_shown_screenshots">צילומי מסך והקלטות מסך · %1$,d</string>
-    <string name="settings_shown_other">הורדות ואפליקציות אחרות · %1$,d</string>
     <string name="settings_say_hidden">לציין מה מוסתר</string>
     <string name="settings_say_hidden_body">„+6 וואטסאפ” ליד יום, ולחיצה מציגה אותן</string>
-    <string name="settings_shown_where">בטלפון הזה בלבד. חל על רגעים, כל התמונות, גילוי ותגיות.</string>
+    <string name="settings_filter_bar">סרגל הסינון ברגעים</string>
+    <string name="settings_filter_bar_body">שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן.</string>
+    <string name="settings_shown_where">בטלפון הזה בלבד. חל על רגעים, גילוי ותגיות.</string>
     <string name="settings_shown_stories">תמונות שכתבת עליהן תמיד מוצגות בסיפור. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">הסתרת %1$s</string>
@@ -500,8 +489,6 @@
     <string name="explore_show_them">להציג אותן</string>
     <string name="explore_sheet_title">מה מוצג</string>
     <string name="explore_sheet_body">אותו הדבר ברגעים, בגילוי ובכל התמונות.</string>
-    <string name="explore_sheet_here">%1$,d כאן</string>
-    <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">לרוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן מופיעות במפה. ההסתרה משנה בעיקר את השנים ואת התמונות בדף של עיר.</string>
     <string name="settings_first_image">תמונה מהירה בזמן גלילה</string>
     <string name="settings_first_image_body">תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר.</string>

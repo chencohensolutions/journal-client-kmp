@@ -321,8 +321,7 @@ struct SearchTitleBar: View {
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 24)
-        .background(LibraryColors.topFade.ignoresSafeArea())
+        .padding(.bottom, 8)
     }
 }
 

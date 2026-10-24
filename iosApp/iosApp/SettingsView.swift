@@ -27,6 +27,9 @@ struct SettingsView: View {
             ),
             searchScreen: { [settings, indexing, phoneSearch] in
                 AnyView(SearchSettingsView(settings: settings, indexing: indexing, phoneSearch: phoneSearch))
+            },
+            backupScreen: { [settings, backup, notBackedUp, sourceCounts, actions] in
+                AnyView(BackupSettingsView(backup: backup, settings: settings, notBackedUp: notBackedUp, sourceCounts: sourceCounts, actions: actions))
             }
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
@@ -46,6 +49,7 @@ struct SettingsView: View {
         SettingsActions(
             setGroupingMode: settings.setGroupingMode, setGapHours: settings.setGapHours, setSimilarityPercent: settings.setSimilarityPercent,
             resetSimilarity: settings.resetSimilarity, toggleFeedSource: settings.toggleFeedSource, setSayWhatsHidden: settings.setSayWhatsHidden,
+            setShowFilterBar: settings.setShowFilterBar,
             setPreviewsEnabled: settings.setPreviewsEnabled, setPreviewFormat: settings.setPreviewFormat,
             setPreviewQuality: settings.setPreviewQuality, setPreviewLimit: settings.setPreviewLimit, clearPreviews: settings.clearPreviews,
             setShowPrivateMedia: settings.setShowPrivateMedia,
@@ -65,6 +69,7 @@ struct SettingsActions {
     /// Show in the app: a source on or off everywhere (the Moments filter bar, Explore's sheet), and "Say what's hidden".
     var toggleFeedSource: (MediaSource) -> Void
     var setSayWhatsHidden: (Bool) -> Void
+    var setShowFilterBar: (Bool) -> Void
     /// Storage on this phone: how server photos are shown, the space they may take here, and "Clear".
     var setPreviewsEnabled: (Bool) -> Void
     var setPreviewFormat: (PreviewFormat) -> Void
@@ -90,6 +95,8 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     let content: SettingsContent
     /// Settings › Search, opened from its row.
     var searchScreen: () -> AnyView = { AnyView(EmptyView()) }
+    /// Settings › Backup on the live view models, opened from its row; nil: drawn from the content's states (the UI lab).
+    var backupScreen: (() -> AnyView)? = nil
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
     /// Hidden collections, opened from Privacy and from Show in the app.
@@ -128,7 +135,14 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
 
             Section {
                 PageRow("Backup", detail: content.backupSummary) {
-                    SettingsPage(title: "Backup") { BackupSections(content: content) }
+                    if let backupScreen {
+                        backupScreen()
+                    } else {
+                        BackupSettingsScreen(
+                            backup: content.backup, notBackedUp: content.notBackedUp, sourceCounts: content.sourceCounts,
+                            serverUsage: content.serverUsage, actions: content.actions
+                        )
+                    }
                 }
                 PageRow("Storage on this phone", detail: content.storageSummary) {
                     SettingsPage(title: "Storage on this phone") { StorageSections(content: content) }

@@ -320,6 +320,16 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "%lld more sources" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד %lld מקורות"
+          }
+        }
+      }
+    },
     "%lld ahead of yours. Only one runs at a time, to keep the server’s memory free." : {
       "localizations" : {
         "he" : {
@@ -2998,16 +3008,6 @@
         }
       }
     },
-    "Downloads, other apps · %lld" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הורדות, אפליקציות אחרות · %lld"
-          }
-        }
-      }
-    },
     "Duration" : {
       "localizations" : {
         "he" : {
@@ -3424,6 +3424,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מלא"
+          }
+        }
+      }
+    },
+    "Filter bar in Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרגל הסינון ברגעים"
           }
         }
       }
@@ -4300,6 +4310,16 @@
         }
       }
     },
+    "On this phone only. Applies to Moments, Explore and Tags." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בטלפון הזה בלבד. חל על רגעים, גילוי ותגיות."
+          }
+        }
+      }
+    },
     "Originals" : {
       "localizations" : {
         "he" : {
@@ -4496,6 +4516,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הקבצים המקוריים יורדים ונשמרים במקום שלמעלה. סרטונים לא יורדים."
+          }
+        }
+      }
+    },
+    "The row of sources above the feed. When off, choose them here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן."
           }
         }
       }
