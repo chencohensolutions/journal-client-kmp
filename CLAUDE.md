@@ -15,7 +15,7 @@ whenever a screen changes.
   storyline on Oct 21, 2026; `StoriesController`, `StoriesState` and the `stories/` package keep their names for now.
   The package is split by concern: `StoriesController.kt` (edits and the rebuild), `StoriesState.kt` (what is
   published and how it is built, the storyline among it), `PhotoNote.kt` (the note and its file store),
-  `WritingDiff.kt` (what History highlights), `MomentsFeed.kt` and `Moment.kt` (the Moments tab), `Explore.kt`,
+  `WritingDiff.kt` (what History highlights), `MomentsFeed.kt` and `Moment.kt` (the Moments tab), `FeedTimeline.kt` (its months and days, for going to a date), `Explore.kt`,
   `PhotoCrops.kt`, `TextSearch.kt`, `StoryIds.kt` (ids for Moments sets) and `OldStories.kt` (deletes the old
   stories folders on start). `androidMain` / `iosMain`:
   platform pieces (mTLS client, key store, MediaStore / PhotoKit readers) and the factories (`AndroidJournal.kt`,

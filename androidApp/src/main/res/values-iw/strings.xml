@@ -696,4 +696,10 @@
     <string name="indexing_resume">המשך</string>
     <string name="indexing_nudity">סריקת עירום</string>
     <string name="indexing_paused_body_live">תמונות חדשות ימתינו לקריאה עד שתמשיך.</string>
+    <!-- Moments: going to a date (FeedTimelineViews.kt) -->
+    <string name="timeline_older">חודש קודם</string>
+    <string name="timeline_newer">חודש הבא</string>
+    <string name="timeline_open">הצגת ימי החודש</string>
+    <string name="timeline_close">סגירה</string>
+    <string name="timeline_counts">%1$d תמונות · %2$d ימים</string>
 </resources>

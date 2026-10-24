@@ -504,6 +504,16 @@
         }
       }
     },
+    "%lld photos · %lld days" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld תמונות · %2$lld ימים"
+          }
+        }
+      }
+    },
     "%lld photos, best first" : {
       "localizations" : {
         "en" : {
@@ -2517,6 +2527,16 @@
         }
       }
     },
+    "Close" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סגירה"
+          }
+        }
+      }
+    },
     "Code %@ · expires in %lld min" : {
       "localizations" : {
         "he" : {
@@ -4130,6 +4150,16 @@
         }
       }
     },
+    "Newer month" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חודש הבא"
+          }
+        }
+      }
+    },
     "Next nightly run: %@" : {
       "localizations" : {
         "he" : {
@@ -4166,6 +4196,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סריקת עירום"
+          }
+        }
+      }
+    },
+    "Older month" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חודש קודם"
           }
         }
       }
@@ -4266,6 +4306,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בשרת: ממתין לקריאת התמונות שלך"
+          }
+        }
+      }
+    },
+    "Shows the month's days and the other months" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מציג את ימי החודש ואת שאר החודשים"
           }
         }
       }
