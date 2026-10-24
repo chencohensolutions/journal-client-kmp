@@ -3,17 +3,12 @@ package com.chencohensolution.journal.ui.library
 import android.text.format.Formatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,7 +35,7 @@ import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.StorageUsage
 
-// Settings, Backup: what it shows and what it can do.
+// Settings › Backup: what it shows and what it can do.
 
 /** What the Backup section shows: the backup state and what only the app knows about the device. */
 internal data class BackupUi(
@@ -67,7 +62,6 @@ internal class BackupActions(
 )
 
 /** Backup: on or off with its status, then what uploads, when, and in which order. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun BackupSection(ui: BackupUi, actions: BackupActions) {
     val settings = ui.state.settings
@@ -95,18 +89,10 @@ internal fun BackupSection(ui: BackupUi, actions: BackupActions) {
     if (!settings.enabled) return
 
     SectionTitle(stringResource(R.string.settings_backup_sources_title))
-    FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MediaSource.entries.forEach { source ->
-            FilterChip(
-                selected = source in settings.sources,
-                onClick = { actions.toggleSource(source) },
-                label = { Text(sourceName(source)) },
-                colors = FilterChipDefaults.filterChipColors(
-                    labelColor = LibraryColors.OnBackground,
-                    selectedContainerColor = LibraryColors.Inverse,
-                    selectedLabelColor = LibraryColors.OnInverse,
-                ),
-            )
+    SettingsCard {
+        MediaSource.entries.forEachIndexed { i, source ->
+            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            SwitchRow(title = sourceName(source), body = null, checked = source in settings.sources, onChange = { actions.toggleSource(source) })
         }
     }
 
@@ -118,9 +104,10 @@ internal fun BackupSection(ui: BackupUi, actions: BackupActions) {
             checked = settings.wifiOnly,
             onChange = actions.setWifiOnly,
         )
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         SwitchRow(
             title = stringResource(R.string.settings_backup_charging_only),
-            body = null,
+            body = stringResource(R.string.settings_backup_charging_only_body),
             checked = settings.chargingOnly,
             onChange = actions.setChargingOnly,
         )
@@ -181,7 +168,7 @@ private fun serverUsageText(usage: StorageUsage?): String {
 }
 
 @Composable
-private fun backupStatus(ui: BackupUi): String {
+internal fun backupStatus(ui: BackupUi): String {
     val state = ui.state
     if (!state.settings.enabled) return stringResource(R.string.settings_backup_off)
     return when (val activity = state.activity) {

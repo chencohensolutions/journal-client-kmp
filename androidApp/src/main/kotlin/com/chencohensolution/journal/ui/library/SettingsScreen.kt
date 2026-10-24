@@ -2,11 +2,8 @@ package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -72,18 +69,27 @@ internal class SettingsActions(
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
+    /** Opens one of Settings' pages (Show in the app, Moments, Backup, Storage on this phone). */
+    val openPage: (SettingsPage) -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
     val back: () -> Unit = {},
 )
 
-/** The user's choices, kept on this device. See docs/screens/settings.md. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Settings' first page, and the pages its rows open. Free up space, Hidden collections and Search are screens of their own. */
+internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, BACKUP, STORAGE }
+
+/**
+ * The user's choices, kept on this device: on [SettingsPage.MAIN] a short page of groups (Library, Privacy, Backup and
+ * storage, Search), each row saying how it stands and opening a page of its own; the switches used most stay there.
+ * See docs/screens/settings.md.
+ */
 @Composable
 internal fun SettingsScreen(
     settings: SettingsState,
     actions: SettingsActions,
+    page: SettingsPage = SettingsPage.MAIN,
     /** The library's photos per source, shown or not, for Show in the app. */
     sourceCounts: Map<MediaSource, Int> = emptyMap(),
     backup: BackupUi? = null,
@@ -98,7 +104,13 @@ internal fun SettingsScreen(
     indexing: ServerIndexingState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
-    val grouping = settings.grouping
+    val title = when (page) {
+        SettingsPage.MAIN -> R.string.library_settings
+        SettingsPage.SHOWN -> R.string.settings_shown_title
+        SettingsPage.MOMENTS -> R.string.settings_moments_title
+        SettingsPage.BACKUP -> R.string.settings_backup_title
+        SettingsPage.STORAGE -> R.string.settings_storage_title
+    }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
@@ -106,70 +118,148 @@ internal fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
-            ShownSourcesSection(settings.shownSources, sourceCounts, actions)
-            if (backup != null) BackupSection(backup, backupActions)
-            SectionTitle(stringResource(R.string.settings_badges_title))
-            Card {
-                SwitchRow(
-                    title = stringResource(R.string.settings_on_phone_badge),
-                    body = stringResource(R.string.settings_on_phone_badge_body),
-                    checked = settings.showOnPhoneBadge,
-                    onChange = actions.setShowOnPhoneBadge,
-                )
-            }
-            if (storage != null) StorageSection(storage, storageActions)
-            SectionTitle(stringResource(R.string.settings_grouping_title))
-            Column(
-                Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
-                    .selectableGroup(),
-            ) {
-                ModeOption(
-                    title = stringResource(R.string.settings_grouping_by_day),
-                    body = stringResource(R.string.settings_grouping_by_day_body),
-                    selected = grouping.mode == GroupingMode.BY_DAY,
-                    onSelect = { actions.setGroupingMode(GroupingMode.BY_DAY) },
-                )
-                ModeOption(
-                    title = stringResource(R.string.settings_grouping_by_gap),
-                    body = stringResource(R.string.settings_grouping_by_gap_body),
-                    selected = grouping.mode == GroupingMode.BY_GAP,
-                    onSelect = { actions.setGroupingMode(GroupingMode.BY_GAP) },
-                )
-            }
-            if (grouping.mode == GroupingMode.BY_GAP) {
-                SectionTitle(stringResource(R.string.settings_gap_title))
-                FlowRow(
-                    Modifier.padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TimelineGrouping.GAP_HOURS_OPTIONS.forEach { hours ->
-                        FilterChip(
-                            selected = grouping.gapHours == hours,
-                            onClick = { actions.setGapHours(hours) },
-                            label = { Text(pluralStringResource(R.plurals.settings_gap_hours, hours, hours)) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                labelColor = LibraryColors.OnBackground,
-                                selectedContainerColor = LibraryColors.Inverse,
-                                selectedLabelColor = LibraryColors.OnInverse,
-                            ),
-                        )
-                    }
+            when (page) {
+                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing)
+                SettingsPage.SHOWN -> {
+                    ShownSourcesSection(settings.shownSources, sourceCounts, actions)
+                    SectionTitle(stringResource(R.string.settings_all_devices_title))
+                    Card { HiddenRow(syncProgress, actions.openHidden) }
                 }
+                SettingsPage.MOMENTS -> MomentsPage(settings, actions)
+                SettingsPage.BACKUP -> if (backup != null) BackupSection(backup, backupActions)
+                SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
             }
-            SectionTitle(stringResource(R.string.settings_similarity_title))
-            SimilarityCard(settings.similarity, actions)
-            SectionTitle(stringResource(R.string.settings_private_title))
-            PrivateMediaCard(settings.privateMedia, syncProgress, actions)
-            SectionTitle(stringResource(R.string.settings_search_title))
-            Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
-            if (storage != null) AdvancedSection(storage, storageActions)
         }
-        TitleBar(stringResource(R.string.library_settings), actions.back, Modifier.align(Alignment.TopCenter))
+        TitleBar(stringResource(title), actions.back, Modifier.align(Alignment.TopCenter))
     }
 }
+
+/** The groups, each row with its line. Backup and storage only when the app has them. */
+@Composable
+private fun MainPage(
+    settings: SettingsState,
+    actions: SettingsActions,
+    sourceCounts: Map<MediaSource, Int>,
+    backup: BackupUi?,
+    storage: StorageUi?,
+    storageActions: StorageActions,
+    syncProgress: SyncProgress?,
+    phoneSearch: com.chencohensolution.journal.local.PhoneSearchState?,
+    indexing: ServerIndexingState?,
+) {
+    SectionTitle(stringResource(R.string.settings_library_title))
+    Card {
+        PageRow(stringResource(R.string.settings_shown_title), shownSummary(settings.shownSources)) { actions.openPage(SettingsPage.SHOWN) }
+        RowDivider()
+        PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
+        RowDivider()
+        SwitchRow(
+            title = stringResource(R.string.settings_on_phone_badge),
+            body = stringResource(R.string.settings_on_phone_badge_body),
+            checked = settings.showOnPhoneBadge,
+            onChange = actions.setShowOnPhoneBadge,
+        )
+    }
+    SectionTitle(stringResource(R.string.settings_privacy_title))
+    Card {
+        SwitchRow(
+            title = stringResource(R.string.settings_private_switch),
+            body = stringResource(R.string.settings_private_switch_body),
+            checked = settings.privateMedia.show,
+            onChange = actions.setShowPrivateMedia,
+        )
+        RowDivider()
+        HiddenRow(syncProgress, actions.openHidden)
+    }
+    if (backup != null || storage != null) {
+        SectionTitle(stringResource(R.string.settings_backup_storage_title))
+        Card {
+            if (backup != null) PageRow(stringResource(R.string.settings_backup_title), backupStatus(backup)) { actions.openPage(SettingsPage.BACKUP) }
+            if (storage != null) {
+                if (backup != null) RowDivider()
+                PageRow(stringResource(R.string.settings_storage_title), storageSummary(storage)) { actions.openPage(SettingsPage.STORAGE) }
+                RowDivider()
+                PageRow(stringResource(R.string.settings_free_up_title), freeUpRowText(storage.freeUp), storageActions.openFreeUp)
+            }
+        }
+    }
+    Column(Modifier.padding(top = 20.dp)) {
+        Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
+    }
+}
+
+/** Moments: how its rows are made, with the break's length under "By breaks", and how alike a set's photos are. */
+@Composable
+private fun MomentsPage(settings: SettingsState, actions: SettingsActions) {
+    val grouping = settings.grouping
+    SectionTitle(stringResource(R.string.settings_grouping_title))
+    Column(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .selectableGroup(),
+    ) {
+        ModeOption(
+            title = stringResource(R.string.settings_grouping_by_day),
+            body = stringResource(R.string.settings_grouping_by_day_body),
+            selected = grouping.mode == GroupingMode.BY_DAY,
+            onSelect = { actions.setGroupingMode(GroupingMode.BY_DAY) },
+        )
+        ModeOption(
+            title = stringResource(R.string.settings_grouping_by_gap),
+            body = stringResource(R.string.settings_grouping_by_gap_body),
+            selected = grouping.mode == GroupingMode.BY_GAP,
+            onSelect = { actions.setGroupingMode(GroupingMode.BY_GAP) },
+        )
+        if (grouping.mode == GroupingMode.BY_GAP) {
+            OptionChips {
+                TimelineGrouping.GAP_HOURS_OPTIONS.forEach { hours ->
+                    Chip(pluralStringResource(R.plurals.settings_gap_hours, hours, hours), grouping.gapHours == hours) { actions.setGapHours(hours) }
+                }
+            }
+        }
+    }
+    SectionTitle(stringResource(R.string.settings_similarity_title))
+    SimilarityCard(settings.similarity, actions)
+}
+
+/** A row that opens a page: its title, how it stands, and a chevron. */
+@Composable
+internal fun PageRow(title: String, body: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
+        }
+        Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Show in the app's row: "Showing Camera, Other". */
+@Composable
+private fun shownSummary(shown: ShownSources): String {
+    val names = MediaSource.entries.filter { shown.isShown(it) }.map { sourceName(it) }
+    return if (names.isEmpty()) stringResource(R.string.settings_shown_none) else stringResource(R.string.settings_shown_summary, names.joinToString(", "))
+}
+
+/** Moments' row: "By day · similar at 60%", "New row after 12 hours · similar at 85%". */
+@Composable
+private fun momentsSummary(settings: SettingsState): String {
+    val grouping = settings.grouping
+    val rows = if (grouping.mode == GroupingMode.BY_GAP) {
+        pluralStringResource(R.plurals.settings_moments_gap_summary, grouping.gapHours, grouping.gapHours)
+    } else {
+        stringResource(R.string.settings_grouping_by_day)
+    }
+    return stringResource(R.string.feed_place_time, rows, stringResource(R.string.settings_moments_similar_summary, settings.similarity.percent))
+}
+
+@Composable
+internal fun RowDivider() = HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
 
 @Composable
 internal fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
@@ -305,46 +395,34 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
     }
 }
 
-/**
- * "Show private media" (off by default), and Hidden collections (where nudity is hidden too), with how far the library
- * is in reading the server's list again after a change there.
- */
+/** Hidden collections (where nudity is hidden too), with how far the library is in reading the server's list again after a change there. */
 @Composable
-private fun PrivateMediaCard(privateMedia: PrivateMedia, syncProgress: SyncProgress?, actions: SettingsActions) {
-    Card {
-        SwitchRow(
-            title = stringResource(R.string.settings_private_switch),
-            body = stringResource(R.string.settings_private_switch_body),
-            checked = privateMedia.show,
-            onChange = actions.setShowPrivateMedia,
-        )
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-        Row(
-            Modifier.fillMaxWidth().clickable(onClick = actions.openHidden).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, fontSize = 13.sp)
-                if (syncProgress != null) {
-                    val format = NumberFormat.getIntegerInstance()
-                    Text(
-                        stringResource(R.string.settings_hidden_syncing, format.format(syncProgress.done), format.format(syncProgress.total)),
-                        color = LibraryColors.OnBackground,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                    LinearProgressIndicator(
-                        progress = { syncProgress.done.toFloat() / syncProgress.total.coerceAtLeast(1) },
-                        color = LibraryColors.OnBackground,
-                        trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 12.dp),
-                    )
-                }
+private fun HiddenRow(syncProgress: SyncProgress?, openHidden: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = openHidden).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, fontSize = 13.sp)
+            if (syncProgress != null) {
+                val format = NumberFormat.getIntegerInstance()
+                Text(
+                    stringResource(R.string.settings_hidden_syncing, format.format(syncProgress.done), format.format(syncProgress.total)),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                LinearProgressIndicator(
+                    progress = { syncProgress.done.toFloat() / syncProgress.total.coerceAtLeast(1) },
+                    color = LibraryColors.OnBackground,
+                    trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 12.dp),
+                )
             }
-            Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
-            Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         }
+        Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
+        Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
     }
 }
 

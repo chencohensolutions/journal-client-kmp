@@ -325,7 +325,7 @@ private fun LibraryScreens(
                                         backupRunning = backupRunning,
                                     )
                                 }
-                                Route.Settings -> {
+                                Route.Settings, is Route.SettingsPageRoute -> {
                                     // Search's row says how the server's reading of this user's photos is going.
                                     LaunchedEffect(features?.indexing) { if (features?.indexing == true) serverIndexing.refresh() }
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
@@ -339,6 +339,7 @@ private fun LibraryScreens(
                                     }
                                     SettingsScreen(
                                         settings = settingsState,
+                                        page = (route as? Route.SettingsPageRoute)?.page ?: SettingsPage.MAIN,
                                         sourceCounts = storiesState.feed.counts,
                                         actions = SettingsActions(
                                             toggleSource = settings::toggleFeedSource,
@@ -351,6 +352,7 @@ private fun LibraryScreens(
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
+                                            openPage = { push(Route.SettingsPageRoute(it)) },
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },

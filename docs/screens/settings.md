@@ -4,15 +4,28 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 
 ## Layout
 
-- **Top bar:** back and "Settings".
-- **Show in the app** (first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
+Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is a short first page of groups, each row
+saying how it stands and opening a page of its own; the switches used most stay on the first page:
+
+- **Top bar:** back and "Settings" (on a page: its name).
+- **Library:** **Show in the app ›** ("Showing Camera, Other"), **Moments ›** ("By day · similar at 60%", "New row
+  after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
+- **Privacy:** the **Show private media** switch and **Hidden collections 🔒 ›** (below).
+- **Backup and storage** (when the app has them): **Backup ›** (its status line, below), **Storage on this phone ›**
+  ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›** (its line, below).
+- **Search ›** on its own (its line, below).
+
+The pages, and what each holds:
+
+- **Show in the app** (a page; first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
   photos and videos", Screenshots "Screenshots and screen recordings · N", Other "Downloads, other apps · N". Camera and
   Other are on at first. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
-  [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore and Tags; photos
+  [Moments](moments.md) chips on or off. Under them: on this phone only; it applies to Moments, All photos, Explore and Tags; photos
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
-  (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`).
-- **Backup** (Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
+  (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`). Then **On all your devices**: the Hidden
+  collections row, for hiding on every device rather than this phone.
+- **Backup** (a page; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):
   - **Back up to your server** switch (off until turned on), and a status line: "Off. Nothing is uploaded.",
@@ -22,16 +35,17 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
     `storageUsage`), also with backup off. Asked when Settings opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
-  - With backup on: **What to back up**, a toggle per source (**Camera** on by default, WhatsApp, Screenshots, Other);
-    **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging**, and, under Wi-Fi only,
+  - With backup on: **What to back up**, a switch per source (**Camera** on by default, WhatsApp, Screenshots, Other);
+    **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging** ("Saves the battery;
+    uploads wait for the charger."), and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
     can't be checked in the background otherwise. **Order**: **Oldest first** (default) or **Newest first**.
-- **Badges** (both platforms, asked for Oct 21, 2026): **Show the phone badge**, a switch, **off** by default: the
+- **Show the phone badge** (on the first page, under Library; both platforms, asked for Oct 21, 2026), a switch, **off** by default: the
   green phone on grid tiles and Moments photos that are on this phone and backed up (see
   [README.md](README.md#backup-badges)). Off, a photo just taken and uploaded has no badge; waiting, uploading and
   failed photos always have one, and the viewer's details always say where the original is (`show_on_phone_badge`).
-- **Storage on this phone** (Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
+- **Storage on this phone** (a page: **Kept on this phone** first, then **Image quality**; Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
   writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
   every format itself, JPEG XL from iOS 17):
   - **Previews from your server** switch (on by default; asked for Oct 20, 2026). On: the server makes each photo at
@@ -45,7 +59,10 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - **Kept on this phone**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and **Clear**.
     Previews and downloaded originals of server photos are kept up to the limit (the oldest go first) and fetched
     again when scrolled to; none are pinned, also for photos removed from the phone.
-- **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
+  - Android only, at the end of Image quality: **Quick image while scrolling** (a section of its own, "Advanced",
+    until Oct 24, 2026): the first image of a photo only on the server, shown at once and while a list moves fast,
+    before its sharp preview: its width in percent of the screen's (or **None**), and its format.
+- **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row under Backup and storage, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
   for you", "Nothing to free up right now"), opening its own screen (UX chosen by the owner on Oct 20, 2026: one button
   plus More options, a summary before running, sources to choose, manual only):
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
@@ -62,16 +79,16 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
     again", "1 not on your server: backed up again", "1 damaged on your server: kept on this phone"), and "120 files
     (3.2 GB) checked, waiting for you" with **Move to trash** when files wait for the system prompt. It never runs by
     itself.
-  - **By day** (default): one row for each calendar day.
-  - **By breaks between photos:** a new row starts after a break without photos, so an evening that runs past
-    midnight, or a day out that starts before dawn, stays in one row.
-  - With breaks chosen: **New row after a break of** 2, 4, 6, 8, **12** (default), 24 or 48 hours.
-- **Suggestions for similar photos:** **How alike** a slider from 50% to 99%, with the value shown: the cosine
+- **Moments** (a page): **Rows in Moments**, **By day** (default; one row for each calendar day) or **By breaks between
+  photos** (a new row starts after a break without photos, so an evening that runs past midnight, or a day out that
+  starts before dawn, stays in one row), with **New row after a break of** 2, 4, 6, 8, **12** (default), 24 or 48 hours
+  right under By breaks while it is chosen (chips on Android, a menu on iOS); then **Sets of similar photos** (called "Suggestions for similar
+  photos" until Oct 24, 2026): **How alike** a slider from 50% to 99%, with the value shown: the cosine
   similarity two photos' image embeddings need to be one near-duplicate set in [Moments](moments.md#how-it-is-grouped)
   (since Oct 21, 2026 only there; it also drove story suggestions until stories were removed). Higher sets only
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
-- **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
+- **Privacy** (on the first page; both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
   default, for the photos the user marked private; then **Hidden collections** (both platforms, Oct 22, 2026; a row
   with a lock, "Nudity, WhatsApp and screenshots by app, hidden on all your devices", see below). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
@@ -251,7 +268,9 @@ indexes on the phone, to search without the server, offline too (journal-server-
   `IosPhotoTrash` in [iosMain/storage/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/storage/IosFreeUp.kt)
   (factory `IosJournal.freeUp`, sharing backup's ledger), and the deletion only in
   [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift) (`moveToRecentlyDeleted(checked:)`; see PhotoSafetyTest).
-- Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt);
+- Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt)
+  (the first page and the Show in the app and Moments pages, by `SettingsPage`; one route, `Route.SettingsPageRoute`,
+  per page), with the Backup page in `BackupSettings.kt` and Storage on this phone in `StorageSettings.kt`;
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`). Shared: `HiddenCollectionsController` (`HiddenCollectionsState`: loading, unreachable, ready with
@@ -259,8 +278,9 @@ indexes on the phone, to search without the server, offline too (journal-server-
   `HiddenCollections` model, and `ScreenLock` (unlocked or not; the prompt is each platform's). iOS:
   [HiddenView.swift](../../iosApp/iosApp/HiddenView.swift) (`HiddenScreen` drawn from state, also in the UI lab as
   "hidden"; `PhoneLocked` with `LAContext`), and `ServerVideoCache.remove` for a dropped file's video.
-- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift) (`SettingsScreen`, drawn from state so the UI lab
-  shows it; `SettingsView` feeds it from the view models), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
+- iOS: [SettingsView.swift](../../iosApp/iosApp/SettingsView.swift) (`SettingsScreen`, the first page, drawn from a
+  `SettingsContent` so the UI lab shows it; `SettingsView` feeds it from the view models), the pages and each row's line
+  in [SettingsSections.swift](../../iosApp/iosApp/SettingsSections.swift), [SettingsViewModel.swift](../../iosApp/iosApp/SettingsViewModel.swift)
   (also `serverUsage`, the **On your server** line); storage through the shared `IosServerFiles` (`usedBytes`,
   `clear`, `observeUsage`). Previews are cached in `Caches/previews`, the server's list in
   `Application Support/server/media.json`, downloaded originals in `Application Support/originals` (left out of

@@ -26,6 +26,9 @@ internal sealed interface Route {
     data object Tags : Route
     data class Tag(val name: String) : Route
     data object Settings : Route
+
+    /** One of Settings' pages, opened from its first page. */
+    data class SettingsPageRoute(val page: SettingsPage) : Route
     data object FreeUp : Route
     data object Hidden : Route
 
@@ -76,6 +79,7 @@ internal sealed interface Route {
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
+        is SettingsPageRoute -> "settings-page|${page.name}"
         FreeUp -> "free-up"
         Hidden -> "hidden"
         SearchSettings -> "search-settings"
@@ -99,6 +103,7 @@ internal sealed interface Route {
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
+                "settings-page" -> SettingsPageRoute(SettingsPage.valueOf(parts[1]))
                 "free-up" -> FreeUp
                 "hidden" -> Hidden
                 "search-settings" -> SearchSettings
