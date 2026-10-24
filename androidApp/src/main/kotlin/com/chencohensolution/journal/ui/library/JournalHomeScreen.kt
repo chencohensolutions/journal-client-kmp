@@ -73,10 +73,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
-import kotlin.math.roundToInt
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import com.chencohensolution.journal.R
@@ -240,6 +237,8 @@ internal fun JournalHomeScreen(
     // 2026).
     val titleHeight = remember { IntArray(1) }
     val titleShift = remember { mutableFloatStateOf(0f) }
+    // How far the list in view has scrolled from its top, by the scrolls it reported (Explore's lists are their own).
+    val scrolledPx = remember { mutableFloatStateOf(0f) }
     // The tabs and the backup pill slide away too, and come back on the way up; the month pill stays (asked Oct 24, 2026).
     var bottomHidden by remember { mutableStateOf(false) }
     val collapse = remember {
@@ -250,12 +249,24 @@ internal fun JournalHomeScreen(
                 if (available.y > SCROLL_DIRECTION_PX && bottomHidden) bottomHidden = false
                 return Offset.Zero
             }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                scrolledPx.floatValue = (scrolledPx.floatValue - consumed.y).coerceAtLeast(0f)
+                return Offset.Zero
+            }
         }
     }
     LaunchedEffect(tab, searching, timelineOpen, selection.active) {
         titleShift.floatValue = 0f
         bottomHidden = false
     }
+    LaunchedEffect(tab, searching) { scrolledPx.floatValue = 0f }
+    // The top bar's fade fades in while the bar shows over a list scrolled from its top, and out at the top (asked Oct
+    // 24, 2026); the bar's own sliding away fades it further (TopBar).
+    val scrolledFromTop by remember {
+        derivedStateOf { if (tab == HomeTab.EXPLORE || searching) scrolledPx.floatValue > 0f else list.canScrollBackward }
+    }
+    val topFade = animateFloatAsState(if (scrolledFromTop) 1f else 0f, tween(TOP_FADE_MILLIS), label = "topFade")
     val tabsAway = animateFloatAsState(if (bottomHidden) 1f else 0f, tween(BOTTOM_SLIDE_MILLIS), label = "tabs")
     // The tabs' height and the gap above them: how far the month pill goes down to take their place.
     val tabsRoom = remember { IntArray(1) }
@@ -404,7 +415,14 @@ internal fun JournalHomeScreen(
             ) {
                 SearchBottomBar(search, actions.search, onClose = { searching = false })
             }
-        } else TopBar(health, actions, titleShift = { titleShift.floatValue }, titleHeight = titleHeight, modifier = Modifier.align(Alignment.TopCenter)) {
+        } else TopBar(
+            health,
+            actions,
+            titleShift = { titleShift.floatValue },
+            titleHeight = titleHeight,
+            fade = { topFade.value },
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
             if (moments && stories.shownSources.showFilterBar) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
         }
@@ -559,46 +577,52 @@ private fun TopBar(
     titleShift: () -> Float,
     /** Where the controls' full height is kept for the scroll to know how far they can slide. */
     titleHeight: IntArray,
+    /** How much of the fade behind the bar shows (0 to 1) while the bar itself shows: none at the list's top. */
+    fade: () -> Float,
     modifier: Modifier = Modifier,
     below: @Composable () -> Unit = {},
 ) {
-    // No fade behind it (removed Oct 24, 2026): its controls float over the photos.
-    Column(modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, bottom = 8.dp)) {
-        // The title row and the bar under it (the filter bar, Explore's) slide away together.
-        Column(
-            Modifier
-                .clipToBounds()
-                .layout { measurable, constraints ->
-                    val controls = measurable.measure(constraints)
-                    titleHeight[0] = controls.height
-                    val shown = (controls.height + titleShift().roundToInt()).coerceIn(0, controls.height)
-                    layout(controls.width, shown) { controls.placeRelative(0, shown - controls.height) }
+    // How much of the controls shows: 1 in place, 0 slid away.
+    val shown = { if (titleHeight[0] > 0) 1f + titleShift() / titleHeight[0] else 1f }
+    Box(modifier.fillMaxWidth()) {
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = fade() * shown() }.background(LibraryColors.TopFade))
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, bottom = 8.dp)) {
+            // The title row and the bar under it (the filter bar, Explore's) slide up and fade out together, whole.
+            Column(
+                Modifier
+                    .onSizeChanged { titleHeight[0] = it.height }
+                    .graphicsLayer {
+                        translationY = titleShift()
+                        alpha = shown()
+                    },
+            ) {
+                Row(Modifier.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.library_title),
+                        color = LibraryColors.OnBackground,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).semantics { heading() },
+                    )
+                    if (health == ServerHealth.OFFLINE) OfflinePill()
+                    IconButton(onClick = actions.openTags) {
+                        Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
+                    }
+                    IconButton(onClick = actions.openSettings) {
+                        Icon(LibraryIcons.Settings, stringResource(R.string.library_settings), tint = LibraryColors.OnBackground)
+                    }
                 }
-                .graphicsLayer { alpha = if (titleHeight[0] > 0) 1f + titleShift() / titleHeight[0] else 1f },
-        ) {
-            Row(Modifier.padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.library_title),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                if (health == ServerHealth.OFFLINE) OfflinePill()
-                IconButton(onClick = actions.openTags) {
-                    Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
-                }
-                IconButton(onClick = actions.openSettings) {
-                    Icon(LibraryIcons.Settings, stringResource(R.string.library_settings), tint = LibraryColors.OnBackground)
-                }
+                below()
             }
-            below()
         }
     }
 }
 
 /** A scroll of more than this many pixels in a frame says which way the list goes, for the bottom controls. */
 private const val SCROLL_DIRECTION_PX = 2f
+
+/** How long the top bar's fade takes to fade in or out at the list's top. */
+private const val TOP_FADE_MILLIS = 250
 
 /** How long the tabs take to slide away or back, and how far below their place they go (past the gesture bar). */
 private const val BOTTOM_SLIDE_MILLIS = 250

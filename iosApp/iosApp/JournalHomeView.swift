@@ -388,7 +388,7 @@ struct JournalHomeView: View {
     }
 
     private var topBar: some View {
-        // The title row and the bar under it (the filter bar, Explore's) slide away together.
+        // The title row and the bar under it (the filter bar, Explore's) slide up and fade out together, whole.
         CollapsingTitle(scroll: scroll) {
             VStack(alignment: .leading, spacing: 4) {
                 titleRow
@@ -400,8 +400,9 @@ struct JournalHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // No fade behind it (removed Oct 24, 2026): its controls float over the photos.
         .padding(.bottom, 8)
+        // Its fade only while the list is away from its top, and with the controls.
+        .background { TopBarFade(scroll: scroll) }
     }
 
     /// "Journal", the offline pill, Tags and Settings.
