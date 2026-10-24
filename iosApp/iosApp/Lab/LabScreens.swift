@@ -31,6 +31,9 @@ let labScreens: [LabScreen] = [
             DatePadSuggestion()
         },
     ]),
+    LabScreen(id: "moments-filter", title: "Moments filter, many folders", options: [
+        current { labHome(data.library, data.folderStories, tab: .moments) },
+    ]),
     LabScreen(id: "moments-years", title: "Moments over seven years", options: [
         current { labHome(data.timelineLibrary, data.timelineStories, tab: .moments) },
     ]),

@@ -64,17 +64,63 @@ private class ShownTestLibrary(val items: List<MediaItem>) : MediaLibrary {
 class ShownSourcesTest {
     @Test
     fun whatsAppAndScreenshotsAreOffAtFirstAndTheOldFilterBarKeepsTheRest() {
-        assertEquals(setOf(MediaSource.CAMERA, MediaSource.OTHER), JournalSettings(ShownTestStore()).shownSources.sources)
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS), JournalSettings(ShownTestStore()).shownSources.hidden)
 
         // The Moments filter bar's choice from before: Camera and Other kept as they were, WhatsApp turned off.
         val store = ShownTestStore().apply { values["feed_sources"] = "CAMERA,WHATSAPP" }
         val settings = JournalSettings(store)
-        assertEquals(setOf(MediaSource.CAMERA), settings.shownSources.sources)
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, MediaSource.OTHER), settings.shownSources.hidden)
 
-        val chosen = ShownSources(setOf(MediaSource.WHATSAPP), sayWhatsHidden = false, alwaysShown = setOf(DaySource(OCT_4, MediaSource.SCREENSHOTS)))
+        val flowers = MediaSource.folder("Flowers, 2024")
+        val chosen = ShownSources(
+            setOf(MediaSource.CAMERA, flowers),
+            sayWhatsHidden = false,
+            alwaysShown = setOf(DaySource(OCT_4, MediaSource.SCREENSHOTS), DaySource(OCT_4, flowers)),
+        )
         settings.shownSources = chosen
         assertEquals(chosen, JournalSettings(store).shownSources)
         assertEquals(null, store.values["feed_sources"])
+    }
+
+    @Test
+    fun theFixedSourcesShownBeforeFoldersStayAsTheyWere() {
+        // Kept as the sources shown until Oct 24, 2026: the fixed ones missing from it are hidden, and folders show.
+        val store = ShownTestStore().apply { values["shown_sources"] = "CAMERA,WHATSAPP" }
+        val shown = JournalSettings(store).shownSources
+        assertEquals(setOf(MediaSource.SCREENSHOTS, MediaSource.OTHER), shown.hidden)
+        assertTrue(shown.isShown(MediaSource.folder("Petcube")))
+        // Its pills: the most photos first; a hidden source with none stays offered, to show it again.
+        val petcube = MediaSource.folder("Petcube")
+        val hiddenFolder = MediaSource.folder("Old phone")
+        assertEquals(
+            listOf(MediaSource.WHATSAPP, petcube, MediaSource.CAMERA, MediaSource.SCREENSHOTS, hiddenFolder, MediaSource.OTHER),
+            shown.copy(hidden = shown.hidden + hiddenFolder).choices(mapOf(MediaSource.WHATSAPP to 50, petcube to 5, MediaSource.CAMERA to 2)),
+        )
+    }
+
+    @Test
+    fun cameraBackupKeepsTheCameraFolderAndFreeUpKeepsWhatItKept() {
+        // Backup chose the fixed sources by their old names until Oct 24, 2026.
+        val store = ShownTestStore().apply {
+            values["backup_sources"] = "CAMERA,SCREENSHOTS"
+            values["free_up_sources"] = "CAMERA,OTHER"
+        }
+        val settings = JournalSettings(store)
+        assertEquals(setOf(MediaSource.CAMERA, MediaSource.SCREENSHOTS), settings.backup.sources)
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS), settings.freeUpKept)
+
+        val petcube = MediaSource.folder("Petcube")
+        settings.backup = settings.backup.copy(sources = setOf(MediaSource.CAMERA, petcube))
+        assertEquals(setOf(MediaSource.CAMERA, petcube), JournalSettings(store).backup.sources)
+        // The most photos first; the rest, a chosen folder with none among them, in their order.
+        val flowers = MediaSource.folder("Flowers")
+        assertEquals(
+            listOf(MediaSource.WHATSAPP, flowers, MediaSource.CAMERA, MediaSource.SCREENSHOTS, petcube, MediaSource.OTHER),
+            JournalSettings(store).backup.choices(mapOf(MediaSource.WHATSAPP to 900, flowers to 12, MediaSource.CAMERA to 5)),
+        )
+        settings.freeUpKept = setOf(petcube)
+        assertEquals(setOf(petcube), JournalSettings(store).freeUpKept)
+        assertEquals(null, store.values["free_up_sources"])
     }
 
     @Test
@@ -172,7 +218,7 @@ class ShownSourcesTest {
 
         stories.showOnRow(row.key, MediaSource.WHATSAPP)
         assertEquals(listOf("w"), stories.currentState.feed.sections().single().revealed.single().items.map { it.id })
-        assertEquals(setOf(MediaSource.CAMERA, MediaSource.OTHER), settings.currentState.shownSources.sources)
+        assertEquals(ShownSources.DEFAULT_HIDDEN, settings.currentState.shownSources.hidden)
         stories.hideOnRow(row.key, MediaSource.WHATSAPP)
         assertEquals(mapOf(MediaSource.WHATSAPP to 1), stories.currentState.feed.sections().single().hidden)
 

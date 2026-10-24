@@ -27,6 +27,9 @@ struct SettingsView: View {
             indexing: indexing?.state,
             searchScreen: { [settings, indexing, phoneSearch] in
                 AnyView(SearchSettingsView(settings: settings, indexing: indexing, phoneSearch: phoneSearch))
+            },
+            backupScreen: { [settings, backup, notBackedUp, sourceCounts, actions] in
+                AnyView(BackupSettingsView(backup: backup, settings: settings, notBackedUp: notBackedUp, sourceCounts: sourceCounts, actions: actions))
             }
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
@@ -106,6 +109,8 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     var indexing: ServerIndexingState? = nil
     /// Settings › Search, opened from its row.
     var searchScreen: () -> AnyView = { AnyView(EmptyView()) }
+    /// Settings › Backup on the live view models, opened from its row; nil: drawn from these states (the UI lab).
+    var backupScreen: (() -> AnyView)? = nil
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
     /// Hidden collections, opened from Private media.
@@ -117,7 +122,7 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
         let grouping = settings.grouping
         Form {
             shownSourcesSection
-            backupSections
+            backupSection
             badgesSection
             storageSection
             freeUpSection
@@ -157,114 +162,52 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
 }
 
 extension SettingsScreen {
-    /// Show in the app: a switch per source (the same as the Moments filter bar and Explore's "Showing" sheet), and
-    /// "Say what's hidden" (the "+6 WhatsApp" chips in Moments).
+    /// Show in the app: a pill per source with its count, the most photos first (the same as the Moments filter bar
+    /// and Explore's "Showing" sheet), and "Say what's hidden" (the "+6 WhatsApp" chips in Moments).
     private var shownSourcesSection: some View {
         let shown = settings.shownSources
-        return Section {
-            ForEach(MediaSource.entries, id: \.self) { source in
-                Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in actions.toggleFeedSource(source) })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(source.title).foregroundStyle(LibraryColors.onBackground)
-                        Text(verbatim: sourceDetail(source, count: sourceCounts[source]?.intValue ?? 0))
-                            .font(.footnote)
-                            .monospacedDigit()
-                            .foregroundStyle(LibraryColors.muted)
-                    }
+        return Group {
+            Section {
+                SourcePills(sources: shown.choices(counts: sourceCounts), counts: sourceCounts, isOn: { shown.isShown(source: $0) }, toggle: actions.toggleFeedSource)
+            } header: {
+                Text("Show in the app")
+            }
+            .listRowBackground(LibraryColors.background)
+            Section {
+                Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
+                    ModeLabel(title: "Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
                 }
                 .tint(LibraryColors.accent)
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Applies to Moments, All photos, Explore and Tags.")
+                    Text("Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up.")
+                }
             }
-            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
-                ModeLabel(title: "Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
-            }
-            .tint(LibraryColors.accent)
-        } header: {
-            Text("Show in the app")
-        } footer: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Applies to Moments, All photos, Explore and Tags.")
-                Text("Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up.")
-            }
-        }
-        .listRowBackground(LibraryColors.raised)
-    }
-
-    /// "48,210 photos", "18,458 photos and videos", "Screenshots and screen recordings · 2,388".
-    private func sourceDetail(_ source: MediaSource, count: Int) -> String {
-        switch source {
-        case .whatsapp: return String(localized: "\(count) photos and videos")
-        case .screenshots: return String(localized: "Screenshots and screen recordings · \(count)")
-        case .other: return String(localized: "Downloads, other apps · \(count)")
-        default: return String(localized: "\(count) photos")
+            .listRowBackground(LibraryColors.raised)
         }
     }
 
-    /// Backup: on or off with its status, then what uploads, when, and in which order. "On your server" (storage
-    /// used there) and "Only on these Wi-Fi networks" are Android only for now; see docs/screens/settings.md.
-    @ViewBuilder private var backupSections: some View {
-        let state = backup.settings
+    /// Backup's row: its status ("Off. Nothing is uploaded.", what is left), opening Settings › Backup.
+    private var backupSection: some View {
         Section {
-            Toggle(isOn: Binding(get: { state.enabled }, set: actions.setBackupEnabled)) {
-                ModeLabel(
-                    title: "Back up to your server",
-                    detail: "Photos keep uploading in the background. Swiping the app away stops it until you open it again."
-                )
-            }
-            .tint(LibraryColors.accent)
-            HStack {
-                Text(backup.statusText(waiting: notBackedUp))
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(LibraryColors.muted)
-                Spacer()
-                if state.enabled && !(backup.activity is BackupActivityRunning) {
-                    Button("Back up now", action: actions.backUpNow).foregroundStyle(LibraryColors.onBackground)
+            NavigationLink {
+                if let backupScreen {
+                    backupScreen()
+                } else {
+                    BackupSettingsScreen(backup: backup, notBackedUp: notBackedUp, sourceCounts: sourceCounts, serverUsage: serverUsage, actions: actions)
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Backup").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text(backup.statusText(waiting: notBackedUp))
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .foregroundStyle(LibraryColors.muted)
                 }
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("On your server").foregroundStyle(LibraryColors.onBackground)
-                Text(serverUsageText(serverUsage))
-                    .font(.footnote)
-                    .monospacedDigit()
-                    .foregroundStyle(LibraryColors.muted)
-            }
-        } header: {
-            Text("Backup")
         }
         .listRowBackground(LibraryColors.raised)
-        if state.enabled {
-            Section {
-                ForEach(MediaSource.entries, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in actions.toggleBackupSource(source) }))
-                        .tint(LibraryColors.accent)
-                }
-            } header: {
-                Text("What to back up")
-            }
-            .listRowBackground(LibraryColors.raised)
-            Section {
-                Toggle(isOn: Binding(get: { state.wifiOnly }, set: actions.setWifiOnly)) {
-                    ModeLabel(title: "Only on Wi-Fi", detail: "Never on mobile data.")
-                }
-                .tint(LibraryColors.accent)
-                Toggle("Only while charging", isOn: Binding(get: { state.chargingOnly }, set: actions.setChargingOnly))
-                    .tint(LibraryColors.accent)
-            } header: {
-                Text("When")
-            }
-            .listRowBackground(LibraryColors.raised)
-            Section {
-                Picker("Order", selection: Binding(get: { state.order }, set: actions.setOrder)) {
-                    ModeLabel(title: "Oldest first", detail: "Starts with your earliest photos.").tag(UploadOrder.oldestFirst)
-                    ModeLabel(title: "Newest first", detail: "Your latest photos are safe soonest.").tag(UploadOrder.newestFirst)
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } header: {
-                Text("Order")
-            }
-            .listRowBackground(LibraryColors.raised)
-        }
     }
 
     /// How alike photos must be for a "Look alike" suggestion.
@@ -482,7 +425,7 @@ extension PreviewQuality {
     }
 }
 
-private struct ModeLabel: View {
+struct ModeLabel: View {
     let title: LocalizedStringKey
     let detail: LocalizedStringKey
 
@@ -495,7 +438,7 @@ private struct ModeLabel: View {
 }
 
 /// "2.4 GB · 1,204 photos, 31 videos", what the user's originals take up on the server.
-private func serverUsageText(_ usage: StorageUsage?) -> String {
+func serverUsageText(_ usage: StorageUsage?) -> String {
     guard let usage else { return String(localized: "Can’t reach the server right now") }
     let size = ByteCountFormatter.string(fromByteCount: usage.bytes, countStyle: .file)
     let photos = String(localized: "\(Int(usage.photos)) photos")

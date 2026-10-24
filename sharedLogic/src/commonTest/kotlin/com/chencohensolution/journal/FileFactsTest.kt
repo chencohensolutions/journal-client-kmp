@@ -20,7 +20,7 @@ class FileFactsTest {
     @Test
     fun photoKitTellsTheSource() {
         fun source(screenshot: Boolean = false, whatsApp: Boolean = false, userLibrary: Boolean = true, type: String? = "image/heic") =
-            sourceOfAsset(screenshot, whatsApp, userLibrary, type)
+            sourceOfAsset(screenshot, if (whatsApp) listOf("Trip", "WhatsApp") else emptyList(), userLibrary, type)
         assertEquals(MediaSource.CAMERA, source())
         assertEquals(MediaSource.CAMERA, source(type = "image/jpeg"))
         assertEquals(MediaSource.CAMERA, source(type = "video/quicktime"))
@@ -38,6 +38,18 @@ class FileFactsTest {
         assertEquals(MediaSource.OTHER, source(type = "video/mp4"))
         // Synced from a computer or in a shared album.
         assertEquals(MediaSource.OTHER, source(userLibrary = false))
+    }
+
+    @Test
+    fun anAppsAlbumSplitsOther() {
+        // What would be Other and is in one album is that album's folder (asked Oct 24, 2026).
+        assertEquals(MediaSource.folder("Petcube"), sourceOfAsset(false, listOf("Petcube"), true, "video/mp4"))
+        assertEquals(MediaSource.folder("Shared"), sourceOfAsset(false, listOf("Shared"), false, "image/jpeg"))
+        // In two albums it can't tell which: Other.
+        assertEquals(MediaSource.OTHER, sourceOfAsset(false, listOf("Petcube", "Cats"), true, "video/mp4"))
+        // Camera photos stay Camera whatever album they are filed in.
+        assertEquals(MediaSource.CAMERA, sourceOfAsset(false, listOf("Trip"), true, "image/heic"))
+        assertEquals(MediaSource.WHATSAPP, sourceOfAsset(false, listOf("whatsapp"), true, "image/jpeg"))
     }
 
     @Test

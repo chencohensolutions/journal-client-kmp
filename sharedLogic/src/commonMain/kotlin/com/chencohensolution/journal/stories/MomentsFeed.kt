@@ -83,9 +83,16 @@ sealed interface FeedEntry {
 /** The Moments tab: every photo and video of the [shown] sources, newest first. */
 data class MomentsFeed(
     val entries: List<FeedEntry> = emptyList(),
-    /** Photos per source, shown or not. */
+    /** Photos per source, shown or not, in [MediaSource] order. */
     val counts: Map<MediaSource, Int> = emptyMap(),
-    val shown: Set<MediaSource> = ShownSources.DEFAULT_SOURCES,
+    /** Of the sources [choices] offers, those on. */
+    val shown: Set<MediaSource> = ShownSources().shownOf(MediaSource.FIXED),
+    /**
+     * Every source the filter bar's "+N" sheet offers, the most photos first: those with photos, the fixed ones and
+     * those hidden, so a hidden folder with no photos left can be shown again ([ShownSources.choices]).
+     */
+    val sheet: List<MediaSource> = MediaSource.byCount(counts),
+
 ) {
     // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
     override fun equals(other: Any?): Boolean = this === other
@@ -94,6 +101,15 @@ data class MomentsFeed(
 
     fun section(key: String): FeedSection? =
         entries.firstNotNullOfOrNull { (it as? FeedEntry.Section)?.section?.takeIf { section -> section.key == key } }
+
+    /** The sources its filter bar offers: the fixed ones and those with photos, in order. */
+    val choices: List<MediaSource> get() = MediaSource.choices(counts.keys)
+
+    /** The filter bar's chips: the sources shown that have photos, the most first (asked Oct 24, 2026). */
+    val bar: List<MediaSource> get() = sheet.filter { it in shown && (counts[it] ?: 0) > 0 }
+
+    /** The filter bar's "+N": the sources hidden that have photos. */
+    val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 }
 
     /** Its months and days, for going to a date: worked out once, when first asked for. */
     val timeline: FeedTimeline by lazy { FeedTimeline.of(this) }
@@ -131,7 +147,7 @@ internal fun buildFeed(
     sets: Map<String, String> = emptyMap(),
     revealed: Set<FeedReveal> = emptySet(),
 ): MomentsFeed {
-    val counts = items.groupingBy { it.source }.eachCount()
+    val counts = sourceCounts(items)
     val (visible, hidden) = items.partition(shown::shows)
     // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
     val merged = visible.filter { it.id in sets }.groupBy { sets.getValue(it.id) }.values
@@ -148,7 +164,7 @@ internal fun buildFeed(
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
         FeedSection(span, moments, towns.distinct())
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
-    return MomentsFeed(sections.map(FeedEntry::Section), counts, shown.sources)
+    return MomentsFeed(sections.map(FeedEntry::Section), counts, shown.shownOf(MediaSource.choices(counts.keys)), shown.choices(counts))
 }
 
 /**
@@ -178,7 +194,7 @@ private fun List<FeedSection>.withHidden(hidden: List<MediaItem>, say: Boolean, 
             } else {
                 emptyMap()
             },
-            revealed = MediaSource.entries.filter { it in shownHere }.map { RevealedPhotos(it, bySource.getValue(it)) },
+            revealed = shownHere.sorted().map { RevealedPhotos(it, bySource.getValue(it)) },
         )
     }
 }

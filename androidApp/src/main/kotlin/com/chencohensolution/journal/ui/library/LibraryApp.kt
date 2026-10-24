@@ -351,15 +351,26 @@ private fun LibraryScreens(
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
+                                            openBackup = { push(Route.BackupSettings) },
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
                                         indexing = indexingState.takeIf { features?.indexing == true && it.loaded },
-                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
+                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
                                         storageActions = actions.storage,
                                         syncProgress = syncProgress,
+                                    )
+                                }
+                                Route.BackupSettings -> {
+                                    LaunchedEffect(backupState.activity is BackupActivity.Running) {
+                                        if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
+                                    }
+                                    BackupSettingsScreen(
+                                        BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
+                                        actions.backup,
+                                        back = pop,
                                     )
                                 }
                                 Route.FreeUp -> {

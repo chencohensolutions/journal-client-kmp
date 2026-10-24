@@ -5,24 +5,35 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
 ## Layout
 
 - **Top bar:** back and "Settings".
-- **Show in the app** (first; Oct 21, 2026): a switch per source with its count: Camera "N photos", WhatsApp "N
-  photos and videos", Screenshots "Screenshots and screen recordings · N", Other "Downloads, other apps · N". Camera and
-  Other are on at first. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
+- **Show in the app** (first; Oct 21, 2026): a pill per source with its count ("WhatsApp · 10,282", "Petcube · 5"),
+  filled with a ✓ when shown, the most photos first (`ShownSources.choices`; pills since Oct 24, 2026, when each folder
+  and app became a source, see [Moments](moments.md) for how a photo's source is told, and a switch per source grew too
+  long). Everything but WhatsApp and Screenshots is shown at first, a folder seen for the first time too; a hidden
+  source stays listed so it can be shown again. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
   [Moments](moments.md) chips on or off. Under them: it applies to Moments, All photos, Explore and Tags; photos
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
-  (`ShownSources`: `shown_sources`, `say_whats_hidden`, `always_shown_days`).
+  (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
+  `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`).
 - **Backup** (Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
-  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened):
+  owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
+  A screen of its own since Oct 24, 2026 (asked when What to back up got a choice per folder and grew too long):
+  Settings has a **Backup** row with the status line below and a chevron, opening **Settings › Backup**
+  (`BackupSettingsScreen` on both platforms; Android route `backup-settings`), which holds:
   - **Back up to your server** switch (off until turned on), and a status line: "Off. Nothing is uploaded.",
     "Backing up 3 of 120", "12 photos waiting to upload", "Everything chosen is backed up", "Waiting: …" (Wi-Fi network
     not on the list, location needed to check it, register again, photo access), or "Stopped: … It tries again
     later." **Back up now** beside it while not running.
   - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
-    `storageUsage`), also with backup off. Asked when Settings opens and again when a backup run ends; "Can't reach the
+    `storageUsage`), also with backup off. Asked when Settings or Backup opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
-  - With backup on: **What to back up**, a toggle per source (**Camera** on by default, WhatsApp, Screenshots, Other);
+  - With backup on: **What to back up**, a pill per source with its count ("Petcube · 5"), filled with a ✓ when on,
+    the most photos first (`BackupSettings.choices`: the fixed sources, each folder or app the phone has photos of,
+    and those chosen; **Camera** on by default). A new folder is off
+    until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
+    choices of their own, off, as the owner chose; what they uploaded stays on the server. The server is told each
+    file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder;
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging**, and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
     on; × removes one). With a network listed and no "All the time" location, a note asks for it, since the network
@@ -51,7 +62,8 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
     than 1 year ago", "All but the newest 10 GB"), "1,240 photos, 38 videos · Mar 2019 – Oct 2025", and one button,
     **Free up 14 GB**. No per-photo review.
-  - **From**: Camera, WhatsApp, Screenshots, Other (all on by default; at least one stays on).
+  - **From**: the same sources as What to back up, folders included (all on by default, a new folder too; kept as the
+    sources kept on the phone, `free_up_kept`; at least one stays on).
   - **More options** (open when a rule other than the default is chosen): **Everything backed up** (default), **Older
     than** 1, 3, 6 months, **1 year** or 2 years (by date taken), or **Keep the newest** 1, 2, 5, **10**, 20 or 50 GB
     (by date taken; everything on the phone counts toward what is kept, backed up or not, of any source). Each choice's

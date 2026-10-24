@@ -217,6 +217,11 @@
     <string name="feed_source_other">אחר</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
+    <plurals name="feed_more_sources">
+        <item quantity="one">עוד מקור אחד</item>
+        <item quantity="two">עוד %1$d מקורות</item>
+        <item quantity="other">עוד %1$d מקורות</item>
+    </plurals>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
     <string name="feed_nothing_shown">אין מה להציג. אפשר להפעיל מקור למעלה.</string>
@@ -471,18 +476,6 @@
     <string name="map_no_photos">עדיין אין תמונות עם מיקום.</string>
     <!-- אילו מקורות מוצגים: הגדרות › מה מוצג באפליקציה, הסימונים והרצועה ברגעים, השורה והחלונית בגילוי -->
     <string name="settings_shown_title">מה מוצג באפליקציה</string>
-    <plurals name="settings_shown_camera">
-        <item quantity="one">תמונה אחת</item>
-        <item quantity="two">שתי תמונות</item>
-        <item quantity="other">%1$,d תמונות</item>
-    </plurals>
-    <plurals name="settings_shown_whatsapp">
-        <item quantity="one">תמונה או סרטון אחד</item>
-        <item quantity="two">%1$,d תמונות וסרטונים</item>
-        <item quantity="other">%1$,d תמונות וסרטונים</item>
-    </plurals>
-    <string name="settings_shown_screenshots">צילומי מסך והקלטות מסך · %1$,d</string>
-    <string name="settings_shown_other">הורדות ואפליקציות אחרות · %1$,d</string>
     <string name="settings_say_hidden">לציין מה מוסתר</string>
     <string name="settings_say_hidden_body">„+6 וואטסאפ” ליד יום, ולחיצה מציגה אותן</string>
     <string name="settings_shown_where">חל על רגעים, כל התמונות, גילוי, תגיות ובחירת תמונות לסיפור.</string>
@@ -501,8 +494,6 @@
     <string name="explore_show_them">להציג אותן</string>
     <string name="explore_sheet_title">מה מוצג</string>
     <string name="explore_sheet_body">אותו הדבר ברגעים, בגילוי ובכל התמונות.</string>
-    <string name="explore_sheet_here">%1$,d כאן</string>
-    <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">לרוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן מופיעות במפה. ההסתרה משנה בעיקר את השנים ואת התמונות בדף של עיר.</string>
     <string name="settings_advanced_title">מתקדם</string>
     <string name="settings_first_image">תמונה מהירה בזמן גלילה</string>

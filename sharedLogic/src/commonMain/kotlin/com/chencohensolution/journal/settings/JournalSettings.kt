@@ -55,39 +55,52 @@ internal class JournalSettings(private val store: KeyValueStore) {
         set(value) = store.putString(KEY_SIMILARITY_PERCENT, value?.toString())
 
     /**
-     * What the app shows of each source (see [ShownSources]). Before Oct 21, 2026 it was only the Moments tab's
-     * filter bar (`feed_sources`): its Camera and Other choices are kept, and WhatsApp and screenshots start off.
+     * What the app shows of each source (see [ShownSources]), kept as the sources hidden. Until Oct 24, 2026 it was
+     * kept as the fixed sources shown (`shown_sources`), and before Oct 21, 2026 as the Moments tab's filter bar
+     * (`feed_sources`, whose WhatsApp and screenshots start off): a fixed source missing from them is hidden.
      */
     var shownSources: ShownSources
         get() {
-            val sources = store.getString(KEY_SHOWN_SOURCES)?.let(::sourcesOf)
-                ?: store.getString(KEY_FEED_SOURCES)?.let { old -> sourcesOf(old) - setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) }
-                ?: ShownSources.DEFAULT_SOURCES
+            val hidden = store.getString(KEY_HIDDEN_SOURCES)?.let(::sourcesOf)
+                ?: store.getString(KEY_SHOWN_SOURCES)?.let { old -> MediaSource.FIXED.toSet() - sourcesOf(old) }
+                ?: store.getString(KEY_FEED_SOURCES)?.let { old ->
+                    MediaSource.FIXED.toSet() - sourcesOf(old) + ShownSources.DEFAULT_HIDDEN
+                }
+                ?: ShownSources.DEFAULT_HIDDEN
             val alwaysShown = store.getString(KEY_ALWAYS_SHOWN_DAYS)?.split(",")?.mapNotNull { entry ->
-                val (day, source) = entry.split(":").takeIf { it.size == 2 } ?: return@mapNotNull null
-                DaySource(LocalDay.parse(day) ?: return@mapNotNull null, MediaSource.entries.firstOrNull { it.name == source } ?: return@mapNotNull null)
+                val day = LocalDay.parse(entry.substringBefore(":")) ?: return@mapNotNull null
+                DaySource(day, MediaSource.parse(unescape(entry.substringAfter(":", ""))) ?: return@mapNotNull null)
             }?.toSet().orEmpty()
-            return ShownSources(sources, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown)
+            return ShownSources(hidden, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown)
         }
         set(value) {
-            store.putString(KEY_SHOWN_SOURCES, value.sources.joinToString(",") { it.name })
+            store.putString(KEY_HIDDEN_SOURCES, idsOf(value.hidden))
+            store.putString(KEY_SHOWN_SOURCES, null)
             store.putString(KEY_FEED_SOURCES, null)
             store.putString(KEY_SAY_WHATS_HIDDEN, value.sayWhatsHidden.toString())
-            store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${it.source.name}" }.ifEmpty { null })
+            store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${escape(it.source.id)}" }.ifEmpty { null })
         }
 
+    /**
+     * Sources kept as their ids with commas between ([MediaSource.id]; a folder's name may have a comma, kept as
+     * "%2C"). Ids of the sources before folders ("CAMERA") are read too; an unknown one is skipped.
+     */
     private fun sourcesOf(stored: String): Set<MediaSource> =
-        stored.split(",").mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }.toSet()
+        stored.split(",").filter { it.isNotEmpty() }.mapNotNull { MediaSource.parse(unescape(it)) }.toSet()
+
+    private fun idsOf(sources: Set<MediaSource>): String = sources.sorted().joinToString(",") { escape(it.id) }
+
+    private fun escape(id: String) = id.replace("%", "%25").replace(",", "%2C")
+
+    private fun unescape(stored: String) = stored.replace("%2C", ",").replace("%25", "%")
 
     /** What uploads to the server and when (Settings → Backup). */
     var backup: BackupSettings
         get() = BackupSettings(
             enabled = store.getString(KEY_BACKUP_ENABLED) == "true",
-            sources = store.getString(KEY_BACKUP_SOURCES)
-                ?.split(",")
-                ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
-                ?.toSet()
-                ?: BackupSettings.DEFAULT_SOURCES,
+            // Camera kept from before folders (Oct 24, 2026) is the Camera folder now, as the owner asked: the other
+            // DCIM folders it took then are choices of their own, off until turned on.
+            sources = store.getString(KEY_BACKUP_SOURCES)?.let(::sourcesOf) ?: BackupSettings.DEFAULT_SOURCES,
             wifiOnly = store.getString(KEY_BACKUP_WIFI_ONLY) != "false",
             // One per line: network names may contain commas.
             wifiNetworks = store.getString(KEY_BACKUP_WIFI_NETWORKS)?.split("\n")?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
@@ -97,7 +110,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         )
         set(value) {
             store.putString(KEY_BACKUP_ENABLED, value.enabled.toString())
-            store.putString(KEY_BACKUP_SOURCES, value.sources.joinToString(",") { it.name })
+            store.putString(KEY_BACKUP_SOURCES, idsOf(value.sources))
             store.putString(KEY_BACKUP_WIFI_ONLY, value.wifiOnly.toString())
             store.putString(KEY_BACKUP_WIFI_NETWORKS, value.wifiNetworks.joinToString("\n").ifEmpty { null })
             store.putString(KEY_BACKUP_CHARGING_ONLY, value.chargingOnly.toString())
@@ -114,15 +127,18 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
         set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
 
-    /** The sources whose photos "Free up space" may take off the phone (all by default). */
-    var freeUpSources: Set<MediaSource>
-        get() = store.getString(KEY_FREE_UP_SOURCES)
-            ?.split(",")
-            ?.mapNotNull { name -> MediaSource.entries.firstOrNull { it.name == name } }
-            ?.toSet()
-            ?.takeIf { it.isNotEmpty() }
-            ?: MediaSource.entries.toSet()
-        set(value) = store.putString(KEY_FREE_UP_SOURCES, value.joinToString(",") { it.name })
+    /**
+     * The sources whose photos "Free up space" keeps on the phone (none by default), so a folder seen for the first
+     * time may go. Until Oct 24, 2026 it was kept as the fixed sources that may go (`free_up_sources`).
+     */
+    var freeUpKept: Set<MediaSource>
+        get() = store.getString(KEY_FREE_UP_KEPT)?.let(::sourcesOf)
+            ?: store.getString(KEY_FREE_UP_SOURCES)?.let(::sourcesOf)?.takeIf { it.isNotEmpty() }?.let { MediaSource.FIXED.toSet() - it }
+            ?: emptySet()
+        set(value) {
+            store.putString(KEY_FREE_UP_KEPT, idsOf(value))
+            store.putString(KEY_FREE_UP_SOURCES, null)
+        }
 
     /** How server photos are shown: previews (format, quality) or their originals (Settings → Storage on this phone). */
     var previewOptions: PreviewOptions
@@ -224,6 +240,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SIMILARITY_PERCENT = "similarity_percent"
         private const val KEY_FEED_SOURCES = "feed_sources"
         private const val KEY_SHOWN_SOURCES = "shown_sources"
+        private const val KEY_HIDDEN_SOURCES = "hidden_sources"
         private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"
@@ -236,6 +253,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
+        private const val KEY_FREE_UP_KEPT = "free_up_kept"
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
         private const val KEY_PREVIEW_FORMAT = "preview_format"
         private const val KEY_PREVIEW_QUALITY = "preview_quality"

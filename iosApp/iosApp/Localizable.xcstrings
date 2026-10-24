@@ -310,6 +310,16 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "%lld more sources" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד %lld מקורות"
+          }
+        }
+      }
+    },
     "%lld ahead of yours. Only one runs at a time, to keep the server’s memory free." : {
       "localizations" : {
         "he" : {
@@ -2974,16 +2984,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "המקור יורד מהשרת"
-          }
-        }
-      }
-    },
-    "Downloads, other apps · %lld" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "הורדות, אפליקציות אחרות · %lld"
           }
         }
       }

@@ -146,7 +146,7 @@ class SettingsController internal constructor(
 
     /** Turns a source on or off everywhere (Settings › Show in the app, and the Moments filter bar). */
     fun toggleFeedSource(source: MediaSource) = changeShownSources { shown ->
-        shown.copy(sources = if (source in shown.sources) shown.sources - source else shown.sources + source)
+        shown.copy(hidden = if (source in shown.hidden) shown.hidden - source else shown.hidden + source)
     }
 
     /** "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments. */

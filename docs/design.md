@@ -196,7 +196,8 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   edit in one asset, so it always knows; on Android only in-place edits are known). Saved copies stay separate photos.
 - **Live Photos / RAW**: the second file is uploaded after the first with `pairedWith` naming it. Samsung motion
   photos are one JPEG and upload as is.
-- **What uploads**: sources chosen in Settings, **default Camera only**. **When**: Settings conditions Wi-Fi only,
+- **What uploads**: sources chosen in Settings, **default Camera only** (since Oct 24, 2026 each folder or app is a
+  source of its own, and Camera is DCIM/Camera; see [screens/moments.md](screens/moments.md)). **When**: Settings conditions Wi-Fi only,
   only listed Wi-Fi networks (needs location permission to read the network name), only while charging. **Order**:
   oldest first by default, newest first as an option.
 - **Several files at once** (Oct 21, 2026, approved by the owner; the same shared `BackupEngine` on both platforms,

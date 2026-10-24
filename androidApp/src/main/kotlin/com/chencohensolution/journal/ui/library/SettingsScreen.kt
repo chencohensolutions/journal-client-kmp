@@ -72,6 +72,8 @@ internal class SettingsActions(
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
+    /** Opens Settings › Backup. */
+    val openBackup: () -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
@@ -107,7 +109,10 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             ShownSourcesSection(settings.shownSources, sourceCounts, actions)
-            if (backup != null) BackupSection(backup, backupActions)
+            if (backup != null) {
+                SectionTitle(stringResource(R.string.settings_backup_title))
+                Card { BackupSettingsRow(backup, actions.openBackup) }
+            }
             SectionTitle(stringResource(R.string.settings_badges_title))
             Card {
                 SwitchRow(
@@ -222,29 +227,13 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
 }
 
 /**
- * Show in the app: a switch per source with its count, then "Say what's hidden", then where it applies and that
- * hiding never deletes or changes backup.
+ * Show in the app: a pill per source with its count, the most photos first (asked Oct 24, 2026, when each folder
+ * became a source), then "Say what's hidden", then where it applies and that hiding never deletes or changes backup.
  */
 @Composable
 private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
     SectionTitle(stringResource(R.string.settings_shown_title))
-    Card {
-        MediaSource.entries.forEachIndexed { i, source ->
-            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-            val count = counts[source] ?: 0
-            SwitchRow(
-                title = sourceName(source),
-                body = when (source) {
-                    MediaSource.CAMERA -> pluralStringResource(R.plurals.settings_shown_camera, count, count)
-                    MediaSource.WHATSAPP -> pluralStringResource(R.plurals.settings_shown_whatsapp, count, count)
-                    MediaSource.SCREENSHOTS -> stringResource(R.string.settings_shown_screenshots, count)
-                    MediaSource.OTHER -> stringResource(R.string.settings_shown_other, count)
-                },
-                checked = shown.isShown(source),
-                onChange = { actions.toggleSource(source) },
-            )
-        }
-    }
+    SourcePills(shown.choices(counts), counts, shown::isShown, actions.toggleSource)
     Column(Modifier.padding(top = 12.dp)) {
         Card {
             SwitchRow(
