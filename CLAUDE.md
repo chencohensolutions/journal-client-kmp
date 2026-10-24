@@ -57,6 +57,13 @@ until they ask for it:
 Android only; the SwiftUI version follows once the design settles. Images are still, so each state is its own
 preview. See [docs/previews.md](docs/previews.md).
 
+## UX suggestions: the UI lab
+
+When the owner asks for UX/UI suggestions, build them as options in the UI lab (the `ui-lab` skill in
+`.claude/skills/ui-lab/`): on the Mac in the iOS UI Lab app on the simulator, on Windows in the Android lab on the
+owner's phone when `adb` sees it, else on the emulator. A suggestion is a UI-only POC on that one platform, with no
+`sharedLogic` changes; the rest is built only after the owner approves a plan.
+
 ## Working on the Windows machine (Android only)
 
 The owner has a Mac and a Windows machine. On Windows there is no Xcode, so work there is shared logic and Android
@@ -83,7 +90,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./scripts/android-run.sh phone|emulator|<serial>    # build, install on one device, open (also VS Code tasks)
 ABI=arm64-v8a ./scripts/android-run.sh phone        # the same with only arm64 libraries: half the APK, quicker over Wi-Fi
 ./scripts/screenshots.sh                            # render the screen previews to PNGs (docs/previews.md)
-./scripts/ui-lab.sh [screen] [option]               # UI lab on the emulator (docs/previews.md)
+./scripts/ui-lab.sh [screen] [option]               # UI lab on the connected phone, else the emulator (docs/previews.md)
 ./scripts/ui-lab-ios.sh [screen] [option]           # the same UI lab on a booted iOS simulator
 cd iosApp && xcodebuild -project iosApp.xcodeproj -scheme iosApp \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build

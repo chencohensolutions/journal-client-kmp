@@ -35,25 +35,32 @@ looks shows up as an image diff in review.
 3. Run `./scripts/screenshots.sh` and look at the images.
 4. Add it to `labScreens` in the UI lab (below).
 
-## The UI lab: screens and suggestions (on the emulator)
+## The UI lab: screens and suggestions (on the phone or emulator)
 
 A library of the app's screens and of suggested designs for them, with the same made-up data, running on the
-emulator so they scroll, tap and animate. The first page lists the screens; each screen lists its options, the
-first being the screen as the app has it now, then the suggestions. UX suggestions are shown here.
+phone or emulator so they scroll, tap and animate. The first page lists the screens; each screen lists its options,
+the first being the screen as the app has it now, then the suggestions. UX suggestions are shown here.
 
 ```bash
-./scripts/ui-lab.sh                    # build, install on the running emulator, open the list of screens
+./scripts/ui-lab.sh                    # build, install on the connected phone (else the emulator), open the list of screens
 ./scripts/ui-lab.sh moments            # a screen's options
 ./scripts/ui-lab.sh moments current    # one option (ids in LabScreens.kt)
+DEVICE=emulator ./scripts/ui-lab.sh    # the emulator even with a phone connected (or DEVICE=<serial>)
 ```
+
+The script builds a separate app, **UI Lab** (the `uiLab` build type: the debug build with the id
+`com.chencohensolution.journal.uilab`, compiling `src/debug`, with `src/uiLab/AndroidManifest.xml` making the lab its
+only launcher entry and dropping Journal's `journal://` links). It sits beside Journal on the phone, so the lab never
+replaces it or stops its backup. It builds only the device's processor's native libraries (about 140 MB instead of
+335), which over wireless debugging is about 30 seconds instead of 8 minutes.
 
 The list is [LabScreens.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/LabScreens.kt).
 A suggestion is a composable in `<Screen>Suggestions.kt` beside it, added to its screen's list as a `LabOption`
 after `current`. When one is chosen, its code moves into the real screen in `src/main`, and it leaves the list.
 
 After the first build, a change to a screen is on the emulator in about 8 seconds. With Android Studio, run the
-"Journal UI lab" activity and turn on Live Edit: a saved change to a composable shows in about a second, without a
-rebuild (changes outside composables, such as new classes or resources, still need one).
+debug app's "Journal UI lab" activity and turn on Live Edit: a saved change to a composable shows in about a second,
+without a rebuild (changes outside composables, such as new classes or resources, still need one).
 
 The lab is [UiLabActivity.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/UiLabActivity.kt)
 with its own [manifest](../androidApp/src/debug/AndroidManifest.xml), both in `src/debug`, as are `PreviewData` and

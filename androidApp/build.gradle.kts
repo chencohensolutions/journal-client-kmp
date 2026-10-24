@@ -81,6 +81,17 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
+        // The UI Lab app (scripts/ui-lab.sh): the debug build under its own id and name that only opens the lab, so it
+        // installs beside Journal on a phone without replacing it or stopping its backup. Its code is src/debug's.
+        create("uiLab") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".uilab"
+            matchingFallbacks += listOf("debug")
+        }
+    }
+    sourceSets.named("uiLab") {
+        kotlin.srcDir("src/debug/kotlin")
+        res.srcDir("src/debug/res")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
