@@ -59,10 +59,9 @@ preview. See [docs/previews.md](docs/previews.md).
 
 ## UX suggestions: the UI lab
 
-When the owner asks for UX/UI suggestions, build them as options in the UI lab (the `ui-lab` skill in
-`.claude/skills/ui-lab/`): on the Mac in the iOS UI Lab app on the simulator, on Windows in the Android lab on the
-owner's phone when `adb` sees it, else on the emulator. A suggestion is a UI-only POC on that one platform, with no
-`sharedLogic` changes; the rest is built only after the owner approves a plan.
+UX/UI suggestions follow the `ui-lab` skill ([.claude/skills/ui-lab/](.claude/skills/ui-lab/SKILL.md)): mocks in
+lab code only, on this machine's platform (the iOS UI Lab on the Mac, the Android UI Lab on Windows); the app changes
+after the owner approves a plan.
 
 ## Working on the Windows machine (Android only)
 
