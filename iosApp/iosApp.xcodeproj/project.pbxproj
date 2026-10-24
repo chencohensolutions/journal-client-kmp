@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C1D2E3F4A5B6C7D8E9F0A1B2 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* MapLibre */; };
+		F1A2B3C4D5E6F7A8B9C0D1E2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = E1F2A3B4C5D6E7F8A9B0C1D2 /* onnxruntime */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* MapLibre in Frameworks */,
+				F1A2B3C4D5E6F7A8B9C0D1E2 /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +101,7 @@
 			name = iosApp;
 			packageProductDependencies = (
 				B1C2D3E4F5A6B7C8D9E0F1A2 /* MapLibre */,
+				E1F2A3B4C5D6E7F8A9B0C1D2 /* onnxruntime */,
 			);
 			productName = iosApp;
 			productReference = 344BDD63032A749D6B1F9835 /* MyApplication.app */;
@@ -130,6 +133,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+				D1E2F3A4B5C6D7E8F9A0B1C2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 007BF56795EF7DEFB4E1B526 /* Products */;
@@ -395,6 +399,14 @@
 				version = 6.31.0;
 			};
 		};
+		D1E2F3A4B5C6D7E8F9A0B1C2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = exactVersion;
+				version = 1.24.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -402,6 +414,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1B2C3D4E5F6A7B8C9D0E1F2 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
 			productName = MapLibre;
+		};
+		E1F2A3B4C5D6E7F8A9B0C1D2 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D1E2F3A4B5C6D7E8F9A0B1C2 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

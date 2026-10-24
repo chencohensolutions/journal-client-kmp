@@ -63,6 +63,10 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.people.PageSort
+import com.chencohensolution.journal.people.PeopleState
+import com.chencohensolution.journal.stories.bestFirst
+import com.chencohensolution.journal.stories.bestLooking
 import com.chencohensolution.journal.stories.CountrySummary
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.FeedSection
@@ -82,7 +86,7 @@ import kotlinx.coroutines.withContext
 // The Explore tab: every photo by country and town or by year, and the map (see Explore.kt in the shared logic and
 // docs/screens/explore.md). A town's or a year's page shows its photos like the Moments tab.
 
-internal enum class ExploreView { PLACES, YEARS }
+internal enum class ExploreView { PLACES, YEARS, PEOPLE }
 
 internal class ExploreActions(
     val openPlace: (town: String) -> Unit = {},
@@ -93,18 +97,25 @@ internal class ExploreActions(
     val openMap: () -> Unit = {},
     /** A switch of the "Showing" sheet, or a year's "Show them": the setting changes everywhere. */
     val toggleSource: (MediaSource) -> Unit = {},
+    /** A person's page from People; for a group of faces no one has named, "Who's this?". */
+    val openPerson: (id: String) -> Unit = {},
+    /** People shown: load the list (again, so new faces come in). */
+    val loadPeople: () -> Unit = {},
+    /** People couldn't be loaded: Try again. */
+    val reloadPeople: () -> Unit = {},
 )
 
 /** What Explore works from: the library, newest first, without what the sources setting hides. */
 internal fun exploreItems(library: LibraryState, stories: StoriesState): List<MediaItem> =
     library.days.flatMap { it.items }.filter(stories::shows)
 
-/** Under the top bar: Places or Years, and the map. */
+/** Under the top bar: Places, Years or (when the server has face search) People, and the map. */
 @Composable
-internal fun ExploreBar(view: ExploreView, onView: (ExploreView) -> Unit, onMap: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ExploreBar(view: ExploreView, onView: (ExploreView) -> Unit, onMap: () -> Unit, modifier: Modifier = Modifier, people: Boolean = false) {
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ExploreChip(stringResource(R.string.explore_places), view == ExploreView.PLACES) { onView(ExploreView.PLACES) }
         ExploreChip(stringResource(R.string.explore_years), view == ExploreView.YEARS) { onView(ExploreView.YEARS) }
+        if (people) ExploreChip(stringResource(R.string.explore_people), view == ExploreView.PEOPLE) { onView(ExploreView.PEOPLE) }
         Spacer(Modifier.weight(1f))
         ExploreChip(stringResource(R.string.explore_map), on = false, icon = LibraryIcons.Map, onClick = onMap)
     }
@@ -165,7 +176,12 @@ internal fun ExploreContent(
     view: ExploreView,
     actions: ExploreActions,
     contentPadding: PaddingValues,
+    people: PeopleState? = null,
 ) {
+    if (view == ExploreView.PEOPLE) {
+        PeopleList(people ?: PeopleState.NONE, actions, contentPadding)
+        return
+    }
     // Worked out at once in previews, where the background work never lands in the image.
     val preview = LocalInspectionMode.current
     val summaries by produceState(if (preview) exploreSummaries(library, stories) else null, library, stories.places, stories.shownSources) {
@@ -180,6 +196,7 @@ internal fun ExploreContent(
     when (view) {
         ExploreView.PLACES -> PlacesList(loaded, actions, contentPadding, line)
         ExploreView.YEARS -> YearsList(loaded.years, shown, actions, contentPadding, line)
+        ExploreView.PEOPLE -> Unit
     }
     if (sheetOpen) ShowingSheet(shown, loaded.counts, actions.toggleSource, onDismiss = { sheetOpen = false })
 }
@@ -509,7 +526,7 @@ private fun ExploreMessage(text: String) {
  * A town's or a year's page as worked out: its photos as the Moments tab's list items, and its photos per source
  * shown or not ([counts]), for the "Showing" sheet.
  */
-private class ExplorePage(val all: List<MediaItem>, val rows: List<FeedRow>, val counts: Map<MediaSource, Int>)
+private class ExplorePage(val all: List<MediaItem>, val rows: List<FeedRow>, val counts: Map<MediaSource, Int>, val shown: List<MediaItem>)
 
 /**
  * A town's page: its photo and name, the years to narrow it to, and its photos like the Moments tab. [onOpenItem]
@@ -522,10 +539,12 @@ internal fun PlaceScreen(
     stories: StoriesState,
     year: Int?,
     onYear: (Int?) -> Unit,
-    onOpenItem: (ExploreScope, FeedSection, MediaItem) -> Unit,
+    onOpenItem: (ExploreScope, FeedSection?, MediaItem) -> Unit,
     onBack: () -> Unit,
     landing: String?,
     onToggleSource: (MediaSource) -> Unit = {},
+    sort: PageSort = PageSort.NEWEST,
+    onSort: ((PageSort) -> Unit)? = null,
 ) {
     val scope = ExploreScope(town = town, year = year)
     val page = rememberExplorePage(library, stories, ExploreScope(town = town), scope)
@@ -543,7 +562,7 @@ internal fun PlaceScreen(
     ExplorePageLayout(
         title = town,
         subtitle = subtitle,
-        cover = all.firstOrNull { it.type == MediaType.IMAGE } ?: all.firstOrNull(),
+        cover = bestLooking(all.filter { it.type == MediaType.IMAGE }) ?: all.firstOrNull { it.type == MediaType.IMAGE } ?: all.firstOrNull(),
         chips = listOf<Pair<Int?, String>>(null to stringResource(R.string.explore_all_years)) +
             years.map { (y, count) -> y to stringResource(R.string.feed_source_count, "$y", count) },
         selected = year,
@@ -555,6 +574,10 @@ internal fun PlaceScreen(
         landing = landing,
         counts = page?.counts,
         onToggleSource = onToggleSource,
+        sort = sort,
+        onSort = onSort,
+        pagePhotos = page?.shown.orEmpty(),
+        onOpenShown = { item -> onOpenItem(scope, null, item) },
     )
 }
 
@@ -566,10 +589,12 @@ internal fun YearScreen(
     stories: StoriesState,
     month: Int?,
     onMonth: (Int?) -> Unit,
-    onOpenItem: (ExploreScope, FeedSection, MediaItem) -> Unit,
+    onOpenItem: (ExploreScope, FeedSection?, MediaItem) -> Unit,
     onBack: () -> Unit,
     landing: String?,
     onToggleSource: (MediaSource) -> Unit = {},
+    sort: PageSort = PageSort.NEWEST,
+    onSort: ((PageSort) -> Unit)? = null,
 ) {
     val scope = ExploreScope(year = year, month = month)
     val page = rememberExplorePage(library, stories, ExploreScope(year = year), scope)
@@ -580,7 +605,7 @@ internal fun YearScreen(
     ExplorePageLayout(
         title = "$year",
         subtitle = if (all.isEmpty()) null else (listOf(count) + towns).joinToString(" · "),
-        cover = all.firstOrNull { it.type == MediaType.IMAGE } ?: all.firstOrNull(),
+        cover = bestLooking(all.filter { it.type == MediaType.IMAGE }) ?: all.firstOrNull { it.type == MediaType.IMAGE } ?: all.firstOrNull(),
         chips = listOf<Pair<Int?, String>>(null to stringResource(R.string.explore_whole_year)) +
             all.map { it.day.month }.distinct().map { it to monthName(it) },
         selected = month,
@@ -592,6 +617,10 @@ internal fun YearScreen(
         landing = landing,
         counts = page?.counts,
         onToggleSource = onToggleSource,
+        sort = sort,
+        onSort = onSort,
+        pagePhotos = page?.shown.orEmpty(),
+        onOpenShown = { item -> onOpenItem(scope, null, item) },
     )
 }
 
@@ -602,7 +631,8 @@ private fun rememberExplorePage(library: LibraryState, stories: StoriesState, wh
         value = withContext(Dispatchers.Default) {
             val everything = library.days.flatMap { it.items }.filter { whole.matches(it, stories.places) }
             val all = everything.filter(stories::shows)
-            ExplorePage(all, stories.feedOf(all.filter { shown.matches(it, stories.places) }).rows(), sourceCounts(everything))
+            val inScope = all.filter { shown.matches(it, stories.places) }
+            ExplorePage(all, stories.feedOf(inScope).rows(), sourceCounts(everything), inScope)
         }
     }
     return page
@@ -623,6 +653,11 @@ private fun <T> ExplorePageLayout(
     landing: String?,
     counts: Map<MediaSource, Int>?,
     onToggleSource: (MediaSource) -> Unit,
+    sort: PageSort = PageSort.NEWEST,
+    onSort: ((PageSort) -> Unit)? = null,
+    /** The page's photos (of the chosen year or month), for Best first. */
+    pagePhotos: List<MediaItem> = emptyList(),
+    onOpenShown: (MediaItem) -> Unit = {},
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -647,7 +682,8 @@ private fun <T> ExplorePageLayout(
                     ShowingLine(shown, presentSources(counts, emptySet()), onChange = { sheetOpen = true }, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp))
                 }
             }
-            feedItems(rows, actions, landing, notes = stories.notes)
+            if (onSort != null) item(key = "sort") { SortChips(sort, onSort, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) }
+            if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes)
         }
         PageBack(onBack)
     }
@@ -656,7 +692,7 @@ private fun <T> ExplorePageLayout(
 
 /** Across the top of a page, under the status bar: its photo with the title and [subtitle] written over it. */
 @Composable
-private fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
+internal fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     Box(Modifier.fillMaxWidth().height(260.dp + insets.calculateTopPadding()).background(LibraryColors.Raised)) {
         cover?.let { CroppedThumbnail(it, Modifier.fillMaxSize()) }
@@ -675,7 +711,7 @@ private fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
 
 /** The back button over a page's photo. */
 @Composable
-private fun PageBack(onBack: () -> Unit) {
+internal fun PageBack(onBack: () -> Unit) {
     IconButton(
         onClick = onBack,
         modifier = Modifier

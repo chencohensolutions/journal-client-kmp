@@ -67,6 +67,13 @@ data class StoriesState(
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
+    /**
+     * The photo a set of [items] opens on: the one the user turned it to last ([PhotoNote.front]), else the
+     * best-looking (the server's aesthetic score), else null (the first).
+     */
+    fun frontOf(items: List<MediaItem>): String? =
+        items.firstOrNull { notes[it.id]?.front == true }?.id ?: bestLooking(items)?.id
+
     /** Photos and videos tagged [tag] (ignoring case) that [shownSources] shows, by day, newest first. */
     fun tagged(tag: String): List<DayGroup> = notes.values
         .filter { note -> note.tags.any { it.equals(tag, ignoreCase = true) } }

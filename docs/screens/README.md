@@ -13,6 +13,7 @@ their story and group pages, were replaced by the storyline on Oct 21, 2026 (own
 | Moments (feed) | The Moments tab of the Journal (Android) | [moments.md](moments.md) |
 | Explore | The Explore tab of the Journal: towns, years, a town's or year's page, the map | [explore.md](explore.md) |
 | Search | The 🔍 beside the Journal's tabs | [search.md](search.md) |
+| People | Explore › People; a person's page, Who's this? | [people.md](people.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
 | All photos | ⋯ menu → All photos | [all-photos.md](all-photos.md) |
 | Settings | ⋯ menu → Settings | [settings.md](settings.md) |

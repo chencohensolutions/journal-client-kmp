@@ -144,6 +144,12 @@ internal class ViewerActions(
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { _, _ -> false },
     /** Leaving a photo: where it was zoomed in (the part on screen; null: fitted), so it opens there next time. */
     val setZoom: (itemId: String, zoom: CropRect?) -> Unit = { _, _ -> },
+    /** The details panel opened on a photo: find what the server found in it (people, text, similar photos). */
+    val findIn: (MediaItem) -> Unit = {},
+    /** In the details panel: a person, a similar photo, all similar photos. */
+    val findings: FindingsActions = FindingsActions(),
+    /** A face's sheet: This is Mom, Not Mom, Who is it? */
+    val faces: FaceActions = FaceActions(),
 )
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
@@ -155,7 +161,12 @@ internal fun ViewerScreen(
     actions: ViewerActions,
     /** The bars and buttons shown on opening (for the screen previews); a tap shows them otherwise. */
     chromeAtStart: Boolean = false,
+    /** What the server found in the photo the details panel shows (it asks with [ViewerActions.findIn]). */
+    findings: com.chencohensolution.journal.people.PhotoFindings = com.chencohensolution.journal.people.PhotoFindings.NONE,
+    /** The named people, for a face's "Who is it?". */
+    people: List<com.chencohensolution.journal.people.Person> = emptyList(),
 ) {
+    var faceSheet by remember { mutableStateOf<com.chencohensolution.journal.people.FoundFace?>(null) }
     val onBack = actions.back
     if (items.isEmpty()) {
         // The item was deleted from the device while open.
@@ -337,8 +348,16 @@ internal fun ViewerScreen(
             enter = slideInVertically(tween(PANEL_MILLIS)) { it } + fadeIn(tween(PANEL_MILLIS)),
             exit = slideOutVertically(tween(PANEL_MILLIS)) { it } + fadeOut(tween(PANEL_MILLIS)),
         ) {
+            LaunchedEffect(current.id) { actions.findIn(current) }
             InfoPanel(
                 current,
+                findings = findings.takeIf { it.itemId == current.id } ?: com.chencohensolution.journal.people.PhotoFindings.NONE,
+                findingsActions = FindingsActions(
+                    openPerson = actions.findings.openPerson,
+                    openSimilar = actions.findings.openSimilar,
+                    moreSimilar = actions.findings.moreSimilar,
+                    tapFace = { faceSheet = it },
+                ),
                 note = stories.note(current.id),
                 onAddTag = { choosingTag = true },
                 onRemoveTag = { tag -> actions.toggleTag(current.id, tag, false) },
@@ -350,6 +369,11 @@ internal fun ViewerScreen(
         }
     }
 
+    faceSheet?.let { found ->
+        PageSheet({ faceSheet = null }) {
+            FaceSheet(found, people, actions.faces, onDone = { faceSheet = null })
+        }
+    }
     if (choosingTag) {
         TagSheet(
             itemIds = listOf(current.id),

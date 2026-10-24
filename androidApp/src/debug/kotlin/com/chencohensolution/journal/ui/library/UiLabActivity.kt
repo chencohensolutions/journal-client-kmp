@@ -76,7 +76,7 @@ class UiLabActivity : ComponentActivity() {
 /** The app's own themes (MainActivity, LibraryApp), with placeholder pictures instead of the photo library. */
 @Composable
 private fun LabTheme(content: @Composable () -> Unit) = JournalTheme {
-    CompositionLocalProvider(LocalThumbnailSource provides PlaceholderThumbnails) {
+    CompositionLocalProvider(LocalThumbnailSource provides PlaceholderThumbnails, LocalFaceSource provides PlaceholderFaces) {
         LibraryTheme(content = content)
     }
 }

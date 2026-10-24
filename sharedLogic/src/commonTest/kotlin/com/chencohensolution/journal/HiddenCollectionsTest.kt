@@ -25,6 +25,7 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
@@ -84,9 +85,10 @@ class HiddenCollectionsTest {
         assertEquals(HiddenCollections.Nudity(hidden = true, fromPercent = 50, files = 2, notScanned = 3), shown.nudity)
         val saved = library.setHiddenCollections(shown.with(shown.screenshotApps[0], hidden = true))!!
         assertEquals(true, saved.screenshotApps[0].hidden)
-        assert(sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it }) {
-            sent.joinToString("\n")
-        }
+        assertTrue(
+            sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it },
+            sent.joinToString("\n"),
+        )
         // Saving doesn't sync: the screen does once, when it is left.
         assertEquals(2, library.media.value.size)
 

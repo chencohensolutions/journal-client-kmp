@@ -12,13 +12,17 @@ struct SettingsView: View {
     let sourceCounts: [MediaSource: KotlinInt]
     /// The library reads PhotoKit again once Free up space removed photos.
     var refreshLibrary: () -> Void = {}
+    /// Search › On this phone, when the server lets phones keep its indexes; nil: no row.
+    var phoneSearch: PhoneSearchViewModel?
     @StateObject private var freeUp = FreeUpViewModel()
 
     var body: some View {
         SettingsScreen(
             settings: settings.state, backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts,
             previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions,
-            syncProgress: settings.syncProgress
+            syncProgress: settings.syncProgress,
+            phoneSearch: phoneSearch?.state,
+            phoneSearchScreen: phoneSearch.map { model in { AnyView(PhoneSearchView(model: model)) } }
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
         } hiddenScreen: {
@@ -90,6 +94,9 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     let actions: SettingsActions
     /// How far the library's sync is, shown on Hidden collections' row (after a change there); nil when not syncing.
     var syncProgress: SyncProgress?
+    /// Search › On this phone's row, and its screen; nil: no row.
+    var phoneSearch: PhoneSearchState? = nil
+    var phoneSearchScreen: (() -> AnyView)? = nil
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
     /// Hidden collections, opened from Private media.
@@ -385,6 +392,16 @@ extension SettingsScreen {
                 }
             }
             .foregroundStyle(LibraryColors.onBackground)
+            if let phoneSearch, let phoneSearchScreen {
+                NavigationLink {
+                    phoneSearchScreen()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("On this phone").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                        Text(phoneSearch.rowText).font(.footnote).foregroundStyle(LibraryColors.muted)
+                    }
+                }
+            }
         } header: {
             Text("Search")
         } footer: {

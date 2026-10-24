@@ -1,0 +1,14 @@
+query MediaFindings($sha256: Sha256!) {
+  media(sha256: $sha256) {
+    sha256
+    faces { ...FaceFields }
+    text { text }
+  }
+}
+
+query SimilarMedia($sha256: Sha256!, $limit: Int, $includePrivate: Boolean) {
+  similarMedia(sha256: $sha256, limit: $limit, includePrivate: $includePrivate) {
+    media { sha256 }
+    score
+  }
+}

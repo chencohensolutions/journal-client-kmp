@@ -149,6 +149,11 @@ data class MediaItem(
     val keptOriginal: String? = null,
     /** The user marked it private on the server; shown only while "Show private media" is on. */
     val isPrivate: Boolean = false,
+    /**
+     * How good it looks, about 1 to 10 (the server's aesthetic score: 4 to 5 an ordinary snapshot, 6 and more a good
+     * photo); null until scored, or for a photo the server doesn't have.
+     */
+    val aesthetic: Float? = null,
 ) {
     /** Whether its original is on this device, in the library or kept by the app: then nothing is fetched for it. */
     val hasOriginalHere: Boolean get() = isOnDevice || keptOriginal != null

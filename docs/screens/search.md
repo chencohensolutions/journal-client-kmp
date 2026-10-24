@@ -41,8 +41,19 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   drops it, and Clear drops both; each section is counted within the other's choice. A section with one value and
   nothing chosen isn't shown, and with neither there is no pill. The server picks the best of that year or town (see
   below), not the overall best that happen to match.
-- Nothing found: "Nothing found. Try other words." Offline: "Can't reach your server…". The server's own error (for
-  example, search turned off there) is shown as "The server couldn't search: …".
+- Nothing found: "Nothing found. Try other words." Offline: "Can't reach your server…". Search off on the server
+  (its `SEARCH_OFF` code): "Search is off on your server." Any other error of the server's: "The server couldn't
+  search: …".
+- **Getting ready** (Oct 24, 2026): opening the search screen asks the server to load its model (`prepareSearch`);
+  while it loads (a few seconds, on a server that indexes once a day), a search shows "Getting search ready…" under
+  its spinner (`searchModel(wait: true)`).
+- **By person** (Oct 24, 2026, when the server has face search): before anything is searched, "Search by person"
+  with the named people's faces (most photos first, 16); a tap puts the person in a chip over the results (× takes
+  them out) and shows their photos, the last taken first; words then find the best matches among them
+  (`searchMedia(people:, text:)`). With people chosen there is no year or town filter.
+- **On this phone** (Oct 24, 2026): with Settings › Search › On this phone keeping text search, the phone searches
+  itself (offline too); offline it says "Searched on this phone: your server can't be reached." See
+  [settings.md](settings.md#search--on-this-phone).
 - Tapping a photo opens the viewer, which swipes through the results in their order; closing it lands back on that
   photo. "Show in Moments" from there closes search and goes to the Moments tab.
 

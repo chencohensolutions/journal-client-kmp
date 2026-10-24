@@ -1,0 +1,234 @@
+{
+  "find": [
+    {
+      "found": [
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "query": "קבלה"
+    },
+    {
+      "found": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "query": "קבלה 4521"
+    },
+    {
+      "found": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "query": "receipt"
+    },
+    {
+      "found": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "query": "rec"
+    },
+    {
+      "found": [
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      ],
+      "query": "חלב"
+    },
+    {
+      "found": [],
+      "query": "nothing"
+    },
+    {
+      "found": [
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      ],
+      "query": "וחלב"
+    }
+  ],
+  "matches": [
+    {
+      "matches": true,
+      "query": "קבלה",
+      "word": "קבלה"
+    },
+    {
+      "matches": true,
+      "query": "קבלה",
+      "word": "בקבלה"
+    },
+    {
+      "matches": true,
+      "query": "קבלה",
+      "word": "ובקבלה"
+    },
+    {
+      "matches": false,
+      "query": "קבלה",
+      "word": "שבבקבלה"
+    },
+    {
+      "matches": false,
+      "query": "קבלה",
+      "word": "בקבלות"
+    },
+    {
+      "matches": true,
+      "query": "rec",
+      "word": "receipt"
+    },
+    {
+      "matches": false,
+      "query": "re",
+      "word": "receipt"
+    },
+    {
+      "matches": false,
+      "query": "receipt",
+      "word": "breceipt"
+    },
+    {
+      "matches": true,
+      "query": "מקו",
+      "word": "מקומ"
+    },
+    {
+      "matches": true,
+      "query": "לחמ",
+      "word": "הלחמ"
+    },
+    {
+      "matches": true,
+      "query": "452",
+      "word": "4521"
+    },
+    {
+      "matches": false,
+      "query": "45",
+      "word": "4521"
+    },
+    {
+      "matches": true,
+      "query": "total",
+      "word": "total"
+    }
+  ],
+  "texts": {
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": [
+      {
+        "text": "קבלה מס׳ 4521",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      },
+      {
+        "text": "סה״כ 89.90",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      }
+    ],
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": [
+      {
+        "text": "בקבלה הזאת",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      },
+      {
+        "text": "קבלה קבלה",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      }
+    ],
+    "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc": [
+      {
+        "text": "RECEIPT total 12",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      }
+    ],
+    "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd": [
+      {
+        "text": "לחם וחלב",
+        "box": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "score": 0
+      }
+    ]
+  },
+  "tokenize": [
+    {
+      "text": "קַבָּלָה מס׳ 4521",
+      "words": [
+        "קבלה",
+        "מס",
+        "4521"
+      ]
+    },
+    {
+      "text": "בקבלה הזאת",
+      "words": [
+        "בקבלה",
+        "הזאת"
+      ]
+    },
+    {
+      "text": "Total: 89.90 ₪",
+      "words": [
+        "total",
+        "89",
+        "90"
+      ]
+    },
+    {
+      "text": "RECEIPT",
+      "words": [
+        "receipt"
+      ]
+    },
+    {
+      "text": "שלום-עולם",
+      "words": [
+        "שלומ",
+        "עולמ"
+      ]
+    },
+    {
+      "text": "מקום מלא",
+      "words": [
+        "מקומ",
+        "מלא"
+      ]
+    },
+    {
+      "text": "לחם וחלב",
+      "words": [
+        "לחמ",
+        "וחלב"
+      ]
+    }
+  ]
+}

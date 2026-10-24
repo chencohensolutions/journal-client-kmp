@@ -18,6 +18,12 @@ struct SearchActions {
     var loadMore: () -> Void = {}
     /// A photo of the results; the viewer swipes through the results.
     var openItem: (MediaItem) -> Void = { _ in }
+    /// The search screen opened: the server gets its model ready.
+    var prepare: () -> Void = {}
+    /// A face before anything is searched: the person becomes a chip, and the search their photos.
+    var addPerson: (Person) -> Void = { _ in }
+    /// A person chip's ×.
+    var removePerson: (String) -> Void = { _ in }
 }
 
 /// The results page, under `SearchTitleBar` and above `SearchFieldBar`; goes in the home screen's scroll view.
@@ -26,24 +32,76 @@ struct SearchResultsView: View {
     let places: Places
     let width: CGFloat
     let actions: SearchActions
+    /// Named people to search by, before anything is searched (when the server has face search).
+    var faces: [Person] = []
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
+            if !search.people.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(search.people, id: \.id) { person in
+                            HStack(spacing: 8) {
+                                FaceAvatar(face: person.cover, size: 28)
+                                Text(person.name ?? "?").font(.system(size: 14, weight: .semibold)).foregroundStyle(LibraryColors.onBackground)
+                                Button { actions.removePerson(person.id) } label: { Image(systemName: "xmark").font(.caption.weight(.bold)) }
+                                    .foregroundStyle(LibraryColors.muted).accessibilityLabel("Remove \(person.name ?? "?")")
+                            }
+                            .padding(.leading, 4).padding(.trailing, 12).frame(height: 36)
+                            .background(LibraryColors.raised, in: Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .scrollIndicators(.hidden)
+                .padding(.vertical, 6)
+            }
             switch search.status {
             case .idle:
                 SearchMessage(text: "Describe what's in the photo, in your own words: \"a dog on the beach at sunset\", \"birthday cake\", \"snow in the mountains\". Search looks at the pictures themselves, not their names.")
+                if !faces.isEmpty {
+                    Text("Search by person").font(.system(size: 16, weight: .bold)).foregroundStyle(LibraryColors.onBackground).padding(.horizontal, 16).padding(.top, 8)
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 0) {
+                            ForEach(faces, id: \.id) { person in
+                                Button { actions.addPerson(person) } label: {
+                                    VStack(spacing: 4) {
+                                        FaceAvatar(face: person.cover, size: 56)
+                                        Text(person.name ?? "").font(.system(size: 13)).foregroundStyle(LibraryColors.onBackground).lineLimit(1)
+                                    }
+                                    .frame(width: 76).padding(.vertical, 6)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                    }
+                    .scrollIndicators(.hidden)
+                }
             case .searching:
                 if search.items.isEmpty && search.yearChips.isEmpty {
-                    ProgressView().tint(LibraryColors.onBackground).frame(maxWidth: .infinity).padding(48)
+                    VStack(spacing: 12) {
+                        ProgressView().tint(LibraryColors.onBackground)
+                        if search.preparing {
+                            Text("Getting search ready…").font(.subheadline).foregroundStyle(LibraryColors.muted)
+                        }
+                    }
+                    .frame(maxWidth: .infinity).padding(48)
                 }
             case .failed:
                 if search.error == .offline {
                     SearchMessage(text: "Can't reach your server. Search works when the server can be reached.")
+                } else if search.error == .off {
+                    SearchMessage(text: "Search is off on your server.")
                 } else {
                     SearchMessage(text: "The server couldn't search: \(search.errorDetail ?? "")")
                 }
             default:
                 EmptyView()
+            }
+            if search.status == .done && search.onPhone {
+                Text("Searched on this phone: your server can’t be reached.").font(.footnote).foregroundStyle(LibraryColors.muted)
+                    .padding(.horizontal, 16).padding(.vertical, 4)
             }
             if search.status == .done {
                 FoundNote(search: search)
@@ -68,6 +126,7 @@ struct SearchResultsView: View {
                 }
             }
         }
+        .task { actions.prepare() }
         .followsViewer { id in
             search.sets.first { set in set.contains { $0.id == id } }.map { PhotoPlace(section: $0[0].id, tile: ZoomID.item(id)) }
         }

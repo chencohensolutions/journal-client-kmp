@@ -22,7 +22,24 @@ import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.places.PhotoPlaces
 import com.chencohensolution.journal.places.PlaceCache
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.StatFs
+import com.chencohensolution.journal.local.AndroidTextEncoding
+import com.chencohensolution.journal.local.HttpLocalIndexApi
+import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.local.LocalSearchApi
+import com.chencohensolution.journal.local.PhoneFallbackFindingsApi
+import com.chencohensolution.journal.local.PhoneFallbackPeopleApi
+import com.chencohensolution.journal.local.PhoneFirstSearchApi
+import com.chencohensolution.journal.people.ApiPeopleSearch
+import com.chencohensolution.journal.people.ApolloFindingsApi
+import com.chencohensolution.journal.people.ApolloPeopleApi
+import com.chencohensolution.journal.people.PeopleController
+import com.chencohensolution.journal.people.PersonController
+import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.ApolloSearchApi
+import com.chencohensolution.journal.search.ApolloSearchWarmUp
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.PrivateMedia
@@ -77,7 +94,38 @@ fun createLibraryController(
         server = server,
         originals = originals,
         privateMedia = privateMedia,
+        scores = localIndexes(context).scores,
     )
+
+private var localIndexes: LocalIndexes? = null
+
+/**
+ * Settings › Search › On this phone: the server's indexes kept in `files/local`, to search without the server. One
+ * per process.
+ */
+@Synchronized
+fun localIndexes(context: Context): LocalIndexes =
+    localIndexes ?: run {
+        val app = context.applicationContext
+        LocalIndexes(
+            settings = JournalSettings(SharedPreferencesStore(app)),
+            api = HttpLocalIndexApi(serverHttp(app)),
+            fileSystem = FileSystem.SYSTEM,
+            directory = app.filesDir.toOkioPath() / "local",
+            onWifi = {
+                val connectivity = app.getSystemService(ConnectivityManager::class.java)
+                connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
+            },
+            freeSpace = { runCatching { StatFs(app.filesDir.path).availableBytes }.getOrDefault(0) },
+            now = System::currentTimeMillis,
+            encoding = AndroidTextEncoding(),
+        )
+    }.also { localIndexes = it }
+
+private fun localSearchApi(context: Context): LocalSearchApi {
+    val settings = JournalSettings(SharedPreferencesStore(context))
+    return LocalSearchApi(localIndexes(context), serverLibrary(context).media) { settings.privateMedia.show }
+}
 
 /**
  * Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet), with
@@ -92,11 +140,52 @@ fun createSearchController(
 ): SearchController =
     SearchController(
         library = library.state,
-        api = ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), serverHttp(context)),
+        api = PhoneFirstSearchApi(localSearchApi(context), ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), serverHttp(context))),
         server = server.media,
         stories = stories.state,
         pageSize = { settings.currentState.searchPageSize },
+        warmUp = ApolloSearchWarmUp(serverHttp(context)),
+        peopleSearch = ApiPeopleSearch(peopleApi(context)) { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
     )
+
+private var peopleController: PeopleController? = null
+
+/** Explore's People: the user's people and groups of faces on the server. One per process. */
+@Synchronized
+fun peopleController(context: Context): PeopleController =
+    peopleController ?: JournalSettings(SharedPreferencesStore(context)).let { settings ->
+        PeopleController(peopleApi(context), includePrivate = { settings.privateMedia.show })
+    }.also { peopleController = it }
+
+/** A person's page, or a group's ("Who's this?"): [id] from [peopleController]'s list. */
+fun createPersonController(context: Context, id: String, library: LibraryController): PersonController {
+    val settings = JournalSettings(SharedPreferencesStore(context))
+    return PersonController(
+        id = id,
+        api = peopleApi(context),
+        people = peopleController(context),
+        library = library.state,
+        server = serverLibrary(context).media,
+        includePrivate = { settings.privateMedia.show },
+    )
+}
+
+/** What the server found in the photo the viewer shows: people, text, similar photos. */
+fun createPhotoFindingsController(context: Context, library: LibraryController): PhotoFindingsController {
+    val settings = JournalSettings(SharedPreferencesStore(context))
+    val server = serverLibrary(context)
+    return PhotoFindingsController(
+        api = PhoneFallbackFindingsApi(ApolloFindingsApi(serverHttp(context)), localIndexes(context)),
+        people = peopleController(context),
+        library = library.state,
+        server = server.media,
+        features = server.features,
+        includePrivate = { settings.privateMedia.show },
+    )
+}
+
+/** People from the server, or while it can't be reached, from what this phone keeps. */
+private fun peopleApi(context: Context) = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp(context)), localIndexes(context), serverLibrary(context).media)
 
 private var serverLibrary: ServerLibrary? = null
 private var serverPreviews: ServerPreviews? = null

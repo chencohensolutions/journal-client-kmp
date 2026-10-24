@@ -10,6 +10,9 @@ struct LibraryRootView: View {
     @ObservedObject var settings: SettingsViewModel
     @ObservedObject var backup: BackupViewModel
     @ObservedObject var search: SearchViewModel
+    @ObservedObject var people: PeopleViewModel
+    @ObservedObject var findings: FindingsViewModel
+    @ObservedObject var phoneSearch: PhoneSearchViewModel
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -28,6 +31,8 @@ struct LibraryRootView: View {
     @State private var momentsRequest: PhotoRequest?
     /// Photos mark themselves in it; the viewer zooms out of them.
     @Namespace private var zoom
+    /// Looks like this › More's photos, by the photo they look like.
+    @State private var similarLists: [String: [String]] = [:]
 
     private enum Route: Hashable {
         case allPhotos
@@ -40,6 +45,10 @@ struct LibraryRootView: View {
         case country(String?)
         case year(Int, month: Int?)
         case map
+        /// A person's page, or a group's ("Who's this?").
+        case person(String)
+        /// The photos that look like this one (its details › Looks like this › More).
+        case similar(String)
     }
 
     /// Opened from the storyline (`storyline`), a tag (`tag`), a row of Moments (`feedSection`, its key, with
@@ -55,6 +64,8 @@ struct LibraryRootView: View {
         let itemId: String
         var tag: String? = nil
         var scope: ExploreScope? = nil
+        /// The photos a page showed, in its order (a person's, similar photos, Best first).
+        var list: [String]? = nil
         /// What it swipes through, fixed when opened: tagging a photo or taking it out of the storyline must not pull it
         /// out from under it.
         var itemIds: [String] = []
@@ -117,7 +128,10 @@ struct LibraryRootView: View {
                                 openCountry: { path.append(.country($0)) },
                                 openYear: { path.append(.year($0, month: $1)) },
                                 openMap: { path.append(.map) },
-                                toggleSource: settings.toggleFeedSource
+                                toggleSource: settings.toggleFeedSource,
+                                openPerson: { path.append(.person($0)) },
+                                loadPeople: people.load,
+                                reloadPeople: people.reload
                             ),
                             allowAccess: requestOrOpenSettings,
                             registerAgain: onRegisterAgain,
@@ -127,10 +141,14 @@ struct LibraryRootView: View {
                                 chooseYear: search.chooseYear,
                                 chooseTown: search.chooseTown,
                                 loadMore: search.loadMore,
-                                openItem: { item in openViewer(ViewerRequest(search: true, filter: .all, itemId: item.id)) }
+                                openItem: { item in openViewer(ViewerRequest(search: true, filter: .all, itemId: item.id)) },
+                                prepare: search.prepare,
+                                addPerson: search.addPerson,
+                                removePerson: search.removePerson
                             )
                         ),
-                        search: search.state
+                        search: search.state,
+                        people: journal.features.faces ? people.state : nil
                     )
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: Route.self) { route in
@@ -144,24 +162,35 @@ struct LibraryRootView: View {
                         case .settings:
                             SettingsView(
                                 settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount),
-                                sourceCounts: stories.state.feed.counts, refreshLibrary: library.refresh
+                                sourceCounts: stories.state.feed.counts, refreshLibrary: library.refresh,
+                                phoneSearch: journal.features.localIndexes ? phoneSearch : nil
                             )
                         case .place(let town):
                             PlacePageView(
-                                town: town, library: library.state, stories: stories.state, openItem: openExplore, toggleSource: settings.toggleFeedSource
+                                town: town, library: library.state, stories: stories.state, openItem: openExplore, toggleSource: settings.toggleFeedSource,
+                                openInOrder: journal.features.aesthetic ? openInOrder : nil
                             )
                         case .country(let country):
                             CountryPageView(country: country, library: library.state, stories: stories.state) { path.append(.place($0)) }
                         case let .year(year, month):
                             YearPageView(
                                 year: year, month: month, library: library.state, stories: stories.state, openItem: openExplore,
-                                toggleSource: settings.toggleFeedSource
+                                toggleSource: settings.toggleFeedSource, openInOrder: journal.features.aesthetic ? openInOrder : nil
                             )
                         case .map:
                             ExploreMapView(library: library.state, stories: stories.state, toggleSource: settings.toggleFeedSource) { scope, itemId in
                                 guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
                                 openViewer(ViewerRequest(filter: .all, itemId: first, scope: scope))
                             }
+                        case .person(let id):
+                            PersonRoute(id: id, library: library, people: people) { items, item in
+                                openInOrder(items, item)
+                            } openPerson: { path.append(.person($0)) } close: {
+                                if !path.isEmpty { path.removeLast() }
+                            }
+                        case .similar(let itemId):
+                            let items = (similarLists[itemId] ?? []).compactMap { stories.state.itemsById[$0] }
+                            SimilarPageView(items: items) { openInOrder(items, $0) }
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
@@ -199,8 +228,27 @@ struct LibraryRootView: View {
                                 momentsRequest = PhotoRequest(itemId: itemId)
                             },
                             setPrivate: { item, isPrivate in await ServerImages.shared.setPrivate(item, isPrivate: isPrivate) },
-                            setZoom: { itemId, zoom in stories.setZoom(zoom, of: itemId) }
-                        )
+                            setZoom: { itemId, zoom in stories.setZoom(zoom, of: itemId) },
+                            findIn: findings.show,
+                            openPerson: { id in
+                                viewer = nil
+                                path.append(.person(id))
+                            },
+                            openSimilar: { item in
+                                let ids = findings.state.similar.map(\.id)
+                                viewer = nil
+                                DispatchQueue.main.async { openViewer(ViewerRequest(filter: .all, itemId: item.id, list: ids)) }
+                            },
+                            moreSimilar: {
+                                similarLists[findings.state.itemId] = findings.state.similar.map(\.id)
+                                let itemId = findings.state.itemId
+                                viewer = nil
+                                path.append(.similar(itemId))
+                            },
+                            faces: facesActions(closingViewer: true),
+                            people: people.state.list.people
+                        ),
+                        findings: findings.state
                     )
                     // The map from the details, close up on the place; a photo opened on it takes the viewer's place.
                     .fullScreenCover(item: $viewerMap) { center in
@@ -219,15 +267,37 @@ struct LibraryRootView: View {
             }
         }
         .task { journal.connect() }
+        // The search page offers people's faces once the server says it has face search.
+        .onChange(of: journal.features.faces, initial: true) { _, faces in if faces { people.load() } }
         // Picks up photos taken and permission changes made while the app was in the background.
         .onChange(of: scenePhase, initial: true) { _, phase in
-            if phase == .active { library.refresh() }
+            if phase == .active {
+                library.refresh()
+                // The indexes kept on this phone catch up once a day.
+                phoneSearch.updateIfDue()
+            }
         }
     }
 
     /// A photo of a town's or a year's page: the viewer swipes through its row, as the page shows it.
     private func openExplore(_ scope: ExploreScope, _ section: FeedSection, _ item: MediaItem) {
         openViewer(ViewerRequest(feedSection: section.key, filter: .all, itemId: item.id, scope: scope))
+    }
+
+    /// A face's sheet: corrections go through the people view model; Open their page closes the viewer first.
+    private func facesActions(closingViewer: Bool) -> FaceActions {
+        var actions = people.faceActions
+        actions.openPerson = { id in
+            if closingViewer { viewer = nil }
+            path.append(.person(id))
+        }
+        return actions
+    }
+
+    /// A photo of a page that shows its photos in its own order (a person's, Best first, similar photos): the viewer
+    /// swipes through them in that order.
+    private func openInOrder(_ items: [MediaItem], _ item: MediaItem) {
+        openViewer(ViewerRequest(filter: .all, itemId: item.id, list: items.map(\.id)))
     }
 
     /// iOS asks only once; after that only Settings can grant access.
@@ -242,6 +312,9 @@ struct LibraryRootView: View {
     /// The items the viewer swipes through: the storyline, a tag's photos, the row of Moments or an Explore page (its
     /// photos in the order shown), the map's photos, what the search found, or everything in the All photos filter.
     private func items(for request: ViewerRequest) -> [MediaItem] {
+        if let list = request.list {
+            return list.compactMap { stories.state.itemsById[$0] }
+        }
         if request.search {
             return search.state.items
         }
@@ -263,5 +336,52 @@ struct LibraryRootView: View {
             return stories.state.feed.section(key: section)?.items ?? []
         }
         return stories.state.shownDays(days: library.state.days(filter: request.filter)).flatMap { $0.items }
+    }
+}
+
+/// A person's page, or "Who's this?" for a group, on its own `PersonViewModel`.
+private struct PersonRoute: View {
+    @StateObject private var model: PersonViewModel
+    @ObservedObject var people: PeopleViewModel
+    let openItems: ([MediaItem], MediaItem) -> Void
+    let openPerson: (String) -> Void
+    let close: () -> Void
+
+    init(
+        id: String, library: LibraryViewModel, people: PeopleViewModel, openItems: @escaping ([MediaItem], MediaItem) -> Void,
+        openPerson: @escaping (String) -> Void, close: @escaping () -> Void
+    ) {
+        _model = StateObject(wrappedValue: PersonViewModel(id: id, library: library))
+        self.people = people
+        self.openItems = openItems
+        self.openPerson = openPerson
+        self.close = close
+    }
+
+    var body: some View {
+        let state = model.state
+        Group {
+            if state.person?.isGroup ?? state.id.hasPrefix("g") {
+                GroupPageView(
+                    state: state,
+                    actions: GroupActions(
+                        setName: model.setName, name: model.rename, join: model.join,
+                        openItem: { item in openItems(state.items, item) }, retry: model.load
+                    )
+                )
+            } else {
+                PersonPageView(
+                    state: state,
+                    others: (people.state.list.people + people.state.list.groups).filter { $0.id != state.id },
+                    actions: PersonActions(
+                        setQuery: model.setQuery, setSort: model.setSort, openPerson: openPerson,
+                        openItem: { item in openItems(state.items, item) },
+                        rename: model.rename, merge: model.merge, forget: model.forget, notThem: model.notThem, retry: model.load,
+                        notThemFaces: { model.notThem(faces: $0) }, faces: people.faceActions
+                    )
+                )
+            }
+        }
+        .onChange(of: state.gone) { _, gone in if gone { close() } }
     }
 }

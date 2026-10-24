@@ -3,6 +3,7 @@ package com.chencohensolution.journal.server
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.ChangesQuery
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
+import com.chencohensolution.journal.graphql.ServerInfoQuery
 import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
 import com.chencohensolution.journal.graphql.SetPrivateMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
@@ -58,6 +59,8 @@ data class ServerMedia(
     val nudity: Double? = null,
     /** The user marked it private; hidden unless "Show private media" (see PrivateMedia). */
     val isPrivate: Boolean = false,
+    /** How good it looks, about 1 to 10 (the server's aesthetic score); null until scored. */
+    val aesthetic: Double? = null,
 ) {
     /**
      * The library's view of it, for a photo that isn't in the device's library: shown from the server's previews, or
@@ -84,6 +87,7 @@ data class ServerMedia(
             isOnDevice = false,
             keptOriginal = keptOriginal,
             isPrivate = isPrivate,
+            aesthetic = aesthetic?.toFloat(),
         )
     }
 
@@ -177,6 +181,7 @@ class ServerLibrary internal constructor(
 
     /** Asks the server what changed, unless a sync is running; offline, nothing changes. */
     fun refresh() {
+        refreshFeatures()
         if (syncJob?.isActive == true) return
         launchSync(after = null)
     }
@@ -193,6 +198,32 @@ class ServerLibrary internal constructor(
                 throw e
             } catch (_: Exception) {
                 // Offline or the server refused: the journal shows that already; the next refresh tries again.
+            }
+        }
+    }
+
+    private val _features = MutableStateFlow(settings.serverFeatures)
+
+    /** What the server can do: its last answer, kept on this device; null before it answered once. */
+    val features: StateFlow<ServerFeatures?> = _features.asStateFlow()
+
+    /** Same as `features.value`, for Swift: [ServerFeatures.NONE] before the server answered. */
+    val currentFeatures: ServerFeatures get() = _features.value ?: ServerFeatures.NONE
+
+    /** Asks the server what it can do; offline, [features] keeps its last value. */
+    fun refreshFeatures() {
+        scope.launch {
+            try {
+                val answer = http.graphql { apollo ->
+                    val response = apollo.query(ServerInfoQuery()).execute()
+                    response.exception?.let { throw it }
+                    response.data?.serverInfo?.toFeatures()
+                } ?: return@launch
+                settings.serverFeatures = answer
+                _features.value = answer
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
             }
         }
     }
@@ -378,4 +409,5 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     uploadedAt = uploadedAt,
     nudity = nudity,
     isPrivate = private,
+    aesthetic = aesthetic,
 )

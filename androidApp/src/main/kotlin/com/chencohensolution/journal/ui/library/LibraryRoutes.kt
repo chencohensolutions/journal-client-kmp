@@ -29,6 +29,15 @@ internal sealed interface Route {
     data object FreeUp : Route
     data object Hidden : Route
 
+    /** Settings › Search › On this phone. */
+    data object PhoneSearch : Route
+
+    /** A person's page, or a group's ("Who's this?"). */
+    data class Person(val id: String) : Route
+
+    /** The photos that look like [itemId]'s (its details › Looks like this › More). */
+    data class Similar(val itemId: String) : Route
+
     /**
      * Explore: a country's page (null: the towns whose country isn't known), a town's page, a year's page (on one of its
      * months), and the map (on [Map.at] close up, from a photo's details; else showing every photo).
@@ -46,6 +55,7 @@ internal sealed interface Route {
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), All photos with [filter], or Explore
      * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
      * the band of that hidden source's photos on the Moments row. With [search], the photos the last search found.
+     * With [list], the photos a page showed when it opened the viewer (a person's, similar photos): see [PageLists].
      */
     data class Viewer(
         val moment: String?,
@@ -56,6 +66,7 @@ internal sealed interface Route {
         val revealed: MediaSource? = null,
         val storyline: Boolean = false,
         val search: Boolean = false,
+        val list: String? = null,
     ) : Route
 
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
@@ -67,13 +78,17 @@ internal sealed interface Route {
         Settings -> "settings"
         FreeUp -> "free-up"
         Hidden -> "hidden"
+        PhoneSearch -> "phone-search"
+        is Person -> "person|$id"
+        is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
         is Map -> "map|${at?.let { "${it.latitude},${it.longitude}" }.orEmpty()}"
         is Viewer -> "viewer|${if (storyline) "storyline" else if (search) "search" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
-            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|$itemId"
+            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|" +
+            "${list?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
 
     companion object {
@@ -86,6 +101,9 @@ internal sealed interface Route {
                 "settings" -> Settings
                 "free-up" -> FreeUp
                 "hidden" -> Hidden
+                "phone-search" -> PhoneSearch
+                "person" -> Person(parts[1])
+                "similar" -> Similar(parts.drop(1).joinToString("|"))
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))
@@ -99,7 +117,8 @@ internal sealed interface Route {
                     tag = parts[4].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     scope = parts[5].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
                     revealed = MediaSource.entries.firstOrNull { it.name == parts[6] },
-                    itemId = parts.drop(7).joinToString("|"),
+                    list = parts[7].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
+                    itemId = parts.drop(8).joinToString("|"),
                 )
                 else -> Journal
             }
@@ -141,8 +160,9 @@ internal data class StackEntry(val depth: Int, val route: Route) {
  * The items the viewer swipes through: the storyline, the row of the Moments tab or an Explore page (as shown there),
  * the map's photos, a tag's photos, what [search] found, or everything in the All photos filter.
  */
-internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState): List<MediaItem> = when {
+internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState, lists: PageLists = PageLists()): List<MediaItem> = when {
     route.search -> search.items
+    route.list != null -> lists[route.list].mapNotNull { stories.itemsById[it] }
     route.scope != null && route.moment != null -> stories.feedOf(scopeItems(library, stories, route.scope)).section(route.moment)?.items.orEmpty()
     route.scope != null -> scopeItems(library, stories, route.scope)
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
@@ -151,6 +171,21 @@ internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Ro
         stories.feed.section(route.moment)?.revealed?.firstOrNull { it.source == route.revealed }?.items.orEmpty()
     route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()
     else -> stories.shownDays(library.days(route.filter)).flatMap { it.items }
+}
+
+/**
+ * The photos pages showed when they opened the viewer (a person's page, similar photos), by the page's key, so the
+ * viewer swipes through them in that order. Kept while the app runs; a list not here (after the process was killed)
+ * is empty, and the viewer closes.
+ */
+internal class PageLists {
+    private val lists = HashMap<String, List<String>>()
+
+    operator fun get(key: String): List<String> = lists[key].orEmpty()
+
+    operator fun set(key: String, ids: List<String>) {
+        lists[key] = ids
+    }
 }
 
 /** The photos an Explore page or the map shows, newest first. */

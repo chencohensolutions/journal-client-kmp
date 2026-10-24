@@ -82,6 +82,8 @@ class LibraryController internal constructor(
     private val originals: KeptOriginals? = null,
     /** "Show private media" (SettingsController.privateMedia); without it, as saved when the controller was made. */
     private val privateMedia: StateFlow<PrivateMedia>? = null,
+    /** Aesthetic scores this phone keeps (On this phone), by sha256: a set's best photo, covers, Best first. */
+    private val scores: StateFlow<Map<String, Float>>? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loadJob: Job? = null
@@ -128,6 +130,7 @@ class LibraryController internal constructor(
         server?.let { serverLibrary -> scope.launch { serverLibrary.hidden.collect { publish() } } }
         originals?.let { kept -> scope.launch { kept.load(); kept.kept.collect { publish() } } }
         privateMedia?.let { flow -> scope.launch { flow.collect { publish() } } }
+        scores?.let { flow -> scope.launch { flow.collect { publish() } } }
     }
 
     /** Puts the current device items, server-only items and backup statuses into [state]. */
@@ -137,10 +140,11 @@ class LibraryController internal constructor(
         val hiddenOnServer = server?.hidden?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
         val private = privateMedia?.value ?: savedPrivateMedia
-        val inputs = listOf(readItems, backupState?.entries, serverMedia, hiddenOnServer, kept, private)
+        val scored = scores?.value.orEmpty()
+        val inputs = listOf(readItems, backupState?.entries, serverMedia, hiddenOnServer, kept, private, scored)
         if (mergedFrom == null || mergedFrom!!.indices.any { mergedFrom!![it] !== inputs[it] }) {
             merged = groupByDay(
-                mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer),
+                mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
             )
             mergedFrom = inputs
         }
@@ -262,6 +266,8 @@ internal fun mergeWithServer(
     kept: Map<String, String> = emptyMap(),
     privateMedia: PrivateMedia = PrivateMedia(),
     hiddenOnServer: Set<String> = emptySet(),
+    /** Aesthetic scores kept on this phone, by sha256; they go before the change feed's. */
+    scores: Map<String, Float> = emptyMap(),
 ): List<MediaItem> {
     val items = device.map { item -> entries[item.id]?.takeIf { it.matches(item) }?.let { item.copy(sha256 = it.sha256) } ?: item }
         .filter { it.sha256 == null || it.sha256 !in hiddenOnServer }
@@ -280,11 +286,20 @@ internal fun mergeWithServer(
         val sha = sha256
         return if (sha != null) sha in shas else (fileName?.lowercase() to sizeBytes) in namesAndSizes
     }
+    // The server's aesthetic scores, for the device's own copies too.
+    fun scoreOf(media: ServerMedia): Float? = scores[media.sha256] ?: media.aesthetic?.toFloat()
+    val scored = server.filter { scoreOf(it) != null }
+    val scoreBySha = scored.associate { it.sha256 to scoreOf(it)!! }
+    val scoreByNameAndSize = scored.associate { (it.fileName.lowercase() to it.size) to scoreOf(it)!! }
+    fun MediaItem.scored(): MediaItem {
+        val score = sha256?.let(scoreBySha::get) ?: if (sha256 == null) scoreByNameAndSize[fileName?.lowercase() to sizeBytes] else null
+        return if (score == null || score == aesthetic) this else copy(aesthetic = score)
+    }
     val shown = items.mapNotNull { item ->
         when {
             item.matches(hiddenShas, hiddenNamesAndSizes) -> null
-            item.matches(markedShas, markedNamesAndSizes) -> item.copy(isPrivate = true)
-            else -> item
+            item.matches(markedShas, markedNamesAndSizes) -> item.copy(isPrivate = true).scored()
+            else -> item.scored()
         }
     }
     val serverOnly = server.filter {
@@ -292,6 +307,7 @@ internal fun mergeWithServer(
     }
     return shown + serverOnly.map { media ->
         media.toMediaItem(id = formerIds[media.sha256] ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
+            .let { item -> scores[media.sha256]?.let { item.copy(aesthetic = it) } ?: item }
     }
 }
 

@@ -71,6 +71,8 @@ internal class SettingsActions(
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Search: photos per page of results. */
     val setSearchPageSize: (Int) -> Unit = {},
+    /** Search › On this phone. */
+    val openPhoneSearch: () -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
@@ -91,6 +93,8 @@ internal fun SettingsScreen(
     storageActions: StorageActions = StorageActions(),
     /** How far the library's sync is, shown on Hidden collections' row (after a change there); null when not syncing. */
     syncProgress: SyncProgress? = null,
+    /** Search › On this phone, when the server lets phones keep its indexes; null: no row. */
+    phoneSearch: com.chencohensolution.journal.local.PhoneSearchState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val grouping = settings.grouping
@@ -168,6 +172,10 @@ internal fun SettingsScreen(
                             Chip(size.toString(), settings.searchPageSize == size) { actions.setSearchPageSize(size) }
                         }
                     }
+                }
+                if (phoneSearch != null) {
+                    HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+                    PhoneSearchRow(phoneSearch, actions.openPhoneSearch)
                 }
             }
             if (storage != null) AdvancedSection(storage, storageActions)

@@ -112,6 +112,13 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
   both; iOS since Oct 21, 2026).
 - Screen docs in `docs/screens/`; shared tests (158 on the JVM host after stories were removed on Oct 21, 2026).
 
+- The server's new features (Oct 24, 2026, both apps; [plans/server-features.md](plans/server-features.md)): People in
+  Explore with a person's page and "Who's this?" ([screens/people.md](screens/people.md)), search by person, what the
+  server found in a photo in its details (people, text, similar photos), the best-looking photo for a set's front,
+  covers and Best first, "Getting search ready…", and Settings › Search › On this phone (the server's indexes kept to
+  search without it, with the search model on ONNX Runtime). Each is offered only when `serverInfo` says the server
+  has it.
+
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the
 shared logic passes on the simulator, but most iOS tap flows haven't been clicked through (WebDriverAgent +

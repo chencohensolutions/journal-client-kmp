@@ -34,7 +34,17 @@ import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryFilter
+import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.people.PageSort
+import com.chencohensolution.journal.people.PeopleController
+import com.chencohensolution.journal.stories.ExploreScope
+import com.chencohensolution.journal.stories.FeedSection
+import com.chencohensolution.journal.stories.bestFirst
+import com.chencohensolution.journal.people.PhotoFindingsController
+import com.chencohensolution.journal.createPersonController
+import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerLibrary
@@ -63,9 +73,16 @@ fun LibraryApp(
     server: ServerFiles,
     freeUp: FreeUpController,
     search: SearchController,
+    people: PeopleController,
+    findings: PhotoFindingsController,
+    localIndexes: LocalIndexes,
     onRegisterAgain: () -> Unit,
-) = CompositionLocalProvider(LocalServerPreviews provides server.previews, LocalPhoneStorage provides server.storage) {
-    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, onRegisterAgain)
+) = CompositionLocalProvider(
+    LocalServerPreviews provides server.previews,
+    LocalPhoneStorage provides server.storage,
+    LocalServerMedia provides server.library.media,
+) {
+    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, onRegisterAgain)
 }
 
 /** The routing table: each [Route] on the back stack rendered as its screen, with the actions wired to the controllers. */
@@ -79,9 +96,19 @@ private fun LibraryScreens(
     server: ServerFiles,
     freeUp: FreeUpController,
     search: SearchController,
+    people: PeopleController,
+    findings: PhotoFindingsController,
+    localIndexes: LocalIndexes,
     onRegisterAgain: () -> Unit,
 ) {
+    val phoneSearchState by localIndexes.state.collectAsStateWithLifecycle()
     val journalState by journal.state.collectAsStateWithLifecycle()
+    val features by server.library.features.collectAsStateWithLifecycle()
+    val peopleState by people.state.collectAsStateWithLifecycle()
+    val findingsState by findings.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // The photos pages opened the viewer on, for it to swipe through.
+    val pageLists = remember { PageLists() }
     val searchState by search.state.collectAsStateWithLifecycle()
     val freeUpState by freeUp.state.collectAsStateWithLifecycle()
     val backupState by backup.state.collectAsStateWithLifecycle()
@@ -94,9 +121,13 @@ private fun LibraryScreens(
     val activity = LocalActivity.current
 
     LaunchedEffect(Unit) { journal.connect() }
+    // The search page offers people's faces once the server says it has face search.
+    LaunchedEffect(features?.faces) { if (features?.faces == true) people.load() }
     // Picks up photos taken and permission changes made while the app was in the background.
     LifecycleResumeEffect(Unit) {
         library.refresh()
+        // The indexes kept on this phone catch up once a day.
+        localIndexes.updateIfDue()
         onPauseOrDispose {}
     }
     val actions = libraryActions(library, libraryState, backup, server, freeUp, freeUpState, settings)
@@ -117,6 +148,24 @@ private fun LibraryScreens(
     }
     val pop: () -> Unit = { stack = stack.dropLast(1) }
     actions.openFreeUp = { push(Route.FreeUp) }
+    // A face's sheet, in a photo's details and after Edit faces: corrections go through the people controller.
+    val faceActions = FaceActions(
+        confirm = people::confirm,
+        notPerson = { face, id -> people.notPerson(face, id) },
+        move = people::moveFace,
+        name = people::nameFace,
+        openPerson = { push(Route.Person(it)) },
+    )
+    // A photo of a town's or year's page: its row of the page (by date), or, Best first, the page's photos in that order.
+    val openInScope: (ExploreScope, FeedSection?, MediaItem, PageSort) -> Unit = { scope, section, item, sort ->
+        if (sort == PageSort.BEST || section == null) {
+            val key = "best:" + scope.hashCode()
+            pageLists[key] = bestFirst(scopeItems(libraryState, storiesState, scope)).map { it.id }
+            push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+        } else {
+            push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope))
+        }
+    }
     var previewBytes by actions.previewBytes
     // A function, not a value: each screen on the back stack keeps the content it was first given, so it has to read
     // the state when it draws.
@@ -173,6 +222,9 @@ private fun LibraryScreens(
                                             openYear = { year, month -> push(Route.Year(year, month)) },
                                             openMap = { push(Route.Map()) },
                                             toggleSource = settings::toggleFeedSource,
+                                            openPerson = { push(Route.Person(it)) },
+                                            loadPeople = people::load,
+                                            reloadPeople = people::reload,
                                         ),
                                         showOnRow = stories::showOnRow,
                                         hideOnRow = stories::hideOnRow,
@@ -190,12 +242,16 @@ private fun LibraryScreens(
                                             chooseTown = search::chooseTown,
                                             loadMore = search::loadMore,
                                             openItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, search = true)) },
+                                            prepare = search::prepare,
+                                            addPerson = search::addPerson,
+                                            removePerson = search::removePerson,
                                         ),
                                     ),
                                     landing = landingHere,
                                     showInMoments = showInMoments,
                                     backupRunning = backupRunning,
                                     search = searchState,
+                                    people = peopleState.takeIf { features?.faces == true },
                                 )
                                 is Route.Country -> CountryScreen(
                                     country = route.country,
@@ -206,30 +262,36 @@ private fun LibraryScreens(
                                 )
                                 is Route.Place -> {
                                     var year by rememberSaveable { mutableStateOf<Int?>(null) }
+                                    var sort by rememberSaveable { mutableStateOf(PageSort.NEWEST) }
                                     PlaceScreen(
                                         town = route.town,
                                         library = libraryState,
                                         stories = storiesState,
                                         year = year,
                                         onYear = { year = it },
-                                        onOpenItem = { scope, section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope)) },
+                                        onOpenItem = { scope, section, item -> openInScope(scope, section, item, sort) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
+                                        sort = sort,
+                                        onSort = if (features?.aesthetic == true) { chosen: PageSort -> sort = chosen } else null,
                                     )
                                 }
                                 is Route.Year -> {
                                     var month by rememberSaveable { mutableStateOf(route.month) }
+                                    var sort by rememberSaveable { mutableStateOf(PageSort.NEWEST) }
                                     YearScreen(
                                         year = route.year,
                                         library = libraryState,
                                         stories = storiesState,
                                         month = month,
                                         onMonth = { month = it },
-                                        onOpenItem = { scope, section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope)) },
+                                        onOpenItem = { scope, section, item -> openInScope(scope, section, item, sort) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
+                                        sort = sort,
+                                        onSort = if (features?.aesthetic == true) { chosen: PageSort -> sort = chosen } else null,
                                     )
                                 }
                                 is Route.Map -> MapScreen(
@@ -283,8 +345,10 @@ private fun LibraryScreens(
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             setSearchPageSize = settings::setSearchPageSize,
+                                            openPhoneSearch = { push(Route.PhoneSearch) },
                                             back = pop,
                                         ),
+                                        phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
@@ -297,6 +361,72 @@ private fun LibraryScreens(
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
                                 Route.Hidden -> HiddenScreen(server.library, back = pop)
+                                Route.PhoneSearch -> {
+                                    LaunchedEffect(Unit) { localIndexes.refresh() }
+                                    PhoneSearchScreen(
+                                        state = phoneSearchState,
+                                        actions = PhoneSearchActions(
+                                            back = pop,
+                                            set = localIndexes::set,
+                                            setWifiOnly = localIndexes::setWifiOnly,
+                                            updateNow = localIndexes::updateNow,
+                                            pause = localIndexes::pause,
+                                        ),
+                                    )
+                                }
+                                is Route.Person -> {
+                                    val controller = remember(route.id) { createPersonController(context, route.id, library) }
+                                    DisposableEffect(controller) { onDispose { controller.close() } }
+                                    val state by controller.state.collectAsStateWithLifecycle()
+                                    LaunchedEffect(state.gone) { if (state.gone) pop() }
+                                    val listKey = "person:${route.id}"
+                                    val open: (MediaItem) -> Unit = { item ->
+                                        pageLists[listKey] = state.items.map { it.id }
+                                        push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = listKey))
+                                    }
+                                    if (state.person?.isGroup ?: route.id.startsWith("g")) {
+                                        GroupScreen(
+                                            state = state,
+                                            actions = GroupActions(
+                                                back = pop,
+                                                setName = controller::setName,
+                                                name = controller::rename,
+                                                join = controller::join,
+                                                openItem = open,
+                                                retry = controller::load,
+                                            ),
+                                        )
+                                    } else {
+                                        PersonScreen(
+                                            state = state,
+                                            stories = storiesState,
+                                            others = (peopleState.list.people + peopleState.list.groups).filter { it.id != state.id },
+                                            actions = PersonActions(
+                                                back = pop,
+                                                setQuery = controller::setQuery,
+                                                setSort = controller::setSort,
+                                                openPerson = { push(Route.Person(it)) },
+                                                openItem = open,
+                                                rename = controller::rename,
+                                                merge = controller::merge,
+                                                forget = controller::forget,
+                                                notThem = controller::notThem,
+                                                retry = controller::load,
+                                                notThemFaces = { faces -> controller.notThem(faces) },
+                                                faces = faceActions,
+                                            ),
+                                        )
+                                    }
+                                }
+                                is Route.Similar -> {
+                                    val listKey = "similar:${route.itemId}"
+                                    val items = pageLists[listKey].mapNotNull { storiesState.itemsById[it] }
+                                    SimilarScreen(
+                                        items = items,
+                                        onOpen = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, list = listKey)) },
+                                        onBack = pop,
+                                    )
+                                }
                                 Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,
@@ -307,7 +437,7 @@ private fun LibraryScreens(
                                 )
                                 is Route.Viewer -> ViewerScreen(
                                     // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
-                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route, searchState).map { it.id } }
+                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists).map { it.id } }
                                         .mapNotNull { storiesState.itemsById[it] },
                                     startId = route.itemId,
                                     stories = storiesState,
@@ -329,7 +459,23 @@ private fun LibraryScreens(
                                             stack = listOf(Route.Journal)
                                         }.takeUnless { route.moment != null && route.scope == null },
                                         setZoom = stories::setZoom,
+                                        findIn = findings::show,
+                                        findings = FindingsActions(
+                                            openPerson = { push(Route.Person(it)) },
+                                            openSimilar = { item ->
+                                                val key = "similar:${findingsState.itemId}"
+                                                pageLists[key] = findingsState.similar.map { it.id }
+                                                push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+                                            },
+                                            moreSimilar = {
+                                                pageLists["similar:${findingsState.itemId}"] = findingsState.similar.map { it.id }
+                                                push(Route.Similar(findingsState.itemId))
+                                            },
+                                        ),
+                                        faces = faceActions,
                                     ),
+                                    findings = findingsState,
+                                    people = peopleState.list.people,
                                 )
                                 is Route.Crop -> {
                                     val item = storiesState.itemsById[route.itemId]

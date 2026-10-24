@@ -1738,9 +1738,7 @@
         }
       }
     },
-    "+%lld" : {
-
-    },
+    "+%lld" : {},
     "+%lld %@" : {
       "localizations" : {
         "he" : {
@@ -2879,9 +2877,7 @@
         }
       }
     },
-    "Dismiss" : {
-
-    },
+    "Dismiss" : {},
     "Done" : {
       "localizations" : {
         "he" : {
@@ -5364,9 +5360,7 @@
         }
       }
     },
-    "journal.example.com:56398" : {
-
-    },
+    "journal.example.com:56398" : {},
     "Restore this version" : {
       "localizations" : {
         "he" : {
@@ -6053,9 +6047,7 @@
         }
       }
     },
-    "Take out" : {
-
-    },
+    "Take out" : {},
     "Take out of this set" : {
       "localizations" : {
         "he" : {
@@ -6604,9 +6596,7 @@
         }
       }
     },
-    "Untitled story" : {
-
-    },
+    "Untitled story" : {},
     "Up to" : {
       "localizations" : {
         "he" : {
@@ -7123,6 +7113,836 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור."
+          }
+        }
+      }
+    },
+    "The server couldn’t find people: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת לא הצליח למצוא אנשים: %@"
+          }
+        }
+      }
+    },
+    "No faces found yet. Your server finds them as it reads your photos." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד לא נמצאו פנים. השרת מוצא אותן כשהוא קורא את התמונות."
+          }
+        }
+      }
+    },
+    "No one is named yet. Name a group below, and their photos are found from then on." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד אף אחד לא קיבל שם. תנו שם לקבוצה למטה, והתמונות שלהם יימצאו מעכשיו."
+          }
+        }
+      }
+    },
+    "Still reading your photos for faces: %@ of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת עדיין מחפש פנים בתמונות: %1$@ מתוך %2$@"
+          }
+        }
+      }
+    },
+    "See fewer" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פחות"
+          }
+        }
+      }
+    },
+    "See all %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת כל %lld"
+          }
+        }
+      }
+    },
+    "Who’s this?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מי זה?"
+          }
+        }
+      }
+    },
+    "Name a group once, and their new photos are found too." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנו שם לקבוצה פעם אחת, וגם התמונות החדשות שלהם יימצאו."
+          }
+        }
+      }
+    },
+    "Newest" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החדשות ביותר"
+          }
+        }
+      }
+    },
+    "Best first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היפות ביותר"
+          }
+        }
+      }
+    },
+    "Forget %@?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לשכוח את %@?"
+          }
+        }
+      }
+    },
+    "Not %@ in this photo?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה לא %@ בתמונה הזו?"
+          }
+        }
+      }
+    },
+    "Search %@’s photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש בתמונות של %@"
+          }
+        }
+      }
+    },
+    "Not %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה לא %@"
+          }
+        }
+      }
+    },
+    "Merge with…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיזוג עם…"
+          }
+        }
+      }
+    },
+    "Forget this person" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שכחת האדם הזה"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם"
+          }
+        }
+      }
+    },
+    "Forget" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שכחה"
+          }
+        }
+      }
+    },
+    "The name goes. The photos stay, and the faces go back to Who’s this?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השם יימחק. התמונות נשארות, והפנים חוזרות ל״מי זה?״"
+          }
+        }
+      }
+    },
+    "This face won’t be given to %@ again. The photo stays in your library." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפנים האלה לא ישויכו שוב ל%@. התמונה נשארת בספרייה."
+          }
+        }
+      }
+    },
+    "Often with %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לעיתים קרובות עם %@"
+          }
+        }
+      }
+    },
+    "Merge with %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיזוג עם %@"
+          }
+        }
+      }
+    },
+    "Pick someone who is also %@. Their photos join, under this name." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בחרו מישהו שהוא גם %@. התמונות שלו יצטרפו, תחת השם הזה."
+          }
+        }
+      }
+    },
+    "%d photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d תמונות"
+          }
+        }
+      }
+    },
+    "Unnamed" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ללא שם"
+          }
+        }
+      }
+    },
+    "In %@ photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ב־%@ תמונות"
+          }
+        }
+      }
+    },
+    "Give them a name once. Their photos are found from then on, as they come in." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנו להם שם פעם אחת. התמונות שלהם יימצאו מעכשיו, כשהן מגיעות."
+          }
+        }
+      }
+    },
+    "Joins %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יצטרף ל%@"
+          }
+        }
+      }
+    },
+    "New person “%@”" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אדם חדש ״%@״"
+          }
+        }
+      }
+    },
+    "Looks like this" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דומות לזו"
+          }
+        }
+      }
+    },
+    "People in this photo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנשים בתמונה"
+          }
+        }
+      }
+    },
+    "Text in this photo" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טקסט בתמונה"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העתקה"
+          }
+        }
+      }
+    },
+    "On this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בטלפון הזה"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב"
+          }
+        }
+      }
+    },
+    "Keep on this phone" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמירה בטלפון"
+          }
+        }
+      }
+    },
+    "Keep what search needs on this phone, to search without your server, offline too. Your server sends it once, then only what’s new." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמרו בטלפון את מה שהחיפוש צריך, כדי לחפש בלי השרת, גם בלי חיבור. השרת שולח את זה פעם אחת, ואחר כך רק את מה שחדש."
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השהיה"
+          }
+        }
+      }
+    },
+    "Download now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורדה עכשיו"
+          }
+        }
+      }
+    },
+    "Update now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדכון עכשיו"
+          }
+        }
+      }
+    },
+    "Search by words" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש במילים"
+          }
+        }
+      }
+    },
+    "People" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנשים"
+          }
+        }
+      }
+    },
+    "Text in photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טקסט בתמונות"
+          }
+        }
+      }
+    },
+    "Similar photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות דומות"
+          }
+        }
+      }
+    },
+    "Best-looking photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונות היפות ביותר"
+          }
+        }
+      }
+    },
+    "%@ + %@ model" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ + מודל של %2$@"
+          }
+        }
+      }
+    },
+    "Download only on Wi-Fi. Searching works anywhere." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורדה רק ב־Wi-Fi. החיפוש עובד בכל מקום."
+          }
+        }
+      }
+    },
+    "Downloading" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הורדה"
+          }
+        }
+      }
+    },
+    "Uses %@ of this phone · %@ free" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תופס %1$@ בטלפון · %2$@ פנויים"
+          }
+        }
+      }
+    },
+    "Downloading %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוריד: %@"
+          }
+        }
+      }
+    },
+    "Until it’s done, search uses your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עד שזה יסתיים, החיפוש משתמש בשרת."
+          }
+        }
+      }
+    },
+    "Search uses your server until then." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עד אז החיפוש משתמש בשרת."
+          }
+        }
+      }
+    },
+    "Waiting for Wi-Fi" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממתין ל־Wi-Fi"
+          }
+        }
+      }
+    },
+    "%lld new photos on your server, not here yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld תמונות חדשות בשרת, עוד לא כאן"
+          }
+        }
+      }
+    },
+    "Everything your server has read is here" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל מה שהשרת קרא נמצא כאן"
+          }
+        }
+      }
+    },
+    "The last update didn’t finish: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העדכון האחרון לא הסתיים: %@"
+          }
+        }
+      }
+    },
+    "Updated %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עודכן %@"
+          }
+        }
+      }
+    },
+    "Not downloaded yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד לא הורד"
+          }
+        }
+      }
+    },
+    "Find photos by describing them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מציאת תמונות לפי תיאור"
+          }
+        }
+      }
+    },
+    "Find people and their photos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מציאת אנשים והתמונות שלהם"
+          }
+        }
+      }
+    },
+    "Find receipts, signs and screenshots by their words" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מציאת קבלות, שלטים וצילומי מסך לפי המילים שבהם"
+          }
+        }
+      }
+    },
+    "Looks like this, in a photo’s details" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "״דומות לזו״ בפרטי התמונה"
+          }
+        }
+      }
+    },
+    "A set opens on its best photo; Best first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סדרה נפתחת על התמונה הטובה שלה; היפות ביותר"
+          }
+        }
+      }
+    },
+    "Off: search needs your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבוי: החיפוש צריך את השרת"
+          }
+        }
+      }
+    },
+    "Downloading: %lld%%" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוריד: %lld%%"
+          }
+        }
+      }
+    },
+    "%lld kept · %@ · Updated %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld נשמרים · %2$@ · עודכן %3$@"
+          }
+        }
+      }
+    },
+    "not downloaded yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד לא הורד"
+          }
+        }
+      }
+    },
+    "Searched on this phone: your server can’t be reached." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החיפוש נעשה בטלפון: אין חיבור לשרת."
+          }
+        }
+      }
+    },
+    "Search is off on your server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החיפוש כבוי בשרת שלך."
+          }
+        }
+      }
+    },
+    "Getting search ready…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכין את החיפוש…"
+          }
+        }
+      }
+    },
+    "Search by person" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש לפי אדם"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסרת %@"
+          }
+        }
+      }
+    },
+    "This is %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה %@"
+          }
+        }
+      }
+    },
+    "Open %@’s page" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לדף של %@"
+          }
+        }
+      }
+    },
+    "Who is it?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מי זה?"
+          }
+        }
+      }
+    },
+    "Who is this?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מי זה?"
+          }
+        }
+      }
+    },
+    "New name" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם חדש"
+          }
+        }
+      }
+    },
+    "Skip: just not them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דילוג: רק לא זה"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דילוג"
+          }
+        }
+      }
+    },
+    "Edit faces" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עריכת פנים"
+          }
+        }
+      }
+    },
+    "Tap the faces that aren’t %@. Each one you mark also keeps faces like it away from them." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקישו על הפנים שאינן של %@. כל אחת שתסמנו גם מרחיקה פנים דומות לה."
+          }
+        }
+      }
+    },
+    "%lld marked not %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld סומנו כלא %2$@"
+          }
+        }
+      }
+    },
+    "Marked not them" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סומן כלא שייך"
           }
         }
       }

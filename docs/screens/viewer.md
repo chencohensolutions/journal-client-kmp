@@ -75,6 +75,12 @@ Swiping is not a tap; a playing video's own controls take its taps.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
   text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.
+  - What the server found in it (Oct 24, 2026; [people.md](people.md)), after the tags and storyline, before the
+    map, each only when it has something and the server has that index on: **People in this photo** (their faces and
+    names, "Who's this?" with a ? for a group; a tap opens their page), **Text in this photo** (the lines read in it,
+    Hebrew right to left, with **Copy**) and **Looks like this** (eight similar photos, a tap opens them in the viewer;
+    **More** a page of all of them). Asked when the panel opens (`media(sha256:)`, `similarMedia`); offline, from
+    what On this phone keeps.
   - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
 - **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
   box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save

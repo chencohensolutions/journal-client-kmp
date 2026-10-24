@@ -38,4 +38,11 @@ final class SearchViewModel: ObservableObject {
 
     /// Back to nothing searched.
     func clear() { controller.clear() }
+
+    /// The search screen opened: the server gets its model ready.
+    func prepare() { controller.prepare() }
+
+    /// A person as a chip in the field, or taken out of it.
+    func addPerson(_ person: Person) { controller.addPerson(person: person) }
+    func removePerson(_ id: String) { controller.removePerson(id: id) }
 }

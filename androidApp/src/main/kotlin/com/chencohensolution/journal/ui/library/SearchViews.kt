@@ -10,6 +10,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,6 +73,7 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.search.SearchChip
+import com.chencohensolution.journal.people.Person
 import com.chencohensolution.journal.search.SearchError
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
@@ -92,11 +95,25 @@ internal class SearchActions(
     val loadMore: () -> Unit = {},
     /** A photo of the results; the viewer swipes through the results. */
     val openItem: (MediaItem) -> Unit = {},
+    /** The search screen opened: the server gets its model ready (SearchController.prepare). */
+    val prepare: () -> Unit = {},
+    /** A face before anything is searched: the person becomes a chip, and the search their photos. */
+    val addPerson: (Person) -> Unit = {},
+    /** A person chip's ×. */
+    val removePerson: (String) -> Unit = {},
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
 @Composable
-internal fun SearchContent(search: SearchState, places: Places, landing: String?, actions: SearchActions, contentPadding: PaddingValues) {
+internal fun SearchContent(
+    search: SearchState,
+    places: Places,
+    landing: String?,
+    actions: SearchActions,
+    contentPadding: PaddingValues,
+    /** Named people to search by, before anything is searched (when the server has face search). */
+    faces: List<Person> = emptyList(),
+) {
     val list = rememberLazyListState()
     list.LandOn(landing, search.sets.size) { id -> search.sets.indexOfFirst { set -> set.any { it.id == id } } }
     // The next page once the last rows come into view: a few rows ahead, so it is usually there by the end.
@@ -108,21 +125,35 @@ internal fun SearchContent(search: SearchState, places: Places, landing: String?
                 if (last != null && last >= total - LOAD_AHEAD_ROWS && currentSearch.canLoadMore && !currentSearch.loadingMore) currentActions.loadMore()
             }
     }
+    LaunchedEffect(Unit) { currentActions.prepare() }
     LazyColumn(state = list, contentPadding = contentPadding) {
+        if (search.people.isNotEmpty()) item(key = "people-chips") { PersonChips(search.people, actions.removePerson) }
         when (search.status) {
-            SearchStatus.IDLE -> item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
+            SearchStatus.IDLE -> {
+                item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
+                if (faces.isNotEmpty()) item(key = "faces") { SearchFaces(faces, actions.addPerson) }
+            }
             SearchStatus.SEARCHING -> if (search.items.isEmpty() && search.yearChips.isEmpty()) item(key = "searching") {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = LibraryColors.OnBackground)
+                    if (search.preparing) {
+                        Text(stringResource(R.string.search_preparing), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+                    }
                 }
             }
             SearchStatus.FAILED -> item(key = "failed") {
                 SearchMessage(
-                    if (search.error == SearchError.OFFLINE) stringResource(R.string.search_offline)
-                    else stringResource(R.string.search_server_error, search.errorDetail.orEmpty()),
+                    when (search.error) {
+                        SearchError.OFFLINE -> stringResource(R.string.search_offline)
+                        SearchError.OFF -> stringResource(R.string.search_off)
+                        else -> stringResource(R.string.search_server_error, search.errorDetail.orEmpty())
+                    },
                 )
             }
             SearchStatus.DONE -> Unit
+        }
+        if (search.status == SearchStatus.DONE && search.onPhone) item(key = "on-phone") {
+            Text(stringResource(R.string.search_on_phone), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
         if (search.status == SearchStatus.DONE) item(key = "found") { FoundNote(search) }
         // Last, so landing from the viewer can count them from the end. Kept while a new search runs; the field shows its
@@ -263,6 +294,53 @@ private const val MAX_DOTS = 8
 private fun placeLabel(item: MediaItem, places: Places): String? {
     val name = places.location(item)?.let(places::name) ?: return null
     return listOfNotNull(name.town, name.country).distinct().joinToString(", ").ifEmpty { null }
+}
+
+/** Before anything is searched: "Search by person", named people's faces to swipe through; a tap adds a chip. */
+@Composable
+private fun SearchFaces(people: List<Person>, onAdd: (Person) -> Unit) {
+    Column(Modifier.padding(top = 8.dp)) {
+        Text(
+            stringResource(R.string.search_by_person),
+            color = LibraryColors.OnBackground,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp)) {
+            people.forEach { person ->
+                Column(
+                    Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable { onAdd(person) }.padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    FaceAvatar(person.cover, 56.dp)
+                    Text(person.name.orEmpty(), color = LibraryColors.OnBackground, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
+    }
+}
+
+/** The people chosen, as chips with ×, over the results. */
+@Composable
+private fun PersonChips(people: List<Person>, onRemove: (String) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        people.forEach { person ->
+            Row(
+                Modifier.height(36.dp).background(LibraryColors.Raised, RoundedCornerShape(50)).padding(start = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FaceAvatar(person.cover, 28.dp)
+                Text(person.name ?: "?", color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
+                IconButton(onClick = { onRemove(person.id) }, modifier = Modifier.size(32.dp)) {
+                    Icon(LibraryIcons.Close, stringResource(R.string.search_remove_person, person.name ?: "?"), tint = LibraryColors.Muted, modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+    }
 }
 
 @Composable

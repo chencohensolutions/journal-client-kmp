@@ -6,7 +6,11 @@ the library and the places found so far, and it shows the same sources as the Mo
 
 ## Layout
 
-- **Bar under the title:** **Places** / **Years** (filled when chosen), and **Map** at the right.
+- **Bar under the title:** **Places** / **Years** / **People** (filled when chosen; People only when the server has
+  face search, see [people.md](people.md)), and **Map** at the right.
+- **Best-looking** (Oct 24, 2026, with the server's aesthetic scores): a town's cover and a year's covers (the best of
+  each part of the year) are its best-looking photos, and a town's or year's page has **Newest / Best first** under
+  its chips; Best first is a grid of the page's photos, the best-looking first, which the viewer swipes in that order.
 - **What it shows (Oct 21, 2026):** only what [Settings › Show in the app](settings.md) shows; covers too. The first
   row of Places and Years is a line "Camera · Other · WhatsApp, Screenshots hidden · Change" opening the **Showing**
   sheet: the same switches, each with "N here" ("—" for none; the whole library here and on the map, the page's own

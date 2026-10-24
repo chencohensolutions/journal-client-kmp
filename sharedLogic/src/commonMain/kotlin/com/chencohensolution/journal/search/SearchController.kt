@@ -4,11 +4,18 @@ import com.apollographql.apollo.api.Optional
 import com.apollographql.apollo.exception.ApolloHttpException
 import com.apollographql.apollo.exception.ApolloNetworkException
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.graphql.PrepareSearchMutation
 import com.chencohensolution.journal.graphql.SearchMediaQuery
+import com.chencohensolution.journal.graphql.SearchModelQuery
+import com.chencohensolution.journal.graphql.type.SearchModelState
+import com.chencohensolution.journal.server.ServerError
+import com.chencohensolution.journal.server.ServerErrorCode
+import com.chencohensolution.journal.server.firstServerError
 import com.chencohensolution.journal.graphql.type.GeoAreaInput
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.network.describe
+import com.chencohensolution.journal.people.Person
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.settings.JournalSettings
@@ -48,8 +55,35 @@ enum class SearchError {
     /** The server couldn't be reached, or this device isn't registered. */
     OFFLINE,
 
-    /** The server answered with an error: search is off there (no model), or it failed. */
+    /** The server answered with an error: it failed. */
     SERVER,
+
+    /** Search is off on the server (no model), and this phone keeps nothing to search with. */
+    OFF,
+}
+
+/** Whether the server can read a search's words at once (its `searchModel`). */
+enum class SearchReadiness {
+    /** Loaded: a search answers at once. */
+    READY,
+
+    /** Being loaded, a few seconds; a search now waits for it ("Getting search ready…"). */
+    LOADING,
+
+    /** Not loaded: the next search loads it. */
+    UNLOADED,
+
+    /** Text search is off on the server. */
+    OFF,
+}
+
+/**
+ * Gets the server's search model ready before the first search: [prepare] starts loading it and answers at once,
+ * [waitWhileLoading] answers when a load in progress ends (at most 30 seconds).
+ */
+internal interface SearchWarmUp {
+    suspend fun prepare(): SearchReadiness
+    suspend fun waitWhileLoading(): SearchReadiness
 }
 
 /** A year ("2025") or town ("Paris") the matches are in, with how many of them. */
@@ -83,6 +117,12 @@ data class SearchState(
     val canLoadMore: Boolean = false,
     /** The next page is being asked for. */
     val loadingMore: Boolean = false,
+    /** The server is loading its search model (a few seconds): a search waits for it. "Getting search ready…". */
+    val preparing: Boolean = false,
+    /** The server couldn't be reached, and this phone searched what it keeps ("Searched on this phone"). */
+    val onPhone: Boolean = false,
+    /** People chosen (chips in the field): only photos with every one of them, best match of the words, if any. */
+    val people: List<Person> = emptyList(),
 ) {
     /** The server hasn't read every file yet, so some can't be found. */
     val stillReading: Boolean get() = status == SearchStatus.DONE && indexed < total
@@ -103,6 +143,8 @@ internal data class SearchAnswer(
     val total: Int,
     val sets: List<Int> = emptyList(),
     val moments: List<Int> = emptyList(),
+    /** Answered by this phone because the server couldn't be reached ("Searched on this phone"). */
+    val onPhone: Boolean = false,
 ) {
     val size: Int get() = sha256s.size
 
@@ -111,7 +153,7 @@ internal data class SearchAnswer(
 
     /** [next] (the page after these) added at the end, with its counts. */
     operator fun plus(next: SearchAnswer) =
-        SearchAnswer(sha256s + next.sha256s, next.indexed, next.total, sets + next.sets, moments + next.moments)
+        SearchAnswer(sha256s + next.sha256s, next.indexed, next.total, sets + next.sets, moments + next.moments, onPhone || next.onPhone)
 }
 
 /**
@@ -120,6 +162,14 @@ internal data class SearchAnswer(
  */
 internal fun interface SearchApi {
     suspend fun search(text: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer
+}
+
+/**
+ * Asks for the photos with every one of [ids] (people or groups), the [limit] best matches of [text] after the first
+ * [offset] (without text: the last taken first).
+ */
+internal fun interface PeopleSearch {
+    suspend fun search(ids: List<String>, text: String?, limit: Int, offset: Int): SearchAnswer
 }
 
 /** The server couldn't be reached, or this device has no identity to ask with. */
@@ -149,10 +199,32 @@ internal class ApolloSearchApi(
                 is ApolloNetworkException, is ApolloHttpException -> throw SearchUnreachable(exception.describe())
                 else -> throw exception
             }
-            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            firstServerError(response.errors)?.let { throw it }
             val found = response.data?.searchMedia ?: throw IllegalStateException("No answer")
             SearchAnswer(found.hits.map { it.media.sha256 }, found.indexed, found.total, found.hits.map { it.set }, found.hits.map { it.moment })
         } ?: throw SearchUnreachable("This device isn't registered")
+    }
+}
+
+/** [SearchWarmUp] over GraphQL: `prepareSearch`, then `searchModel(wait: true)`. */
+internal class ApolloSearchWarmUp(private val http: ServerHttp) : SearchWarmUp {
+    override suspend fun prepare(): SearchReadiness = ask { apollo ->
+        apollo.mutation(PrepareSearchMutation()).execute().let { it.exception?.let { e -> throw e }; it.data?.prepareSearch }
+    }
+
+    override suspend fun waitWhileLoading(): SearchReadiness = ask { apollo ->
+        apollo.query(SearchModelQuery(Optional.present(true))).execute().let { it.exception?.let { e -> throw e }; it.data?.searchModel }
+    }
+
+    private suspend fun ask(block: suspend (com.apollographql.apollo.ApolloClient) -> SearchModelState?): SearchReadiness {
+        val state = http.graphql(block) ?: return SearchReadiness.READY
+        return when (state) {
+            SearchModelState.READY -> SearchReadiness.READY
+            SearchModelState.LOADING -> SearchReadiness.LOADING
+            SearchModelState.UNLOADED -> SearchReadiness.UNLOADED
+            SearchModelState.OFF -> SearchReadiness.OFF
+            else -> SearchReadiness.READY
+        }
     }
 }
 
@@ -174,6 +246,10 @@ class SearchController internal constructor(
     /** Photos per page (Settings › Search); read for each page. */
     private val pageSize: () -> Int = { JournalSettings.DEFAULT_SEARCH_PAGE_SIZE },
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    /** Gets the server's model ready when the screen opens ([prepare]); null: nothing to get ready. */
+    private val warmUp: SearchWarmUp? = null,
+    /** Searches with people chosen ([addPerson]); null: no people. */
+    private val peopleSearch: PeopleSearch? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
@@ -208,14 +284,32 @@ class SearchController internal constructor(
     /** Searches for [text], with no year or town; blank clears instead. */
     fun search(text: String) {
         val query = text.trim()
-        if (query.isEmpty()) return clear()
-        _state.update { SearchState(query = query, status = SearchStatus.SEARCHING) }
+        val people = _state.value.people
+        if (query.isEmpty() && people.isEmpty()) return clear()
+        _state.update { SearchState(query = query, status = SearchStatus.SEARCHING, people = people) }
         years = null
         area = null
         fetch(limit = CANDIDATES) { answer ->
             firstAnswer = answer
             show(answer, full = answer.size == CANDIDATES)
         }
+    }
+
+    /**
+     * Adds [person] as a chip in the field (from the faces shown before anything is searched): the search shows only
+     * photos with them, and with every other person chosen.
+     */
+    fun addPerson(person: Person) {
+        val current = _state.value
+        if (peopleSearch == null || current.people.any { it.id == person.id }) return
+        _state.update { it.copy(people = it.people + person) }
+        search(current.query)
+    }
+
+    /** Takes [id] out of the chips; with neither words nor people left, back to nothing searched. */
+    fun removePerson(id: String) {
+        _state.update { it.copy(people = it.people.filter { p -> p.id != id }) }
+        search(_state.value.query)
     }
 
     /** The best matches of [year] (null: any year), in the chosen town if one is. */
@@ -242,7 +336,7 @@ class SearchController internal constructor(
         _state.update { it.copy(loadingMore = true) }
         searchJob = scope.launch {
             try {
-                val next = api.search(current.query, limit, loaded.size, years, area)
+                val next = call(current.query, limit, loaded.size, years, area)
                 loaded = loaded + next
                 pageEnds = pageEnds + loaded.size
                 serverHasMore = next.size == limit
@@ -257,7 +351,31 @@ class SearchController internal constructor(
         }
     }
 
-    /** Back to nothing searched. */
+    private var prepareJob: Job? = null
+
+    /**
+     * The search screen opened: has the server get its model ready, so the first search doesn't wait for it to load.
+     * While it loads, [SearchState.preparing] is true. Offline, nothing happens.
+     */
+    fun prepare() {
+        val warmUp = warmUp ?: return
+        if (prepareJob?.isActive == true) return
+        prepareJob = scope.launch {
+            try {
+                if (warmUp.prepare() != SearchReadiness.LOADING) return@launch
+                _state.update { it.copy(preparing = true) }
+                warmUp.waitWhileLoading()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Offline: the search itself will say so.
+            } finally {
+                _state.update { it.copy(preparing = false) }
+            }
+        }
+    }
+
+    /** Back to nothing searched (and no people chosen). */
     fun clear() {
         searchJob?.cancel()
         firstAnswer = NOTHING
@@ -277,7 +395,7 @@ class SearchController internal constructor(
 
     private fun choose(year: Int?, town: String?) {
         val current = _state.value
-        if (current.query.isEmpty() || firstAnswer.size == 0) return
+        if (current.query.isEmpty() || firstAnswer.size == 0 || current.people.isNotEmpty()) return
         _state.update { it.copy(year = year, town = town) }
         years = year?.let(::listOf)
         area = town?.let(::areaOf)
@@ -309,17 +427,30 @@ class SearchController internal constructor(
         val area = area
         searchJob = scope.launch {
             try {
-                val answer = api.search(query, limit, 0, years, area)
+                val answer = call(query, limit, 0, years, area)
                 apply(answer)
-                _state.update { it.copy(status = SearchStatus.DONE, indexed = answer.indexed, total = answer.total, error = null, errorDetail = null) }
+                _state.update { it.copy(status = SearchStatus.DONE, indexed = answer.indexed, total = answer.total, error = null, errorDetail = null, onPhone = answer.onPhone) }
                 refresh()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SearchUnreachable) {
                 fail(SearchError.OFFLINE, e.message)
+            } catch (e: ServerError) {
+                fail(if (e.code == ServerErrorCode.SEARCH_OFF) SearchError.OFF else SearchError.SERVER, e.message)
             } catch (e: Exception) {
                 fail(SearchError.SERVER, e.describe())
             }
+        }
+    }
+
+    /** The words, with the people chosen when there are any (who aren't narrowed by year or town). */
+    private suspend fun call(query: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer {
+        val people = _state.value.people
+        val search = peopleSearch
+        return if (people.isNotEmpty() && search != null) {
+            search.search(people.map { it.id }, query.ifBlank { null }, limit, offset)
+        } else {
+            api.search(query, limit, offset, years, area)
         }
     }
 
@@ -406,22 +537,7 @@ class SearchController internal constructor(
         )
     }
 
-    /**
-     * sha256s → the library's items, in their order. A device photo backup has read carries its sha256; one it
-     * hasn't is found by the server file's name and size, as the library matches them. What the library doesn't show
-     * is left out.
-     */
-    private fun resolver(): (List<String>) -> List<MediaItem> {
-        val items = library.value.days.flatMap { it.items }
-        val bySha = items.filter { it.sha256 != null }.associateBy { it.sha256!! }
-        val serverFiles = server?.value.orEmpty().associateBy { it.sha256 }
-        val byNameAndSize by lazy { items.filter { it.sha256 == null && it.fileName != null }.associateBy { it.fileName!!.lowercase() to it.sizeBytes } }
-        return { sha256s ->
-            sha256s.mapNotNull { sha ->
-                bySha[sha] ?: serverFiles[sha]?.let { byNameAndSize[it.fileName.lowercase() to it.size] }
-            }.distinctBy { it.id }
-        }
-    }
+    private fun resolver(): (List<String>) -> List<MediaItem> = libraryResolver(library.value, server?.value.orEmpty())
 
     private companion object {
         /** The first answer: the best this many, whose years and towns the filter counts (the server allows up to 1000). */

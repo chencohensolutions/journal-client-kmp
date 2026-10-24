@@ -34,6 +34,15 @@ final class ServerImages: NSObject, ServerImageDecoding {
         return image
     }
 
+    /// `face` as a round avatar `pixels` across: a crop of its photo's preview from the server, kept in memory.
+    func face(_ face: Face, pixels: Int) async -> UIImage? {
+        let key = "face:\(face.id)@\(pixels)" as NSString
+        if let image = cache.object(forKey: key) { return image }
+        let image = await awaiting { done in self.files.face(face: face, side: Int32(pixels), onResult: done) }
+        if let image { cache.setObject(image, forKey: key, cost: pixels * pixels * 4) }
+        return image
+    }
+
     /// The best image of `item` already on this phone, asking the server for nothing: the largest decoded in memory,
     /// else the largest preview kept on disk.
     func cached(_ item: MediaItem) async -> UIImage? {

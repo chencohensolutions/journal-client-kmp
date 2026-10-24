@@ -91,6 +91,9 @@ import java.time.ZoneId
 
 internal enum class HomeTab { STORYLINE, MOMENTS, EXPLORE }
 
+/** Named people offered on the search page before anything is searched. */
+private const val SEARCH_FACES = 16
+
 internal class HomeActions(
     /** A photo of the Moments tab; the viewer swipes through its row. */
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
@@ -160,6 +163,8 @@ internal fun JournalHomeScreen(
     search: SearchState = SearchState(),
     /** Search open at first, over the tab; previews use it. */
     initialSearching: Boolean = false,
+    /** Explore's People, when the server has face search; null: no People pill. */
+    people: com.chencohensolution.journal.people.PeopleState? = null,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     // Search covers the tab until its ✕ (or back), and the tab is as it was.
@@ -233,13 +238,13 @@ internal fun JournalHomeScreen(
     val muted = rememberSaveable { mutableStateOf(true) }
     // The same actions object across recompositions, so the feed's items don't all recompose with the screen.
     val currentActions by rememberUpdatedState(actions)
-    val currentNotes by rememberUpdatedState(stories.notes)
+    val currentStories by rememberUpdatedState(stories)
     val video = remember {
         FeedVideo(
             playingId = { playingId.value },
             isMuted = { muted.value },
             toggleMute = { muted.value = !muted.value },
-            savedPage = { block -> block.items.firstOrNull { currentNotes[it.id]?.front == true }?.id },
+            savedPage = { block -> currentStories.frontOf(block.items) },
             savePage = { block, id -> currentActions.turnSet(block.items.map { it.id }, id) },
         )
     }
@@ -283,6 +288,7 @@ internal fun JournalHomeScreen(
                 landing,
                 actions.search,
                 PaddingValues(top = insets.calculateTopPadding() + 80.dp, bottom = insets.calculateBottomPadding() + 150.dp),
+                faces = people?.list?.people.orEmpty().sortedByDescending { it.files }.take(SEARCH_FACES),
             )
         } else if (tab == HomeTab.EXPLORE) {
             ExploreContent(
@@ -291,6 +297,7 @@ internal fun JournalHomeScreen(
                 exploreView,
                 actions.explore,
                 PaddingValues(top = insets.calculateTopPadding() + 118.dp, bottom = insets.calculateBottomPadding() + 150.dp),
+                people,
             )
         } else CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
             LazyColumn(
@@ -342,7 +349,7 @@ internal fun JournalHomeScreen(
             }
         } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
             if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
-            if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp))
+            if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
         }
 
         if (!searching) BottomControls(

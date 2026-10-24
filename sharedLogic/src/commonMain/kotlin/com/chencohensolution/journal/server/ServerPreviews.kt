@@ -152,6 +152,8 @@ class ServerPreviews internal constructor(
         orLargest: Boolean = true,
         format: PreviewFormat? = null,
         quality: PreviewQuality? = null,
+        /** A part of the photo (fractions x, y, w, h of the upright photo), drawn instead of all of it: a face. */
+        crop: FloatArray? = null,
     ): ByteArray? {
         if (width <= 0 || height <= 0) return null
         val w = width.coerceAtMost(MAX_SIDE)
@@ -160,14 +162,17 @@ class ServerPreviews internal constructor(
         val chosen = options()
         val format = format ?: chosen.format
         val quality = quality ?: chosen.quality
-        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit-${quality.query}.${format.extension}"
+        // Rounded as the server rounds it (1/10000 of the photo), so nearly equal crops share a file.
+        val cropText = crop?.joinToString(",") { ((it * 10_000).toInt() / 10_000.0).toString() }
+        val cropName = cropText?.let { "-crop" + it.replace(',', '_') }.orEmpty()
+        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit$cropName-${quality.query}.${format.extension}"
         markOnce()
         withContext(Dispatchers.IO) { if (fileSystem.exists(path)) return@withContext fileSystem.read(path) { readByteArray() } else null }
             ?.let { return it }
         val fetched = if (!fetch) null else try {
             downloads.withPermit {
                 val client = http.client() ?: return@withPermit null
-                val query = "w=$w&h=$h&fit=$fit&fmt=${format.query}&q=${quality.query}"
+                val query = "w=$w&h=$h&fit=$fit&fmt=${format.query}&q=${quality.query}" + cropText?.let { "&crop=$it" }.orEmpty()
                 val response = client.get(http.url("/media/$sha256/preview", query))
                 if (response.status != HttpStatusCode.OK) null else response.readRawBytes().also { store(path, it) }
             }
@@ -176,9 +181,16 @@ class ServerPreviews internal constructor(
         } catch (_: Exception) {
             null
         }
-        if (fetched != null || !orLargest) return fetched
+        if (fetched != null || !orLargest || crop != null) return fetched
         return largestKept(sha256)?.let { kept -> withContext(Dispatchers.IO) { fileSystem.read(kept.file.toPath()) { readByteArray() } } }
     }
+
+    /**
+     * A face: the part [crop] (x, y, w, h) of [sha256], [side] pixels square, for a round avatar. Kept like any preview;
+     * null offline when it was never fetched.
+     */
+    suspend fun face(sha256: String, crop: FloatArray, side: Int): ByteArray? =
+        preview(sha256, side, side, contain = false, quality = PreviewQuality.MEDIUM, crop = crop)
 
     private val _originalProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
 
@@ -278,7 +290,8 @@ class ServerPreviews internal constructor(
     suspend fun kept(sha256: String): List<Kept> = withContext(Dispatchers.IO) {
         val dir = directory / sha256.take(2) / sha256
         if (!fileSystem.exists(dir)) return@withContext emptyList()
-        fileSystem.list(dir).filter { !it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") }
+        // Faces (a crop of the photo) aren't the photo: never shown for it.
+        fileSystem.list(dir).filter { !it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") && "-crop" !in it.name }
             .map { Kept(it.toString(), fileSystem.metadataOrNull(it)?.size ?: 0) }
             .sortedByDescending { it.bytes }
     }

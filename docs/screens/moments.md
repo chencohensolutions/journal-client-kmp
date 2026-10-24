@@ -52,7 +52,9 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   server, only those two neighbours' previews are downloaded (never the rest of the set) until a swipe brings more
   next to the one shown.
 - A set **opens on the photo it was last turned to**, also after scrolling away or restarting the app (kept on this
-  device in settings, `feed_page|<first photo id>`; turning back to the first forgets it).
+  device in settings, `feed_page|<first photo id>`; turning back to the first forgets it). A set never turned opens on
+  its best-looking photo (the server's aesthetic score, kept by On this phone; Oct 24, 2026), else the first
+  (`StoriesState.frontOf`).
 - There are no trip cards any more: "Looks like a trip" with **Save as story** went with stories on Oct 21, 2026.
 
 **Videos play in the feed**, muted and looping. Only one plays: of the videos at least 60% in view between the top bar

@@ -9,6 +9,9 @@ import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.people.PeopleController
+import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.ui.library.ServerFiles
@@ -33,6 +36,9 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val stories: StoriesController = createStoriesController(application, library, settings)
     val freeUp: FreeUpController = freeUp(application)
     val search: SearchController = createSearchController(application, library, server.library, stories, settings)
+    val people: PeopleController = peopleController(application)
+    val findings: PhotoFindingsController = createPhotoFindingsController(application, library)
+    val localIndexes: LocalIndexes = localIndexes(application)
 
     init {
         // The video cache counts toward the same limit as previews from the start (Media3 reads its index here).
@@ -40,6 +46,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun onCleared() {
+        findings.close()
         search.close()
         stories.close()
         settings.close()

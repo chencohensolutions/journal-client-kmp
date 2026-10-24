@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.okhttp)
             implementation(libs.okhttp.tls)
             implementation(libs.mediapipe.tasks.vision)
+            implementation(libs.onnxruntime.android)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

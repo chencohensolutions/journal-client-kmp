@@ -21,7 +21,8 @@ data class PlaceSummary(
     /** The country most of its photos were taken in; null while none is known. */
     val country: String? = null,
 ) {
-    val cover: MediaItem get() = items.firstOrNull { it.type == MediaType.IMAGE } ?: items.first()
+    /** Its best-looking photo (the server's aesthetic score); the newest when none is scored. */
+    val cover: MediaItem get() = bestLooking(items.filter { it.type == MediaType.IMAGE }) ?: items.firstOrNull { it.type == MediaType.IMAGE } ?: items.first()
     val firstYear: Int get() = items.last().day.year
     val lastYear: Int get() = items.first().day.year
 
@@ -159,7 +160,11 @@ fun yearsOf(library: List<MediaItem>, places: Places, hidden: List<MediaItem>): 
         val towns = items.mapNotNull { item -> places.location(item)?.let(places::name)?.town }
             .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(YEAR_TOWNS).map { it.key }
         val images = items.filter { it.type == MediaType.IMAGE }.ifEmpty { items }
-        val covers = if (images.isEmpty()) emptyList() else (0 until YEAR_COVERS).map { images[it * images.size / YEAR_COVERS] }.distinct()
+        // Spread across the year: the best-looking of each part of it.
+        val covers = if (images.isEmpty()) emptyList() else (0 until YEAR_COVERS).map { part ->
+            val slice = images.subList(part * images.size / YEAR_COVERS, maxOf(part * images.size / YEAR_COVERS + 1, (part + 1) * images.size / YEAR_COVERS))
+            bestLooking(slice) ?: slice.first()
+        }.distinct()
         YearSummary(year, items, towns, covers, sourceCounts(hiddenByYear[year].orEmpty()))
     }.sortedByDescending { it.year }
 }
@@ -169,3 +174,17 @@ fun sourceCounts(items: List<MediaItem>): Map<MediaSource, Int> {
     val counts = items.groupingBy { it.source }.eachCount()
     return MediaSource.entries.filter { it in counts }.associateWith { counts.getValue(it) }
 }
+
+/** The best-looking of [items] by the server's aesthetic score; null when none is scored. Ties go to the first. */
+fun bestLooking(items: List<MediaItem>): MediaItem? {
+    var best: MediaItem? = null
+    for (item in items) {
+        val score = item.aesthetic ?: continue
+        if (best == null || score > best.aesthetic!!) best = item
+    }
+    return best
+}
+
+/** [items] the best-looking first (unscored last), then the newest: a page's "Best first". */
+fun bestFirst(items: List<MediaItem>): List<MediaItem> =
+    items.sortedWith(compareByDescending<MediaItem> { it.aesthetic ?: -1f }.thenByDescending { it.takenAtMillis })

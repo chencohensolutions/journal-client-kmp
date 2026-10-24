@@ -4,7 +4,7 @@ import SharedLogic
 // The Explore tab: every photo by country and town or by year, and the map (see Explore.kt in the shared logic and
 // docs/screens/explore.md). A town's or a year's page shows its photos like the Moments tab.
 
-enum ExploreView { case places, years }
+enum ExploreView { case places, years, people }
 
 struct ExploreActions {
     var openPlace: (_ town: String) -> Void
@@ -15,6 +15,11 @@ struct ExploreActions {
     var openMap: () -> Void
     /// A source on or off everywhere (the "Showing" sheet, "Show them").
     var toggleSource: (MediaSource) -> Void
+    /// A person's page from People; for a group no one has named, "Who's this?".
+    var openPerson: (_ id: String) -> Void = { _ in }
+    /// People shown: load the list (again, so new faces come in); Try again.
+    var loadPeople: () -> Void = {}
+    var reloadPeople: () -> Void = {}
 }
 
 /// What Explore works from: the library, newest first, without what the sources setting hides.
@@ -77,15 +82,17 @@ struct ExploreSummaries {
     }
 }
 
-/// Under the top bar: Places or Years, and the map.
+/// Under the top bar: Places, Years or (when the server has face search) People, and the map.
 struct ExploreBar: View {
     @Binding var view: ExploreView
+    var people = false
     let onMap: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
             ExploreChip(label: String(localized: "Places"), on: view == .places) { view = .places }
             ExploreChip(label: String(localized: "Years"), on: view == .years) { view = .years }
+            if people { ExploreChip(label: String(localized: "People"), on: view == .people) { view = .people } }
             Spacer()
             ExploreChip(label: String(localized: "Map"), on: false, symbol: "map", action: onMap)
         }
@@ -546,8 +553,11 @@ struct PlacePageView: View {
     let stories: StoriesState
     let openItem: (ExploreScope, FeedSection, MediaItem) -> Void
     let toggleSource: (MediaSource) -> Void
+    /// Best first's grid: the viewer on a photo, swiping through the page's photos in that order; nil: no sort.
+    var openInOrder: (([MediaItem], MediaItem) -> Void)? = nil
 
     @State private var year: Int?
+    @State private var sort = PageSort.newest
 
     var body: some View {
         let scope = ExploreScope.of(town: town, year: year)
@@ -566,7 +576,9 @@ struct PlacePageView: View {
             },
             selected: $year,
             openItem: { openItem(scope, $0, $1) },
-            toggleSource: toggleSource
+            toggleSource: toggleSource,
+            sort: openInOrder == nil ? nil : $sort,
+            openInOrder: openInOrder ?? { _, _ in }
         )
     }
 }
@@ -578,18 +590,22 @@ struct YearPageView: View {
     let stories: StoriesState
     let openItem: (ExploreScope, FeedSection, MediaItem) -> Void
     let toggleSource: (MediaSource) -> Void
+    let openInOrder: (([MediaItem], MediaItem) -> Void)?
 
     @State private var month: Int?
+    @State private var sort = PageSort.newest
 
     init(
         year: Int, month: Int?, library: LibraryState, stories: StoriesState,
-        openItem: @escaping (ExploreScope, FeedSection, MediaItem) -> Void, toggleSource: @escaping (MediaSource) -> Void
+        openItem: @escaping (ExploreScope, FeedSection, MediaItem) -> Void, toggleSource: @escaping (MediaSource) -> Void,
+        openInOrder: (([MediaItem], MediaItem) -> Void)? = nil
     ) {
         self.year = year
         self.library = library
         self.stories = stories
         self.openItem = openItem
         self.toggleSource = toggleSource
+        self.openInOrder = openInOrder
         _month = State(initialValue: month)
     }
 
@@ -617,7 +633,9 @@ struct YearPageView: View {
             },
             selected: $month,
             openItem: { openItem(scope, $0, $1) },
-            toggleSource: toggleSource
+            toggleSource: toggleSource,
+            sort: openInOrder == nil ? nil : $sort,
+            openInOrder: openInOrder ?? { _, _ in }
         )
     }
 }
@@ -628,6 +646,8 @@ private struct ExplorePage {
     let all: [MediaItem]
     let rows: [FeedRow]
     let counts: [MediaSource: KotlinInt]
+    /// The photos of the choice made (a year, a month), for Best first.
+    let shown: [MediaItem]
 }
 
 private struct ExplorePageInput: Equatable {
@@ -649,6 +669,9 @@ private struct ExplorePageView: View {
     @Binding var selected: Int?
     let openItem: (FeedSection, MediaItem) -> Void
     let toggleSource: (MediaSource) -> Void
+    /// Newest / Best first, when the server scores photos; nil: no sort.
+    var sort: Binding<PageSort>? = nil
+    var openInOrder: ([MediaItem], MediaItem) -> Void = { _, _ in }
 
     @State private var page: ExplorePage?
     @State private var selection = Set<String>()
@@ -661,7 +684,10 @@ private struct ExplorePageView: View {
         GeometryReader { geometry in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    PageCover(title: title, subtitle: all.isEmpty ? nil : subtitle(all), photo: all.first { !$0.isVideo } ?? all.first, top: geometry.safeAreaInsets.top)
+                    PageCover(
+                        title: title, subtitle: all.isEmpty ? nil : subtitle(all),
+                        photo: ExploreKt.bestLooking(items: all.filter { !$0.isVideo }) ?? all.first { !$0.isVideo } ?? all.first, top: geometry.safeAreaInsets.top
+                    )
                     ScrollView(.horizontal) {
                         HStack(spacing: 8) {
                             ForEach(chips(all), id: \.0) { value, label in
@@ -678,14 +704,22 @@ private struct ExplorePageView: View {
                             .padding(.horizontal, 16)
                             .padding(.bottom, 4)
                     }
-                    FeedRowsView(
-                        rows: rows,
-                        note: { stories.note(itemId: $0) },
-                        width: geometry.size.width,
-                        actions: FeedActions(openItem: openItem, menus: false),
-                        selection: $selection,
-                        playback: playback
-                    )
+                    if let sort {
+                        SortChips(sort: sort.wrappedValue) { sort.wrappedValue = $0 }.padding(.horizontal, 16).padding(.bottom, 8)
+                    }
+                    if sort?.wrappedValue == .best {
+                        let ordered = ExploreKt.bestFirst(items: page?.shown ?? [])
+                        PhotoGrid(items: ordered) { openInOrder(ordered, $0) }
+                    } else {
+                        FeedRowsView(
+                            rows: rows,
+                            note: { stories.note(itemId: $0) },
+                            width: geometry.size.width,
+                            actions: FeedActions(openItem: openItem, menus: false),
+                            selection: $selection,
+                            playback: playback
+                        )
+                    }
                 }
                 .padding(.bottom, 48)
                 .followsViewer { rows.place(of: $0) }
@@ -705,10 +739,12 @@ private struct ExplorePageView: View {
             page = await Task.detached(priority: .userInitiated) {
                 let everything = library.days.flatMap { $0.items }.filter { whole.matches(item: $0, places: places) }
                 let all = everything.filter { stories.shows(item: $0) }
+                let inScope = all.filter { shown.matches(item: $0, places: places) }
                 return ExplorePage(
                     all: all,
-                    rows: stories.feedOf(items: all.filter { shown.matches(item: $0, places: places) }).rows,
-                    counts: ExploreKt.sourceCounts(items: everything)
+                    rows: stories.feedOf(items: inScope).rows,
+                    counts: ExploreKt.sourceCounts(items: everything),
+                    shown: inScope
                 )
             }.value
         }

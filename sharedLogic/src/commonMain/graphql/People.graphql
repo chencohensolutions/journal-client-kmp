@@ -1,0 +1,82 @@
+fragment FaceFields on Face {
+  id
+  sha256
+  box { x y w h }
+  personId
+  personName
+}
+
+fragment PersonFields on Person {
+  id
+  name
+  faces
+  files
+  cover { ...FaceFields }
+}
+
+query People($includePrivate: Boolean) {
+  people(includeGroups: true, includePrivate: $includePrivate) {
+    people { ...PersonFields }
+    read
+    total
+  }
+}
+
+query PersonMedia($people: [ID!], $text: String, $limit: Int, $offset: Int, $includePrivate: Boolean) {
+  searchMedia(people: $people, text: $text, limit: $limit, offset: $offset, includePrivate: $includePrivate) {
+    hits {
+      set
+      moment
+      media {
+        sha256
+        faces { ...FaceFields }
+      }
+    }
+    indexed
+    total
+  }
+}
+
+mutation NamePerson($id: ID!, $name: String!) {
+  namePerson(id: $id, name: $name) {
+    __typename
+    ... on Person { ...PersonFields }
+    ... on NotFound { id reason }
+  }
+}
+
+mutation MergePeople($into: ID!, $from: [ID!]!) {
+  mergePeople(into: $into, from: $from) {
+    __typename
+    ... on Person { ...PersonFields }
+    ... on NotFound { id reason }
+  }
+}
+
+mutation MoveFace($face: ID!, $to: ID) {
+  moveFace(face: $face, to: $to) {
+    __typename
+    ... on Face { id }
+    ... on NotFound { id reason }
+  }
+}
+
+mutation ForgetPerson($id: ID!) {
+  forgetPerson(id: $id)
+}
+
+mutation MarkFaces($person: ID!, $yes: [ID!]!, $no: [ID!]!) {
+  markFaces(person: $person, yes: $yes, no: $no) {
+    __typename
+    ... on Person { ...PersonFields }
+    ... on NotFound { id reason }
+  }
+}
+
+mutation NameFace($face: ID!, $name: String!) {
+  nameFace(face: $face, name: $name) {
+    __typename
+    ... on Person { ...PersonFields }
+    ... on NotFound { id reason }
+  }
+}

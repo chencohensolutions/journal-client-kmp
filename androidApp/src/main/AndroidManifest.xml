@@ -27,8 +27,11 @@
     <!-- Hidden collections opens behind the phone's lock (BiometricPrompt); without this it throws. Granted at install. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- largeHeap: search on the phone keeps the search index in memory (about 75 MB for 95,000 photos), beside the
+         photos' thumbnails. -->
     <application
         android:allowBackup="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

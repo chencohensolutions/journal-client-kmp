@@ -85,6 +85,9 @@ internal fun InfoPanel(
     /** The map screen on where it was taken: a tap on the map. */
     openMap: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
+    /** What the server found in it: people, text, similar photos. */
+    findings: com.chencohensolution.journal.people.PhotoFindings = com.chencohensolution.journal.people.PhotoFindings.NONE,
+    findingsActions: FindingsActions = FindingsActions(),
 ) {
     val taken = Instant.ofEpochMilli(item.takenAtMillis).atZone(ZoneId.systemDefault())
     Column(
@@ -103,6 +106,7 @@ internal fun InfoPanel(
         }
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
         if (note?.hasWriting == true) StorylineRow(note.inStoryline, setInStoryline)
+        FindingsCards(findings, findingsActions)
         if (location != null) LocationCard(location, openMap)
         OriginalCard(item, setPrivate)
         DetailsCard(item)

@@ -22,6 +22,16 @@ struct ViewerActions {
     var setPrivate: (_ item: MediaItem, _ isPrivate: Bool) async -> Bool
     /// Leaving a photo: where it was zoomed in (the part on screen; nil: fitted), so it opens there next time.
     var setZoom: (_ itemId: String, _ zoom: CropRect?) -> Void
+    /// The details opened on a photo: find what the server found in it (people, text, similar photos).
+    var findIn: (MediaItem) -> Void = { _ in }
+    /// In the details: a person's page, a similar photo, all similar photos.
+    var openPerson: (String) -> Void = { _ in }
+    var openSimilar: (MediaItem) -> Void = { _ in }
+    var moreSimilar: () -> Void = {}
+    /// A face's sheet: This is Mom, Not Mom, Who is it?
+    var faces = FaceActions()
+    /// The named people, for a face's "Who is it?".
+    var people: [Person] = []
 }
 
 /// One photo or video at a time, swiping through `items`. See docs/screens/viewer.md.
@@ -29,9 +39,13 @@ struct MediaViewerView: View {
     let items: [MediaItem]
     let stories: StoriesState
     let actions: ViewerActions
+    /// What the server found in the photo the details show (asked for with `actions.findIn`).
+    var findings: PhotoFindings = PhotoFindings.companion.NONE
 
     @State private var currentId: String
     @State private var showInfo = false
+    /// A face tapped in the details.
+    @State private var faceSheet: FoundFace?
     /// The bars and buttons over the photo: hidden at first, shown by a tap for 3 seconds, hidden by the next tap.
     @State private var chrome = false
     @State private var choosingTag = false
@@ -48,10 +62,14 @@ struct MediaViewerView: View {
     @State private var shareFailed = false
 
     /// `chrome` and `showInfo` open it with the buttons or the details showing (the UI lab).
-    init(items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions, chrome: Bool = false, showInfo: Bool = false) {
+    init(
+        items: [MediaItem], startId: String, stories: StoriesState, actions: ViewerActions, findings: PhotoFindings = PhotoFindings.companion.NONE,
+        chrome: Bool = false, showInfo: Bool = false
+    ) {
         self.items = items
         self.stories = stories
         self.actions = actions
+        self.findings = findings
         _currentId = State(initialValue: startId)
         _chrome = State(initialValue: chrome)
         _showInfo = State(initialValue: showInfo)
@@ -177,6 +195,10 @@ struct MediaViewerView: View {
         .interactiveDismissDisabled(zoomed)
         // Immersive: the home indicator goes too.
         .persistentSystemOverlays(.hidden)
+        .sheet(item: Binding(get: { faceSheet.map(IdentifiedFound.init) }, set: { if $0 == nil { faceSheet = nil } })) { item in
+            FaceSheet(found: item.found, people: actions.people, actions: actions.faces) { faceSheet = nil }
+                .preferredColorScheme(.dark)
+        }
         .sheet(isPresented: $choosingTag) {
             if let item = items[safe: index] {
                 TagSheet(
@@ -249,6 +271,11 @@ struct MediaViewerView: View {
     private func infoPanel(item: MediaItem) -> some View {
         InfoPanel(
             item: item,
+            findings: findings.itemId == item.id ? findings : PhotoFindings.companion.NONE,
+            findingsCards: FindingsCards(
+                findings: findings.itemId == item.id ? findings : PhotoFindings.companion.NONE,
+                openPerson: actions.openPerson, tapFace: { faceSheet = $0 }, openSimilar: actions.openSimilar, moreSimilar: actions.moreSimilar
+            ),
             note: stories.note(itemId: item.id),
             onAddTag: { choosingTag = true },
             onRemoveTag: { actions.toggleTag(item.id, $0, false) },
@@ -257,6 +284,7 @@ struct MediaViewerView: View {
             openMap: actions.openMap,
             setPrivate: actions.setPrivate
         )
+        .task(id: item.id) { actions.findIn(item) }
     }
 }
 
@@ -600,6 +628,8 @@ private struct VideoPage: View {
 /// viewer's Write button.
 private struct InfoPanel: View {
     let item: MediaItem
+    let findings: PhotoFindings
+    let findingsCards: FindingsCards
     let note: PhotoNote?
     let onAddTag: () -> Void
     let onRemoveTag: (String) -> Void
@@ -655,6 +685,7 @@ private struct InfoPanel: View {
                         .font(.subheadline.weight(.semibold))
                     }
                 }
+                if !findings.isEmpty { findingsCards }
                 if let (point, name) = location {
                     Button { openMap(point) } label: { LocationCard(point: point, name: name) }
                         .buttonStyle(.plain)

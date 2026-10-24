@@ -33,6 +33,23 @@ internal val labInfoNote: PhotoNote? = PreviewData.feedStories.note(labInfoItem.
 internal val labInfoLocation: Pair<GeoPoint, PlaceName?> =
     GeoPoint(32.81431, 34.98712) to PlaceName(area = "Bahá'í Gardens", city = "Haifa", country = "Israel")
 
+/** The info panel with what the server found: people, text and similar photos, above where it was taken. */
+@Composable
+internal fun LabFindingsPanel(modifier: Modifier) {
+    InfoPanel(
+        labInfoItem,
+        note = labInfoNote,
+        onAddTag = {},
+        onRemoveTag = {},
+        setInStoryline = {},
+        location = labInfoLocation,
+        setPrivate = { _, _ -> true },
+        openMap = {},
+        modifier = modifier,
+        findings = PeopleLabData.findings,
+    )
+}
+
 /** The panel as the viewer draws it: at the bottom, over the photo. */
 @Composable
 internal fun LabInfoBackdrop(panel: @Composable (Modifier) -> Unit) {

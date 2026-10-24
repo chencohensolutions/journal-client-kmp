@@ -69,6 +69,9 @@ class MainActivity : ComponentActivity() {
                         server = viewModel.server,
                         freeUp = viewModel.freeUp,
                         search = viewModel.search,
+                        people = viewModel.people,
+                        findings = viewModel.findings,
+                        localIndexes = viewModel.localIndexes,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true

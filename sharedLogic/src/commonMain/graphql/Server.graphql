@@ -1,0 +1,27 @@
+query ServerInfo {
+  serverInfo {
+    api
+    version
+    search
+    previews
+    posters
+    nudityScan
+    faces
+    textInPhotos
+    similar
+    aesthetic
+    localIndexes
+  }
+}
+
+query LocalIndexes {
+  localIndexes {
+    name
+    model
+    format
+    dim
+    files
+    bytes
+    models { name precision bytes sha256 url }
+  }
+}

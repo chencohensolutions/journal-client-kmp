@@ -166,6 +166,38 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   feed again on its next sync.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.
 
+## Search › On this phone
+
+(Oct 24, 2026, Android and iOS; shown when the server offers indexes, `serverInfo.localIndexes`.) Keeps the server's
+indexes on the phone, to search without the server, offline too (journal-server-go `docs/search.md` "On the phone").
+
+- **Settings › Search** gets a row: "3 kept · 839 MB · Updated 2 hours ago", "Downloading: 40%", or "Off: search
+  needs your server".
+- The screen: what it is for; **Status** (while something is kept): "Downloading Similar photos, 61 MB of 152 MB" with
+  a bar and **Pause**, "Waiting for Wi-Fi" with **Download now**, or "Updated 2 hours ago · 12 new photos on your
+  server, not here yet" with **Update now** (and the last error, if any); **Keep on this phone**: a switch per index
+  the server offers, with what it does and its size — Search by words (with its model: the 8-bit one when the server
+  has it, about 290 MB, else the full 1.13 GB), People, Text in photos, Similar photos, Best-looking photos (on at
+  first: 4 MB, and it picks a set's best photo, covers and Best first); **Only on Wi-Fi** (on); "Uses 839 MB of this
+  phone · 48 GB free".
+- Turning one on downloads it (now, or on Wi-Fi); turning it off deletes it. Each index catches up when the app comes
+  back a day after the last look, and on Update now: only what was added since (the stream's cursor), and what the
+  user hid or marked private since is dropped. A broken download goes on from where it broke (the model by Range).
+- Search uses the phone when it keeps text search (or text in photos) and is at most 20 files behind, else the server;
+  when the server can't be reached, the phone anyway ("Searched on this phone: your server can't be reached."). The
+  phone's answers are the server's: same tokens (`SentencePiece.kt`), same text-in-photos matching and set grouping
+  (`LocalMatching.kt`), checked against `go run ./scripts/local-fixtures` (`SentencePieceTest`, `LocalFixturesTest`).
+  Vectors are kept as 8-bit numbers with a scale each (a quarter of the size; they rank as the full ones to within a
+  thousandth). People and a photo's details fall back to what is kept the same way.
+- Kept in `files/local` (Android) and Application Support `local` (iOS, out of iCloud backup): `<index>/table.bin`
+  (`LocalTables.kt`), `faces/people.json`, `models/`. The faces table keeps each face's box and its vector at full
+  precision (asked Oct 24, 2026: about 60 MB for 120,000 faces), for matching faces on the phone; a table from before
+  is downloaded again.
+- Code: [local/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/local/) (`LocalIndexes`,
+  `LocalIndexApi`, `LocalTables`, `LocalSearch`), the model run by `AndroidTextEncoding` (ONNX Runtime for Android) and
+  `OnnxTextEncoding` in `PeopleViewModels.swift` (onnxruntime-swift-package-manager); Android
+  `PhoneSearchScreen.kt`, iOS `PhoneSearchView.swift`.
+
 ## Code
 
 - Shared: `SettingsController`, `TimelineGrouping`, `SimilarityThreshold` and `PrivateMedia` in

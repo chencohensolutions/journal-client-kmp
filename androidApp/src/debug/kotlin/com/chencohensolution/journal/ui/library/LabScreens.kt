@@ -13,6 +13,9 @@ import com.chencohensolution.journal.stories.PhotoCrops
 /** The screen as the app draws it now, always the first option. */
 private fun current(content: @Composable () -> Unit) = LabOption("current", "Current", content = content)
 
+/** A screen the app doesn't have yet, as proposed. */
+private fun proposed(content: @Composable () -> Unit) = LabOption("proposed", "Proposed", content = content)
+
 internal val labScreens: List<LabScreen> = listOf(
     LabScreen("storyline", "Storyline", listOf(
         current { JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions()) },
@@ -43,6 +46,46 @@ internal val labScreens: List<LabScreen> = listOf(
                 initialExploreView = ExploreView.YEARS,
             )
         },
+    )),
+    // Mockups of the server's new features (docs/plans/server-features.md): not in the app yet, so "proposed" is
+    // their only option. Their data is in PeopleLabData.
+    LabScreen("explore-people", "Explore by people", listOf(
+        proposed {
+            JournalHomeScreen(
+                PreviewData.placesLibrary,
+                PreviewData.placesStories,
+                ServerHealth.OK,
+                HomeActions(),
+                initialTab = HomeTab.EXPLORE,
+                initialExploreView = ExploreView.PEOPLE,
+                people = PeopleLabData.people,
+            )
+        },
+        LabOption("reading", "Still reading faces") {
+            JournalHomeScreen(
+                PreviewData.placesLibrary,
+                PreviewData.placesStories,
+                ServerHealth.OK,
+                HomeActions(),
+                initialTab = HomeTab.EXPLORE,
+                initialExploreView = ExploreView.PEOPLE,
+                people = PeopleLabData.peopleReading,
+            )
+        },
+    )),
+    LabScreen("person", "A person's page", listOf(
+        proposed { PersonScreen(PeopleLabData.momPage, PreviewData.feedStories, PeopleLabData.others, PersonActions()) },
+        LabOption("searched", "Searched, best first") { PersonScreen(PeopleLabData.momSearched, PreviewData.feedStories, PeopleLabData.others, PersonActions()) },
+    )),
+    LabScreen("group", "Who's this? (naming)", listOf(
+        proposed { GroupScreen(PeopleLabData.groupPage, GroupActions()) },
+        LabOption("typing", "Typing a name") { GroupScreen(PeopleLabData.groupTyping, GroupActions()) },
+    )),
+    LabScreen("phone-search", "On this phone", listOf(
+        proposed { PhoneSearchScreen(PeopleLabData.phoneSearch, PhoneSearchActions()) },
+        LabOption("downloading", "Downloading") { PhoneSearchScreen(PeopleLabData.phoneSearchDownloading, PhoneSearchActions()) },
+        LabOption("waiting", "Waiting for Wi-Fi") { PhoneSearchScreen(PeopleLabData.phoneSearchWaiting, PhoneSearchActions()) },
+        LabOption("off", "Never turned on") { PhoneSearchScreen(PeopleLabData.phoneSearchOff, PhoneSearchActions()) },
     )),
     LabScreen("country", "Country", listOf(
         current { CountryScreen("France", PreviewData.placesLibrary, PreviewData.placesStories, onOpenPlace = {}, onBack = {}) },
@@ -79,6 +122,9 @@ internal val labScreens: List<LabScreen> = listOf(
                 )
             }
         },
+        LabOption("findings", "With people, text, similar", "Proposed: what the server found, above the map") {
+            LabInfoBackdrop { modifier -> LabFindingsPanel(modifier) }
+        },
     )),
     LabScreen("crop", "Crop", listOf(
         current {
@@ -88,5 +134,8 @@ internal val labScreens: List<LabScreen> = listOf(
     )),
     LabScreen("settings", "Settings", listOf(
         current { SettingsScreen(SettingsState(), SettingsActions()) },
+        LabOption("phone-search", "With On this phone", "Proposed: a row under Search") {
+            SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
+        },
     )),
 )

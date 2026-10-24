@@ -37,7 +37,21 @@ import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.PrivateMedia
+import com.chencohensolution.journal.local.HttpLocalIndexApi
+import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.local.LocalSearchApi
+import com.chencohensolution.journal.local.PhoneFallbackFindingsApi
+import com.chencohensolution.journal.local.PhoneFallbackPeopleApi
+import com.chencohensolution.journal.local.PhoneFirstSearchApi
+import com.chencohensolution.journal.local.TextEncoding
+import com.chencohensolution.journal.people.ApiPeopleSearch
+import com.chencohensolution.journal.people.ApolloFindingsApi
+import com.chencohensolution.journal.people.ApolloPeopleApi
+import com.chencohensolution.journal.people.PeopleController
+import com.chencohensolution.journal.people.PersonController
+import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.ApolloSearchApi
+import com.chencohensolution.journal.search.ApolloSearchWarmUp
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.IosFreeUp
@@ -98,7 +112,48 @@ object IosJournal {
             server = server,
             originals = originals,
             privateMedia = privateMedia,
+            scores = localIndexes().scores,
         )
+
+    /** Runs the search model's text half on this phone (ONNX Runtime, in Swift); set at launch, before [localIndexes]. */
+    var textEncoding: TextEncoding? = null
+
+    /** Whether the phone is on Wi-Fi (or another network that costs nothing); set by Swift (NWPathMonitor). */
+    var onWifi: () -> Boolean = { true }
+
+    private var localIndexes: LocalIndexes? = null
+
+    /**
+     * Settings › Search › On this phone: the server's indexes kept in Application Support (`local`), out of the
+     * phone's iCloud backup, to search without the server. One per process.
+     */
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    fun localIndexes(): LocalIndexes =
+        localIndexes ?: run {
+            val directory = supportDir() + "/local"
+            NSFileManager.defaultManager.createDirectoryAtPath(directory, withIntermediateDirectories = true, attributes = null, error = null)
+            NSURL.fileURLWithPath(directory).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+            LocalIndexes(
+                settings = JournalSettings(UserDefaultsStore()),
+                api = HttpLocalIndexApi(serverHttp()),
+                fileSystem = FileSystem.SYSTEM,
+                directory = directory.toPath(),
+                onWifi = { onWifi() },
+                freeSpace = {
+                    (NSFileManager.defaultManager.attributesOfFileSystemForPath(supportDir(), error = null)?.get(platform.Foundation.NSFileSystemFreeSize) as? NSNumber)
+                        ?.longLongValue ?: 0
+                },
+                now = { (NSDate().timeIntervalSince1970 * 1000).toLong() },
+                encoding = textEncoding,
+            )
+        }.also { localIndexes = it }
+
+    private fun localSearchApi(): LocalSearchApi {
+        val settings = JournalSettings(UserDefaultsStore())
+        return LocalSearchApi(localIndexes(), serverLibrary().media) { settings.privateMedia.show }
+    }
+
+    private fun peopleApi() = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp()), localIndexes(), serverLibrary().media)
 
     /**
      * Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet),
@@ -112,11 +167,48 @@ object IosJournal {
     ): SearchController =
         SearchController(
             library = library.state,
-            api = ApolloSearchApi(JournalSettings(UserDefaultsStore()), serverHttp()),
+            api = PhoneFirstSearchApi(localSearchApi(), ApolloSearchApi(JournalSettings(UserDefaultsStore()), serverHttp())),
             server = server.media,
             stories = stories.state,
             pageSize = { settings.currentState.searchPageSize },
+            warmUp = ApolloSearchWarmUp(serverHttp()),
+            peopleSearch = ApiPeopleSearch(peopleApi()) { JournalSettings(UserDefaultsStore()).privateMedia.show },
         )
+
+    private var peopleController: PeopleController? = null
+
+    /** Explore's People: the user's people and groups of faces on the server. One per process. */
+    fun peopleController(): PeopleController =
+        peopleController ?: JournalSettings(UserDefaultsStore()).let { settings ->
+            PeopleController(peopleApi(), includePrivate = { settings.privateMedia.show })
+        }.also { peopleController = it }
+
+    /** A person's page, or a group's ("Who's this?"): [id] from [peopleController]'s list. */
+    fun createPersonController(id: String, library: LibraryController): PersonController {
+        val settings = JournalSettings(UserDefaultsStore())
+        return PersonController(
+            id = id,
+            api = peopleApi(),
+            people = peopleController(),
+            library = library.state,
+            server = serverLibrary().media,
+            includePrivate = { settings.privateMedia.show },
+        )
+    }
+
+    /** What the server found in the photo the viewer shows: people, text, similar photos. */
+    fun createPhotoFindingsController(library: LibraryController): PhotoFindingsController {
+        val settings = JournalSettings(UserDefaultsStore())
+        val server = serverLibrary()
+        return PhotoFindingsController(
+            api = PhoneFallbackFindingsApi(ApolloFindingsApi(serverHttp()), localIndexes()),
+            people = peopleController(),
+            library = library.state,
+            server = server.media,
+            features = server.features,
+            includePrivate = { settings.privateMedia.show },
+        )
+    }
 
     private var serverLibrary: ServerLibrary? = null
     private var serverPreviews: ServerPreviews? = null

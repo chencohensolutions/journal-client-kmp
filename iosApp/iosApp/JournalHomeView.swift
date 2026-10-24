@@ -58,6 +58,8 @@ struct JournalHomeView: View {
     let actions: HomeActions
     /// The last search and what it found; nil before the first.
     var search: SearchState? = nil
+    /// Explore's People, when the server has face search; nil: no People pill.
+    var people: PeopleState? = nil
 
     /// The tab and Explore view it opens on (the UI lab opens others).
     @State var tab = HomeTab.storyline
@@ -84,7 +86,10 @@ struct JournalHomeView: View {
         GeometryReader { geometry in
             ScrollView {
                 if searching {
-                    SearchResultsView(search: shownSearch, places: stories.places, width: geometry.size.width, actions: actions.search)
+                    SearchResultsView(
+                        search: shownSearch, places: stories.places, width: geometry.size.width, actions: actions.search,
+                        faces: Array((people?.list.people ?? []).sorted { $0.files > $1.files }.prefix(16))
+                    )
                         .padding(.top, 80)
                         .padding(.bottom, 150)
                 } else {
@@ -108,7 +113,9 @@ struct JournalHomeView: View {
                     } else if canRead && library.days.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
                     }
-                    if tab == .explore {
+                    if tab == .explore && exploreView == .people {
+                        PeopleListView(people: people ?? PeopleState.companion.NONE, actions: actions.explore)
+                    } else if tab == .explore {
                         if let explore {
                             ExploreRowsView(
                                 summaries: explore, view: exploreView, width: geometry.size.width, actions: actions.explore,
@@ -338,7 +345,7 @@ struct JournalHomeView: View {
             if tab == .moments {
                 FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource)
             } else if tab == .explore {
-                ExploreBar(view: $exploreView, onMap: actions.explore.openMap)
+                ExploreBar(view: $exploreView, people: people != nil, onMap: actions.explore.openMap)
             }
         }
         .padding(.bottom, 24)

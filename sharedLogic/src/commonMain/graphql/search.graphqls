@@ -5,7 +5,7 @@ type SearchHit {
   media: Media!
   """
   How close the file is to the text: the cosine similarity of their vectors, -1 to 1. Only the order means much;
-  a good match is often 0.1 to 0.2.
+  a good match is often 0.1 to 0.2. A photo whose own text has the words (Media.text) scores 1.
   """
   score: Float!
   """
@@ -47,14 +47,52 @@ extend type Query {
   """
   The photos and videos that text describes best ("a dog on the beach at sunset"), best first: limit of them (at most
   1000) after the first offset, for the next page; offset + limit at most 10000.
+  Photos whose own text has every word of text come first (a receipt, a sign, a screenshot: Media.text, Hebrew and
+  English, a word also matching its start and, in Hebrew, its prefixed forms), those with the most matches first;
+  then the files SigLIP finds.
   With people (Person.id), only files with a face of every one of them; with people and no text, those files, the
   last taken first, and indexed and total count the files read for faces.
   With years, only files taken in one of them (the year where they were taken; when that isn't known, the year
   uploaded). With area, only files taken inside it; files without a location are left out. Both are applied before
   the best are picked, so a filtered search returns the best matches of that year or place. Files the user marked
   private (setPrivate) are left out too, unless includePrivate is true (an app showing private media); on a device
-  set to withhold them they are never found. Fails when text search is off on the server (face search, for people),
+  set to withhold them they are never found. Fails when both text search and text in photos are off on the server
+  (face search, for people),
   when neither text nor people is given, and when a person is not found (load the people again).
   """
   searchMedia(text: String, people: [ID!], limit: Int = 100, offset: Int = 0, years: [Int!], area: GeoAreaInput, includePrivate: Boolean = false): MediaSearch!
+}
+
+"""
+Whether the server can read a search's words at once. A server set to index once a day loads the model's text half
+only to search, and lets it go 10 minutes after the last search; loading it takes a few seconds (about 4).
+"""
+enum SearchModelState {
+  "Loaded: a search answers at once."
+  READY
+  "Being loaded, a few seconds; a search now waits for it. Apps say so (\"Getting search ready…\")."
+  LOADING
+  "Not loaded: the next search, or prepareSearch, loads it."
+  UNLOADED
+  "Text search is off on this server (serverInfo.search); words find only text in photos, if that is on."
+  OFF
+}
+
+extend type Query {
+  """
+  Whether the search model is loaded. With wait, while it is LOADING the answer waits until the load ends (READY, or
+  UNLOADED when it failed), at most 30 seconds: apps ask this way after prepareSearch, once, rather than asking
+  again and again. Asked again after 30 seconds of LOADING, it waits again.
+  """
+  searchModel(wait: Boolean = false): SearchModelState!
+}
+
+extend type Mutation {
+  """
+  Gets the search model ready for a search about to come: apps call it when the user opens the search screen, so the
+  first search doesn't wait for the model to load. Answers at once with the state: LOADING while it loads in the
+  background (searchModel(wait: true) answers when it is READY; a search sent meanwhile waits for it), READY when it was loaded
+  already. Keeps the model loaded 10 minutes longer, as a search does.
+  """
+  prepareSearch: SearchModelState!
 }

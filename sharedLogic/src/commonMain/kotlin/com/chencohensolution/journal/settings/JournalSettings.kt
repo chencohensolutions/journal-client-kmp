@@ -7,6 +7,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
 import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.PreviewQuality
+import com.chencohensolution.journal.server.ServerFeatures
 import com.chencohensolution.journal.storage.FreeUpRule
 
 /** Minimal persistent string storage: SharedPreferences on Android, NSUserDefaults on iOS. */
@@ -153,6 +154,30 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_PRIVATE_THRESHOLD_PERCENT, null)
         }
 
+    /** The server's last `serverInfo` (see [ServerFeatures]); null before it answered once. */
+    var serverFeatures: ServerFeatures?
+        get() = store.getString(KEY_SERVER_FEATURES)?.let { runCatching { featuresJson.decodeFromString(ServerFeatures.serializer(), it) }.getOrNull() }
+        set(value) = store.putString(KEY_SERVER_FEATURES, value?.let { featuresJson.encodeToString(ServerFeatures.serializer(), it) })
+
+    /**
+     * The indexes this phone keeps to search itself (Settings › Search › On this phone), by the server's names
+     * (search, faces, ocr, similar, aesthetic). Only the aesthetic scores at first: they are small, and pick a set's best
+     * photo and the covers.
+     */
+    var phoneIndexes: Set<String>
+        get() = store.getString(KEY_PHONE_INDEXES)?.split(",")?.filter { it.isNotEmpty() }?.toSet() ?: DEFAULT_PHONE_INDEXES
+        set(value) = store.putString(KEY_PHONE_INDEXES, value.sorted().joinToString(","))
+
+    /** When the kept indexes last caught up with the server (epoch milliseconds); null: never. */
+    var phoneIndexesUpdatedAt: Long?
+        get() = store.getString(KEY_PHONE_INDEXES_UPDATED_AT)?.toLongOrNull()
+        set(value) = store.putString(KEY_PHONE_INDEXES_UPDATED_AT, value?.toString())
+
+    /** On this phone › Only on Wi-Fi: downloads wait for Wi-Fi (on by default). */
+    var phoneIndexesWifiOnly: Boolean
+        get() = store.getString(KEY_PHONE_INDEXES_WIFI_ONLY) != "false"
+        set(value) = store.putString(KEY_PHONE_INDEXES_WIFI_ONLY, value.toString())
+
     /** "Show the phone badge" (Settings → Badges): off by default. */
     var showOnPhoneBadge: Boolean
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
@@ -183,6 +208,12 @@ internal class JournalSettings(private val store: KeyValueStore) {
     companion object {
         const val DEFAULT_PREVIEW_CACHE_GB = 10
         const val DEFAULT_SEARCH_PAGE_SIZE = 200
+        val DEFAULT_PHONE_INDEXES = setOf("aesthetic")
+        private val featuresJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        private const val KEY_SERVER_FEATURES = "server_features"
+        private const val KEY_PHONE_INDEXES = "phone_indexes"
+        private const val KEY_PHONE_INDEXES_WIFI_ONLY = "phone_indexes_wifi_only"
+        private const val KEY_PHONE_INDEXES_UPDATED_AT = "phone_indexes_updated_at"
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"

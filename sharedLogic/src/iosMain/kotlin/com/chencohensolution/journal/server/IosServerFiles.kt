@@ -4,6 +4,8 @@ package com.chencohensolution.journal.server
 
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.people.Face
+import com.chencohensolution.journal.people.faceCrop
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.storage.PhoneStorage
 import kotlinx.cinterop.BetaInteropApi
@@ -75,6 +77,13 @@ class IosServerFiles internal constructor(
         previews.viewer(sha, item.fileName, maxSide, decoders(decoding, item, maxSide))
     }
 
+    /** [face] as a round avatar [side] pixels across (a crop of its photo's preview); null offline when never fetched. */
+    fun face(face: Face, side: Int, onResult: (UIImage?) -> Unit): ObservationHandle = run(onResult) {
+        val photo = library.media.value.firstOrNull { it.sha256 == face.sha256 }
+        val bytes = previews.face(face.sha256, faceCrop(face, photo?.width ?: 0, photo?.height ?: 0), side) ?: return@run null
+        decoding?.let { d -> withContext(Dispatchers.IO) { d.decodeData(bytes.toNSData()) } }
+    }
+
     /** The largest preview of [item] kept on this phone, never fetched: what shows while its original downloads. */
     fun largestPreview(item: MediaItem, onResult: (UIImage?) -> Unit): ObservationHandle = run(onResult) {
         val decoding = decoding ?: return@run null
@@ -116,6 +125,9 @@ class IosServerFiles internal constructor(
     fun observeSyncProgress(onChange: (SyncProgress?) -> Unit): ObservationHandle = observe(library.syncProgress, onChange)
 
     fun observeMedia(onChange: (List<ServerMedia>) -> Unit): ObservationHandle = observe(library.media, onChange)
+
+    /** What the server can do ([ServerFeatures.NONE] before it answered once). */
+    fun observeFeatures(onChange: (ServerFeatures) -> Unit): ObservationHandle = observe(library.features) { onChange(it ?: ServerFeatures.NONE) }
 
     /** The sha256 of each original kept here. */
     fun observeKept(onChange: (Set<String>) -> Unit): ObservationHandle = observe(originals.kept) { onChange(it.keys) }

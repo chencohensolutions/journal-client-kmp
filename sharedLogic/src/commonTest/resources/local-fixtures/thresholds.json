@@ -1,0 +1,14 @@
+{
+  "faces": {
+    "likelySamePerson": 0.36,
+    "minGroup": 3
+  },
+  "search": {
+    "momentWindowSeconds": 7200,
+    "setSimilarity": 0.93,
+    "setWindowSeconds": 600
+  },
+  "similar": {
+    "duplicateSimilarity": 0.96
+  }
+}

@@ -11,3 +11,11 @@ query SearchMedia($text: String!, $limit: Int, $offset: Int, $years: [Int!], $ar
     total
   }
 }
+
+mutation PrepareSearch {
+  prepareSearch
+}
+
+query SearchModel($wait: Boolean) {
+  searchModel(wait: $wait)
+}
