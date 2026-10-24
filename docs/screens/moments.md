@@ -68,6 +68,35 @@ the platform `MediaPlayer` and a `TextureView` ([FeedVideo.kt](../../androidApp/
 Tapping a photo opens the [viewer](viewer.md) on its row's photos, in the order shown. When the viewer closes, the
 feed scrolls to that photo, and a near-duplicate set turns to it.
 
+## Going to a date (Oct 24, 2026)
+
+A **month pill** above the tabs, "‹ October 2026 ›", says which month the top of the feed is in, and goes to another
+year, month or day with one finger. Android and iOS.
+
+- **The arrows** go to the month with photos before or after (months without photos are skipped). Held, they keep
+  going: after 0.4 s, then every 0.25 s, faster and faster. At the oldest or newest month that arrow is dimmed.
+- **Swiping along the month's name** steps a month every 22 points, toward the newer end being newer (right, or left in
+  Hebrew).
+- **Tapping the name** grows the pill into the **ruler**, still above the tabs:
+  - the month and its counts ("88 photos · 14 days") and a ⌄ to fold it;
+  - the month's **days** in a line, lit where there are photos: tap one or slide along it, and the feed goes to the lit
+    day nearest the finger;
+  - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January, a
+    needle in the middle. Drag it and the feed follows; a flick keeps it turning, and it settles on a month.
+- **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident), as
+  do ⌄, back (Android), changing tabs, search and picking photos. The backup summary hides while it is open.
+- **Where it lands:** a month lands on its newest day with photos, the top of the month in a feed read newest first; a
+  day lands on its row's divider, just under the sources bar. A row over two days (grouping by gaps) is landed on for
+  either day.
+- A light tick per month or day, a firmer one when the year changes.
+- It hides while picking photos, while a "Showing 6 from WhatsApp" note shows, and when the feed is empty.
+- Nothing is saved: the months and days are worked out from the feed shown (`MomentsFeed.timeline`, a
+  `FeedTimeline` in [FeedTimeline.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/FeedTimeline.kt),
+  tested in `FeedTimelineTest`), which also does the stepping, landing, nearest day and month, and the year ticks.
+- The UI lab's **Moments over seven years** (`moments-years`) has a feed long enough to try it. Other designs for it
+  (an edge scrubber, a pill at the top with its ruler, a hold-and-slide date pad) are suggestions in the iOS lab
+  (`moments`).
+
 ## iOS
 
 The same feed, from the same shared `StoriesState.feed`, with these differences:
@@ -97,6 +126,8 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 - iOS: [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift) (the rows, made to be reused for any
   feed, such as `StoriesState.feedOf(items)`), [FeedVideo.swift](../../iosApp/iosApp/FeedVideo.swift), the screen's
   state, menus and sheets in [JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift).
+- Going to a date: [FeedTimelineViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedTimelineViews.kt)
+  and [FeedTimelineViews.swift](../../iosApp/iosApp/FeedTimelineViews.swift), on the shared `FeedTimeline`.
 
 ## How it is grouped
 

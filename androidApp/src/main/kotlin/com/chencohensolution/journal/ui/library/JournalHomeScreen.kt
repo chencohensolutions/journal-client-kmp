@@ -48,6 +48,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -83,6 +85,7 @@ import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.settings.GroupingMode
 import java.time.Instant
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -205,6 +208,22 @@ internal fun JournalHomeScreen(
         value = withContext(Dispatchers.Default) { shownFeed.rows() }
     }
     val storyRows = remember(stories.storyline) { storylineRows(stories.storyline) }
+    // The month pill grown into the ruler; a touch anywhere else, back, or leaving the tab folds it.
+    var timelineOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = timelineOpen) { timelineOpen = false }
+    LaunchedEffect(tab, searching, selection.active) { timelineOpen = false }
+    val timeline = shownFeed.timeline
+    val rowSections = remember(feedRows) { feedRows.sectionKeys() }
+    // The month of the row at the top, under the title: the first whose bottom is below the list's top padding (the
+    // row behind the title counts as visible). Derived, so the screen recomposes only when the month changes.
+    val topMonth by remember(feedRows, timeline) {
+        derivedStateOf {
+            val info = list.layoutInfo
+            val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
+            rowSections.getOrNull(top - (info.totalItemsCount - feedRows.size))?.let(timeline::monthOf)
+        }
+    }
+    val scope = rememberCoroutineScope()
     // What the list shows below its banners: the storyline's or the feed's items.
     val rows = when (tab) {
         HomeTab.MOMENTS -> feedRows
@@ -352,8 +371,10 @@ internal fun JournalHomeScreen(
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
         }
 
+        if (timelineOpen) TimelineScrim { timelineOpen = false }
+
         if (!searching) BottomControls(
-            summary = backupSummary(library, backupRunning).takeIf { !selection.active },
+            summary = backupSummary(library, backupRunning).takeIf { !selection.active && !timelineOpen },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
         ) {
             if (selection.active && moments) {
@@ -374,6 +395,13 @@ internal fun JournalHomeScreen(
                     RevealNote(section, photos) {
                         reveal = null
                         actions.hideOnRow(section.key, photos.source)
+                    }
+                }
+                if (moments && band == null && !timeline.isEmpty) {
+                    TimelineBar(timeline, topMonth, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                        val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
+                        // The feed's rows come last in the list, after its banners.
+                        if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {

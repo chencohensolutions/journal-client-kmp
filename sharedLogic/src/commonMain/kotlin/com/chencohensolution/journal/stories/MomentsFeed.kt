@@ -94,6 +94,9 @@ data class MomentsFeed(
 
     fun section(key: String): FeedSection? =
         entries.firstNotNullOfOrNull { (it as? FeedEntry.Section)?.section?.takeIf { section -> section.key == key } }
+
+    /** Its months and days, for going to a date: worked out once, when first asked for. */
+    val timeline: FeedTimeline by lazy { FeedTimeline.of(this) }
 }
 
 /** A new camera moment starts after this long without a photo… */

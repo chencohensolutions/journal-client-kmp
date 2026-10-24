@@ -21,6 +21,18 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "moments", title: "Moments", options: [
         current { labHome(data.library, data.feedStories, tab: .moments) },
+        LabOption(id: "scrub-edge", title: "Edge scrubber", note: "Grab the right edge: years, then slide left for days") {
+            EdgeScrubberSuggestion()
+        },
+        LabOption(id: "scrub-ruler", title: "Time ruler", note: "Tap the month pill: a dial of months and a strip of days") {
+            TimeRulerSuggestion()
+        },
+        LabOption(id: "scrub-pad", title: "Date pad", note: "Hold the month pill and slide: up/down years, left/right months") {
+            DatePadSuggestion()
+        },
+    ]),
+    LabScreen(id: "moments-years", title: "Moments over seven years", options: [
+        current { labHome(data.timelineLibrary, data.timelineStories, tab: .moments) },
     ]),
     LabScreen(id: "moments-hidden", title: "Moments, sources hidden", options: [
         current { labHome(data.library, data.hiddenStories, tab: .moments) },

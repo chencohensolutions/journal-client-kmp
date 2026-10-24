@@ -78,6 +78,16 @@ struct JournalHomeView: View {
     @State private var onScreen = false
     /// "Showing 6 from WhatsApp on Oct 4 · Hide", for a few seconds after a row's chip was tapped.
     @State private var revealToast: RevealToast?
+    /// The month pill grown into the ruler; a tap or drag anywhere else folds it.
+    @State private var timelineOpen = false
+    /// The Moments row at the top of the screen, by its key: the month the pill says.
+    @State private var topSection: String?
+    /// The pill, ruler or day strip asked for a row.
+    @State private var jump: RowJump?
+    /// Each feed row's id to its place in the feed and its section's key, worked out once per feed.
+    @State private var rowSections: [String: (index: Int, section: String)] = [:]
+    /// When the pill last jumped: the rows reported just after are where the feed was, not where it went.
+    @State private var jumpedAt = Date.distantPast
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -148,6 +158,8 @@ struct JournalHomeView: View {
                         )
                     }
                 }
+                // Its rows' visibility says which month is at the top (onScrollTargetVisibilityChange).
+                .scrollTargetLayout()
                 .padding(.top, barUnderTitle ? 118 : 72)
                 .padding(.bottom, 150)
                 // Swiping in the viewer keeps its photo in view here, and a set turns to it.
@@ -159,13 +171,27 @@ struct JournalHomeView: View {
                     }
                 }
                 .landsOn(showInMoments) { rows.place(of: $0) }
+                // The row lands just under the title and the sources bar.
+                .jumps(to: jump, anchor: UnitPoint(x: 0.5, y: 118 / max(geometry.size.height, 1)))
                 }
             }
             .scrollIndicators(.hidden)
+            .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
+                // Reported in no set order: the top one is the first in the feed.
+                guard moments, Date().timeIntervalSince(jumpedAt) > 0.8,
+                      let key = ids.compactMap({ rowSections[$0] }).min(by: { $0.index < $1.index })?.section else { return }
+                if key != topSection { topSection = key }
+            }
             .onAppear { playback.viewport = viewport(geometry) }
             .onChange(of: geometry.size) { playback.viewport = viewport(geometry) }
         }
-        .onChange(of: stories.feed, initial: true) { rows = stories.feed.rows }
+        .onChange(of: stories.feed, initial: true) {
+            rows = stories.feed.rows
+            rowSections = rows.sectionKeys
+        }
+        .onChange(of: tab) { timelineOpen = false }
+        .onChange(of: searching) { timelineOpen = false }
+        .onChange(of: selection.isEmpty) { timelineOpen = false }
         .onChange(of: showInMoments) { _, request in
             guard request != nil else { return }
             selection = []
@@ -182,6 +208,17 @@ struct JournalHomeView: View {
         .background(LibraryColors.background.ignoresSafeArea())
         .overlay(alignment: .top) {
             if searching { SearchTitleBar() } else { topBar }
+        }
+        .overlay {
+            // Over the feed while the ruler is open: a tap or a drag folds it and does nothing else.
+            if timelineOpen {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea()
+                    .onTapGesture { timelineOpen = false }
+                    .gesture(DragGesture(minimumDistance: 10).onChanged { _ in timelineOpen = false })
+                    .accessibilityHidden(true)
+            }
         }
         .overlay(alignment: .bottom) {
             if searching {
@@ -202,7 +239,7 @@ struct JournalHomeView: View {
     }
 
     private var bottomControls: some View {
-        BottomControls(summary: selection.isEmpty ? backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount)) : nil) {
+        BottomControls(summary: selection.isEmpty && !timelineOpen ? backupSummary(running: backupRunning, notBackedUp: Int(library.notBackedUpCount)) : nil) {
             if !selection.isEmpty && tab == .moments {
                 FeedSelectionBar(count: selection.count, onCancel: { selection = [] }, onMerge: merge)
             } else {
@@ -216,6 +253,18 @@ struct JournalHomeView: View {
                         },
                         onDismiss: { withAnimation { revealToast = nil } }
                     )
+                }
+                if tab == .moments && revealToast == nil && !stories.feed.timeline.isEmpty {
+                    TimelineBar(
+                        timeline: stories.feed.timeline,
+                        current: topSection.flatMap { stories.feed.timeline.monthOf(sectionKey: $0)?.intValue },
+                        open: $timelineOpen
+                    ) { day in
+                        // A jump doesn't report the rows it scrolled past, so the pill learns its month here.
+                        topSection = day.sectionKey
+                        jumpedAt = Date()
+                        jump = RowJump(rowId: "heading-\(day.sectionKey)")
+                    }
                 }
                 HStack(spacing: 10) {
                     SegmentedBar(options: [(HomeTab.storyline, "Storyline"), (HomeTab.moments, "Moments"), (HomeTab.explore, "Explore")], selection: tabBinding)

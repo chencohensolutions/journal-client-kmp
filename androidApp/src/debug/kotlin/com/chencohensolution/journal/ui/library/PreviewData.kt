@@ -177,6 +177,33 @@ internal object PreviewData {
         itemsById = stories.itemsById + feed.entries.flatMap { (it as FeedEntry.Section).section.items }.associateBy { it.id },
     )
 
+    /**
+     * Seven years of photos for going to a date in Moments (FeedTimeline): quiet weeks, busy days and a few trips, the
+     * same on every run. The same as the iOS lab's LabData.timelineStories, built through [StoriesState.feedOf].
+     */
+    private val yearsOfItems: List<MediaItem> by lazy {
+        var seed = 0x9E3779B97F4A7C15uL
+        fun next(): Int {
+            seed = seed xor (seed shl 13); seed = seed xor (seed shr 7); seed = seed xor (seed shl 17)
+            return (seed % 1000uL).toInt()
+        }
+        var trip = 0
+        (0 until 7 * 365).flatMap { daysAgo ->
+            if (trip == 0 && next() < 8) trip = 4 + next() % 9
+            val weekend = next() < 285
+            val chance = if (trip > 0) 950 else if (weekend) 520 else 230
+            val count = if (next() < chance) (if (trip > 0) 4 + next() % 9 else 1 + next() % (if (weekend) 6 else 3)) else 0
+            if (trip > 0) trip--
+            List(count) { photo(daysAgo, hour = 20 - it % 12, ratio = ratios[(daysAgo + it) % 4]) }
+        }
+    }
+
+    val timelineLibrary: LibraryState by lazy { LibraryState(access = PhotoAccess.FULL, days = yearsOfItems.asDays()) }
+
+    val timelineStories: StoriesState by lazy {
+        stories.copy(feed = stories.feedOf(yearsOfItems), itemsById = yearsOfItems.associateBy { it.id })
+    }
+
     // Hiding sources (Settings › Show in the app): WhatsApp and screenshots off, as at first.
 
     private fun Iterable<MediaItem>.asDays() =

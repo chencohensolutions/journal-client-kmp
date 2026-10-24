@@ -670,4 +670,10 @@
     <string name="indexing_resume">Resume</string>
     <string name="indexing_nudity">Nudity scan</string>
     <string name="indexing_paused_body_live">New photos wait to be read until you resume.</string>
+    <!-- Moments: going to a date (FeedTimelineViews.kt) -->
+    <string name="timeline_older">Older month</string>
+    <string name="timeline_newer">Newer month</string>
+    <string name="timeline_open">Show the month\'s days</string>
+    <string name="timeline_close">Close</string>
+    <string name="timeline_counts">%1$d photos · %2$d days</string>
 </resources>

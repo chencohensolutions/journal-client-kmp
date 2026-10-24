@@ -25,6 +25,11 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    LabScreen("moments-years", "Moments over seven years", listOf(
+        current {
+            JournalHomeScreen(PreviewData.timelineLibrary, PreviewData.timelineStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        },
+    )),
     LabScreen("moments-hidden", "Moments, sources hidden", listOf(
         current {
             JournalHomeScreen(PreviewData.library, PreviewData.hiddenStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
