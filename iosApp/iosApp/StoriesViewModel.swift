@@ -24,6 +24,13 @@ final class StoriesViewModel: ObservableObject {
         controller.close()
     }
 
+    /// A screen shows these photos by id (the viewer's list, similar photos, a crop): those `state.itemsById` lacks
+    /// are read from the library database and published; those the library doesn't have, `state.gone(itemId:)` says.
+    @MainActor
+    func want(_ ids: [String]) async {
+        try? await controller.want(ids: ids)
+    }
+
     // MARK: Writing, crops and tags
 
     /// The photo's title and paragraph; what was there before is kept as a version.

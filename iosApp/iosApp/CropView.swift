@@ -13,7 +13,10 @@ struct CropRequest: Identifiable {
 
 extension View {
     /// Shows the crop screen full screen while `request` is set; Done hands the photo's new crops to `save`.
-    func cropCover(_ request: Binding<CropRequest?>, stories: StoriesState, save: @escaping (_ itemId: String, _ crops: PhotoCrops) -> Void) -> some View {
+    func cropCover(
+        _ request: Binding<CropRequest?>, stories: StoriesState, want: @escaping ([String]) async -> Void,
+        save: @escaping (_ itemId: String, _ crops: PhotoCrops) -> Void
+    ) -> some View {
         fullScreenCover(item: request) { crop in
             if let item = stories.itemsById[crop.itemId] {
                 CropView(
@@ -27,9 +30,12 @@ extension View {
                     onClose: { request.wrappedValue = nil }
                 )
                 .preferredColorScheme(.dark)
-            } else {
+            } else if stories.gone(itemId: crop.itemId) {
                 // Deleted from the device while open.
                 Color.black.onAppear { request.wrappedValue = nil }
+            } else {
+                // Still being read from the library database (StoriesState.itemsById holds only part of the library).
+                Color.black.task(id: crop.itemId) { await want([crop.itemId]) }
             }
         }
     }

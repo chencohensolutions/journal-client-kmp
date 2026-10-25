@@ -18,6 +18,7 @@ import com.chencohensolution.journal.stories.GeoArea
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
+import okio.FileSystem
 import okio.Path.Companion.toPath
 
 // Searching on the phone with the indexes it keeps (LocalIndexes), as the server searches (journal-server-go
@@ -65,6 +66,7 @@ internal class LocalSearchApi(
     private val indexes: LocalIndexes,
     private val files: FileWalk,
     private val includePrivate: () -> Boolean,
+    private val fileSystem: FileSystem,
 ) : SearchApi {
     private var words: Pair<Int, Map<String, Map<String, Int>>>? = null
 
@@ -132,7 +134,7 @@ internal class LocalSearchApi(
     private fun tokenizer(model: String): SentencePiece? {
         val path = model.substringBeforeLast('/') + "/tokenizer.model"
         tokenizer?.takeIf { it.first == path }?.let { return it.second }
-        val bytes = runCatching { okio.FileSystem.SYSTEM.read(path.toPath()) { readByteArray() } }.getOrNull() ?: return null
+        val bytes = runCatching { fileSystem.read(path.toPath()) { readByteArray() } }.getOrNull() ?: return null
         return SentencePiece(bytes).also { tokenizer = path to it }
     }
 

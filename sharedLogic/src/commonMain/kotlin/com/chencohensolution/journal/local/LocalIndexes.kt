@@ -251,7 +251,7 @@ class LocalIndexes internal constructor(
                 throw e
             } catch (e: Throwable) {
                 // Out of memory too: the screen says it stopped, instead of showing a download that went still.
-                _state.update { it.copy(error = if (e is OutOfMemoryError) "not enough memory on this phone" else e.describe()) }
+                _state.update { it.copy(error = if (e::class.simpleName == "OutOfMemoryError") "not enough memory on this phone" else e.describe()) }
             } finally {
                 _state.update { it.copy(download = null) }
                 publish()

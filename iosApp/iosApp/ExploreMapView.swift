@@ -6,12 +6,19 @@ import SharedLogic
 // to show (see docs/screens/explore.md). Map tiles come from OpenFreeMap: it sees which areas are looked at, never
 // the photos, which are drawn on top here.
 
-/// A located photo, for the map.
-struct MapPin: Equatable {
-    let id: String
-    let year: Int
-    let latitude: Double
-    let longitude: Double
+/// Where the map looks once it settled: what is in view, and at which zoom.
+struct MapLook: Equatable {
+    let area: GeoArea
+    let zoom: Double
+}
+
+/// What the photos in view are read again for: where the map looks, the years, the overview and the library.
+private struct MapAreaInput: Equatable {
+    let look: MapLook
+    let from: Int
+    let to: Int
+    let overview: ObjectIdentifier
+    let library: ObjectIdentifier
 }
 
 /// A place to open the map on, close up (a photo's location from the viewer's details).
@@ -33,38 +40,49 @@ struct ExploreMapView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
-    @State private var pins: [MapPin]?
+    @Environment(\.exploreReads) private var reads
+    /// The located photos' years and boxes, never the photos themselves: those around what is in view are read as the
+    /// map moves (docs/plans/library-on-disk.md, step 6c).
+    @State private var overview: MapOverview?
+    @State private var loaded = false
     /// The years shown; nil for the first or last year with photos.
     @State private var fromYear: Int?
     @State private var toYear: Int?
-    /// What the map shows, once it has settled.
-    @State private var area: GeoArea?
-    /// The whole library per source, shown or not, for the "Showing" sheet.
-    @State private var counts: [MediaSource: KotlinInt] = [:]
+    /// Where the map looks, once it has settled.
+    @State private var look: MapLook?
+    /// The photos around what is in view, counted per square, and how many are in view.
+    @State private var drawn: MapArea?
     @State private var choosing = false
+
+    private var counts: [MediaSource: KotlinInt] { overview?.counts ?? [:] }
 
     var body: some View {
         ZStack {
             LibraryColors.background.ignoresSafeArea()
-            if let pins, let years = Self.years(pins) {
+            if let overview, let range = overview.years {
+                let years = Int(range.first)...Int(range.last)
                 let from = min(max(fromYear ?? years.lowerBound, years.lowerBound), years.upperBound)
                 let to = min(max(toYear ?? years.upperBound, from), years.upperBound)
-                let shown = pins.filter { (from...to).contains($0.year) }
-                let inView = area.map { area in shown.count { area.contains(point: GeoPoint(latitude: $0.latitude, longitude: $0.longitude)) } } ?? 0
+                let inView = Int(drawn?.inView ?? 0)
                 PhotoMap(
-                    pins: shown,
+                    cells: drawn?.cells ?? [],
+                    bounds: overview.bounds(from: Int32(from), to: Int32(to)),
                     at: at,
                     dark: colorScheme == .dark,
-                    onArea: { area = $0 },
+                    onLook: { look = $0 },
                     onOpen: { area, itemId in openPhotos(.of(fromYear: from, toYear: to, area: area), itemId) }
                 )
                 .ignoresSafeArea()
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     MapSheet(years: years, from: from, to: to, inView: inView, onRange: { fromYear = $0; toYear = $1 }) {
-                        if let area { openPhotos(.of(fromYear: from, toYear: to, area: area), nil) }
+                        if let look { openPhotos(.of(fromYear: from, toYear: to, area: look.area), nil) }
                     }
                 }
-            } else if pins != nil {
+                .task(id: look.map { MapAreaInput(look: $0, from: from, to: to, overview: ObjectIdentifier(overview), library: ObjectIdentifier(library)) }) {
+                    guard let look else { return }
+                    if let area = await reads.mapArea(stories, overview, visible: look.area, zoom: look.zoom, from: from, to: to) { drawn = area }
+                }
+            } else if loaded {
                 Text("No photos with a location yet.")
                     .font(.system(size: 15))
                     .foregroundStyle(LibraryColors.muted)
@@ -90,14 +108,8 @@ struct ExploreMapView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ExploreInput(library, stories)) {
-            let (library, stories) = (library, stories)
-            (pins, counts) = await Task.detached(priority: .userInitiated) {
-                let places = stories.places
-                let pins = exploreItems(library, stories).compactMap { item in
-                    places.location(item: item).map { MapPin(id: item.id, year: Int(item.day.year), latitude: $0.latitude, longitude: $0.longitude) }
-                }
-                return (pins, ExploreKt.sourceCounts(items: library.days.flatMap { $0.items }))
-            }.value
+            if let read = await reads.mapOverview(library, stories) { overview = read }
+            loaded = true
         }
     }
 
@@ -125,10 +137,6 @@ struct ExploreMapView: View {
         }
     }
 
-    private static func years(_ pins: [MapPin]) -> ClosedRange<Int>? {
-        guard let first = pins.map(\.year).min(), let last = pins.map(\.year).max() else { return nil }
-        return first...last
-    }
 }
 
 /// At the bottom: the years shown, how many photos are in view with Show, and a slider over the years.
@@ -258,6 +266,8 @@ private let sourceId = "photos"
 private let clustersId = "photo-clusters"
 private let countsId = "photo-counts"
 private let pinsId = "photo-pins"
+/// Each feature is a square of photos, this many of them (see `mapAreaOf`); the circles the map joins add them up.
+private let photosKey = "photos"
 
 /// Past this zoom pins aren't joined any more; a circle left is photos taken in one spot.
 private let clusterMaxZoom = 16.0
@@ -265,13 +275,15 @@ private let clusterMaxZoom = 16.0
 /// How far from a tap, in points, a pin still counts as tapped.
 private let tapSlop: CGFloat = 24
 
-/// MapLibre's map with the photos as a clustered shape source and three layers, as on Android.
+/// MapLibre's map with the squares of photos as a clustered shape source and three layers, as on Android.
 private struct PhotoMap: UIViewRepresentable {
-    let pins: [MapPin]
-    /// Where it opens, close up; nil: it fits the pins.
+    let cells: [MapCell]
+    /// The box around the photos of the years shown: the map fits it the first time (unless it opened on a place).
+    let bounds: GeoArea?
+    /// Where it opens, close up; nil: it fits `bounds`.
     let at: MapCenter?
     let dark: Bool
-    let onArea: (GeoArea) -> Void
+    let onLook: (MapLook) -> Void
     let onOpen: (GeoArea, _ itemId: String?) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -309,16 +321,15 @@ private struct PhotoMap: UIViewRepresentable {
             coordinator.source = nil
             map.styleURL = style
         } else {
-            coordinator.show(pins, on: map)
+            coordinator.update(map)
         }
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
         var parent: PhotoMap?
         var source: MLNShapeSource?
-        private var shownIds: [String]?
-        /// The map fits the pins the first time they arrive (unless it opened on a place); after that it stays where
-        /// it was put.
+        private var shownCells: [MapCell]?
+        /// The map fits the photos once (unless it opened on a place); after that it stays where it was put.
         var placed = false
 
         func mapView(_ map: MLNMapView, didFinishLoading style: MLNStyle) {
@@ -328,22 +339,33 @@ private struct PhotoMap: UIViewRepresentable {
                 .clustered: true,
                 .clusterRadius: 48,
                 .maximumZoomLevelForClustering: clusterMaxZoom,
+                .clusterProperties: [photosKey: [NSExpression(format: "sum:({$featureAccumulated, \(photosKey)})"), NSExpression(forKeyPath: photosKey)]],
             ])
             style.addSource(photos)
             source = photos
-            shownIds = nil
+            shownCells = nil
+
+            // A circle the map joined, or a square of more than one photo.
+            let clustered = NSPredicate(mglJSONObject: ["any", ["has", "point_count"], [">", ["get", photosKey], 1]])
+            let count: [Any] = ["get", photosKey]
 
             let clusters = MLNCircleStyleLayer(identifier: clustersId, source: photos)
-            clusters.predicate = NSPredicate(format: "cluster == YES")
+            clusters.predicate = clustered
             clusters.circleColor = NSExpression(forConstantValue: colors.circle)
-            clusters.circleRadius = NSExpression(format: "mgl_step:from:stops:(point_count, 16, %@)", [10: 20, 100: 25, 1000: 30])
+            clusters.circleRadius = NSExpression(mglJSONObject: ["step", count, 16, 10, 20, 100, 25, 1000, 30])
             clusters.circleStrokeWidth = NSExpression(forConstantValue: 2)
             clusters.circleStrokeColor = NSExpression(forConstantValue: colors.ring)
             style.addLayer(clusters)
 
             let counts = MLNSymbolStyleLayer(identifier: countsId, source: photos)
-            counts.predicate = NSPredicate(format: "cluster == YES")
-            counts.text = NSExpression(format: "CAST(point_count_abbreviated, 'NSString')")
+            counts.predicate = clustered
+            // As the map wrote its own counts: 1,500 as "1.5k", 12,000 as "12k".
+            counts.text = NSExpression(mglJSONObject: [
+                "case",
+                [">=", count, 10000], ["concat", ["to-string", ["round", ["/", count, 1000]]], "k"],
+                [">=", count, 1000], ["concat", ["to-string", ["/", ["round", ["/", count, 100]], 10]], "k"],
+                ["to-string", count],
+            ])
             counts.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
             counts.textFontSize = NSExpression(forConstantValue: 12)
             counts.textColor = NSExpression(forConstantValue: colors.text)
@@ -352,58 +374,66 @@ private struct PhotoMap: UIViewRepresentable {
             style.addLayer(counts)
 
             let pins = MLNCircleStyleLayer(identifier: pinsId, source: photos)
-            pins.predicate = NSPredicate(format: "cluster != YES")
+            pins.predicate = NSCompoundPredicate(notPredicateWithSubpredicate: clustered)
             pins.circleColor = NSExpression(forConstantValue: colors.circle)
             pins.circleRadius = NSExpression(forConstantValue: 7)
             pins.circleStrokeWidth = NSExpression(forConstantValue: 2)
             pins.circleStrokeColor = NSExpression(forConstantValue: colors.ring)
             style.addLayer(pins)
 
-            show(parent.pins, on: map)
+            update(map)
         }
 
-        /// Puts `pins` on the map when they changed; the first time, the map fits them.
-        func show(_ pins: [MapPin], on map: MLNMapView) {
-            guard let source else { return }
-            let ids = pins.map(\.id)
-            guard ids != shownIds else { return }
-            shownIds = ids
-            source.shape = MLNShapeCollectionFeature(shapes: pins.map { pin in
+        /// The first time, fits the photos; then puts the squares on the map when they changed.
+        func update(_ map: MLNMapView) {
+            guard let source, let parent else { return }
+            if !placed, let bounds = parent.bounds {
+                placed = true
+                fit(bounds, on: map)
+                return
+            }
+            if !placed { return }
+            let cells = parent.cells
+            if let shownCells, shownCells.count == cells.count, zip(shownCells, cells).allSatisfy({ $0 === $1 }) { return }
+            shownCells = cells
+            source.shape = MLNShapeCollectionFeature(shapes: cells.map { cell in
                 let feature = MLNPointFeature()
-                feature.coordinate = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
-                feature.attributes = ["id": pin.id]
+                feature.coordinate = CLLocationCoordinate2D(latitude: cell.point.latitude, longitude: cell.point.longitude)
+                var attributes: [String: Any] = [photosKey: Int(cell.count)]
+                if let id = cell.id { attributes["id"] = id }
+                feature.attributes = attributes
                 return feature
             })
-            if !placed && !pins.isEmpty {
-                placed = true
-                fit(pins, on: map)
-            }
-            report(map)
         }
 
-        private func fit(_ pins: [MapPin], on map: MLNMapView) {
+        private func fit(_ box: GeoArea, on map: MLNMapView) {
             // The padding needs the map's size: wait until it is laid out.
             guard map.bounds.width > 200 else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak map] in
-                    if let map { self?.fit(pins, on: map) }
+                    if let map { self?.fit(box, on: map) }
                 }
                 return
             }
-            let latitudes = pins.map(\.latitude), longitudes = pins.map(\.longitude)
-            let southWest = CLLocationCoordinate2D(latitude: latitudes.min()!, longitude: longitudes.min()!)
-            let northEast = CLLocationCoordinate2D(latitude: latitudes.max()!, longitude: longitudes.max()!)
-            if southWest.latitude == northEast.latitude && southWest.longitude == northEast.longitude {
-                map.setCenter(southWest, zoomLevel: 13, animated: false)
+            if box.south == box.north && box.west == box.east {
+                map.setCenter(CLLocationCoordinate2D(latitude: box.south, longitude: box.west), zoomLevel: 13, animated: false)
             } else {
+                let southWest = CLLocationCoordinate2D(latitude: box.south, longitude: box.west)
+                let northEast = CLLocationCoordinate2D(latitude: box.north, longitude: box.east)
                 // Clear of the sheet at the bottom.
                 let padding = UIEdgeInsets(top: 96, left: 64, bottom: 200, right: 64)
                 map.setCamera(map.cameraThatFitsCoordinateBounds(MLNCoordinateBounds(sw: southWest, ne: northEast), edgePadding: padding), animated: false)
             }
+            report(map)
         }
 
         func mapView(_ map: MLNMapView, regionDidChangeAnimated animated: Bool) { report(map) }
 
-        private func report(_ map: MLNMapView) { parent?.onArea(area(of: map)) }
+        func mapViewDidFinishLoadingMap(_ map: MLNMapView) { if placed { report(map) } }
+
+        private func report(_ map: MLNMapView) {
+            guard map.bounds.width > 0 else { return }
+            parent?.onLook(MapLook(area: area(of: map), zoom: map.zoomLevel))
+        }
 
         private func area(of map: MLNMapView) -> GeoArea {
             let bounds = map.visibleCoordinateBounds
@@ -414,9 +444,10 @@ private struct PhotoMap: UIViewRepresentable {
             guard let map = gesture.view as? MLNMapView, let parent else { return }
             let point = gesture.location(in: map)
             let box = CGRect(x: point.x - tapSlop, y: point.y - tapSlop, width: tapSlop * 2, height: tapSlop * 2)
-            let cluster = map.visibleFeatures(in: box, styleLayerIdentifiers: [clustersId]).first as? MLNPointFeatureCluster
+            let cluster = map.visibleFeatures(in: box, styleLayerIdentifiers: [clustersId]).first
             if let cluster, map.zoomLevel < clusterMaxZoom {
-                let zoom = source?.zoomLevel(forExpanding: cluster) ?? map.zoomLevel + 2
+                // A circle the map joined knows how far to zoom in to part it; a square of photos is nearer in.
+                let zoom = (cluster as? MLNPointFeatureCluster).flatMap { source?.zoomLevel(forExpanding: $0) } ?? floor(map.zoomLevel) + 2
                 map.setCenter(cluster.coordinate, zoomLevel: zoom, animated: true)
             } else if cluster != nil {
                 // Photos taken in one spot, all of them in view: the viewer on what is in view.

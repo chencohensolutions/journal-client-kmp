@@ -31,8 +31,9 @@ struct LibraryRootView: View {
     @State private var momentsRequest: PhotoRequest?
     /// Photos mark themselves in it; the viewer zooms out of them.
     @Namespace private var zoom
-    /// Looks like this › More's photos, by the photo they look like.
-    @State private var similarLists: [String: [String]] = [:]
+    /// Looks like this › More's photos, by the photo they look like. The items are kept: `StoriesState.itemsById` holds
+    /// only part of the library (docs/plans/library-on-disk.md, step 6a), and they show until the database's are read.
+    @State private var similarLists: [String: [MediaItem]] = [:]
 
     private enum Route: Hashable {
         case tags
@@ -59,7 +60,8 @@ struct LibraryRootView: View {
         var feedSection: String? = nil
         /// With `feedSection`: the band of this hidden source's photos shown on that row.
         var revealed: MediaSource? = nil
-        let itemId: String
+        /// Empty from the map without a photo tapped: the first of its photos.
+        var itemId: String
         var tag: String? = nil
         var scope: ExploreScope? = nil
         /// The photos a page showed, in its order (a person's, similar photos, Best first).
@@ -67,15 +69,48 @@ struct LibraryRootView: View {
         /// What it swipes through, fixed when opened: tagging a photo or taking it out of the storyline must not pull it
         /// out from under it.
         var itemIds: [String] = []
+        /// The items as opened: shown until the database's are read (`StoriesState.itemsById` holds only part of the
+        /// library), so the viewer never comes out empty meanwhile.
+        var items: [MediaItem] = []
         var id: String { itemId }
     }
 
     private func openViewer(_ request: ViewerRequest) {
+        // An Explore page's or the map's photos are read from the database first (step 6c).
+        if let scope = request.scope {
+            let (library, stories) = (library.state, stories.state)
+            Task { @MainActor in
+                var request = request
+                let all = await exploreReads.shown(library, stories, scope)
+                request.items = request.feedSection.map { section in stories.feedOf(items: all).section(key: section)?.items ?? [] } ?? all
+                if request.itemId.isEmpty, let first = request.items.first { request.itemId = first.id }
+                guard !request.itemId.isEmpty else { return }
+                present(request)
+            }
+        } else {
+            var request = request
+            request.items = items(for: request)
+            present(request)
+        }
+    }
+
+    private func present(_ request: ViewerRequest) {
         var request = request
-        request.itemIds = items(for: request).map(\.id)
+        request.itemIds = request.items.map(\.id)
         showing = ViewerShowing(session: UUID(), itemId: request.itemId)
         viewer = request
     }
+
+    /// The viewer's photos: as the database has them now, else as opened, unless they are gone from the library.
+    private func viewerItems(_ request: ViewerRequest) -> [MediaItem] {
+        let state = stories.state
+        let opened = Dictionary(request.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return request.itemIds.compactMap { id in
+            state.itemsById[id] ?? opened[id].flatMap { state.gone(itemId: id) ? nil : $0 }
+        }
+    }
+
+    private var exploreReads: ExploreReads { ExploreReads(controller: stories.controller) }
 
     /// The tile the viewer zooms back into on closing: the photo it shows.
     private func zoomSource(_ request: ViewerRequest) -> String {
@@ -142,7 +177,10 @@ struct LibraryRootView: View {
                                 prepare: search.prepare,
                                 addPerson: search.addPerson,
                                 removePerson: search.removePerson
-                            )
+                            ),
+                            loadMoreMoments: stories.controller.loadMoreMoments,
+                            loadMomentsTo: { day, done in stories.controller.loadMomentsTo(day: day, onLoaded: done) },
+                            loadMomentsToItem: { stories.controller.loadMomentsToItem(itemId: $0) }
                         ),
                         search: search.state,
                         people: journal.features.faces ? people.state : nil
@@ -171,8 +209,7 @@ struct LibraryRootView: View {
                             )
                         case .map:
                             ExploreMapView(library: library.state, stories: stories.state, toggleSource: settings.toggleFeedSource) { scope, itemId in
-                                guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
-                                openViewer(ViewerRequest(itemId: first, scope: scope))
+                                openViewer(ViewerRequest(itemId: itemId ?? "", scope: scope))
                             }
                         case .person(let id):
                             PersonRoute(id: id, library: library, people: people) { items, item in
@@ -181,8 +218,13 @@ struct LibraryRootView: View {
                                 if !path.isEmpty { path.removeLast() }
                             }
                         case .similar(let itemId):
-                            let items = (similarLists[itemId] ?? []).compactMap { stories.state.itemsById[$0] }
+                            // As the page gave them until the database's are read.
+                            let opened = similarLists[itemId] ?? []
+                            let items = opened.compactMap { item in
+                                stories.state.itemsById[item.id] ?? (stories.state.gone(itemId: item.id) ? nil : item)
+                            }
                             SimilarPageView(items: items) { openInOrder(items, $0) }
+                                .task(id: itemId) { await stories.want(opened.map(\.id)) }
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
@@ -193,12 +235,13 @@ struct LibraryRootView: View {
                     }
                 }
                 .environment(\.zoomNamespace, zoom)
+                .environment(\.exploreReads, exploreReads)
                 .environment(\.showOnPhoneBadge, settings.state.showOnPhoneBadge)
-                .cropCover($crop, stories: stories.state) { itemId, crops in stories.setCrops(crops, of: itemId) }
+                .cropCover($crop, stories: stories.state, want: stories.want) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in
                     MediaViewerView(
-                        items: request.itemIds.compactMap { stories.state.itemsById[$0] },
+                        items: viewerItems(request),
                         startId: request.itemId,
                         stories: stories.state,
                         actions: ViewerActions(
@@ -227,12 +270,12 @@ struct LibraryRootView: View {
                                 path.append(.person(id))
                             },
                             openSimilar: { item in
-                                let ids = findings.state.similar.map(\.id)
+                                let similar = findings.state.similar
                                 viewer = nil
-                                DispatchQueue.main.async { openViewer(ViewerRequest(itemId: item.id, list: ids)) }
+                                DispatchQueue.main.async { openViewer(ViewerRequest(itemId: item.id, list: similar.map(\.id), items: similar)) }
                             },
                             moreSimilar: {
-                                similarLists[findings.state.itemId] = findings.state.similar.map(\.id)
+                                similarLists[findings.state.itemId] = findings.state.similar
                                 let itemId = findings.state.itemId
                                 viewer = nil
                                 path.append(.similar(itemId))
@@ -242,12 +285,15 @@ struct LibraryRootView: View {
                         ),
                         findings: findings.state
                     )
+                    // The photo shown and its neighbours, read from the database as it is swiped.
+                    .task(id: showing?.itemId ?? request.itemId) {
+                        await stories.want(around(request.itemIds, showing?.itemId ?? request.itemId))
+                    }
                     // The map from the details, close up on the place; a photo opened on it takes the viewer's place.
                     .fullScreenCover(item: $viewerMap) { center in
                         ExploreMapView(library: library.state, stories: stories.state, at: center, toggleSource: settings.toggleFeedSource) { scope, itemId in
-                            guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
                             viewerMap = nil
-                            openViewer(ViewerRequest(itemId: first, scope: scope))
+                            openViewer(ViewerRequest(itemId: itemId ?? "", scope: scope))
                         }
                         .environment(\.colorScheme, colorScheme)
                         .preferredColorScheme(colorScheme)
@@ -289,7 +335,7 @@ struct LibraryRootView: View {
     /// A photo of a page that shows its photos in its own order (a person's, Best first, similar photos): the viewer
     /// swipes through them in that order.
     private func openInOrder(_ items: [MediaItem], _ item: MediaItem) {
-        openViewer(ViewerRequest(itemId: item.id, list: items.map(\.id)))
+        openViewer(ViewerRequest(itemId: item.id, list: items.map(\.id), items: items))
     }
 
     /// iOS asks only once; after that only Settings can grant access.
@@ -304,16 +350,11 @@ struct LibraryRootView: View {
     /// The items the viewer swipes through: the storyline, a tag's photos, the row of Moments or an Explore page (its
     /// photos in the order shown), the map's photos, what the search found, or what a page showed (`list`).
     private func items(for request: ViewerRequest) -> [MediaItem] {
-        if let list = request.list {
-            return list.compactMap { stories.state.itemsById[$0] }
+        if request.list != nil {
+            return request.items
         }
         if request.search {
             return search.state.items
-        }
-        if let scope = request.scope {
-            let items = scopeItems(library.state, stories.state, scope)
-            guard let section = request.feedSection else { return items }
-            return stories.state.feedOf(items: items).section(key: section)?.items ?? []
         }
         if let tag = request.tag {
             return stories.state.tagged(tag: tag).flatMap { $0.items }
@@ -329,6 +370,13 @@ struct LibraryRootView: View {
         }
         return []
     }
+}
+
+/// The viewer's photo `id` and up to 50 neighbours each way: what it asks the database for as it is swiped (as
+/// Android's `around`).
+private func around(_ ids: [String], _ id: String) -> [String] {
+    let at = ids.firstIndex(of: id) ?? 0
+    return Array(ids[max(0, at - 50)..<min(ids.count, at + 51)])
 }
 
 /// A person's page, or "Who's this?" for a group, on its own `PersonViewModel`.

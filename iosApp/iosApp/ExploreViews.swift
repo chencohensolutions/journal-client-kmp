@@ -22,16 +22,6 @@ struct ExploreActions {
     var reloadPeople: () -> Void = {}
 }
 
-/// What Explore works from: the library, newest first, without what the sources setting hides.
-func exploreItems(_ library: LibraryState, _ stories: StoriesState) -> [MediaItem] {
-    library.days.flatMap { $0.items }.filter { stories.shows(item: $0) }
-}
-
-/// The photos an Explore page or the map shows, newest first.
-func scopeItems(_ library: LibraryState, _ stories: StoriesState, _ scope: ExploreScope) -> [MediaItem] {
-    exploreItems(library, stories).filter { scope.matches(item: $0, places: stories.places) }
-}
-
 extension ExploreScope {
     /// Kotlin's default arguments, which Swift doesn't get.
     static func of(
@@ -42,20 +32,23 @@ extension ExploreScope {
     }
 }
 
-/// What changes the Explore summaries: a new library, new places, or other sources shown.
+/// What changes the Explore summaries: the library (its rows, scores and statuses), new places, other sources shown,
+/// or a new home.
 struct ExploreInput: Equatable {
     let library: ObjectIdentifier
     let places: ObjectIdentifier
     let shown: ShownSources
+    let home: ObjectIdentifier?
 
     init(_ library: LibraryState, _ stories: StoriesState) {
         self.library = ObjectIdentifier(library)
         places = ObjectIdentifier(stories.places)
         shown = stories.shownSources
+        home = stories.home.map { ObjectIdentifier($0) }
     }
 }
 
-/// The towns by country and the years, worked out off the main thread.
+/// The towns by country and the years, read from the library database (`ExploreReads`).
 struct ExploreSummaries {
     let countries: [CountrySummary]
     let years: [YearSummary]
@@ -63,22 +56,10 @@ struct ExploreSummaries {
     /// The whole library per source, shown or not: the "Showing" sheet's "N here".
     let sourceCounts: [MediaSource: KotlinInt]
 
-    static func of(_ library: LibraryState, _ stories: StoriesState) async -> ExploreSummaries {
-        await Task.detached(priority: .userInitiated) {
-            let all = library.days.flatMap { $0.items }
-            var items: [MediaItem] = []
-            var hidden: [MediaItem] = []
-            for item in all {
-                if stories.shows(item: item) { items.append(item) } else { hidden.append(item) }
-            }
-            let places = stories.places
-            return ExploreSummaries(
-                countries: ExploreKt.countriesOf(places: ExploreKt.placesOf(library: items, places: places)),
-                years: ExploreKt.yearsOf(library: items, places: places, hidden: hidden),
-                anyLocated: items.contains { places.location(item: $0) != nil },
-                sourceCounts: ExploreKt.sourceCounts(items: all)
-            )
-        }.value
+    @MainActor
+    static func of(_ reads: ExploreReads, _ library: LibraryState, _ stories: StoriesState) async -> ExploreSummaries? {
+        guard let summary = await reads.summary(library, stories) else { return nil }
+        return ExploreSummaries(countries: summary.countries, years: summary.years, anyLocated: summary.anyLocated, sourceCounts: summary.counts)
     }
 }
 
@@ -239,7 +220,7 @@ private struct HomeCountryTowns: View {
                             .foregroundStyle(LibraryColors.onBackground)
                             .lineLimit(1)
                             .accessibilityAddTraits(.isHeader)
-                        let photos = towns.reduce(0) { $0 + $1.items.count }
+                        let photos = towns.reduce(0) { $0 + Int($1.count) }
                         Text(verbatim: "\(String(localized: "\(towns.count) places")) · \(String(localized: "\(photos) photos"))")
                             .font(.system(size: 13))
                             .foregroundStyle(LibraryColors.muted)
@@ -361,7 +342,7 @@ private struct HomeCard: View {
                             .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(LibraryColors.photoText)
                             .lineLimit(1)
-                        Text(placeLine(count: place.items.count, first: Int(place.firstYear), last: Int(place.lastYear)))
+                        Text(placeLine(count: Int(place.count), first: Int(place.firstYear), last: Int(place.lastYear)))
                             .font(.system(size: 13))
                             .foregroundStyle(LibraryColors.photoTextMuted)
                     }
@@ -392,7 +373,7 @@ private struct PlaceCard: View {
                     .foregroundStyle(LibraryColors.onBackground)
                     .lineLimit(1)
                     .padding(.top, 6)
-                Text(verbatim: "\(place.items.count) · \(yearRange(Int(place.firstYear), Int(place.lastYear)))")
+                Text(verbatim: "\(place.count) · \(yearRange(Int(place.firstYear), Int(place.lastYear)))")
                     .font(.system(size: 12))
                     .foregroundStyle(LibraryColors.muted)
             }
@@ -435,7 +416,7 @@ private struct YearCard: View {
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text("\(year.items.count) photos")
+                    Text("\(Int(year.count)) photos")
                         .font(.system(size: 13))
                         .foregroundStyle(LibraryColors.muted)
                     ForEach(hidden, id: \.0) { source, count in
@@ -445,7 +426,7 @@ private struct YearCard: View {
                     }
                 }
             }
-            if year.items.isEmpty {
+            if year.count == 0 {
                 onlyHidden
             } else {
                 shownPhotos
@@ -454,8 +435,8 @@ private struct YearCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
-        .onTapGesture { if !year.items.isEmpty { actions.openYear(Int(year.year), nil) } }
-        .accessibilityAddTraits(year.items.isEmpty ? [] : .isButton)
+        .onTapGesture { if year.count > 0 { actions.openYear(Int(year.year), nil) } }
+        .accessibilityAddTraits(year.count == 0 ? [] : .isButton)
     }
 
     /// Its photos the sources setting hides, per source in order.
@@ -673,6 +654,7 @@ private struct ExplorePageView: View {
     var sort: Binding<PageSort>? = nil
     var openInOrder: ([MediaItem], MediaItem) -> Void = { _, _ in }
 
+    @Environment(\.exploreReads) private var reads
     @State private var page: ExplorePage?
     @State private var selection = Set<String>()
     @State private var choosing = false
@@ -735,9 +717,9 @@ private struct ExplorePageView: View {
             ShowingSheet(shown: stories.shownSources, counts: page?.counts ?? [:], onToggle: toggleSource)
         }
         .task(id: ExplorePageInput(explore: ExploreInput(library, stories), shown: shown)) {
-            let (library, stories, whole, shown, places) = (library, stories, whole, shown, stories.places)
+            let (stories, shown, places) = (stories, shown, stories.places)
+            let everything = await reads.scope(library, stories, whole)
             page = await Task.detached(priority: .userInitiated) {
-                let everything = library.days.flatMap { $0.items }.filter { whole.matches(item: $0, places: places) }
                 let all = everything.filter { stories.shows(item: $0) }
                 let inScope = all.filter { shown.matches(item: $0, places: places) }
                 return ExplorePage(
@@ -799,6 +781,7 @@ struct CountryPageView: View {
     let stories: StoriesState
     let openPlace: (_ town: String) -> Void
 
+    @Environment(\.exploreReads) private var reads
     @State private var summary: CountrySummary?
 
     var body: some View {
@@ -837,11 +820,7 @@ struct CountryPageView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task(id: ExploreInput(library, stories)) {
-            let (library, stories, country) = (library, stories, country)
-            summary = await Task.detached(priority: .userInitiated) {
-                let places = ExploreKt.placesOf(library: exploreItems(library, stories), places: stories.places)
-                return ExploreKt.countriesOf(places: places).first { $0.country == country }
-            }.value
+            summary = await reads.summary(library, stories)?.countries.first { $0.country == country }
         }
     }
 }

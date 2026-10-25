@@ -174,7 +174,7 @@ fun serverIndexing(context: Context): ServerIndexing =
 
 private fun localSearchApi(context: Context): LocalSearchApi {
     val settings = JournalSettings(SharedPreferencesStore(context))
-    return LocalSearchApi(localIndexes(context), serverLibrary(context)::forEachFile) { settings.privateMedia.show }
+    return LocalSearchApi(localIndexes(context), serverLibrary(context)::forEachFile, { settings.privateMedia.show }, FileSystem.SYSTEM)
 }
 
 /**

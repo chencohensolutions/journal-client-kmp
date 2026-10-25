@@ -36,7 +36,17 @@ struct HomeActions {
     var registerAgain: () -> Void
     /// Search, from the 🔍 beside the tabs.
     var search = SearchActions()
+    /// Moments is read a page at a time: the next page, as the list nears its end.
+    var loadMoreMoments: () -> Void = {}
+    /// Moments' rows down to the row of a day (going to a date); calls back with that row's key once it is read, nil
+    /// when no row has that day.
+    var loadMomentsTo: (LocalDay, @escaping (String?) -> Void) -> Void = { _, done in done(nil) }
+    /// Moments' rows down to the row of a photo, its day looked up in the library (it may be in no row read yet).
+    var loadMomentsToItem: (_ itemId: String) -> Void = { _ in }
 }
+
+/// How many rows before the end of what is read Moments reads the next page (as Android's `LOAD_AHEAD_ROWS`).
+private let loadAheadRows = 40
 
 enum HomeTab { case storyline, moments, explore }
 
@@ -68,6 +78,7 @@ struct JournalHomeView: View {
     @State var searching = false
     /// The Explore tab's towns and years, worked out off the main thread while it shows.
     @State private var explore: ExploreSummaries?
+    @Environment(\.exploreReads) private var reads
     /// What a photo's long-press menu opened.
     @State private var sheet: FeedSheet?
     /// Photos and sets picked to merge, by their first photo's id; picking is on while any is.
@@ -86,6 +97,12 @@ struct JournalHomeView: View {
     @State private var jump: RowJump?
     /// Each feed row's id to its place in the feed and its section's key, worked out once per feed.
     @State private var rowSections: [String: (index: Int, section: String)] = [:]
+    /// The photo "Show in Moments" lands on, once its row is read (`showInMoments` asks for it).
+    @State private var landing: PhotoRequest?
+    /// A photo to land on whose row isn't read yet, and since when it waits (up to 15 s, as Android's `LandOn`).
+    @State private var landingWait: (request: PhotoRequest, since: Date)?
+    /// How many rows were read when the next page was asked for: asked once per page.
+    @State private var askedMoreAt = -1
     /// When the pill last jumped: the rows reported just after are where the feed was, not where it went.
     @State private var jumpedAt = Date.distantPast
     /// The top bar's controls sliding away, which follows the scroll every frame.
@@ -123,9 +140,9 @@ struct JournalHomeView: View {
                     if let error = library.loadError {
                         Message(text: "Couldn't read your photos: \(error)")
                     }
-                    if library.loading && library.days.isEmpty {
+                    if library.loading && library.isEmpty {
                         ProgressView().tint(LibraryColors.onBackground).frame(maxWidth: .infinity).padding(48)
-                    } else if canRead && library.days.isEmpty && library.loadError == nil {
+                    } else if canRead && library.isEmpty && library.loadError == nil {
                         Message(text: "No photos or videos on this device yet.")
                     }
                     if tab == .explore && exploreView == .people {
@@ -138,7 +155,7 @@ struct JournalHomeView: View {
                             )
                         }
                     } else if moments {
-                        if stories.feed.entries.isEmpty && !library.days.isEmpty {
+                        if stories.feed.entries.isEmpty && !library.isEmpty {
                             Message(text: "Nothing to show. Turn on a source above.")
                         }
                         FeedRowsView(
@@ -150,7 +167,7 @@ struct JournalHomeView: View {
                             playback: playback
                         )
                     } else {
-                        if stories.storyline.isEmpty && !library.days.isEmpty {
+                        if stories.storyline.isEmpty && !library.isEmpty {
                             Message(text: "Nothing here yet. Open a photo and tap Write: what you write shows here.")
                         }
                         StorylineView(
@@ -175,7 +192,7 @@ struct JournalHomeView: View {
                     case .explore: return nil
                     }
                 }
-                .landsOn(showInMoments) { rows.place(of: $0) }
+                .landsOn(landing) { rows.place(of: $0) }
                 // The row lands just under the title and the sources bar.
                 .jumps(to: jump, anchor: UnitPoint(x: 0.5, y: 118 / max(geometry.size.height, 1)))
                 }
@@ -186,7 +203,14 @@ struct JournalHomeView: View {
             }
             .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.2) { ids in
                 // Reported in no set order: the top one is the first in the feed.
-                guard moments, Date().timeIntervalSince(jumpedAt) > 0.8,
+                guard moments else { return }
+                // Near the end of what is read: the next page.
+                let last = ids.compactMap({ rowSections[$0]?.index }).max() ?? 0
+                if last >= rows.count - loadAheadRows && askedMoreAt != rows.count {
+                    askedMoreAt = rows.count
+                    actions.loadMoreMoments()
+                }
+                guard Date().timeIntervalSince(jumpedAt) > 0.8,
                       let key = ids.compactMap({ rowSections[$0] }).min(by: { $0.index < $1.index })?.section else { return }
                 if key != topSection { topSection = key }
             }
@@ -196,6 +220,15 @@ struct JournalHomeView: View {
         .onChange(of: stories.feed, initial: true) {
             rows = stories.feed.rows
             rowSections = rows.sectionKeys
+            // A photo shown in Moments lands on its row once it is read.
+            if let wait = landingWait {
+                if rows.place(of: wait.request.itemId) != nil {
+                    landing = wait.request
+                    landingWait = nil
+                } else if Date().timeIntervalSince(wait.since) > 15 {
+                    landingWait = nil
+                }
+            }
         }
         .onChange(of: tab) {
             timelineOpen = false
@@ -211,13 +244,20 @@ struct JournalHomeView: View {
         }
         .onChange(of: timelineOpen) { if timelineOpen { scroll.showTitle() } }
         .onChange(of: showInMoments) { _, request in
-            guard request != nil else { return }
+            guard let request else { return }
+            // Moments is read a page at a time: a photo further down than what is read reads down to its day first.
+            if rows.place(of: request.itemId) != nil {
+                landing = request
+            } else {
+                landingWait = (request, Date())
+                actions.loadMomentsToItem(request.itemId)
+            }
             selection = []
             searching = false
             tab = .moments
         }
         .task(id: tab == .explore ? ExploreInput(library, stories) : nil) {
-            if tab == .explore { explore = await ExploreSummaries.of(library, stories) }
+            if tab == .explore, let read = await ExploreSummaries.of(reads, library, stories) { explore = read }
         }
         .onChange(of: canPlay, initial: true) { playback.enabled = canPlay }
         .onAppear { onScreen = true }
@@ -285,7 +325,16 @@ struct JournalHomeView: View {
                         // A jump doesn't report the rows it scrolled past, so the pill learns its month here.
                         topSection = day.sectionKey
                         jumpedAt = Date()
-                        jump = RowJump(rowId: "heading-\(day.sectionKey)")
+                        if rowSections["heading-\(day.sectionKey)"] != nil {
+                            jump = RowJump(rowId: "heading-\(day.sectionKey)")
+                        } else {
+                            // A row not read yet is read first (down to it), then gone to.
+                            actions.loadMomentsTo(day.day) { key in
+                                guard let key else { return }
+                                jumpedAt = Date()
+                                DispatchQueue.main.async { jump = RowJump(rowId: "heading-\(key)") }
+                            }
+                        }
                     }
                     // Slides down with the tabs into their place at the bottom, and back up with them.
                     .offset(y: scroll.bottomHidden ? tabsHeight + 10 : 0)

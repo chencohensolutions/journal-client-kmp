@@ -542,6 +542,16 @@ Confirmed by the owner on Oct 25, 2026:
 8. **iOS.** The same shared logic is already in place. Port Moments and the grids to the pager in SwiftUI
    (`MomentsFeedViews.swift`, `DayGrid.swift`, `ExploreViews.swift`, `LibraryRootView.swift`, the map). Add an entry
    in docs/ios-todo.md for whatever is left when a phase ships Android-first.
+   *Built (Oct 26, 2026, on the Mac):* phases 1–6 on iOS. Moments asks for the next page as it nears the end of what
+   is read (`HomeActions.loadMoreMoments`, 40 rows ahead), and going to a date or showing a photo in Moments reads
+   down to its row first (`loadMomentsTo`, `loadMomentsToItem`; "show in Moments" waits up to 15 s for the row).
+   Explore, its pages and the map read through `ExploreReads.swift` (the stories controller's `explore`,
+   `scopeItems`, `mapOverview`, `mapArea`; the UI lab keeps the items'). The map draws `MapCell` squares with a
+   `photos` property that its clusters add up. The viewer, similar photos and crop keep the items they were opened
+   with and ask `want(ids:)` for the photo shown and 50 each way. The four older shared compile errors are fixed
+   (`LocalSearchApi` takes its `FileSystem`), and the app links `-lsqlite3`. A debug build takes the made-up library's
+   size from its launch arguments (`-madeUpLibrary 300000`) and logs `Measure` lines to the console. Left: PhotoKit's
+   change tokens (docs/ios-todo.md).
 9. **Clean up and docs.**
    - Remove `mergeWithServer`, `groupByDay` over the whole library, and `LibraryState.days`.
    - docs/design.md gets a "Library on the phone" section: tables, rebuildable, what triggers what.

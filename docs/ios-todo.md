@@ -50,59 +50,16 @@ Still missing on iOS:
   strings `settings_hidden_title`, `settings_hidden_row_body`, `hidden_audio_*`, `hidden_apps_pills`. See
   [screens/settings.md](screens/settings.md).
 
-Planned, not built on either platform yet:
+- **The library database, what is left** (plan B; built on iOS on Oct 26, 2026: the database and its `-lsqlite3` link
+  flag in `Config.xcconfig`, Moments read a page at a time with going to a date and "show in Moments" reading down to
+  their row, Explore, its pages and the map from the database through `ExploreReads.swift`, the viewer, similar photos
+  and crop keeping the items they were opened with and asking `StoriesController.want(ids:)`, and the debug made-up
+  library from the launch arguments, `-madeUpLibrary 300000`). Still to do: PhotoKit is read whole on every load
+  (about 11 s for the simulator's 122 photos with 300,000 made-up rows beside them); make `IosMediaLibrary` a
+  `ChangingLibrary` with `PHPhotoLibrary.fetchPersistentChanges(since:)` and the token kept as the mark. Not checked
+  yet on iOS: that `server/media.json` is read in once and deleted, that face avatars still get their photo's size,
+  and that marking a photo private still finds its sha256 (both read from the database now).
 
-- **The library database** (plan B phase 1, Oct 25, 2026, written on Windows, never compiled for iOS) —
-  `IosJournal.libraryDatabase` opens `Application Support/library/library.db` with SQLDelight's native driver, and
-  `TestDatabase.ios.kt` an in-memory one for the tests. On the Mac: build the framework and run the iOS tests; the
-  framework is static, so if the app fails to link with missing `sqlite3_*` symbols, add `-lsqlite3` to the app
-  target's Other Linker Flags. Then check that `server/media.json` is read in once and deleted. See
-  [plans/library-on-disk.md](plans/library-on-disk.md).
-  Phase 2 adds `StoredMediaLibrary` around `IosMediaLibrary`: PhotoKit is read whole on every load and stored in
-  `device_item`. To read only what changed, make `IosMediaLibrary` a `ChangingLibrary`, with
-  `PHPhotoLibrary.fetchPersistentChanges(since:)` and the token kept as the mark.
-  Step 6a (Android Oct 25, 2026): with Moments from the database, `StoriesState.itemsById` holds only the notes'
-  photos, Moments' rows read so far and the photos screens asked for, not the whole library. Swift views that look
-  photos up in it by id must ask for them with `StoriesController.want(ids:)` (async) and keep the items they were
-  opened with until those are read, dropping only those `StoriesState.gone(itemId:)` says are gone:
-  `LibraryRootView.swift` (similar photos, a list a page opened the viewer with, `request.itemIds`) and
-  `CropView.swift` (don't close while the photo is still being read). Showing a photo in Moments goes through
-  `StoriesController.loadMomentsToItem(itemId:)`. Search, a person's page and a photo's similar photos read their
-  items from the database already (`LibraryController.itemsOfShas`, wired in `IosJournal.kt`).
-  Step 6b (Android Oct 25, 2026): Explore's home comes from the database as `StoriesState.home`. In
-  `ExploreViews.swift`, call `ExploreKt.placesOf(library:places:known: stories.home)` where it calls
-  `placesOf(library:places:)` (both places), and add `stories.home` to what the summaries' task is keyed on. Until
-  then iOS works home out from the items as before (same result, more work). Fingerprints and places are fed from the
-  database in shared code; nothing in Swift changes for them.
-  Step 6c (Android Oct 25, 2026): Explore and the map read from the database through `StoriesController` (all
-  `suspend`, so async in Swift): `explore(state:)` for the summaries (in place of `countriesOf`/`placesOf`/`yearsOf`
-  in `ExploreViews.swift`, also a country's page), `scopeItems(scope:state:)` for a town's or a year's page and the
-  viewer's Explore and map lists (everything in the scope; leave out what `stories.shows` hides), and
-  `mapOverview(state:)` / `mapArea(overview:visible:zoom:from:to:state:)` for the map: its years, where it opens
-  (`MapOverview.bounds`), and the photos around what is in view counted per square (`MapCell`: a point, a count, the
-  id of a single photo), read again each time the map settles. Feed the `MLNShapeSource` those squares with a
-  `photos` property, cluster with a `photos` sum (`clusterProperties`), draw a square of more than one as a circle,
-  and zoom two levels into one tapped (see `MapScreen.kt`). From the database a summary's `PlaceSummary.items` and
-  `YearSummary.items` are empty: use `count`, `cover`, `months`. Search's town box already comes from the database
-  (`townArea`, wired in `IosJournal.kt`).
-  Step 6d (Android Oct 25, 2026): `LibraryState.itemCount`, `notBackedUpCount` and `notBackedUpBytes` are counted by
-  the database (`LibraryState.totals`); nothing in Swift changes for them. In `JournalHomeView.swift`, use
-  `library.isEmpty` where it checks `library.days.isEmpty` (four places: the spinner, "nothing here", no storyline,
-  nothing shown), so the checks no longer need the whole list (`days` goes in step 6f).
-  Step 6e (Android Oct 26, 2026): `ServerLibrary.media` is gone; the server's list stays in the database. Swift used
-  none of it, and `IosServerFiles.observeMedia` (unused) is removed. A view that must react to the list changing
-  observes `ServerLibrary.mediaVersion` instead and reads what it needs (`file(sha256)`, `sha256Of(item)`, both
-  suspend). `IosServerFiles.face` and `setPrivate` already read from the database; on the Mac, check that the face
-  avatars still get their photo's size and that marking a photo private still finds its sha256.
-  Step 6f (Android Oct 26, 2026): with the database `LibraryState.days` stays empty (the controller keeps no list of
-  the library) and `LibraryState.counts` is gone. Everything in Swift that reads `library.days` must move first or it
-  shows nothing: the four checks in `JournalHomeView.swift` (to `library.isEmpty`, see 6d), `ExploreViews.swift`
-  (lines with `library.days.flatMap`: to `explore(state:)` and `scopeItems(scope:state:)`, see 6c) and
-  `ExploreMapView.swift` (to `mapOverview` / `mapArea`, see 6c). A view that read again when the days changed observes
-  `LibraryState.version` instead (it goes up when what the database shows changed: rows, scores, kept originals,
-  statuses). `LibraryState.complete` now means every row is made. Moments' rows now take the sound recordings once
-  they are read, also rows made before (`feed_sound`, migration `6.sqm`; nothing in Swift). Showing a photo in Moments
-  (the viewer's date) must land on its row once `loadMomentsToItem` has read down to it, not only when it is already
-  read (Android: `LandOn` in `SharedTransitions.kt` waits up to 15 s for the row).
+Planned, not built on either platform yet:
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

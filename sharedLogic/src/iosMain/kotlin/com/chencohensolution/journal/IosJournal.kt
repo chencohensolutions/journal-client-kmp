@@ -22,6 +22,8 @@ import com.chencohensolution.journal.library.IosMediaLibrary
 import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.StoredMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.MadeUpLibrary
+import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.SettingsController
@@ -78,13 +80,31 @@ import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSData
 import platform.Foundation.NSDate
+import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.NSUserDomainMask
 import platform.UIKit.UIDevice
 
 /** iOS entry point into the shared logic (`IosJournal.shared` in Swift). */
+@OptIn(kotlin.experimental.ExperimentalNativeApi::class)
 object IosJournal {
+    /**
+     * Debug builds only, read before anything else is made: [Measure]'s timing lines go to the console, and the size
+     * of the made-up library ([MadeUpLibrary]) comes from the launch arguments, as Android's `madeUpLibrary` extra:
+     * `xcrun simctl launch booted com.chencohensolution.journal.Journal -madeUpLibrary 300000` (0 removes it). The
+     * size is kept for later starts.
+     */
+    private val madeUpLibrary: MadeUpLibrary? by lazy {
+        if (!Platform.isDebugBinary) return@lazy null
+        Measure.log = { println("JournalMeasure: $it") }
+        val settings = JournalSettings(UserDefaultsStore())
+        val arguments = NSProcessInfo.processInfo.arguments.map { it.toString() }
+        val at = arguments.indexOf("-madeUpLibrary")
+        arguments.getOrNull(at + 1)?.toIntOrNull()?.takeIf { at >= 0 }?.let { settings.madeUpLibrary = it }
+        settings.madeUpLibrary.takeIf { it > 0 }?.let { MadeUpLibrary(it) }
+    }
+
     fun createController(): JournalController =
         JournalController(
             settings = JournalSettings(UserDefaultsStore()),
@@ -117,7 +137,7 @@ object IosJournal {
     ): LibraryController =
         LibraryController(
             // Kept in the library database; PhotoKit is read whole each time until its change tokens are used.
-            library = StoredMediaLibrary(mediaLibrary, libraryDatabase),
+            library = StoredMediaLibrary(mediaLibrary, libraryDatabase, madeUp = madeUpLibrary?.deviceItems.orEmpty()),
             table = LibraryTable(libraryDatabase),
             settings = JournalSettings(UserDefaultsStore()),
             backup = backup?.state,
@@ -167,7 +187,7 @@ object IosJournal {
 
     private fun localSearchApi(): LocalSearchApi {
         val settings = JournalSettings(UserDefaultsStore())
-        return LocalSearchApi(localIndexes(), serverLibrary()::forEachFile) { settings.privateMedia.show }
+        return LocalSearchApi(localIndexes(), serverLibrary()::forEachFile, { settings.privateMedia.show }, FileSystem.SYSTEM)
     }
 
     private fun peopleApi() = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp()), localIndexes(), serverLibrary()::forEachFile)
@@ -272,6 +292,7 @@ object IosJournal {
                 phoneStorage().remove(sha256s)
                 sha256s.forEach { keptOriginals().delete(it) }
             },
+            madeUp = madeUpLibrary?.serverMedia.orEmpty(),
         ).also { serverLibrary = it }
 
     /** Previews of server-only photos, cached in Caches (`previews`), up to the limit in Settings (10 GB by default). */
