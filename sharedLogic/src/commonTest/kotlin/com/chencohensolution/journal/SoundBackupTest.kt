@@ -18,6 +18,7 @@ import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.storage.ServerCheck
 import com.chencohensolution.journal.storage.ServerVerdict
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -56,7 +57,8 @@ class SoundBackupTest {
         }
     }
 
-    private fun ledger() = UploadLedger(fs, "/backup".toPath())
+    private val database = testLibraryDatabase()
+    private fun ledger() = UploadLedger(fs, "/backup".toPath(), database, Dispatchers.Unconfined)
 
     private fun TestScope.engine(files: SoundFiles, ledger: UploadLedger = ledger(), check: ServerCheck? = null) =
         BackupEngine(files, ledger, server, check = check, io = StandardTestDispatcher(testScheduler))

@@ -1,0 +1,21 @@
+-- What this phone read and uploaded for backup (UploadLedger): one row per device file, its sha256 for the file as it
+-- was (size, modified), and whether the server has those bytes. Not a plain cache: losing it means reading every
+-- file again (the server still deduplicates), so a schema change migrates it.
+CREATE TABLE ledger (
+    id TEXT NOT NULL PRIMARY KEY,
+    size INTEGER NOT NULL,
+    modified_millis INTEGER,
+    sha256 TEXT NOT NULL,
+    uploaded INTEGER AS kotlin.Boolean NOT NULL,
+    version_of TEXT,
+    rejected TEXT
+);
+
+allLedger:
+SELECT * FROM ledger;
+
+upsertLedger:
+INSERT OR REPLACE INTO ledger VALUES ?;
+
+deleteLedger:
+DELETE FROM ledger WHERE id = ?;

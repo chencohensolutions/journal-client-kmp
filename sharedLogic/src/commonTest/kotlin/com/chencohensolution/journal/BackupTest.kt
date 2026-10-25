@@ -10,6 +10,7 @@ import com.chencohensolution.journal.backup.ServerBackupApi
 import com.chencohensolution.journal.backup.pieceResult
 import com.chencohensolution.journal.backup.BackupProgress
 import com.chencohensolution.journal.backup.PieceBody
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,6 +41,7 @@ import okio.use
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -206,7 +208,8 @@ class BackupTest {
     private val fs = FakeFileSystem()
     private val files = FakeFiles()
     private val server = FakeServer()
-    private fun ledger() = UploadLedger(fs, "/backup".toPath())
+    private val database = testLibraryDatabase()
+    private fun ledger() = UploadLedger(fs, "/backup".toPath(), database, Dispatchers.Unconfined)
 
     /** Reads files on the test's own scheduler, so the files sent at once can be seen between steps. */
     private fun TestScope.engine(mediaFiles: MediaFiles, ledger: UploadLedger, api: BackupApi = server) =
@@ -310,16 +313,23 @@ class BackupTest {
     }
 
     @Test
-    fun theLedgerSurvivesARestartAndSkipsDamagedLines() = runTest {
+    fun theLedgerSurvivesARestartAndTheOldFileIsReadInOnce() = runTest {
+        // A ledger.jsonl from before the database: the last line for an id wins, a damaged line is skipped.
+        val old = "/backup/ledger.jsonl".toPath()
+        fs.createDirectories(old.parent!!)
+        fs.write(old) {
+            writeUtf8("""{"id":"1","size":5,"modifiedMillis":1,"sha256":"${"a".repeat(64)}"}""" + "\n")
+            writeUtf8("{not json\n")
+            writeUtf8("""{"id":"1","size":5,"modifiedMillis":1,"sha256":"${"a".repeat(64)}","uploaded":true}""" + "\n")
+        }
         val first = ledger()
-        first.record(LedgerEntry(id = "1", size = 5, modifiedMillis = 1, sha256 = "a".repeat(64)))
-        first.record(LedgerEntry(id = "1", size = 5, modifiedMillis = 1, sha256 = "a".repeat(64), uploaded = true))
-        fs.appendingSink("/backup/ledger.jsonl".toPath()).use { sink -> Buffer().writeUtf8("{not json\n").let { sink.write(it, it.size) } }
-        first.record(LedgerEntry(id = "2", size = 7, modifiedMillis = null, sha256 = "b".repeat(64)))
+        assertEquals(true, first.entry("1")?.uploaded)
+        assertFalse(fs.exists(old))
+        first.record(LedgerEntry(id = "2", size = 7, modifiedMillis = null, sha256 = "b".repeat(64), rejected = "too big"))
 
         val reopened = ledger()
         assertEquals(true, reopened.entry("1")?.uploaded)
-        assertEquals("b".repeat(64), reopened.entry("2")?.sha256)
+        assertEquals(LedgerEntry(id = "2", size = 7, modifiedMillis = null, sha256 = "b".repeat(64), rejected = "too big"), reopened.entry("2"))
         reopened.forget("2")
         assertNull(ledger().entry("2"))
     }

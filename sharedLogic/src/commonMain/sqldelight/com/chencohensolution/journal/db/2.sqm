@@ -1,0 +1,10 @@
+-- Version 2 to 3 (Oct 25, 2026, plan B phase 3): backup's ledger, until then `backup/ledger.jsonl`.
+CREATE TABLE ledger (
+    id TEXT NOT NULL PRIMARY KEY,
+    size INTEGER NOT NULL,
+    modified_millis INTEGER,
+    sha256 TEXT NOT NULL,
+    uploaded INTEGER AS kotlin.Boolean NOT NULL,
+    version_of TEXT,
+    rejected TEXT
+);

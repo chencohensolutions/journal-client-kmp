@@ -191,9 +191,8 @@ The pages, and what each holds:
   is checked before a run (`NWPathMonitor`) and set on every piece; charging only is checked with the battery state
   and asked of the processing task. Progress shows in the bottom pill of the Journal ("Backing up 3 of
   120 · 42% · 5.1 MB/s") and in this section; there is no notification. See [design.md](../design.md), "iOS backup".
-- What was read and uploaded is remembered per device in `files/backup/ledger.jsonl` (iOS: Application Support
-  `backup/ledger.jsonl`) (sha256 per photo), so a photo is
-  read once and never sent twice; the server also deduplicates. An edit saved in place uploads as a new version
+- What was read and uploaded is remembered per device in the library database's `ledger` table (sha256 per photo;
+  until Oct 25, 2026 `backup/ledger.jsonl`, read in once and deleted), so a photo is read once and never sent twice; the server also deduplicates. An edit saved in place uploads as a new version
   (`versionOf`). Uploads resume where they stopped. See [design.md](../design.md) "Upload and sync".
 
 - **Free up space** runs in the background with WorkManager (`FreeUpWorker`, a progress notification with Stop), one

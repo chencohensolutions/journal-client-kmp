@@ -24,6 +24,7 @@ import com.chencohensolution.journal.storage.PhotoTrash
 import com.chencohensolution.journal.storage.ServerCheck
 import com.chencohensolution.journal.storage.ServerVerdict
 import com.chencohensolution.journal.storage.freeUpPlan
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -149,7 +150,7 @@ class FreeUpTest {
     @Test
     fun checkerNeedsBothCopiesToHaveTheSha256() = runTest {
         val fs = FakeFileSystem()
-        val ledger = UploadLedger(fs, "/backup".toPath())
+        val ledger = UploadLedger(fs, "/backup".toPath(), testLibraryDatabase(), Dispatchers.Unconfined)
         val files = Files()
         val server = Server()
         val checker = FreeUpChecker(files, ledger, server)
@@ -182,7 +183,7 @@ class FreeUpTest {
 
     private class Run(allowed: Boolean, testDispatcher: kotlinx.coroutines.CoroutineDispatcher) {
         val fs = FakeFileSystem()
-        val ledger = UploadLedger(fs, "/backup".toPath())
+        val ledger = UploadLedger(fs, "/backup".toPath(), testLibraryDatabase(), Dispatchers.Unconfined)
         val files = Files()
         val server = Server()
         val trash = Trash(allowed)
@@ -275,7 +276,7 @@ class FreeUpTest {
         val calls = SoundFolder("content://tree/calls", "Call", "Recordings › Call", AudioKind.CALL)
         val voice = SoundFolder("content://tree/voice", "Voice Recorder", "Recordings › Voice Recorder", AudioKind.RECORDING)
         val fs = FakeFileSystem()
-        val ledger = UploadLedger(fs, "/backup".toPath())
+        val ledger = UploadLedger(fs, "/backup".toPath(), testLibraryDatabase(), Dispatchers.Unconfined)
         val files = Files()
         val server = Server()
         val inFolders = mutableMapOf<SoundFolder, MutableList<MediaItem>>()

@@ -191,6 +191,15 @@ Confirmed by the owner on Oct 25, 2026:
        had gone. A `Photo access:` line under `JournalMeasure` now records each change, to catch it next time.
 3. **Ledger.** `UploadLedger` on the `ledger` table; `BackupEngine` takes its queue from a query; `BackupState` no
    longer carries `entries` (the status is a join).
+   - **Built Oct 25, 2026, in part.**
+     - `Ledger.sq` (database version 3, migration `2.sqm`). `UploadLedger` reads the table into memory at first use
+       and writes each change through, so backup runs exactly as fast as before.
+     - `ledger.jsonl` is read in once, then deleted. On the owner's phone that was 1,749 entries from 3,498 lines;
+       a copy of the file was kept off the phone first.
+     - Moved to phase 4: `BackupState.entries` (the library's merge and the statuses still read it), and backup's
+       queue from a query. Backup and Free up space keep reading MediaStore themselves, not `device_item`. A
+       backup must never skip a real photo, and `device_item` leaves out photos matched to private files by name
+       and size alone.
 4. **The merged table.**
    - `library_item` kept by upserts; `LibraryState.days` is replaced by queries.
    - Until phase 5 lands, a temporary adapter reads the whole list for the screens. Memory is no better yet, but

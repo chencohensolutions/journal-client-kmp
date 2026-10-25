@@ -338,7 +338,7 @@ private var uploadLedger: UploadLedger? = null
 /** What this device read and uploaded, in `files/backup/ledger.jsonl`; shared by backup and "Free up space". */
 @Synchronized
 private fun uploadLedger(context: Context): UploadLedger =
-    uploadLedger ?: UploadLedger(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "backup").also { uploadLedger = it }
+    uploadLedger ?: UploadLedger(FileSystem.SYSTEM, context.filesDir.toOkioPath() / "backup", libraryDatabase(context)).also { uploadLedger = it }
 
 /**
  * Backup to the server. One per process, shared by the screens and the background worker, so both see the same

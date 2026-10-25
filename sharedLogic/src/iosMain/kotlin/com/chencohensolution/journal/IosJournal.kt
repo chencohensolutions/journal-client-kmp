@@ -305,7 +305,7 @@ object IosJournal {
         serverFiles ?: IosServerFiles(serverLibrary(), serverPreviews(), keptOriginals(), phoneStorage()).also { serverFiles = it }
 
     /** What this device read and uploaded, in Application Support (`backup/ledger.jsonl`); shared by backup and "Free up space". */
-    private val uploadLedger by lazy { UploadLedger(FileSystem.SYSTEM, supportDir().toPath() / "backup") }
+    private val uploadLedger by lazy { UploadLedger(FileSystem.SYSTEM, supportDir().toPath() / "backup", libraryDatabase) }
 
     private var backupController: BackupController? = null
     private var pieceSender: BackgroundPieceSender? = null
