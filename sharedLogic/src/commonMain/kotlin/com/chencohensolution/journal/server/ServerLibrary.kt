@@ -341,7 +341,9 @@ class ServerLibrary internal constructor(
                     val page = response.data?.changes ?: break
                     page.changes.forEach { change ->
                         val sha = change.path.removePrefix("media/")
-                        val media = change.media
+                        // Kinds the app can't show yet (audio) are left out like deleted files; the version that
+                        // shows them starts the feed again to fetch them.
+                        val media = change.media?.takeIf { it.kind == MediaKind.PHOTO || it.kind == MediaKind.VIDEO }
                         hiddenChanged = (if (change.hidden) hidden.add(sha) else hidden.remove(sha)) || hiddenChanged
                         if (change.deleted || media == null) {
                             if (known.remove(sha) != null) {
