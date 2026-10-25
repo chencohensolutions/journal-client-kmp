@@ -306,6 +306,19 @@ Confirmed by the owner on Oct 25, 2026:
    - day grids, the viewer's neighbours, Explore (places, years, people), the map, search results;
    - Free up space and backup counts, storyline, tags, crop.
    - The temporary adapter of phase 4 is removed here.
+   - **Surveyed Oct 25, 2026.** What holds or walks the whole library today, and the steps, biggest memory first:
+     - 6a. Items by id and by sha256 from the database: `LibraryTable` reads (by ids, by sha256s, a day range, a
+       photo's neighbours, counts). `StoriesState.itemsById` (storyline, tags, notes, the viewer's lists, menus)
+       becomes lookups; search's `LibraryResolver`, `PersonController` and `PhotoFindings` resolve sha256s with them.
+     - 6b. The background readers: fingerprints and places are given what to read from the database a batch at a
+       time instead of the whole list; "home" (Explore) is a grouped query on located photos.
+     - 6c. Explore (places, years, a place's or year's page) and the map (counts, clusters by the visible bounds)
+       as grouped queries; their pages through `FeedTable`'s windows or `feedOf` over a query's items.
+     - 6d. "All photos" (day grids, filters), the viewer's neighbours, backup's and Free up space's counts.
+     - 6e. `ServerLibrary.media` (103k entries) read from `server_media` where it is used (search, people, local
+       search, findings) instead of held as a list.
+     - 6f. `LibraryState.days` and the newest-rows read go; `mergeWithServer` and `groupByDay` stay only as the tests'
+       reference until phase 9. iOS: its 18 uses in Swift, on the Mac (docs/ios-todo.md).
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.
