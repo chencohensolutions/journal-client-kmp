@@ -51,7 +51,7 @@ data class StoriesState(
     /** What the feed was built with, for [feedOf]. */
     val grouping: TimelineGrouping = TimelineGrouping(),
     val looks: PhotoLooks = PhotoLooks.NONE,
-    /** What the app shows of each source; Moments, Explore, All photos and Tags follow it. */
+    /** What the app shows of each source; Moments, Explore and Tags follow it. */
     val shownSources: ShownSources = ShownSources(),
     /** The sound recordings the user shows, by sha256: for a recording's page. */
     val sounds: Map<String, SoundRecording> = emptyMap(),
@@ -69,10 +69,6 @@ data class StoriesState(
 
     /** Whether [item] shows (see [ShownSources]). */
     fun shows(item: MediaItem): Boolean = shownSources.shows(item)
-
-    /** [days] without what [shownSources] hides; days left empty are left out. All photos shows these. */
-    fun shownDays(days: List<DayGroup>): List<DayGroup> =
-        days.mapNotNull { day -> day.items.filter(::shows).takeIf { it.isNotEmpty() }?.let { DayGroup(day.day, it) } }
 
     /**
      * A Moments feed of only [items] (newest first), of what [shownSources] shows and without chips: a place's or a

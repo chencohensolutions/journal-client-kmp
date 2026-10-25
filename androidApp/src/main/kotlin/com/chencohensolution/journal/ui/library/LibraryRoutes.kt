@@ -11,7 +11,6 @@ import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.library.GeoPoint
-import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
@@ -60,14 +59,13 @@ internal sealed interface Route {
 
     /**
      * Opened from the storyline ([storyline]), a tag ([tag]), one row of the Moments tab
-     * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), All photos with [filter], or Explore
+     * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), or Explore
      * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
      * the band of that hidden source's photos on the Moments row. With [search], the photos the last search found.
      * With [list], the photos a page showed when it opened the viewer (a person's, similar photos): see [PageLists].
      */
     data class Viewer(
         val moment: String?,
-        val filter: LibraryFilter,
         val itemId: String,
         val tag: String? = null,
         val scope: ExploreScope? = null,
@@ -96,7 +94,8 @@ internal sealed interface Route {
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
         is Map -> "map|${at?.let { "${it.latitude},${it.longitude}" }.orEmpty()}"
-        is Viewer -> "viewer|${if (storyline) "storyline" else if (search) "search" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
+        // The empty fourth field was All photos' filter (until Oct 24, 2026): kept, so routes saved before still decode.
+        is Viewer -> "viewer|${if (storyline) "storyline" else if (search) "search" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}||" +
             "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.let { URLEncoder.encode(it.id, "UTF-8") }.orEmpty()}|" +
             "${list?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
@@ -127,7 +126,6 @@ internal sealed interface Route {
                     storyline = parts[1] == "storyline",
                     search = parts[1] == "search",
                     moment = parts[2].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
-                    filter = LibraryFilter.valueOf(parts[3]),
                     tag = parts[4].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     scope = parts[5].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
                     revealed = parts[6].ifEmpty { null }?.let { MediaSource.parse(URLDecoder.decode(it, "UTF-8")) },
@@ -172,7 +170,7 @@ internal data class StackEntry(val depth: Int, val route: Route) {
 
 /**
  * The items the viewer swipes through: the storyline, the row of the Moments tab or an Explore page (as shown there),
- * the map's photos, a tag's photos, what [search] found, or everything in the All photos filter.
+ * the map's photos, a tag's photos, what [search] found, or what a page showed ([PageLists]). Nothing else opens it.
  */
 internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState, lists: PageLists = PageLists()): List<MediaItem> = when {
     route.search -> search.items
@@ -184,7 +182,7 @@ internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Ro
     route.moment != null && route.revealed != null ->
         stories.feed.section(route.moment)?.revealed?.firstOrNull { it.source == route.revealed }?.items.orEmpty()
     route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()
-    else -> stories.shownDays(library.days(route.filter)).flatMap { it.items }
+    else -> emptyList()
 }
 
 /** The viewer's photo [id] and up to this many neighbours each way: what it asks the database for as it is swiped. */

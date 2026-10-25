@@ -7,8 +7,8 @@ Planned Oct 21, 2026 on the Windows machine; **built Oct 21, 2026 on the Mac, An
 (the owner chose Hide / All only) and without screen 4 (hiding one photo, which needs the server). WhatsApp and
 Screenshots are off by default for everyone. The server's part was the ~1,100 WhatsApp-named files:
 `scripts/fix-sources` there (imports now tell the source from the name too). What was built is in
-[screens/moments.md](../screens/moments.md), [explore.md](../screens/explore.md),
-[settings.md](../screens/settings.md) and [all-photos.md](../screens/all-photos.md); this plan is kept for screen 4.
+[screens/moments.md](../screens/moments.md), [explore.md](../screens/explore.md)
+and [settings.md](../screens/settings.md); this plan is kept for screen 4.
 Mockups (6 phone screens): https://claude.ai/artifact/ARgmUkhoGNDRYQeJ7g5Dh7
 
 ## Why
@@ -76,7 +76,7 @@ Explore): `facts.source` is in every sidecar and already reaches the app as `Med
 **Shared logic (`sharedLogic`, with tests)**
 - A `ShownSources` setting (sources + WhatsApp mode + say-what's-hidden) in `SettingsController`, migrating
   `feed_sources`.
-- One filter used by `MomentsFeed`, `Explore.kt` (`placesOf`, `yearsOf`, map scope), All photos, Tags and the picker;
+- One filter used by `MomentsFeed`, `Explore.kt` (`placesOf`, `yearsOf`, map scope), Tags and the picker;
   keep story members regardless.
 - Per row/day and per year: counts of hidden items, and a "reveal this day" set in the feed state.
 - `MediaItem` gains `private` (from the server field, and from `sourceOfFolder` for device photos).
@@ -86,5 +86,5 @@ sheet and year counts; screenshot previews per `docs/previews.md`.
 
 **iOS** (`iosApp/iosApp/`): the same screens in SwiftUI.
 
-**Docs**: `docs/screens/moments.md`, `explore.md`, `settings.md`, `all-photos.md`; on the server, `docs/media.md` for
+**Docs**: `docs/screens/moments.md`, `explore.md`, `settings.md`; on the server, `docs/media.md` for
 the new field.

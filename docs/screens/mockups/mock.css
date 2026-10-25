@@ -116,7 +116,7 @@ a { color: inherit; text-decoration: none; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 
-/* Bottom floating controls (Journal, All photos) */
+/* Bottom floating controls (Journal) */
 .bottom-float {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 40px 16px 24px;
   display: flex; flex-direction: column; align-items: center; gap: 10px;

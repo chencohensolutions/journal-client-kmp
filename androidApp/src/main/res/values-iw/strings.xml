@@ -12,7 +12,7 @@
     <string name="library_access_not_now">לא עכשיו</string>
     <string name="library_access_footnote">אפשר לבחור תמונות מסוימות במקום את כל הספרייה.</string>
 
-    <!-- Journal home, All photos, viewer -->
+    <!-- Journal home, viewer -->
     <string name="library_title">יומן</string>
     <string name="library_offline">לא מחובר</string>
     <string name="library_back">חזרה</string>
@@ -488,7 +488,7 @@
     <string name="explore_only_hidden">השנה יש רק תמונות %1$s (%2$,d)</string>
     <string name="explore_show_them">להציג אותן</string>
     <string name="explore_sheet_title">מה מוצג</string>
-    <string name="explore_sheet_body">אותו הדבר ברגעים, בגילוי ובכל התמונות.</string>
+    <string name="explore_sheet_body">אותו הדבר ברגעים ובגילוי.</string>
     <string name="explore_sheet_whatsapp">לרוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן מופיעות במפה. ההסתרה משנה בעיקר את השנים ואת התמונות בדף של עיר.</string>
     <string name="settings_first_image">תמונה מהירה בזמן גלילה</string>
     <string name="settings_first_image_body">תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר.</string>

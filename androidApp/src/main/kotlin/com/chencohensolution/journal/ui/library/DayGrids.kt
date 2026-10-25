@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.library.DayGroup
-import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -77,10 +76,6 @@ private fun gridRows(day: DayGroup): List<GridRow> {
 }
 
 /**
- * Every photo and video the sources setting shows, edge to edge, newest first. The backup pill still counts every
- * photo not backed up: hiding doesn't change what is backed up. See docs/screens/all-photos.md.
- */
-/**
  * What [dayGrids] needs of the list it is in: its large tiles' first images loaded ahead of the scroll, and whether the
  * list has slowed down enough for sharp images ([LocalScrollSettled]).
  */
@@ -96,7 +91,7 @@ internal fun dayGridRows(days: List<DayGroup>): List<Set<String>> =
     days.flatMap(::gridRows).map { row -> row.items.mapTo(mutableSetOf()) { it.id } }
 
 /**
- * The photo grid of [days], each day under its name: a tag's page (All photos had it too, until Oct 24, 2026).
+ * The photo grid of [days], each day under its name: a tag's page.
  * [label] names a day; by default "Today", "Tue, Oct 7"….
  */
 internal fun LazyListScope.dayGrids(

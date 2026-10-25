@@ -170,7 +170,7 @@ class ShownSourcesTest {
     }
 
     @Test
-    fun hiddenPhotosStayOnTheStorylineAndLeaveTagsAndAllPhotos() {
+    fun hiddenPhotosStayOnTheStorylineAndLeaveTags() {
         val written = shot("w-written", OCT_4, 12, MediaSource.WHATSAPP)
         val tagged = shot("w-tag", OCT_4, 13, MediaSource.WHATSAPP)
         val camera = shot("c", OCT_4, 10)
@@ -184,7 +184,6 @@ class ShownSourcesTest {
         assertEquals(listOf("w-written"), state.storyline.map { it.id })
         assertEquals(listOf("c"), state.tagged("sea").flatMap { it.items }.map { it.id })
         assertEquals(1, state.tags.single().count)
-        assertEquals(listOf(listOf("c"), listOf("c-near")), state.shownDays(library.days).map { day -> day.items.map { it.id } })
     }
 
     @Test

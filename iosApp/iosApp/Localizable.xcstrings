@@ -2051,16 +2051,6 @@
         }
       }
     },
-    "All photos" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "כל התמונות"
-          }
-        }
-      }
-    },
     "All video details (%lld)" : {
       "localizations" : {
         "he" : {
@@ -2177,26 +2167,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שמע מרחבי של Apple"
-          }
-        }
-      }
-    },
-    "Applies to Moments, All photos, Explore and Tags." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "חל על רגעים, כל התמונות, גילוי ותגיות."
-          }
-        }
-      }
-    },
-    "Applies to Moments, All photos, Explore, Tags and picking photos for a story." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "חל על רגעים, כל התמונות, גילוי, תגיות ובחירת תמונות לסיפור."
           }
         }
       }
@@ -4296,16 +4266,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חיפוש במכשיר"
-          }
-        }
-      }
-    },
-    "On this phone only. Applies to Moments, All photos, Explore and Tags." : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "בטלפון הזה בלבד. חל על רגעים, כל התמונות, גילוי ותגיות."
           }
         }
       }
@@ -6738,12 +6698,12 @@
         }
       }
     },
-    "The same in Moments, Explore and All photos." : {
+    "The same in Moments and Explore." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אותו הדבר ברגעים, בגילוי ובכל התמונות."
+            "value" : "אותו הדבר ברגעים ובגילוי."
           }
         }
       }

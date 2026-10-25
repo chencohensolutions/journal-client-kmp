@@ -10,7 +10,6 @@ import com.chencohensolution.journal.connection.JournalState
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.LibraryController
-import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaLibrary
@@ -98,25 +97,6 @@ class LibraryControllerTest {
 
         assertEquals(3, controller.currentState.notBackedUpCount)
         assertEquals(320, controller.currentState.notBackedUpBytes)
-    }
-
-    @Test
-    fun filtersDropEmptyDays() = runTest {
-        val library = FakeLibrary(
-            items = listOf(
-                item("a", OCT_8, 1),
-                item("v", OCT_16, 2, type = MediaType.VIDEO),
-                item("b", OCT_16, 3, backup = BackupStatus.BackedUp),
-            )
-        )
-        val controller = controller(library)
-        controller.refresh()
-        advanceUntilIdle()
-        val state = controller.currentState
-
-        assertEquals(listOf(OCT_16), state.days(LibraryFilter.VIDEOS).map { it.day })
-        assertEquals(listOf("v", "a"), state.days(LibraryFilter.NOT_BACKED_UP).flatMap { d -> d.items.map { it.id } })
-        assertEquals(3, state.days(LibraryFilter.ALL).sumOf { it.items.size })
     }
 
     @Test

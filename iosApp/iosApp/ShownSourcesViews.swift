@@ -53,7 +53,7 @@ struct ShownSourcesLine: View {
 }
 
 /// Explore's "Showing" sheet: a pill per source with how many of its photos are here (the whole library, the map's,
-/// or a town's or year's page's), the most first. The same setting as Moments and All photos.
+/// or a town's or year's page's), the most first. The same setting as Moments.
 struct ShowingSheet: View {
     let shown: ShownSources
     let counts: [MediaSource: KotlinInt]
@@ -84,7 +84,7 @@ struct ShowingPillsSheet: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(LibraryColors.onBackground)
                     .accessibilityAddTraits(.isHeader)
-                Text("The same in Moments, Explore and All photos.")
+                Text("The same in Moments and Explore.")
                     .font(.system(size: 13))
                     .foregroundStyle(LibraryColors.muted)
                     .padding(.top, 2)

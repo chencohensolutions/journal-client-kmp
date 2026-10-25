@@ -12,7 +12,7 @@
     <string name="library_access_not_now">Not now</string>
     <string name="library_access_footnote">You can pick specific photos instead of your whole library.</string>
 
-    <!-- Journal home, All photos, viewer -->
+    <!-- Journal home, viewer -->
     <string name="library_title">Journal</string>
     <string name="library_offline">Offline</string>
     <string name="library_back">Back</string>
@@ -469,7 +469,7 @@
     <string name="explore_only_hidden">Only %1$s photos this year (%2$,d)</string>
     <string name="explore_show_them">Show them</string>
     <string name="explore_sheet_title">Showing</string>
-    <string name="explore_sheet_body">The same in Moments, Explore and All photos.</string>
+    <string name="explore_sheet_body">The same in Moments and Explore.</string>
     <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
     <string name="settings_first_image">Quick image while scrolling</string>
     <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>

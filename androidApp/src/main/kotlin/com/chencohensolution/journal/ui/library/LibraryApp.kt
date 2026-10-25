@@ -39,7 +39,6 @@ import com.chencohensolution.journal.backup.BackupActivity
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.library.LibraryController
-import com.chencohensolution.journal.library.LibraryFilter
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.local.LocalIndexes
@@ -180,9 +179,9 @@ private fun LibraryScreens(
         if (sort == PageSort.BEST || section == null) {
             val key = "best:" + scope.hashCode()
             pageLists[key] = bestFirst(scopeItems(libraryState, storiesState, scope))
-            push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+            push(Route.Viewer(null, item.id, list = key))
         } else {
-            push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope))
+            push(Route.Viewer(section.key, item.id, scope = scope))
         }
     }
     var previewBytes by actions.previewBytes
@@ -218,8 +217,8 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     health = journalState.health,
                                     actions = HomeActions(
-                                        openItem = { section, item -> push(Route.Viewer(section.key, LibraryFilter.ALL, item.id)) },
-                                        openStoryline = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, storyline = true)) },
+                                        openItem = { section, item -> push(Route.Viewer(section.key, item.id)) },
+                                        openStoryline = { push(Route.Viewer(null, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
                                         toggleSource = settings::toggleFeedSource,
                                         openSettings = { push(Route.Settings) },
@@ -256,7 +255,7 @@ private fun LibraryScreens(
                                             stories.hideOnRow(section.key, source)
                                         },
                                         openRevealed = { section, source, item ->
-                                            push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, revealed = source))
+                                            push(Route.Viewer(section.key, item.id, revealed = source))
                                         },
                                         openRecording = { push(Route.Audio(it)) },
                                         search = SearchActions(
@@ -265,7 +264,7 @@ private fun LibraryScreens(
                                             chooseYear = search::chooseYear,
                                             chooseTown = search::chooseTown,
                                             loadMore = search::loadMore,
-                                            openItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, search = true)) },
+                                            openItem = { push(Route.Viewer(null, it.id, search = true)) },
                                             prepare = search::prepare,
                                             addPerson = search::addPerson,
                                             removePerson = search::removePerson,
@@ -327,7 +326,7 @@ private fun LibraryScreens(
                                         toggleSource = settings::toggleFeedSource,
                                         openPhotos = { scope, itemId ->
                                             val first = itemId ?: scopeItems(libraryState, storiesState, scope).firstOrNull()?.id
-                                            if (first != null) push(Route.Viewer(null, LibraryFilter.ALL, first, scope = scope))
+                                            if (first != null) push(Route.Viewer(null, first, scope = scope))
                                         },
                                     ),
                                 )
@@ -420,7 +419,7 @@ private fun LibraryScreens(
                                     val listKey = "person:${route.id}"
                                     val open: (MediaItem) -> Unit = { item ->
                                         pageLists[listKey] = state.items
-                                        push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = listKey))
+                                        push(Route.Viewer(null, item.id, list = listKey))
                                     }
                                     if (state.person?.isGroup ?: route.id.startsWith("g")) {
                                         GroupScreen(
@@ -464,7 +463,7 @@ private fun LibraryScreens(
                                     val items = opened.mapNotNull { item -> storiesState.itemsById[item.id] ?: item.takeUnless { storiesState.gone(it.id) } }
                                     SimilarScreen(
                                         items = items,
-                                        onOpen = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, list = listKey)) },
+                                        onOpen = { push(Route.Viewer(null, it.id, list = listKey)) },
                                         onBack = pop,
                                     )
                                 }
@@ -472,7 +471,7 @@ private fun LibraryScreens(
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,
                                     stories = storiesState,
-                                    onOpenItem = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, tag = route.name)) },
+                                    onOpenItem = { push(Route.Viewer(null, it.id, tag = route.name)) },
                                     onBack = pop,
                                     landing = landingHere,
                                 )
@@ -517,7 +516,7 @@ private fun LibraryScreens(
                                                 openSimilar = { item ->
                                                     val key = "similar:${findingsState.itemId}"
                                                     pageLists[key] = findingsState.similar
-                                                    push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+                                                    push(Route.Viewer(null, item.id, list = key))
                                                 },
                                                 moreSimilar = {
                                                     pageLists["similar:${findingsState.itemId}"] = findingsState.similar

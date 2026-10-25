@@ -12,8 +12,7 @@ A round **🔍** beside the tabs opens [search](search.md) over them (Oct 22, 20
 Photos fill the screen on the page background (light or dark with the system); the controls float on top.
 
 - **Top bar:** "Journal", the **Offline** pill (only when the server can't be reached), a **Tags** button
-  ([tags.md](tags.md)) and a **Settings** button ([settings.md](settings.md)); until Oct 24, 2026 a **⋯** menu with All
-  photos and Settings (All photos, its screen and its filters were removed then). The title row and the bar under
+  ([tags.md](tags.md)) and a **Settings** button ([settings.md](settings.md)). The title row and the bar under
   it (Moments' filter bar, Explore's) slide up and fade out, whole, as the list scrolls down, and come back as it
   scrolls up; they always show at the top of the list and when the tab changes. Behind them, once the list is away
   from its top, the fade comes back with them (fading in and out); at the top there is none (Oct 24, 2026). The list starts under the bar: with Moments' filter bar off

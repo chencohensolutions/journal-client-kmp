@@ -314,7 +314,8 @@ Confirmed by the owner on Oct 25, 2026:
        time instead of the whole list; "home" (Explore) is a grouped query on located photos.
      - 6c. Explore (places, years, a place's or year's page) and the map (counts, clusters by the visible bounds)
        as grouped queries; their pages through `FeedTable`'s windows or `feedOf` over a query's items.
-     - 6d. "All photos" (day grids, filters), the viewer's neighbours, backup's and Free up space's counts.
+     - 6d. The viewer's neighbours, backup's and Free up space's counts. (All photos, its day grids and filters, are
+       gone: the screen was removed Oct 24, 2026, and its last code, strings and docs on Oct 25, 2026, asked by the owner.)
      - 6e. `ServerLibrary.media` (103k entries) read from `server_media` where it is used (search, people, local
        search, findings) instead of held as a list.
      - 6f. `LibraryState.days` and the newest-rows read go; `mergeWithServer` and `groupByDay` stay only as the tests'
@@ -353,7 +354,7 @@ Confirmed by the owner on Oct 25, 2026:
      - Not tried on the phone yet: a Journal backup was running (its notification stayed up for more than 10 minutes),
        so the build was not installed over it.
      - Left for later steps: `Inputs.build` still reads the whole list for the photos to fingerprint and to locate
-       (6b), search's map points and a town's box (6c), the viewer's All photos, Explore and the map lists (6c, 6d),
+       (6b), search's map points and a town's box (6c), the viewer's Explore and map lists (6c),
        `serverSha` over the server's list (6e), and `LibraryState.days` itself (6f).
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top

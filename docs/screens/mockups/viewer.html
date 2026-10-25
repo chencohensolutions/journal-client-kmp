@@ -144,7 +144,7 @@
 
     current() { return this.items[this.index]; },
     position() {
-      const where = { day: 'Yesterday', story: 'Japan trip', group: 'Fixing the car', tag: 'Concert', all: 'All photos' }[from];
+      const where = { day: 'Yesterday', story: 'Japan trip', group: 'Fixing the car', tag: 'Concert' }[from];
       return (this.index + 1) + ' of ' + (from === 'story' ? 29 : this.items.length) + ' · ' + where;
     },
     // Anywhere in the word; a real build also allows one typo for 4+ letters.

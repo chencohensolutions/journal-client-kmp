@@ -32,9 +32,6 @@ import kotlin.coroutines.cancellation.CancellationException
 /** The photos and videos taken on one day, newest first. */
 data class DayGroup(val day: LocalDay, val items: List<MediaItem>)
 
-/** Filters of the All photos screen. */
-enum class LibraryFilter { ALL, NOT_BACKED_UP, VIDEOS }
-
 data class LibraryState(
     val access: PhotoAccess = PhotoAccess.NOT_DETERMINED,
     /** True while the library is being read. */
@@ -73,16 +70,6 @@ data class LibraryState(
 
     /** Items that are in no story. Stories don't exist yet, so that's every item. */
     val unsortedCount: Int get() = itemCount
-
-    /** [days] narrowed to [filter]; days left empty are dropped. */
-    fun days(filter: LibraryFilter): List<DayGroup> = when (filter) {
-        LibraryFilter.ALL -> days
-        LibraryFilter.NOT_BACKED_UP -> days.filterItems { it.backup != BackupStatus.BackedUp }
-        LibraryFilter.VIDEOS -> days.filterItems { it.type == MediaType.VIDEO }
-    }
-
-    private fun List<DayGroup>.filterItems(keep: (MediaItem) -> Boolean): List<DayGroup> =
-        mapNotNull { group -> group.items.filter(keep).takeIf { it.isNotEmpty() }?.let { DayGroup(group.day, it) } }
 }
 
 /**

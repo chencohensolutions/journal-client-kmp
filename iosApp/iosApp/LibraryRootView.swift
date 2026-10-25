@@ -59,7 +59,6 @@ struct LibraryRootView: View {
         var feedSection: String? = nil
         /// With `feedSection`: the band of this hidden source's photos shown on that row.
         var revealed: MediaSource? = nil
-        let filter: LibraryFilter
         let itemId: String
         var tag: String? = nil
         var scope: ExploreScope? = nil
@@ -98,9 +97,9 @@ struct LibraryRootView: View {
                         backupRunning: backup.running,
                         actions: HomeActions(
                             openItem: { section, item in
-                                openViewer(ViewerRequest(feedSection: section.key, filter: .all, itemId: item.id))
+                                openViewer(ViewerRequest(feedSection: section.key, itemId: item.id))
                             },
-                            openStorylineItem: { item in openViewer(ViewerRequest(storyline: true, filter: .all, itemId: item.id)) },
+                            openStorylineItem: { item in openViewer(ViewerRequest(storyline: true, itemId: item.id)) },
                             toggleSource: settings.toggleFeedSource,
                             merge: stories.mergeInFeed,
                             takeOutOfSet: stories.takeOutOfSet,
@@ -119,7 +118,7 @@ struct LibraryRootView: View {
                             hideOnRow: { stories.hideOnRow($0, source: $1) },
                             alwaysShow: { settings.alwaysShow(days: $0, source: $1) },
                             openRevealed: { section, revealed, item in
-                                openViewer(ViewerRequest(feedSection: section.key, revealed: revealed.source, filter: .all, itemId: item.id))
+                                openViewer(ViewerRequest(feedSection: section.key, revealed: revealed.source, itemId: item.id))
                             },
                             explore: ExploreActions(
                                 openPlace: { path.append(.place($0)) },
@@ -139,7 +138,7 @@ struct LibraryRootView: View {
                                 chooseYear: search.chooseYear,
                                 chooseTown: search.chooseTown,
                                 loadMore: search.loadMore,
-                                openItem: { item in openViewer(ViewerRequest(search: true, filter: .all, itemId: item.id)) },
+                                openItem: { item in openViewer(ViewerRequest(search: true, itemId: item.id)) },
                                 prepare: search.prepare,
                                 addPerson: search.addPerson,
                                 removePerson: search.removePerson
@@ -173,7 +172,7 @@ struct LibraryRootView: View {
                         case .map:
                             ExploreMapView(library: library.state, stories: stories.state, toggleSource: settings.toggleFeedSource) { scope, itemId in
                                 guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
-                                openViewer(ViewerRequest(filter: .all, itemId: first, scope: scope))
+                                openViewer(ViewerRequest(itemId: first, scope: scope))
                             }
                         case .person(let id):
                             PersonRoute(id: id, library: library, people: people) { items, item in
@@ -188,7 +187,7 @@ struct LibraryRootView: View {
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
                             TagView(tag: name, stories: stories.state) { item in
-                                openViewer(ViewerRequest(filter: .all, itemId: item.id, tag: name))
+                                openViewer(ViewerRequest(itemId: item.id, tag: name))
                             }
                         }
                     }
@@ -230,7 +229,7 @@ struct LibraryRootView: View {
                             openSimilar: { item in
                                 let ids = findings.state.similar.map(\.id)
                                 viewer = nil
-                                DispatchQueue.main.async { openViewer(ViewerRequest(filter: .all, itemId: item.id, list: ids)) }
+                                DispatchQueue.main.async { openViewer(ViewerRequest(itemId: item.id, list: ids)) }
                             },
                             moreSimilar: {
                                 similarLists[findings.state.itemId] = findings.state.similar.map(\.id)
@@ -248,7 +247,7 @@ struct LibraryRootView: View {
                         ExploreMapView(library: library.state, stories: stories.state, at: center, toggleSource: settings.toggleFeedSource) { scope, itemId in
                             guard let first = itemId ?? scopeItems(library.state, stories.state, scope).first?.id else { return }
                             viewerMap = nil
-                            openViewer(ViewerRequest(filter: .all, itemId: first, scope: scope))
+                            openViewer(ViewerRequest(itemId: first, scope: scope))
                         }
                         .environment(\.colorScheme, colorScheme)
                         .preferredColorScheme(colorScheme)
@@ -274,7 +273,7 @@ struct LibraryRootView: View {
 
     /// A photo of a town's or a year's page: the viewer swipes through its row, as the page shows it.
     private func openExplore(_ scope: ExploreScope, _ section: FeedSection, _ item: MediaItem) {
-        openViewer(ViewerRequest(feedSection: section.key, filter: .all, itemId: item.id, scope: scope))
+        openViewer(ViewerRequest(feedSection: section.key, itemId: item.id, scope: scope))
     }
 
     /// A face's sheet: corrections go through the people view model; Open their page closes the viewer first.
@@ -290,7 +289,7 @@ struct LibraryRootView: View {
     /// A photo of a page that shows its photos in its own order (a person's, Best first, similar photos): the viewer
     /// swipes through them in that order.
     private func openInOrder(_ items: [MediaItem], _ item: MediaItem) {
-        openViewer(ViewerRequest(filter: .all, itemId: item.id, list: items.map(\.id)))
+        openViewer(ViewerRequest(itemId: item.id, list: items.map(\.id)))
     }
 
     /// iOS asks only once; after that only Settings can grant access.
@@ -303,7 +302,7 @@ struct LibraryRootView: View {
     }
 
     /// The items the viewer swipes through: the storyline, a tag's photos, the row of Moments or an Explore page (its
-    /// photos in the order shown), the map's photos, what the search found, or everything in the All photos filter.
+    /// photos in the order shown), the map's photos, what the search found, or what a page showed (`list`).
     private func items(for request: ViewerRequest) -> [MediaItem] {
         if let list = request.list {
             return list.compactMap { stories.state.itemsById[$0] }
@@ -328,7 +327,7 @@ struct LibraryRootView: View {
         if let section = request.feedSection {
             return stories.state.feed.section(key: section)?.items ?? []
         }
-        return stories.state.shownDays(days: library.state.days(filter: request.filter)).flatMap { $0.items }
+        return []
     }
 }
 

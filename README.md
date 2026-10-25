@@ -14,7 +14,7 @@ What the app is, the decisions behind it, the data format and the current status
 
 ## Screens
 
-Each screen after enrollment (photo access, the Journal home, All photos, the viewer) is described in
+Each screen after enrollment (photo access, the Journal home, the viewer) is described in
 [docs/screens](./docs/screens/README.md).
 
 ## Authentication (mTLS)
