@@ -55,8 +55,8 @@ replaces it or stops its backup. It builds only the device's processor's native 
 335), which over wireless debugging is about 30 seconds instead of 8 minutes.
 
 The list is [LabScreens.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/LabScreens.kt).
-Suggestions are options after `current`, in their own files beside it; how they are built and promoted into the app
-is the [ui-lab skill](../.claude/skills/ui-lab/SKILL.md).
+Suggestions are options after `current`, each in its own folder under `lab/`; how they are built, recorded in
+[docs/ux-history/](ux-history/README.md) and promoted into the app is the [ui-lab skill](../.claude/skills/ui-lab/SKILL.md).
 
 After the first build, a change to a screen is on the emulator in about 8 seconds. With Android Studio, run the
 debug app's "Journal UI lab" activity and turn on Live Edit: a saved change to a composable shows in about a second,
@@ -93,7 +93,7 @@ Device › Shake) goes back a page. In Xcode, Journal's Debug builds open the la
 shows it in the canvas with live updates as you type.
 
 The list is [LabScreens.swift](../iosApp/iosApp/Lab/LabScreens.swift); suggestions are built as for Android (the
-[ui-lab skill](../.claude/skills/ui-lab/SKILL.md)), in `iosApp/iosApp/Lab/`. The lab shows the real views, with
+[ui-lab skill](../.claude/skills/ui-lab/SKILL.md)), each in its own folder in `iosApp/iosApp/Lab/<Screen>/`. The lab shows the real views, with
 `HomeActions.lab`, `ViewerActions.lab`, `SettingsActions.lab` and `FreeUpActions.lab` doing nothing. A screen opens on a tab or with its details showing through
 the view's own parameters (`JournalHomeView(tab:)`, `MediaViewerView(chrome:showInfo:)`).
 
