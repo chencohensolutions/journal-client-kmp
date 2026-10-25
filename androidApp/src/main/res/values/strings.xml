@@ -714,7 +714,7 @@
     <string name="audio_number">Phone number</string>
     <string name="audio_save">Save</string>
     <string name="audio_cancel">Cancel</string>
-    <string name="hidden_apps_pills">Tap an app to hide its screenshots; filled ones are hidden.</string>
+    <string name="hidden_apps_pills">Tap an app to show or hide its screenshots; filled ones are shown.</string>
     <!-- Settings' first page: its groups, and each row's line (Oct 24, 2026) -->
     <string name="settings_library_title">Library</string>
     <string name="settings_privacy_title">Privacy</string>
@@ -735,4 +735,9 @@
     <string name="settings_image_quality_title">Image quality</string>
     <string name="settings_all_devices_title">On all your devices</string>
     <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
+    <string name="hidden_apps_title">Apps</string>
+    <string name="hidden_apps_count">%1$s of %2$s shown</string>
+    <string name="hidden_apps_none_shown">No app’s screenshots are shown. Open the list to show some.</string>
+    <string name="hidden_apps_open">Show all apps</string>
+    <string name="hidden_apps_fold">Show only the apps shown</string>
 </resources>

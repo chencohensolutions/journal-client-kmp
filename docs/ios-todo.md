@@ -31,7 +31,7 @@ Still missing on iOS:
 - **Private settings** (Android Oct 25, 2026) — Settings › Private media is one row, **Private settings** (the
   Hidden collections screen renamed). **Show private media** moved into it, at the top (`PrivateMedia.show`, this
   phone's). The sound recordings and nudity are **Show** switches, off at first (on means shown; nudity's slider shows while it is off). Screenshot apps are pills
-  (filled with a check while hidden) instead of a switch each. Mirror in `HiddenView.swift` and the Settings view;
+  (filled with a check while shown) instead of a switch each, folded to the shown ones until opened. Mirror in `HiddenView.swift` and the Settings view;
   strings `settings_hidden_title`, `settings_hidden_row_body`, `hidden_audio_*`, `hidden_apps_pills`. See
   [screens/settings.md](screens/settings.md).
 

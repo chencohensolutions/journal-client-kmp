@@ -124,8 +124,9 @@ The pages, and what each holds:
   unlike the other switches). Shown ones appear in [Moments](moments.md).
   **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
   N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Bumble 1,458"; on Android
-  since Oct 25, 2026, a switch per app before that and still on iOS): tapping one hides its screenshots, and a hidden
-  app's pill is filled with a check. On means hidden. The list and the choice live on the server (`hiddenCollections`,
+  since Oct 25, 2026, a switch per app before that and still on iOS). A pill is filled with a check while its app's
+  screenshots are **shown**, outlined while hidden; tapping it switches. The list is folded at first: **Apps** "5 of 6
+  shown" with only the shown apps' pills; tapping the row opens it with every app, **Find an app** and a hint. On means hidden. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if
   the server can't be reached the switch goes back with "Not changed: can't reach your server". The library syncs
   once, when the screen is left (`HiddenCollectionsController.close` → `ServerLibrary.syncAgain`), not after each

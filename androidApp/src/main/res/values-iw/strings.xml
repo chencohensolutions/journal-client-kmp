@@ -744,7 +744,7 @@
     <string name="audio_number">מספר טלפון</string>
     <string name="audio_save">שמור</string>
     <string name="audio_cancel">ביטול</string>
-    <string name="hidden_apps_pills">הקש על אפליקציה כדי להסתיר את צילומי המסך שלה; המלאות מוסתרות.</string>
+    <string name="hidden_apps_pills">הקש על אפליקציה כדי להציג או להסתיר את צילומי המסך שלה; המלאות מוצגות.</string>
     <string name="settings_library_title">ספרייה</string>
     <string name="settings_privacy_title">פרטיות</string>
     <string name="settings_backup_storage_title">גיבוי ואחסון</string>
@@ -763,4 +763,9 @@
     <string name="settings_image_quality_title">איכות תמונה</string>
     <string name="settings_all_devices_title">בכל המכשירים שלך</string>
     <string name="settings_backup_charging_only_body">חוסך בסוללה; ההעלאות ממתינות למטען.</string>
+    <string name="hidden_apps_title">אפליקציות</string>
+    <string name="hidden_apps_count">%1$s מתוך %2$s מוצגות</string>
+    <string name="hidden_apps_none_shown">צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג.</string>
+    <string name="hidden_apps_open">הצגת כל האפליקציות</string>
+    <string name="hidden_apps_fold">הצגת המוצגות בלבד</string>
 </resources>

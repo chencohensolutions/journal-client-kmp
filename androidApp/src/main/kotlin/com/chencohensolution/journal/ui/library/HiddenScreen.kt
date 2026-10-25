@@ -34,6 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.rotate
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -169,28 +172,64 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                         if (shown.screenshotApps.isEmpty()) {
                             Text(stringResource(R.string.hidden_no_apps), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(16.dp))
                         } else {
-                            OutlinedTextField(
-                                value = state.query,
-                                onValueChange = actions.setQuery,
-                                placeholder = { Text(stringResource(R.string.hidden_find_app)) },
-                                leadingIcon = { Icon(LibraryIcons.Search, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp)) },
-                                singleLine = true,
-                                textStyle = TextStyle(color = LibraryColors.OnBackground, fontSize = 16.sp),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            )
-                            Text(
-                                stringResource(R.string.hidden_apps_pills),
-                                color = LibraryColors.Muted,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                            )
-                            FlowRow(
-                                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            // Folded at first, showing only the apps whose screenshots are shown; open, every app
+                            // (filtered by Find an app) to show or hide.
+                            var appsOpen by rememberSaveable { mutableStateOf(false) }
+                            val appsShown = shown.screenshotApps.filter { !it.hidden }
+                            val format = NumberFormat.getIntegerInstance()
+                            Row(
+                                Modifier.fillMaxWidth().clickable { appsOpen = !appsOpen }.padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                state.shownApps.forEach { app -> AppPill(app) { if (!state.saving) set(app, !app.hidden) } }
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.hidden_apps_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        stringResource(R.string.hidden_apps_count, format.format(appsShown.size), format.format(shown.screenshotApps.size)),
+                                        color = LibraryColors.Muted,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                                Icon(
+                                    LibraryIcons.ChevronDown,
+                                    contentDescription = stringResource(if (appsOpen) R.string.hidden_apps_fold else R.string.hidden_apps_open),
+                                    tint = LibraryColors.Muted,
+                                    modifier = Modifier.size(20.dp).rotate(if (appsOpen) 180f else 0f),
+                                )
+                            }
+                            if (appsOpen) {
+                                OutlinedTextField(
+                                    value = state.query,
+                                    onValueChange = actions.setQuery,
+                                    placeholder = { Text(stringResource(R.string.hidden_find_app)) },
+                                    leadingIcon = { Icon(LibraryIcons.Search, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp)) },
+                                    singleLine = true,
+                                    textStyle = TextStyle(color = LibraryColors.OnBackground, fontSize = 16.sp),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                )
+                                Text(
+                                    stringResource(R.string.hidden_apps_pills),
+                                    color = LibraryColors.Muted,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                                )
+                            }
+                            val pills = if (appsOpen) state.shownApps else appsShown
+                            if (pills.isEmpty() && !appsOpen) {
+                                Text(
+                                    stringResource(R.string.hidden_apps_none_shown),
+                                    color = LibraryColors.Muted,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                                )
+                            } else {
+                                FlowRow(
+                                    Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    pills.forEach { app -> AppPill(app) { if (!state.saving) set(app, !app.hidden) } }
+                                }
                             }
                         }
                     }
@@ -268,12 +307,12 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
 }
 
 /**
- * A screenshot app as a pill you tap: filled, with a check, while its screenshots are hidden; outlined while shown.
+ * A screenshot app as a pill you tap: filled, with a check, while its screenshots are shown; outlined while hidden.
  * The count is how many screenshots it has.
  */
 @Composable
 private fun AppPill(app: HiddenCollections.Collection, onClick: () -> Unit) {
-    val on = app.hidden
+    val on = !app.hidden
     val content = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground
     Row(
         Modifier
