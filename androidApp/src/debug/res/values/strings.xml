@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the UI lab's suggestions (ux/moments-audio); moves to src/main/res with the option chosen. -->
+<resources>
+    <string name="audio_recording">Recording</string>
+    <string name="audio_recording_at">Recording · %s</string>
+    <string name="audio_voice_message">Voice message</string>
+    <string name="audio_call_unknown">Call</string>
+    <string name="audio_times">%1$s – %2$s · %3$s</string>
+    <string name="audio_time_range">%1$s – %2$s</string>
+    <string name="audio_day_times">%1$s – %2$s</string>
+    <string name="audio_time_length">%1$s · %2$s</string>
+    <string name="audio_voice_line">%1$s · %2$s</string>
+    <string name="audio_position">%1$s of %2$s · at %3$s</string>
+    <string name="audio_calls_line">%1$s · %2$s – %3$s</string>
+    <plurals name="audio_calls">
+        <item quantity="one">%d call</item>
+        <item quantity="other">%d calls</item>
+    </plurals>
+    <plurals name="audio_photos_during">
+        <item quantity="one">%d photo while it recorded</item>
+        <item quantity="other">%d photos while it recorded</item>
+    </plurals>
+    <string name="audio_play">Play</string>
+    <string name="audio_pause">Pause</string>
+    <string name="audio_stop">Stop</string>
+    <string name="audio_play_from_here">Play from here</string>
+    <string name="audio_started">Started %s</string>
+    <string name="audio_now">Now</string>
+    <string name="audio_photo_moment">%1$s · +%2$s</string>
+    <string name="audio_offset">+%s</string>
+    <string name="audio_remaining">−%s</string>
+    <string name="audio_back">Back</string>
+    <string name="audio_back_15">Back 15 seconds</string>
+    <string name="audio_forward_15">Forward 15 seconds</string>
+    <string name="audio_speed">%s×</string>
+    <string name="audio_dial">Call</string>
+    <string name="audio_edit_contact">Edit contact</string>
+
+    <string name="hidden_audio_title">Sound recordings</string>
+    <string name="hidden_audio_recordings">Recordings</string>
+    <string name="hidden_audio_calls">Phone calls</string>
+    <string name="hidden_audio_voice">WhatsApp voice messages</string>
+    <string name="hidden_audio_body">Hidden on all your devices until you turn one off. Calls keep who they were with, as the phone named them.</string>
+    <plurals name="hidden_audio_recordings_count">
+        <item quantity="one">%s recording</item>
+        <item quantity="other">%s recordings</item>
+    </plurals>
+    <plurals name="hidden_audio_calls_count">
+        <item quantity="one">%s call</item>
+        <item quantity="other">%s calls</item>
+    </plurals>
+    <plurals name="hidden_audio_voice_count">
+        <item quantity="one">%s voice message</item>
+        <item quantity="other">%s voice messages</item>
+    </plurals>
+</resources>

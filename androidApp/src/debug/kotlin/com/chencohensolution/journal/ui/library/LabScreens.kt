@@ -25,6 +25,14 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    // Sound recordings in Moments (ux/moments-audio): MomentsAudioSuggestions.
+    LabScreen("moments-audio", "Moments with sound recordings", listOf(
+        current {
+            JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        },
+    ) + momentsAudioOptions),
+    LabScreen("viewer-audio", "A sound recording's page", viewerAudioOptions),
+    LabScreen("hidden-audio", "Hidden collections with sound", listOf(current { HiddenNow() }) + hiddenAudioOptions),
     LabScreen("moments-years", "Moments over seven years", listOf(
         current {
             JournalHomeScreen(PreviewData.timelineLibrary, PreviewData.timelineStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
