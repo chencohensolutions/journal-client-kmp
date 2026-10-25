@@ -38,6 +38,14 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_LAST_STORY_ID_MILLIS)?.toLongOrNull()
         set(value) = store.putString(KEY_LAST_STORY_ID_MILLIS, value?.toString())
 
+    /**
+     * Photos and videos of the made-up library added to the real one (debug builds only, see MadeUpLibrary); 0 for
+     * none. Read once, when the library is made.
+     */
+    var madeUpLibrary: Int
+        get() = store.getString(KEY_MADE_UP_LIBRARY)?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+        set(value) = store.putString(KEY_MADE_UP_LIBRARY, value.takeIf { it > 0 }?.toString())
+
     /** How the Moments tab splits photos into rows; see [TimelineGrouping]. */
     var grouping: TimelineGrouping
         get() = TimelineGrouping(
@@ -252,6 +260,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"
         private const val KEY_LAST_STORY_ID_MILLIS = "last_story_id_millis"
+        private const val KEY_MADE_UP_LIBRARY = "made_up_library"
         private const val KEY_GROUPING_MODE = "grouping_mode"
         private const val KEY_GROUPING_GAP_HOURS = "grouping_gap_hours"
         private const val KEY_SIMILARITY_PERCENT = "similarity_percent"

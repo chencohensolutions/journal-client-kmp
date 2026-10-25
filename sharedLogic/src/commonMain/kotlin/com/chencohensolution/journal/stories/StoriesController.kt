@@ -4,6 +4,7 @@ import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
+import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
@@ -75,6 +76,10 @@ class StoriesController internal constructor(
     // Counts changes made here: a background rebuild started before one is dropped, as it was built from older notes.
     private var version = 0
 
+    /** Background rebuilds started so far, for the tests that keep them few (docs/plans/library-on-disk.md). */
+    internal var rebuilds = 0
+        private set
+
     // Bumped for each change from outside; collecting it skips to the latest, so a burst of changes is one rebuild.
     private val outsideChanges = MutableStateFlow(0)
 
@@ -97,7 +102,8 @@ class StoriesController internal constructor(
             outsideChanges.collect {
                 val startedAt = version
                 val inputs = inputs()
-                val built = withContext(background) { inputs.build() }
+                rebuilds++
+                val built = withContext(background) { Measure.time({ "Moments rebuilt" }) { inputs.build() } }
                 if (version == startedAt) show(built)
             }
         }

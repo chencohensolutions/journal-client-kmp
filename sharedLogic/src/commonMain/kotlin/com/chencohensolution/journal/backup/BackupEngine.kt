@@ -4,6 +4,7 @@ package com.chencohensolution.journal.backup
 
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.MadeUpLibrary
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
@@ -95,7 +96,7 @@ data class BackupRunResult(val uploaded: Int, val alreadyOnServer: Int, val fail
  * only for the folders backed up), oldest or newest first.
  */
 internal fun backupQueue(items: List<MediaItem>, settings: BackupSettings): List<MediaItem> =
-    items.filter { (it.source in settings.sources || SoundIds.isSound(it.id)) && (it.sizeBytes ?: 0) > 0 }
+    items.filter { (it.source in settings.sources || SoundIds.isSound(it.id)) && (it.sizeBytes ?: 0) > 0 && !MadeUpLibrary.isMadeUp(it) }
         .let { scope ->
             when (settings.order) {
                 UploadOrder.OLDEST_FIRST -> scope.sortedBy { it.takenAtMillis }

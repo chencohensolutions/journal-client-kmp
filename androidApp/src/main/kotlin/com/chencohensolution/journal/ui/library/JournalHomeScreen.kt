@@ -1,5 +1,9 @@
 package com.chencohensolution.journal.ui.library
 
+import android.os.Process
+import android.os.SystemClock
+import androidx.compose.runtime.withFrameNanos
+import com.chencohensolution.journal.library.Measure
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import com.chencohensolution.journal.backup.BackupProgress
@@ -215,6 +219,15 @@ internal fun JournalHomeScreen(
     }
     val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
         value = withContext(Dispatchers.Default) { shownFeed.rows() }
+    }
+    // Measuring (debug builds; docs/plans/library-on-disk.md): how long after the process started Moments first drew rows.
+    if (Measure.log != null) {
+        LaunchedEffect(feedRows.isNotEmpty()) {
+            if (feedRows.isEmpty() || firstMomentsFrameLogged) return@LaunchedEffect
+            withFrameNanos {}
+            firstMomentsFrameLogged = true
+            Measure.log?.invoke("First Moments frame ${SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()} ms after start")
+        }
     }
     val storyRows = remember(stories.storyline) { storylineRows(stories.storyline) }
     // The month pill grown into the ruler; a touch anywhere else, back, or leaving the tab folds it.
@@ -755,3 +768,6 @@ private fun Message(text: String) {
 
 /** A request to show [itemId] in the Moments tab; a new one each time, so the same photo can be asked for again. */
 internal class ShowInMoments(val itemId: String)
+
+/** Whether the first Moments frame was measured in this process (see [Measure]). */
+private var firstMomentsFrameLogged = false

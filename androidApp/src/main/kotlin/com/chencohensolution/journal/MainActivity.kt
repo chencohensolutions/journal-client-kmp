@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        debugStart(this, intent.takeIf { savedInstanceState == null })
         // Only on a fresh start: after a rotation the link was handled already.
         if (savedInstanceState == null) openLink(intent)
 

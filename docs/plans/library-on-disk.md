@@ -133,6 +133,27 @@ Confirmed by the owner on Oct 25, 2026:
    - A host test that fails if a backup of 2,000 small files starts more than a few merges or feed rebuilds.
    - Record heap peak, time to first Moments frame, and janky frames during the first minute, on the owner's phone
      (`dumpsys meminfo`, `dumpsys gfxinfo`), as the baseline for every later phase.
+   - **Built Oct 25, 2026.**
+     - `MadeUpLibrary`: start Journal with `adb shell am start -S -n com.chencohensolution.journal/.MainActivity
+       --ei madeUpLibrary 300000` (debug builds; `0` turns it off; the size is kept for later starts). Half of the
+       photos are on the phone and half only on the server.
+     - Made-up files never reach the server, which is the owner's real one: backup and Free up space read only
+       MediaStore, `backupQueue` drops anything `MadeUpLibrary.isMadeUp`, and the server's list never saves them.
+     - `Measure` logs each merge, each Moments rebuild and the first Moments frame under the logcat tag
+       `JournalMeasure`.
+     - `LibraryLoadTest` holds the guard. Backing up 2,000 calls on a library of 20,000 starts 2,001 merges today
+       and 1 rebuild (the merged list comes out equal). Phase 4 lowers its merge limit to 5.
+   - **Baseline on the owner's phone (Oct 25, 2026, Galaxy S25, debug build, phone locked):**
+
+     | Library | Merge with the server's list | Moments rebuild | Dalvik heap peak | First Moments frame |
+     |---|---|---|---|---|
+     | Real: 10,678 on the phone + 102,725 on the server | 2.5 s | 1.1 s | about 370 MB (settles at 305 MB) | 10.9 s |
+     | Real + 100k made-up: 60,678 + 202,725 | 1.3–2.7 s | up to 2.0 s | about 508 MB of the 512 MB limit | 6.4 s* |
+
+     *Before the server's list had loaded.
+
+     Janky frames were not measured: they need the screen unlocked and scrolling. Measure them, and 300k and 1M, with
+     the owner at the phone (1M will not fit in today's heap).
 1. **Database and the server's list.**
    - SQLDelight setup; `server_media` and `sync_state`; `ServerLibrary` reads and writes them.
    - `media.json` is imported once and then deleted.

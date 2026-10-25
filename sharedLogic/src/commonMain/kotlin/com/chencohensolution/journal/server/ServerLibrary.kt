@@ -184,6 +184,8 @@ class ServerLibrary internal constructor(
      * applied them, so this phone deletes what it keeps of them (previews, originals, videos).
      */
     private val removed: suspend (List<String>) -> Unit = {},
+    /** Made-up files listed after the server's own (debug builds: MadeUpLibrary); never saved, never synced. */
+    private val madeUp: List<ServerMedia> = emptyList(),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val file = directory / "media.json"
@@ -192,8 +194,16 @@ class ServerLibrary internal constructor(
     private var cursor: String? = null
     private var syncJob: Job? = null
 
-    private val _media = MutableStateFlow<List<ServerMedia>>(emptyList())
+    private val _media = MutableStateFlow(madeUp)
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
+
+    /** The server's own files, as saved: [media] without [madeUp]. */
+    private var real: List<ServerMedia> = emptyList()
+
+    private fun show(list: List<ServerMedia>) {
+        real = list
+        _media.value = if (madeUp.isEmpty()) list else list + madeUp
+    }
 
     private val _hidden = MutableStateFlow<Set<String>>(emptySet())
 
@@ -383,7 +393,7 @@ class ServerLibrary internal constructor(
      * each time, which for a large library ran the phone out of memory.
      */
     internal suspend fun sync(): Unit = mutex.withLock {
-        val known = _media.value.associateByTo(LinkedHashMap()) { it.sha256 }
+        val known = real.associateByTo(LinkedHashMap()) { it.sha256 }
         val hidden = _hidden.value.toMutableSet()
         val savedCursor = cursor
         var changed = false
@@ -423,7 +433,7 @@ class ServerLibrary internal constructor(
                 val list = known.values.toList()
                 save(list, hidden)
                 if (hiddenChanged) _hidden.value = hidden.toSet()
-                if (changed) _media.value = list
+                if (changed) show(list)
                 if (gone.isNotEmpty()) runCatching { removed(gone) }
             }
         }
@@ -436,7 +446,7 @@ class ServerLibrary internal constructor(
         // A file from before sound recordings were kept: its cursor is past the ones it left out, so the feed starts
         // again (the list is kept meanwhile and replaced as the pages come).
         cursor = saved.cursor.takeIf { saved.v >= FILE_VERSION }
-        _media.value = saved.media
+        show(saved.media)
         _hidden.value = saved.hidden.toSet()
     }
 

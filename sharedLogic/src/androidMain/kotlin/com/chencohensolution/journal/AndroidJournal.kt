@@ -1,6 +1,9 @@
 package com.chencohensolution.journal
 
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.util.Log
 import android.os.Build
 import com.chencohensolution.journal.backup.AndroidMediaFiles
 import com.chencohensolution.journal.backup.AndroidSoundFolders
@@ -15,6 +18,9 @@ import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.MadeUpLibrary
+import com.chencohensolution.journal.library.Measure
+import com.chencohensolution.journal.library.WithMadeUp
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.places.AndroidPlaceReader
 import com.chencohensolution.journal.server.HttpIndexingApi
@@ -61,6 +67,31 @@ import okhttp3.OkHttpClient
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 
+/**
+ * Debug builds only, before anything else is made: logs [Measure]'s timing lines under "JournalMeasure", and takes
+ * the size of the made-up library ([MadeUpLibrary]) from the start command:
+ * `adb shell am start -S -n com.chencohensolution.journal/.MainActivity --ei madeUpLibrary 300000` (0 removes it).
+ * The size is kept for later starts.
+ */
+fun debugStart(context: Context, intent: Intent?) {
+    if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+    Measure.log = { Log.i("JournalMeasure", it) }
+    val count = intent?.takeIf { it.hasExtra(MADE_UP_EXTRA) }?.getIntExtra(MADE_UP_EXTRA, 0) ?: return
+    JournalSettings(SharedPreferencesStore(context)).madeUpLibrary = count
+}
+
+private const val MADE_UP_EXTRA = "madeUpLibrary"
+
+private var madeUpLibrary: MadeUpLibrary? = null
+
+/** The made-up library to add to the real one, in debug builds where [debugStart] set a size; null otherwise. */
+@Synchronized
+private fun madeUpLibrary(context: Context): MadeUpLibrary? {
+    if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return null
+    val count = JournalSettings(SharedPreferencesStore(context)).madeUpLibrary.takeIf { it > 0 } ?: return null
+    return madeUpLibrary ?: MadeUpLibrary(count).also { madeUpLibrary = it }
+}
+
 /** Android entry point into the shared logic. */
 fun createJournalController(context: Context): JournalController =
     JournalController(
@@ -91,7 +122,7 @@ fun createLibraryController(
     privateMedia: StateFlow<PrivateMedia>? = null,
 ): LibraryController =
     LibraryController(
-        library = AndroidMediaLibrary(context),
+        library = madeUpLibrary(context)?.let { WithMadeUp(AndroidMediaLibrary(context), it) } ?: AndroidMediaLibrary(context),
         settings = JournalSettings(SharedPreferencesStore(context)),
         backup = backup?.state,
         server = server,
@@ -220,6 +251,7 @@ fun serverLibrary(context: Context): ServerLibrary =
             phoneStorage(context).remove(sha256s)
             sha256s.forEach { keptOriginals(context).delete(it) }
         },
+        madeUp = madeUpLibrary(context)?.serverMedia.orEmpty(),
     ).also { serverLibrary = it }
 
 /** Previews of server-only photos, cached in `cache/previews` (up to the limit in Settings, 10 GB by default). One per process. */

@@ -172,11 +172,14 @@ class LibraryController internal constructor(
             }
             mergingFrom = inputs
             mergeJob = scope.launch {
+                merges++
                 val (days, soundList) = withContext(background) {
-                    val (soundMedia, serverMedia) = serverList.orEmpty().partition { it.isAudio }
-                    groupByDay(
-                        mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
-                    ) to soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
+                    Measure.time({ "Merge of ${readItems.size} + ${serverList.orEmpty().size} items" }) {
+                        val (soundMedia, serverMedia) = serverList.orEmpty().partition { it.isAudio }
+                        groupByDay(
+                            mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
+                        ) to soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
+                    }
                 }
                 merged = days
                 sounds = soundList
@@ -234,6 +237,10 @@ class LibraryController internal constructor(
 
     /** Something changed while a merge ran: merge again when it ends. */
     private var mergeAgain = false
+
+    /** Merges started so far, for the tests that keep them few (docs/plans/library-on-disk.md). */
+    internal var merges = 0
+        private set
 
     /** What [state] was last built from (see [publish]). */
     private var publishedKey: List<Any?>? = null
