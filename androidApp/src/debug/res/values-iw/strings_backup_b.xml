@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, ux/backup option b: moves to src/main/res without the prefix if chosen. -->
+<resources>
+    <string name="backup_b_title">שיחות והקלטות</string>
+    <string name="backup_b_pick">הוספת תיקייה</string>
+    <string name="backup_b_hidden_note">מגובות גם כשהן מוסתרות בהגדרות הפרטיות.</string>
+</resources>

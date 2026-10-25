@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, ux/backup option b: moves to src/main/res without the prefix if chosen. -->
+<resources>
+    <string name="backup_b_title">Calls and recordings</string>
+    <string name="backup_b_pick">Add a folder</string>
+    <string name="backup_b_hidden_note">Backed up even while they are hidden in Private settings.</string>
+</resources>

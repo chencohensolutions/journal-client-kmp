@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, ux/backup option c: moves to src/main/res without the prefix if chosen. -->
+<resources>
+    <string name="backup_c_title">שיחות והקלטות</string>
+    <string name="backup_c_intro">תיקיות בטלפון שהקלטות הקול שבהן מגובות, גם כשהן מוסתרות בהגדרות הפרטיות. ההסתרה רק מרחיקה אותן מהמסכים שלך.</string>
+    <string name="backup_c_pick">הוספת תיקייה</string>
+    <string name="backup_c_pick_body">בחר איפה הטלפון שומר שיחות או הקלטות</string>
+    <string name="backup_c_remove">הפסקת הגיבוי של %s</string>
+    <string name="backup_c_kind_calls">שיחות</string>
+    <string name="backup_c_kind_recordings">הקלטות</string>
+    <string name="backup_c_kind_voice">הודעות קוליות</string>
+    <plurals name="backup_c_files">
+        <item quantity="one">קובץ אחד</item>
+        <item quantity="two">%s קבצים</item>
+        <item quantity="other">%s קבצים</item>
+    </plurals>
+    <string name="backup_c_progress">%1$s מתוך %2$s בשרת</string>
+    <string name="backup_c_add_title">מה יש ב־%s?</string>
+    <string name="backup_c_add_body">שיחות שומרות עם מי היו, כפי שהטלפון קרא לכל קובץ.</string>
+    <string name="backup_c_add_confirm">לגבות</string>
+    <string name="backup_c_add_cancel">ביטול</string>
+</resources>
