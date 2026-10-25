@@ -1,0 +1,28 @@
+-- Version 7 to 8 (Oct 26, 2026): each noting of a day in feed_dirty is numbered, so a refresh clears only what it read.
+-- Before, a day noted again while its rows were being made was cleared with them, and rows of photos already gone stayed
+-- (on the Mac: 1,337 rows of the made-up library after it was taken away, and Moments stopped loading pages).
+ALTER TABLE feed_dirty ADD COLUMN n INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX feed_dirty_n ON feed_dirty(n);
+
+DROP TRIGGER library_item_added;
+DROP TRIGGER library_item_changed;
+DROP TRIGGER library_item_gone;
+DROP TRIGGER library_item_replacing;
+
+CREATE TRIGGER library_item_added AFTER INSERT ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (new.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+END;
+CREATE TRIGGER library_item_changed AFTER UPDATE ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (old.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+    INSERT OR REPLACE INTO feed_dirty VALUES (new.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+END;
+CREATE TRIGGER library_item_gone AFTER DELETE ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (old.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+END;
+CREATE TRIGGER library_item_replacing BEFORE INSERT ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty SELECT epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty) FROM library_item WHERE id = new.id;
+END;
+
+-- Rows made before may hold photos that are gone: all of them are made again once.
+INSERT OR REPLACE INTO feed_dirty VALUES (-1, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));

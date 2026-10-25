@@ -180,6 +180,42 @@ class FeedTableTest {
 }
 
 /**
+ * The library changing while Moments' rows are being made (on the Mac, Oct 26, 2026: 1,337 rows of the made-up library
+ * stayed after it was taken away, and no more pages loaded): a day noted again meanwhile stays noted, so the next
+ * refresh makes its rows again instead of keeping the ones made from what was there before.
+ */
+class FeedDirtyRaceTest {
+    @Test
+    fun aDayChangedWhileItsRowsAreMadeIsMadeAgain() {
+        val database = testLibraryDatabase()
+        val queries = database.libraryQueries
+        val day = LocalDay(2026, 8, 3)
+        val start = day.toEpochDay() * 86_400_000L
+        val photos = (0 until 3).map { i ->
+            MediaItem("p$i", MediaType.IMAGE, start + (10 + i) * HOUR, day, null, 10, 10, 100, "IMG_$i.jpg")
+        }
+        database.transaction { photos.forEach { queries.upsertLibraryItem(it.toLibraryRow()) } }
+        val context = com.chencohensolution.journal.stories.FeedContext(
+            ShownSources(), TimelineGrouping(GroupingMode.BY_DAY), Places.NONE, PhotoLooks.NONE, emptySet(), emptyMap(), emptyList(), version = "v",
+        )
+        val table = com.chencohensolution.journal.stories.FeedTable(database)
+        table.refresh(context)
+        assertEquals(1L, table.sectionCount())
+
+        // One photo goes (the day is noted), and while its row is made again the others go too.
+        queries.deleteRemoved(listOf("p0"))
+        table.afterBuild = {
+            table.afterBuild = {}
+            queries.deleteRemoved(listOf("p1", "p2"))
+        }
+        table.refresh(context)
+        table.refresh(context)
+        assertEquals(0L, table.sectionCount(), "the row of photos that are gone is gone")
+        assertEquals(0, table.refresh(context), "nothing left to make")
+    }
+}
+
+/**
  * Step 6f (the owner, Oct 26, 2026: calls turned on didn't show in Moments): rows made before the recordings were known
  * take them once they are, also in a new table on the same database (after a restart); recordings hidden again or
  * changed leave or change their rows; the same recordings again make nothing.

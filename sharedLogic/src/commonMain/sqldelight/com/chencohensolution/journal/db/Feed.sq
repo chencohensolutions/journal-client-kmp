@@ -17,8 +17,13 @@ CREATE INDEX feed_section_days ON feed_section(first_day, last_day);
 
 -- Days whose items changed since Moments' rows were made, noted by the triggers on library_item; -1 for all of them.
 CREATE TABLE feed_dirty (
-    day INTEGER NOT NULL PRIMARY KEY
+    day INTEGER NOT NULL PRIMARY KEY,
+    -- Which noting it is: noting a day again replaces it with a higher number, so a refresh clears only the notings it
+    -- read, and a day noted again while its rows were being made is made again next time.
+    n INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE INDEX feed_dirty_n ON feed_dirty(n);
 
 -- The sound recordings Moments' rows were made with (FeedTable): each refresh compares them with the recordings now
 -- shown, and makes the rows of the days of those that came, went or changed again, also after a restart.
@@ -30,18 +35,22 @@ CREATE TABLE feed_sound (
     facts TEXT NOT NULL
 );
 
-CREATE TRIGGER library_item_added AFTER INSERT ON library_item BEGIN INSERT OR IGNORE INTO feed_dirty VALUES (new.epoch_day); END;
-CREATE TRIGGER library_item_changed AFTER UPDATE ON library_item BEGIN
-    INSERT OR IGNORE INTO feed_dirty VALUES (old.epoch_day);
-    INSERT OR IGNORE INTO feed_dirty VALUES (new.epoch_day);
+CREATE TRIGGER library_item_added AFTER INSERT ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (new.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
 END;
-CREATE TRIGGER library_item_gone AFTER DELETE ON library_item BEGIN INSERT OR IGNORE INTO feed_dirty VALUES (old.epoch_day); END;
+CREATE TRIGGER library_item_changed AFTER UPDATE ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (old.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+    INSERT OR REPLACE INTO feed_dirty VALUES (new.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+END;
+CREATE TRIGGER library_item_gone AFTER DELETE ON library_item BEGIN
+    INSERT OR REPLACE INTO feed_dirty VALUES (old.epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
+END;
 CREATE TRIGGER library_item_replacing BEFORE INSERT ON library_item BEGIN
-    INSERT OR IGNORE INTO feed_dirty SELECT epoch_day FROM library_item WHERE id = new.id;
+    INSERT OR REPLACE INTO feed_dirty SELECT epoch_day, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty) FROM library_item WHERE id = new.id;
 END;
 
 -- A new database has no rows yet: make them all once.
-INSERT INTO feed_dirty VALUES (-1);
+INSERT INTO feed_dirty VALUES (-1, 0);
 
 -- The items of days first..last (as days since 1970-01-01), newest first, as LibraryController orders a day.
 itemsOfDays:
@@ -62,17 +71,15 @@ SELECT * FROM library_item WHERE id IN ?;
 libraryDays:
 SELECT min(epoch_day) AS first, max(epoch_day) AS last FROM library_item;
 
-dirtyDays:
-SELECT day FROM feed_dirty;
+dirtyMarks:
+SELECT day, n FROM feed_dirty;
 
 markFeedDirty:
-INSERT OR IGNORE INTO feed_dirty VALUES (?);
+INSERT OR REPLACE INTO feed_dirty VALUES (?, (SELECT coalesce(max(n), 0) + 1 FROM feed_dirty));
 
-clearFeedDirty:
-DELETE FROM feed_dirty WHERE day IN ?;
-
-clearAllFeedDirty:
-DELETE FROM feed_dirty;
+-- A noting read by a refresh, unless the day was noted again since.
+clearFeedMark:
+DELETE FROM feed_dirty WHERE day = ? AND n = ?;
 
 deleteSectionsOfDays:
 DELETE FROM feed_section WHERE first_day <= :last AND last_day >= :first;

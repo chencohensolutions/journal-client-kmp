@@ -56,13 +56,17 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
 
     fun markAllDirty() = queries.markFeedDirty(ALL)
 
+    /** Tests only: runs once the rows are made, before they are written (the library changing meanwhile). */
+    internal var afterBuild: () -> Unit = {}
+
     /**
      * Makes the rows of the days noted since the last refresh again; all of them when everything is noted or
      * [context] differs from what they were made with. Returns how many windows were made.
      */
     fun refresh(context: FeedContext): Int {
         markSoundDays(context.sounds)
-        val dirty = queries.dirtyDays().executeAsList()
+        val marks = queries.dirtyMarks().executeAsList()
+        val dirty = marks.map { it.day }
         val everything = ALL in dirty || state.stateValue(VERSION).executeAsOneOrNull() != context.version
         if (dirty.isEmpty() && !everything) return 0
         val windows = if (everything) {
@@ -76,13 +80,15 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
         val built = windows.map { window ->
             window to buildWindow(window, this, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds)
         }
+        afterBuild()
         database.transaction {
             if (everything) queries.deleteAllSections()
             built.forEach { (window, sections) ->
                 if (!everything) queries.deleteSectionsOfDays(first = window.first.toEpochDay(), last = window.last.toEpochDay())
                 sections.forEach { queries.insertSection(it.toRow()) }
             }
-            if (everything) queries.clearAllFeedDirty() else dirty.chunked(CHUNK).forEach { queries.clearFeedDirty(it) }
+            // Only the notings read: a day noted again while its rows were made stays noted and is made again next time.
+            marks.forEach { queries.clearFeedMark(it.day, it.n) }
             state.setState(VERSION, context.version)
             queries.clearFeedSounds()
             context.sounds.forEach { queries.insertFeedSound(Feed_sound(it.sha256, it.day.toEpochDay(), it.facts())) }
