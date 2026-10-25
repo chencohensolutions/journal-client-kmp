@@ -8,7 +8,8 @@ badge, plus crop, server-only photos and videos, Storage on this phone, Private 
 same day on both platforms, writing with a title, paragraph and history, and the storyline in place of stories. On
 Oct 22, 2026: the viewer's zoom (with the minimap, remembered zoom, download cloud and hidden system bars), Explore's
 list of countries with a country's page, and the feed's spacing, day lines, chips and hidden-source band matched to
-Android's.
+Android's. On Oct 26, 2026: the library database (plan B phases 1–6), Private settings, sound recordings (Moments and
+their page), and backup of calls and recordings from folders with Free up space by groups.
 
 Still missing on iOS:
 
@@ -16,21 +17,6 @@ Still missing on iOS:
   network's name only with the Access WiFi Information entitlement plus location permission
   (`NEHotspotNetwork.fetchCurrent`), which needs the owner's Apple developer team and a real iPhone to check; the row
   is hidden on iOS until then. See [screens/settings.md](screens/settings.md).
-
-- **Backup of calls and recordings from folders, Free up space by groups** (Android Oct 25, 2026) — Settings › Backup's
-  one list of pills (photo sources and sound folders, on first, **+ Add a folder** last), the add dialog (what was
-  found, What are they?, Back it up), **Keep on this phone: WAV / FLAC**, and Free up space's From with the same pills
-  and the **Delete for good?** dialog. Shared logic is done (`SoundFolder`, `BackupSettings.soundFolders`/`keepOnPhone`,
-  `BackupState.pills`, `FreeUpState.pills`, `FolderLook`, `BackupController.addSoundFolder`/`look`,
-  `FreeUpController.toggleFolder`/`confirmSounds`, `SoundRemoval`). Doable on iOS (checked Oct 25, 2026): the Files
-  folder picker (`UIDocumentPickerViewController(forOpeningContentTypes: [.folder])`) with a security-scoped bookmark
-  keeps read and write access, also from a background task; FLAC encoding is built in (AudioToolbox
-  `kAudioFormatFLAC`); deleting and writing through `FileManager`. But an iPhone keeps call recordings in Notes, and
-  Voice Memos and WhatsApp's voice notes inside their apps, out of the picker's reach: only recordings saved into Files
-  can be backed up. iOS needs `SoundFolders`, `MediaFiles.encodeFlac`/`replaceWithFlac` and a `SoundRemoval` in
-  `IosMediaFiles.kt`/`IosJournal.kt`, and the screens in `BackupSettingsView.swift`, `BackupViewModel.swift`,
-  `PhotoRemoval.swift` and the Free up space view. Strings: the `backup_*` folder keys and `free_up_sounds*` in
-  Android's `strings.xml`. See [screens/settings.md](screens/settings.md).
 
 - **Sound recordings in Ogg or Opus** (some WhatsApp voice messages and recorders): AVPlayer can't play them, so iOS
   says "The recording couldn’t be played" (sound recordings were built on iOS on Oct 26, 2026). They need another

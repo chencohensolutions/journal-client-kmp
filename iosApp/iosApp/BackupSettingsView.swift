@@ -15,13 +15,14 @@ struct BackupSettingsView: View {
     var body: some View {
         BackupSettingsScreen(
             backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts, serverUsage: settings.serverUsage,
-            actions: actions
+            actions: actions, folders: backup.folderActions
         )
     }
 }
 
-/// Backup: on or off with its status, then what uploads (a pill per source, the most photos first), when, and in
-/// which order. "Only on these Wi-Fi networks" is Android only for now. Drawn from the states alone.
+/// Backup: on or off with its status, then what uploads (a pill per source and per folder of calls and recordings, the
+/// ones on first, "+ Add a folder" last), which of a WAV and its FLAC the phone keeps, when, and in which order. "Only on
+/// these Wi-Fi networks" is Android only for now. Drawn from the states alone.
 struct BackupSettingsScreen: View {
     let backup: BackupState
     let notBackedUp: Int
@@ -29,6 +30,9 @@ struct BackupSettingsScreen: View {
     /// What the user's originals take up on the server; nil until it answered.
     let serverUsage: StorageUsage?
     let actions: SettingsActions
+    /// The sound folders' actions; none in the UI lab.
+    var folders = SoundFolderActions()
+    @StateObject private var picking = FolderPicking()
 
     var body: some View {
         let state = backup.settings
@@ -61,11 +65,19 @@ struct BackupSettingsScreen: View {
             .listRowBackground(LibraryColors.raised)
             if state.enabled {
                 Section {
-                    SourcePills(sources: state.choices(counts: sourceCounts), counts: sourceCounts, isOn: { state.sources.contains($0) }, toggle: actions.toggleBackupSource)
+                    BackupPillsView(
+                        pills: backup.pills(counts: sourceCounts), toggleSource: actions.toggleBackupSource, folders: folders,
+                        picking: folders.add == nil ? nil : picking
+                    )
                 } header: {
                     Text("What to back up")
+                } footer: {
+                    if !state.soundFolders.isEmpty {
+                        Text("Folders of calls and recordings are backed up even while they are hidden in Private settings.")
+                    }
                 }
                 .listRowBackground(LibraryColors.background)
+                KeepOnPhoneSection(keep: state.keepOnPhone, setKeep: folders.setKeepOnPhone)
                 Section {
                     Toggle(isOn: Binding(get: { state.wifiOnly }, set: actions.setWifiOnly)) {
                         SettingsLabel("Only on Wi-Fi", detail: "Never on mobile data.")
@@ -94,6 +106,7 @@ struct BackupSettingsScreen: View {
         }
         .scrollContentBackground(.hidden)
         .background(LibraryColors.background.ignoresSafeArea())
+        .soundFolderPicking(picking, folders)
         .navigationTitle("Backup")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)

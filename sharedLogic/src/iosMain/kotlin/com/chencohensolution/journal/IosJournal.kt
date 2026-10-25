@@ -3,6 +3,7 @@ package com.chencohensolution.journal
 import com.chencohensolution.journal.backup.BackgroundPieceSender
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.backup.IosMediaFiles
+import com.chencohensolution.journal.backup.IosSoundFolders
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.connection.ObservationHandle
@@ -340,6 +341,12 @@ object IosJournal {
     private var pieceSender: BackgroundPieceSender? = null
 
     /**
+     * The folders of calls and recordings the user picked in Files (Settings › Backup › Add a folder): their bookmarks
+     * in Application Support (`soundFolders`). Swift gives it the folders the picker returns ([IosSoundFolders.add]).
+     */
+    val soundFolders: IosSoundFolders by lazy { IosSoundFolders(supportDir() + "/soundFolders") }
+
+    /**
      * Backup to the server. One per process, shared by the screens and the background launches, so both see the same
      * progress. Hashes and uploads are remembered in Application Support (`backup/ledger.jsonl`); pieces go through a
      * background URLSession (from `Caches/backup/pieces`), photos are copied out of PhotoKit to `Caches/backup/files`.
@@ -360,12 +367,14 @@ object IosJournal {
                 settings = settings,
                 ledger = uploadLedger,
                 library = mediaLibrary,
-                files = IosMediaFiles(caches / "files"),
+                files = IosMediaFiles(caches / "files", sounds = soundFolders),
                 clientFactory = IosMtlsHttpClientFactory(),
                 trustedCas = decodePemCertificates(SERVER_CA_PEM),
                 onSettingsChanged = scheduler::settingsChanged,
                 onBackUpNow = scheduler::backUpNow,
                 pieceSender = sender,
+                soundFolders = soundFolders,
+                check = ServerVerifyApi(serverHttp()),
             )
         }.also { backupController = it }
 
@@ -390,7 +399,7 @@ object IosJournal {
      */
     fun freeUp(backup: BackupController, start: () -> Unit): IosFreeUp =
         freeUp ?: run {
-            val files = IosMediaFiles(cachesDir().toPath() / "freeup" / "files")
+            val files = IosMediaFiles(cachesDir().toPath() / "freeup" / "files", sounds = soundFolders)
             val controller = FreeUpController(
                 settings = JournalSettings(UserDefaultsStore()),
                 ledger = uploadLedger,
@@ -402,8 +411,9 @@ object IosJournal {
                 now = { (NSDate().timeIntervalSince1970 * 1000).toLong() },
                 onLedgerChanged = backup::ledgerChanged,
                 onStart = start,
+                soundFolders = soundFolders,
             )
-            IosFreeUp(controller, files)
+            IosFreeUp(controller, files, soundFolders)
         }.also { freeUp = it }
 
     /** Calls [onChange] (on a background queue) when photos are added or changed, or their file facts arrive. */

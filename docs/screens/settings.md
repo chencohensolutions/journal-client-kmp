@@ -50,7 +50,7 @@ The pages, and what each holds:
     until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
     choices of their own, off, as the owner chose; what they uploaded stays on the server. The server is told each
     file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder.
-    **Folders of calls and recordings** share that list (Android, since Oct 25, 2026; UX round
+    **Folders of calls and recordings** share that list (Android since Oct 25, 2026, iOS since Oct 26, 2026; UX round
     `ux/backup/2026-10-25`, b2): one list of pills (`BackupPills`, `BackupState.pills`), photo sources and sound folders
     side by side, not grouped, the ones backed up first, each the most files first, a folder with the icon of what it
     holds; **+ Add a folder** last. It opens Android's folder picker at Internal storage › Recordings › Call (where
@@ -64,7 +64,12 @@ The pages, and what each holds:
     Under the pills, once a folder is added: "Folders of calls and recordings are backed up even while they are hidden
     in Private settings." Then, always (as the owner asked): "WAV recordings are sent as FLAC: the same sound in about half the
     space", with **Keep on this phone**: **WAV** (default; the WAV stays as it is) or **FLAC** (the FLAC replaces the WAV
-    once the server confirmed it);
+    once the server confirmed it). On iOS (`SoundFolderViews.swift`, `IosSoundFolders.kt`) **+ Add a folder** opens the
+    Files folder picker; the folder is kept by a security-scoped bookmark (Application Support, `soundFolders/`), and the
+    add dialog is a sheet. An iPhone keeps call recordings in Notes, and Voice Memos and WhatsApp's voice notes inside
+    their apps, out of the picker's reach: only recordings saved into Files (On My iPhone, iCloud Drive, another app's
+    folder there) can be backed up. WAVs are made FLAC with iOS's own encoder (AVAudioFile); Keep on this phone is a
+    WAV / FLAC switch;
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging** ("Saves the battery;
     uploads wait for the charger."), and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
@@ -211,8 +216,9 @@ The pages, and what each holds:
     app's own **Delete for good?** dialog, deleted at once (`AndroidSoundRemoval`, `DocumentsContract.deleteDocument`):
     those folders have no trash. One that fails stays.
 - **Free up space on iOS** (Oct 21, 2026): the same shared `FreeUpController`, rules, sources, checks and lines; the
-  screen is a list like the rest of Settings (From is a switch per source, More options a disclosure with the rule
-  as an inline choice and its values in a menu under it). The difference is the deletion: PhotoKit always asks, so
+  screen is a list like the rest of Settings (From is the same pills as Android since Oct 26, 2026, sound folders and
+  **Delete for good?** included, the files deleted by `IosSoundFolders`; More options a disclosure with the rule as an
+  inline choice and its values in a menu under it). The difference is the deletion: PhotoKit always asks, so
   nothing is ever deleted during a run (`IosPhotoTrash.canTrashWithoutAsking()` is false) and there is no "Media
   management" dialog. The run (plan, the phone's hashing, the server's verify) happens in the app, on **Free up**; it
   goes on for the short time iOS gives after the app leaves the screen (`beginBackgroundTask`), and when iOS ends that

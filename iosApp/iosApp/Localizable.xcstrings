@@ -77,6 +77,16 @@
         }
       }
     },
+    "%@ · pick again" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · לבחור שוב"
+          }
+        }
+      }
+    },
     "%@ – %@" : {
       "localizations" : {
         "he" : {
@@ -385,6 +395,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld שיחות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld calls and recordings will be deleted from this phone for good: their folders have no trash. Your server keeps them." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld call or recording will be deleted from this phone for good: its folder has no trash. Your server keeps it."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld calls and recordings will be deleted from this phone for good: their folders have no trash. Your server keeps them."
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שיחה או הקלטה אחת יימחקו מהטלפון לצמיתות: אין לתיקייה סל מחזור. השרת שלך שומר אותה."
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן."
                 }
               }
             }
@@ -801,6 +863,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld צילומי מסך"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld sound files" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sound file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sound files"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "קובץ קול אחד"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קובצי קול"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קובצי קול"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld קובצי קול"
                 }
               }
             }
@@ -2199,6 +2313,16 @@
         }
       }
     },
+    "Add a folder" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת תיקייה"
+          }
+        }
+      }
+    },
     "Add back" : {
       "localizations" : {
         "he" : {
@@ -2489,12 +2613,32 @@
         }
       }
     },
+    "Back it up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לגבות"
+          }
+        }
+      }
+    },
     "Back to the tabs" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "חזרה ללשוניות"
+          }
+        }
+      }
+    },
+    "Back up %@?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לגבות את %@?"
           }
         }
       }
@@ -3095,6 +3239,26 @@
         }
       }
     },
+    "Delete and free up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק ולפנות מקום"
+          }
+        }
+      }
+    },
+    "Delete for good?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק לצמיתות?"
+          }
+        }
+      }
+    },
     "Delete story" : {
       "localizations" : {
         "he" : {
@@ -3592,6 +3756,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מיקוד"
+          }
+        }
+      }
+    },
+    "Folders of calls and recordings are backed up even while they are hidden in Private settings." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקיות של שיחות והקלטות מגובות גם כשהן מוסתרות בהגדרות הפרטיות."
           }
         }
       }
@@ -4448,6 +4622,16 @@
         }
       }
     },
+    "New files in it are backed up as they come, even while hidden. Calls keep who they were with, as the phone named each file." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבצים חדשים בה מגובים כשהם מגיעים, גם כשהם מוסתרים. שיחות שומרות עם מי היו, כפי שהטלפון קרא לכל קובץ."
+          }
+        }
+      }
+    },
     "New photos are read every night." : {
       "localizations" : {
         "he" : {
@@ -4608,6 +4792,16 @@
         }
       }
     },
+    "Phone calls" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיחות טלפון"
+          }
+        }
+      }
+    },
     "Phone number" : {
       "localizations" : {
         "he" : {
@@ -4714,6 +4908,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הקלטה · %@"
+          }
+        }
+      }
+    },
+    "Recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטות"
           }
         }
       }
@@ -4898,12 +5102,62 @@
         }
       }
     },
+    "Stop" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להפסיק"
+          }
+        }
+      }
+    },
+    "Stop backing up %@?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להפסיק לגבות את %@?"
+          }
+        }
+      }
+    },
     "Tap an app to show or hide its screenshots; filled ones are shown." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "הקש על אפליקציה כדי להציג או להסתיר את צילומי המסך שלה; המלאות מוצגות."
+          }
+        }
+      }
+    },
+    "The FLAC replaces the WAV once the server has it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובץ ה-FLAC מחליף את ה-WAV כשהשרת מחזיק אותו."
+          }
+        }
+      }
+    },
+    "The WAV stays as it is." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובץ ה-WAV נשאר כמו שהוא."
+          }
+        }
+      }
+    },
+    "The app can’t read that folder." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האפליקציה לא יכולה לקרוא את התיקייה הזו."
           }
         }
       }
@@ -4924,6 +5178,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הודעה קולית"
+          }
+        }
+      }
+    },
+    "Voice messages" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הודעות קוליות"
+          }
+        }
+      }
+    },
+    "WAV recordings are sent as FLAC: the same sound in about half the space." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטות WAV נשלחות כ-FLAC: אותו קול בכמחצית מהמקום."
+          }
+        }
+      }
+    },
+    "What are they?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה הם?"
+          }
+        }
+      }
+    },
+    "What it sent stays on the server." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה שנשלח נשאר בשרת."
           }
         }
       }

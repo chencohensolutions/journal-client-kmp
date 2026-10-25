@@ -28,6 +28,8 @@ class IosFreeUp internal constructor(
     val controller: FreeUpController,
     /** Where photos are copied out of PhotoKit to hash them; emptied when a run ends. */
     private val files: MediaFiles,
+    /** Deletes sound files of the picked folders the server holds, once the user agreed (FreeUpController.confirmSounds). */
+    private val sounds: SoundRemoval? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -35,7 +37,7 @@ class IosFreeUp internal constructor(
     fun launchRun(onDone: () -> Unit): ObservationHandle {
         val job = scope.launch {
             try {
-                controller.runOnce(IosPhotoTrash)
+                controller.runOnce(IosPhotoTrash, sounds)
             } catch (_: CancellationException) {
                 // Stopped: what was checked so far waits for the user.
             } catch (_: Exception) {

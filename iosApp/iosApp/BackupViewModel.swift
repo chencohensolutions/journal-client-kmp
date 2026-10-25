@@ -31,6 +31,33 @@ final class BackupViewModel: ObservableObject {
     func setChargingOnly(_ chargingOnly: Bool) { controller.setChargingOnly(chargingOnly: chargingOnly) }
     func setOrder(_ order: UploadOrder) { controller.setOrder(order: order) }
     func backUpNow() { controller.backUpNow() }
+
+    /// Folders of calls and recordings: added from the Files picker, turned on or off, forgotten, and WAV or FLAC kept.
+    var folderActions: SoundFolderActions {
+        SoundFolderActions(
+            add: { [weak self] url in await self?.look(url) },
+            confirm: { [weak self] picked, kind in self?.add(picked, kind: kind) },
+            toggle: { [weak self] folder in self?.controller.setSoundFolderEnabled(treeUri: folder.treeUri, enabled: !folder.enabled) },
+            remove: { [weak self] folder in self?.controller.removeSoundFolder(treeUri: folder.treeUri) },
+            setKeepOnPhone: { [weak self] keep in self?.controller.setKeepOnPhone(keep: keep) }
+        )
+    }
+
+    /// Keeps lasting access to the folder the Files picker returned and looks into it; nil when it can't be read.
+    @MainActor
+    private func look(_ url: URL) async -> PickedFolder? {
+        guard let folder = IosJournal.shared.soundFolders.add(url: url),
+              let look = try? await controller.look(folder: folder) else { return nil }
+        return PickedFolder(folder: folder, look: look)
+    }
+
+    private func add(_ picked: PickedFolder, kind: AudioKind) {
+        let folder = picked.folder
+        controller.addSoundFolder(
+            folder: folder.doCopy(treeUri: folder.treeUri, name: folder.name, path: folder.path, kind: kind, enabled: true),
+            look: picked.look
+        )
+    }
 }
 
 extension BackupState {

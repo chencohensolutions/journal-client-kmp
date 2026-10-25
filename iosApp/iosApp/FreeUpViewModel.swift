@@ -26,6 +26,8 @@ final class FreeUpViewModel: ObservableObject {
     func refreshPlan() { controller.refreshPlan() }
     func setRule(_ rule: FreeUpRule) { controller.setRule(rule: rule) }
     func toggleSource(_ source: MediaSource) { controller.toggleSource(source: source) }
+    func toggleFolder(_ treeUri: String) { controller.toggleFolder(treeUri: treeUri) }
+    func confirmSounds() { controller.confirmSounds() }
 
     /// "Free up 14 GB": checks every file on the phone and on the server; those that pass wait for Move to trash.
     func freeUp() {

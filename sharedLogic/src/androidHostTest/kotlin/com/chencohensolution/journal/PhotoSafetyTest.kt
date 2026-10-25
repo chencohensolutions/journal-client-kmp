@@ -25,6 +25,8 @@ class PhotoSafetyTest {
         // iOS: PhotoKit changes, and the add-only permission.
         "performChanges", "PHAssetChangeRequest", "PHAssetCreationRequest", "PHAssetCollectionChangeRequest",
         "deleteAssets", "PHContentEditingOutput", "NSPhotoLibraryAddUsageDescription", "UIImageWriteToSavedPhotosAlbum",
+        // iOS: reaching into folders picked with the Files folder picker.
+        "startAccessingSecurityScopedResource",
     )
 
     /**
@@ -57,6 +59,9 @@ class PhotoSafetyTest {
         "deleteDocument" to setOf("AndroidSoundRemoval.kt"),
         "createDocument" to setOf("AndroidSoundRemoval.kt"),
         "FLAG_GRANT_WRITE_URI_PERMISSION" to setOf("LibraryActions.kt"),
+        // The same on iOS (Oct 26, 2026): the folders picked in Files are read, and written only to delete what the
+        // server confirmed and to replace a WAV by its FLAC, all in IosSoundFolders.kt.
+        "startAccessingSecurityScopedResource" to setOf("IosSoundFolders.kt"),
         "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryActions.kt"),
     )
 

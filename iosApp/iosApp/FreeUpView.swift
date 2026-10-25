@@ -17,7 +17,9 @@ struct FreeUpView: View {
                 setRule: freeUp.setRule,
                 toggleSource: freeUp.toggleSource,
                 freeUp: freeUp.freeUp,
-                moveToTrash: { await freeUp.moveWaitingToTrash(refreshLibrary: refreshLibrary) }
+                moveToTrash: { await freeUp.moveWaitingToTrash(refreshLibrary: refreshLibrary) },
+                toggleFolder: freeUp.toggleFolder,
+                confirmSounds: freeUp.confirmSounds
             )
         )
         .task { freeUp.refreshPlan() }
@@ -33,6 +35,10 @@ struct FreeUpActions {
     var freeUp: () -> Void
     /// Move to trash: iOS's one prompt for the files that wait.
     var moveToTrash: @MainActor () async -> Void
+    /// A folder of calls and recordings may give up its files, or keeps them.
+    var toggleFolder: (_ treeUri: String) -> Void = { _ in }
+    /// The user agreed, in the app's dialog, that the next run deletes sound files for good.
+    var confirmSounds: () -> Void = {}
 }
 
 /// Free up space: one button that checks everything this phone backed up (from the chosen sources), with "Older than"
@@ -45,19 +51,21 @@ struct FreeUpScreen: View {
     var confirming = false
     let actions: FreeUpActions
     @State private var moreOptions: Bool?
+    /// "Delete for good?": the plan has files of sound folders, which have no trash.
+    @State private var askSounds = false
 
     var body: some View {
         Form {
             summarySection(state)
             Section {
-                ForEach(state.choices, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.allows(source: source) }, set: { _ in actions.toggleSource(source) }))
-                        .tint(LibraryColors.accent)
-                }
+                BackupPillsView(
+                    pills: state.pills(), toggleSource: actions.toggleSource,
+                    folders: SoundFolderActions(toggle: { actions.toggleFolder($0.treeUri) }), showBytes: true
+                )
             } header: {
                 Text("From")
             }
-            .listRowBackground(LibraryColors.raised)
+            .listRowBackground(LibraryColors.background)
             Section {
                 DisclosureGroup(
                     isExpanded: Binding(get: { moreOptions ?? !(state.rule is FreeUpRuleEverything) }, set: { moreOptions = $0 })
@@ -75,6 +83,15 @@ struct FreeUpScreen: View {
         .navigationTitle("Free up space")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(LibraryColors.background, for: .navigationBar)
+        .alert("Delete for good?", isPresented: $askSounds) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete and free up", role: .destructive) {
+                actions.confirmSounds()
+                actions.freeUp()
+            }
+        } message: {
+            Text("\(Int(state.plan?.sounds ?? 0)) calls and recordings will be deleted from this phone for good: their folders have no trash. Your server keeps them.")
+        }
     }
 
     /// The size in large type, what the rule takes, the button, and what the run is doing or did.
@@ -97,7 +114,10 @@ struct FreeUpScreen: View {
                         .font(.subheadline)
                         .foregroundStyle(LibraryColors.muted)
                 }
-                Button(action: actions.freeUp) {
+                Button {
+                    // Sound files have no trash: they go only after the app's own dialog.
+                    if (plan?.sounds ?? 0) > 0 { askSounds = true } else { actions.freeUp() }
+                } label: {
                     Text(canFree ? String(localized: "Free up \(formatBytes(plan?.bytes ?? 0))") : String(localized: "Free up space"))
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 52)
@@ -211,6 +231,7 @@ private func planDetails(_ plan: FreeUpPlan) -> String {
     let counts = [
         photos > 0 ? String(localized: "\(photos) photos") : nil,
         videos > 0 ? String(localized: "\(videos) videos") : nil,
+        plan.sounds > 0 ? String(localized: "\(Int(plan.sounds)) sound files") : nil,
     ].compactMap { $0 }.joined(separator: ", ")
     guard let range = plan.takenRange, let oldest = range.first, let newest = range.second else { return counts }
     func month(_ millis: KotlinLong) -> String {
