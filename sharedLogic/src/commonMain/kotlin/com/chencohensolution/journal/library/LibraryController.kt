@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /** The photos and videos taken on one day, newest first. */
@@ -93,6 +94,13 @@ class LibraryController internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loadJob: Job? = null
 
+    /**
+     * Where merging with the server runs: off the main thread, as it reads every photo (a toggle such as Show private
+     * media froze the screen for a second with a large library). Tests pass their own dispatcher and get it for this
+     * too, so waiting for it is deterministic.
+     */
+    private val background: CoroutineDispatcher = if (dispatcher === Dispatchers.Main) Dispatchers.Default else dispatcher
+
     private val savedPrivateMedia = settings.privateMedia
 
     /** The device library as read. */
@@ -138,22 +146,47 @@ class LibraryController internal constructor(
         scores?.let { flow -> scope.launch { flow.collect { publish() } } }
     }
 
-    /** Puts the current device items, server-only items and backup statuses into [state]. */
+    /**
+     * Puts the current device items, server-only items and backup statuses into [state]. When the items or the server's
+     * list changed, they are merged again in the background ([background]) and shown once done; meanwhile the last
+     * merge stays on screen, and a newer change starts over.
+     */
     private fun publish() {
+        val readItems = readItems
         val backupState = backup?.value
-        val (soundMedia, serverMedia) = server?.media?.value.orEmpty().partition { it.isAudio }
+        val serverList = server?.media?.value
         val hiddenOnServer = server?.hidden?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
         val private = privateMedia?.value ?: savedPrivateMedia
         val scored = scores?.value.orEmpty()
-        val inputs = listOf(readItems, backupState?.entries, server?.media?.value, hiddenOnServer, kept, private, scored)
-        if (mergedFrom == null || mergedFrom!!.indices.any { mergedFrom!![it] !== inputs[it] }) {
-            merged = groupByDay(
-                mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
-            )
-            sounds = soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
-            mergedFrom = inputs
+        val inputs = listOf(readItems, backupState?.entries, serverList, hiddenOnServer, kept, private, scored)
+        fun same(other: List<Any?>?) = other != null && other.indices.all { other[it] === inputs[it] }
+        if (!same(mergedFrom)) {
+            // Already being merged from these: it shows them when done.
+            if (same(mergingFrom)) return
+            mergingFrom = inputs
+            mergeJob?.cancel()
+            mergeJob = scope.launch {
+                val (days, soundList) = withContext(background) {
+                    val (soundMedia, serverMedia) = serverList.orEmpty().partition { it.isAudio }
+                    groupByDay(
+                        mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
+                    ) to soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
+                }
+                merged = days
+                sounds = soundList
+                mergedFrom = inputs
+                mergingFrom = null
+                showStatuses()
+            }
+            return
         }
+        showStatuses()
+    }
+
+    /** Puts [merged] into [state] with each photo's backup status as it is now. */
+    private fun showStatuses() {
+        val backupState = backup?.value
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
         // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it). Several files
         // upload at once; each one's ring counts.
@@ -185,6 +218,10 @@ class LibraryController internal constructor(
 
     /** The sound recordings of the last [publish], built with [merged]. */
     private var sounds: List<SoundRecording> = emptyList()
+
+    /** The merge running in the background, and what it merges from (see [publish]). */
+    private var mergeJob: Job? = null
+    private var mergingFrom: List<Any?>? = null
 
     /** What [state] was last built from (see [publish]). */
     private var publishedKey: List<Any?>? = null
