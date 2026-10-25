@@ -154,6 +154,8 @@ internal class HomeActions(
     val loadMoreMoments: () -> Unit = {},
     /** Moments' rows down to the row of a day, for going to a date or showing a photo there. */
     val loadMomentsTo: (LocalDay) -> Unit = {},
+    /** Moments' rows down to the row of a photo, its day looked up in the library (it may be in no row read yet). */
+    val loadMomentsToItem: (itemId: String) -> Unit = {},
 )
 
 /**
@@ -320,7 +322,7 @@ internal fun JournalHomeScreen(
     // Moments is read a page at a time: a photo to show further down than what is read reads down to its day first.
     LaunchedEffect(shownPhoto) {
         val id = shownPhoto ?: return@LaunchedEffect
-        if (rows.rowOf(id) < 0) stories.itemsById[id]?.let { actions.loadMomentsTo(it.day) }
+        if (rows.rowOf(id) < 0) actions.loadMomentsToItem(id)
     }
     // …and the next page, once the list is near the end of what is read.
     LaunchedEffect(list, moments) {

@@ -179,7 +179,7 @@ private fun LibraryScreens(
     val openInScope: (ExploreScope, FeedSection?, MediaItem, PageSort) -> Unit = { scope, section, item, sort ->
         if (sort == PageSort.BEST || section == null) {
             val key = "best:" + scope.hashCode()
-            pageLists[key] = bestFirst(scopeItems(libraryState, storiesState, scope)).map { it.id }
+            pageLists[key] = bestFirst(scopeItems(libraryState, storiesState, scope))
             push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
         } else {
             push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, scope = scope))
@@ -249,6 +249,7 @@ private fun LibraryScreens(
                                         showOnRow = stories::showOnRow,
                                         loadMoreMoments = stories::loadMoreMoments,
                                         loadMomentsTo = { day -> stories.loadMomentsTo(day) {} },
+                                        loadMomentsToItem = stories::loadMomentsToItem,
                                         hideOnRow = stories::hideOnRow,
                                         alwaysShow = { section, source ->
                                             settings.alwaysShow(section.days, source)
@@ -418,7 +419,7 @@ private fun LibraryScreens(
                                     LaunchedEffect(state.gone) { if (state.gone) pop() }
                                     val listKey = "person:${route.id}"
                                     val open: (MediaItem) -> Unit = { item ->
-                                        pageLists[listKey] = state.items.map { it.id }
+                                        pageLists[listKey] = state.items
                                         push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = listKey))
                                     }
                                     if (state.person?.isGroup ?: route.id.startsWith("g")) {
@@ -457,7 +458,10 @@ private fun LibraryScreens(
                                 }
                                 is Route.Similar -> {
                                     val listKey = "similar:${route.itemId}"
-                                    val items = pageLists[listKey].mapNotNull { storiesState.itemsById[it] }
+                                    // As the page gave them until the database's are read (StoriesState.itemsById).
+                                    val opened = pageLists[listKey]
+                                    LaunchedEffect(listKey) { stories.want(opened.map { it.id }) }
+                                    val items = opened.mapNotNull { item -> storiesState.itemsById[item.id] ?: item.takeUnless { storiesState.gone(it.id) } }
                                     SimilarScreen(
                                         items = items,
                                         onOpen = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, list = listKey)) },
@@ -472,53 +476,66 @@ private fun LibraryScreens(
                                     onBack = pop,
                                     landing = landingHere,
                                 )
-                                is Route.Viewer -> ViewerScreen(
+                                is Route.Viewer -> {
+                                    // The items as opened: shown until the database's are read (StoriesState.itemsById
+                                    // holds only part of the library), so the viewer never comes out empty meanwhile.
+                                    val opened = remember(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists) }
                                     // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
-                                    items = rememberSaveable(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists).map { it.id } }
-                                        .mapNotNull { storiesState.itemsById[it] },
-                                    startId = route.itemId,
-                                    stories = storiesState,
-                                    actions = ViewerActions(
-                                        back = pop,
-                                        setInStoryline = stories::setInStoryline,
-                                        setWriting = stories::setWriting,
-                                        restoreWriting = stories::restoreWriting,
-                                        toggleTag = { itemId, tag, add ->
-                                            if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
-                                        },
-                                        showing = { landing = Landing(entry.depth - 1, it) },
-                                        setPrivate = actions.setPrivate,
-                                        openMap = { push(Route.Map(it)) },
-                                        share = actions.share,
-                                        showInMoments = { itemId: String ->
-                                            landing = null
-                                            showInMoments = ShowInMoments(itemId)
-                                            stack = listOf(Route.Journal)
-                                        }.takeUnless { route.moment != null && route.scope == null },
-                                        setZoom = stories::setZoom,
-                                        findIn = findings::show,
-                                        findings = FindingsActions(
-                                            openPerson = { push(Route.Person(it)) },
-                                            openSimilar = { item ->
-                                                val key = "similar:${findingsState.itemId}"
-                                                pageLists[key] = findingsState.similar.map { it.id }
-                                                push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+                                    val ids = rememberSaveable(route.encode()) { opened.map { it.id } }
+                                    val openedById = remember(opened) { opened.associateBy { it.id } }
+                                    var shownId by remember(route.encode()) { mutableStateOf(route.itemId) }
+                                    // The photo shown and its neighbours, read from the database as it is swiped.
+                                    LaunchedEffect(ids, shownId) { stories.want(ids.around(shownId)) }
+                                    ViewerScreen(
+                                        items = ids.mapNotNull { id -> storiesState.itemsById[id] ?: openedById[id]?.takeUnless { storiesState.gone(id) } },
+                                        startId = route.itemId,
+                                        stories = storiesState,
+                                        actions = ViewerActions(
+                                            back = pop,
+                                            setInStoryline = stories::setInStoryline,
+                                            setWriting = stories::setWriting,
+                                            restoreWriting = stories::restoreWriting,
+                                            toggleTag = { itemId, tag, add ->
+                                                if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                             },
-                                            moreSimilar = {
-                                                pageLists["similar:${findingsState.itemId}"] = findingsState.similar.map { it.id }
-                                                push(Route.Similar(findingsState.itemId))
+                                            showing = {
+                                                shownId = it
+                                                landing = Landing(entry.depth - 1, it)
                                             },
+                                            setPrivate = actions.setPrivate,
+                                            openMap = { push(Route.Map(it)) },
+                                            share = actions.share,
+                                            showInMoments = { itemId: String ->
+                                                landing = null
+                                                showInMoments = ShowInMoments(itemId)
+                                                stack = listOf(Route.Journal)
+                                            }.takeUnless { route.moment != null && route.scope == null },
+                                            setZoom = stories::setZoom,
+                                            findIn = findings::show,
+                                            findings = FindingsActions(
+                                                openPerson = { push(Route.Person(it)) },
+                                                openSimilar = { item ->
+                                                    val key = "similar:${findingsState.itemId}"
+                                                    pageLists[key] = findingsState.similar
+                                                    push(Route.Viewer(null, LibraryFilter.ALL, item.id, list = key))
+                                                },
+                                                moreSimilar = {
+                                                    pageLists["similar:${findingsState.itemId}"] = findingsState.similar
+                                                    push(Route.Similar(findingsState.itemId))
+                                                },
+                                            ),
+                                            faces = faceActions,
                                         ),
-                                        faces = faceActions,
-                                    ),
-                                    findings = findingsState,
-                                    people = peopleState.list.people,
-                                )
+                                        findings = findingsState,
+                                        people = peopleState.list.people,
+                                    )
+                                }
                                 is Route.Crop -> {
+                                    LaunchedEffect(route.itemId) { stories.want(listOf(route.itemId)) }
                                     val item = storiesState.itemsById[route.itemId]
                                     if (item == null) {
-                                        // Deleted from the device while open.
-                                        LaunchedEffect(Unit) { pop() }
+                                        // Deleted from the device while open; else it is still being read.
+                                        if (storiesState.gone(route.itemId)) LaunchedEffect(Unit) { pop() }
                                     } else {
                                         CropEditor(
                                             item = item,

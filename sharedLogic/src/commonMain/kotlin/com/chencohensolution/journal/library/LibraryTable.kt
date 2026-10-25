@@ -36,6 +36,50 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         return counts.keys.sorted().associateWith { counts.getValue(it) }
     }
 
+    /** The rows of [ids] that are in the library, by id. */
+    fun byIds(ids: Collection<String>): Map<String, LibraryRow> = database.transactionWithResult {
+        ids.distinct().chunked(CHUNK).flatMap { queries.libraryItemsWithIds(it, ::libraryRow).executeAsList() }.associateBy { it.item.id }
+    }
+
+    /**
+     * The row each of [sha256s] is, as [com.chencohensolution.journal.search.libraryResolver] finds it in the whole list:
+     * the row with that sha256, else a phone item backup hasn't read with the server file's name (ignoring case) and size.
+     * Where several rows qualify, the one that comes last in the screens' order (newest day first, newest first, then by
+     * id), as the in-memory lookup keeps the last. sha256s nothing is found for are left out.
+     */
+    fun bySha(sha256s: Collection<String>): Map<String, LibraryRow> {
+        val wanted = sha256s.distinct()
+        val candidates = HashMap<String, LibraryRow>()
+        val files = HashMap<String, Pair<String, Long?>>()
+        database.transaction {
+            wanted.chunked(CHUNK).forEach { chunk ->
+                queries.libraryItemsWithShas(chunk, ::libraryRow).executeAsList().forEach { candidates[it.item.id] = it }
+                queries.libraryItemsNamedAs(chunk, ::libraryRow).executeAsList().forEach { candidates[it.item.id] = it }
+                queries.serverFilesWithShas(chunk).executeAsList().forEach { files[it.sha256] = it.file_name.lowercase() to it.size }
+            }
+        }
+        val withSha = HashMap<String, LibraryRow>()
+        val byNameAndSize = HashMap<Pair<String, Long?>, LibraryRow>()
+        candidates.values.sortedWith(SHOWN_ORDER).forEach { row ->
+            val item = row.item
+            val sha = item.sha256
+            if (sha != null) withSha[sha] = row else item.fileName?.let { byNameAndSize[it.lowercase() to item.sizeBytes] = row }
+        }
+        val found = LinkedHashMap<String, LibraryRow>()
+        wanted.forEach { sha -> (withSha[sha] ?: files[sha]?.let(byNameAndSize::get))?.let { found[sha] = it } }
+        return found
+    }
+
+    /** The items with a location of their own inside the box, as (id, day, where). */
+    fun located(south: Double, west: Double, north: Double, east: Double): List<Triple<String, LocalDay, GeoPoint>> =
+        queries.locatedLibraryItems(south = south, north = north, west = west, east = east).executeAsList().map {
+            Triple(it.id, LocalDay.fromEpochDay(it.epoch_day), GeoPoint(it.latitude!!, it.longitude!!))
+        }
+
+    /** The days of those of [ids] that have no location of their own. */
+    fun daysOfUnlocated(ids: Collection<String>): Set<LocalDay> =
+        ids.distinct().chunked(CHUNK).flatMapTo(HashSet()) { chunk -> queries.daysOfUnlocated(chunk).executeAsList().map(LocalDay::fromEpochDay) }
+
     /**
      * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened
@@ -61,6 +105,9 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     private companion object {
         /** SQLite takes at most 999 parameters in a statement. */
         const val CHUNK = 500
+
+        /** The order the screens show the library in (LibraryController: days newest first, each newest first, then by id). */
+        val SHOWN_ORDER = compareByDescending<LibraryRow> { it.item.day }.thenByDescending { it.item.takenAtMillis }.thenBy { it.item.id }
     }
 }
 

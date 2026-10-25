@@ -61,5 +61,13 @@ Planned, not built on either platform yet:
   Phase 2 adds `StoredMediaLibrary` around `IosMediaLibrary`: PhotoKit is read whole on every load and stored in
   `device_item`. To read only what changed, make `IosMediaLibrary` a `ChangingLibrary`, with
   `PHPhotoLibrary.fetchPersistentChanges(since:)` and the token kept as the mark.
+  Step 6a (Android Oct 25, 2026): with Moments from the database, `StoriesState.itemsById` holds only the notes'
+  photos, Moments' rows read so far and the photos screens asked for, not the whole library. Swift views that look
+  photos up in it by id must ask for them with `StoriesController.want(ids:)` (async) and keep the items they were
+  opened with until those are read, dropping only those `StoriesState.gone(itemId:)` says are gone:
+  `LibraryRootView.swift` (similar photos, a list a page opened the viewer with, `request.itemIds`) and
+  `CropView.swift` (don't close while the photo is still being read). Showing a photo in Moments goes through
+  `StoriesController.loadMomentsToItem(itemId:)`. Search, a person's page and a photo's similar photos read their
+  items from the database already (`LibraryController.itemsOfShas`, wired in `IosJournal.kt`).
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

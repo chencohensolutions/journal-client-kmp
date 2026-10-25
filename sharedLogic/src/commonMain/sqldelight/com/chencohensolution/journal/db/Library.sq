@@ -258,3 +258,32 @@ SELECT * FROM library_item ORDER BY epoch_day DESC, taken_millis DESC LIMIT ?;
 -- Photos and videos per source, of the whole library.
 sourceCounts:
 SELECT source, count(*) FROM library_item GROUP BY source;
+
+-- Items by id: what a screen shows by id (a note's photo, the viewer's list).
+libraryItemsWithIds:
+SELECT * FROM library_item WHERE id IN ?;
+
+-- Items with one of these sha256s: the server's answers (a search, a person's photos, similar photos).
+libraryItemsWithShas:
+SELECT * FROM library_item WHERE sha256 IN ?;
+
+-- The phone's items backup hasn't read that have the name (ignoring case) and size of one of these server files: the
+-- server's answers for photos not read yet, found as the library matches them (through the phone's name index).
+libraryItemsNamedAs:
+SELECT i.* FROM server_media s
+JOIN device_item d ON lower(d.file_name) = lower(s.file_name) AND d.size = s.size
+JOIN library_item i ON i.id = d.id
+WHERE s.sha256 IN ? AND i.sha256 IS NULL;
+
+-- The name and size of these server files.
+serverFilesWithShas:
+SELECT sha256, file_name, size FROM server_media WHERE sha256 IN ?;
+
+-- Items with a location inside a box: those in places newly named.
+locatedLibraryItems:
+SELECT id, epoch_day, latitude, longitude FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN :south AND :north AND longitude BETWEEN :west AND :east;
+
+-- The days of these items that have no location of their own (a place found for them counts instead).
+daysOfUnlocated:
+SELECT DISTINCT epoch_day FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL);

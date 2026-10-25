@@ -190,6 +190,7 @@ object IosJournal {
             pageSize = { settings.currentState.searchPageSize },
             warmUp = ApolloSearchWarmUp(serverHttp()),
             peopleSearch = ApiPeopleSearch(peopleApi()) { JournalSettings(UserDefaultsStore()).privateMedia.show },
+            bySha = library::itemsOfShas,
         )
 
     private var peopleController: PeopleController? = null
@@ -210,6 +211,7 @@ object IosJournal {
             library = library.state,
             server = serverLibrary().media,
             includePrivate = { settings.privateMedia.show },
+            bySha = library::itemsOfShas,
         )
     }
 
@@ -224,6 +226,7 @@ object IosJournal {
             server = server.media,
             features = server.features,
             includePrivate = { settings.privateMedia.show },
+            bySha = library::itemsOfShas,
         )
     }
 

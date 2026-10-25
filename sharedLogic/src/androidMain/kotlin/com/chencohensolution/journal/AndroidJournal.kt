@@ -196,6 +196,7 @@ fun createSearchController(
         pageSize = { settings.currentState.searchPageSize },
         warmUp = ApolloSearchWarmUp(serverHttp(context)),
         peopleSearch = ApiPeopleSearch(peopleApi(context)) { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
+        bySha = library::itemsOfShas,
     )
 
 private var peopleController: PeopleController? = null
@@ -217,6 +218,7 @@ fun createPersonController(context: Context, id: String, library: LibraryControl
         library = library.state,
         server = serverLibrary(context).media,
         includePrivate = { settings.privateMedia.show },
+        bySha = library::itemsOfShas,
     )
 }
 
@@ -231,6 +233,7 @@ fun createPhotoFindingsController(context: Context, library: LibraryController):
         server = server.media,
         features = server.features,
         includePrivate = { settings.privateMedia.show },
+        bySha = library::itemsOfShas,
     )
 }
 

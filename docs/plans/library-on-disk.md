@@ -319,6 +319,42 @@ Confirmed by the owner on Oct 25, 2026:
        search, findings) instead of held as a list.
      - 6f. `LibraryState.days` and the newest-rows read go; `mergeWithServer` and `groupByDay` stay only as the tests'
        reference until phase 9. iOS: its 18 uses in Swift, on the Mac (docs/ios-todo.md).
+   - **6a built Oct 25, 2026: items by id and by sha256 from the database.**
+     - `LibraryTable` reads rows by ids, by sha256s, located rows in a box, and the days of rows without a location
+       (queries in `Library.sq`; no migration, as no table changed). `bySha` finds what `libraryResolver` finds in the
+       whole list: the row with that sha256, else a phone photo backup hasn't read with the server file's name and size
+       (through `device_item`'s name index), and where several qualify the last in the screens' order, as the lookup in
+       memory keeps.
+     - `LibraryController.items(ids)` and `itemsBySha` / `itemsOfShas` read them on the IO dispatcher with
+       `shownRow` laid over. Without a table (tests) they look in the whole list as before.
+     - With the pager, `StoriesState.itemsById` is no longer the whole library: it holds Moments' rows read so far,
+       the notes' photos (storyline, tags) and the photos screens asked for with `StoriesController.want(ids)` (at most
+       2,000, the oldest let go). They are read again from the database after each library change, and those the
+       library no longer has go to `StoriesState.missing`; `StoriesState.gone(id)` tells a screen to drop a photo. A
+       note on a photo in no row read reads it from the database first. Without the pager it is built from the whole
+       library as before, so the existing tests run unchanged.
+     - `markChangedDays` takes the days of moved and fingerprinted photos from `FeedTable.daysOf`, and of photos in
+       newly named places from the located rows in the box around those cells plus the places found for photos
+       without a location of their own (`FeedPager.daysInCells`).
+     - Search, a person's page and a photo's similar photos resolve the server's sha256s through
+       `LibraryController.itemsOfShas` (wired in `AndroidJournal.kt` and `IosJournal.kt`); `libraryResolver` stays for
+       the tests and as their reference. A person's page shows what it read before at once ("Not Mom"), then reads
+       again.
+     - Screens: the viewer keeps the items it was opened with and asks for the photo shown and 50 neighbours each way
+       as it is swiped; similar photos and a page's list (`PageLists` now keeps the items) do the same; Crop waits while
+       its photo is read and closes only when it is gone; showing a photo in Moments looks its day up in the database
+       (`loadMomentsToItem`).
+     - Tests (`LibraryTableTest`): over 30 generated libraries changed in 4 rounds each (shared sha256s, renames to a
+       server file's name and size), every sha256 and the whole list resolve as `libraryResolver` does, and ids as the
+       state's items; the days in named places equal the whole list's over 20 libraries; a `StoriesController` with
+       the pager holds only part of the library, reads a noted and a tagged photo for the storyline and tags, `want`
+       reads photos and marks one gone, and `loadMomentsToItem` reads down to an old photo's row. Reversing the
+       screens' order in `bySha` fails the first test.
+     - Not tried on the phone yet: a Journal backup was running (its notification stayed up for more than 10 minutes),
+       so the build was not installed over it.
+     - Left for later steps: `Inputs.build` still reads the whole list for the photos to fingerprint and to locate
+       (6b), search's map points and a town's box (6c), the viewer's All photos, Explore and the map lists (6c, 6d),
+       `serverSha` over the server's list (6e), and `LibraryState.days` itself (6f).
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

@@ -380,6 +380,36 @@ class LibraryController internal constructor(
         return if (status == item.backup) item else item.copy(backup = status)
     }
 
+    /**
+     * The items of [ids] that are in the library, as shown, by id: read from the database (docs/plans/library-on-disk.md,
+     * step 6a), so a screen never needs the whole list for a few photos. Without a table, from [state].
+     */
+    suspend fun items(ids: Collection<String>): Map<String, MediaItem> {
+        if (ids.isEmpty()) return emptyMap()
+        val table = table ?: return ids.toSet().let { wanted ->
+            _state.value.days.asSequence().flatMap { it.items }.filter { it.id in wanted }.associateBy { it.id }
+        }
+        return withContext(io) { table.byIds(ids).mapValues { shownRow(it.value) } }
+    }
+
+    /**
+     * The library's item for each of [sha256s] (the server's answers: a search, a person's photos, similar photos), as
+     * [com.chencohensolution.journal.search.libraryResolver] finds them in the whole list, read from the database;
+     * sha256s the library doesn't show are left out. Without a table, through that lookup over [state].
+     */
+    internal suspend fun itemsOfShas(sha256s: Collection<String>): Map<String, MediaItem> {
+        if (sha256s.isEmpty()) return emptyMap()
+        val table = table ?: return com.chencohensolution.journal.search.libraryResolver(_state.value, server?.media?.value.orEmpty()).let { resolve ->
+            sha256s.distinct().mapNotNull { sha -> resolve(listOf(sha)).firstOrNull()?.let { sha to it } }.toMap()
+        }
+        return withContext(io) { table.bySha(sha256s).mapValues { shownRow(it.value) } }
+    }
+
+    /** The library's items of [sha256s] in their order, each once (see [itemsOfShas]). */
+    suspend fun itemsBySha(sha256s: List<String>): List<MediaItem> = itemsOfShas(sha256s).let { found ->
+        sha256s.mapNotNull { found[it] }.distinctBy { it.id }
+    }
+
     /** One day of the rows, as shown, newest first. */
     private fun dayGroup(day: LocalDay): DayGroup {
         val kept = originals?.kept?.value.orEmpty().mapValues { it.value.toString() }

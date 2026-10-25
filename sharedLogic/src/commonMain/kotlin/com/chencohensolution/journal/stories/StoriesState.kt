@@ -32,8 +32,16 @@ data class StoriesState(
     val notes: Map<String, PhotoNote> = emptyMap(),
     /** Every tag in use, most recently used first. */
     val tags: List<TagSummary> = emptyList(),
-    /** Every photo and video on the device, by id. */
+    /**
+     * The photos and videos the screens use, by id. With Moments from the database ([whole] false): the photos with
+     * notes, Moments' rows read so far and what screens asked for ([StoriesController.want]), read from the database
+     * (docs/plans/library-on-disk.md, step 6a); else every photo and video of the library.
+     */
     val itemsById: Map<String, MediaItem> = emptyMap(),
+    /** Whether [itemsById] holds the whole library, so a photo not in it is gone. */
+    val whole: Boolean = true,
+    /** Photos screens asked for ([StoriesController.want]) that the library doesn't have: deleted, or hidden since. */
+    val missing: Set<String> = emptySet(),
     /** The Moments tab: every photo and video of the sources turned on, split by time, place and looks. */
     val feed: MomentsFeed = MomentsFeed(),
     /** The last save or delete that failed. */
@@ -76,6 +84,12 @@ data class StoriesState(
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
     /**
+     * Whether the photo [itemId] is known to be gone from the library (deleted, hidden): a screen showing it drops it.
+     * Not when it is only not read yet ([itemsById] holds part of the library): the screen keeps what it had.
+     */
+    fun gone(itemId: String): Boolean = itemId !in itemsById && (whole || itemId in missing)
+
+    /**
      * The photo a set of [items] opens on: the one the user turned it to last ([PhotoNote.front]), else the
      * best-looking (the server's aesthetic score), else null (the first).
      */
@@ -106,8 +120,14 @@ internal fun buildState(
     ready: Boolean = true,
     /** Moments read from the database a page at a time (FeedPager): used as it is, the whole feed isn't built. */
     paged: MomentsFeed? = null,
+    /**
+     * With [paged], the items the screens use besides its rows' (the notes' photos, what screens asked for), read from
+     * the database; the library's whole list isn't used for them.
+     */
+    items: Map<String, MediaItem>? = null,
+    missing: Set<String> = emptySet(),
 ): StoriesState {
-    val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
+    val itemsById = if (paged != null && items != null) paged.itemsById() + items else library.days.flatMap { it.items }.associateBy { it.id }
     // A tag counts the photos it shows; those not on this device yet count too.
     val tags = notes.values
         .filter { note -> itemsById[note.deviceId]?.let(shown::shows) != false }
@@ -132,6 +152,8 @@ internal fun buildState(
         notes = notes,
         tags = tags,
         itemsById = itemsById,
+        whole = paged == null || items == null,
+        missing = missing,
         // Empty until ready, so Moments never draws a feed that is about to change.
         feed = paged ?: if (!ready) MomentsFeed() else buildFeed(
             library.days.flatMap { it.items }, shown, grouping, places, looks,
@@ -145,6 +167,17 @@ internal fun buildState(
         ready = ready,
         error = error,
     )
+}
+
+/** The photos and videos of the rows read, also those of hidden sources shown on a row, by id. */
+internal fun MomentsFeed.itemsById(): Map<String, MediaItem> {
+    val items = HashMap<String, MediaItem>()
+    entries.forEach { entry ->
+        val section = (entry as? FeedEntry.Section)?.section ?: return@forEach
+        section.moments.forEach { moment -> moment.items.forEach { items[it.id] = it } }
+        section.revealed.forEach { band -> band.items.forEach { items[it.id] = it } }
+    }
+    return items
 }
 
 /** A cropped photo is shown on its own, out of its near-duplicate set, and so is one taken out of a set. */

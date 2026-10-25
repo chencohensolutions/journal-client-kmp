@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.stories
 
+import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.LocalDay
@@ -7,6 +8,8 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.library.SoundRecording
+import com.chencohensolution.journal.places.CELL_DEGREES
+import com.chencohensolution.journal.places.cellKey
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -67,6 +70,25 @@ internal class FeedPager(
 
     /** The key of the row with photos of [day]. */
     suspend fun sectionOf(day: LocalDay): String? = withContext(io) { table.sectionOf(day) }
+
+    /** The days of the library's items [ids] (those it has). */
+    suspend fun daysOf(ids: Collection<String>): Set<LocalDay> = if (ids.isEmpty()) emptySet() else withContext(io) { table.daysOf(ids) }
+
+    /**
+     * The days of the library's items in [cells] (places newly named, by [cellKey]): those with a location of their own
+     * there, and those without one that [placed] (the locations found for photos, by id) puts there.
+     */
+    suspend fun daysInCells(cells: Set<String>, placed: Map<String, GeoPoint>): Set<LocalDay> = if (cells.isEmpty()) emptySet() else withContext(io) {
+        val indexes = cells.map { cell -> cell.split(",").map(String::toLong) }
+        // The box around the cells, a cell wider each way so rounding at an edge never leaves a photo out.
+        val south = (indexes.minOf { it[0] } - 1) * CELL_DEGREES
+        val north = (indexes.maxOf { it[0] } + 2) * CELL_DEGREES
+        val west = (indexes.minOf { it[1] } - 1) * CELL_DEGREES
+        val east = (indexes.maxOf { it[1] } + 2) * CELL_DEGREES
+        val days = library.located(south, west, north, east).filter { (_, _, point) -> cellKey(point) in cells }.mapTo(HashSet()) { it.second }
+        days += library.daysOfUnlocated(placed.filter { (_, point) -> cellKey(point) in cells }.keys)
+        days
+    }
 
     /** The newest [count] rows, those with shown hidden photos made again with them. */
     private fun read(count: Int, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): MomentsFeed {

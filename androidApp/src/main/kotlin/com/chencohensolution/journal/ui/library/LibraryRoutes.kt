@@ -176,7 +176,7 @@ internal data class StackEntry(val depth: Int, val route: Route) {
  */
 internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState, lists: PageLists = PageLists()): List<MediaItem> = when {
     route.search -> search.items
-    route.list != null -> lists[route.list].mapNotNull { stories.itemsById[it] }
+    route.list != null -> lists[route.list].mapNotNull { item -> stories.itemsById[item.id] ?: item.takeUnless { stories.gone(it.id) } }
     route.scope != null && route.moment != null -> stories.feedOf(scopeItems(library, stories, route.scope)).section(route.moment)?.items.orEmpty()
     route.scope != null -> scopeItems(library, stories, route.scope)
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
@@ -187,18 +187,28 @@ internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Ro
     else -> stories.shownDays(library.days(route.filter)).flatMap { it.items }
 }
 
+/** The viewer's photo [id] and up to this many neighbours each way: what it asks the database for as it is swiped. */
+private const val VIEWER_NEIGHBOURS = 50
+
+/** [id] and its neighbours in these ids (from the start when it isn't here). */
+internal fun List<String>.around(id: String?): List<String> {
+    val at = indexOf(id).coerceAtLeast(0)
+    return subList(maxOf(0, at - VIEWER_NEIGHBOURS), minOf(size, at + VIEWER_NEIGHBOURS + 1))
+}
+
 /**
  * The photos pages showed when they opened the viewer (a person's page, similar photos), by the page's key, so the
  * viewer swipes through them in that order. Kept while the app runs; a list not here (after the process was killed)
- * is empty, and the viewer closes.
+ * is empty, and the viewer closes. The items themselves are kept: StoriesState.itemsById holds only part of the library
+ * (docs/plans/library-on-disk.md, step 6a), and they show until the database's are read.
  */
 internal class PageLists {
-    private val lists = HashMap<String, List<String>>()
+    private val lists = HashMap<String, List<MediaItem>>()
 
-    operator fun get(key: String): List<String> = lists[key].orEmpty()
+    operator fun get(key: String): List<MediaItem> = lists[key].orEmpty()
 
-    operator fun set(key: String, ids: List<String>) {
-        lists[key] = ids
+    operator fun set(key: String, items: List<MediaItem>) {
+        lists[key] = items
     }
 }
 

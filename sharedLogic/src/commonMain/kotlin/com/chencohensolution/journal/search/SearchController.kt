@@ -250,6 +250,8 @@ class SearchController internal constructor(
     private val warmUp: SearchWarmUp? = null,
     /** Searches with people chosen ([addPerson]); null: no people. */
     private val peopleSearch: PeopleSearch? = null,
+    /** The answers' items read from the library database; null (tests): looked up in [library]'s whole list. */
+    private val bySha: ShaLookup? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
@@ -378,6 +380,7 @@ class SearchController internal constructor(
     /** Back to nothing searched (and no people chosen). */
     fun clear() {
         searchJob?.cancel()
+        refreshJob?.cancel()
         firstAnswer = NOTHING
         loaded = NOTHING
         pageEnds = emptyList()
@@ -461,11 +464,25 @@ class SearchController internal constructor(
         _state.update { it.copy(status = SearchStatus.FAILED, items = emptyList(), sets = emptyList(), canLoadMore = false, error = error, errorDetail = detail) }
     }
 
-    /** The items and chips again, from the answers kept, through the library and places as they are now. */
+    private var refreshJob: Job? = null
+
+    /**
+     * The items and chips again, from the answers kept, through the library and places as they are now. With [bySha]
+     * the answers' items are read from the database first; a newer refresh replaces one still reading.
+     */
     private fun refresh() {
+        val lookup = bySha ?: return present(resolver())
         val current = _state.value
         if (current.status != SearchStatus.DONE && current.status != SearchStatus.SEARCHING) return
-        val resolve = resolver()
+        val sha256s = (firstAnswer.sha256s + loaded.sha256s.take(pageEnds.lastOrNull() ?: 0)).distinct()
+        refreshJob?.cancel()
+        refreshJob = scope.launch { present(resolverOf(lookup(sha256s))) }
+    }
+
+    /** [refresh] through [resolve]. */
+    private fun present(resolve: (List<String>) -> List<MediaItem>) {
+        val current = _state.value
+        if (current.status != SearchStatus.DONE && current.status != SearchStatus.SEARCHING) return
         val town = current.town
         // A town is asked for as a box, which can reach into the next town.
         val sets = grouped(resolve) { town == null || townOf(it) == town }

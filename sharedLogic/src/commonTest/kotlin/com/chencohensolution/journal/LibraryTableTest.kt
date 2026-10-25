@@ -3,8 +3,20 @@ package com.chencohensolution.journal
 import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.UploadLedger
+import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.places.Places
+import com.chencohensolution.journal.places.cellKey
+import com.chencohensolution.journal.search.libraryResolver
+import com.chencohensolution.journal.search.resolverOf
+import com.chencohensolution.journal.settings.SettingsController
+import com.chencohensolution.journal.stories.FeedEntry
+import com.chencohensolution.journal.stories.FeedPager
+import com.chencohensolution.journal.stories.FeedTable
+import com.chencohensolution.journal.stories.FilePhotoNoteStore
+import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -104,6 +116,11 @@ private fun scenario(seed: Int): Scenario {
     )
 }
 
+/** [items] by day as LibraryController shows the database's rows: newest day first, newest first, then by id. */
+private fun shownDays(items: List<MediaItem>): List<DayGroup> =
+    items.groupBy { it.day }.entries.sortedByDescending { it.key }
+        .map { (day, dayItems) -> DayGroup(day, dayItems.sortedWith(compareByDescending<MediaItem> { it.takenAtMillis }.thenBy { it.id })) }
+
 class LibraryTableTest {
     @Test
     fun theTableIsTheMergeOfManyLibraries() = runTest {
@@ -194,6 +211,154 @@ class LibraryTableTest {
                 expected.forEach { (id, item) -> assertEquals(item, actual.getValue(id), "seed $seed round $round: $id") }
             }
         }
+    }
+
+    /**
+     * Step 6a: the server's answers (sha256s) and ids read from the database give exactly what the lookups over the whole
+     * list in memory gave (libraryResolver, the state's items by id), over generated libraries changed in rounds so that
+     * several items share a sha256 and photos backup hasn't read match the server's by name and size.
+     */
+    @Test
+    fun itemsByShaAndByIdAreTheWholeListsLookups() = runTest {
+        val seen = mutableMapOf<String, Int>()
+        repeat(30) { seed ->
+            val s = scenario(seed)
+            val random = Random(seed + 2_000)
+            val database = testLibraryDatabase()
+            var device = s.device
+            StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            s.entries.forEach { ledger.record(it) }
+            val store = ServerMediaStore(database)
+            store.replaceAll(s.server, s.hiddenOnServer, cursor = null, showPrivate = s.showPrivate)
+            val table = LibraryTable(database)
+            table.refresh()
+            repeat(4) { round ->
+                val items = table.all().map { shown(it, s.kept, s.scores) }
+                val state = LibraryState(days = shownDays(items))
+                val server = store.media()
+                val sha256s = (server.map { it.sha256 } + items.mapNotNull { it.sha256 } + (0..3_000 step 7).map(::sha)).distinct().shuffled(random)
+                val resolve = libraryResolver(state, server)
+                val found = table.bySha(sha256s).mapValues { shown(it.value, s.kept, s.scores) }
+                sha256s.forEach { sha ->
+                    assertEquals(resolve(listOf(sha)).firstOrNull(), found[sha], "seed $seed round $round: $sha")
+                }
+                assertEquals(resolve(sha256s), resolverOf(found)(sha256s), "seed $seed round $round: the list")
+                val byName = found.count { (sha, item) -> item.sha256 != sha }
+                seen["by name and size"] = (seen["by name and size"] ?: 0) + byName
+                seen["a sha256 several items have"] = (seen["a sha256 several items have"] ?: 0) +
+                    items.mapNotNull { it.sha256 }.groupingBy { it }.eachCount().count { it.value > 1 }
+                seen["sound recordings asked for"] = (seen["sound recordings asked for"] ?: 0) + server.count { it.isAudio }
+
+                val ids = items.map { it.id }.filter { random.nextInt(3) == 0 } + listOf("gone", "server:${sha(9_999)}")
+                assertEquals(items.filter { it.id in ids }.associateBy { it.id }, table.byIds(ids).mapValues { shown(it.value, s.kept, s.scores) }, "seed $seed round $round: by id")
+
+                // Backup reads some photos, often to a sha256 another item has; the phone renames some to a server file's
+                // name and size.
+                device = device.map { item ->
+                    if (random.nextInt(6) == 0) item.copy(fileName = "only_${100 + random.nextInt(26)}.JPG", sizeBytes = 5_100L + random.nextInt(26)) else item
+                }
+                StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+                device.filter { random.nextInt(5) == 0 }.forEach { item ->
+                    ledger.record(LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(random.nextInt(140)), uploaded = random.nextBoolean()))
+                }
+                table.refresh()
+            }
+        }
+        seen.forEach { (case, count) -> assertTrue(count > 0, "no case of: $case") }
+    }
+
+    /** Step 6a: the days of photos in places newly named, from the database, are those the whole list gave. */
+    @Test
+    fun daysInNamedPlacesAreTheWholeListsDays() = runTest {
+        repeat(20) { seed ->
+            val s = scenario(seed)
+            val random = Random(seed + 3_000)
+            val database = testLibraryDatabase()
+            StoredMediaLibrary(TableTestLibrary(s.device), database, Dispatchers.Unconfined).loadItems()
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            s.entries.forEach { ledger.record(it) }
+            ServerMediaStore(database).replaceAll(s.server, s.hiddenOnServer, cursor = null, showPrivate = s.showPrivate)
+            val table = LibraryTable(database)
+            table.refresh()
+            val items = table.all().map { it.item }
+            // Places found for some photos (also some with a location of their own, which goes first), and for ids the
+            // library doesn't have.
+            val placed = (items.map { it.id } + listOf("gone1", "gone2")).filter { random.nextInt(3) == 0 }
+                .associateWith { GeoPoint(32.0 + random.nextInt(4) * 0.004, 34.0 + random.nextInt(30) / 100.0) }
+            val places = Places(placed, emptyMap())
+            val cells = (items.mapNotNull { places.location(it) } + placed.values).map { cellKey(it) }.distinct().filter { random.nextBoolean() }.toSet()
+            val expected = items.filter { item -> places.location(item)?.let { cellKey(it) in cells } == true }.mapTo(HashSet()) { it.day }
+            val pager = FeedPager(FeedTable(database), table, Dispatchers.Unconfined)
+            assertEquals(expected, pager.daysInCells(cells, placed), "seed $seed")
+            assertEquals(items.filter { it.id in placed }.mapTo(HashSet()) { it.day }, pager.daysOf(placed.keys), "seed $seed: days of ids")
+        }
+    }
+
+    /**
+     * Step 6a: with Moments from the database, the stories hold the items of the rows read, the notes' photos and those
+     * screens ask for, read from the database as the whole list has them, and know a photo that is gone.
+     */
+    @Test
+    fun storiesReadTheItemsTheyUseFromTheDatabase() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val first = LocalDay(2026, 1, 1)
+        val device = (0 until 200).map { n ->
+            val day = first.plusDays((n / 4).toLong())
+            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
+        }
+        val database = testLibraryDatabase()
+        fun store() = object : KeyValueStore {
+            private val values = mutableMapOf<String, String>()
+            override fun getString(key: String): String? = values[key]
+            override fun putString(key: String, value: String?) {
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+        val library = LibraryController(
+            StoredMediaLibrary(TableTestLibrary(device), database, dispatcher), JournalSettings(store()), dispatcher, table = LibraryTable(database),
+        )
+        val settings = SettingsController(JournalSettings(store()), dispatcher)
+        val stories = StoriesController(
+            noteStore = FilePhotoNoteStore(FakeFileSystem(), "/data/journal".toPath()),
+            library = library,
+            settings = settings,
+            newId = { "set" },
+            dispatcher = dispatcher,
+            feed = FeedPager(FeedTable(database), LibraryTable(database), dispatcher, pageSize = { 3 }),
+            shownRow = library::shownRow,
+        )
+        library.refresh()
+        advanceUntilIdle()
+        val all = library.currentState.days.flatMap { it.items }.associateBy { it.id }
+        assertEquals(200, all.size)
+        var state = stories.currentState
+        assertTrue(!state.whole && state.itemsById.size < 50, "only the rows read: ${state.itemsById.size}")
+        state.itemsById.forEach { (id, item) -> assertEquals(all.getValue(id), item, id) }
+
+        // Writing on and tagging photos in no row read: they are read from the database, and the storyline and tags have them.
+        stories.setWriting("5", "Old", "")
+        stories.addTag(listOf("3"), "trip")
+        advanceUntilIdle()
+        state = stories.currentState
+        assertEquals(listOf(all.getValue("5")), state.storyline)
+        assertEquals(all.getValue("3"), state.tags.single().latest)
+
+        // A screen asks for photos: those the library has come in, one it doesn't is gone; one not asked for isn't.
+        stories.want(listOf("7", "8", "nope"))
+        state = stories.currentState
+        assertEquals(all.getValue("7"), state.itemsById["7"])
+        assertEquals(all.getValue("8"), state.itemsById["8"])
+        assertTrue(state.gone("nope"))
+        assertTrue("9" !in state.itemsById && !state.gone("9"))
+
+        // Showing an old photo in Moments reads the rows down to its day.
+        stories.loadMomentsToItem("2")
+        advanceUntilIdle()
+        assertTrue(stories.currentState.feed.entries.any { entry -> (entry as FeedEntry.Section).section.items.any { it.id == "2" } })
+        stories.close()
+        settings.close()
+        library.close()
     }
 
     @Test

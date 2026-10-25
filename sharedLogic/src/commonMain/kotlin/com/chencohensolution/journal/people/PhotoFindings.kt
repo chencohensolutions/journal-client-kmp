@@ -6,7 +6,9 @@ import com.chencohensolution.journal.graphql.MediaFindingsQuery
 import com.chencohensolution.journal.graphql.SimilarMediaQuery
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.search.ShaLookup
 import com.chencohensolution.journal.search.libraryResolver
+import com.chencohensolution.journal.search.resolverOf
 import com.chencohensolution.journal.search.serverSha
 import com.chencohensolution.journal.server.ServerFeatures
 import com.chencohensolution.journal.server.ServerHttp
@@ -88,6 +90,8 @@ class PhotoFindingsController internal constructor(
     private val features: StateFlow<ServerFeatures?>,
     private val includePrivate: () -> Boolean,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    /** Similar photos read from the library database; null (tests): looked up in [library]'s whole list. */
+    private val bySha: ShaLookup? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var job: Job? = null
@@ -122,7 +126,11 @@ class PhotoFindingsController internal constructor(
         val sha = serverSha(item, server.value) ?: return
         val on = features.value ?: ServerFeatures.NONE
         if (!on.faces && !on.textInPhotos && !on.similar) return
-        cache[sha]?.let { return present(item.id, it) }
+        cache[sha]?.let { answer ->
+            if (bySha == null) return present(item.id, answer, libraryResolver(library.value, server.value))
+            job = scope.launch { present(item.id, answer, resolver(answer)) }
+            return
+        }
         job = scope.launch {
             try {
                 val media = async { if (on.faces || on.textInPhotos) api.media(sha) else null }
@@ -132,7 +140,7 @@ class PhotoFindingsController internal constructor(
                 cache[sha] = answer
                 while (cache.size > CACHED) cache.remove(cache.keys.first())
                 if (on.faces && faces.isNotEmpty() && people.currentState.status != PeopleStatus.READY) people.load()
-                present(item.id, answer)
+                present(item.id, answer, resolver(answer))
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -141,13 +149,17 @@ class PhotoFindingsController internal constructor(
         }
     }
 
-    private fun present(itemId: String, answer: FindingsAnswer) {
+    /** The library's items of [answer]'s similar photos: read from the database with [bySha], else from the whole list. */
+    private suspend fun resolver(answer: FindingsAnswer): (List<String>) -> List<MediaItem> =
+        bySha?.let { lookup -> resolverOf(lookup(answer.similar)) } ?: libraryResolver(library.value, server.value)
+
+    private fun present(itemId: String, answer: FindingsAnswer, resolve: (List<String>) -> List<MediaItem>) {
         val known = people.currentState.list
         val found = answer.faces.filter { it.personId != null }.map { face -> FoundFace(face, known.find(face.personId!!)) }
             // Named people first, then groups; each once.
             .distinctBy { it.face.personId }
             .sortedBy { it.person?.isGroup ?: true }
-        val similar = libraryResolver(library.value, server.value)(answer.similar).filter { it.id != itemId }
+        val similar = resolve(answer.similar).filter { it.id != itemId }
         _state.value = PhotoFindings(itemId, found, answer.text, similar)
     }
 

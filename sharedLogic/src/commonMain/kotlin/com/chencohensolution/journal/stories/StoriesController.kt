@@ -13,7 +13,6 @@ import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.places.PhotoPlaces
 import com.chencohensolution.journal.places.Places
-import com.chencohensolution.journal.places.cellKey
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.similarity.PhotoLooks
@@ -35,6 +34,12 @@ import kotlin.time.ExperimentalTime
 /** Fingerprints and places found in the background are shown at most this often. */
 internal const val BACKGROUND_REBUILD_MILLIS = 3_000L
 
+/**
+ * Photos screens asked for by id that are kept read ([StoriesController.want]): the oldest asked for are let go past it.
+ * A screen that shows one again asks for it again.
+ */
+private const val MAX_WANTED = 2_000
+
 /** Bumped when the way Moments' rows are made changes, so the database's rows are all made again once. */
 private const val FEED_VERSION = 1
 
@@ -46,7 +51,7 @@ private const val FEED_VERSION = 1
 @OptIn(ExperimentalTime::class)
 class StoriesController internal constructor(
     private val noteStore: PhotoNoteStore,
-    library: LibraryController,
+    private val library: LibraryController,
     /** The grouping setting decides how Moments is split into rows. */
     settings: SettingsController,
     /** New ids for sets merged by hand in Moments; see [StoryIds]. */
@@ -81,6 +86,15 @@ class StoriesController internal constructor(
     // Compared with the threshold chosen in Settings.
     private val looks get() =
         (similarity?.looks?.value ?: PhotoLooks.NONE).withSameScene(settingsState.value.similarity.percent / 100f)
+
+    /** With [feed]: the notes' photos and those screens asked for ([want]), as last read from the database. */
+    private var readItems: Map<String, MediaItem> = emptyMap()
+
+    /** The photos screens asked for, the latest last; at most [MAX_WANTED]. */
+    private val wanted = LinkedHashSet<String>()
+
+    /** Of [wanted], those the library doesn't have (StoriesState.missing). */
+    private var missing: Set<String> = emptySet()
 
     // Rebuilt right away on every change made here, so a screen opened just after a change already sees it.
     private val _state = MutableStateFlow(inputs().build().state)
@@ -117,9 +131,11 @@ class StoriesController internal constructor(
         scope.launch {
             outsideChanges.collect {
                 val startedAt = version
-                // Moments from the database: what changed outside the library marks its days, then the rows of the
-                // marked days are made again and the rows shown so far read again. Not before the caches are read,
-                // so the rows are made with the places and fingerprints the phone keeps.
+                // From the database: the notes' photos and those screens asked for read again (their statuses, or
+                // gone). Then what changed outside the library marks its days, the rows of the marked days are made
+                // again and the rows shown so far read again. Not before the caches are read, so the rows are made
+                // with the places and fingerprints the phone keeps.
+                if (feed != null) readAgain()
                 if (feed != null && cachesLoaded) {
                     markChangedDays(feed)
                     pagedFeed = feed.refresh(feedContext(), revealed, shownRow)
@@ -166,20 +182,19 @@ class StoriesController internal constructor(
      * triggers mark): photos newly located or in a place newly named, newly fingerprinted, recordings that came or went.
      */
     private suspend fun markChangedDays(feed: FeedPager) {
-        val items = _state.value.itemsById
+        // The days are the database's: the library's whole list isn't read for them (step 6a).
         val days = HashSet<LocalDay>()
         val nowPlaces = places?.places?.value ?: Places.NONE
         placesSeen?.takeIf { it !== nowPlaces }?.let { before ->
             val moved = nowPlaces.locations.filter { (id, point) -> before.locations[id] != point }.keys
             val named = nowPlaces.names.filter { (cell, name) -> before.names[cell] != name }.keys
-            items.values.forEach { item ->
-                if (item.id in moved || (named.isNotEmpty() && nowPlaces.location(item)?.let { cellKey(it) in named } == true)) days += item.day
-            }
+            days += feed.daysOf(moved)
+            days += feed.daysInCells(named, nowPlaces.locations)
         }
         placesSeen = nowPlaces
         val nowLooks = similarity?.looks?.value
         looksSeen?.takeIf { nowLooks != null && it.fingerprints !== nowLooks.fingerprints }?.let { before ->
-            nowLooks!!.fingerprints.forEach { (id, print) -> if (before.fingerprints[id] != print) items[id]?.let { days += it.day } }
+            days += feed.daysOf(nowLooks!!.fingerprints.filter { (id, print) -> before.fingerprints[id] != print }.keys)
         }
         looksSeen = nowLooks
         val nowSounds = libraryState.value.sounds
@@ -190,6 +205,56 @@ class StoriesController internal constructor(
         }
         soundsSeen = nowSounds
         if (days.isNotEmpty()) feed.markDays(days)
+    }
+
+    // MARK: Items by id from the database
+
+    /** Reads the notes' photos and [wanted] again: the library changed (statuses, a photo deleted or hidden). */
+    private suspend fun readAgain() {
+        val ids = notes.keys + wanted
+        val read = library.items(ids)
+        // Photos asked for or noted while this read went keep what was read for them.
+        readItems = readItems.filterKeys { it !in ids && (it in wanted || it in notes) } + read
+        missing = wanted.filterTo(HashSet()) { it !in readItems }
+    }
+
+    /**
+     * A screen shows the photos [ids] by id (the viewer's list, similar photos, a crop): those [StoriesState.itemsById]
+     * lacks are read from the database and published; those the library doesn't have go to [StoriesState.missing].
+     * They are kept current with the library from then on. Returns once they are in the state. Without Moments from the
+     * database, [StoriesState.itemsById] holds every photo already and nothing is read.
+     */
+    suspend fun want(ids: Collection<String>) {
+        if (feed == null || ids.isEmpty()) return
+        ids.forEach { id ->
+            wanted.remove(id)
+            wanted += id
+        }
+        while (wanted.size > MAX_WANTED) {
+            val oldest = wanted.first()
+            wanted.remove(oldest)
+            if (oldest !in notes) readItems = readItems - oldest
+        }
+        val known = _state.value.itemsById
+        val toRead = ids.filter { it !in known && it !in readItems }
+        if (toRead.isEmpty()) return
+        val read = library.items(toRead)
+        readItems = readItems + read
+        missing = missing - read.keys + toRead.filter { it !in read && it in wanted }
+        val state = _state.value
+        _state.value = state.copy(itemsById = state.itemsById + read, missing = missing)
+    }
+
+    /**
+     * Shows the photo [itemId] in Moments: reads Moments' rows down to its day, looked up in the database (the photo
+     * may be in no row read yet).
+     */
+    fun loadMomentsToItem(itemId: String) {
+        val pager = feed ?: return
+        scope.launch {
+            val day = pager.daysOf(listOf(itemId)).firstOrNull() ?: return@launch
+            loadMomentsTo(day) {}
+        }
     }
 
     /** Reads the next page of Moments' rows, if there is one (the screen scrolled near the end). */
@@ -325,13 +390,26 @@ class StoriesController internal constructor(
      * reports the page it already shows.
      */
     private fun changeNotes(itemIds: List<String>, rebuild: Boolean = true, transform: (PhotoNote) -> PhotoNote) {
+        // From the state's index: searching the whole library, on the main thread, for each swipe set took 14% of it
+        // while scrolling. A photo the state doesn't know (it is rebuilt in the background, or with Moments from the
+        // database, in no row read) is looked up in the library instead: from the database, then changed.
+        val known = _state.value.itemsById
+        val items = itemIds.mapNotNull { known[it] }.takeIf { it.size == itemIds.size }
+        when {
+            items != null -> changeNotesOf(items, rebuild, transform)
+            feed != null -> scope.launch {
+                val read = library.items(itemIds)
+                changeNotesOf(itemIds.mapNotNull { known[it] ?: read[it] }, rebuild, transform)
+            }
+            else -> changeNotesOf(itemsById(itemIds), rebuild, transform)
+        }
+    }
+
+    private fun changeNotesOf(items: List<MediaItem>, rebuild: Boolean, transform: (PhotoNote) -> PhotoNote) {
         val time = now()
         var changedAny = false
-        // From the state's index: searching the whole library, on the main thread, for each swipe set took 14% of it
-        // while scrolling. A photo
-        // the state doesn't know yet (it is rebuilt in the background) is searched for in the library instead.
-        val known = _state.value.itemsById
-        val items = itemIds.mapNotNull { known[it] }.takeIf { it.size == itemIds.size } ?: itemsById(itemIds)
+        // With Moments from the database, a photo given a note is one the screens use from now on (storyline, tags).
+        if (feed != null) readItems = readItems + items.associateBy { it.id }
         try {
             items.forEach { item ->
                 val current = notes[item.id] ?: PhotoNote(item.id, item.fileName, item.takenAtMillis, updatedAt = time)
@@ -387,6 +465,8 @@ class StoriesController internal constructor(
         // whole (LibraryState.counts). Either way with the caches read.
         ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete || libraryState.value.counts != null),
         paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
+        items = if (feed != null) readItems else null,
+        missing = missing,
     )
 
     private class Inputs(
@@ -399,6 +479,8 @@ class StoriesController internal constructor(
         val revealed: Set<FeedReveal>,
         val ready: Boolean,
         val paged: MomentsFeed?,
+        val items: Map<String, MediaItem>?,
+        val missing: Set<String>,
     ) {
         fun build(): Built {
             val state = buildState(
@@ -408,6 +490,8 @@ class StoriesController internal constructor(
                 revealed = revealed,
                 ready = ready,
                 paged = paged,
+                items = items,
+                missing = missing,
             )
             return Built(
                 state,
@@ -429,6 +513,7 @@ class StoriesController internal constructor(
     /** A state, and the photos to fingerprint and to locate for it. */
     private class Built(val state: StoriesState, val toCompare: List<MediaItem>, val toLocate: List<MediaItem>)
 
+    /** [ids]' items from the library's whole list: without Moments from the database (tests). */
     private fun itemsById(ids: List<String>): List<MediaItem> {
         val wanted = ids.toSet()
         return libraryState.value.days.flatMap { day -> day.items.filter { it.id in wanted } }

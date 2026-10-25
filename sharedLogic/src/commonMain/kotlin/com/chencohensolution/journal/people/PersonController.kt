@@ -4,7 +4,9 @@ import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.network.describe
+import com.chencohensolution.journal.search.ShaLookup
 import com.chencohensolution.journal.search.libraryResolver
+import com.chencohensolution.journal.search.resolverOf
 import com.chencohensolution.journal.server.ServerMedia
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +80,8 @@ class PersonController internal constructor(
     private val server: StateFlow<List<ServerMedia>>,
     private val includePrivate: () -> Boolean,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    /** Their photos read from the library database; null (tests): looked up in [library]'s whole list. */
+    private val bySha: ShaLookup? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loadJob: Job? = null
@@ -144,13 +148,33 @@ class PersonController internal constructor(
         show()
     }
 
-    /** The items, faces and who they are with again, from [hits] through the library as it is now. */
+    /** What [bySha] read last: the item of each sha256 it found, and the sha256s it was asked for. */
+    private var found: Map<String, MediaItem> = emptyMap()
+    private var lookedUp: Set<String> = emptySet()
+    private var showJob: Job? = null
+
+    /**
+     * The items, faces and who they are with again, from [hits] through the library as it is now. With [bySha], what
+     * was read before shows at once ("Not Mom" leaves the page at once), then the items are read again.
+     */
     private fun show() {
+        val lookup = bySha ?: return present(libraryResolver(library.value, server.value))
+        if (hits.all { it.sha256 in lookedUp }) present(resolverOf(found))
+        val sha256s = hits.map { it.sha256 }
+        showJob?.cancel()
+        showJob = scope.launch {
+            found = lookup(sha256s)
+            lookedUp = sha256s.toSet()
+            present(resolverOf(found))
+        }
+    }
+
+    /** [show] through [resolve]. */
+    private fun present(resolve: (List<String>) -> List<MediaItem>) {
         val current = _state.value
-        val resolve = libraryResolver(library.value, server.value)
-        val bySha = HashMap<String, MediaItem>()
-        for (hit in hits) resolve(listOf(hit.sha256)).firstOrNull()?.let { bySha[hit.sha256] = it }
-        var items = hits.mapNotNull { bySha[it.sha256] }.distinctBy { it.id }
+        val itemOf = HashMap<String, MediaItem>()
+        for (hit in hits) resolve(listOf(hit.sha256)).firstOrNull()?.let { itemOf[hit.sha256] = it }
+        var items = hits.mapNotNull { itemOf[it.sha256] }.distinctBy { it.id }
         items = when {
             current.sort == PageSort.BEST -> items.sortedWith(compareByDescending<MediaItem> { it.aesthetic ?: -1f }.thenByDescending { it.takenAtMillis })
             current.query.isBlank() -> items.sortedByDescending { it.takenAtMillis }
@@ -161,7 +185,7 @@ class PersonController internal constructor(
         val faces = HashMap<String, Face>()
         for (hit in hits) {
             val face = hit.faces.firstOrNull { it.personId == id } ?: continue
-            val item = bySha[hit.sha256] ?: continue
+            val item = itemOf[hit.sha256] ?: continue
             faces[item.id] = face
         }
         val known = people.currentState.list
