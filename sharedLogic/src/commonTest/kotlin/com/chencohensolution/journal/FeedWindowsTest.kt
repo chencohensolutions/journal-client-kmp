@@ -118,3 +118,61 @@ class FeedWindowsTest {
         )
     }
 }
+
+private fun MediaItem.toLibraryRow() = com.chencohensolution.journal.db.Library_item(
+    id = id, sha256 = sha256, server_sha256 = null, is_on_device = isOnDevice, is_video = type == MediaType.VIDEO,
+    taken_millis = takenAtMillis, epoch_day = day.toEpochDay(), duration_millis = durationMillis, width = width.toLong(),
+    height = height.toLong(), size = sizeBytes, file_name = fileName, burst_id = burstId, source = source.id, latitude = location?.latitude,
+    longitude = location?.longitude, modified_millis = modifiedMillis, mime_type = mimeType, is_private = isPrivate,
+    aesthetic = aesthetic?.toDouble(),
+)
+
+class FeedTableTest {
+    @Test
+    fun keptRowsAreTheWholeBuildsRowsThroughChanges() {
+        repeat(12) { seed ->
+            val library = library(seed)
+            val database = testLibraryDatabase()
+            val queries = database.libraryQueries
+            var items = library.items
+            database.transaction { items.forEach { queries.upsertLibraryItem(it.toLibraryRow()) } }
+            val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_DAY) else TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6)
+            val shown = ShownSources(hidden = if (seed % 3 == 0) setOf(MediaSource.WHATSAPP) else emptySet())
+            val context = com.chencohensolution.journal.stories.FeedContext(
+                shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, library.sounds, version = "v$seed",
+            )
+            val table = com.chencohensolution.journal.stories.FeedTable(database)
+            val sounds = library.sounds.associateBy { it.sha256 }
+            val random = Random(seed + 99)
+            var lastChanged = ""
+            repeat(5) { round ->
+                table.refresh(context)
+                val kept = table.sections(Long.MAX_VALUE, 1_000_000, sounds) { it.item }
+                val whole = buildFeed(ListSource(items).items, shown, grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds)
+                    .entries.mapNotNull { (it as? FeedEntry.Section)?.section }
+                val wholeKeys = whole.associateBy { it.key }
+                val keptKeys = kept.associateBy { it.key }
+                val differ = (wholeKeys.keys - keptKeys.keys) + (keptKeys.keys - wholeKeys.keys)
+                assertEquals(emptySet(), differ, "seed $seed round $round: " + differ.map { k -> k + " whole=" + wholeKeys[k]?.days + " kept=" + keptKeys[k]?.let { s -> s.days.toString() + s.items.map { it.id } } } + " changed: " + lastChanged)
+                assertEquals(whole, kept, "seed $seed round $round")
+                // Some photos deleted, some moved to another time, a few new.
+                val gone = items.filter { random.nextInt(25) == 0 }
+                val moved = items.filter { it !in gone && random.nextInt(30) == 0 }.map { item ->
+                    val at = item.takenAtMillis + random.nextLong(-30 * HOUR, 30 * HOUR)
+                    item.copy(takenAtMillis = at, day = LocalDay.fromEpochDay(at / 86_400_000L))
+                }
+                val added = (0..random.nextInt(4)).map { n ->
+                    val at = items[random.nextInt(items.size)].takenAtMillis + random.nextLong(-3 * HOUR, 3 * HOUR)
+                    MediaItem("new$round-$n", MediaType.IMAGE, at, LocalDay.fromEpochDay(at / 86_400_000L), null, 10, 10, 100, "NEW_$n.jpg")
+                }
+                database.transaction {
+                    gone.forEach { queries.deleteRemoved(listOf(it.id)) }
+                    (moved + added).forEach { queries.upsertLibraryItem(it.toLibraryRow()) }
+                }
+                val movedIds = moved.associateBy { it.id }
+                lastChanged = "gone=${gone.map { it.id + "@" + it.day }} moved=${moved.map { m -> m.id + "@" + items.first { it.id == m.id }.day + "->" + m.day }} added=${added.map { it.id + "@" + it.day }}"
+                items = items.filter { it !in gone }.map { movedIds[it.id] ?: it } + added
+            }
+        }
+    }
+}
