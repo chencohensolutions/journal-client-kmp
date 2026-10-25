@@ -253,6 +253,21 @@ Confirmed by the owner on Oct 25, 2026:
      - Still in memory: `LibraryState.days` (the adapter), `BackupState.entries` (statuses), backup's queue.
        `mergeWithServer` stays as the tests' reference until phase 9.
 5. **Moments paged.**
+   - **5a built Oct 25, 2026: the rows in the database.**
+     - `windowsFor` and `buildWindow` (`FeedWindows.kt`) build Moments a window of whole days at a time, with
+       `buildFeed` itself. A window is widened until its edges are breaks between rows: "by breaks" runs across
+       midnight, recordings running into or starting just past it, sets merged by hand across days.
+     - `FeedTable` keeps the rows in `feed_section` (version 6, `5.sqm`), by ids as JSON. Triggers on
+       `library_item` note changed days in `feed_dirty`; a refresh rebuilds their windows. It rebuilds everything
+       when everything is noted or the context's version (settings, threshold) changed. Rows are read a page at a
+       time with their items by id.
+     - Tests: windows equal the whole build over 24 generated libraries; the kept rows equal it after each of 5
+       rounds of random changes over 12 more. They caught a swapped query parameter (SQLDelight orders named
+       parameters by first use) and recordings outside the photos' days.
+     - On a copy of the owner's database (PC): every row built in 2.3 s (2,176 rows, once), nothing noted 6 ms,
+       one day 31 ms, the first page of 30 rows (668 items) 47 ms.
+     - Not yet: the app doesn't use it (StoriesController keeps building the whole feed), and recordings, notes,
+       places and fingerprints changing don't yet mark their days.
    - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
      sync with the server (and the phone's library) goes on in the background, off the main thread, and updates
      only the rows it changes.
