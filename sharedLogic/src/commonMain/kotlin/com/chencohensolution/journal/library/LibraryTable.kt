@@ -1,6 +1,8 @@
 package com.chencohensolution.journal.library
 
 import com.chencohensolution.journal.db.LibraryDatabase
+import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.stories.GeoArea
 
 /** An item of the library as `library_item` holds it, and the server file it is ([serverSha], for scores). */
 internal class LibraryRow(val item: MediaItem, val serverSha: String?)
@@ -32,6 +34,31 @@ internal class SquareCount(val source: MediaSource, val square: Pair<Long, Long>
 
 /** A row's place in the screens' order, its source and where it was taken (when known). */
 internal class LocatedRow(val key: LibraryKey, val source: MediaSource, val point: GeoPoint?)
+
+/**
+ * A row as Explore's summaries read it (step 6c): its place in the screens' order, type, source, its own location, and
+ * the server file it is with the server's score (this phone's score for that file goes first, see [shown]).
+ */
+internal class ExploreRow(
+    val key: LibraryKey,
+    val isVideo: Boolean,
+    val source: MediaSource,
+    val point: GeoPoint?,
+    val serverSha: String?,
+    val aesthetic: Float?,
+)
+
+/** How many items of one type [source] saved on [day]. */
+internal class DayCount(val day: LocalDay, val source: MediaSource, val isVideo: Boolean, val count: Int)
+
+/** The box around the items with a location of their own that [source] saved on [day]. */
+internal class DayBox(val day: LocalDay, val source: MediaSource, val box: GeoArea)
+
+/**
+ * The shown items with a location of their own in one square of the map ([lat], [lon]: floor(degrees / size)): how many,
+ * the sums of their latitudes and longitudes, and the id of the only one when there is one.
+ */
+internal class CellCount(val lat: Long, val lon: Long, val count: Int, val latSum: Double, val lonSum: Double, val onlyId: String?)
 
 /** What [LibraryTable.refresh] changed: rows added or different, and the ids of rows gone. */
 internal class LibraryDelta(val changed: List<LibraryRow>, val removed: List<String>) {
@@ -155,6 +182,78 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         }
     }
 
+    /** Up to [limit] rows in the screens' order after [after] (null: from the newest), as Explore's summaries read them. */
+    fun exploreRows(after: LibraryKey?, limit: Int): List<ExploreRow> = (after ?: LibraryKey.FIRST).let { key ->
+        queries.exploreRowsAfter(day = key.epochDay, taken = key.takenMillis, id = key.id, limit = limit.toLong()) {
+                id, epochDay, takenMillis, isVideo, source, latitude, longitude, serverSha, aesthetic ->
+            ExploreRow(
+                LibraryKey(epochDay, takenMillis, id), isVideo, MediaSource.parse(source) ?: MediaSource.OTHER,
+                if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null, serverSha, aesthetic?.toFloat(),
+            )
+        }.executeAsList()
+    }
+
+    /** Photos and videos per day, source and type, of the whole library. */
+    fun dayCounts(): List<DayCount> = queries.dayCounts { epochDay, source, isVideo, items ->
+        DayCount(LocalDay.fromEpochDay(epochDay), MediaSource.parse(source) ?: MediaSource.OTHER, isVideo, items.toInt())
+    }.executeAsList()
+
+    /** The box around the items with a location of their own, per day and source. */
+    fun locatedDays(): List<DayBox> = queries.locatedDays { epochDay, source, south, west, north, east ->
+        // Never null: only rows with a location are grouped.
+        DayBox(LocalDay.fromEpochDay(epochDay), MediaSource.parse(source) ?: MediaSource.OTHER, GeoArea(south!!, west!!, north!!, east!!))
+    }.executeAsList()
+
+    /** The rows from [first] to [last] (days), in the screens' order. */
+    fun inDays(first: Long, last: Long): List<LibraryRow> = queries.libraryItemsInDays(first = first, last = last, mapper = ::libraryRow).executeAsList()
+
+    /** The ids and places of the items with a location of their own in [box] (as [GeoArea.contains] takes it), from [first] to [last]. */
+    fun locatedIn(box: GeoArea, first: Long, last: Long): List<Pair<String, GeoPoint>> =
+        queries.locatedInBox(
+            first = first, last = last, south = box.south, north = box.north, wraps = box.wraps, west = box.west, east = box.east,
+        ) { id, latitude, longitude -> id to GeoPoint(latitude, longitude) }.executeAsList()
+
+    /** The box around the items with a location of their own in each place square that has some, by [cellKey]. */
+    fun cellBoxes(): Map<String, GeoArea> = queries.cellBoxes { latCell, lonCell, south, west, north, east ->
+        "$latCell,$lonCell" to GeoArea(south!!, west!!, north!!, east!!)
+    }.executeAsList().toMap()
+
+    /**
+     * The items [shown] shows with a location of their own in [box], from [first] to [last], counted per map square of
+     * [size] degrees.
+     */
+    fun mapCells(size: Double, box: GeoArea, first: Long, last: Long, shown: ShownSources): List<CellCount> {
+        val (hidden, always) = sourcesFilter(shown)
+        return queries.mapCells(
+            size = size, first = first, last = last, south = box.south, north = box.north, wraps = box.wraps, west = box.west,
+            east = box.east, hidden = hidden, always = always,
+        ) { latCell, lonCell, photos, latSum, lonSum, onlyId ->
+            CellCount(latCell, lonCell, photos.toInt(), latSum!!, lonSum!!, onlyId)
+        }.executeAsList()
+    }
+
+    /** How many of the items [shown] shows with a location of their own are in [box], from [first] to [last]. */
+    fun mapCount(box: GeoArea, first: Long, last: Long, shown: ShownSources): Int {
+        val (hidden, always) = sourcesFilter(shown)
+        return queries.mapCount(
+            first = first, last = last, south = box.south, north = box.north, wraps = box.wraps, west = box.west, east = box.east,
+            hidden = hidden, always = always,
+        ).executeAsOne().toInt()
+    }
+
+    /**
+     * [shown] as the database's source column holds the sources (several spellings can be one source): those hidden,
+     * and the days some of them show on anyway, as "epoch day:source".
+     */
+    private fun sourcesFilter(shown: ShownSources): Pair<List<String>, List<String>> {
+        val spellings = queries.sourceCounts().executeAsList().map { it.source }.groupBy { MediaSource.parse(it) ?: MediaSource.OTHER }
+        val hidden = spellings.filterKeys { !shown.isShown(it) }.values.flatten()
+        val always = shown.alwaysShown.flatMap { daySource ->
+            spellings[daySource.source].orEmpty().map { "${daySource.day.toEpochDay()}:$it" }
+        }
+        return hidden to always
+    }
+
     /**
      * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened
@@ -251,3 +350,6 @@ internal class BatchWalk<T>(
         }
     }
 }
+
+/** 1 when [this] runs across the date line (its west edge east of its east edge), as the database's box queries take it. */
+private val GeoArea.wraps: Long get() = if (west <= east) 0L else 1L

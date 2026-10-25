@@ -354,6 +354,7 @@ class LibraryController internal constructor(
             idsByDay.getOrPut(item.day) { HashSet() } += item.id
         }
         if (days.isEmpty()) return
+        rowsWritten++
         if (addsWork || removed.isNotEmpty()) rowsChanged++
         val kept = merged.filter { it.day !in days }
         val made = days.filter { it in idsByDay }.map(::dayGroup)
@@ -396,6 +397,34 @@ class LibraryController internal constructor(
             sha256s.distinct().mapNotNull { sha -> resolve(listOf(sha)).firstOrNull()?.let { sha to it } }.toMap()
         }
         return withContext(io) { table.bySha(sha256s).mapValues { shownRow(it.value) } }
+    }
+
+    /**
+     * The score a row with the server file [serverSha] and the server's [aesthetic] is shown with: this phone's for that
+     * file first, as [shownRow] lays it over. For what reads many rows a few numbers each (Explore's covers, step 6c).
+     */
+    internal fun shownScore(serverSha: String?, aesthetic: Float?): Float? = serverSha?.let { scores?.value?.get(it) } ?: aesthetic
+
+    /** The scores [shownScore] lays over, by identity: what Explore's summaries were worked out with. */
+    internal val scoresShown: Any? get() = scores?.value
+
+    /**
+     * The box around the library's photos in [town] (of every source), by where they were taken or the place found for
+     * them ([places]): what search sends for a town. From the database's place squares (step 6c); without a table, from
+     * [state]. Null when none of them has a place.
+     */
+    suspend fun townArea(town: String, places: com.chencohensolution.journal.places.Places): com.chencohensolution.journal.stories.GeoArea? {
+        val table = table ?: return withContext(background) {
+            val points = _state.value.days.asSequence().flatMap { it.items }
+                .mapNotNull { item -> places.location(item)?.takeIf { places.name(it)?.town == town } }
+                .toList()
+            if (points.isEmpty()) {
+                null
+            } else {
+                com.chencohensolution.journal.stories.GeoArea(points.minOf { it.latitude }, points.minOf { it.longitude }, points.maxOf { it.latitude }, points.maxOf { it.longitude })
+            }
+        }
+        return withContext(io) { com.chencohensolution.journal.stories.townArea(table, places, town) }
     }
 
     /** The library's items of [sha256s] in their order, each once (see [itemsOfShas]). */
@@ -464,6 +493,10 @@ class LibraryController internal constructor(
      * new sha256s don't). The readers start again from the newest when it moves (StoriesController, step 6b).
      */
     internal var rowsChanged = 0
+        private set
+
+    /** With a table, counts every change to its rows (a backup's new sha256s too): what Explore's summaries go by (step 6c). */
+    internal var rowsWritten = 0
         private set
 
     /** What [state] was last built from (see [publish]). */

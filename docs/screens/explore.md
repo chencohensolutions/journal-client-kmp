@@ -47,6 +47,9 @@ the library and the places found so far, and it shows the same sources as the Mo
   photos here" with **Show** (the viewer on them), and a slider over the years with photos to narrow them. The map
   opens fitted to all pins (from a photo's details, on that photo's spot, close up), keeps where it was while the viewer is open, and follows the system theme. No rotating or
   tilting.
+  - Android, since Oct 25, 2026: the map reads only the photos around what it shows (a screen further each way),
+    counted per small square, each time it settles (docs/plans/library-on-disk.md, step 6c). A pan further than that
+    shows the photos there once the map stops.
 
 ## iOS
 

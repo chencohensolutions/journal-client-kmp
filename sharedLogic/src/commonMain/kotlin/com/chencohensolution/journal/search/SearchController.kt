@@ -16,6 +16,7 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.people.Person
+import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.settings.JournalSettings
@@ -252,6 +253,11 @@ class SearchController internal constructor(
     private val peopleSearch: PeopleSearch? = null,
     /** The answers' items read from the library database; null (tests): looked up in [library]'s whole list. */
     private val bySha: ShaLookup? = null,
+    /**
+     * The box around the library's photos of a town, from the database (LibraryController.townArea, step 6c); null
+     * (tests): worked out from [library]'s whole list.
+     */
+    private val townArea: (suspend (town: String, places: Places) -> GeoArea?)? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
@@ -401,7 +407,8 @@ class SearchController internal constructor(
         if (current.query.isEmpty() || firstAnswer.size == 0 || current.people.isNotEmpty()) return
         _state.update { it.copy(year = year, town = town) }
         years = year?.let(::listOf)
-        area = town?.let(::areaOf)
+        // From the database the town's box is read when the page is asked for (fetch).
+        area = if (townArea == null) town?.let(::areaOf) else null
         if (year == null && town == null) {
             // The first answer has the best of all already.
             searchJob?.cancel()
@@ -412,7 +419,7 @@ class SearchController internal constructor(
         }
         _state.update { it.copy(status = SearchStatus.SEARCHING, loadingMore = false) }
         val limit = pageSize()
-        fetch(limit) { answer -> show(answer, full = answer.size == limit) }
+        fetch(limit, town?.takeIf { townArea != null }) { answer -> show(answer, full = answer.size == limit) }
     }
 
     /** Shows [answer]'s first page; [full]: the server may have more after it. */
@@ -422,14 +429,18 @@ class SearchController internal constructor(
         serverHasMore = full
     }
 
-    /** Asks the server for the first [limit] matches of the query (with [years] and [area]) and shows them through [apply]. */
-    private fun fetch(limit: Int, apply: (SearchAnswer) -> Unit) {
+    /**
+     * Asks the server for the first [limit] matches of the query (with [years] and [area]) and shows them through [apply].
+     * With [town], [area] is first read as the box around its photos ([townArea]).
+     */
+    private fun fetch(limit: Int, town: String? = null, apply: (SearchAnswer) -> Unit) {
         searchJob?.cancel()
         val query = _state.value.query
         val years = years
-        val area = area
         searchJob = scope.launch {
             try {
+                val places = stories?.value?.places
+                if (town != null) area = if (places == null) null else townArea?.invoke(town, places)?.widenedForSearch()
                 val answer = call(query, limit, 0, years, area)
                 apply(answer)
                 _state.update { it.copy(status = SearchStatus.DONE, indexed = answer.indexed, total = answer.total, error = null, errorDetail = null, onPhone = answer.onPhone) }
@@ -546,13 +557,17 @@ class SearchController internal constructor(
             .mapNotNull { item -> known.location(item)?.takeIf { known.name(it)?.town == town } }
             .toList()
         if (points.isEmpty()) return null
-        return GeoArea(
-            south = (points.minOf { it.latitude } - AREA_MARGIN).coerceAtLeast(-90.0),
-            west = (points.minOf { it.longitude } - AREA_MARGIN).coerceAtLeast(-180.0),
-            north = (points.maxOf { it.latitude } + AREA_MARGIN).coerceAtMost(90.0),
-            east = (points.maxOf { it.longitude } + AREA_MARGIN).coerceAtMost(180.0),
-        )
+        return GeoArea(points.minOf { it.latitude }, points.minOf { it.longitude }, points.maxOf { it.latitude }, points.maxOf { it.longitude })
+            .widenedForSearch()
     }
+
+    /** The box around a town's photos [AREA_MARGIN] wider each way, as far as the world goes. */
+    private fun GeoArea.widenedForSearch() = GeoArea(
+        south = (south - AREA_MARGIN).coerceAtLeast(-90.0),
+        west = (west - AREA_MARGIN).coerceAtLeast(-180.0),
+        north = (north + AREA_MARGIN).coerceAtMost(90.0),
+        east = (east + AREA_MARGIN).coerceAtMost(180.0),
+    )
 
     private fun resolver(): (List<String>) -> List<MediaItem> = libraryResolver(library.value, server?.value.orEmpty())
 

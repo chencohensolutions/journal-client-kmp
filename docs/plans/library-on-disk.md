@@ -387,6 +387,47 @@ Confirmed by the owner on Oct 25, 2026:
      - Left for later steps: Explore's summaries and pages still read `LibraryState.days` (6c); home's query reads the
        winning square's rows each time (about 1.7 s on the phone with every IO going on at start), which a cached
        count per square could make cheaper if it matters.
+   - **6c built Oct 25, 2026: Explore and the map from the database.** No table changed, so no migration; the new
+     queries are in `Library.sq`, the code in `ExploreFromDatabase.kt` and `ExploreMap.kt`.
+     - Explore's lists (`exploreOf(table, …)`, equal to `exploreOf(items, …)`, which replaces the Android screen's own
+       summary): the years' counts and what each hides come from a count per day, source and type in SQL. The towns,
+       countries, home town and every cover come from one walk through the rows in the screens' order, 2,000 at a time
+       and a few numbers each (`ExploreRow`). They can't be grouped in SQL: a cover is the best-looking photo by this
+       phone's scores before the server's (`LibraryController.shownScore`), and only memory has those. A second walk
+       runs only when a country has fewer than four towns, for the photos its row spreads across them. The covers are
+       then read by id with `shownRow` laid over. `PlaceSummary` and `YearSummary` keep `count`, `cover`, years and
+       months as fields, and their `items` are empty from the database.
+     - `StoriesController.explore(state)` keeps the lists until the rows (`LibraryController.rowsWritten`, any change),
+       the places, the scores, the sources shown or home change. Otherwise it only reads the covers again, so their
+       statuses are current. `scopeItems(scope, state)` reads a town's, a year's, a month's or the map's photos:
+       - a year or month is a range on the day index;
+       - a town or an area is the located rows in its box, plus the photos a place was found for there, each checked
+         with `ExploreScope.matches`.
+       Android's pages build their feed from them with `feedOf` as before.
+     - The map (`MapOverview`, `MapArea`): its years and where it opens come from the located rows' box per day and
+       source, plus the photos placed by a place found (read by id once per places and rows). Each time it settles, it
+       reads only the photos around what is in view (a screen further each way). They come counted per square of about
+       12 points at that zoom (`mapCells`, floored as `cellKey` floors), with the count in view (`mapCount`). The
+       sources shown go into SQL as the spellings the source column holds, and the days some are shown on anyway.
+       MapLibre still clusters, now the squares: a cluster adds up their `photos`, a square of more than one is a circle,
+       and tapping one zooms two levels in.
+     - The viewer's Explore and map lists are the photos the page or the map opened it with (`PageLists`, by scope and
+       row). After the process was killed they are read again from the database (`scopeViewerItems`), and nothing is
+       shown meanwhile.
+     - Search's town box is `townArea(table, …)`: the place squares named so, boxed in SQL, plus the photos placed
+       there (`LibraryController.townArea`, wired on both platforms).
+     - Tests (`ExploreDatabaseTest`), over generated libraries of several years:
+       - towns, home town, countries with spread covers, years with only hidden photos, ties in score, phone scores
+         over the server's, points on square edges south and west of zero and across the date line;
+       - the summaries over 40 libraries in 3 rounds (home known, null or worked out);
+       - towns', years', months', areas' photos over 30, a town's box over 30;
+       - the map's years, counts, bounds, squares and count in view over 30;
+       - a `StoriesController` with the pager, before and after photos come.
+       Each of these mutations fails them: dropping the floor for negative squares, reversing the home town's
+       tie-break, counting a town's cover among the photos its country spreads.
+     - Not tried on the phone yet: it was locked and dozing, so the build was not installed.
+     - Left for later: the Android pages still recompute on every library state (as before, now with a read), which
+       6f's change signal can narrow. Explore's lists cost two walks of light rows when a country has few towns.
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

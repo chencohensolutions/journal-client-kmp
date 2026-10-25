@@ -15,6 +15,8 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.search.SearchState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // The library's screens as a back stack of routes (saved as strings across rotation), and what the viewer shows for each.
 
@@ -175,8 +177,9 @@ internal data class StackEntry(val depth: Int, val route: Route) {
 internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState, lists: PageLists = PageLists()): List<MediaItem> = when {
     route.search -> search.items
     route.list != null -> lists[route.list].mapNotNull { item -> stories.itemsById[item.id] ?: item.takeUnless { stories.gone(it.id) } }
-    route.scope != null && route.moment != null -> stories.feedOf(scopeItems(library, stories, route.scope)).section(route.moment)?.items.orEmpty()
-    route.scope != null -> scopeItems(library, stories, route.scope)
+    // As the page or the map gave them; when they aren't kept (after the process was killed) they are read again
+    // (scopeViewerItems).
+    route.scope != null -> lists[scopeListKey(route.scope, route.moment)].mapNotNull { item -> stories.itemsById[item.id] ?: item.takeUnless { stories.gone(it.id) } }
     route.tag != null -> stories.tagged(route.tag).flatMap { it.items }
     route.storyline -> stories.storyline
     route.moment != null && route.revealed != null ->
@@ -210,6 +213,14 @@ internal class PageLists {
     }
 }
 
-/** The photos an Explore page or the map shows, newest first. */
-internal fun scopeItems(library: LibraryState, stories: StoriesState, scope: ExploreScope): List<MediaItem> =
-    exploreItems(library, stories).filter { scope.matches(it, stories.places) }
+/** The [PageLists] key of the photos of [scope] (on its row [moment]) a page or the map opened the viewer on. */
+internal fun scopeListKey(scope: ExploreScope, moment: String?): String = "scope:${encodeScope(scope)}|${moment.orEmpty()}"
+
+/**
+ * The photos the viewer swipes through for an Explore page's row ([moment]) or the map's [scope], read from the
+ * database (docs/plans/library-on-disk.md, step 6c): of the sources shown, newest first, the row's as the page makes it.
+ */
+internal suspend fun scopeViewerItems(reads: ExploreReads, library: LibraryState, stories: StoriesState, scope: ExploreScope, moment: String?): List<MediaItem> {
+    val items = reads.scope(library, stories, scope).filter(stories::shows)
+    return if (moment == null) items else withContext(Dispatchers.Default) { stories.feedOf(items).section(moment)?.items.orEmpty() }
+}

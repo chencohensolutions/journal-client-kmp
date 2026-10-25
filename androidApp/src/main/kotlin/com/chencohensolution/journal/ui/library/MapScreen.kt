@@ -52,12 +52,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
-import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
-import com.chencohensolution.journal.stories.sourceCounts
+import com.chencohensolution.journal.stories.MapOverview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
@@ -97,6 +96,9 @@ private const val CLUSTERS = "photo-clusters"
 private const val COUNTS = "photo-counts"
 private const val PINS = "photo-pins"
 
+/** A feature's number of photos: a square's own, or the sum of a circle's squares. */
+private const val PHOTOS = "photos"
+
 /** How close the map opens on a photo's place. */
 private const val PLACE_ZOOM = 15.0
 
@@ -106,8 +108,8 @@ private const val CLUSTER_MAX_ZOOM = 16
 /** How far from a tap, in pixels, a pin still counts as tapped. */
 private const val TAP_SLOP = 24f
 
-/** A located photo, for the map. */
-private class Pin(val item: MediaItem, val point: GeoPoint)
+/** Where the map looks once it settled: what is in view, and at which zoom. */
+private class MapLook(val area: GeoArea, val zoom: Double)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,42 +118,39 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
     val dark = isSystemInDarkTheme()
     val insets = WindowInsets.systemBars.asPaddingValues()
     val density = LocalDensity.current
-    val pins by produceState<List<Pin>?>(null, library, stories.places, stories.shownSources) {
-        value = withContext(Dispatchers.Default) {
-            exploreItems(library, stories).mapNotNull { item -> stories.places.location(item)?.let { Pin(item, it) } }
-        }
+    // The located photos' years and boxes, never the photos themselves: those around what is in view are read as the
+    // map moves (docs/plans/library-on-disk.md, step 6c).
+    val reads = LocalExploreReads.current
+    val overview by produceState<MapOverview?>(null, library, stories.places, stories.shownSources) {
+        value = reads.mapOverview(library, stories)
     }
     // The whole library's photos per source, shown or not, for the "Showing" sheet.
-    val counts by produceState(emptyMap<MediaSource, Int>(), library) {
-        value = withContext(Dispatchers.Default) { sourceCounts(library.days.flatMap { it.items }) }
-    }
+    val counts = overview?.counts.orEmpty()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     val shownSources = stories.shownSources.shownAmong(counts)
     if (sheetOpen) ShowingSheet(shownSources, counts, actions.toggleSource, onDismiss = { sheetOpen = false })
-    val years = pins?.takeIf { it.isNotEmpty() }?.let { all -> all.minOf { it.item.day.year }..all.maxOf { it.item.day.year } }
+    val years = overview?.years
     // The years shown and where the map looks, kept while the viewer is open above it.
     var fromYear by rememberSaveable { mutableStateOf<Int?>(null) }
     var toYear by rememberSaveable { mutableStateOf<Int?>(null) }
     // Opened from a photo's details: on its place, close up.
     var camera by rememberSaveable { mutableStateOf(at?.let { doubleArrayOf(it.latitude, it.longitude, PLACE_ZOOM) }) }
     if (years == null) {
-        MapEmpty(pins, actions) {
+        MapEmpty(loaded = overview != null, actions) {
             ShowingLine(shownSources, presentSources(counts, shownSources), onChange = { sheetOpen = true })
         }
         return
     }
     val from = (fromYear ?: years.first).coerceIn(years)
     val to = (toYear ?: years.last).coerceIn(years)
-    val shown = pins.orEmpty().filter { it.item.day.year in from..to }
     var inView by remember { mutableIntStateOf(0) }
-    var area by remember { mutableStateOf<GeoArea?>(null) }
+    var look by remember { mutableStateOf<MapLook?>(null) }
 
     val map = remember {
         MapLibre.getInstance(context)
         PhotoMap(MapView(context).apply { onCreate(null) })
     }
     MapLifecycle(map.view)
-    val currentShown by rememberUpdatedState(shown)
     val currentActions by rememberUpdatedState(actions)
     val scopeOf = { visible: GeoArea -> ExploreScope(fromYear = from, toYear = to, area = visible) }
     val currentScopeOf by rememberUpdatedState(scopeOf)
@@ -176,9 +175,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
             }
             camera?.let { (lat, lng, zoom) -> mapLibre.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lng)).zoom(zoom).build() }
             mapLibre.addOnCameraIdleListener {
-                val visible = mapLibre.visibleArea()
-                area = visible
-                inView = currentShown.count { it.point in visible }
+                look = MapLook(mapLibre.visibleArea(), mapLibre.cameraPosition.zoom)
                 mapLibre.cameraPosition.target?.let { camera = doubleArrayOf(it.latitude, it.longitude, mapLibre.cameraPosition.zoom) }
             }
             mapLibre.addOnMapClickListener { latLng ->
@@ -189,7 +186,9 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                 when {
                     cluster != null && mapLibre.cameraPosition.zoom < CLUSTER_MAX_ZOOM -> {
                         val point = cluster.geometry() as Point
-                        val zoom = map.source?.getClusterExpansionZoom(cluster) ?: (mapLibre.cameraPosition.zoom.toInt() + 2)
+                        // A circle the map joined knows how far to zoom in to part it; a square of photos is nearer in.
+                        val zoom = map.source?.takeIf { cluster.hasProperty("point_count") }?.getClusterExpansionZoom(cluster)
+                            ?: (mapLibre.cameraPosition.zoom.toInt() + 2)
                         mapLibre.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude(), point.longitude()), zoom.toDouble()))
                     }
                     // Photos taken in one spot, all of them in view: the viewer on what is in view.
@@ -201,23 +200,30 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
             }
         }
     }
-    // The pins shown follow the years chosen; the first time they arrive (with no place saved) the map fits them.
-    LaunchedEffect(map.ready, shown) {
-        if (!map.ready) return@LaunchedEffect
+    // The first time (with no place saved) the map fits the photos of the years chosen. Then the photos around what is in
+    // view, counted per square, follow where the map settles, the years chosen and the library.
+    val loaded = overview
+    LaunchedEffect(map.ready, loaded, from, to, look) {
+        if (!map.ready || loaded == null) return@LaunchedEffect
+        val mapLibre = map.mapLibre ?: return@LaunchedEffect
+        if (camera == null) {
+            loaded.bounds(from, to)?.let { mapLibre.moveCamera(fitting(it, with(density) { 64.dp.roundToPx() })) }
+            return@LaunchedEffect
+        }
+        val now = look ?: return@LaunchedEffect
+        val drawn = reads.mapArea(stories, loaded, now.area, now.zoom, from, to)
+        inView = drawn.inView
         val collection = withContext(Dispatchers.Default) {
             FeatureCollection.fromFeatures(
-                shown.map { pin ->
-                    Feature.fromGeometry(Point.fromLngLat(pin.point.longitude, pin.point.latitude)).apply { addStringProperty("id", pin.item.id) }
+                drawn.cells.map { cell ->
+                    Feature.fromGeometry(Point.fromLngLat(cell.point.longitude, cell.point.latitude)).apply {
+                        addNumberProperty(PHOTOS, cell.count)
+                        cell.id?.let { addStringProperty("id", it) }
+                    }
                 },
             )
         }
         map.source?.setGeoJson(collection)
-        map.mapLibre?.let { mapLibre ->
-            area?.let { visible -> inView = shown.count { it.point in visible } }
-            if (camera == null && shown.isNotEmpty()) {
-                mapLibre.moveCamera(fitting(shown.map { it.point }, with(density) { 64.dp.roundToPx() }))
-            }
-        }
     }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -250,7 +256,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                     )
                     Text(pluralStringResource(R.plurals.map_photos_here, inView, inView), color = LibraryColors.Muted, fontSize = 13.sp)
                 }
-                TextButton(enabled = inView > 0, onClick = { area?.let { actions.openPhotos(scopeOf(it), null) } }) {
+                TextButton(enabled = inView > 0, onClick = { look?.let { actions.openPhotos(scopeOf(it.area), null) } }) {
                     Text(stringResource(R.string.map_show), color = if (inView > 0) LibraryColors.OnBackground else LibraryColors.Muted, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -283,9 +289,9 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
 
 /** No located photo yet (or still working them out): the message, and a way back. */
 @Composable
-private fun MapEmpty(pins: List<Pin>?, actions: MapActions, line: @Composable () -> Unit) {
+private fun MapEmpty(loaded: Boolean, actions: MapActions, line: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        if (pins != null) {
+        if (loaded) {
             Column(Modifier.align(Alignment.Center).padding(24.dp)) {
                 Text(stringResource(R.string.map_no_photos), color = LibraryColors.Muted, fontSize = 15.sp, modifier = Modifier.padding(bottom = 16.dp))
                 // Their photos may all be of sources hidden.
@@ -311,20 +317,24 @@ private class PhotoMap(val view: MapView) {
             val first = mapLibre == null
             mapLibre = map
             map.setStyle(Style.Builder().fromUri(style)) { loaded ->
+                // Each feature is a square of photos (PHOTOS of them, see mapAreaOf): the circles the map joins add
+                // them up, and a square of more than one is a circle too.
                 val photos = GeoJsonSource(
                     SOURCE,
                     FeatureCollection.fromFeatures(emptyList()),
-                    GeoJsonOptions().withCluster(true).withClusterMaxZoom(CLUSTER_MAX_ZOOM).withClusterRadius(48),
+                    GeoJsonOptions().withCluster(true).withClusterMaxZoom(CLUSTER_MAX_ZOOM).withClusterRadius(48)
+                        .withClusterProperty(PHOTOS, Expression.sum(Expression.accumulated(), Expression.get(PHOTOS)), Expression.get(PHOTOS)),
                 )
                 loaded.addSource(photos)
                 source = photos
-                val clustered = Expression.has("point_count")
+                val clustered = Expression.any(Expression.has("point_count"), Expression.gt(Expression.get(PHOTOS), 1))
+                val count = Expression.get(PHOTOS)
                 loaded.addLayer(
                     CircleLayer(CLUSTERS, SOURCE).withFilter(clustered).withProperties(
                         PropertyFactory.circleColor(circle),
                         PropertyFactory.circleRadius(
                             Expression.step(
-                                Expression.get("point_count"),
+                                count,
                                 Expression.literal(16),
                                 Expression.stop(10, 20),
                                 Expression.stop(100, 25),
@@ -337,7 +347,7 @@ private class PhotoMap(val view: MapView) {
                 )
                 loaded.addLayer(
                     SymbolLayer(COUNTS, SOURCE).withFilter(clustered).withProperties(
-                        PropertyFactory.textField(Expression.toString(Expression.get("point_count_abbreviated"))),
+                        PropertyFactory.textField(abbreviated(count)),
                         PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                         PropertyFactory.textSize(12f),
                         PropertyFactory.textColor(text),
@@ -361,16 +371,31 @@ private class PhotoMap(val view: MapView) {
     }
 }
 
+/** [count] written as the map wrote its own counts: 1,500 as "1.5k", 12,000 as "12k". */
+private fun abbreviated(count: Expression): Expression = Expression.switchCase(
+    Expression.gte(count, 10_000),
+    Expression.concat(Expression.toString(Expression.round(Expression.division(count, Expression.literal(1_000)))), Expression.literal("k")),
+    Expression.gte(count, 1_000),
+    Expression.concat(
+        Expression.toString(Expression.division(Expression.round(Expression.division(count, Expression.literal(100))), Expression.literal(10))),
+        Expression.literal("k"),
+    ),
+    Expression.toString(count),
+)
+
 /** The part of the world [this] shows. */
 private fun MapLibreMap.visibleArea(): GeoArea = projection.visibleRegion.latLngBounds.let {
     GeoArea(south = it.latitudeSouth, west = it.longitudeWest, north = it.latitudeNorth, east = it.longitudeEast)
 }
 
-/** The camera that shows all of [points], [padding] pixels in from the edges. */
-private fun fitting(points: List<GeoPoint>, padding: Int) = if (points.distinct().size == 1) {
-    CameraUpdateFactory.newLatLngZoom(LatLng(points.first().latitude, points.first().longitude), 13.0)
+/**
+ * The camera that shows all of the photos in [box] (the box around them, MapOverview.bounds), [padding] pixels in from
+ * the edges; close up on their place when they are all in one.
+ */
+private fun fitting(box: GeoArea, padding: Int) = if (box.south == box.north && box.west == box.east) {
+    CameraUpdateFactory.newLatLngZoom(LatLng(box.south, box.west), 13.0)
 } else {
-    CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(points.map { LatLng(it.latitude, it.longitude) }).build(), padding)
+    CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(listOf(LatLng(box.south, box.west), LatLng(box.north, box.east))).build(), padding)
 }
 
 /** MapView needs the screen's lifecycle passed on, and destroying when it leaves. */

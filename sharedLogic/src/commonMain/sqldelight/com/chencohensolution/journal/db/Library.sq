@@ -333,3 +333,65 @@ ORDER BY epoch_day DESC, taken_millis DESC, id;
 -- Those of these items without a location of their own: where a place found for them counts instead.
 unlocatedLibraryRows:
 SELECT id, epoch_day, taken_millis, source FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL);
+
+-- Every item's place in the screens' order with what Explore's summaries go by (its type, source, location and score),
+-- a batch at a time after a row (step 6c).
+exploreRowsAfter:
+SELECT id, epoch_day, taken_millis, is_video, source, latitude, longitude, server_sha256, aesthetic FROM library_item
+WHERE epoch_day <= :day AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
+ORDER BY epoch_day DESC, taken_millis DESC, id
+LIMIT :limit;
+
+-- Photos and videos per day, source and type: Explore's years and what each one hides.
+dayCounts:
+SELECT epoch_day, source, is_video, count(*) AS items FROM library_item GROUP BY epoch_day, source, is_video;
+
+-- The items with a location of their own per day and source, with the box around them: the map's years and where it
+-- opens.
+locatedDays:
+SELECT epoch_day, source, min(latitude) AS south, min(longitude) AS west, max(latitude) AS north, max(longitude) AS east
+FROM library_item WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+GROUP BY epoch_day, source;
+
+-- The items in a range of days, in the screens' order: a year's or a month's page.
+libraryItemsInDays:
+SELECT * FROM library_item WHERE epoch_day BETWEEN :first AND :last ORDER BY epoch_day DESC, taken_millis DESC, id;
+
+-- The items with a location of their own inside a box (across the date line when :wraps is 1) in a range of days: a
+-- town's or the map's photos, before their places are checked.
+locatedInBox:
+SELECT id, latitude, longitude FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+  AND (latitude BETWEEN :south AND :north)
+  AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)));
+
+-- The located items per place square (PhotoPlaces' cells: floor(degrees / 0.005), as cellKey makes them), with the box
+-- around them: a town's box for search.
+cellBoxes:
+SELECT CAST(latitude / 0.005 AS INTEGER) - (latitude / 0.005 < CAST(latitude / 0.005 AS INTEGER)) AS lat_cell,
+  CAST(longitude / 0.005 AS INTEGER) - (longitude / 0.005 < CAST(longitude / 0.005 AS INTEGER)) AS lon_cell,
+  min(latitude) AS south, min(longitude) AS west, max(latitude) AS north, max(longitude) AS east
+FROM library_item WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+GROUP BY lat_cell, lon_cell;
+
+-- The map: the shown items with a location of their own in a box and a range of days, counted per square of :size
+-- degrees (floored), with the sum of their places (for the middle) and the id of a square's only one. Shown: a source
+-- not in :hidden, or a day and source ("epoch day:source") in :always.
+mapCells:
+SELECT CAST(latitude / :size AS INTEGER) - (latitude / :size < CAST(latitude / :size AS INTEGER)) AS lat_cell,
+  CAST(longitude / :size AS INTEGER) - (longitude / :size < CAST(longitude / :size AS INTEGER)) AS lon_cell,
+  count(*) AS photos, sum(latitude) AS lat_sum, sum(longitude) AS lon_sum, CASE WHEN count(*) = 1 THEN min(id) END AS only_id
+FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+  AND (latitude BETWEEN :south AND :north)
+  AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)))
+  AND (source NOT IN :hidden OR (epoch_day || ':' || source) IN :always)
+GROUP BY lat_cell, lon_cell;
+
+-- How many of the shown items with a location of their own are in a box and a range of days (see mapCells).
+mapCount:
+SELECT count(*) FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+  AND (latitude BETWEEN :south AND :north)
+  AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)))
+  AND (source NOT IN :hidden OR (epoch_day || ':' || source) IN :always);

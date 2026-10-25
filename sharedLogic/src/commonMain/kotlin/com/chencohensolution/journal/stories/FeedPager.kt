@@ -106,6 +106,9 @@ internal class FeedPager(
     /** Explore's home among the photos [shown] shows, with the places [found] for photos without their own (step 6b). */
     suspend fun home(found: Map<String, GeoPoint>, shown: ShownSources): GeoPoint? = withContext(io) { com.chencohensolution.journal.stories.home(library, found, shown) }
 
+    /** [block] over the library's rows, on the database's dispatcher: Explore's and the map's reads (step 6c). */
+    suspend fun <T> readLibrary(block: (LibraryTable) -> T): T = withContext(io) { block(library) }
+
     /** The newest [count] rows, those with shown hidden photos made again with them. */
     private fun read(count: Int, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): MomentsFeed {
         val sounds = context.sounds.associateBy { it.sha256 }

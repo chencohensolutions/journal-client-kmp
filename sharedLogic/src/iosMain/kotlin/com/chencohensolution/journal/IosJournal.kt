@@ -191,6 +191,7 @@ object IosJournal {
             warmUp = ApolloSearchWarmUp(serverHttp()),
             peopleSearch = ApiPeopleSearch(peopleApi()) { JournalSettings(UserDefaultsStore()).privateMedia.show },
             bySha = library::itemsOfShas,
+            townArea = library::townArea,
         )
 
     private var peopleController: PeopleController? = null

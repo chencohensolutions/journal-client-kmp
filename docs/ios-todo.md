@@ -74,5 +74,16 @@ Planned, not built on either platform yet:
   `placesOf(library:places:)` (both places), and add `stories.home` to what the summaries' task is keyed on. Until
   then iOS works home out from the items as before (same result, more work). Fingerprints and places are fed from the
   database in shared code; nothing in Swift changes for them.
+  Step 6c (Android Oct 25, 2026): Explore and the map read from the database through `StoriesController` (all
+  `suspend`, so async in Swift): `explore(state:)` for the summaries (in place of `countriesOf`/`placesOf`/`yearsOf`
+  in `ExploreViews.swift`, also a country's page), `scopeItems(scope:state:)` for a town's or a year's page and the
+  viewer's Explore and map lists (everything in the scope; leave out what `stories.shows` hides), and
+  `mapOverview(state:)` / `mapArea(overview:visible:zoom:from:to:state:)` for the map: its years, where it opens
+  (`MapOverview.bounds`), and the photos around what is in view counted per square (`MapCell`: a point, a count, the
+  id of a single photo), read again each time the map settles. Feed the `MLNShapeSource` those squares with a
+  `photos` property, cluster with a `photos` sum (`clusterProperties`), draw a square of more than one as a circle,
+  and zoom two levels into one tapped (see `MapScreen.kt`). From the database a summary's `PlaceSummary.items` and
+  `YearSummary.items` are empty: use `count`, `cover`, `months`. Search's town box already comes from the database
+  (`townArea`, wired in `IosJournal.kt`).
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

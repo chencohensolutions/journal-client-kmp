@@ -69,14 +69,12 @@ import com.chencohensolution.journal.stories.bestFirst
 import com.chencohensolution.journal.stories.bestLooking
 import com.chencohensolution.journal.stories.CountrySummary
 import com.chencohensolution.journal.stories.ExploreScope
+import com.chencohensolution.journal.stories.ExploreSummary
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.PlaceSummary
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.YearSummary
-import com.chencohensolution.journal.stories.countriesOf
-import com.chencohensolution.journal.stories.placesOf
 import com.chencohensolution.journal.stories.sourceCounts
-import com.chencohensolution.journal.stories.yearsOf
 import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
@@ -104,10 +102,6 @@ internal class ExploreActions(
     /** People couldn't be loaded: Try again. */
     val reloadPeople: () -> Unit = {},
 )
-
-/** What Explore works from: the library, newest first, without what the sources setting hides. */
-internal fun exploreItems(library: LibraryState, stories: StoriesState): List<MediaItem> =
-    library.days.flatMap { it.items }.filter(stories::shows)
 
 /** Under the top bar: Places, Years or (when the server has face search) People, and the map. */
 @Composable
@@ -150,24 +144,6 @@ internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, 
     }
 }
 
-/** [counts]: the whole library's photos per source, shown or not, for the "Showing" sheet. */
-private class ExploreSummaries(
-    val countries: List<CountrySummary>,
-    val years: List<YearSummary>,
-    val anyLocated: Boolean,
-    val counts: Map<MediaSource, Int>,
-)
-
-private fun exploreSummaries(library: LibraryState, stories: StoriesState): ExploreSummaries {
-    val (items, hidden) = library.days.flatMap { it.items }.partition(stories::shows)
-    return ExploreSummaries(
-        countriesOf(placesOf(items, stories.places, stories.home)),
-        yearsOf(items, stories.places, hidden),
-        items.any { stories.places.location(it) != null },
-        sourceCounts(items + hidden),
-    )
-}
-
 /** The Explore tab under its bar: the towns by country, home first, or the years, newest first. */
 @Composable
 internal fun ExploreContent(
@@ -182,10 +158,11 @@ internal fun ExploreContent(
         PeopleList(people ?: PeopleState.NONE, actions, contentPadding)
         return
     }
-    // Worked out at once in previews, where the background work never lands in the image.
+    // Worked out at once in previews, where the background work never lands in the image; in the app from the database.
     val preview = LocalInspectionMode.current
-    val summaries by produceState(if (preview) exploreSummaries(library, stories) else null, library, stories.places, stories.shownSources, stories.home) {
-        value = withContext(Dispatchers.Default) { exploreSummaries(library, stories) }
+    val reads = LocalExploreReads.current
+    val summaries by produceState(if (preview) ItemsExploreReads.summaryOf(library, stories) else null, library, stories.places, stories.shownSources, stories.home) {
+        value = reads.summary(library, stories)
     }
     val loaded = summaries ?: return
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -206,7 +183,7 @@ internal fun ExploreContent(
  * them fit on a screen or two. A country opens its own page of towns.
  */
 @Composable
-private fun PlacesList(summaries: ExploreSummaries, actions: ExploreActions, contentPadding: PaddingValues, line: @Composable () -> Unit) {
+private fun PlacesList(summaries: ExploreSummary, actions: ExploreActions, contentPadding: PaddingValues, line: @Composable () -> Unit) {
     val homeCountry = summaries.countries.firstOrNull { it.home }
     val others = summaries.countries.filter { it !== homeCountry }
     LazyColumn(state = rememberLazyListState(), contentPadding = contentPadding) {
@@ -263,7 +240,7 @@ private fun HomeCountryTowns(country: CountrySummary, towns: List<PlaceSummary>,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() },
                 )
-                val photos = towns.sumOf { it.items.size }
+                val photos = towns.sumOf { it.count }
                 Text(
                     stringResource(
                         R.string.feed_place_time,
@@ -384,7 +361,7 @@ private fun PlaceCard(place: PlaceSummary, modifier: Modifier = Modifier, onOpen
             modifier = Modifier.padding(top = 6.dp),
         )
         Text(
-            stringResource(R.string.feed_place_time, "${place.items.size}", yearRange(place.firstYear, place.lastYear)),
+            stringResource(R.string.feed_place_time, "${place.count}", yearRange(place.firstYear, place.lastYear)),
             color = LibraryColors.Muted,
             fontSize = 12.sp,
         )
@@ -395,7 +372,7 @@ private fun PlaceCard(place: PlaceSummary, modifier: Modifier = Modifier, onOpen
 @Composable
 private fun placeLine(place: PlaceSummary): String = stringResource(
     R.string.feed_place_time,
-    pluralStringResource(R.plurals.library_story_items, place.items.size, place.items.size),
+    pluralStringResource(R.plurals.library_story_items, place.count, place.count),
     yearRange(place.firstYear, place.lastYear),
 )
 
@@ -418,7 +395,7 @@ private fun YearsList(years: List<YearSummary>, shown: Set<MediaSource>, actions
  */
 @Composable
 private fun YearCard(year: YearSummary, shown: Set<MediaSource>, actions: ExploreActions) {
-    val onlyHidden = year.items.isEmpty()
+    val onlyHidden = year.count == 0
     Column(
         Modifier
             .fillMaxWidth()
@@ -434,7 +411,7 @@ private fun YearCard(year: YearSummary, shown: Set<MediaSource>, actions: Explor
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             Column(Modifier.padding(bottom = 6.dp), horizontalAlignment = Alignment.End) {
-                Text(pluralStringResource(R.plurals.library_story_items, year.items.size, year.items.size), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(pluralStringResource(R.plurals.library_story_items, year.count, year.count), color = LibraryColors.Muted, fontSize = 13.sp)
                 if (year.hidden.isNotEmpty() && !onlyHidden) {
                     Text(
                         stringResource(R.string.explore_year_hidden, sourceCountsText(year.hidden)),
@@ -530,7 +507,7 @@ private class ExplorePage(val all: List<MediaItem>, val rows: List<FeedRow>, val
 
 /**
  * A town's page: its photo and name, the years to narrow it to, and its photos like the Moments tab. [onOpenItem]
- * opens the viewer on a row of it, with the [ExploreScope] shown.
+ * opens the viewer on a row of it, with the [ExploreScope] shown and the page's photos of it (for Best first).
  */
 @Composable
 internal fun PlaceScreen(
@@ -539,7 +516,7 @@ internal fun PlaceScreen(
     stories: StoriesState,
     year: Int?,
     onYear: (Int?) -> Unit,
-    onOpenItem: (ExploreScope, FeedSection?, MediaItem) -> Unit,
+    onOpenItem: (ExploreScope, FeedSection?, MediaItem, List<MediaItem>) -> Unit,
     onBack: () -> Unit,
     landing: String?,
     onToggleSource: (MediaSource) -> Unit = {},
@@ -569,7 +546,7 @@ internal fun PlaceScreen(
         onSelect = onYear,
         rows = page?.rows.orEmpty(),
         stories = stories,
-        onOpenItem = { section, item -> onOpenItem(scope, section, item) },
+        onOpenItem = { section, item -> onOpenItem(scope, section, item, page?.shown.orEmpty()) },
         onBack = onBack,
         landing = landing,
         counts = page?.counts,
@@ -577,7 +554,7 @@ internal fun PlaceScreen(
         sort = sort,
         onSort = onSort,
         pagePhotos = page?.shown.orEmpty(),
-        onOpenShown = { item -> onOpenItem(scope, null, item) },
+        onOpenShown = { item -> onOpenItem(scope, null, item, page?.shown.orEmpty()) },
     )
 }
 
@@ -589,7 +566,7 @@ internal fun YearScreen(
     stories: StoriesState,
     month: Int?,
     onMonth: (Int?) -> Unit,
-    onOpenItem: (ExploreScope, FeedSection?, MediaItem) -> Unit,
+    onOpenItem: (ExploreScope, FeedSection?, MediaItem, List<MediaItem>) -> Unit,
     onBack: () -> Unit,
     landing: String?,
     onToggleSource: (MediaSource) -> Unit = {},
@@ -612,7 +589,7 @@ internal fun YearScreen(
         onSelect = onMonth,
         rows = page?.rows.orEmpty(),
         stories = stories,
-        onOpenItem = { section, item -> onOpenItem(scope, section, item) },
+        onOpenItem = { section, item -> onOpenItem(scope, section, item, page?.shown.orEmpty()) },
         onBack = onBack,
         landing = landing,
         counts = page?.counts,
@@ -620,16 +597,20 @@ internal fun YearScreen(
         sort = sort,
         onSort = onSort,
         pagePhotos = page?.shown.orEmpty(),
-        onOpenShown = { item -> onOpenItem(scope, null, item) },
+        onOpenShown = { item -> onOpenItem(scope, null, item, page?.shown.orEmpty()) },
     )
 }
 
-/** Everything in [whole], and the feed of what [shown] takes in, worked out off the main thread. */
+/**
+ * Everything in [whole] (read from the database in the app, docs/plans/library-on-disk.md step 6c), and the feed of
+ * what [shown] takes in, worked out off the main thread.
+ */
 @Composable
 private fun rememberExplorePage(library: LibraryState, stories: StoriesState, whole: ExploreScope, shown: ExploreScope): ExplorePage? {
+    val reads = LocalExploreReads.current
     val page by produceState<ExplorePage?>(null, library, stories, shown) {
+        val everything = reads.scope(library, stories, whole)
         value = withContext(Dispatchers.Default) {
-            val everything = library.days.flatMap { it.items }.filter { whole.matches(it, stories.places) }
             val all = everything.filter(stories::shows)
             val inScope = all.filter { shown.matches(it, stories.places) }
             ExplorePage(all, stories.feedOf(inScope).rows(), sourceCounts(everything), inScope)
@@ -736,9 +717,10 @@ internal fun CountryScreen(
     onBack: () -> Unit,
 ) {
     val preview = LocalInspectionMode.current
-    fun find() = countriesOf(placesOf(exploreItems(library, stories), stories.places)).firstOrNull { it.country == country }
-    val summary by produceState(if (preview) find() else null, library, stories.places, stories.shownSources) {
-        value = withContext(Dispatchers.Default) { find() }
+    val reads = LocalExploreReads.current
+    fun find(summary: ExploreSummary) = summary.countries.firstOrNull { it.country == country }
+    val summary by produceState(if (preview) find(ItemsExploreReads.summaryOf(library, stories)) else null, library, stories.places, stories.shownSources, stories.home) {
+        value = find(reads.summary(library, stories))
     }
     val insets = WindowInsets.systemBars.asPaddingValues()
     val (home, towns) = summary?.places.orEmpty().partition { it.home }

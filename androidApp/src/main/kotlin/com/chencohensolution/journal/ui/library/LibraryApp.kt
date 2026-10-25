@@ -14,7 +14,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -25,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import android.content.Intent
 import android.net.Uri
@@ -96,6 +100,7 @@ fun LibraryApp(
         LocalPhoneStorage provides server.storage,
         LocalServerMedia provides server.library.media,
         LocalAudioPlayer provides audioPlayer,
+        LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {
         LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, onRegisterAgain)
     }
@@ -175,15 +180,19 @@ private fun LibraryScreens(
         openPerson = { push(Route.Person(it)) },
     )
     // A photo of a town's or year's page: its row of the page (by date), or, Best first, the page's photos in that order.
-    val openInScope: (ExploreScope, FeedSection?, MediaItem, PageSort) -> Unit = { scope, section, item, sort ->
+    // The page's photos are kept for the viewer (it reads them again from the database only when they aren't).
+    val openInScope: (ExploreScope, FeedSection?, MediaItem, List<MediaItem>, PageSort) -> Unit = { scope, section, item, photos, sort ->
         if (sort == PageSort.BEST || section == null) {
             val key = "best:" + scope.hashCode()
-            pageLists[key] = bestFirst(scopeItems(libraryState, storiesState, scope))
+            pageLists[key] = bestFirst(photos)
             push(Route.Viewer(null, item.id, list = key))
         } else {
+            pageLists[scopeListKey(scope, section.key)] = section.items
             push(Route.Viewer(section.key, item.id, scope = scope))
         }
     }
+    val exploreReads = LocalExploreReads.current
+    val coroutines = rememberCoroutineScope()
     var previewBytes by actions.previewBytes
     // A function, not a value: each screen on the back stack keeps the content it was first given, so it has to read
     // the state when it draws.
@@ -292,7 +301,7 @@ private fun LibraryScreens(
                                         stories = storiesState,
                                         year = year,
                                         onYear = { year = it },
-                                        onOpenItem = { scope, section, item -> openInScope(scope, section, item, sort) },
+                                        onOpenItem = { scope, section, item, photos -> openInScope(scope, section, item, photos, sort) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
@@ -309,7 +318,7 @@ private fun LibraryScreens(
                                         stories = storiesState,
                                         month = month,
                                         onMonth = { month = it },
-                                        onOpenItem = { scope, section, item -> openInScope(scope, section, item, sort) },
+                                        onOpenItem = { scope, section, item, photos -> openInScope(scope, section, item, photos, sort) },
                                         onBack = pop,
                                         landing = landingHere,
                                         onToggleSource = settings::toggleFeedSource,
@@ -324,9 +333,14 @@ private fun LibraryScreens(
                                     actions = MapActions(
                                         back = pop,
                                         toggleSource = settings::toggleFeedSource,
+                                        // The photos in view, read from the database (step 6c) and kept for the viewer.
                                         openPhotos = { scope, itemId ->
-                                            val first = itemId ?: scopeItems(libraryState, storiesState, scope).firstOrNull()?.id
-                                            if (first != null) push(Route.Viewer(null, first, scope = scope))
+                                            coroutines.launch {
+                                                val photos = scopeViewerItems(exploreReads, libraryState, storiesState, scope, null)
+                                                val first = itemId ?: photos.firstOrNull()?.id ?: return@launch
+                                                pageLists[scopeListKey(scope, null)] = photos
+                                                push(Route.Viewer(null, first, scope = scope))
+                                            }
                                         },
                                     ),
                                 )
@@ -478,14 +492,26 @@ private fun LibraryScreens(
                                 is Route.Viewer -> {
                                     // The items as opened: shown until the database's are read (StoriesState.itemsById
                                     // holds only part of the library), so the viewer never comes out empty meanwhile.
-                                    val opened = remember(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists) }
+                                    val kept = remember(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists) }
                                     // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
-                                    val ids = rememberSaveable(route.encode()) { opened.map { it.id } }
+                                    var ids by rememberSaveable(route.encode()) { mutableStateOf(kept.map { it.id }) }
+                                    // An Explore page's or the map's photos that weren't kept (the app was closed meanwhile)
+                                    // are read from the database again (step 6c); until then nothing is shown.
+                                    var read by remember(route.encode()) { mutableStateOf<List<MediaItem>?>(null) }
+                                    val reading = route.scope != null && kept.isEmpty() && read == null
+                                    LaunchedEffect(route.encode()) {
+                                        val scope = route.scope ?: return@LaunchedEffect
+                                        if (kept.isNotEmpty()) return@LaunchedEffect
+                                        val items = scopeViewerItems(exploreReads, libraryState, storiesState, scope, route.moment)
+                                        if (ids.isEmpty()) ids = items.map { it.id }
+                                        read = items
+                                    }
+                                    val opened = read ?: kept
                                     val openedById = remember(opened) { opened.associateBy { it.id } }
                                     var shownId by remember(route.encode()) { mutableStateOf(route.itemId) }
                                     // The photo shown and its neighbours, read from the database as it is swiped.
                                     LaunchedEffect(ids, shownId) { stories.want(ids.around(shownId)) }
-                                    ViewerScreen(
+                                    if (reading) Box(Modifier.fillMaxSize().background(LibraryColors.Background)) else ViewerScreen(
                                         items = ids.mapNotNull { id -> storiesState.itemsById[id] ?: openedById[id]?.takeUnless { storiesState.gone(id) } },
                                         startId = route.itemId,
                                         stories = storiesState,

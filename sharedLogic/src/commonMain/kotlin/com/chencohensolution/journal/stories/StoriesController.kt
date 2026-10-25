@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -266,6 +268,72 @@ class StoriesController internal constructor(
             locatedFrom = rows
             places.requestFrom(feed.placeBatches)
         }
+    }
+
+    // MARK: Explore and the map from the database
+
+    /**
+     * What Explore's summaries or the map's overview were worked out from: the rows' changes, the places and the scores
+     * (by identity: comparing thousands of them would cost more than it saves), the sources shown and home.
+     */
+    private class WorkedOut<T>(val from: List<Any?>, val value: T) {
+        fun fits(other: List<Any?>) = other.size == from.size && other.indices.all { from[it] === other[it] || (other[it] !is Places && other[it] !is Map<*, *> && from[it] == other[it]) }
+    }
+
+    private var explored: WorkedOut<ExploreSummary>? = null
+    private var mapped: WorkedOut<MapOverview>? = null
+    private val exploreLock = Mutex()
+
+    /** Everything in the library as the screens list it, newest first: without the database (tests, the path before). */
+    private fun everything(): List<MediaItem> = libraryState.value.days.flatMap { it.items }
+
+    /**
+     * Explore's lists for [state] (its places, sources shown and home): from the database (docs/plans/library-on-disk.md,
+     * step 6c), worked out again only when its rows, the places, the scores, the sources shown or home changed; the
+     * covers are read again each time, so their statuses are current. Without it, from the library's items.
+     */
+    suspend fun explore(state: StoriesState = _state.value): ExploreSummary {
+        val pager = feed ?: return withContext(background) { exploreOf(everything(), state.places, state.shownSources, state.home) }
+        return exploreLock.withLock {
+            val from = listOf(library.rowsWritten, state.places, library.scoresShown, state.shownSources, state.home)
+            val kept = explored?.takeIf { it.fits(from) }?.value
+            if (kept != null) {
+                pager.readLibrary { table -> kept.withCovers(table.byIds(kept.coverIds()).mapValues { shownRow(it.value) }) }
+            } else {
+                Measure.time({ "Explore worked out" }) {
+                    pager.readLibrary { table -> exploreOf(table, state.places, state.shownSources, state.home, library::shownScore, shownRow) }
+                }.also { explored = WorkedOut(from, it) }
+            }
+        }
+    }
+
+    /**
+     * The photos and videos [scope] takes in, of every source (the caller leaves out what [StoriesState.shows] hides),
+     * newest first: a town's or a year's page, the map's photos in view. Read from the database (step 6c); without it,
+     * from the library's items.
+     */
+    suspend fun scopeItems(scope: ExploreScope, state: StoriesState = _state.value): List<MediaItem> {
+        val pager = feed ?: return withContext(background) { everything().filter { scope.matches(it, state.places) } }
+        return pager.readLibrary { table -> scopeItemsOf(table, state.places, scope, shownRow) }
+    }
+
+    /** The map's overview for [state]: from the database (step 6c), kept until its rows, the places or the sources shown change. */
+    suspend fun mapOverview(state: StoriesState = _state.value): MapOverview {
+        val pager = feed ?: return withContext(background) { mapOverviewOf(everything(), state.places, state.shownSources) }
+        return exploreLock.withLock {
+            val from = listOf(library.rowsWritten, state.places, state.shownSources)
+            mapped?.takeIf { it.fits(from) }?.value ?: pager.readLibrary { table -> mapOverviewOf(table, state.places, state.shownSources) }
+                .also { mapped = WorkedOut(from, it) }
+        }
+    }
+
+    /**
+     * The photos the map draws around [visible] at [zoom] for the years [from] to [to], and how many are in view, from
+     * [overview] (made by [mapOverview] for the same [state]).
+     */
+    suspend fun mapArea(overview: MapOverview, visible: GeoArea, zoom: Double, from: Int, to: Int, state: StoriesState = _state.value): MapArea {
+        val pager = feed ?: return withContext(background) { mapAreaOf(overview, visible, zoom, from, to) }
+        return pager.readLibrary { table -> mapAreaOf(table, overview, state.shownSources, visible, zoom, from, to) }
     }
 
     // MARK: Items by id from the database

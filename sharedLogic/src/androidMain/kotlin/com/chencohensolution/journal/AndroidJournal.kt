@@ -197,6 +197,7 @@ fun createSearchController(
         warmUp = ApolloSearchWarmUp(serverHttp(context)),
         peopleSearch = ApiPeopleSearch(peopleApi(context)) { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
         bySha = library::itemsOfShas,
+        townArea = library::townArea,
     )
 
 private var peopleController: PeopleController? = null
