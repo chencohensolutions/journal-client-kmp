@@ -546,7 +546,7 @@
     <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
     <string name="hidden_screenshots_title">צילומי מסך</string>
     <string name="hidden_nudity_title">עירום</string>
-    <string name="hidden_nudity">תמונות וסרטונים עם עירום</string>
+    <string name="hidden_nudity">הצגת תמונות וסרטונים עם עירום</string>
     <string name="hidden_nudity_from">הסתרה החל מ־</string>
     <string name="hidden_nudity_from_body">כמה הסריקה בשרת צריכה להיות בטוחה שתמונה מציגה עירום כדי להסתיר אותה. נמוך יותר מסתיר יותר, כולל כמה שאין בהן עירום.</string>
     <plurals name="hidden_nudity_not_scanned">

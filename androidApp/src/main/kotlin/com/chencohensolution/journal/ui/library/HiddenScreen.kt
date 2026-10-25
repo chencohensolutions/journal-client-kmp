@@ -214,7 +214,7 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
 }
 
 /**
- * Nudity: the switch, with how many files score that much (and how many aren't scanned yet), and while on, the score
+ * Nudity: the "Show" switch (off by default), with how many files score that much (and how many aren't scanned yet), and while off, the score
  * from which they are hidden, saved when let go. Disabled while a change is being saved.
  */
 @Composable
@@ -230,8 +230,9 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
     SwitchRow(
         title = stringResource(R.string.hidden_nudity),
         body = counts,
-        checked = nudity.hidden,
-        onChange = { if (!saving) actions.setNudityHidden(it) },
+        // "Show": on means shown, so off (hidden from 50%) is the default.
+        checked = !nudity.hidden,
+        onChange = { if (!saving) actions.setNudityHidden(!it) },
     )
     if (!nudity.hidden) return
     HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))

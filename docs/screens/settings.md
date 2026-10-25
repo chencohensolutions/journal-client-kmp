@@ -82,8 +82,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
   off shows them again. Above that, on Android (Oct 25, 2026), **Private media** with **Show private media**, a
   switch, **off** by default, for the photos the user marked private; it is this phone's choice, not the server's.
-  **Nudity** (Oct 23, 2026): "Photos and videos with nudity · N photos and videos · M not
-  scanned yet", **on** by default, and while on **Hide from**, a slider from 10% to 95% in steps of 5 (default
+  **Nudity** (Oct 23, 2026): "Show photos and videos with nudity · N photos and videos · M
+  not scanned yet" (a Show switch since Oct 25, 2026 on Android: **off**, so hidden, by default; it read "Photos and
+  videos with nudity", on meaning hidden, before), and while off **Hide from**, a slider from 10% to 95% in steps of 5 (default
   **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
   **Sound recordings** (Android, Oct 25, 2026; on a server that has them): **Show recordings**, **Show phone calls**
   and **Show WhatsApp voice messages**, each with how many there are, all **off** at first (here on means shown,

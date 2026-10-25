@@ -528,7 +528,7 @@
     <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
     <string name="hidden_screenshots_title">Screenshots</string>
     <string name="hidden_nudity_title">Nudity</string>
-    <string name="hidden_nudity">Photos and videos with nudity</string>
+    <string name="hidden_nudity">Show photos and videos with nudity</string>
     <string name="hidden_nudity_from">Hide from</string>
     <string name="hidden_nudity_from_body">How sure the server’s scan must be that a photo shows nudity to hide it. Lower hides more, including some that show none.</string>
     <plurals name="hidden_nudity_not_scanned">
