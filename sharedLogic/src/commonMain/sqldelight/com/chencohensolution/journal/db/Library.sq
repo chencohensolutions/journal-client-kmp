@@ -214,6 +214,21 @@ INSERT OR REPLACE INTO library_item VALUES ?;
 allLibraryItems:
 SELECT * FROM library_item;
 
+-- How many rows of library_fresh came out different (what changedRows reads), without reading them.
+changedCount:
+SELECT count(*) FROM (SELECT * FROM library_fresh EXCEPT SELECT i.* FROM library_item i WHERE i.id IN (SELECT id FROM library_fresh));
+
+-- Of those, how many are new or changed where they are, their source, type or place on the phone (the background
+-- readers' work, LibraryController.rowsChanged).
+movedCount:
+SELECT count(*) FROM library_fresh f LEFT JOIN library_item i ON i.id = f.id
+WHERE i.id IS NULL OR i.is_on_device != f.is_on_device OR i.is_video != f.is_video OR i.source != f.source
+   OR i.latitude IS NOT f.latitude OR i.longitude IS NOT f.longitude;
+
+-- Whether the library has any row.
+anyLibraryItem:
+SELECT count(*) FROM (SELECT 1 FROM library_item LIMIT 1);
+
 
 applyChanged:
 INSERT OR REPLACE INTO library_item
@@ -250,10 +265,6 @@ takeKeys {
     INSERT OR IGNORE INTO library_keys
         SELECT 'd', id FROM library_item WHERE is_on_device = 1 AND server_sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
 }
-
--- The newest rows, by the day index: what the top of the screens shows at start, before the rest is read.
-newestLibraryItems:
-SELECT * FROM library_item ORDER BY epoch_day DESC, taken_millis DESC LIMIT ?;
 
 -- Photos and videos per source, of the whole library.
 sourceCounts:

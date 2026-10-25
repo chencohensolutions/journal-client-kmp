@@ -110,6 +110,18 @@ internal class LibraryDelta(val changed: List<LibraryRow>, val removed: List<Str
 }
 
 /**
+ * What [LibraryTable.update] changed, counted: rows added or different, of those the ones new or changed in where they
+ * are, their source, type or place on the phone ([moved]), and rows gone.
+ */
+internal data class LibraryUpdate(val changed: Int, val moved: Int, val removed: Int) {
+    val isEmpty: Boolean get() = changed == 0 && removed == 0
+
+    companion object {
+        val NONE = LibraryUpdate(0, 0, 0)
+    }
+}
+
+/**
  * The library the screens read, kept in `library_item` (docs/plans/library-on-disk.md, phase 4): the phone's items
  * and the server's photos not on the phone, made inside the database from `device_item`, `ledger` and `server_media`
  * by the same rules [mergeWithServer] follows in memory. [refresh] makes it afresh in a scratch table and writes, and
@@ -119,11 +131,8 @@ internal class LibraryDelta(val changed: List<LibraryRow>, val removed: List<Str
 internal class LibraryTable(private val database: LibraryDatabase) {
     private val queries get() = database.libraryQueries
 
-    /** Every row, as kept. */
+    /** Every row, as kept: for the tests (the app reads what it needs, step 6f). */
     fun all(): List<LibraryRow> = queries.allLibraryItems(::libraryRow).executeAsList()
-
-    /** The [count] newest rows, read through the day index in milliseconds: the top of the screens at start. */
-    fun newest(count: Long): List<LibraryRow> = queries.newestLibraryItems(count, ::libraryRow).executeAsList()
 
     /** Photos and videos per source of the whole library, in [MediaSource] order, as `sourceCounts` makes them. */
     fun sourceCounts(): Map<MediaSource, Int> {
@@ -323,21 +332,36 @@ internal class LibraryTable(private val database: LibraryDatabase) {
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened
      * to the items they touch (`takeKeys`). With nothing noted it does nothing; a note of everything makes it whole.
      */
-    fun refresh(): LibraryDelta = database.transactionWithResult {
-        if (queries.dirtyCount().executeAsOne() == 0L) return@transactionWithResult LibraryDelta(emptyList(), emptyList())
+    fun refresh(): LibraryDelta =
+        remake { removed -> LibraryDelta(queries.changedRows(::libraryRow).executeAsList(), removed) } ?: LibraryDelta(emptyList(), emptyList())
+
+    /**
+     * [refresh] that only counts what it changed, so the app never holds the changed rows (the first build makes every
+     * row): what LibraryController uses since step 6f (Oct 26, 2026).
+     */
+    fun update(): LibraryUpdate = remake { removed ->
+        LibraryUpdate(queries.changedCount().executeAsOne().toInt(), queries.movedCount().executeAsOne().toInt(), removed.size)
+    } ?: LibraryUpdate.NONE
+
+    /** Whether the library has any row. */
+    fun hasRows(): Boolean = queries.anyLibraryItem().executeAsOne() > 0
+
+    /** Makes the noted items afresh; [result] reads what changed before it is written. Null when nothing was noted. */
+    private fun <T : Any> remake(result: (removed: List<String>) -> T): T? = database.transactionWithResult {
+        if (queries.dirtyCount().executeAsOne() == 0L) return@transactionWithResult null
         val everything = if (queries.everythingDirty().executeAsOne() > 0) 1L else 0L
         queries.takeKeys()
         queries.clearFresh()
         queries.freshFromDevice(everything)
         queries.freshScores()
         queries.freshFromServer(everything)
-        val changed = queries.changedRows(::libraryRow).executeAsList()
         val removed = queries.removedIds(everything).executeAsList()
+        val made = result(removed)
         removed.chunked(CHUNK).forEach { queries.deleteRemoved(it) }
         queries.applyChanged()
         // Emptied now, so the next refresh (usually a few rows) doesn't first pay for this one's rows.
         queries.clearFresh()
-        LibraryDelta(changed, removed)
+        made
     }
 
     private companion object {

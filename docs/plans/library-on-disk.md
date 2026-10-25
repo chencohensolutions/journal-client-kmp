@@ -496,6 +496,46 @@ Confirmed by the owner on Oct 25, 2026:
        people without the server or the phone's index.
      - Left for 6f: `LibraryState.days` and the newest-rows read; the library merged in memory still reads `all()`
        (tests only).
+   - **6f built Oct 26, 2026: no list of the library in memory.** Database version 7 (`6.sqm`: `feed_sound`).
+     - `LibraryController` with a table keeps nothing of the rows: `rows`, `idsByDay`, the merged days, the newest-rows
+       read and `table.all()` at start are gone, and `LibraryState.days` stays empty. `LibraryTable.update` makes the
+       noted rows like `refresh` but only counts what changed (rows changed, those moved or new, rows gone, in SQL), so
+       the first build of every row is never in memory either. `StoredMediaLibrary.update` (`KeepsItems`) writes the
+       phone's changes without reading every item back, and `leaveOut` walks the phone's rows one at a time.
+     - `LibraryState.version` goes up when what the screens read from the database looks different: rows written,
+       scores or kept originals, sound recordings, the sources backup takes, or a status that may have changed (a ledger
+       entry, the queue, a file on its way or its ring moving a step), the database asked first whether any of those
+       ids is a library item, so a backup of calls changes nothing shown. `complete` is the first refresh done (the
+       readers wait for it); the spinner goes once the library is counted and has rows or is made. `LibraryState.counts`
+       and `buildFeed`'s `counts` are gone (Moments' pager counts in SQL since 5b).
+     - The in-memory path (no table: `mergeWithServer`, `groupByDay`, `days`) stays for the tests, previews and the
+       UI lab until phase 9.
+     - Fixed, found by the owner on the phone (6d build):
+       - Calls and recordings turned on (the server's hidden collections) didn't show in Moments: the rows had been
+         made before the recordings were read, and `StoriesController` marked recordings' days only against what it
+         had seen in this run. `FeedTable` now keeps the recordings its rows were made with (`feed_sound`: sha256, day,
+         kind, start, length, private, source) and, on every refresh, also the first after a start, marks the days of
+         those that came, went or changed, with the days of the rows they are in. Recordings aren't in the rows'
+         version, so a new call makes only its day again.
+       - Showing a photo in Moments (the viewer's date, from the storyline, a tag, search or Explore) didn't land on
+         it when its row wasn't read yet: `LandOn` tried once, before `loadMomentsToItem` had read down to the row. It
+         now waits for the row (up to 15 s) on every screen that lands on a photo.
+     - Tests: `theControllerHoldsNoWholeList` (3,000 photos: no days held, items by id and counts as the merge, a
+       backup's sha256 and status read after a new version); `anUpdateCountsWhatARefreshReturns` (20 generated
+       libraries in 4 rounds of moves, deletions and new photos: the counts equal the refresh's rows, the rows equal);
+       `FeedSoundsTest` (10 generated libraries: rows made without recordings, then a new table on the same database
+       with them equals the whole build; the same recordings again make nothing; some hidden again and one longer, then
+       all hidden, equal the whole build). The tests that read the controller's days (readers, Explore, the stories'
+       items, backup's counts) compare with `mergeWithServer` over the same phone library instead. `LibraryLoadTest`
+       still sees 0 merges and 0 Moments rebuilds for 2,000 calls.
+     - On the emulator (made-up library of 300,000, debug build, Offline identity), Dalvik heap allocated: before (6e)
+       about 420 MB a minute after start, 490 MB once settled; after about 190–200 MB, also after Explore and the map.
+       Moments, the viewer, the storyline, Explore, the map and search opened without a crash. A photo noted on Dec 31,
+       2025, opened from the storyline after a restart, landed on its row in Moments. First Moments frame about 18 s
+       after start on both builds (the emulator, with every read at start).
+     - Left: phase 7 (local search vectors on disk), phase 8 (iOS: the Swift side of 6c–6f, docs/ios-todo.md), phase 9
+       (removing the in-memory path). Free up space still plans from MediaStore and the ledger (on purpose, 6d). The
+       made-up library's own lists (debug only) are still built in memory when it is on.
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

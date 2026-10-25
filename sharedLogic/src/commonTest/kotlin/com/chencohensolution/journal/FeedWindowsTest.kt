@@ -179,6 +179,53 @@ class FeedTableTest {
     }
 }
 
+/**
+ * Step 6f (the owner, Oct 26, 2026: calls turned on didn't show in Moments): rows made before the recordings were known
+ * take them once they are, also in a new table on the same database (after a restart); recordings hidden again or
+ * changed leave or change their rows; the same recordings again make nothing.
+ */
+class FeedSoundsTest {
+    @Test
+    fun rowsMadeBeforeTheRecordingsTakeThemOnceKnown() {
+        repeat(10) { seed ->
+            val library = library(seed)
+            val database = testLibraryDatabase()
+            database.transaction { library.items.forEach { database.libraryQueries.upsertLibraryItem(it.toLibraryRow()) } }
+            val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_DAY) else TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6)
+            val shown = ShownSources(hidden = emptySet())
+            fun context(sounds: List<SoundRecording>) = com.chencohensolution.journal.stories.FeedContext(
+                shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, sounds, version = "v",
+            )
+            fun check(table: com.chencohensolution.journal.stories.FeedTable, sounds: List<SoundRecording>, case: String) {
+                val kept = table.sections(Long.MAX_VALUE, 1_000_000, sounds.associateBy { it.sha256 }) { it.item }
+                val whole = buildFeed(ListSource(library.items).items, shown, grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = sounds)
+                    .entries.mapNotNull { (it as? FeedEntry.Section)?.section }
+                assertEquals(whole, kept, "seed $seed: $case")
+            }
+            val first = com.chencohensolution.journal.stories.FeedTable(database)
+            first.refresh(context(emptyList()))
+            check(first, emptyList(), "made without recordings")
+            assertTrue(library.sounds.isNotEmpty())
+
+            // A restart: a new table on the same database, now with the recordings.
+            val again = com.chencohensolution.journal.stories.FeedTable(database)
+            assertTrue(again.refresh(context(library.sounds)) > 0, "seed $seed: windows made for the recordings")
+            check(again, library.sounds, "the recordings came")
+            assertEquals(0, com.chencohensolution.journal.stories.FeedTable(database).refresh(context(library.sounds)), "seed $seed: nothing again")
+
+            // Some hidden again, one longer: they leave or change their rows.
+            val random = Random(seed)
+            val fewer = library.sounds.filter { random.nextInt(3) != 0 }.let { kept ->
+                kept.mapIndexed { i, sound -> if (i == 0) sound.copy(durationMillis = sound.durationMillis + 5 * HOUR) else sound }
+            }
+            again.refresh(context(fewer))
+            check(again, fewer, "some hidden, one longer")
+            again.refresh(context(emptyList()))
+            check(again, emptyList(), "all hidden")
+        }
+    }
+}
+
 class FeedPagerTest {
     @Test
     fun momentsAreReadAPageAtATimeAsTheWholeBuildsRows() = kotlinx.coroutines.test.runTest {

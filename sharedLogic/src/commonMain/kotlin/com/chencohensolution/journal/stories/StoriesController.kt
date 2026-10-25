@@ -163,7 +163,6 @@ class StoriesController internal constructor(
     /** What the rows were last made with, to mark the days of what changed since. */
     private var placesSeen: Places? = null
     private var looksSeen: PhotoLooks? = null
-    private var soundsSeen: List<SoundRecording>? = null
 
     private val cachesLoaded: Boolean get() = similarity?.loaded?.value != false && places?.loaded?.value != false
 
@@ -183,7 +182,7 @@ class StoriesController internal constructor(
 
     /**
      * Marks the days of what changed since the rows were made, besides the library's items (which the database's
-     * triggers mark): photos newly located or in a place newly named, newly fingerprinted, recordings that came or went.
+     * triggers mark): photos newly located or in a place newly named, newly fingerprinted.
      */
     private suspend fun markChangedDays(feed: FeedPager) {
         // The days are the database's: the library's whole list isn't read for them (step 6a).
@@ -201,13 +200,7 @@ class StoriesController internal constructor(
             days += feed.daysOf(nowLooks!!.fingerprints.filter { (id, print) -> before.fingerprints[id] != print }.keys)
         }
         looksSeen = nowLooks
-        val nowSounds = libraryState.value.sounds
-        soundsSeen?.takeIf { it !== nowSounds }?.let { before ->
-            val was = before.associateBy { it.sha256 }
-            val now = nowSounds.associateBy { it.sha256 }
-            (was.keys + now.keys).forEach { sha -> if (was[sha] != now[sha]) listOfNotNull(was[sha]?.day, now[sha]?.day).forEach { days += it } }
-        }
-        soundsSeen = nowSounds
+        // Recordings that came or went are marked by FeedTable itself, against those the rows were made with (step 6f).
         if (days.isNotEmpty()) feed.markDays(days)
     }
 
@@ -595,9 +588,8 @@ class StoriesController internal constructor(
     /** Everything the state is built from, as it is now. */
     private fun inputs() = Inputs(
         libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed,
-        // From the database: its first page read. Else the whole library, or its newest rows with the counts of the
-        // whole (LibraryState.counts). Either way with the caches read.
-        ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete || libraryState.value.counts != null),
+        // From the database: its first page read. Else the whole library merged. Either way with the caches read.
+        ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete),
         paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
         items = if (feed != null) readItems else null,
         missing = missing,

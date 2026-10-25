@@ -47,17 +47,20 @@ data class LibraryState(
     /** True while the library is being read. */
     val loading: Boolean = false,
     /**
-     * True once [days] holds the whole library, not only its newest rows (read first at start): Moments waits for it,
-     * so it draws once.
+     * True once the library is whole: without a database once [days] is merged, with one once its first refresh made
+     * every row (the background readers wait for it, so they don't slow the start down).
      */
     val complete: Boolean = false,
     /**
-     * Photos and videos per source of the whole library, counted by the database, while [days] holds only its newest
-     * rows; null once [complete]. With it Moments can draw its top (and its filter bar) before the rest is read.
+     * Every item, grouped by day, newest day first: only without a database (tests, previews, the UI lab). With one it
+     * stays empty, and the screens read what they show from the database (docs/plans/library-on-disk.md, step 6f).
      */
-    val counts: Map<MediaSource, Int>? = null,
-    /** Every item, grouped by day, newest day first. */
     val days: List<DayGroup> = emptyList(),
+    /**
+     * With a database, goes up each time what the screens show of the library changed (rows written, scores, kept
+     * originals, backup statuses), so those reading it from the database read again; [days] tells that without one.
+     */
+    val version: Int = 0,
     val loadError: String? = null,
     /** The sources backup takes, whose photos count as not backed up; null (backup off) counts every photo. */
     val backupSources: Set<MediaSource>? = null,
@@ -191,7 +194,7 @@ class LibraryController internal constructor(
                     .collect { (hidden, privateFiles, private) ->
                         val changed = stored.leaveOut(hiddenOnPhone(backup?.value?.entries.orEmpty(), hidden, privateFiles, private))
                         val access = currentAccess()
-                        if (changed && readItems.isNotEmpty() && (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED)) load()
+                        if (changed && phoneRead && (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED)) load()
                     }
             }
         }
@@ -281,9 +284,14 @@ class LibraryController internal constructor(
     /** Database work: off the main thread; tests pass their own dispatcher, so waiting for it is deterministic. */
     private val io: CoroutineDispatcher = if (dispatcher === Dispatchers.Main) Dispatchers.IO else dispatcher
 
-    /** The rows of [table] as read, by id, before scores, kept originals and backup statuses. */
-    private val rows = HashMap<String, LibraryRow>()
-    private val idsByDay = HashMap<LocalDay, MutableSet<String>>()
+    /**
+     * With a table, a new object each time the phone's library was read into the database ([KeepsItems.update]): the
+     * items themselves stay there, never in memory (step 6f).
+     */
+    private var phoneSeen: Any? = null
+
+    /** Whether the phone's library was read since the controller was made (with a table; without one, [readItems]). */
+    private val phoneRead: Boolean get() = phoneSeen != null || readItems.isNotEmpty()
 
     /** What the rows were last made from, by identity (see [publishFromTable]). */
     private var tableFrom: List<Any?>? = null
@@ -294,19 +302,23 @@ class LibraryController internal constructor(
     private var refreshAgain = false
     private var keptRead = false
 
-    /** Whether the library has rows to show: at once without a table, else once its newest rows are read or made. */
+    /** Whether the library has rows to show: at once without a table, else once it is counted and has rows or is made. */
     private val libraryReady: Boolean get() = table == null || ready
     private var ready = false
 
+    /** With a table, whether its first refresh is done: every row is made. */
+    private var made = false
+
     /**
      * [publish] with [table]: the rows are made again in the database when the phone's library, the server's list or
-     * what is hidden changed, or a ledger change touches one of them (a backup of calls doesn't); only the rows that
-     * came out different are patched in, day by day. Scores and kept originals change only what is shown.
+     * what is hidden changed, or a ledger change touches one of them (a backup of calls doesn't). Nothing of the rows is
+     * kept here: [LibraryState.version] tells the screens to read again. Scores and kept originals change only what is
+     * shown ([shownRow]).
      */
     private fun publishFromTable(table: LibraryTable) {
         val backupState = backup?.value
         val private = privateMedia?.value ?: savedPrivateMedia
-        val inputs = listOf(readItems, serverSeen, server?.hidden?.value, server?.privateFiles?.value, private)
+        val inputs = listOf(phoneSeen, serverSeen, server?.hidden?.value, server?.privateFiles?.value, private)
         if (tableFrom == null || tableFrom!!.indices.any { tableFrom!![it] !== inputs[it] }) {
             tableFrom = inputs
             refreshTable(table)
@@ -315,22 +327,17 @@ class LibraryController internal constructor(
         val entries = backupState?.entries.orEmpty()
         if (entries !== entriesSeen) {
             // Backup's counts change only with the entries of the library's own items (see recount).
-            entries.forEach { (id, entry) -> if (entriesSeen[id] != entry) ledgerChanged += id }
-            entriesSeen.keys.forEach { if (it !in entries) ledgerChanged += it }
+            entries.forEach { (id, entry) -> if (entriesSeen[id] != entry) { ledgerChanged += id; entriesChanged += id } }
+            entriesSeen.keys.forEach { if (it !in entries) { ledgerChanged += it; entriesChanged += it } }
             entriesSeen = entries
             refreshTable(table)
         }
         val overlay = listOf(originals?.kept?.value, scores?.value)
-        if (shownFrom == null || shownFrom!!.indices.any { shownFrom!![it] !== overlay[it] }) {
-            shownFrom = overlay
-            if (rows.isNotEmpty()) {
-                merged = idsByDay.keys.sortedDescending().map(::dayGroup)
-            }
-        }
+        if (shownFrom == null || shownFrom!!.indices.any { shownFrom!![it] !== overlay[it] }) shownFrom = overlay
         showStatuses()
     }
 
-    /** Makes the rows again in the database, one refresh at a time; the first one reads what was kept first. */
+    /** Makes the rows again in the database, one refresh at a time. */
     private fun refreshTable(table: LibraryTable) {
         if (refreshJob?.isActive == true) {
             refreshAgain = true
@@ -338,31 +345,29 @@ class LibraryController internal constructor(
         }
         refreshJob = scope.launch {
             if (!keptRead) {
-                // What the database kept since the last start, shown before anything is read again: the newest rows
-                // first (the top of the screens, in milliseconds), then the rest.
-                val newest = withContext(io) { Measure.time({ "Library's newest rows read" }) { table.newest(FIRST_ROWS) } }
+                // What the database kept since the last start is shown at once: the screens read it themselves.
                 keptRead = true
-                patch(newest, emptyList())
-                if (newest.isNotEmpty()) {
-                    val counts = withContext(io) { table.sourceCounts() }
-                    if (!_state.value.complete) _state.update { it.copy(counts = counts) }
+                if (withContext(io) { table.hasRows() }) {
+                    rowsWritten++
+                    rowsChanged++
+                    showStatuses()
                 }
-                if (newest.isNotEmpty()) showReady()
-                val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
-                patch(kept, emptyList())
             }
             do {
                 refreshAgain = false
-                val delta = withContext(io) { table.refresh() }
-                if (delta.isEmpty) continue
+                val update = withContext(io) { table.update() }
+                if (update.isEmpty) continue
                 // Only refreshes that changed rows count: one with nothing noted is a single quick query.
                 merges++
-                Measure.log?.invoke("Library: ${delta.changed.size} rows changed, ${delta.removed.size} gone")
-                patch(delta.changed, delta.removed)
+                Measure.log?.invoke("Library: ${update.changed} rows changed, ${update.removed} gone")
+                rowsWritten++
+                if (update.moved > 0 || update.removed > 0) rowsChanged++
+                showStatuses()
             } while (refreshAgain)
-            // A new database is made whole by its first refresh: ready once it is. Either way every row is in now.
-            showReady()
-            if (!_state.value.complete) _state.update { it.copy(complete = true, counts = null) }
+            // A new database is made whole by its first refresh: every row is in now.
+            made = true
+            if (!_state.value.complete) _state.update { it.copy(complete = true) }
+            if (countJob?.isActive != true && _state.value.totals != null) showReady()
         }
     }
 
@@ -371,34 +376,6 @@ class LibraryController internal constructor(
         if (ready) return
         ready = true
         _state.update { it.copy(loading = loadJob?.isActive == true) }
-    }
-
-    /** Patches [changed] and [removed] rows into [merged]: only their days are made again. */
-    private fun patch(changed: List<LibraryRow>, removed: List<String>) {
-        val days = HashSet<LocalDay>()
-        fun take(id: String) {
-            val old = rows.remove(id) ?: return
-            days += old.item.day
-            idsByDay[old.item.day]?.let { ids -> ids -= id; if (ids.isEmpty()) idsByDay -= old.item.day }
-        }
-        removed.forEach(::take)
-        var addsWork = false
-        changed.forEach { row ->
-            val old = rows[row.item.id]?.item
-            val item = row.item
-            if (old == null || old.location != item.location || old.isOnDevice != item.isOnDevice || old.source != item.source || old.type != item.type) addsWork = true
-            take(item.id)
-            rows[item.id] = row
-            days += item.day
-            idsByDay.getOrPut(item.day) { HashSet() } += item.id
-        }
-        if (days.isEmpty()) return
-        rowsWritten++
-        if (addsWork || removed.isNotEmpty()) rowsChanged++
-        val kept = merged.filter { it.day !in days }
-        val made = days.filter { it in idsByDay }.map(::dayGroup)
-        merged = (kept + made).sortedByDescending { it.day }
-        showStatuses()
     }
 
     /**
@@ -471,15 +448,6 @@ class LibraryController internal constructor(
         sha256s.mapNotNull { found[it] }.distinctBy { it.id }
     }
 
-    /** One day of the rows, as shown, newest first. */
-    private fun dayGroup(day: LocalDay): DayGroup {
-        val kept = originals?.kept?.value.orEmpty().mapValues { it.value.toString() }
-        val scored = scores?.value.orEmpty()
-        val items = idsByDay.getValue(day).map { shown(rows.getValue(it), kept, scored) }
-            .sortedWith(compareByDescending<MediaItem> { it.takenAtMillis }.thenBy { it.id })
-        return DayGroup(day, items)
-    }
-
     // MARK: Counts from the database (step 6d)
 
     /** Ids whose ledger entry changed since the counts were last made. */
@@ -532,12 +500,15 @@ class LibraryController internal constructor(
                     _state.update { it.copy(totals = totals) }
                 }
             } while (countAgain)
+            // Counted: the spinner can go once there is something to show or every row is made.
+            if (made || (_state.value.totals?.items ?: 0) > 0) showReady()
         }
     }
 
     /** Puts [merged] into [state] with each photo's backup status as it is now. */
     private fun showStatuses() {
         recount()
+        if (table != null) return showTableStatuses(table)
         val backupState = backup?.value
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
         // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it). Several files
@@ -567,6 +538,56 @@ class LibraryController internal constructor(
             if (changed) group.copy(items = items) else group
         }
         _state.update { it.copy(days = days, backupSources = backupState?.countedSources, sounds = sounds) }
+    }
+
+    /** What [showTableStatuses] last published from. */
+    private var tableShown: List<Any?>? = null
+    private var queuedShown: Set<String> = emptySet()
+    private var stepsShown: Map<String, Int> = emptyMap()
+
+    /** Ids whose ledger entry changed since [showTableStatuses] last looked (see [publishFromTable]). */
+    private var entriesChanged = HashSet<String>()
+
+    /**
+     * With a table: a new [LibraryState.version] when what the screens read from the database looks different now: rows
+     * written, scores or kept originals, the sound recordings or the sources backup takes changed (at once), or the
+     * status of a library item may have (a ledger entry, the queue, a file on its way or its ring moving a step), which
+     * the database is asked first, so a backup of calls changes nothing shown.
+     */
+    private fun showTableStatuses(table: LibraryTable) {
+        val backupState = backup?.value
+        val running = (backupState?.activity as? BackupActivity.Running)?.progress
+        val fixed = listOf(sounds, shownFrom?.getOrNull(0), shownFrom?.getOrNull(1), backupState?.countedSources, rowsWritten)
+        val queued = backupState?.queued.orEmpty()
+        val steps = HashMap<String, Int>().apply {
+            running?.uploading?.forEach { (id, fraction) -> put(id, (fraction * STATUS_STEPS).toInt()) }
+            running?.currentId?.let { put(it, (running.currentFraction * STATUS_STEPS).toInt()) }
+        }
+        val before = tableShown
+        val changedFixed = before == null || before.indices.any { i -> if (i <= 2) before[i] !== fixed[i] else before[i] != fixed[i] }
+        val ids = HashSet<String>()
+        if (!changedFixed) {
+            ids += entriesChanged
+            if (queued !== queuedShown) {
+                queued.forEach { if (it !in queuedShown) ids += it }
+                queuedShown.forEach { if (it !in queued) ids += it }
+            }
+            steps.forEach { (id, step) -> if (stepsShown[id] != step) ids += id }
+            stepsShown.keys.forEach { if (it !in steps) ids += it }
+        }
+        tableShown = fixed
+        queuedShown = queued
+        stepsShown = steps
+        entriesChanged = HashSet()
+        if (changedFixed) {
+            newVersion()
+        } else if (ids.isNotEmpty()) {
+            scope.launch { if (withContext(io) { table.hasAny(ids) }) newVersion() }
+        }
+    }
+
+    private fun newVersion() {
+        _state.update { it.copy(version = it.version + 1, backupSources = backup?.value?.countedSources, sounds = sounds) }
     }
 
     /** The sound recordings of the last [publish], built with [merged]. */
@@ -616,6 +637,7 @@ class LibraryController internal constructor(
             // Without photo access only the server's photos are shown.
             loadJob?.cancel()
             readItems = emptyList()
+            if (table != null) phoneSeen = Any()
             _state.update { it.copy(loading = !libraryReady, loadError = null) }
             publish()
         }
@@ -657,7 +679,13 @@ class LibraryController internal constructor(
         _state.update { it.copy(loading = true, loadError = null) }
         loadJob = scope.launch {
             try {
-                readItems = library.loadItems()
+                val kept = library as? KeepsItems
+                if (table != null && kept != null) {
+                    kept.update()
+                    phoneSeen = Any()
+                } else {
+                    readItems = library.loadItems()
+                }
                 _state.update { it.copy(loading = !libraryReady) }
                 publish()
             } catch (e: CancellationException) {
@@ -738,9 +766,6 @@ internal fun mergeWithServer(
 
 /** The uploading photo's ring moves in this many steps (5%). */
 private const val STATUS_STEPS = 20
-
-/** Rows read first at start, newest first: a few screens of Moments. */
-private const val FIRST_ROWS = 600L
 
 /** How long the library must be quiet after a change before it is read again. */
 private const val CHANGE_SETTLE_MILLIS = 1_000L

@@ -3,6 +3,7 @@ package com.chencohensolution.journal
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.db.LibraryDatabase
+import com.chencohensolution.journal.library.mergeWithServer
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryKey
@@ -315,7 +316,8 @@ class BackgroundReadersTest {
         val reference = similarity(referenceAnalyzer)
         val referencePlaces = places(referenceReader)
         fun check(round: Int) {
-            val items = library.currentState.days.flatMap { it.items }
+            // The library merged in memory, in the order the database's rows are shown (the controller keeps no list: step 6f).
+            val items = shownDays(mergeWithServer(platform.items, emptyMap(), emptyList())).flatMap { it.items }
             val shown = settings.state.value.shownSources
             reference.request(items.filter { it.type == MediaType.IMAGE && shown.shows(it) })
             referencePlaces.request(items)

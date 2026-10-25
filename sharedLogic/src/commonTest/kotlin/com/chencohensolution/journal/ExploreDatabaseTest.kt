@@ -3,6 +3,7 @@ package com.chencohensolution.journal
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.db.LibraryDatabase
+import com.chencohensolution.journal.library.mergeWithServer
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryRow
@@ -359,7 +360,8 @@ class ExploreDatabaseTest {
 
         suspend fun check(round: Int) {
             val state = stories.currentState
-            val items = library.currentState.days.flatMap { it.items }
+            // The library merged in memory, in the order the database's rows are shown (the controller keeps no list: step 6f).
+            val items = shownDays(mergeWithServer(platform.items, emptyMap(), emptyList())).flatMap { it.items }
             val summary = stories.explore(state)
             assertEquals(exploreOf(items, state.places, state.shownSources, state.home).facts(), summary.facts(), "round $round: explore")
             assertTrue(summary.countries.isNotEmpty(), "round $round: towns named")

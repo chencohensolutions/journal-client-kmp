@@ -24,6 +24,7 @@ import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryTable
+import com.chencohensolution.journal.library.LibraryUpdate
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaLibrary
@@ -123,7 +124,7 @@ private fun scenario(seed: Int): Scenario {
 }
 
 /** [items] by day as LibraryController shows the database's rows: newest day first, newest first, then by id. */
-private fun shownDays(items: List<MediaItem>): List<DayGroup> =
+internal fun shownDays(items: List<MediaItem>): List<DayGroup> =
     items.groupBy { it.day }.entries.sortedByDescending { it.key }
         .map { (day, dayItems) -> DayGroup(day, dayItems.sortedWith(compareByDescending<MediaItem> { it.takenAtMillis }.thenBy { it.id })) }
 
@@ -336,7 +337,7 @@ class LibraryTableTest {
         )
         library.refresh()
         advanceUntilIdle()
-        val all = library.currentState.days.flatMap { it.items }.associateBy { it.id }
+        val all = shownDays(mergeWithServer(device, emptyMap(), emptyList())).flatMap { it.items }.associateBy { it.id }
         assertEquals(200, all.size)
         var state = stories.currentState
         assertTrue(!state.whole && state.itemsById.size < 50, "only the rows read: ${state.itemsById.size}")
@@ -367,12 +368,17 @@ class LibraryTableTest {
         library.close()
     }
 
+    /**
+     * Step 6f: with the database the controller keeps no list of the library (its days stay empty, whatever the size),
+     * yet its items, counts and changes are the merge's: a backup reading a photo is told by the version, and the photo
+     * read by id has its sha256 and its status.
+     */
     @Test
-    fun theControllerPatchesOnlyTheDayThatChanged() = runTest {
+    fun theControllerHoldsNoWholeList() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
-        val device = (0..8).map { n ->
-            val day = LocalDay(2026, 10, 1 + n / 3)
-            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
+        val device = (0 until 3_000).map { n ->
+            val day = LocalDay(2024, 1, 1).plusDays((n / 7).toLong())
+            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + (n % 3) * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
         }
         val database = testLibraryDatabase()
         val backup = MutableStateFlow(BackupState())
@@ -386,19 +392,73 @@ class LibraryTableTest {
         )
         controller.refresh()
         advanceUntilIdle()
-        val before = controller.currentState.days
-        assertEquals(listOf(LocalDay(2026, 10, 3), LocalDay(2026, 10, 2), LocalDay(2026, 10, 1)), before.map { it.day })
-        assertEquals(listOf("2", "1", "0"), before.last().items.map { it.id })
+        val before = controller.currentState
+        assertTrue(before.days.isEmpty(), "no days held")
+        assertTrue(before.complete && !before.loading, "every row made, no spinner")
+        assertEquals(3_000, before.itemCount)
+        val expected = mergeWithServer(device, emptyMap(), emptyList()).associateBy { it.id }
+        assertEquals(expected, controller.items(expected.keys))
 
-        // Backup reads photo 4 (Oct 2): only that day is made again.
-        val entry = LedgerEntry("4", 104, 1, sha(4))
+        // Backup reads photo 4: the version tells the screens, the row read has its sha256 and status; still no list.
+        val entry = LedgerEntry("4", 104, 1, sha(4), uploaded = true)
         UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined).record(entry)
         backup.value = backup.value.copy(entries = mapOf("4" to entry))
         advanceUntilIdle()
-        val after = controller.currentState.days
-        assertEquals(sha(4), after[1].items.first { it.id == "4" }.sha256)
-        assertTrue(after[0] === before[0] && after[2] === before[2], "the other days are the same objects")
+        val after = controller.currentState
+        assertTrue(after.version > before.version, "a new version")
+        assertTrue(after.days.isEmpty(), "still no days held")
+        val read = controller.items(listOf("4")).getValue("4")
+        assertEquals(sha(4), read.sha256)
+        assertEquals(BackupStatus.BackedUp, read.backup)
+        assertEquals(2_999, after.notBackedUpCount)
         controller.close()
+    }
+
+    /**
+     * Step 6f: an update (what the controller runs) counts what a refresh returns, rows changed, moved and gone, over
+     * generated libraries changed in rounds, and leaves the same rows.
+     */
+    @Test
+    fun anUpdateCountsWhatARefreshReturns() = runTest {
+        repeat(20) { seed ->
+            val s = scenario(seed)
+            val random = Random(seed + 77)
+            val databases = listOf(testLibraryDatabase(), testLibraryDatabase())
+            var device = s.device
+            suspend fun write(round: Int) = databases.forEach { database ->
+                writeLibrary(database, device, s, round)
+            }
+            write(0)
+            repeat(4) { round ->
+                val (refreshed, updated) = databases.map { LibraryTable(it) }.let { (a, b) -> a to b }
+                val before = refreshed.all().associateBy { it.item.id }
+                val delta = refreshed.refresh()
+                val update = updated.update()
+                val moved = delta.changed.count { row ->
+                    val old = before[row.item.id]?.item
+                    old == null || old.location != row.item.location || old.isOnDevice != row.item.isOnDevice || old.source != row.item.source || old.type != row.item.type
+                }
+                assertEquals(LibraryUpdate(delta.changed.size, moved, delta.removed.size), update, "seed $seed round $round")
+                assertEquals(refreshed.all().map { it.item }.sortedBy { it.id }, updated.all().map { it.item }.sortedBy { it.id }, "seed $seed round $round: rows")
+                // The phone moves, drops and adds photos.
+                device = device.filter { random.nextInt(8) != 0 }.map { item ->
+                    if (random.nextInt(6) == 0) item.copy(location = GeoPoint(random.nextDouble(-50.0, 50.0), random.nextDouble(-50.0, 50.0))) else item
+                } + (0 until random.nextInt(4)).map { n ->
+                    val day = LocalDay(2026, 3, 1 + n)
+                    MediaItem("new$round-$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000, day, null, 10, 10, 50L + n, "NEW_$n.jpg", modifiedMillis = 1)
+                }
+                write(round + 1)
+            }
+        }
+    }
+
+    private suspend fun writeLibrary(database: com.chencohensolution.journal.db.LibraryDatabase, device: List<MediaItem>, s: Scenario, round: Int) {
+        StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+        if (round == 0) {
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            s.entries.forEach { ledger.record(it) }
+            ServerMediaStore(database).replaceAll(s.server, s.hiddenOnServer, cursor = null, showPrivate = s.showPrivate)
+        }
     }
 
     @Test
@@ -528,9 +588,12 @@ class LibraryTableTest {
             dispatcher, backup = backup, table = LibraryTable(database),
         )
         val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
-        fun check(case: String) {
+        suspend fun check(case: String) {
             val state = controller.currentState
-            val inMemory = LibraryState(days = state.days, backupSources = state.backupSources)
+            // The library merged in memory, with each photo's status now (the controller keeps no list: step 6f).
+            val now = backup.value
+            val merged = mergeWithServer(device, ledger.all(), emptyList()).map { it.copy(backup = now.status(it)) }
+            val inMemory = LibraryState(days = shownDays(merged), backupSources = now.countedSources)
             assertTrue(state.totals != null, "$case: counted by the database")
             assertEquals(Triple(inMemory.itemCount, inMemory.notBackedUpCount, inMemory.notBackedUpBytes), Triple(state.itemCount, state.notBackedUpCount, state.notBackedUpBytes), case)
         }

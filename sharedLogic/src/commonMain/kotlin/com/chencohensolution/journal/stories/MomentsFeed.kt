@@ -208,11 +208,8 @@ internal fun buildFeed(
     sets: Map<String, String> = emptyMap(),
     revealed: Set<FeedReveal> = emptySet(),
     sounds: List<SoundRecording> = emptyList(),
-    /** Photos per source of the whole library, when [items] are only its newest (LibraryState.counts). */
-    counts: Map<MediaSource, Int>? = null,
 ): MomentsFeed {
-    @Suppress("NAME_SHADOWING")
-    val counts = counts ?: sourceCounts(items)
+    val counts = sourceCounts(items)
     val (visible, hidden) = items.partition(shown::shows)
     // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
     val merged = visible.filter { it.id in sets }.groupBy { sets.getValue(it.id) }.values

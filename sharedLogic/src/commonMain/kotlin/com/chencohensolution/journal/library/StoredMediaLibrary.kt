@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.library
 
+import app.cash.sqldelight.db.QueryResult
 import com.chencohensolution.journal.db.Device_item
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.db.LibraryDatabase
@@ -40,6 +41,14 @@ internal interface LeavesOut {
 }
 
 /**
+ * A library kept in the library database: [update] writes what changed on the phone to it without reading every item
+ * back, for the app, whose screens read the database (docs/plans/library-on-disk.md, step 6f).
+ */
+internal interface KeepsItems {
+    suspend fun update()
+}
+
+/**
  * What the phone's library leaves out: its copies of what the server hides ([hiddenOnServer]), and of the private files
  * while [privateMedia] hides them ([privateFiles]); matched by sha256 once backup read it ([entries]), else by name and
  * size, as [mergeWithServer] does.
@@ -75,7 +84,7 @@ internal class StoredMediaLibrary(
      * once this is empty. Backup never reads them: it reads the platform's library itself, and drops made-up items.
      */
     private val madeUp: List<MediaItem> = emptyList(),
-) : MediaLibrary, LeavesOut {
+) : MediaLibrary, LeavesOut, KeepsItems {
     private val queries get() = database.deviceQueries
     private val state get() = database.stateQueries
     private val mutex = Mutex()
@@ -89,6 +98,14 @@ internal class StoredMediaLibrary(
     override fun watch(onChange: () -> Unit): () -> Unit = platform.watch(onChange)
 
     override suspend fun loadItems(): List<MediaItem> = mutex.withLock {
+        write()
+        withContext(io) { items() }
+    }
+
+    override suspend fun update() = mutex.withLock { write() }
+
+    /** Asks the platform what changed and writes it to the table. */
+    private suspend fun write() {
         val changes = (platform as? ChangingLibrary)?.changesSince(withContext(io) { state.stateValue(MARK).executeAsOneOrNull() })
         val all = if (changes == null) platform.loadItems() else null
         withContext(io) {
@@ -106,7 +123,6 @@ internal class StoredMediaLibrary(
                     }
                 }
             }
-            items()
         }
     }
 
@@ -125,7 +141,9 @@ internal class StoredMediaLibrary(
             }
             withContext(io) {
                 database.transactionWithResult {
-                    val leaving = items().filter { it.id !in madeUpIds && hides(it) }
+                    // One row at a time: only those leaving are kept.
+                    val leaving = ArrayList<MediaItem>()
+                    forEachItem { if (it.id !in madeUpIds && hides(it)) leaving += it }
                     leaving.forEach { item ->
                         queries.deleteDeviceItem(item.id)
                         queries.addLeftOut(item.id)
@@ -140,6 +158,14 @@ internal class StoredMediaLibrary(
         }
 
     private fun items(): List<MediaItem> = queries.allDeviceItems().executeAsList().map { it.toMediaItem() }
+
+    private fun forEachItem(each: (MediaItem) -> Unit) {
+        val query = queries.allDeviceItems()
+        query.execute { cursor ->
+            while (cursor.next().value) each(query.mapper(cursor).toMediaItem())
+            QueryResult.Unit
+        }
+    }
 
     /** Writes [changed] (all items when [full]) and deletes what isn't [present]; inside a transaction. */
     private fun apply(changed: List<MediaItem>, present: Set<String>, full: Boolean) {

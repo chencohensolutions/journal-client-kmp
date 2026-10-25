@@ -20,6 +20,16 @@ CREATE TABLE feed_dirty (
     day INTEGER NOT NULL PRIMARY KEY
 );
 
+-- The sound recordings Moments' rows were made with (FeedTable): each refresh compares them with the recordings now
+-- shown, and makes the rows of the days of those that came, went or changed again, also after a restart.
+CREATE TABLE feed_sound (
+    sha256 TEXT NOT NULL PRIMARY KEY,
+    -- Its day, as days since 1970-01-01.
+    epoch_day INTEGER NOT NULL,
+    -- What the rows show of it (kind, start, length, private), to tell a change.
+    facts TEXT NOT NULL
+);
+
 CREATE TRIGGER library_item_added AFTER INSERT ON library_item BEGIN INSERT OR IGNORE INTO feed_dirty VALUES (new.epoch_day); END;
 CREATE TRIGGER library_item_changed AFTER UPDATE ON library_item BEGIN
     INSERT OR IGNORE INTO feed_dirty VALUES (old.epoch_day);
@@ -90,3 +100,16 @@ SELECT * FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM fee
 -- The key of the row a photo is in (its own day, or the day of the set it was merged into).
 sectionOfDay:
 SELECT key FROM feed_section WHERE first_day <= ? AND last_day >= ? ORDER BY newest_millis DESC LIMIT 1;
+
+feedSounds:
+SELECT * FROM feed_sound;
+
+clearFeedSounds:
+DELETE FROM feed_sound;
+
+insertFeedSound:
+INSERT OR REPLACE INTO feed_sound VALUES ?;
+
+-- The days of the rows that have photos or recordings of the day.
+sectionSpansOfDay:
+SELECT first_day, last_day FROM feed_section WHERE first_day <= :day AND last_day >= :day;

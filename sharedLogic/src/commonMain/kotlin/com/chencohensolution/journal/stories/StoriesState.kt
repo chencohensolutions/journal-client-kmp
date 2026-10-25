@@ -160,7 +160,6 @@ internal fun buildState(
             sets = setsIn(notes),
             revealed = revealed,
             sounds = library.sounds,
-            counts = library.counts,
         ),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,

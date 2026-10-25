@@ -94,5 +94,15 @@ Planned, not built on either platform yet:
   observes `ServerLibrary.mediaVersion` instead and reads what it needs (`file(sha256)`, `sha256Of(item)`, both
   suspend). `IosServerFiles.face` and `setPrivate` already read from the database; on the Mac, check that the face
   avatars still get their photo's size and that marking a photo private still finds its sha256.
+  Step 6f (Android Oct 26, 2026): with the database `LibraryState.days` stays empty (the controller keeps no list of
+  the library) and `LibraryState.counts` is gone. Everything in Swift that reads `library.days` must move first or it
+  shows nothing: the four checks in `JournalHomeView.swift` (to `library.isEmpty`, see 6d), `ExploreViews.swift`
+  (lines with `library.days.flatMap`: to `explore(state:)` and `scopeItems(scope:state:)`, see 6c) and
+  `ExploreMapView.swift` (to `mapOverview` / `mapArea`, see 6c). A view that read again when the days changed observes
+  `LibraryState.version` instead (it goes up when what the database shows changed: rows, scores, kept originals,
+  statuses). `LibraryState.complete` now means every row is made. Moments' rows now take the sound recordings once
+  they are read, also rows made before (`feed_sound`, migration `6.sqm`; nothing in Swift). Showing a photo in Moments
+  (the viewer's date) must land on its row once `loadMomentsToItem` has read down to it, not only when it is already
+  read (Android: `LandOn` in `SharedTransitions.kt` waits up to 15 s for the row).
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

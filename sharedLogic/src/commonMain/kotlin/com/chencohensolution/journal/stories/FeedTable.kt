@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.db.Feed_section
+import com.chencohensolution.journal.db.Feed_sound
 import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LocalDay
@@ -60,6 +61,7 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
      * [context] differs from what they were made with. Returns how many windows were made.
      */
     fun refresh(context: FeedContext): Int {
+        markSoundDays(context.sounds)
         val dirty = queries.dirtyDays().executeAsList()
         val everything = ALL in dirty || state.stateValue(VERSION).executeAsOneOrNull() != context.version
         if (dirty.isEmpty() && !everything) return 0
@@ -82,9 +84,32 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
             }
             if (everything) queries.clearAllFeedDirty() else dirty.chunked(CHUNK).forEach { queries.clearFeedDirty(it) }
             state.setState(VERSION, context.version)
+            queries.clearFeedSounds()
+            context.sounds.forEach { queries.insertFeedSound(Feed_sound(it.sha256, it.day.toEpochDay(), it.facts())) }
         }
         return windows.size
     }
+
+    /**
+     * Marks the days of the recordings that came, went or changed since the rows were made (kept in `feed_sound`, so
+     * also across starts: the first rows after an update may have been made before the recordings were read), with the
+     * days of the rows they were or are in. Asked by the owner on Oct 26, 2026, when calls turned on didn't show.
+     */
+    private fun markSoundDays(sounds: List<SoundRecording>) {
+        val made = queries.feedSounds().executeAsList().associateBy { it.sha256 }
+        val now = sounds.associateBy { it.sha256 }
+        val days = HashSet<Long>()
+        made.values.forEach { old -> if (now[old.sha256]?.let { it.day.toEpochDay() == old.epoch_day && it.facts() == old.facts } != true) days += old.epoch_day }
+        now.values.forEach { sound -> made[sound.sha256].let { if (it == null || it.epoch_day != sound.day.toEpochDay() || it.facts != sound.facts()) days += sound.day.toEpochDay() } }
+        if (days.isEmpty()) return
+        val spans = days.flatMapTo(HashSet()) { day ->
+            queries.sectionSpansOfDay(day).executeAsList().flatMap { it.first_day..it.last_day } + day
+        }
+        database.transaction { spans.forEach { queries.markFeedDirty(it) } }
+    }
+
+    /** What the rows show of a recording besides its day: a change makes its rows again. */
+    private fun SoundRecording.facts() = "${kind.name}|$startMillis|$durationMillis|$isPrivate|${source.id}"
 
     /**
      * Up to [limit] rows older than [beforeMillis] (their newest moment), newest first, with their items read by id
