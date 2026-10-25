@@ -118,8 +118,8 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
 
             SectionTitle(stringResource(R.string.free_up_sources))
             FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MediaSource.entries.forEach { source ->
-                    Chip(sourceName(source), source in freeUp.sources) { actions.toggleSource(source) }
+                freeUp.choices.forEach { source ->
+                    Chip(sourceName(source), freeUp.allows(source)) { actions.toggleSource(source) }
                 }
             }
 
@@ -210,7 +210,7 @@ private const val DEFAULT_OLDER_THAN_DAYS = 365
 /** A choice's values, indented under its title like its description. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OptionChips(content: @Composable () -> Unit) {
+internal fun OptionChips(content: @Composable () -> Unit) {
     FlowRow(
         Modifier.padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

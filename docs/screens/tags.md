@@ -59,7 +59,7 @@ There is no separate list of tags: the tags are whatever the notes contain.
 ## Not built yet
 
 Renaming, merging or deleting a tag everywhere at once; tagging several photos in one go (the shared logic already
-takes a list of photos); filtering All photos by tag.
+takes a list of photos).
 
 ## Code
 

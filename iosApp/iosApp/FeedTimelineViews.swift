@@ -33,6 +33,8 @@ extension TimelineMonth {
 struct TimelineBar: View {
     let timeline: FeedTimeline
     let current: Int?
+    /// The day of the row at the top of the feed: the pill says it with its month ("24 October 2026").
+    var day: LocalDay? = nil
     @Binding var open: Bool
     let go: (TimelineDay) -> Void
 
@@ -48,9 +50,9 @@ struct TimelineBar: View {
     private var shown: Int { min(sent ?? current ?? 0, timeline.months.count - 1) }
 
     var body: some View {
-        let title = timeline.months[shown].title
+        let title = name
         TimelineMorph(progress: progress, width: width, panelHeight: panelHeight, titleSize: titleSize, title: title) {
-            TimelinePill(timeline: timeline, month: shown, step: { month in
+            TimelinePill(timeline: timeline, month: shown, title: title, step: { month in
                 hold(month)
                 go(timeline.landing(month: Int32(month)))
             }, open: { open = true })
@@ -76,6 +78,16 @@ struct TimelineBar: View {
             // Android's FastOutSlowIn, over the same time.
             withAnimation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.36)) { progress = isOpen ? 1 : 0 }
         }
+    }
+
+    /// The day with its month while the pill is closed and the feed has settled ("24 October 2026"); the month alone in
+    /// the ruler and while the feed gets to another month.
+    private var name: String {
+        let month = timeline.months[shown]
+        guard sent == nil, !open, let day, day.year == month.year, day.month == month.month else { return month.title }
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("dMMMMy")
+        return formatter.string(from: day.date)
     }
 
     /// Shows `month` while the feed gets there.
@@ -177,6 +189,8 @@ private struct TimelineMorph<Pill: View, Panel: View>: View, Animatable {
 private struct TimelinePill: View {
     let timeline: FeedTimeline
     let month: Int
+    /// What the pill says: the month, or the day with it.
+    let title: String
     let step: (Int) -> Void
     let open: () -> Void
 
@@ -204,7 +218,6 @@ private struct TimelinePill: View {
 
     /// The month's name: swiped along it steps months, tapped it opens the ruler.
     private var name: some View {
-        let title: String = timeline.months[month].title
         let tap = TapGesture().onEnded { open() }
         // Its place only: the bar draws the name, which moves between here and the ruler's title.
         return Text(verbatim: title)

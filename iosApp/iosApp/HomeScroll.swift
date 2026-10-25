@@ -1,0 +1,62 @@
+import SwiftUI
+
+// The home screen's top bar (the title row and the bar under it) slides up and fades out as the list scrolls down, and
+// comes back as it scrolls up, with its fade behind it once the list is away from its top (asked Oct 24, 2026). As
+// Android's TopBar.
+
+/// What follows the scroll every frame, kept apart so that only the title row redraws (and the bottom controls, when
+/// the list turns between going up and down).
+@Observable final class HomeScroll {
+    /// How far the title row has slid up: zero (shown) to minus its height (hidden).
+    private(set) var titleShift: CGFloat = 0
+    /// The title row's own height, once measured.
+    var titleHeight: CGFloat = 0
+    /// The tabs and the backup pill slid away, while the list goes down; the month pill stays (asked Oct 24, 2026).
+    private(set) var bottomHidden = false
+    /// The list is away from its top: the fade behind the top bar shows while the bar does (asked Oct 24, 2026).
+    private(set) var scrolledFromTop = false
+
+    /// The list moved by `delta` (down is positive); at its top the title always shows.
+    func scrolled(by delta: CGFloat, atTop: Bool) {
+        let shift = atTop ? 0 : min(0, max(-titleHeight, titleShift - delta))
+        if shift != titleShift { titleShift = shift }
+        let hide = atTop ? false : delta > 2 ? true : delta < -2 ? false : bottomHidden
+        if hide != bottomHidden { withAnimation(.snappy(duration: 0.25)) { bottomHidden = hide } }
+        if scrolledFromTop == atTop { withAnimation(.easeInOut(duration: 0.25)) { scrolledFromTop = !atTop } }
+    }
+
+    /// Shows the title and the bottom controls again (another tab, search closed, the ruler opened, picking).
+    func showTitle() {
+        if titleShift != 0 { titleShift = 0 }
+        if bottomHidden { withAnimation(.snappy(duration: 0.25)) { bottomHidden = false } }
+    }
+}
+
+extension HomeScroll {
+    /// How much of the top bar's controls shows: 1 in place, 0 slid away.
+    var titleShown: CGFloat { titleHeight > 0 ? 1 + titleShift / titleHeight : 1 }
+}
+
+/// The top bar's controls sliding up with the scroll, whole, and fading out as they go.
+struct CollapsingTitle<Content: View>: View {
+    let scroll: HomeScroll
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { scroll.titleHeight = $0 }
+            .offset(y: scroll.titleShift)
+            .opacity(scroll.titleShown)
+    }
+}
+
+/// The fade behind the top bar: shown with the bar while the list is away from its top, faded in and out.
+struct TopBarFade: View {
+    let scroll: HomeScroll
+
+    var body: some View {
+        LibraryColors.topFade
+            .opacity(scroll.scrolledFromTop ? scroll.titleShown : 0)
+            .ignoresSafeArea()
+    }
+}

@@ -243,8 +243,11 @@ internal object PreviewData {
             FeedEntry.Section(todaySection.cameraOnly().copy(hidden = mapOf(MediaSource.WHATSAPP to 6, MediaSource.SCREENSHOTS to 3))),
             FeedEntry.Section(yesterdaySection.cameraOnly().copy(hidden = mapOf(MediaSource.SCREENSHOTS to 2))),
         ) + feed.entries.drop(2),
-        counts = mapOf(MediaSource.CAMERA to 48_210, MediaSource.WHATSAPP to 18_458, MediaSource.SCREENSHOTS to 2_388, MediaSource.OTHER to 3_104),
-        shown = ShownSources.DEFAULT_SOURCES,
+        counts = mapOf(
+            MediaSource.CAMERA to 48_210, MediaSource.WHATSAPP to 18_458, MediaSource.SCREENSHOTS to 2_388,
+            MediaSource.folder("Petcube") to 214, MediaSource.OTHER to 3_104,
+        ),
+        shown = setOf(MediaSource.CAMERA, MediaSource.folder("Petcube"), MediaSource.OTHER),
     )
 
     /** Today's "+6 WhatsApp" tapped: the six in a band under the row, "Hide WhatsApp" in its place. */
@@ -281,7 +284,7 @@ internal object PreviewData {
                 year(3_700, 41, MediaSource.WHATSAPP)
             ).asDays(),
     )
-    val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed(shown = ShownSources.DEFAULT_SOURCES))
+    val exploreStories: StoriesState = stories.copy(shownSources = ShownSources(), feed = MomentsFeed())
 
     // Explore › Places: home in Tel Aviv, more towns in Israel, and trips to other countries.
 

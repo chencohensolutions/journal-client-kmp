@@ -75,7 +75,7 @@ data class ServerMedia(
     /** A sound recording as Moments and its page show it; only for [isAudio]. */
     fun toSoundRecording(): SoundRecording {
         val taken = takenAt?.let(::parseTimestamp) ?: parseTimestamp(uploadedAt)
-        val mediaSource = MediaSource.entries.firstOrNull { it.name.equals(source, ignoreCase = true) } ?: MediaSource.OTHER
+        val mediaSource = source?.let(MediaSource::parse) ?: MediaSource.OTHER
         return SoundRecording(
             sha256 = sha256,
             kind = when {
@@ -112,7 +112,7 @@ data class ServerMedia(
             sizeBytes = size,
             fileName = fileName,
             backup = BackupStatus.BackedUp,
-            source = MediaSource.entries.firstOrNull { it.name.equals(source, ignoreCase = true) } ?: MediaSource.OTHER,
+            source = source?.let(MediaSource::parse) ?: MediaSource.OTHER,
             location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
             mimeType = mimeType,
             sha256 = sha256,

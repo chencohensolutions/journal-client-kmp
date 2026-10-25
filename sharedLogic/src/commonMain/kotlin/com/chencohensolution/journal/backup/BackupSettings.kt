@@ -21,4 +21,10 @@ data class BackupSettings(
         /** Only what the camera took, until the user picks more. */
         val DEFAULT_SOURCES: Set<MediaSource> = setOf(MediaSource.CAMERA)
     }
+
+    /**
+     * The pills Settings › Backup offers: the fixed sources, those with photos ([counts], photos per source) and
+     * those chosen, the most photos first (ties in [MediaSource] order).
+     */
+    fun choices(counts: Map<MediaSource, Int>): List<MediaSource> = MediaSource.byCount(counts, sources)
 }

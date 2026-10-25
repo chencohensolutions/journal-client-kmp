@@ -79,7 +79,7 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
             for (i in 0uL until result.count) assets += result.objectAtIndex(i) as PHAsset
         }
         val known = knownFacts(assets)
-        val whatsApp = whatsAppIds()
+        val albums = albumsOf()
         val calendar = NSCalendar.currentCalendar
         assets.map { asset ->
             val date = asset.creationDate ?: asset.modificationDate ?: NSDate()
@@ -100,7 +100,7 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
                 burstId = asset.burstIdentifier,
                 source = sourceOfAsset(
                     isScreenshot = asset.mediaSubtypes and screen != 0uL,
-                    inWhatsAppAlbum = asset.localIdentifier in whatsApp,
+                    albums = albums[asset.localIdentifier].orEmpty(),
                     inUserLibrary = asset.sourceType == PHAssetSourceTypeUserLibrary,
                     originalMimeType = file?.originalMimeType,
                 ),
@@ -182,17 +182,22 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
         }
     }
 
-    /** Photos WhatsApp saved: it puts them in an album of its own. Read on every load, as an album has no date. */
-    private fun whatsAppIds(): Set<String> {
-        val ids = HashSet<String>()
+    /**
+     * The titles of the regular albums each photo is in, by its id: WhatsApp and other apps save into an album of
+     * their own ([sourceOfAsset]). Read on every load, as an album has no date.
+     */
+    private fun albumsOf(): Map<String, List<String>> {
+        val albumsOf = HashMap<String, MutableList<String>>()
         val albums = PHAssetCollection.fetchAssetCollectionsWithType(PHAssetCollectionTypeAlbum, PHAssetCollectionSubtypeAlbumRegular, null)
         for (i in 0uL until albums.count) {
             val album = albums.objectAtIndex(i) as PHAssetCollection
-            if (!album.localizedTitle.equals(WHATSAPP_ALBUM, ignoreCase = true)) continue
+            val title = album.localizedTitle?.takeIf { it.isNotBlank() } ?: continue
             val assets = PHAsset.fetchAssetsInAssetCollection(album, null)
-            for (j in 0uL until assets.count) ids += (assets.objectAtIndex(j) as PHAsset).localIdentifier
+            for (j in 0uL until assets.count) {
+                albumsOf.getOrPut((assets.objectAtIndex(j) as PHAsset).localIdentifier) { mutableListOf() } += title
+            }
         }
-        return ids
+        return albumsOf
     }
 
     // Its own pool: a first read runs through the whole library in one task.
@@ -215,7 +220,6 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
         const val READ_BATCH = 200
         const val RETRY_UNREAD = 20
         const val TELL_EVERY_MILLIS = 5_000L
-        const val WHATSAPP_ALBUM = "WhatsApp"
     }
 }
 

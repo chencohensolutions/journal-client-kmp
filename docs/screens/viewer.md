@@ -9,7 +9,6 @@ keep their room, so nothing moves when they show. Android tells the user once, t
 - Opened from a tag: the photos with that tag.
 - Opened from the Storyline tab: the storyline's photos, newest first.
 - Opened from a row of the Moments tab: that row's photos as shown.
-- Opened from All photos: everything in the current filter.
 
 The list is fixed when the viewer opens, so tagging a photo or removing it from the storyline doesn't pull it out
 from under you. If the open item is deleted from the device, the viewer closes.

@@ -214,14 +214,5 @@ internal fun SearchSettingsRow(searchPageSize: Int, indexing: ServerIndexingStat
         IndexingRunState.QUEUED -> stringResource(R.string.search_settings_row_waiting)
         else -> if (kept > 0) stringResource(R.string.search_settings_row_kept, searchPageSize, kept) else stringResource(R.string.search_settings_row_page, searchPageSize)
     }
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.settings_search_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
-        }
-        Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
-    }
+    PageRow(stringResource(R.string.settings_search_title), body, onOpen)
 }

@@ -31,6 +31,9 @@ let labScreens: [LabScreen] = [
             DatePadSuggestion()
         },
     ]),
+    LabScreen(id: "moments-filter", title: "Moments filter, many folders", options: [
+        current { labHome(data.library, data.folderStories, tab: .moments) },
+    ]),
     LabScreen(id: "moments-years", title: "Moments over seven years", options: [
         current { labHome(data.timelineLibrary, data.timelineStories, tab: .moments) },
     ]),
@@ -77,6 +80,9 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "settings", title: "Settings", options: [
         current { labSettings() },
+        LabOption(id: "offline", title: "Offline", note: "Before the server answers: no usage on Backup, no sync line") {
+            labSettings(offline: true)
+        },
     ]),
     LabScreen(id: "free-up", title: "Free up space", options: [
         current { FreeUpScreen(state: data.freeUp, actions: .lab) },
@@ -86,12 +92,15 @@ let labScreens: [LabScreen] = [
     ]),
 ]
 
-/// Settings as the app pushes it, with backup running; its Free up space row opens the lab's Free up space.
-private func labSettings() -> some View {
+/// Settings as the app pushes it, with backup running; its rows open the lab's Free up space and Hidden collections.
+/// `offline`: no answer from the server yet.
+private func labSettings(offline: Bool = false) -> some View {
     SettingsScreen(
-        settings: data.settings, backup: data.backup, notBackedUp: Int(data.notBackedUp), sourceCounts: data.sourceCounts,
-        previewBytes: data.previewBytes, serverUsage: data.serverUsage, freeUp: data.freeUp, actions: .lab,
-        syncProgress: data.syncProgress
+        content: SettingsContent(
+            settings: data.settings, backup: data.backup, notBackedUp: Int(data.notBackedUp), sourceCounts: data.sourceCounts,
+            previewBytes: data.previewBytes, serverUsage: offline ? nil : data.serverUsage, freeUp: data.freeUp, actions: .lab,
+            syncProgress: offline ? nil : data.syncProgress
+        )
     ) {
         FreeUpScreen(state: data.freeUp, actions: .lab)
     } hiddenScreen: {
@@ -116,7 +125,7 @@ extension HomeActions {
     static let lab = HomeActions(
         openItem: { _, _ in }, openStorylineItem: { _ in }, toggleSource: { _ in }, merge: { _ in }, takeOutOfSet: { _ in },
         turnSet: { _, _ in }, setWriting: { _, _, _ in }, restoreWriting: { _, _ in }, setInStoryline: { _, _ in },
-        toggleTag: { _, _, _ in }, openAllPhotos: {}, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
+        toggleTag: { _, _, _ in }, openSettings: {}, openTags: {}, showOnRow: { _, _ in }, hideOnRow: { _, _ in },
         alwaysShow: { _, _ in }, openRevealed: { _, _, _ in },
         explore: ExploreActions(openPlace: { _ in }, openCountry: { _ in }, openYear: { _, _ in }, openMap: {}, toggleSource: { _ in }),
         allowAccess: {}, registerAgain: {}
@@ -127,7 +136,7 @@ extension SettingsActions {
     /// Does nothing: the lab has no controllers.
     static let lab = SettingsActions(
         setGroupingMode: { _ in }, setGapHours: { _ in }, setSimilarityPercent: { _ in }, resetSimilarity: {}, toggleFeedSource: { _ in },
-        setSayWhatsHidden: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
+        setSayWhatsHidden: { _ in }, setShowFilterBar: { _ in }, setPreviewsEnabled: { _ in }, setPreviewFormat: { _ in }, setPreviewQuality: { _ in },
         setPreviewLimit: { _ in }, clearPreviews: {}, setShowPrivateMedia: { _ in },
         setShowOnPhoneBadge: { _ in }, setSearchPageSize: { _ in }, setBackupEnabled: { _ in }, toggleBackupSource: { _ in },
         setWifiOnly: { _ in }, setChargingOnly: { _ in }, setOrder: { _ in }, backUpNow: {}

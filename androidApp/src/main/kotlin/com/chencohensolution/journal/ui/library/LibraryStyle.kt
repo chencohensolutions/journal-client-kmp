@@ -54,7 +54,6 @@ internal class LibraryPalette(
 
     /** Behind the floating top bar: the page color at the edge, fading into the content. */
     val TopFade = Brush.verticalGradient(listOf(Background.copy(alpha = 0.95f), Background.copy(alpha = 0.75f), Color.Transparent))
-    val BottomFade = Brush.verticalGradient(listOf(Color.Transparent, Background.copy(alpha = 0.9f)))
 
     /** Under text written over the top or bottom of a photo. */
     val LabelFade = Brush.verticalGradient(listOf(Color(0x8C0F1413), Color.Transparent))

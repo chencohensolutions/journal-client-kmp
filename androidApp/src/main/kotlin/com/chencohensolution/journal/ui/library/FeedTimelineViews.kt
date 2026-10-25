@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.stories.FeedTimeline
 import com.chencohensolution.journal.stories.TimelineDay
 import com.chencohensolution.journal.stories.TimelineMonth
@@ -112,7 +113,15 @@ private fun View.tick(timeline: FeedTimeline, from: Int, to: Int) {
  * frames).
  */
 @Composable
-internal fun TimelineBar(timeline: FeedTimeline, current: Int?, open: Boolean, onOpen: (Boolean) -> Unit, go: (TimelineDay) -> Unit) {
+internal fun TimelineBar(
+    timeline: FeedTimeline,
+    current: Int?,
+    /** The day of the row at the top of the feed: the pill says it with its month ("24 October 2026"). */
+    day: LocalDay?,
+    open: Boolean,
+    onOpen: (Boolean) -> Unit,
+    go: (TimelineDay) -> Unit,
+) {
     var sent by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(sent) {
         if (sent != null) {
@@ -128,7 +137,10 @@ internal fun TimelineBar(timeline: FeedTimeline, current: Int?, open: Boolean, o
     val progress = remember { Animatable(if (open) 1f else 0f) }
     LaunchedEffect(open) { progress.animateTo(if (open) 1f else 0f, tween(MORPH_MILLIS, easing = FastOutSlowInEasing)) }
     val raised = LibraryColors.Raised
-    val name = timeline.months[shown].title
+    // The day with its month while the pill is closed and the feed has settled; the month alone in the ruler.
+    val month = timeline.months[shown]
+    val name = day?.takeIf { sent == null && !open && it.year == month.year && it.month == month.month }
+        ?.let { formatDate(it.toLocalDate(), "dMMMMy") } ?: month.title
     Layout(
         contents = listOf(
             // The card: its corners go from the pill's to the ruler's; drawn, so a frame doesn't recompose it.
@@ -142,7 +154,7 @@ internal fun TimelineBar(timeline: FeedTimeline, current: Int?, open: Boolean, o
                     }.drawBehind { drawRect(raised) },
                 )
             },
-            { TimelinePill(timeline, shown, Modifier.graphicsLayer { alpha = (1f - progress.value / 0.3f).coerceIn(0f, 1f) }, step = goToMonth, open = { onOpen(true) }) },
+            { TimelinePill(timeline, shown, name, Modifier.graphicsLayer { alpha = (1f - progress.value / 0.3f).coerceIn(0f, 1f) }, step = goToMonth, open = { onOpen(true) }) },
             {
                 TimelinePanel(timeline, shown, onDay = { day ->
                     sent = shown
@@ -222,7 +234,7 @@ private class WindowShape(private val visible: androidx.compose.ui.geometry.Rect
  * steps a month every 22 dp, toward the newer end being newer; a tap on it opens the ruler.
  */
 @Composable
-private fun TimelinePill(timeline: FeedTimeline, month: Int, modifier: Modifier, step: (Int) -> Unit, open: () -> Unit) {
+private fun TimelinePill(timeline: FeedTimeline, month: Int, name: String, modifier: Modifier, step: (Int) -> Unit, open: () -> Unit) {
     val view = LocalView.current
     val currentMonth by rememberUpdatedState(month)
     val go = { to: Int ->
@@ -269,7 +281,7 @@ private fun TimelinePill(timeline: FeedTimeline, month: Int, modifier: Modifier,
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                timeline.months[month].title,
+                name,
                 color = LibraryColors.OnBackground,
                 fontSize = PILL_TITLE_SP.sp,
                 fontWeight = FontWeight.SemiBold,

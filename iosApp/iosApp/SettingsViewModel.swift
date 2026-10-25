@@ -36,6 +36,8 @@ final class SettingsViewModel: ObservableObject {
     func toggleFeedSource(_ source: MediaSource) { controller.toggleFeedSource(source: source) }
     /// "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments.
     func setSayWhatsHidden(_ say: Bool) { controller.setSayWhatsHidden(say: say) }
+    /// "Filter bar in Moments": the row of sources above the feed, or none.
+    func setShowFilterBar(_ show: Bool) { controller.setShowFilterBar(show: show) }
     /// "Always show this day": the source's photos of these days show while it is hidden.
     func alwaysShow(days: [LocalDay], source: MediaSource) { controller.alwaysShow(days: days, source: source) }
 

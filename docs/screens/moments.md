@@ -7,11 +7,16 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
 
 ## Layout
 
-- **Filter bar** under the title: one toggle per source with its count of photos: **Camera**, **WhatsApp**,
-  **Screenshots**, **Other** (downloads, other apps). On means filled, with a ✓. Any mix can be on; Camera and
-  Other are on at first (WhatsApp and Screenshots off for everyone since Oct 21, 2026). A source with no photos is
-  hidden unless it is on. It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
-  everywhere (`ShownSources`, kept as `shown_sources`; an older `feed_sources` keeps its Camera and Other choice).
+- **Filter bar** under the title (Oct 24, 2026, option h2 of the UI lab, when each folder and app became a source and
+  a chip per source ran far off the screen): one row that scrolls sideways. First **+N**, the sources hidden ("+2"; a
+  plus alone while none is), then a filled chip with a ✓ and its count for each source **shown** that has photos, the
+  most photos first ("✓ Camera 1,240", "✓ Petcube 5"; a folder or app by its name with a folder icon). Tapping a chip
+  hides its source and it leaves the row. **+N** opens the **Showing** sheet: every source as a pill with its count,
+  the most photos first, filled when shown, tapped to show or hide (also a hidden folder with no photos left). Shared:
+  `MomentsFeed.bar`, `hiddenCount`, `sheet`. Everything but WhatsApp and Screenshots is shown at first (those two off
+  for everyone since Oct 21, 2026), and a folder seen for the first time is shown. Settings › Show in the app › **Filter bar in
+  Moments** turns the bar off (Oct 24, 2026). It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
+  everywhere (`ShownSources`, kept as `hidden_sources`; an older `shown_sources` or `feed_sources` keeps its choice).
 - **What's hidden (Oct 21, 2026):** with **Say what's hidden** on, a row's divider ends with a chip per hidden
   source, "+6 WhatsApp", "+3 Screenshots", for the hidden photos of its days (each counted once, on the row of its
   day nearest in time). Days with no shown photos say nothing. Tapping a chip shows those photos on that row only, in
@@ -93,8 +98,9 @@ feed scrolls to that photo, and a near-duplicate set turns to it.
 
 ## Going to a date (Oct 24, 2026)
 
-A **month pill** above the tabs, "‹ October 2026 ›", says which month the top of the feed is in, and goes to another
-year, month or day with one finger. Android and iOS.
+A **month pill** above the tabs, "‹ 24 October 2026 ›", says which day the top of the feed is in (with its month and
+year, since Oct 24, 2026; just the month while it goes to another month, and in the ruler), and goes to another year,
+month or day with one finger. Android and iOS.
 
 - **The arrows** go to the month with photos before or after (months without photos are skipped). Held, they keep
   going: after 0.4 s, then every 0.25 s, faster and faster. At the oldest or newest month that arrow is dimmed.
@@ -162,12 +168,21 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/MomentsFeed.kt)
 (`buildFeed`, tested in `FeedTest`):
 
-- **Source** comes from the folder: `DCIM/` is Camera; a path containing "screenshot" or "screen record" is
-  Screenshots; one containing "WhatsApp" is WhatsApp; everything else is Other. iOS has no folders
-  (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album "WhatsApp" (WhatsApp saves
-  there) are WhatsApp; photos synced from a computer or in shared albums, and files the camera can't have written
-  (PNG, GIF, WebP, MP4: saved from apps) are Other; the rest (HEIC, JPEG, DNG, MOV) is Camera, so a JPEG saved from
-  Safari counts as Camera.
+- **Source** (`MediaSource`: Camera, WhatsApp, Screenshots, a folder by its name, or Other; asked for Oct 24, 2026,
+  when every DCIM folder was Camera and Other was too broad). On Android it comes from the folder
+  (`sourceOfFolder`): a path containing "screenshot" or "screen record" is Screenshots; one containing "WhatsApp" is
+  WhatsApp; DCIM/Camera and files right in DCIM are Camera; any other folder inside DCIM, Pictures, Movies, Download
+  (and Android's other shared folders) is a source by its name, so DCIM/Flowers is "Flowers" and Movies/Petcube is
+  "Petcube", and the same name in two places (Pictures/Telegram, Download/Telegram) is one source. A file loose in
+  Pictures or Download, or in an app's folder under Android/, is the source of the app that saved it (MediaStore's
+  `OWNER_PACKAGE_NAME`, shown by the name under its icon: "ChatGPT", "Chrome"; the manifest's `<queries>` lets the app
+  see apps with an icon), unless that app only copied it (Smart Switch from an old phone, the files app): then it is
+  Other. iOS has no folders (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album
+  "WhatsApp" (WhatsApp saves there) are WhatsApp; files the camera can write (HEIC, JPEG, DNG, MOV) in the user's
+  library are Camera, so a JPEG saved from Safari counts as Camera, whatever albums they are filed in. The rest
+  (synced from a computer, in shared albums, PNG, GIF, WebP, MP4 saved from apps) is the source of its album when it
+  is in exactly one (often one an app made, like "Petcube"), else Other. Photos only on the server keep the source
+  the phone told the server when it uploaded them (folders since Oct 24, 2026; earlier DCIM folders are Camera).
 - **Camera moments** split after 2 hours without a photo, or after 20 minutes when the next photo is more than 1 km
   from the last located one. A walk stays one moment; a drive to another town doesn't. Photos without GPS stay with
   their neighbors.

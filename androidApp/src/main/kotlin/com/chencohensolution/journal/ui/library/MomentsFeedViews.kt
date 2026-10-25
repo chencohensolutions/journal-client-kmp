@@ -377,7 +377,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            MediaSource.entries.forEach { source ->
+            (shownHere + section.hidden.keys).sorted().forEach { source ->
                 when {
                     source in shownHere -> HiddenChip(
                         stringResource(R.string.feed_hide_source, sourceName(source)),

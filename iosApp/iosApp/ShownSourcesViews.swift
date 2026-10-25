@@ -6,7 +6,7 @@ import SharedLogic
 
 /// A Kotlin map of counts per source as (source, count) pairs in `MediaSource` order, leaving out sources with none.
 func sourceCountList(_ counts: [MediaSource: KotlinInt]) -> [(MediaSource, Int)] {
-    MediaSource.entries.compactMap { source in
+    MediaSource.companion.choices(present: Set(counts.keys), chosen: []).compactMap { source in
         let count = counts[source]?.intValue ?? 0
         return count > 0 ? (source, count) : nil
     }
@@ -52,57 +52,60 @@ struct ShownSourcesLine: View {
     }
 }
 
-/// Explore's "Showing" sheet: a switch per source, with how many of its photos are here (the whole library, the
-/// map's, or a town's or year's page's). The same setting as Moments and All photos.
+/// Explore's "Showing" sheet: a pill per source with how many of its photos are here (the whole library, the map's,
+/// or a town's or year's page's), the most first. The same setting as Moments and All photos.
 struct ShowingSheet: View {
     let shown: ShownSources
     let counts: [MediaSource: KotlinInt]
     let onToggle: (MediaSource) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Showing")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(LibraryColors.onBackground)
-                .accessibilityAddTraits(.isHeader)
-            Text("The same in Moments, Explore and All photos.")
-                .font(.system(size: 13))
-                .foregroundStyle(LibraryColors.muted)
-                .padding(.top, 2)
-            VStack(spacing: 0) {
-                ForEach(MediaSource.entries, id: \.self) { source in
-                    let count = counts[source]?.intValue ?? 0
-                    Toggle(isOn: Binding(get: { shown.isShown(source: source) }, set: { _ in onToggle(source) })) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(source.title).foregroundStyle(LibraryColors.onBackground)
-                            Group {
-                                if count > 0 { Text("\(count) here") } else { Text(verbatim: "—") }
-                            }
+        ShowingPillsSheet(
+            sources: shown.choices(counts: counts), counts: counts, isOn: { shown.isShown(source: $0) }, toggle: onToggle,
+            whatsAppNote: (counts[.whatsapp]?.intValue ?? 0) > 0
+        )
+    }
+}
+
+/// The "Showing" sheet of the Moments filter bar's "+N" and of Explore: a pill per source in `sources` (the most photos
+/// first), filled when shown; the same setting as Settings › Show in the app.
+struct ShowingPillsSheet: View {
+    let sources: [MediaSource]
+    let counts: [MediaSource: KotlinInt]
+    let isOn: (MediaSource) -> Bool
+    let toggle: (MediaSource) -> Void
+    /// Explore's note that hiding WhatsApp changes little on the map.
+    var whatsAppNote = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Showing")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .accessibilityAddTraits(.isHeader)
+                Text("The same in Moments, Explore and All photos.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(LibraryColors.muted)
+                    .padding(.top, 2)
+                    .padding(.bottom, 12)
+                SourcePills(sources: sources, counts: counts, isOn: isOn, toggle: toggle)
+                if whatsAppNote {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle").font(.system(size: 13))
+                        Text("Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town's page.")
                             .font(.footnote)
-                            .foregroundStyle(LibraryColors.muted)
-                        }
                     }
-                    .tint(LibraryColors.accent)
-                    .padding(.vertical, 8)
+                    .foregroundStyle(LibraryColors.muted)
+                    .padding(12)
+                    .background(LibraryColors.raised, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.top, 12)
                 }
             }
-            .padding(.top, 12)
-            if (counts[.whatsapp]?.intValue ?? 0) > 0 {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "info.circle").font(.system(size: 13))
-                    Text("Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town's page.")
-                        .font(.footnote)
-                }
-                .foregroundStyle(LibraryColors.muted)
-                .padding(12)
-                .background(LibraryColors.raised, in: RoundedRectangle(cornerRadius: 12))
-                .padding(.top, 8)
-            }
-            Spacer(minLength: 0)
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 24)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(LibraryColors.background.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)

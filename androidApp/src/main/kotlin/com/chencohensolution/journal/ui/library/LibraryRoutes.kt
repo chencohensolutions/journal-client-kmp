@@ -22,15 +22,20 @@ import com.chencohensolution.journal.search.SearchState
 /** Library screens, as a back stack. Each is encoded as a string so the stack survives rotation. */
 internal sealed interface Route {
     data object Journal : Route
-    data object AllPhotos : Route
     data object Tags : Route
     data class Tag(val name: String) : Route
     data object Settings : Route
+
+    /** One of Settings' pages, opened from its first page. */
+    data class SettingsPageRoute(val page: SettingsPage) : Route
     data object FreeUp : Route
     data object Hidden : Route
 
     /** Settings › Search. */
     data object SearchSettings : Route
+
+    /** Settings › Backup. */
+    data object BackupSettings : Route
 
     /** A person's page, or a group's ("Who's this?"). */
     data class Person(val id: String) : Route
@@ -75,13 +80,14 @@ internal sealed interface Route {
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
     fun encode(): String = when (this) {
         Journal -> "journal"
-        AllPhotos -> "all"
         Tags -> "tags"
         is Tag -> "tag|${URLEncoder.encode(name, "UTF-8")}"
         Settings -> "settings"
+        is SettingsPageRoute -> "settings-page|${page.name}"
         FreeUp -> "free-up"
         Hidden -> "hidden"
         SearchSettings -> "search-settings"
+        BackupSettings -> "backup-settings"
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
@@ -91,7 +97,7 @@ internal sealed interface Route {
         is Year -> "year|$year|${month ?: ""}"
         is Map -> "map|${at?.let { "${it.latitude},${it.longitude}" }.orEmpty()}"
         is Viewer -> "viewer|${if (storyline) "storyline" else if (search) "search" else ""}|${moment?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$filter|" +
-            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.name.orEmpty()}|" +
+            "${tag?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|${scope?.let { URLEncoder.encode(encodeScope(it), "UTF-8") }.orEmpty()}|${revealed?.let { URLEncoder.encode(it.id, "UTF-8") }.orEmpty()}|" +
             "${list?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}|$itemId"
     }
 
@@ -99,13 +105,15 @@ internal sealed interface Route {
         fun decode(value: String): Route {
             val parts = value.split("|")
             return when (parts[0]) {
-                "all" -> AllPhotos
+                "all" -> Journal // All photos, until Oct 24, 2026
                 "tags" -> Tags
                 "tag" -> Tag(URLDecoder.decode(parts[1], "UTF-8"))
                 "settings" -> Settings
+                "settings-page" -> SettingsPageRoute(SettingsPage.valueOf(parts[1]))
                 "free-up" -> FreeUp
                 "hidden" -> Hidden
                 "search-settings" -> SearchSettings
+                "backup-settings" -> BackupSettings
                 "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))
@@ -122,7 +130,7 @@ internal sealed interface Route {
                     filter = LibraryFilter.valueOf(parts[3]),
                     tag = parts[4].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     scope = parts[5].ifEmpty { null }?.let { decodeScope(URLDecoder.decode(it, "UTF-8")) },
-                    revealed = MediaSource.entries.firstOrNull { it.name == parts[6] },
+                    revealed = parts[6].ifEmpty { null }?.let { MediaSource.parse(URLDecoder.decode(it, "UTF-8")) },
                     list = parts[7].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") },
                     itemId = parts.drop(8).joinToString("|"),
                 )
