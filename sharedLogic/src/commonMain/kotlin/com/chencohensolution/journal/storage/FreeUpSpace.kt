@@ -2,6 +2,7 @@ package com.chencohensolution.journal.storage
 
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.MediaFiles
+import com.chencohensolution.journal.backup.SoundIds
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.backup.sha256
 import com.chencohensolution.journal.library.MediaItem
@@ -41,12 +42,30 @@ data class FreeUpGroup(val items: List<MediaItem>) {
 data class FreeUpPlan(val groups: List<FreeUpGroup>) {
     val photos: Int get() = groups.sumOf { g -> g.items.count { it.type == MediaType.IMAGE } }
     val videos: Int get() = groups.sumOf { g -> g.items.count { it.type == MediaType.VIDEO } }
+
+    /** Files of sound folders: deleted for good, since they have no trash (the app asks first). */
+    val sounds: Int get() = groups.sumOf { g -> g.items.count { SoundIds.isSound(it.id) } }
     val bytes: Long get() = groups.sumOf { it.bytes }
+
+    /** How many photos and videos of [source] would go, and their bytes. */
+    fun ofSource(source: MediaSource): FreeUpCount =
+        count { !SoundIds.isSound(it.id) && it.source == source }
+
+    /** How many files of the sound folder [treeUri] would go, and their bytes. */
+    fun ofFolder(treeUri: String): FreeUpCount = count { SoundIds.treeOf(it.id) == treeUri }
+
+    private fun count(predicate: (MediaItem) -> Boolean): FreeUpCount {
+        val items = groups.flatMap { it.items }.filter(predicate)
+        return FreeUpCount(items.size, items.sumOf { it.sizeBytes ?: 0 })
+    }
 
     /** When the oldest and the newest of them were taken; null when there are none. */
     val takenRange: Pair<Long, Long>? get() =
         groups.flatMap { it.items }.map { it.takenAtMillis }.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
 }
+
+/** Files of one pill (a source or a sound folder) that would go. */
+data class FreeUpCount(val files: Int, val bytes: Long)
 
 private const val PAIR_MILLIS = 2_000L
 private const val DAY_MILLIS = 86_400_000L
@@ -56,7 +75,8 @@ internal fun freeUpGroups(items: List<MediaItem>): List<FreeUpGroup> {
     val groups = mutableListOf<MutableList<MediaItem>>()
     val open = mutableMapOf<String, MutableList<MutableList<MediaItem>>>()
     for (item in items.sortedBy { it.takenAtMillis }) {
-        val stem = item.fileName?.substringBeforeLast('.')?.lowercase()
+        // A sound file is never half of a pair.
+        val stem = item.fileName?.substringBeforeLast('.')?.lowercase()?.takeUnless { SoundIds.isSound(item.id) }
         val partner = stem?.let { open[it] }?.lastOrNull { g -> item.takenAtMillis - g.maxOf { it.takenAtMillis } <= PAIR_MILLIS }
         if (partner != null) {
             partner += item
@@ -70,9 +90,9 @@ internal fun freeUpGroups(items: List<MediaItem>): List<FreeUpGroup> {
 }
 
 /**
- * What [rule] takes off the phone: of the photos in the library not from the [kept] sources, the groups whose every file this
- * device uploaded as it is now ([entries], the backup ledger). The newest that "keep newest" keeps count all photos on
- * the phone, backed up or not, of any source.
+ * What [rule] takes off the phone: of the photos in the library not from the [kept] sources and the files of the sound
+ * folders not [keptFolders] (tree URIs), the groups whose every file this device uploaded as it is now ([entries], the
+ * backup ledger). The newest that "keep newest" keeps count all files on the phone, backed up or not, of any source.
  */
 internal fun freeUpPlan(
     items: List<MediaItem>,
@@ -80,8 +100,10 @@ internal fun freeUpPlan(
     rule: FreeUpRule,
     nowMillis: Long,
     kept: Set<MediaSource> = emptySet(),
+    keptFolders: Set<String> = emptySet(),
 ): FreeUpPlan {
     fun backedUp(item: MediaItem) = entries[item.id]?.let { it.uploaded && it.matches(item) } == true
+    fun allowed(item: MediaItem) = SoundIds.treeOf(item.id)?.let { it !in keptFolders } ?: (item.source !in kept)
     val groups = freeUpGroups(items.filter { it.isOnDevice })
     val chosen = when (rule) {
         FreeUpRule.Everything -> groups
@@ -95,7 +117,7 @@ internal fun freeUpPlan(
             groups.dropWhile { group -> (kept + group.bytes <= keep).also { if (it) kept += group.bytes } }
         }
     }
-    return FreeUpPlan(chosen.filter { group -> group.items.all { backedUp(it) && it.source !in kept } })
+    return FreeUpPlan(chosen.filter { group -> group.items.all { backedUp(it) && allowed(it) } })
 }
 
 /** What the server found when it read its copy again (journal-server-go `POST /media/{sha256}/verify`). */

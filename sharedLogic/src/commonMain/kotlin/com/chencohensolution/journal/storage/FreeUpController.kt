@@ -1,6 +1,9 @@
 package com.chencohensolution.journal.storage
 
 import com.chencohensolution.journal.backup.MediaFiles
+import com.chencohensolution.journal.backup.SoundFolder
+import com.chencohensolution.journal.backup.SoundFolders
+import com.chencohensolution.journal.backup.SoundIds
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.MediaItem
@@ -47,6 +50,15 @@ interface PhotoTrash {
     suspend fun trash(items: List<MediaItem>): Set<String>
 }
 
+/**
+ * The platform's way to delete files of the sound folders the user picked. They have no trash, so they are gone for
+ * good: Free up space deletes only what the server confirmed, after the user agreed in the app's own dialog.
+ */
+interface SoundRemoval {
+    /** Deletes [items]; the ids of those that are gone. */
+    suspend fun delete(items: List<MediaItem>): Set<String>
+}
+
 /** Where a run is: [done] of [total] groups checked. */
 data class FreeUpProgress(
     val done: Int,
@@ -79,6 +91,10 @@ data class FreeUpState(
     val rule: FreeUpRule = FreeUpRule.DEFAULT,
     /** The sources whose photos stay on the phone (none by default). */
     val kept: Set<MediaSource> = emptySet(),
+    /** The sound folders (tree URIs) whose files stay on the phone (none by default). */
+    val keptFolders: Set<String> = emptySet(),
+    /** The sound folders backup knows, offered beside the sources. */
+    val folders: List<SoundFolder> = emptyList(),
     /** The sources of the phone's photos, as last counted. */
     val present: Set<MediaSource> = emptySet(),
     /** What [rule] would take off the phone now; null until counted. */
@@ -91,6 +107,9 @@ data class FreeUpState(
 ) {
     /** Whether [source]'s photos may leave the phone. */
     fun allows(source: MediaSource): Boolean = source !in kept
+
+    /** Whether the files of the sound folder [treeUri] may leave the phone. */
+    fun allowsFolder(treeUri: String): Boolean = treeUri !in keptFolders
 
     /** The sources the screen offers: the fixed ones, those with photos on the phone and those kept. */
     val choices: List<MediaSource> get() = MediaSource.choices(present, kept)
@@ -166,6 +185,8 @@ class FreeUpController internal constructor(
     private val library: MediaLibrary,
     files: MediaFiles,
     server: ServerCheck,
+    /** The sound folders the user picked for backup; null on a platform without them. */
+    private val soundFolders: SoundFolders? = null,
     private val fileSystem: FileSystem,
     directory: Path,
     private val now: () -> Long,
@@ -181,7 +202,9 @@ class FreeUpController internal constructor(
     private val checker = FreeUpChecker(files, ledger, server)
     private val waitingFile = directory / "waiting.json"
 
-    private val _state = MutableStateFlow(FreeUpState(rule = settings.freeUpRule, kept = settings.freeUpKept))
+    private val _state = MutableStateFlow(
+        FreeUpState(rule = settings.freeUpRule, kept = settings.freeUpKept, keptFolders = settings.freeUpKeptFolders, folders = settings.backup.soundFolders),
+    )
     val state: StateFlow<FreeUpState> = _state.asStateFlow()
 
     /** Same as `state.value`, typed for Swift. */
@@ -203,18 +226,30 @@ class FreeUpController internal constructor(
         refreshPlan()
     }
 
+    /** Lets the files of the sound folder [treeUri] leave the phone, or keeps them. */
+    fun toggleFolder(treeUri: String) {
+        val state = _state.value
+        val kept = if (treeUri in state.keptFolders) state.keptFolders - treeUri else state.keptFolders + treeUri
+        settings.freeUpKeptFolders = kept
+        _state.update { it.copy(keptFolders = kept, plan = null) }
+        refreshPlan()
+    }
+
     /** Counts what the rule would take off the phone now, and what waits for confirmation. */
     fun refreshPlan() {
         scope.launch {
             val rule = _state.value.rule
             val kept = _state.value.kept
+            val keptFolders = _state.value.keptFolders
+            val folders = settings.backup.soundFolders
             val items = runCatching { library.loadItems() }.getOrNull()
-            val plan = items?.let { runCatching { freeUpPlan(it, ledger.all(), rule, now(), kept) }.getOrNull() }
+            val plan = items?.let { runCatching { freeUpPlan(it + soundFiles(folders), ledger.all(), rule, now(), kept, keptFolders) }.getOrNull() }
             val waiting = readWaiting()
             _state.update { state ->
                 state.copy(
                     present = items?.mapTo(HashSet()) { it.source } ?: state.present,
-                    plan = plan.takeIf { state.rule == rule && state.kept == kept },
+                    folders = folders,
+                    plan = plan.takeIf { state.rule == rule && state.kept == kept && state.keptFolders == keptFolders },
                     waitingCount = waiting.size,
                     waitingBytes = waiting.sumOf { it.size },
                 )
@@ -229,8 +264,9 @@ class FreeUpController internal constructor(
      * One run, called by the platform's background worker; runs never overlap. Null when it stopped early (see
      * [FreeUpState.activity]).
      */
-    suspend fun runOnce(trash: PhotoTrash, onProgress: (FreeUpProgress) -> Unit = {}): FreeUpResult? = runMutex.withLock {
-        val plan = freeUpPlan(library.loadItems(), ledger.all(), settings.freeUpRule, now(), settings.freeUpKept)
+    suspend fun runOnce(trash: PhotoTrash, sounds: SoundRemoval? = null, onProgress: (FreeUpProgress) -> Unit = {}): FreeUpResult? = runMutex.withLock {
+        val soundItems = if (sounds != null) soundFiles(settings.backup.soundFolders) else emptyList()
+        val plan = freeUpPlan(library.loadItems() + soundItems, ledger.all(), settings.freeUpRule, now(), settings.freeUpKept, settings.freeUpKeptFolders)
         var progress = FreeUpProgress(0, plan.groups.size, 0, plan.bytes)
         val kept = mutableMapOf<KeptReason, Int>()
         var removed = 0
@@ -246,13 +282,16 @@ class FreeUpController internal constructor(
         val passed = mutableListOf<FreeUpGroup>()
         suspend fun flush() {
             if (passed.isEmpty()) return
-            val gone = if (trash.canTrashWithoutAsking()) trash.trash(passed.flatMap { it.items }) else emptySet()
+            val (soundFiles, photos) = passed.flatMap { it.items }.partition { SoundIds.isSound(it.id) }
+            val gone = (if (photos.isNotEmpty() && trash.canTrashWithoutAsking()) trash.trash(photos) else emptySet()) +
+                (if (soundFiles.isNotEmpty() && sounds != null) sounds.delete(soundFiles) else emptySet())
             for (group in passed) {
                 // A pair leaves together: what the batch left behind of it waits for the prompt.
                 val left = group.items.filter { it.id !in gone }
                 removed += group.items.size - left.size
                 removedBytes += group.items.filter { it.id in gone }.sumOf { it.sizeBytes ?: 0 }
-                if (left.isEmpty()) continue
+                // A sound file that couldn't be deleted stays: the system's prompt is for photos only.
+                if (left.isEmpty() || left.any { SoundIds.isSound(it.id) }) continue
                 val number = (waiting.maxOfOrNull { it.group } ?: 0) + 1
                 waiting = waiting + left.map { item ->
                     WaitingFile(item.id, item.type == MediaType.VIDEO, item.sizeBytes ?: 0, item.modifiedMillis, ledger.entry(item.id)!!.sha256, number)
@@ -330,6 +369,12 @@ class FreeUpController internal constructor(
 
     fun close() {
         scope.cancel()
+    }
+
+    /** Every file of the sound folders the app can still read, whether or not backup takes them now. */
+    private suspend fun soundFiles(folders: List<SoundFolder>): List<MediaItem> {
+        val access = soundFolders ?: return emptyList()
+        return folders.flatMap { runCatching { access.list(it) }.getOrNull().orEmpty() }
     }
 
     private suspend fun readWaiting(): List<WaitingFile> = fileMutex.withLock {

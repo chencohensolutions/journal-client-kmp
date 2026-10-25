@@ -2,6 +2,11 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.MediaFiles
+import com.chencohensolution.journal.backup.SoundFolder
+import com.chencohensolution.journal.backup.SoundFolders
+import com.chencohensolution.journal.backup.SoundIds
+import com.chencohensolution.journal.library.AudioKind
+import com.chencohensolution.journal.storage.SoundRemoval
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -263,5 +268,70 @@ class FreeUpTest {
         assertNull(run.controller.runOnce(run.trash))
         assertEquals(emptyList(), run.trash.trashed)
         assertTrue(run.controller.currentState.activity is com.chencohensolution.journal.storage.FreeUpActivity.Stopped)
+    }
+
+    @Test
+    fun soundFilesOfTheChosenFoldersAreDeletedForGoodOnceChecked() = runTest {
+        val calls = SoundFolder("content://tree/calls", "Call", "Recordings › Call", AudioKind.CALL)
+        val voice = SoundFolder("content://tree/voice", "Voice Recorder", "Recordings › Voice Recorder", AudioKind.RECORDING)
+        val fs = FakeFileSystem()
+        val ledger = UploadLedger(fs, "/backup".toPath())
+        val files = Files()
+        val server = Server()
+        val inFolders = mutableMapOf<SoundFolder, MutableList<MediaItem>>()
+        suspend fun sound(folder: SoundFolder, name: String, content: String, sha: String? = null): MediaItem {
+            val bytes = content.encodeToByteArray()
+            val it = item(SoundIds.of(folder, name), ageDays = 400, size = bytes.size.toLong(), name = name, type = MediaType.AUDIO)
+            files.bytes[it.id] = bytes
+            ledger.record(uploaded(it, sha ?: bytes.toByteString().sha256().hex()))
+            inFolders.getOrPut(folder) { mutableListOf() } += it
+            return it
+        }
+        val call = sound(calls, "Call recording 0501234567_241025_101500.m4a", "a call")
+        // A WAV kept on the phone while the server has its FLAC: checked by the WAV's sha256, which the server answers.
+        val wav = sound(calls, "Call recording 0501234567_241025_111500.wav", "a WAV call")
+        val changed = sound(calls, "Call recording 0501234567_241025_121500.m4a", "a call", sha = "not these bytes")
+        val recording = sound(voice, "20241025_101500.m4a", "a recording")
+        val store = Store()
+        JournalSettings(store).backup = com.chencohensolution.journal.backup.BackupSettings(soundFolders = listOf(calls, voice))
+        val photo = item("p", ageDays = 400, size = 5)
+        files.bytes["p"] = "photo".encodeToByteArray()
+        ledger.record(uploaded(photo, "photo".encodeToByteArray().toByteString().sha256().hex()))
+        val removed = mutableListOf<String>()
+        val controller = FreeUpController(
+            settings = JournalSettings(store),
+            ledger = ledger,
+            library = Library(listOf(photo)),
+            files = files,
+            server = server,
+            soundFolders = object : SoundFolders {
+                override suspend fun list(folder: SoundFolder) = inFolders[folder].orEmpty()
+            },
+            fileSystem = fs,
+            directory = "/freeup".toPath(),
+            now = { NOW },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        controller.toggleFolder(voice.treeUri)
+        val plan = controller.state.first { it.plan != null }.plan!!
+        assertEquals(3, plan.sounds, "the calls, not the kept Voice Recorder folder")
+        assertEquals(1, plan.photos)
+        assertEquals(3, plan.ofFolder(calls.treeUri).files)
+        assertEquals(0, plan.ofFolder(voice.treeUri).files)
+
+        val trash = Trash(allowed = true)
+        val result = controller.runOnce(trash, object : SoundRemoval {
+            override suspend fun delete(items: List<MediaItem>): Set<String> {
+                removed += items.map { it.id }
+                return items.mapTo(mutableSetOf()) { it.id }
+            }
+        })!!
+
+        assertEquals(listOf(call.id, wav.id).sorted(), removed.sorted())
+        assertEquals(listOf("p"), trash.trashed, "photos still go to the trash")
+        assertEquals(3, result.removed)
+        assertEquals(mapOf(KeptReason.CHANGED_ON_PHONE to 1), result.kept)
+        assertTrue(changed.id !in removed && recording.id !in removed)
+        assertEquals(0, result.waiting)
     }
 }

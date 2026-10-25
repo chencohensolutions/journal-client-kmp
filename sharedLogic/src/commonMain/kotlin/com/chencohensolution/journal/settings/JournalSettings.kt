@@ -143,6 +143,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
      * The sources whose photos "Free up space" keeps on the phone (none by default), so a folder seen for the first
      * time may go. Until Oct 24, 2026 it was kept as the fixed sources that may go (`free_up_sources`).
      */
+    /** The sound folders (tree URIs) whose files "Free up space" keeps on the phone (none by default). One per line. */
+    var freeUpKeptFolders: Set<String>
+        get() = store.getString(KEY_FREE_UP_KEPT_FOLDERS)?.split("\n")?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+        set(value) = store.putString(KEY_FREE_UP_KEPT_FOLDERS, value.joinToString("\n").ifEmpty { null })
+
     var freeUpKept: Set<MediaSource>
         get() = store.getString(KEY_FREE_UP_KEPT)?.let(::sourcesOf)
             ?: store.getString(KEY_FREE_UP_SOURCES)?.let(::sourcesOf)?.takeIf { it.isNotEmpty() }?.let { MediaSource.FIXED.toSet() - it }
@@ -269,6 +274,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_FREE_UP_KEPT = "free_up_kept"
+        private const val KEY_FREE_UP_KEPT_FOLDERS = "free_up_kept_folders"
         private const val KEY_PREVIEWS_ENABLED = "previews_enabled"
         private const val KEY_PREVIEW_FORMAT = "preview_format"
         private const val KEY_PREVIEW_QUALITY = "preview_quality"
