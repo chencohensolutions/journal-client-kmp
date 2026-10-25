@@ -1,6 +1,12 @@
 package com.chencohensolution.journal
 
+import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupProgress
+import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.BackupState
+import com.chencohensolution.journal.library.BackupStatus
+import com.chencohensolution.journal.library.libraryTotals
+import com.chencohensolution.journal.library.uploadingIds
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.library.DayGroup
@@ -418,5 +424,145 @@ class LibraryTableTest {
         // A call backup reads: nothing of the library.
         ledger.record(LedgerEntry("sound:call1", 10, null, sha(8_888), uploaded = true))
         assertTrue(table.refresh().isEmpty)
+    }
+
+    /**
+     * Step 6d: the counts backup and the backup bar show (every item, those not backed up and their bytes), counted in
+     * the database with the files on their way laid over, are what LibraryState counts over the whole list with each
+     * photo's status, over generated libraries changed in rounds: random sources taken, backup on or off or absent, files
+     * queued, failed, uploading (some of them backed up already), sizes and modified times unknown.
+     */
+    @Test
+    fun backupCountsAreTheWholeListsCounts() = runTest {
+        val seen = mutableMapOf<String, Int>()
+        fun saw(case: String, count: Int) {
+            seen[case] = (seen[case] ?: 0) + count
+        }
+        val sources = listOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.OTHER, MediaSource.folder("Petcube"))
+        repeat(30) { seed ->
+            val s = scenario(seed)
+            val random = Random(seed + 4_000)
+            val database = testLibraryDatabase()
+            var device = s.device
+            StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            s.entries.forEach { ledger.record(it) }
+            val store = ServerMediaStore(database)
+            store.replaceAll(s.server, s.hiddenOnServer, cursor = null, showPrivate = s.showPrivate)
+            val table = LibraryTable(database)
+            table.refresh()
+            repeat(4) { round ->
+                val rows = table.all().map { shown(it, s.kept, s.scores) }
+                val onDevice = rows.filter { it.isOnDevice }.map { it.id }
+                val entries = ledger.all()
+                val backup = if (random.nextInt(5) == 0) null else BackupState(
+                    settings = BackupSettings(enabled = random.nextInt(4) != 0, sources = sources.filter { random.nextBoolean() }.toSet()),
+                    activity = if (random.nextBoolean()) BackupActivity.Idle else BackupActivity.Running(
+                        BackupProgress(
+                            done = 0, total = 10, bytesDone = 0, bytesTotal = 10, currentId = (onDevice + "call/1").randomOrNull(random),
+                            uploading = (onDevice.filter { random.nextInt(4) == 0 } + "call/2").associateWith { 0.5f },
+                        ),
+                    ),
+                    entries = entries,
+                    queued = onDevice.filter { random.nextInt(5) == 0 }.toSet(),
+                )
+                val items = rows.map { if (backup != null && it.isOnDevice) it.copy(backup = backup.status(it)) else it }
+                val expected = LibraryState(days = shownDays(items), backupSources = backup?.countedSources)
+                val uploading = uploadingIds(backup)
+                val totals = libraryTotals(table.backupCounts(), table.backedUpAmong(uploading), backup)
+                val actual = LibraryState(days = shownDays(items), backupSources = backup?.countedSources, totals = totals)
+                assertEquals(expected.itemCount, actual.itemCount, "seed $seed round $round: items")
+                assertEquals(expected.notBackedUpCount, actual.notBackedUpCount, "seed $seed round $round: not backed up")
+                assertEquals(expected.notBackedUpBytes, actual.notBackedUpBytes, "seed $seed round $round: bytes")
+                saw("backed up", items.count { it.isOnDevice && it.backup == BackupStatus.BackedUp })
+                saw("on its way again", items.count { it.id in uploading && entries[it.id]?.let { e -> e.uploaded && e.matches(it) } == true })
+                saw("queued", items.count { it.backup == BackupStatus.Queued })
+                saw("failed", items.count { it.backup is BackupStatus.Failed })
+                saw("size unknown", items.count { it.isOnDevice && it.sizeBytes == null })
+                saw("modified unknown and backed up", items.count { it.modifiedMillis == null && it.backup == BackupStatus.BackedUp })
+                saw("a source not taken", items.count { backup?.countedSources?.contains(it.source) == false })
+
+                // The phone edits some (sizes and times unknown too); backup reads, uploads, fails and forgets some.
+                device = device.map { item ->
+                    when (random.nextInt(10)) {
+                        0 -> item.copy(sizeBytes = null)
+                        1 -> item.copy(modifiedMillis = null)
+                        2 -> item.copy(sizeBytes = (item.sizeBytes ?: 1_000L) + 3)
+                        else -> item
+                    }
+                }
+                StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+                device.filter { random.nextInt(4) == 0 }.forEach { item ->
+                    val rejected = if (random.nextInt(4) == 0) "too big" else null
+                    ledger.record(LedgerEntry(item.id, item.sizeBytes ?: 9, item.modifiedMillis, sha(random.nextInt(140)), uploaded = rejected == null && random.nextBoolean(), rejected = rejected))
+                }
+                ledger.all().keys.filter { random.nextInt(15) == 0 }.forEach { ledger.forget(it) }
+                table.refresh()
+            }
+        }
+        seen.forEach { (case, count) -> assertTrue(count > 0, "no case of: $case") }
+    }
+
+    /**
+     * Step 6d: the controller with the database shows the counts the database made, equal to the whole list's, as
+     * backup reads, uploads and changes the sources it takes; a call's ledger entry counts nothing again.
+     */
+    @Test
+    fun theControllerShowsTheDatabasesCounts() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val device = (0 until 40).map { n ->
+            val day = LocalDay(2026, 10, 1 + n / 5)
+            MediaItem(
+                "$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg",
+                source = if (n % 3 == 0) MediaSource.WHATSAPP else MediaSource.CAMERA, modifiedMillis = 1,
+            )
+        }
+        val database = testLibraryDatabase()
+        val backup = MutableStateFlow(BackupState())
+        val store = object : KeyValueStore {
+            override fun getString(key: String): String? = null
+            override fun putString(key: String, value: String?) {}
+        }
+        val controller = LibraryController(
+            StoredMediaLibrary(TableTestLibrary(device), database, dispatcher), JournalSettings(store),
+            dispatcher, backup = backup, table = LibraryTable(database),
+        )
+        val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+        fun check(case: String) {
+            val state = controller.currentState
+            val inMemory = LibraryState(days = state.days, backupSources = state.backupSources)
+            assertTrue(state.totals != null, "$case: counted by the database")
+            assertEquals(Triple(inMemory.itemCount, inMemory.notBackedUpCount, inMemory.notBackedUpBytes), Triple(state.itemCount, state.notBackedUpCount, state.notBackedUpBytes), case)
+        }
+        controller.refresh()
+        advanceUntilIdle()
+        check("nothing backed up")
+        assertEquals(40, controller.currentState.notBackedUpCount)
+
+        // Backup reads and uploads a third of them.
+        device.filter { it.id.toInt() % 3 != 1 }.forEach { item ->
+            ledger.record(LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(item.id.toInt()), uploaded = item.id.toInt() % 2 == 0))
+        }
+        backup.value = backup.value.copy(entries = ledger.all())
+        advanceUntilIdle()
+        check("some uploaded")
+
+        // Backup on, for the camera only; two backed-up photos on their way again.
+        backup.value = backup.value.copy(
+            settings = BackupSettings(enabled = true, sources = setOf(MediaSource.CAMERA)),
+            activity = BackupActivity.Running(BackupProgress(0, 2, 0, 2, currentId = "2", uploading = mapOf("4" to 0.5f, "5" to 0.1f))),
+        )
+        advanceUntilIdle()
+        check("camera only, uploading")
+
+        // A call's ledger entry: the counts stay, and nothing is counted again.
+        val recounts = controller.recounts
+        val call = LedgerEntry("sound:call", 10, null, sha(7_777), uploaded = true)
+        ledger.record(call)
+        backup.value = backup.value.copy(entries = backup.value.entries + (call.id to call), activity = BackupActivity.Idle)
+        advanceUntilIdle()
+        check("a call")
+        assertEquals(recounts, controller.recounts, "a call counts nothing again")
+        controller.close()
     }
 }

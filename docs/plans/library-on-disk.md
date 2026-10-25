@@ -428,6 +428,46 @@ Confirmed by the owner on Oct 25, 2026:
      - Not tried on the phone yet: it was locked and dozing, so the build was not installed.
      - Left for later: the Android pages still recompute on every library state (as before, now with a read), which
        6f's change signal can narrow. Explore's lists cost two walks of light rows when a country has few towns.
+   - **6d built Oct 25, 2026: backup's counts from the database.** No table changed, so no migration.
+     - `LibraryState.itemCount`, `notBackedUpCount` and `notBackedUpBytes` (the backup bar in `LibraryChrome.kt`,
+       Settings › Backup's summary, the limited-access banner; the same names in Swift) come from `LibraryState.totals`
+       when there is a database. `backupCounts` counts per source in SQL the items, the phone's items and those the
+       ledger doesn't hold as uploaded as they are now (same size and modified time, as `BackupState.status` checks), with
+       their bytes. Queued and failed photos wait either way; the files on their way are laid over from memory: those of
+       them the ledger holds as uploaded (`backedUpAmong`) wait too, as their status is Uploading. Only the sources
+       backup takes count (`countedSources`; all when backup is off or absent). `libraryTotals` makes the three numbers.
+     - `LibraryController.recount` counts again, one count at a time, when rows were written, a ledger entry of one of
+       the library's items changed (a call's entry counts nothing again), or the files on their way or the sources
+       taken changed; the files on their way alone only read those few rows. `LibraryState.isEmpty` replaces Moments'
+       `days.isEmpty()` checks. Without a database everything is counted over `days` as before.
+     - Tests (`LibraryTableTest`): over 30 generated libraries changed in 4 rounds (sizes and modified times unknown,
+       photos read, uploaded, failed and forgotten), with random sources, backup on, off or absent, queued and
+       uploading files (some backed up already), the counts equal LibraryState's over the whole list; the controller
+       with the database shows the database's counts, equal to the in-memory ones, through backup's changes, and a call
+       counts nothing again. `LibraryLoadTest` keeps the counts few while 2,000 calls are backed up. Dropping the
+       overlay of files on their way fails the first test.
+     - On the emulator (made-up library of 50,000, debug build, not enrolled, so the enrollment screen stays up and
+       the phone's library isn't read): no crash; the log showed "50000 items, 0 not backed up" (every row the server's,
+       as nothing of the phone was read), counted in 1.5 s at start while every other read ran, then 71–195 ms; Dalvik
+       heap about 93–107 MB. The backup bar itself can't be seen without enrolling, so it was not looked at.
+     - The viewer's neighbours needed nothing more: since 6a and 6c every list it opens with comes from a page, a
+       Moments row, the storyline, a tag or search, and it reads the photo shown and 50 neighbours each way from the
+       database (`want`). No list of the viewer comes from the whole library any more.
+     - Free up space reads no `LibraryState`: its plan and counts come from MediaStore and the ledger
+       (`FreeUpController`, `freeUpPlan`), on purpose since phase 3 (a run must see every real photo, and
+       `device_item` leaves out photos matched to private files by name and size). Making its plan a query is later
+       work, not 6f's.
+     - Readers of `LibraryState.days` left, outside Moments, Explore, the map and search (6f):
+       - `LibraryController` builds `days` itself (the adapter), and `items`, `itemsOfShas` and `townArea` read it
+         without a table (tests).
+       - `StoriesState.build` (`itemsById`, the whole feed) and `StoriesController.everything` / `itemsById` / the
+         readers' lists read it only without the pager (tests).
+       - `SearchController.areaOf` and `libraryResolver`, only without `townArea` / `itemsOfShas` (tests).
+       - `ItemsExploreReads` (previews and screenshots), `PreviewData.kt` and `LabData.kt` (the UI labs).
+       - iOS: `JournalHomeView.swift` (four emptiness checks, docs/ios-todo.md), `ExploreViews.swift` and
+         `ExploreMapView.swift` (6c's Swift side).
+       `StoriesState.itemsById` is read by the viewer, similar photos, page lists, Crop and Moments' menu, all of which
+       ask for what they show (`want`) since 6a; it holds the whole library only without the pager.
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

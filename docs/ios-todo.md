@@ -85,5 +85,9 @@ Planned, not built on either platform yet:
   and zoom two levels into one tapped (see `MapScreen.kt`). From the database a summary's `PlaceSummary.items` and
   `YearSummary.items` are empty: use `count`, `cover`, `months`. Search's town box already comes from the database
   (`townArea`, wired in `IosJournal.kt`).
+  Step 6d (Android Oct 25, 2026): `LibraryState.itemCount`, `notBackedUpCount` and `notBackedUpBytes` are counted by
+  the database (`LibraryState.totals`); nothing in Swift changes for them. In `JournalHomeView.swift`, use
+  `library.isEmpty` where it checks `library.days.isEmpty` (four places: the spinner, "nothing here", no storyline,
+  nothing shown), so the checks no longer need the whole list (`days` goes in step 6f).
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

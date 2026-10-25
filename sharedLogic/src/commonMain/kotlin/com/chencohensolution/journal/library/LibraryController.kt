@@ -33,6 +33,15 @@ import kotlin.coroutines.cancellation.CancellationException
 /** The photos and videos taken on one day, newest first. */
 data class DayGroup(val day: LocalDay, val items: List<MediaItem>)
 
+/** The library's counts the screens show (LibraryState), as the database counts them (step 6d). */
+data class LibraryTotals(
+    /** Every item of the library. */
+    val items: Int,
+    /** The items backup takes that aren't backed up (see BackupState.status), and their bytes (where known). */
+    val notBackedUp: Int,
+    val notBackedUpBytes: Long,
+)
+
 data class LibraryState(
     val access: PhotoAccess = PhotoAccess.NOT_DETERMINED,
     /** True while the library is being read. */
@@ -57,17 +66,26 @@ data class LibraryState(
      * meets one; only Moments and a recording's page show them. Private ones are left out like private photos.
      */
     val sounds: List<SoundRecording> = emptyList(),
+    /**
+     * [itemCount], [notBackedUpCount] and [notBackedUpBytes] as the database counted them over the whole library
+     * (docs/plans/library-on-disk.md, step 6d); null without a database, where they are counted over [days].
+     */
+    val totals: LibraryTotals? = null,
 ) {
-    val itemCount: Int = days.sumOf { it.items.size }
+    /** Every item of the library. */
+    val itemCount: Int = totals?.items ?: days.sumOf { it.items.size }
 
     private fun waitsForBackup(item: MediaItem) =
         item.backup != BackupStatus.BackedUp && (backupSources == null || item.source in backupSources)
 
     /** Items not on the server yet (anything but [BackupStatus.BackedUp]) that backup takes. */
-    val notBackedUpCount: Int = days.sumOf { day -> day.items.count(::waitsForBackup) }
+    val notBackedUpCount: Int = totals?.notBackedUp ?: days.sumOf { day -> day.items.count(::waitsForBackup) }
 
     /** Size of [notBackedUpCount]'s items; counts only items whose size is known. */
-    val notBackedUpBytes: Long = days.sumOf { day -> day.items.filter(::waitsForBackup).sumOf { it.sizeBytes ?: 0L } }
+    val notBackedUpBytes: Long = totals?.notBackedUpBytes ?: days.sumOf { day -> day.items.filter(::waitsForBackup).sumOf { it.sizeBytes ?: 0L } }
+
+    /** Whether the library has nothing to show (yet). */
+    val isEmpty: Boolean get() = itemCount == 0
 
     /** Items that are in no story. Stories don't exist yet, so that's every item. */
     val unsortedCount: Int get() = itemCount
@@ -278,6 +296,9 @@ class LibraryController internal constructor(
         // The ledger changed: its triggers noted which items that can touch (a call backup reads touches none).
         val entries = backupState?.entries.orEmpty()
         if (entries !== entriesSeen) {
+            // Backup's counts change only with the entries of the library's own items (see recount).
+            entries.forEach { (id, entry) -> if (entriesSeen[id] != entry) ledgerChanged += id }
+            entriesSeen.keys.forEach { if (it !in entries) ledgerChanged += it }
             entriesSeen = entries
             refreshTable(table)
         }
@@ -441,8 +462,64 @@ class LibraryController internal constructor(
         return DayGroup(day, items)
     }
 
+    // MARK: Counts from the database (step 6d)
+
+    /** Ids whose ledger entry changed since the counts were last made. */
+    private var ledgerChanged = HashSet<String>()
+
+    /** The database's counts per source and what they were made at (rows written; see [recount]). */
+    private var sourceCounts: List<SourceCounts>? = null
+    private var sourceCountsAt = -1
+    private var countedKey: List<Any?>? = null
+    private var countJob: Job? = null
+    private var countAgain = false
+
+    /** Counts of the whole library in the database so far, for the tests that keep them few. */
+    internal var recounts = 0
+        private set
+
+    /**
+     * With a table, counts the library and what backup hasn't taken in the database ([LibraryState.totals]), so no
+     * screen needs the whole list for them: again when rows were written, a ledger entry of one of the library's items
+     * changed (a backup of calls changes none), the files on their way or the sources backup takes changed. One count
+     * runs at a time; a change meanwhile counts again once it ends.
+     */
+    private fun recount() {
+        val table = table ?: return
+        val backupState = backup?.value
+        val key = listOf(rowsWritten, backupState?.countedSources, uploadingIds(backupState), backupState == null)
+        if (key == countedKey && ledgerChanged.isEmpty()) return
+        if (countJob?.isActive == true) {
+            countAgain = true
+            return
+        }
+        countJob = scope.launch {
+            do {
+                countAgain = false
+                val state = backup?.value
+                val uploading = uploadingIds(state)
+                val written = rowsWritten
+                countedKey = listOf(written, state?.countedSources, uploading, state == null)
+                val changed = ledgerChanged.also { ledgerChanged = HashSet() }
+                val known = sourceCounts.takeIf { sourceCountsAt == written }
+                val (counts, again) = withContext(io) {
+                    val counts = if (known != null && (changed.isEmpty() || !table.hasAny(changed))) known else Measure.time({ "Library counted" }) { table.backupCounts() }.also { recounts++ }
+                    counts to if (uploading.isEmpty()) emptyList() else table.backedUpAmong(uploading)
+                }
+                sourceCounts = counts
+                sourceCountsAt = written
+                val totals = libraryTotals(counts, again, state)
+                if (totals != _state.value.totals) {
+                    Measure.log?.invoke("Library: ${totals.items} items, ${totals.notBackedUp} not backed up (${totals.notBackedUpBytes} bytes)")
+                    _state.update { it.copy(totals = totals) }
+                }
+            } while (countAgain)
+        }
+    }
+
     /** Puts [merged] into [state] with each photo's backup status as it is now. */
     private fun showStatuses() {
+        recount()
         val backupState = backup?.value
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
         // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it). Several files

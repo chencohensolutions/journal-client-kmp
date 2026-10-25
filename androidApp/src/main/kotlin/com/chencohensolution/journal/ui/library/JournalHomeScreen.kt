@@ -460,18 +460,18 @@ internal fun JournalHomeScreen(
                 // Moments draws once: one spinner until its feed is ready and its rows are worked out (asked Oct 25, 2026).
                 val momentsWaiting = moments && (!stories.ready || (feedRows.isEmpty() && stories.feed.entries.isNotEmpty()))
                 when {
-                    momentsWaiting || (library.loading && library.days.isEmpty()) -> item(key = "loading") {
+                    momentsWaiting || (library.loading && library.isEmpty) -> item(key = "loading") {
                         Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = LibraryColors.OnBackground)
                         }
                     }
-                    canRead && library.days.isEmpty() && library.loadError == null ->
+                    canRead && library.isEmpty && library.loadError == null ->
                         item(key = "empty") { Message(stringResource(R.string.library_empty)) }
                 }
-                if (storyline && stories.storyline.isEmpty() && library.days.isNotEmpty()) {
+                if (storyline && stories.storyline.isEmpty() && !library.isEmpty) {
                     item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
                 }
-                if (moments && !momentsWaiting && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
+                if (moments && !momentsWaiting && stories.feed.entries.isEmpty() && !library.isEmpty) {
                     item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
                 }
                 // Last, so landing from the viewer can count them from the end.

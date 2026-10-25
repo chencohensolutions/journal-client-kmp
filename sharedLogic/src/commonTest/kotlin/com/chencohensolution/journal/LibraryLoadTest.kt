@@ -112,6 +112,7 @@ class LibraryLoadTest {
         advanceUntilIdle()
         val mergesBefore = library.merges
         val rebuildsBefore = stories.rebuilds
+        val recountsBefore = library.recounts
 
         repeat(FILES) { n ->
             val id = "call/$n"
@@ -130,6 +131,9 @@ class LibraryLoadTest {
         assertEquals(10_000, library.currentState.itemCount)
         assertTrue(merges <= FEW, "$merges merges of the library")
         assertTrue(rebuilds <= FEW, "$rebuilds rebuilds of Moments")
+        // Backup's counts come from the database (step 6d): a call's ledger entry counts nothing again.
+        assertTrue(library.recounts - recountsBefore <= FEW, "${library.recounts - recountsBefore} counts of the library")
+        assertEquals(10_000, library.currentState.notBackedUpCount)
         stories.close()
         settings.close()
         library.close()

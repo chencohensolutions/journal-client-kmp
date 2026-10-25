@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.library
 
+import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.stories.GeoArea
@@ -60,6 +62,48 @@ internal class DayBox(val day: LocalDay, val source: MediaSource, val box: GeoAr
  */
 internal class CellCount(val lat: Long, val lon: Long, val count: Int, val latSum: Double, val lonSum: Double, val onlyId: String?)
 
+/**
+ * One source's counts in the database (step 6d): its [items], the phone's items among them and their bytes, and those
+ * the ledger doesn't hold as uploaded as they are now ([waiting]) and their bytes (an unknown size counts 0).
+ */
+internal class SourceCounts(
+    val source: MediaSource,
+    val items: Int,
+    val onDevice: Int,
+    val onDeviceBytes: Long,
+    val waiting: Int,
+    val waitingBytes: Long,
+)
+
+/**
+ * The library's counts as [LibraryState] shows them, from the database's [counts] per source and the status each photo
+ * has in [backup] (BackupState.status): a photo waits unless the ledger holds it as uploaded, and one on its way
+ * ([uploadingBackedUp]: those of the files uploading now the ledger holds as uploaded, from
+ * [LibraryTable.backedUpAmong]) waits too. Only the sources backup takes count; without [backup] every phone item waits.
+ * Exactly what LibraryState counts over its days.
+ */
+internal fun libraryTotals(counts: List<SourceCounts>, uploadingBackedUp: List<Pair<MediaSource, Long?>>, backup: BackupState?): LibraryTotals {
+    val sources = backup?.countedSources
+    fun counted(source: MediaSource) = sources == null || source in sources
+    val taken = counts.filter { counted(it.source) }
+    val again = uploadingBackedUp.filter { counted(it.first) }
+    return if (backup == null) {
+        LibraryTotals(counts.sumOf { it.items }, taken.sumOf { it.onDevice }, taken.sumOf { it.onDeviceBytes })
+    } else {
+        LibraryTotals(
+            counts.sumOf { it.items },
+            taken.sumOf { it.waiting } + again.size,
+            taken.sumOf { it.waitingBytes } + again.sumOf { it.second ?: 0L },
+        )
+    }
+}
+
+/** The ids of the files [backup] has on their way now: their status is Uploading, whatever the ledger says. */
+internal fun uploadingIds(backup: BackupState?): Set<String> {
+    val running = (backup?.activity as? BackupActivity.Running)?.progress ?: return emptySet()
+    return running.uploading.keys + listOfNotNull(running.currentId)
+}
+
 /** What [LibraryTable.refresh] changed: rows added or different, and the ids of rows gone. */
 internal class LibraryDelta(val changed: List<LibraryRow>, val removed: List<String>) {
     val isEmpty: Boolean get() = changed.isEmpty() && removed.isEmpty()
@@ -89,6 +133,26 @@ internal class LibraryTable(private val database: LibraryDatabase) {
             counts[source] = (counts[source] ?: 0) + row.count.toInt()
         }
         return counts.keys.sorted().associateWith { counts.getValue(it) }
+    }
+
+    /**
+     * Per source as the database spells it: the items, the phone's items and their bytes, and those the ledger doesn't
+     * hold as uploaded as they are now (step 6d). [libraryTotals] makes backup's counts from them.
+     */
+    fun backupCounts(): List<SourceCounts> = queries.backupCounts { source, items, onDevice, onDeviceBytes, waiting, waitingBytes ->
+        SourceCounts(MediaSource.parse(source) ?: MediaSource.OTHER, items.toInt(), onDevice.toInt(), onDeviceBytes, waiting.toInt(), waitingBytes)
+    }.executeAsList()
+
+    /** Those of [ids] that are phone items the ledger holds as uploaded as they are now, with their source and size. */
+    fun backedUpAmong(ids: Collection<String>): List<Pair<MediaSource, Long?>> = database.transactionWithResult {
+        ids.distinct().chunked(CHUNK).flatMap { chunk ->
+            queries.backedUpAmong(chunk) { _, source, size -> (MediaSource.parse(source) ?: MediaSource.OTHER) to size }.executeAsList()
+        }
+    }
+
+    /** Whether any of [ids] is an item of the library. */
+    fun hasAny(ids: Collection<String>): Boolean = database.transactionWithResult {
+        ids.distinct().chunked(CHUNK).any { queries.libraryIdsAmong(it).executeAsOne() > 0 }
     }
 
     /** The rows of [ids] that are in the library, by id. */

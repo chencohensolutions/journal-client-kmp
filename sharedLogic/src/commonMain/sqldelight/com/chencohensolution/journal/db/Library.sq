@@ -395,3 +395,27 @@ WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :fir
   AND (latitude BETWEEN :south AND :north)
   AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)))
   AND (source NOT IN :hidden OR (epoch_day || ':' || source) IN :always);
+
+-- Per source: the items, the phone's items and their bytes, and those of them the ledger doesn't hold as uploaded as
+-- they are now (the same size and modified time, as BackupState.status checks): the counts backup shows (step 6d).
+backupCounts:
+SELECT i.source, count(*) AS items,
+  coalesce(sum(CASE WHEN i.is_on_device = 1 THEN 1 ELSE 0 END), 0) AS on_device,
+  coalesce(sum(CASE WHEN i.is_on_device = 1 THEN coalesce(i.size, 0) ELSE 0 END), 0) AS on_device_bytes,
+  coalesce(sum(CASE WHEN i.is_on_device = 1 AND NOT EXISTS (
+      SELECT 1 FROM ledger l WHERE l.id = i.id AND l.uploaded = 1 AND l.size = i.size AND l.modified_millis IS i.modified_millis
+    ) THEN 1 ELSE 0 END), 0) AS waiting,
+  coalesce(sum(CASE WHEN i.is_on_device = 1 AND NOT EXISTS (
+      SELECT 1 FROM ledger l WHERE l.id = i.id AND l.uploaded = 1 AND l.size = i.size AND l.modified_millis IS i.modified_millis
+    ) THEN coalesce(i.size, 0) ELSE 0 END), 0) AS waiting_bytes
+FROM library_item i
+GROUP BY i.source;
+
+-- Those of these phone items the ledger holds as uploaded as they are now: files on their way again count as waiting.
+backedUpAmong:
+SELECT i.id, i.source, i.size FROM library_item i JOIN ledger l ON l.id = i.id
+WHERE i.id IN ? AND i.is_on_device = 1 AND l.uploaded = 1 AND l.size = i.size AND l.modified_millis IS i.modified_millis;
+
+-- How many of these ids are the library's items: whether a ledger change can change backup's counts.
+libraryIdsAmong:
+SELECT count(*) FROM library_item WHERE id IN ?;
