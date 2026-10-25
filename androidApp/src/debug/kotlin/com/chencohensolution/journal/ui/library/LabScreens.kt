@@ -180,6 +180,8 @@ internal val labScreens: List<LabScreen> = listOf(
         current { BackupSettingsScreen(backupLabUi(), BackupActions(), back = {}) },
         backupOptionA,
         backupOptionB,
+        backupOptionB2,
+        backupOptionB2Adding,
         backupOptionC,
         backupOptionCAdding,
     )),

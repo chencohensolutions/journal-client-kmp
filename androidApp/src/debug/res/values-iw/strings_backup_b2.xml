@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, ux/backup option b2: moves to src/main/res without the prefix if chosen. -->
+<resources>
+    <string name="backup_b2_pick">הוספת תיקייה</string>
+    <string name="backup_b2_note">תיקיות של שיחות והקלטות מגובות גם כשהן מוסתרות בהגדרות הפרטיות.</string>
+    <string name="backup_b2_add_title">לגבות את %s?</string>
+    <plurals name="backup_b2_files">
+        <item quantity="one">קובץ קול אחד</item>
+        <item quantity="two">%s קובצי קול</item>
+        <item quantity="other">%s קובצי קול</item>
+    </plurals>
+    <string name="backup_b2_add_found">%1$s · %2$s</string>
+    <string name="backup_b2_add_kind">מה הם?</string>
+    <string name="backup_b2_kind_calls">שיחות טלפון</string>
+    <string name="backup_b2_kind_recordings">הקלטות</string>
+    <string name="backup_b2_kind_voice">הודעות קוליות</string>
+    <string name="backup_b2_add_body">קבצים חדשים בה מגובים כשהם מגיעים, גם כשהם מוסתרים. שיחות שומרות עם מי היו, כפי שהטלפון קרא לכל קובץ.</string>
+    <string name="backup_b2_add_confirm">לגבות</string>
+    <string name="backup_b2_add_cancel">ביטול</string>
+</resources>
