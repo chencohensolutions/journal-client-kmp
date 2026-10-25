@@ -81,7 +81,7 @@ class HiddenCollectionsTest {
             removed = { removed += it },
         )
         library.sync()
-        assertEquals(setOf(bumble, photo), library.media.value.map { it.sha256 }.toSet())
+        assertEquals(setOf(bumble, photo), library.all().map { it.sha256 }.toSet())
 
         val shown = library.hiddenCollections()!!
         assertEquals(listOf(HiddenCollections.Collection("Bumble", 1, false)), shown.screenshotApps)
@@ -101,11 +101,11 @@ class HiddenCollectionsTest {
         assertEquals(true, calls.recordings!!.hidden)
         assertEquals(1, calls.screenshotApps.size)
         // Saving doesn't sync: the screen does once, when it is left.
-        assertEquals(2, library.media.value.size)
+        assertEquals(2, library.all().size)
 
         // The next sync drops it, tells the phone to delete what it keeps of it, and to leave out its own copy.
         library.sync()
-        assertEquals(listOf(photo), library.media.value.map { it.sha256 })
+        assertEquals(listOf(photo), library.all().map { it.sha256 })
         assertEquals(listOf(bumble), removed)
         assertEquals(setOf(bumble), library.hidden.value)
     }
@@ -177,11 +177,11 @@ class HiddenCollectionsTest {
         assertEquals(false, saved.collections.whatsapp.hidden)
         assertEquals(true, saved.shownApps[0].hidden)
         assertEquals(" BUM ", saved.query)
-        assertEquals(emptyList(), library.media.value)
+        assertEquals(emptyList(), library.all())
 
         // Leaving the screen syncs the library, once.
         controller.close()
-        assertEquals(listOf(photo), library.media.first { it.isNotEmpty() }.map { it.sha256 })
+        assertEquals(listOf(photo), library.mediaVersion.first { library.all().isNotEmpty() }.let { library.all() }.map { it.sha256 })
     }
 
     @Test
@@ -205,7 +205,7 @@ class HiddenCollectionsTest {
         library.sync()
         assertEquals(SyncProgress(done = 1, total = 2), progress.await())
         assertNull(library.syncProgress.value)
-        assertEquals(2, library.media.value.size)
+        assertEquals(2, library.all().size)
     }
 
     @Test

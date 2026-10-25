@@ -12,11 +12,10 @@ import com.chencohensolution.journal.people.PersonHit
 import com.chencohensolution.journal.search.SearchAnswer
 import com.chencohensolution.journal.search.SearchApi
 import com.chencohensolution.journal.search.SearchUnreachable
-import com.chencohensolution.journal.server.ServerMedia
+import com.chencohensolution.journal.server.FileFacts
 import com.chencohensolution.journal.server.parseTimestamp
 import com.chencohensolution.journal.stories.GeoArea
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 import okio.Path.Companion.toPath
@@ -29,10 +28,42 @@ import okio.Path.Companion.toPath
 /** Files the server read that the phone may still lack while its search counts as up to date. */
 private const val BEHIND = 20
 
-/** What the phone's search may find: the server's files this device sees ([server]); private ones only when shown. */
+/** Walks the server's files this device sees, a few facts each (ServerLibrary.forEachFile). */
+internal typealias FileWalk = suspend (each: (FileFacts) -> Unit) -> Unit
+
+/**
+ * The server's files the phone's search or people may show: when each was taken ([taken], epoch milliseconds, null when
+ * its time can't be read), by sha256, and how many files there are in all ([total]), before [shownFiles]' years and area.
+ */
+internal class ShownFiles(val taken: Map<String, Long?>, val total: Int)
+
+/**
+ * The files of [walk] that are shown: private ones only with [includePrivate], of [years] and inside [area] when given.
+ * Read a row at a time, so only these few facts of the files kept are in memory, and only while a search runs (step
+ * 6e; before, the whole list was held for it).
+ */
+internal suspend fun shownFiles(walk: FileWalk, includePrivate: Boolean, years: List<Int>? = null, area: GeoArea? = null): ShownFiles {
+    val taken = HashMap<String, Long?>()
+    var total = 0
+    walk each@{ file ->
+        if (file.isPrivate && !includePrivate) return@each
+        total++
+        val time = parseTimestamp(file.takenAt ?: file.uploadedAt)
+        if (years != null && time?.day?.year !in years) return@each
+        if (area != null) {
+            val lat = file.latitude ?: return@each
+            val lon = file.longitude ?: return@each
+            if (lat < area.south || lat > area.north || lon < area.west || lon > area.east) return@each
+        }
+        taken[file.sha256] = time?.millis
+    }
+    return ShownFiles(taken, total)
+}
+
+/** What the phone's search may find: the server's files this device sees ([files]); private ones only when shown. */
 internal class LocalSearchApi(
     private val indexes: LocalIndexes,
-    private val server: StateFlow<List<ServerMedia>>,
+    private val files: FileWalk,
     private val includePrivate: () -> Boolean,
 ) : SearchApi {
     private var words: Pair<Int, Map<String, Map<String, Int>>>? = null
@@ -44,19 +75,8 @@ internal class LocalSearchApi(
     val upToDate: Boolean get() = indexes.currentState.newOnServer <= BEHIND
 
     override suspend fun search(text: String, limit: Int, offset: Int, years: List<Int>?, area: GeoArea?): SearchAnswer = withContext(Dispatchers.Default) {
-        val files = server.value.associateBy { it.sha256 }
-        val showPrivate = includePrivate()
-        val keep: (String) -> Boolean = keep@{ sha ->
-            val file = files[sha] ?: return@keep false
-            if (file.isPrivate && !showPrivate) return@keep false
-            if (years != null && yearOf(file) !in years) return@keep false
-            if (area != null) {
-                val lat = file.latitude ?: return@keep false
-                val lon = file.longitude ?: return@keep false
-                if (lat < area.south || lat > area.north || lon < area.west || lon > area.east) return@keep false
-            }
-            true
-        }
+        val shown = shownFiles(files, includePrivate(), years, area)
+        val keep: (String) -> Boolean = { sha -> sha in shown.taken }
         val wanted = offset + limit
         val hits = ArrayList<String>()
         val inText = HashSet<String>()
@@ -85,10 +105,10 @@ internal class LocalSearchApi(
         val (sets, moments) = searchGroups(
             hits,
             vector = { sha -> vectors?.vector(sha) },
-            takenAt = { sha -> files[sha]?.let { f -> (f.takenAt ?: f.uploadedAt).let(::parseTimestamp)?.millis } },
+            takenAt = { sha -> shown.taken[sha] },
         )
         val indexed = (vectors ?: texts)?.size ?: 0
-        val total = files.values.count { !it.isPrivate || showPrivate }
+        val total = shown.total
         SearchAnswer(
             hits.drop(offset),
             indexed = minOf(indexed, total),
@@ -98,8 +118,6 @@ internal class LocalSearchApi(
             onPhone = true,
         )
     }
-
-    private fun yearOf(file: ServerMedia): Int? = (file.takenAt ?: file.uploadedAt).let(::parseTimestamp)?.day?.year
 
     /** The text table's words, made again when the table changed. */
     private fun wordsOf(table: TextTable): Map<String, Map<String, Int>> {
@@ -162,7 +180,8 @@ internal class PhoneFirstSearchApi(
 internal class PhoneFallbackPeopleApi(
     private val remote: PeopleApi,
     private val indexes: LocalIndexes,
-    private val server: StateFlow<List<ServerMedia>>,
+    /** The server's files this device sees (ServerLibrary.forEachFile). */
+    private val files: FileWalk,
     private val newId: () -> String = { "local:" + kotlin.random.Random.nextLong().toULong().toString(16) },
 ) : PeopleApi by remote {
     override suspend fun people(includePrivate: Boolean): PeopleList = try {
@@ -232,8 +251,8 @@ internal class PhoneFallbackPeopleApi(
         localMedia(ids, includePrivate)?.let { PersonAnswer(it.drop(offset).take(limit), it.size, it.size) } ?: throw e
     }
 
-    private fun visible(includePrivate: Boolean): Map<String, ServerMedia> =
-        server.value.filter { includePrivate || !it.isPrivate }.associateBy { it.sha256 }
+    /** The files shown, by sha256, with when each was taken. */
+    private suspend fun visible(includePrivate: Boolean): Map<String, Long?> = shownFiles(files, includePrivate).taken
 
     private fun faceOf(id: String, personId: String?, name: String?): Face? {
         val sha = id.substringBefore(':')
@@ -242,7 +261,7 @@ internal class PhoneFallbackPeopleApi(
         return Face(id, sha, FaceBox(box[0], box[1], box[2], box[3]), personId, name)
     }
 
-    private fun localPeople(includePrivate: Boolean): PeopleList? {
+    private suspend fun localPeople(includePrivate: Boolean): PeopleList? {
         val doc = indexes.peopleDoc() ?: return null
         val files = visible(includePrivate)
         val all = doc.people.mapNotNull { p ->
@@ -254,14 +273,14 @@ internal class PhoneFallbackPeopleApi(
         return PeopleList(all.filter { !it.isGroup }, all.filter { it.isGroup }, files.size, files.size)
     }
 
-    private fun localMedia(ids: List<String>, includePrivate: Boolean): List<PersonHit>? {
+    private suspend fun localMedia(ids: List<String>, includePrivate: Boolean): List<PersonHit>? {
         val doc = indexes.peopleDoc() ?: return null
         val files = visible(includePrivate)
         val members = doc.people.filter { it.id in ids }
         if (members.size != ids.size) return null
         val shas = members.map { m -> m.faces.map { it.substringBefore(':') }.toSet() }.reduce { a, b -> a intersect b }.filter { it in files }
         val facesBySha = doc.people.flatMap { p -> p.faces.map { it to p } }.groupBy { it.first.substringBefore(':') }
-        return shas.sortedByDescending { sha -> files[sha]?.let { (it.takenAt ?: it.uploadedAt).let(::parseTimestamp)?.millis } ?: 0 }
+        return shas.sortedByDescending { sha -> files[sha] ?: 0L }
             .map { sha ->
                 val faces = facesBySha[sha].orEmpty().mapNotNull { (id, p) -> faceOf(id, p.id, p.name?.takeIf { it.isNotEmpty() }) }
                 PersonHit(sha, -1, -1, faces)

@@ -215,15 +215,30 @@ class ServerLibrary internal constructor(
 
     private val _loaded = MutableStateFlow(false)
 
-    /** True once what the database holds is in [media], [hidden] and [privateFiles]. */
+    /** True once the database has been read at start: [mediaVersion], [hidden] and [privateFiles] are what it holds. */
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
-    private val _media = MutableStateFlow<List<ServerMedia>>(emptyList())
-    val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
+    private val _mediaVersion = MutableStateFlow(0L)
 
-    private fun show(list: List<ServerMedia>) {
-        _media.value = list
-    }
+    /**
+     * Goes up by one each time the server's list in the database changed (read at start, a sync, "Show private media"),
+     * for what reads it ([sha256Of], [file], [sounds], [forEachFile]) to read again. Until Oct 25, 2026 the whole list
+     * (103k files on the owner's phone) was held in memory here as `media`; now it stays in the database
+     * (docs/plans/library-on-disk.md, step 6e).
+     */
+    val mediaVersion: StateFlow<Long> = _mediaVersion.asStateFlow()
+
+    /** Every file of the list, in the order it was written: only for the library merged in memory (tests) and tests. */
+    internal suspend fun all(): List<ServerMedia> = withContext(io) { store.media() }
+
+    /** The file [sha256] as the list holds it; null when it has none (deleted, hidden, or private while not shown). */
+    suspend fun file(sha256: String): ServerMedia? = withContext(io) { store.file(sha256) }
+
+    /** The sound recordings of the list ([ServerMedia.isAudio]), private ones included, in the order it was written. */
+    internal suspend fun sounds(): List<ServerMedia> = withContext(io) { store.sounds() }
+
+    /** Gives [each] the few facts of every file of the list, read one row at a time (search and people on the phone). */
+    internal suspend fun forEachFile(each: (FileFacts) -> Unit) = withContext(io) { store.forEachFile(each) }
 
     private val _hidden = MutableStateFlow<Set<String>>(emptySet())
 
@@ -320,12 +335,14 @@ class ServerLibrary internal constructor(
     /**
      * [item]'s sha256 on the server: its own once this device's backup read it, otherwise the server file with its name
      * and size, as the library and search match them (a photo that reached the server another way: an import, an
-     * earlier install). Null when the server has no such file.
+     * earlier install). Null when the server has no such file. Read from the database, the first file written with that
+     * name and size, as [com.chencohensolution.journal.search.serverSha] finds it in the whole list.
      */
-    fun sha256Of(item: MediaItem): String? {
+    suspend fun sha256Of(item: MediaItem): String? {
         item.sha256?.let { return it }
-        val name = item.fileName?.lowercase() ?: return null
-        return _media.value.firstOrNull { it.fileName.lowercase() == name && it.size == item.sizeBytes }?.sha256
+        val name = item.fileName ?: return null
+        val size = item.sizeBytes ?: return null
+        return withContext(io) { store.shaNamedAs(name, size) }
     }
 
     /**
@@ -468,14 +485,14 @@ class ServerLibrary internal constructor(
         }
     }
 
-    /** Puts what the database holds into [media] (and [privateFiles]) and [hidden]. */
+    /** Tells what the database holds now: [mediaVersion] goes up (and [privateFiles] is read), and [hidden] is read. */
     private suspend fun publish(media: Boolean, hidden: Boolean) {
-        val list = if (media) withContext(io) { store.media() to store.privateFiles() } else null
+        val keys = if (media) withContext(io) { store.privateFiles() } else null
         val hiddenShas = if (hidden) withContext(io) { store.hidden() } else null
         hiddenShas?.let { _hidden.value = it }
-        list?.let { (rows, keys) ->
-            _privateFiles.value = keys
-            show(rows)
+        keys?.let {
+            _privateFiles.value = it
+            _mediaVersion.value++
         }
     }
 

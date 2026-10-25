@@ -38,8 +38,7 @@ import androidx.compose.ui.semantics.contentDescription
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.people.Face
 import com.chencohensolution.journal.people.faceCrop
-import com.chencohensolution.journal.server.ServerMedia
-import kotlinx.coroutines.flow.StateFlow
+import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.PreviewOptions
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.library.MediaType
@@ -448,27 +447,22 @@ internal fun interface FaceSource {
 
 internal val LocalFaceSource = staticCompositionLocalOf<FaceSource?> { null }
 
-/** The server's files, for the size of a face's photo (its crop is made square on it); null in screenshot tests. */
-internal val LocalServerMedia = staticCompositionLocalOf<StateFlow<List<ServerMedia>>?> { null }
-
-/** The server's files by sha256, made once per list. */
-private var sizesOf: Pair<List<ServerMedia>, Map<String, ServerMedia>>? = null
-
-private fun serverFile(media: List<ServerMedia>, sha256: String): ServerMedia? {
-    val known = sizesOf?.takeIf { it.first === media } ?: (media to media.associateBy { it.sha256 }).also { sizesOf = it }
-    return known.second[sha256]
-}
+/**
+ * The server's list, for the size of a face's photo (its crop is made square on it), read from the database by sha256;
+ * null in screenshot tests.
+ */
+internal val LocalServerLibrary = staticCompositionLocalOf<ServerLibrary?> { null }
 
 /** [face] as a round avatar [sizePx] across: a crop of its photo's preview, fetched from the server and kept. */
 @Composable
 internal fun rememberFace(face: Face, sizePx: Int): ImageBitmap? {
     LocalFaceSource.current?.let { source -> return remember(source, face, sizePx) { source.face(face, sizePx) } }
     val previews = LocalServerPreviews.current ?: return null
-    val media = LocalServerMedia.current
+    val server = LocalServerLibrary.current
     val key = "face:${face.id}@$sizePx"
     val bitmap by produceState(thumbnailCache.get(key), key) {
         value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
-            val photo = media?.value?.let { serverFile(it, face.sha256) }
+            val photo = server?.file(face.sha256)
             previews.face(face.sha256, faceCrop(face, photo?.width ?: 0, photo?.height ?: 0), sizePx)
                 ?.let { bytes -> withContext(previewDecodes) { decodePreview(bytes) } }
         }?.forDrawing()?.also { thumbnailCache.put(key, it) }

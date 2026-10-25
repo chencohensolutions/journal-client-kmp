@@ -89,5 +89,10 @@ Planned, not built on either platform yet:
   the database (`LibraryState.totals`); nothing in Swift changes for them. In `JournalHomeView.swift`, use
   `library.isEmpty` where it checks `library.days.isEmpty` (four places: the spinner, "nothing here", no storyline,
   nothing shown), so the checks no longer need the whole list (`days` goes in step 6f).
+  Step 6e (Android Oct 26, 2026): `ServerLibrary.media` is gone; the server's list stays in the database. Swift used
+  none of it, and `IosServerFiles.observeMedia` (unused) is removed. A view that must react to the list changing
+  observes `ServerLibrary.mediaVersion` instead and reads what it needs (`file(sha256)`, `sha256Of(item)`, both
+  suspend). `IosServerFiles.face` and `setPrivate` already read from the database; on the Mac, check that the face
+  avatars still get their photo's size and that marking a photo private still finds its sha256.
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

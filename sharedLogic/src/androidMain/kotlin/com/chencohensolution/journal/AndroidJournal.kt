@@ -174,7 +174,7 @@ fun serverIndexing(context: Context): ServerIndexing =
 
 private fun localSearchApi(context: Context): LocalSearchApi {
     val settings = JournalSettings(SharedPreferencesStore(context))
-    return LocalSearchApi(localIndexes(context), serverLibrary(context).media) { settings.privateMedia.show }
+    return LocalSearchApi(localIndexes(context), serverLibrary(context)::forEachFile) { settings.privateMedia.show }
 }
 
 /**
@@ -191,7 +191,6 @@ fun createSearchController(
     SearchController(
         library = library.state,
         api = PhoneFirstSearchApi(localSearchApi(context), ApolloSearchApi(JournalSettings(SharedPreferencesStore(context)), serverHttp(context))),
-        server = server.media,
         stories = stories.state,
         pageSize = { settings.currentState.searchPageSize },
         warmUp = ApolloSearchWarmUp(serverHttp(context)),
@@ -217,7 +216,7 @@ fun createPersonController(context: Context, id: String, library: LibraryControl
         api = peopleApi(context),
         people = peopleController(context),
         library = library.state,
-        server = serverLibrary(context).media,
+        server = null,
         includePrivate = { settings.privateMedia.show },
         bySha = library::itemsOfShas,
     )
@@ -230,8 +229,7 @@ fun createPhotoFindingsController(context: Context, library: LibraryController):
     return PhotoFindingsController(
         api = PhoneFallbackFindingsApi(ApolloFindingsApi(serverHttp(context)), localIndexes(context)),
         people = peopleController(context),
-        library = library.state,
-        server = server.media,
+        serverSha = server::sha256Of,
         features = server.features,
         includePrivate = { settings.privateMedia.show },
         bySha = library::itemsOfShas,
@@ -239,7 +237,7 @@ fun createPhotoFindingsController(context: Context, library: LibraryController):
 }
 
 /** People from the server, or while it can't be reached, from what this phone keeps. */
-private fun peopleApi(context: Context) = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp(context)), localIndexes(context), serverLibrary(context).media)
+private fun peopleApi(context: Context) = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp(context)), localIndexes(context), serverLibrary(context)::forEachFile)
 
 private var serverLibrary: ServerLibrary? = null
 private var serverPreviews: ServerPreviews? = null

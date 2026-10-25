@@ -55,7 +55,7 @@ class ServerLibraryTest {
         }
         val factory = MtlsHttpClientFactory { _, _ -> error("no network in this test") }
         val library = ServerLibrary(JournalSettings(store), ServerHttp(JournalSettings(store), factory, emptyList()), files, "/server".toPath(), testLibraryDatabase(), StandardTestDispatcher(testScheduler), io = StandardTestDispatcher(testScheduler))
-        library.media.first { it.isNotEmpty() }
+        library.loaded.first { it }
 
         assertEquals(imported.sha256, library.sha256Of(device("1", "20261008_210329.HEIC", 714_000)))
         assertEquals("b".repeat(64), library.sha256Of(device("2", "other.jpg", 1).copy(sha256 = "b".repeat(64))))

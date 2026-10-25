@@ -79,7 +79,7 @@ class IosServerFiles internal constructor(
 
     /** [face] as a round avatar [side] pixels across (a crop of its photo's preview); null offline when never fetched. */
     fun face(face: Face, side: Int, onResult: (UIImage?) -> Unit): ObservationHandle = run(onResult) {
-        val photo = library.media.value.firstOrNull { it.sha256 == face.sha256 }
+        val photo = library.file(face.sha256)
         val bytes = previews.face(face.sha256, faceCrop(face, photo?.width ?: 0, photo?.height ?: 0), side) ?: return@run null
         decoding?.let { d -> withContext(Dispatchers.IO) { d.decodeData(bytes.toNSData()) } }
     }
@@ -123,8 +123,6 @@ class IosServerFiles internal constructor(
     fun observeUsage(onChange: (StorageUsage?) -> Unit): ObservationHandle = observe(library.usage, onChange)
 
     fun observeSyncProgress(onChange: (SyncProgress?) -> Unit): ObservationHandle = observe(library.syncProgress, onChange)
-
-    fun observeMedia(onChange: (List<ServerMedia>) -> Unit): ObservationHandle = observe(library.media, onChange)
 
     /** What the server can do ([ServerFeatures.NONE] before it answered once). */
     fun observeFeatures(onChange: (ServerFeatures) -> Unit): ObservationHandle = observe(library.features) { onChange(it ?: ServerFeatures.NONE) }

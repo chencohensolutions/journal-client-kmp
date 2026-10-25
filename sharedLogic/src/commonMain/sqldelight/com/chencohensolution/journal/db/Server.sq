@@ -31,8 +31,26 @@ CREATE TABLE server_hidden (
     sha256 TEXT NOT NULL PRIMARY KEY
 );
 
+-- In the order the rows were written (an INSERT OR REPLACE writes a row anew), as the list in memory held them.
 allMedia:
-SELECT * FROM server_media;
+SELECT * FROM server_media ORDER BY rowid;
+
+-- One file by its sha256.
+mediaWithSha:
+SELECT * FROM server_media WHERE sha256 = ?;
+
+-- The first file written with this name and size, its case aside as library_item matches them: the server's copy of a
+-- phone photo backup hasn't read.
+shaNamedAs:
+SELECT sha256 FROM server_media WHERE lower(file_name) = lower(:name) AND size = :size ORDER BY rowid LIMIT 1;
+
+-- The sound recordings, in the order the rows were written.
+audioMedia:
+SELECT * FROM server_media WHERE is_audio = 1 ORDER BY rowid;
+
+-- The few facts of every file that the phone's search and people read (where and when, and whether private).
+mediaFacts:
+SELECT sha256, taken_at, uploaded_at, latitude, longitude, is_private FROM server_media;
 
 countMedia:
 SELECT count(*) FROM server_media;

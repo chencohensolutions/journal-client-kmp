@@ -67,7 +67,7 @@ class SoundLibraryTest {
         advanceUntilIdle()
         library.sync()
 
-        val byKind = library.media.value.associateBy { it.sha256 }
+        val byKind = library.all().associateBy { it.sha256 }
         assertTrue(byKind.getValue(call).isAudio)
         assertFalse(byKind.getValue(photo).isAudio)
         val recording = byKind.getValue(call).toSoundRecording()
@@ -117,21 +117,21 @@ class SoundLibraryTest {
         advanceUntilIdle()
         library.sync()
         // Only what hides this phone's copy of it: no row.
-        assertEquals(listOf(voice), library.media.value.map { it.sha256 })
+        assertEquals(listOf(voice), library.all().map { it.sha256 })
         assertEquals(listOf(PrivateFile(photo, "x", 10)), library.privateFiles.value)
 
         // Shown: the whole feed is read again and brings its row back.
         library.showPrivate(true)
-        library.media.first { it.size == 2 }
+        library.mediaVersion.first { library.all().size == 2 }
         assertEquals(listOf<String?>(null, null), sinces)
-        assertEquals(setOf(photo, voice), library.media.value.map { it.sha256 }.toSet())
-        assertTrue(library.media.value.first { it.sha256 == photo }.isPrivate)
+        assertEquals(setOf(photo, voice), library.all().map { it.sha256 }.toSet())
+        assertTrue(library.all().first { it.sha256 == photo }.isPrivate)
         assertEquals(emptyList(), library.privateFiles.value)
 
         // Hidden again: the row goes at once, without asking the server.
         library.showPrivate(false)
-        library.media.first { it.size == 1 }
-        assertEquals(listOf(voice), library.media.value.map { it.sha256 })
+        library.mediaVersion.first { library.all().size == 1 }
+        assertEquals(listOf(voice), library.all().map { it.sha256 })
         assertEquals(listOf(PrivateFile(photo, "x", 10)), library.privateFiles.value)
         assertEquals(2, sinces.size)
     }
@@ -156,7 +156,7 @@ class SoundLibraryTest {
 
         val again = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), database, dispatcher, io = dispatcher)
         advanceUntilIdle()
-        assertEquals(listOf(photo), again.media.value.map { it.sha256 })
+        assertEquals(listOf(photo), again.all().map { it.sha256 })
         again.sync()
         assertEquals(listOf(null, "c1"), sinces)
     }

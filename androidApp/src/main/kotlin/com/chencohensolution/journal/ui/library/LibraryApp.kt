@@ -98,7 +98,7 @@ fun LibraryApp(
     CompositionLocalProvider(
         LocalServerPreviews provides server.previews,
         LocalPhoneStorage provides server.storage,
-        LocalServerMedia provides server.library.media,
+        LocalServerLibrary provides server.library,
         LocalAudioPlayer provides audioPlayer,
         LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {

@@ -4,15 +4,11 @@ import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.graphql.MediaFindingsQuery
 import com.chencohensolution.journal.graphql.SimilarMediaQuery
-import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.search.ShaLookup
-import com.chencohensolution.journal.search.libraryResolver
 import com.chencohensolution.journal.search.resolverOf
-import com.chencohensolution.journal.search.serverSha
 import com.chencohensolution.journal.server.ServerFeatures
 import com.chencohensolution.journal.server.ServerHttp
-import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.server.firstServerError
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -85,13 +81,13 @@ internal class ApolloFindingsApi(private val http: ServerHttp) : FindingsApi {
 class PhotoFindingsController internal constructor(
     private val api: FindingsApi,
     private val people: PeopleController,
-    private val library: StateFlow<LibraryState>,
-    private val server: StateFlow<List<ServerMedia>>,
+    /** The sha256 the server knows a photo by (ServerLibrary.sha256Of). */
+    private val serverSha: suspend (MediaItem) -> String?,
     private val features: StateFlow<ServerFeatures?>,
     private val includePrivate: () -> Boolean,
+    /** Similar photos as the library has them (LibraryController.itemsOfShas). */
+    private val bySha: ShaLookup,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
-    /** Similar photos read from the library database; null (tests): looked up in [library]'s whole list. */
-    private val bySha: ShaLookup? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var job: Job? = null
@@ -123,15 +119,12 @@ class PhotoFindingsController internal constructor(
         shown = item
         job?.cancel()
         _state.value = PhotoFindings(itemId = item.id)
-        val sha = serverSha(item, server.value) ?: return
         val on = features.value ?: ServerFeatures.NONE
         if (!on.faces && !on.textInPhotos && !on.similar) return
-        cache[sha]?.let { answer ->
-            if (bySha == null) return present(item.id, answer, libraryResolver(library.value, server.value))
-            job = scope.launch { present(item.id, answer, resolver(answer)) }
-            return
-        }
         job = scope.launch {
+            // The server's file is looked up in the database (step 6e), so this waits for it.
+            val sha = serverSha(item) ?: return@launch
+            cache[sha]?.let { answer -> return@launch present(item.id, answer, resolver(answer)) }
             try {
                 val media = async { if (on.faces || on.textInPhotos) api.media(sha) else null }
                 val similar = async { if (on.similar) api.similar(sha, SIMILAR, includePrivate()) else emptyList() }
@@ -149,9 +142,8 @@ class PhotoFindingsController internal constructor(
         }
     }
 
-    /** The library's items of [answer]'s similar photos: read from the database with [bySha], else from the whole list. */
-    private suspend fun resolver(answer: FindingsAnswer): (List<String>) -> List<MediaItem> =
-        bySha?.let { lookup -> resolverOf(lookup(answer.similar)) } ?: libraryResolver(library.value, server.value)
+    /** The library's items of [answer]'s similar photos, read from the database with [bySha]. */
+    private suspend fun resolver(answer: FindingsAnswer): (List<String>) -> List<MediaItem> = resolverOf(bySha(answer.similar))
 
     private fun present(itemId: String, answer: FindingsAnswer, resolve: (List<String>) -> List<MediaItem>) {
         val known = people.currentState.list

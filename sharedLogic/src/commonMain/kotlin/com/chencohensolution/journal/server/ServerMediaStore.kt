@@ -2,6 +2,20 @@ package com.chencohensolution.journal.server
 
 import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.db.Server_media
+import app.cash.sqldelight.db.QueryResult
+
+/**
+ * What the phone's search and its people read of one server file ([ServerMediaStore.forEachFile]): when it was taken
+ * (RFC 3339, else when it was uploaded), where, and whether it is private.
+ */
+internal class FileFacts(
+    val sha256: String,
+    val takenAt: String?,
+    val uploadedAt: String,
+    val latitude: Double?,
+    val longitude: Double?,
+    val isPrivate: Boolean,
+)
 
 /**
  * A file marked private, while "Show private media" is off: only what hides this phone's own copy of it (its sha256,
@@ -35,6 +49,29 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
     private val state get() = database.stateQueries
 
     fun media(): List<ServerMedia> = queries.allMedia().executeAsList().map { it.toServerMedia() }
+
+    /** The file [sha256]; null when the list has none. */
+    fun file(sha256: String): ServerMedia? = queries.mediaWithSha(sha256).executeAsOneOrNull()?.toServerMedia()
+
+    /** The first file written with [fileName] and [size], its case aside; null when there is none. */
+    fun shaNamedAs(fileName: String, size: Long): String? = queries.shaNamedAs(name = fileName, size = size).executeAsOneOrNull()
+
+    /** The sound recordings, in the order [media] lists them. */
+    fun sounds(): List<ServerMedia> = queries.audioMedia().executeAsList().map { it.toServerMedia() }
+
+    /**
+     * Gives [each] the few facts of every file, one row at a time from a single query, so the whole list is never in
+     * memory at once (docs/plans/library-on-disk.md, step 6e).
+     */
+    fun forEachFile(each: (FileFacts) -> Unit) {
+        val query = queries.mediaFacts { sha256, takenAt, uploadedAt, latitude, longitude, isPrivate ->
+            FileFacts(sha256, takenAt, uploadedAt, latitude, longitude, isPrivate)
+        }
+        query.execute { cursor ->
+            while (cursor.next().value) each(query.mapper(cursor))
+            QueryResult.Unit
+        }
+    }
 
     fun hidden(): Set<String> = queries.allHidden().executeAsList().toSet()
 

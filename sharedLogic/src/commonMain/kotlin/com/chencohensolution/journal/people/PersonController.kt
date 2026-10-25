@@ -77,7 +77,8 @@ class PersonController internal constructor(
     private val api: PeopleApi,
     private val people: PeopleController,
     private val library: StateFlow<LibraryState>,
-    private val server: StateFlow<List<ServerMedia>>,
+    /** The server's list, for the lookup in [library]'s whole list without [bySha] (tests); null with it. */
+    private val server: StateFlow<List<ServerMedia>>?,
     private val includePrivate: () -> Boolean,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     /** Their photos read from the library database; null (tests): looked up in [library]'s whole list. */
@@ -158,7 +159,7 @@ class PersonController internal constructor(
      * was read before shows at once ("Not Mom" leaves the page at once), then the items are read again.
      */
     private fun show() {
-        val lookup = bySha ?: return present(libraryResolver(library.value, server.value))
+        val lookup = bySha ?: return present(libraryResolver(library.value, server?.value.orEmpty()))
         if (hits.all { it.sha256 in lookedUp }) present(resolverOf(found))
         val sha256s = hits.map { it.sha256 }
         showJob?.cancel()

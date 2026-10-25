@@ -165,7 +165,7 @@ class LibraryController internal constructor(
                 }
             }
         }
-        server?.let { serverLibrary -> scope.launch { serverLibrary.media.collect { publish() } } }
+        server?.let { serverLibrary -> scope.launch { serverLibrary.mediaVersion.collect { serverChanged(serverLibrary) } } }
         server?.let { serverLibrary -> scope.launch { serverLibrary.hidden.collect { publish() } } }
         originals?.let { kept -> scope.launch { kept.load(); kept.kept.collect { publish() } } }
         // The server's list keeps the private files only while they are shown (ServerLibrary.showPrivate).
@@ -208,7 +208,7 @@ class LibraryController internal constructor(
         if (table != null) return publishFromTable(table)
         val readItems = readItems
         val backupState = backup?.value
-        val serverList = server?.media?.value
+        val serverList = serverList
         val hiddenOnServer = server?.hidden?.value.orEmpty()
         val privateFiles = server?.privateFiles?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
@@ -252,6 +252,30 @@ class LibraryController internal constructor(
         showStatuses()
     }
 
+    /**
+     * The server's list as last read, whole: only without [table] (tests), where it is merged in memory. With a table it
+     * stays in the database (docs/plans/library-on-disk.md, step 6e), and only its sound recordings are read.
+     */
+    private var serverList: List<ServerMedia>? = if (server != null) emptyList() else null
+
+    /** A new object each time the server's list changed, for [publishFromTable] to tell by identity. */
+    private var serverSeen: Any? = null
+
+    /**
+     * The server's list in the database changed ([ServerLibrary.mediaVersion]): without a table it is read whole for the
+     * merge, with one only its sound recordings ([LibraryState.sounds]) are read, and the rows are made again.
+     */
+    private suspend fun serverChanged(serverLibrary: ServerLibrary) {
+        if (table == null) {
+            serverList = serverLibrary.all()
+        } else {
+            val private = privateMedia?.value ?: savedPrivateMedia
+            sounds = serverLibrary.sounds().filter { !private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
+        }
+        serverSeen = Any()
+        publish()
+    }
+
     // MARK: The library from the database
 
     /** Database work: off the main thread; tests pass their own dispatcher, so waiting for it is deterministic. */
@@ -264,7 +288,6 @@ class LibraryController internal constructor(
     /** What the rows were last made from, by identity (see [publishFromTable]). */
     private var tableFrom: List<Any?>? = null
     private var shownFrom: List<Any?>? = null
-    private var soundsFrom: Any? = null
     private var entriesSeen: Map<String, LedgerEntry> = emptyMap()
 
     private var refreshJob: Job? = null
@@ -282,13 +305,8 @@ class LibraryController internal constructor(
      */
     private fun publishFromTable(table: LibraryTable) {
         val backupState = backup?.value
-        val serverList = server?.media?.value
         val private = privateMedia?.value ?: savedPrivateMedia
-        if (serverList !== soundsFrom) {
-            soundsFrom = serverList
-            sounds = serverList.orEmpty().filter { it.isAudio && !private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
-        }
-        val inputs = listOf(readItems, serverList, server?.hidden?.value, server?.privateFiles?.value, private)
+        val inputs = listOf(readItems, serverSeen, server?.hidden?.value, server?.privateFiles?.value, private)
         if (tableFrom == null || tableFrom!!.indices.any { tableFrom!![it] !== inputs[it] }) {
             tableFrom = inputs
             refreshTable(table)
@@ -414,7 +432,7 @@ class LibraryController internal constructor(
      */
     internal suspend fun itemsOfShas(sha256s: Collection<String>): Map<String, MediaItem> {
         if (sha256s.isEmpty()) return emptyMap()
-        val table = table ?: return com.chencohensolution.journal.search.libraryResolver(_state.value, server?.media?.value.orEmpty()).let { resolve ->
+        val table = table ?: return com.chencohensolution.journal.search.libraryResolver(_state.value, serverList.orEmpty()).let { resolve ->
             sha256s.distinct().mapNotNull { sha -> resolve(listOf(sha)).firstOrNull()?.let { sha to it } }.toMap()
         }
         return withContext(io) { table.bySha(sha256s).mapValues { shownRow(it.value) } }
@@ -524,16 +542,17 @@ class LibraryController internal constructor(
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
         // transfer rate and byte counts of a run don't rebuild the library (and everything shown from it). Several files
         // upload at once; each one's ring counts.
+        // The sound recordings are read apart from the rows (step 6e), so a new list of them counts too.
         val running = (backupState?.activity as? BackupActivity.Running)?.progress
         val statusKey = listOf(
-            merged, backupState?.entries, backupState?.queued, backupState?.countedSources,
+            merged, backupState?.entries, backupState?.queued, sounds, backupState?.countedSources,
             running?.currentId, running?.let { (it.currentFraction * STATUS_STEPS).toInt() },
             running?.uploading?.mapValues { (it.value * STATUS_STEPS).toInt() },
         )
         if (publishedKey != null && publishedKey!!.indices.all { i ->
                 val a = publishedKey!![i]
                 val b = statusKey[i]
-                if (i <= 2) a === b else a == b
+                if (i <= 3) a === b else a == b
             }
         ) return
         publishedKey = statusKey

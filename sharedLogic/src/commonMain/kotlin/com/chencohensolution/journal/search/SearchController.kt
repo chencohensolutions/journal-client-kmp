@@ -240,7 +240,10 @@ internal class ApolloSearchWarmUp(private val http: ServerHttp) : SearchWarmUp {
 class SearchController internal constructor(
     private val library: StateFlow<LibraryState>,
     private val api: SearchApi,
-    /** The server's files, to find a device photo backup hasn't read yet by its file name and size. */
+    /**
+     * The server's files, to find a device photo backup hasn't read yet by its file name and size, in [library]'s whole
+     * list without [bySha] (tests); the app passes none (with [bySha], the database finds them).
+     */
     private val server: StateFlow<List<ServerMedia>>? = null,
     /** The stories' places (where photos were taken and the towns' names), for the town chips. */
     private val stories: StateFlow<StoriesState>? = null,

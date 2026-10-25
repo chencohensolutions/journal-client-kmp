@@ -468,6 +468,34 @@ Confirmed by the owner on Oct 25, 2026:
          `ExploreMapView.swift` (6c's Swift side).
        `StoriesState.itemsById` is read by the viewer, similar photos, page lists, Crop and Moments' menu, all of which
        ask for what they show (`want`) since 6a; it holds the whole library only without the pager.
+   - **6e built Oct 26, 2026: the server's list stays in the database.** No table changed, so no migration; the new
+     queries are in `Server.sq`, read only by `ServerMediaStore`.
+     - `ServerLibrary.media` (the whole list in memory) is gone. `mediaVersion` goes up each time the list in the
+       database changed (read at start, a sync, "Show private media"), and readers read what they need:
+       - `sha256Of(item)` (suspend): the first file written with that name and size, by the name index, as `serverSha`
+         found it in the list (rows are read in the order they were written, `ORDER BY rowid`). Names are compared
+         with SQLite's `lower()`, as `library_item` matches them.
+       - `file(sha256)`: a face avatar's photo size (Android `LocalServerLibrary`, iOS `IosServerFiles.face`).
+       - `sounds()`: the sound recordings for `LibraryState.sounds`, read when the version changes. A new list of
+         them now publishes the state even when no row changed (it could be left unshown before).
+       - `forEachFile`: a few facts of every file, one row at a time from one query, for search and people on the
+         phone (`shownFiles`): only the files kept, with their time, are in memory, and only while one runs.
+       - `all()`: the whole list, only for the library merged in memory (tests) and tests.
+     - The viewer's findings (`PhotoFindingsController`) look the photo's sha256 up with `sha256Of` and its similar
+       photos with `itemsOfShas`; search and a person's page get no server list in the app (they had used it only
+       without the database).
+     - Tests (`ServerListReadsTest`): over 30 generated lists changed in 5 rounds (files written again, deleted,
+       private ones made keys and back, shared names and sizes, unreadable times), `sha256Of`, `file`, `sounds` and
+       what search (private or not, years, an area) and people keep equal the old code over the whole list; a
+       controller with the database shows the same sound recordings as the merge in memory, through "Show private
+       media" off and on, over 12. Reading names in reverse order fails the first. The tests of `ServerLibrary`
+       read `all()` where they read `media`.
+     - On the emulator (made-up library of 50,000, debug build, a placeholder identity that matches no key): the
+       Offline pill, only key failures in the log, no crash on Moments, Explore, search (the server's key error, no
+       index on the phone) and the viewer; Dalvik heap about 93 MB. A person's page couldn't be opened: there are no
+       people without the server or the phone's index.
+     - Left for 6f: `LibraryState.days` and the newest-rows read; the library merged in memory still reads `all()`
+       (tests only).
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

@@ -167,10 +167,10 @@ object IosJournal {
 
     private fun localSearchApi(): LocalSearchApi {
         val settings = JournalSettings(UserDefaultsStore())
-        return LocalSearchApi(localIndexes(), serverLibrary().media) { settings.privateMedia.show }
+        return LocalSearchApi(localIndexes(), serverLibrary()::forEachFile) { settings.privateMedia.show }
     }
 
-    private fun peopleApi() = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp()), localIndexes(), serverLibrary().media)
+    private fun peopleApi() = PhoneFallbackPeopleApi(ApolloPeopleApi(serverHttp()), localIndexes(), serverLibrary()::forEachFile)
 
     /**
      * Text search on the server; its answers are shown as [library] has those photos ([server] for ones not read yet),
@@ -185,7 +185,6 @@ object IosJournal {
         SearchController(
             library = library.state,
             api = PhoneFirstSearchApi(localSearchApi(), ApolloSearchApi(JournalSettings(UserDefaultsStore()), serverHttp())),
-            server = server.media,
             stories = stories.state,
             pageSize = { settings.currentState.searchPageSize },
             warmUp = ApolloSearchWarmUp(serverHttp()),
@@ -210,7 +209,7 @@ object IosJournal {
             api = peopleApi(),
             people = peopleController(),
             library = library.state,
-            server = serverLibrary().media,
+            server = null,
             includePrivate = { settings.privateMedia.show },
             bySha = library::itemsOfShas,
         )
@@ -223,8 +222,7 @@ object IosJournal {
         return PhotoFindingsController(
             api = PhoneFallbackFindingsApi(ApolloFindingsApi(serverHttp()), localIndexes()),
             people = peopleController(),
-            library = library.state,
-            server = server.media,
+            serverSha = server::sha256Of,
             features = server.features,
             includePrivate = { settings.privateMedia.show },
             bySha = library::itemsOfShas,
