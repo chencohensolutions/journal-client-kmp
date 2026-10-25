@@ -17,6 +17,7 @@ import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.FileFactsCache
 import com.chencohensolution.journal.library.IosMediaLibrary
+import com.chencohensolution.journal.library.StoredMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.network.IosMtlsHttpClientFactory
 import com.chencohensolution.journal.settings.JournalSettings
@@ -110,7 +111,8 @@ object IosJournal {
         privateMedia: StateFlow<PrivateMedia>?,
     ): LibraryController =
         LibraryController(
-            library = mediaLibrary,
+            // Kept in the library database; PhotoKit is read whole each time until its change tokens are used.
+            library = StoredMediaLibrary(mediaLibrary, libraryDatabase),
             settings = JournalSettings(UserDefaultsStore()),
             backup = backup?.state,
             server = server,

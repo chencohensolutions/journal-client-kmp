@@ -174,6 +174,21 @@ Confirmed by the owner on Oct 25, 2026:
        job called `publish()` while it still counted as active.
 2. **Device items.** `device_item` with incremental MediaStore / PhotoKit sync; `MediaLibrary.loadItems()` callers
    switch to queries one by one.
+   - **Built Oct 25, 2026.**
+     - `Device.sq` (database version 2, migration `1.sqm`): `device_item`, and `device_left_out` with only the ids
+       of what the user hides.
+     - `StoredMediaLibrary` wraps the platform's library. `AndroidMediaLibrary.changesSince` reads only the rows
+       whose `GENERATION_MODIFIED` is past the kept generation, per volume, plus an ids-only pass for deletions.
+       It reads whole when MediaStore's version, the time zone, the access or `READER_VERSION` changed, and
+       always with access to selected photos only.
+     - What the user hides leaves the table (`hiddenOnPhone`, `LibraryController` calls `leaveOut` once the
+       server's list is loaded) and is read again by id once shown.
+     - On the owner's phone: the first start read 10,678 items whole in 279 ms. Later reads found "0 changed" in
+       8–22 ms (before: every start read all of MediaStore).
+     - iOS reads PhotoKit whole each time and stores it the same way; change tokens are on docs/ios-todo.md.
+     - Not changed yet: backup and Free up space still read MediaStore themselves (phase 3).
+     - Seen once, right after an install: the phone's photos dropped to none for a while, as if photo access
+       had gone. A `Photo access:` line under `JournalMeasure` now records each change, to catch it next time.
 3. **Ledger.** `UploadLedger` on the `ledger` table; `BackupEngine` takes its queue from a query; `BackupState` no
    longer carries `entries` (the status is a join).
 4. **The merged table.**

@@ -213,6 +213,11 @@ class ServerLibrary internal constructor(
     /** The private files left out while "Show private media" is off: the library hides this phone's copies of them. */
     val privateFiles: StateFlow<List<PrivateFile>> = _privateFiles.asStateFlow()
 
+    private val _loaded = MutableStateFlow(false)
+
+    /** True once what the database holds is in [media], [hidden] and [privateFiles]. */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     private val _media = MutableStateFlow(madeUp)
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
 
@@ -489,6 +494,7 @@ class ServerLibrary internal constructor(
             holdsPrivate = store.holdsPrivate() ?: showPrivateAtStart().also { store.holdPrivate(it) }
         }
         publish(media = true, hidden = true)
+        _loaded.value = true
     }
 
     private companion object {

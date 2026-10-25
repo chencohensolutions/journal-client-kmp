@@ -58,5 +58,8 @@ Planned, not built on either platform yet:
   framework is static, so if the app fails to link with missing `sqlite3_*` symbols, add `-lsqlite3` to the app
   target's Other Linker Flags. Then check that `server/media.json` is read in once and deleted. See
   [plans/library-on-disk.md](plans/library-on-disk.md).
+  Phase 2 adds `StoredMediaLibrary` around `IosMediaLibrary`: PhotoKit is read whole on every load and stored in
+  `device_item`. To read only what changed, make `IosMediaLibrary` a `ChangingLibrary`, with
+  `PHPhotoLibrary.fetchPersistentChanges(since:)` and the token kept as the mark.
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

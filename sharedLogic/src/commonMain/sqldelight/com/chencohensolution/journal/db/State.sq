@@ -1,0 +1,14 @@
+-- Small values of the syncs: the server's change feed cursor, how far the phone's library was read.
+CREATE TABLE sync_state (
+    name TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+stateValue:
+SELECT value FROM sync_state WHERE name = ?;
+
+setState:
+INSERT OR REPLACE INTO sync_state VALUES (?, ?);
+
+clearState:
+DELETE FROM sync_state WHERE name = ?;

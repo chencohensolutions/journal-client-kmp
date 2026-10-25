@@ -18,6 +18,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -152,6 +155,24 @@ class LibraryController internal constructor(
             }
         }
         scores?.let { flow -> scope.launch { flow.collect { publish() } } }
+        // The phone's library in the database keeps out what the user hides (StoredMediaLibrary.leaveOut).
+        (library as? LeavesOut)?.let { stored ->
+            scope.launch {
+                // Not before the server's list is read from the database: what it hides isn't known until then.
+                server?.loaded?.first { it }
+                combine(
+                    server?.hidden ?: MutableStateFlow(emptySet()),
+                    server?.privateFiles ?: MutableStateFlow(emptyList()),
+                    privateMedia ?: MutableStateFlow(savedPrivateMedia),
+                ) { hidden, privateFiles, private -> Triple(hidden, privateFiles, private) }
+                    .distinctUntilChanged()
+                    .collect { (hidden, privateFiles, private) ->
+                        stored.leaveOut(hiddenOnPhone(backup?.value?.entries.orEmpty(), hidden, privateFiles, private))
+                        val access = currentAccess()
+                        if (readItems.isNotEmpty() && (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED)) load()
+                    }
+            }
+        }
     }
 
     /**
@@ -264,6 +285,8 @@ class LibraryController internal constructor(
     /** Re-checks the permission and re-reads the library; call when the app comes to the foreground. */
     fun refresh() {
         val access = currentAccess()
+        // Measuring: the phone's photos once dropped to none for a while right after an install (Oct 25, 2026).
+        if (access != _state.value.access) Measure.log?.invoke("Photo access: ${_state.value.access} to $access")
         _state.update { it.copy(access = access) }
         server?.refresh()
         if (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED) {

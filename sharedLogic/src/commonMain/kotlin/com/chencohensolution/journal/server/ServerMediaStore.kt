@@ -32,6 +32,7 @@ internal class Applied(val mediaChanged: Boolean, val hiddenChanged: Boolean, va
  */
 internal class ServerMediaStore(private val database: LibraryDatabase) {
     private val queries get() = database.serverQueries
+    private val state get() = database.stateQueries
 
     fun media(): List<ServerMedia> = queries.allMedia().executeAsList().map { it.toServerMedia() }
 
@@ -39,10 +40,10 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
 
     fun privateFiles(): List<PrivateFile> = queries.allPrivate().executeAsList().map { PrivateFile(it.sha256, it.file_name, it.size) }
 
-    fun cursor(): String? = queries.stateValue(CURSOR).executeAsOneOrNull()
+    fun cursor(): String? = state.stateValue(CURSOR).executeAsOneOrNull()
 
     /** Whether the rows hold the private files ("Show private media" was on when they were written); null before [holdPrivate]. */
-    fun holdsPrivate(): Boolean? = queries.stateValue(HOLDS_PRIVATE).executeAsOneOrNull()?.let { it == "true" }
+    fun holdsPrivate(): Boolean? = state.stateValue(HOLDS_PRIVATE).executeAsOneOrNull()?.let { it == "true" }
 
     /**
      * Writes one page and its cursor. A private file is kept as a row when [showPrivate], else as its key only; a file
@@ -82,12 +83,12 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
     fun holdPrivate(show: Boolean) = database.transaction {
         if (show) {
             queries.clearPrivate()
-            queries.clearState(CURSOR)
+            state.clearState(CURSOR)
         } else {
             queries.privateMediaToKeys()
             queries.deletePrivateMedia()
         }
-        queries.setState(HOLDS_PRIVATE, show.toString())
+        state.setState(HOLDS_PRIVATE, show.toString())
     }
 
     /** Replaces everything with [media], [hidden] and [cursor]: the import of `server/media.json`. */
@@ -100,11 +101,11 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         }
         hidden.forEach { queries.addHidden(it) }
         setCursor(cursor)
-        queries.setState(HOLDS_PRIVATE, showPrivate.toString())
+        state.setState(HOLDS_PRIVATE, showPrivate.toString())
     }
 
     private fun setCursor(cursor: String?) {
-        if (cursor == null) queries.clearState(CURSOR) else queries.setState(CURSOR, cursor)
+        if (cursor == null) state.clearState(CURSOR) else state.setState(CURSOR, cursor)
     }
 
     private companion object {

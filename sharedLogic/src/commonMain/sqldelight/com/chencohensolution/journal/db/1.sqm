@@ -1,0 +1,24 @@
+-- Version 1 to 2 (Oct 25, 2026, plan B phase 2): the phone's own library.
+CREATE TABLE device_item (
+    id TEXT NOT NULL PRIMARY KEY,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT
+);
+
+CREATE INDEX device_item_taken ON device_item(epoch_day, taken_millis);
+
+CREATE TABLE device_left_out (
+    id TEXT NOT NULL PRIMARY KEY
+);

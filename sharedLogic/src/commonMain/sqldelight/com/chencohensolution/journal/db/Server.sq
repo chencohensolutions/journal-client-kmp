@@ -31,12 +31,6 @@ CREATE TABLE server_hidden (
     sha256 TEXT NOT NULL PRIMARY KEY
 );
 
--- Small values of the sync: the change feed's cursor.
-CREATE TABLE sync_state (
-    name TEXT NOT NULL PRIMARY KEY,
-    value TEXT NOT NULL
-);
-
 allMedia:
 SELECT * FROM server_media;
 
@@ -57,15 +51,6 @@ INSERT OR IGNORE INTO server_hidden VALUES (?);
 
 removeHidden:
 DELETE FROM server_hidden WHERE sha256 = ?;
-
-stateValue:
-SELECT value FROM sync_state WHERE name = ?;
-
-setState:
-INSERT OR REPLACE INTO sync_state VALUES (?, ?);
-
-clearState:
-DELETE FROM sync_state WHERE name = ?;
 
 -- Files marked private while "Show private media" is off: only what hides this phone's own copy of each (its sha256,
 -- else its name and size, as the library matches them). Nothing else of them is kept until private media is shown.

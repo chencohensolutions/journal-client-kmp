@@ -130,8 +130,11 @@ internal class MadeUpLibrary(val count: Int, private val endMillis: Long = END_M
 }
 
 /** The real library with a [madeUp] one added: what [LibraryController] reads while the made-up library is on. */
-internal class WithMadeUp(private val real: MediaLibrary, private val madeUp: MadeUpLibrary) : MediaLibrary {
+internal class WithMadeUp(private val real: MediaLibrary, private val madeUp: MadeUpLibrary) : MediaLibrary, LeavesOut {
     override fun access(): PhotoAccess = real.access()
     override suspend fun loadItems(): List<MediaItem> = real.loadItems() + madeUp.deviceItems
     override fun watch(onChange: () -> Unit): () -> Unit = real.watch(onChange)
+    override suspend fun leaveOut(hides: (MediaItem) -> Boolean) {
+        (real as? LeavesOut)?.leaveOut(hides)
+    }
 }

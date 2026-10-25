@@ -23,6 +23,7 @@ import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.MadeUpLibrary
 import com.chencohensolution.journal.library.Measure
+import com.chencohensolution.journal.library.StoredMediaLibrary
 import com.chencohensolution.journal.library.WithMadeUp
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.places.AndroidPlaceReader
@@ -125,7 +126,10 @@ fun createLibraryController(
     privateMedia: StateFlow<PrivateMedia>? = null,
 ): LibraryController =
     LibraryController(
-        library = madeUpLibrary(context)?.let { WithMadeUp(AndroidMediaLibrary(context), it) } ?: AndroidMediaLibrary(context),
+        // Made-up photos (debug builds) go on top of the database, never into it.
+        library = StoredMediaLibrary(AndroidMediaLibrary(context), libraryDatabase(context)).let { stored ->
+            madeUpLibrary(context)?.let { WithMadeUp(stored, it) } ?: stored
+        },
         settings = JournalSettings(SharedPreferencesStore(context)),
         backup = backup?.state,
         server = server,

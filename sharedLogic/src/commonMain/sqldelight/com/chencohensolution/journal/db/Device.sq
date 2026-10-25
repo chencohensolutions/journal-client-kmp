@@ -1,0 +1,55 @@
+-- The photos and videos of this phone's library (MediaStore, PhotoKit), as StoredMediaLibrary last read them: one row
+-- each, but for those left out (device_left_out). A cache, read again from the platform when lost.
+CREATE TABLE device_item (
+    id TEXT NOT NULL PRIMARY KEY,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    -- The day it was taken in the phone's time zone, as days since 1970-01-01.
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT
+);
+
+CREATE INDEX device_item_taken ON device_item(epoch_day, taken_millis);
+
+-- Items of the library kept out of device_item because the user hides them (marked private while "Show private
+-- media" is off, or hidden on the server): their ids only, to read them again once shown.
+CREATE TABLE device_left_out (
+    id TEXT NOT NULL PRIMARY KEY
+);
+
+allDeviceItems:
+SELECT * FROM device_item;
+
+deviceIds:
+SELECT id FROM device_item;
+
+upsertDeviceItem:
+INSERT OR REPLACE INTO device_item VALUES ?;
+
+deleteDeviceItem:
+DELETE FROM device_item WHERE id = ?;
+
+clearDeviceItems:
+DELETE FROM device_item;
+
+leftOutIds:
+SELECT id FROM device_left_out;
+
+addLeftOut:
+INSERT OR IGNORE INTO device_left_out VALUES (?);
+
+removeLeftOut:
+DELETE FROM device_left_out WHERE id = ?;
+
+clearLeftOut:
+DELETE FROM device_left_out;
