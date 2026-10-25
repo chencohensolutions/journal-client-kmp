@@ -568,6 +568,8 @@ internal fun List<FeedRow>.sectionKeys(): List<String?> {
             is FeedRow.BandTop -> section = row.section.key
             is FeedRow.BandPhotos -> section = row.section.key
             is FeedRow.BandEnd -> section = row.section.key
+            is FeedRow.RecordingBar -> section = row.section.key
+            is FeedRow.Sound -> section = row.section.key
             else -> Unit
         }
         section

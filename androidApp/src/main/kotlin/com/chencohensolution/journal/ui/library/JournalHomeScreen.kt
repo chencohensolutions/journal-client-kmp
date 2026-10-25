@@ -132,6 +132,8 @@ internal class HomeActions(
     val openRevealed: (FeedSection, MediaSource, MediaItem) -> Unit = { _, _, _ -> },
     /** Search, from the 🔍 beside the tabs. */
     val search: SearchActions = SearchActions(),
+    /** A sound recording's page, by sha256: from its bar in Moments, a call or a voice message. */
+    val openRecording: (sha256: String) -> Unit = {},
 )
 
 /**
@@ -278,6 +280,30 @@ internal fun JournalHomeScreen(
             playingId.value = inView
         }
     }
+    // Sound recordings play through the app's player (none in previews); its position is read only by what shows it.
+    val player = LocalAudioPlayer.current
+    val playback = player?.playback?.collectAsState()
+    val audio = remember(player) {
+        FeedAudio(
+            playback = { playback?.value },
+            play = { player?.play(it) },
+            pause = { player?.pause() },
+            seek = { recording, millis -> player?.seek(recording, millis) },
+            open = { currentActions.openRecording(it.sha256) },
+        )
+    }
+    // The bar of the recording whose photos are at the top, pinned under the title once its own bar has scrolled away.
+    val pinned by remember(feedRows) {
+        derivedStateOf {
+            val info = list.layoutInfo
+            val first = info.totalItemsCount - feedRows.size
+            val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 } ?: return@derivedStateOf null
+            val recording = (feedRows.getOrNull(top.index - first) as? FeedRow.Photo)?.recording ?: return@derivedStateOf null
+            val bar = feedRows.indexOfLast { it is FeedRow.RecordingBar && it.moment.recording?.sha256 == recording.sha256 }
+            val barItem = info.visibleItemsInfo.firstOrNull { it.index == first + bar }
+            (feedRows.getOrNull(bar) as? FeedRow.RecordingBar)?.takeIf { barItem == null || barItem.offset < 0 }?.moment
+        }
+    }
     val feedActions = remember {
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
@@ -354,7 +380,7 @@ internal fun JournalHomeScreen(
                     item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
                 }
                 // Last, so landing from the viewer can count them from the end.
-                feedItems(rows, feedActions, landing, video, stories.notes, selection)
+                feedItems(rows, feedActions, landing, video, stories.notes, selection, audio)
             }
         }
 
@@ -369,6 +395,10 @@ internal fun JournalHomeScreen(
         } else TopBar(health, actions, Modifier.align(Alignment.TopCenter)) {
             if (moments) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
             if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
+        }
+
+        pinned?.takeIf { moments && !searching }?.let { moment ->
+            RecordingBar(moment, audio, Modifier.align(Alignment.TopCenter).padding(top = insets.calculateTopPadding() + 118.dp))
         }
 
         if (timelineOpen) TimelineScrim { timelineOpen = false }

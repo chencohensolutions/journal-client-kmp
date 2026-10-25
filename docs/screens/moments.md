@@ -65,6 +65,29 @@ too, until it is turned off or the app is closed. A muted video doesn't take aud
 keeps playing. With sound it takes focus while it plays, and mutes itself when another app takes it back. Built on
 the platform `MediaPlayer` and a `TextureView` ([FeedVideo.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedVideo.kt)).
 
+**Sound recordings** (Android, Oct 25, 2026; iOS not built yet, see [ios-todo.md](../ios-todo.md)): the server's
+recordings, phone calls and WhatsApp voice messages, once the user shows them in
+[Hidden collections](settings.md) (all three are hidden until then). They are never photos: not counted, not in All
+photos, Explore, the Storyline or search; Moments and their [page](viewer.md#a-sound-recordings-page) only.
+- **A recording** is a slim bar where its moment starts, in place of the moment's label (chosen in the UI lab as
+  "header strip"): play, "Recording · Jaffa Port" (the place of the photos taken during it), its times "18:10 –
+  19:55 · 1:45:12" (while it plays: "34:12 of 1:45:12 · at 18:44"), and a line for how far it has played. Under it,
+  the camera photos taken while it ran, each with "+32:10" (how far into the recording it was taken). While those
+  photos scroll by, the bar stays **pinned under the title** (an overlay in `JournalHomeScreen`, since the list's top
+  padding sits under the title bar). Tapping the bar opens the recording's page.
+- **Long press** on a photo taken during a recording plays the recording from when the photo was taken (instead of
+  the photo's menu).
+- **Calls** one after another (less than 2 hours apart) are one card, "📞 4 calls · 09:10 – 11:40", folded until
+  tapped; then each call with who (the contact, or the number left to right), when, how long and play. A single call
+  shows open.
+- **Voice messages** are a bubble with play, bars and length; they show while WhatsApp does.
+- **Playing:** nothing plays until play is tapped. One recording at a time, through the app's player
+  ([AudioPlayer.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioPlayer.kt), Media3
+  streaming `/media/{sha256}` with Range). It takes audio focus, so a feed video playing aloud falls silent. It
+  pauses when the app leaves the screen: no background playing and no lock-screen controls (the owner's choice).
+  Calls and voice messages up to 10 minutes are kept in the video cache once played; longer recordings aren't, so one
+  can't push out every kept preview.
+
 Tapping a photo opens the [viewer](viewer.md) on its row's photos, in the order shown. When the viewer closes, the
 feed scrolls to that photo, and a near-duplicate set turns to it.
 
@@ -120,6 +143,11 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 
 ## Code
 
+- Sound recordings: [MomentsAudioViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentsAudioViews.kt)
+  (the bar), [AudioParts.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioParts.kt)
+  (calls, voice messages, play button, bars), [AudioPlayer.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioPlayer.kt);
+  shared `SoundRecording` and `LibraryState.sounds` (kept apart from the photos), tested in `SoundFeedTest` and
+  `SoundLibraryTest`.
 - Android: [MomentsFeedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentsFeedViews.kt),
   [FeedVideo.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedVideo.kt), the
   screen's state and menus in [JournalHomeScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/JournalHomeScreen.kt).
@@ -161,6 +189,11 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
 - **Videos from one place** (within 150 m, in one moment) are one set you swipe, where the first of them is, even
   with photos between (asked Oct 19, 2026). A video without a location stands alone. In a set, the video turned to
   plays like any other in the feed.
+- **Sound recordings** (Oct 25, 2026) join the row their start is in: a recording takes the camera photos taken
+  between its start and end into one moment (`FeedMoment.recording`), however far apart they are, so the 2-hour split
+  doesn't cut it; by gaps, its whole length counts as photos, so a row isn't cut through it. Calls less than 2 hours
+  apart are one row (`FeedSound.Calls`); a voice message is `FeedSound.Voice`. A row of only sounds is a row. They are
+  placed among the moments by time (`FeedSection.parts`).
 - **Places:** the moment's label is the name most of its photos share: the neighborhood, else the street, else the
   town. A row lists towns.
 - **Home** is the 10 km square where most located photos were taken (with 20 or more); [Explore](explore.md) uses it.

@@ -83,6 +83,9 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   off shows them again. **Nudity** (Oct 23, 2026): "Photos and videos with nudity · N photos and videos · M not
   scanned yet", **on** by default, and while on **Hide from**, a slider from 10% to 95% in steps of 5 (default
   **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
+  **Sound recordings** (Android, Oct 25, 2026; on a server that has them): **Recordings**, **Phone calls** and
+  **WhatsApp voice messages**, each with its count, all **on** (hidden) until the user turns one off, and "Hidden on
+  all your devices until you turn one off". Shown ones appear in [Moments](moments.md).
   **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
   N", **Find an app** (filters the list), then a switch per app with its screenshots, most first ("Bumble · 1,458
   screenshots"). On means hidden. The list and the choice live on the server (`hiddenCollections`,

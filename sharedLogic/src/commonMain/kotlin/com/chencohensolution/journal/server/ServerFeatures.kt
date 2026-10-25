@@ -33,6 +33,8 @@ data class ServerFeatures(
     val localIndexes: Boolean = false,
     /** A phone can start, follow and pause the reading of its user's photos (Settings › Search › On your server). */
     val indexing: Boolean = false,
+    /** Sound recordings can be in the library: recordings, calls and voice messages (Moments, Hidden collections). */
+    val audio: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */
@@ -53,6 +55,7 @@ internal fun ServerInfoQuery.ServerInfo.toFeatures() = ServerFeatures(
     aesthetic = aesthetic,
     localIndexes = localIndexes,
     indexing = indexing,
+    audio = audio,
 )
 
 /**

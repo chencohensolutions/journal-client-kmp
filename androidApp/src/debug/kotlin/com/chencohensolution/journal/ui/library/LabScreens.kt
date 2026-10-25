@@ -25,14 +25,21 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
-    // Sound recordings in Moments (ux/moments-audio): MomentsAudioSuggestions.
-    LabScreen("moments-audio", "Moments with sound recordings", listOf(
+    LabScreen("recording", "A sound recording's page", listOf(
         current {
-            JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+            LibraryTheme(dark = true) {
+                val moment = PreviewData.feedStories.feed.entries
+                    .flatMap { (it as com.chencohensolution.journal.stories.FeedEntry.Section).section.moments }
+                    .first { it.recording != null }
+                AudioPage(AudioPageState(moment.recording!!, moment.place, moment.items.sortedBy { it.takenAtMillis }, null), AudioPageActions())
+            }
         },
-    ) + momentsAudioOptions),
-    LabScreen("viewer-audio", "A sound recording's page", viewerAudioOptions),
-    LabScreen("hidden-audio", "Hidden collections with sound", listOf(current { HiddenNow() }) + hiddenAudioOptions),
+        LabOption("call", "A call", "Who it was with, Call and Edit contact") {
+            LibraryTheme(dark = true) {
+                AudioPage(AudioPageState(PreviewData.feedStories.sounds.getValue("lab-call-2").copy(number = "0521234567"), null, emptyList(), null), AudioPageActions())
+            }
+        },
+    )),
     LabScreen("moments-years", "Moments over seven years", listOf(
         current {
             JournalHomeScreen(PreviewData.timelineLibrary, PreviewData.timelineStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)

@@ -48,7 +48,10 @@ class HiddenCollectionsTest {
     private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"hidden":false},""" +
         """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"hidden":false},""" +
         """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"hidden":false}],""" +
-        """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3}}"""
+        """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3},""" +
+        """"recordings":{"__typename":"Collection","name":"recordings","files":4,"hidden":true},""" +
+        """"calls":{"__typename":"Collection","name":"calls","files":5,"hidden":true},""" +
+        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"hidden":true}}"""
 
     @Test
     fun aFileTheServerHidesIsDroppedWithWhatThisPhoneKeepsOfIt() = runTest {
@@ -89,6 +92,14 @@ class HiddenCollectionsTest {
             sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it },
             sent.joinToString("\n"),
         )
+        // The sound recordings stay as they were: all three hidden.
+        assertTrue(sent.any { """"audio":{"recordings":true,"calls":true,"voiceMessages":true}""" in it }, sent.joinToString("\n"))
+        assertEquals(HiddenCollections.Collection("calls", 5, true), shown.calls)
+        // Showing calls sends only that change.
+        val calls = shown.with(shown.calls!!, hidden = false)
+        assertEquals(false, calls.calls!!.hidden)
+        assertEquals(true, calls.recordings!!.hidden)
+        assertEquals(1, calls.screenshotApps.size)
         // Saving doesn't sync: the screen does once, when it is left.
         assertEquals(2, library.media.value.size)
 

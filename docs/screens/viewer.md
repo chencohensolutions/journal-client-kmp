@@ -70,8 +70,8 @@ Swiping is not a tap; a playing video's own controls take its taps.
   - **In the note file** (`media/<id>.json`, format 4): `"zoom": {"x", "y", "w", "h", "aspect"}`, the part on screen
     as fractions of the upright photo, like a crop, with the screen's shape. On another screen shape it opens with the
     same middle, zoomed so that part fills the screen as far as it can.
-- **Videos:** the first frame with a play button. Play starts the system player (Android `VideoView` with media
-  controls, iOS `VideoPlayer`). Swiping away stops it.
+- **Videos:** the first frame with a play button. Play starts the player (Android: Media3 ExoPlayer's `PlayerView`
+  with its controls, streaming from the server through the video cache; iOS `VideoPlayer`). Swiping away stops it.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
   text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.
@@ -150,7 +150,27 @@ Swiping is not a tap; a playing video's own controls take its taps.
 - **Android emulator:** 4K HEVC videos from recent phones may show no first frame and fail to play, because the
   emulator's decoder can't handle them. Real devices can.
 
+## A sound recording's page
+
+Android, Oct 25, 2026 (iOS not built yet). Opened from a recording's bar, a call or a voice message in
+[Moments](moments.md); its own screen (`Route.Audio`), not a page of the photo pager, since recordings aren't photos.
+Always dark. Chosen in the UI lab as "filmstrip":
+- Back, and the day with the times ("Yesterday · 18:10 – 19:55").
+- The kind's icon, and what it is: "Recording · Jaffa Port", a call's contact (its number under it when both are
+  known), or the number left to right.
+- A call has **Call** (the phone's dialer, on its number) and **Edit contact**: a dialog with the contact and the
+  number, as the phone named the file; saved on the server (`setCall`), shown after the next sync.
+- The bars large (even: the server doesn't measure loudness yet), with a mark under them for each photo taken while it
+  ran; a tap seeks there. The position and what is left ("32:00", "−1:13:12").
+- Back 15 s, play or pause, forward 15 s, and the speed (1×, 1.5×, 2×).
+- "7 photos while it recorded": the photos of its moment in a strip, the one of the moment playing marked and kept in
+  view; tapping one plays from when it was taken.
+It plays through the same player as Moments, so leaving the page keeps it playing until the app leaves the screen.
+
 ## Code
+
+- Sound recording's page: [AudioPage.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioPage.kt),
+  wired in `LibraryApp.kt` (`RecordingScreen`).
 
 - Android: [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt), zoom in
   [ViewerZoom.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerZoom.kt), full detail in

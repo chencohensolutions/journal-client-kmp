@@ -47,6 +47,9 @@ internal sealed interface Route {
     data class Year(val year: Int, val month: Int?) : Route
     data class Map(val at: GeoPoint? = null) : Route
 
+    /** A sound recording's page, by its sha256. */
+    data class Audio(val sha256: String) : Route
+
     /** The crop screen for one photo, opened on [kind]. */
     data class Crop(val itemId: String, val kind: CropKind) : Route
 
@@ -82,6 +85,7 @@ internal sealed interface Route {
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
+        is Audio -> "audio|$sha256"
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
         is Year -> "year|$year|${month ?: ""}"
@@ -105,6 +109,7 @@ internal sealed interface Route {
                 "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))
+                "audio" -> Audio(parts[1])
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))

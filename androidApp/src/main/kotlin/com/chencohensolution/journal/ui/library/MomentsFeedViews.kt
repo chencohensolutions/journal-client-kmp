@@ -68,6 +68,8 @@ import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
+import com.chencohensolution.journal.library.SoundRecording
+import com.chencohensolution.journal.stories.FeedSound
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
@@ -121,8 +123,19 @@ internal sealed interface FeedRow {
         override val key get() = "label-${moment.key}"
     }
 
-    data class Photo(val section: FeedSection, val block: FeedBlock) : FeedRow {
+    /** [recording]: the recording it was taken during, whose offset it shows. */
+    data class Photo(val section: FeedSection, val block: FeedBlock, val recording: SoundRecording? = null) : FeedRow {
         override val key get() = "photo-${block.items.first().id}"
+    }
+
+    /** A recording's bar ([RecordingBar]) where its moment starts, in place of the moment's label. */
+    data class RecordingBar(val section: FeedSection, val moment: FeedMoment) : FeedRow {
+        override val key get() = "recording-${moment.key}"
+    }
+
+    /** Calls one after another, or a voice message. */
+    data class Sound(val section: FeedSection, val sound: FeedSound) : FeedRow {
+        override val key get() = "sound-${sound.key}"
     }
 
     /** A band of a hidden source's photos shown on a row: its heading, rows of three, and its links. */
@@ -180,7 +193,12 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
                 section.moments.sumOf { it.count() },
                 section.places.take(MAX_TOWNS).joinToString(" → ")
             )
-            listOf(heading) + section.moments.flatMap { moment ->
+            listOf(heading) + section.parts.flatMap { part ->
+                if (part is FeedSound) return@flatMap listOf(FeedRow.Sound(section, part))
+                val moment = part as FeedMoment
+                moment.recording?.let { recording ->
+                    return@flatMap listOf(FeedRow.RecordingBar(section, moment)) + moment.shownBlocks.map { FeedRow.Photo(section, it, recording) }
+                }
                 val camera = moment.source == MediaSource.CAMERA
                 val showPlace = camera && moment.place != null && moment.place != place
                 if (camera) place = moment.place
@@ -232,9 +250,15 @@ internal fun LazyListScope.feedItems(
     video: FeedVideo = FeedVideo(),
     notes: Map<String, PhotoNote> = emptyMap(),
     selection: FeedSelection = FeedSelection(),
+    audio: FeedAudio = FeedAudio(),
 ) {
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
+            is FeedRow.RecordingBar -> RecordingBar(row.moment, audio, Modifier.padding(top = 16.dp))
+            is FeedRow.Sound -> when (val sound = row.sound) {
+                is FeedSound.Calls -> CallsRow(sound.calls, audio)
+                is FeedSound.Voice -> VoiceMessageRow(sound.recording, audio)
+            }
             is FeedRow.Heading -> DayDivider(row, actions)
             is FeedRow.BandTop -> BandTop(row)
             is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
@@ -265,9 +289,13 @@ internal fun LazyListScope.feedItems(
                             notes[block.item.id]?.crops?.moments,
                             Modifier.combinedClickable(
                                 onLongClick = {
-                                    if (selection.active) selection.toggle(block.key) else actions.itemMenu(
-                                        block.item
-                                    )
+                                    val recording = row.recording
+                                    when {
+                                        selection.active -> selection.toggle(block.key)
+                                        // During a recording: plays it from when the photo was taken.
+                                        recording != null -> audio.seek(recording, block.item.takenAtMillis - recording.startMillis)
+                                        else -> actions.itemMenu(block.item)
+                                    }
                                 },
                                 onClick = {
                                     if (selection.active) selection.toggle(block.key) else actions.openItem(
@@ -281,6 +309,9 @@ internal fun LazyListScope.feedItems(
                             block.key in selection.keys,
                             Modifier.align(Alignment.TopStart).padding(10.dp)
                         )
+                        row.recording?.takeIf { !selection.active }?.let { recording ->
+                            RecordingOffset(block.item, recording, Modifier.align(Alignment.TopStart).padding(10.dp))
+                        }
                     }
                     PhotoNoteText(notes[block.item.id]?.caption)
                 }

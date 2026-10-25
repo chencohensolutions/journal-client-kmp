@@ -44,9 +44,14 @@ query Changes($since: String, $limit: Int) {
         mimeType
         size
         takenAt
+        endedAt
         width
         height
         durationMs
+        call {
+          contact
+          number
+        }
         location {
           lat
           lon
@@ -58,6 +63,12 @@ query Changes($since: String, $limit: Int) {
         private
       }
     }
+  }
+}
+
+mutation SetCall($sha256: Sha256!, $call: CallInput!) {
+  setCall(sha256: $sha256, call: $call) {
+    sha256
   }
 }
 

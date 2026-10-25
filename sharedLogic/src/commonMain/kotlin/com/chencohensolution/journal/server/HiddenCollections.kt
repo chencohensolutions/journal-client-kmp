@@ -2,6 +2,7 @@ package com.chencohensolution.journal.server
 
 import com.chencohensolution.journal.graphql.fragment.CollectionFields
 import com.chencohensolution.journal.graphql.fragment.HiddenCollectionsFields
+import com.chencohensolution.journal.graphql.type.AudioHidingInput
 import com.chencohensolution.journal.graphql.type.HiddenCollectionsInput
 import com.chencohensolution.journal.graphql.type.NudityHidingInput
 import com.apollographql.apollo.api.Optional
@@ -22,6 +23,13 @@ data class HiddenCollections(
     /** The screenshots of each app, most files first; a hidden app with no files left is listed too. */
     val screenshotApps: List<Collection>,
     val nudity: Nudity,
+    /**
+     * The server's sound recordings: recordings, phone calls and WhatsApp voice messages, each hidden until the user
+     * shows it. Null from a server without sound recordings (and in callers that don't know them).
+     */
+    val recordings: Collection? = null,
+    val calls: Collection? = null,
+    val voiceMessages: Collection? = null,
 ) {
     /** One group of files: how many it has, hidden or not, and whether it is hidden. */
     data class Collection(val name: String, val files: Int, val hidden: Boolean)
@@ -44,6 +52,9 @@ data class HiddenCollections(
     fun with(collection: Collection, hidden: Boolean): HiddenCollections = when {
         collection === whatsapp -> copy(whatsapp = whatsapp.copy(hidden = hidden))
         collection === screenshotsWithoutApp -> copy(screenshotsWithoutApp = screenshotsWithoutApp.copy(hidden = hidden))
+        collection === recordings -> copy(recordings = collection.copy(hidden = hidden))
+        collection === calls -> copy(calls = collection.copy(hidden = hidden))
+        collection === voiceMessages -> copy(voiceMessages = collection.copy(hidden = hidden))
         else -> copy(screenshotApps = screenshotApps.map { if (it === collection) it.copy(hidden = hidden) else it })
     }
 
@@ -56,6 +67,12 @@ data class HiddenCollections(
         screenshotsWithoutApp = screenshotsWithoutApp.hidden,
         screenshotApps = screenshotApps.filter { it.hidden }.map { it.name },
         nudity = Optional.present(NudityHidingInput(hidden = nudity.hidden, from = nudity.fromPercent / 100.0)),
+        // Left out when not known: the server keeps what it has.
+        audio = if (recordings != null && calls != null && voiceMessages != null) {
+            Optional.present(AudioHidingInput(recordings = recordings.hidden, calls = calls.hidden, voiceMessages = voiceMessages.hidden))
+        } else {
+            Optional.absent()
+        },
     )
 }
 
@@ -64,6 +81,9 @@ internal fun HiddenCollectionsFields.toHiddenCollections() = HiddenCollections(
     screenshotsWithoutApp = screenshotsWithoutApp.collectionFields.toCollection(),
     screenshotApps = screenshotApps.map { it.collectionFields.toCollection() },
     nudity = HiddenCollections.Nudity(nudity.hidden, (nudity.from * 100).roundToInt(), nudity.files, nudity.notScanned),
+    recordings = recordings.collectionFields.toCollection(),
+    calls = calls.collectionFields.toCollection(),
+    voiceMessages = voiceMessages.collectionFields.toCollection(),
 )
 
 private fun CollectionFields.toCollection() = HiddenCollections.Collection(name, files, hidden)

@@ -12,6 +12,7 @@ query ServerInfo {
     aesthetic
     localIndexes
     indexing
+    audio
   }
 }
 

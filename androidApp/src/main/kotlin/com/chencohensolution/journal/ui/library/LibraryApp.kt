@@ -22,10 +22,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntOffset
+import android.content.Intent
+import android.net.Uri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
@@ -79,12 +85,21 @@ fun LibraryApp(
     localIndexes: LocalIndexes,
     serverIndexing: ServerIndexing,
     onRegisterAgain: () -> Unit,
-) = CompositionLocalProvider(
-    LocalServerPreviews provides server.previews,
-    LocalPhoneStorage provides server.storage,
-    LocalServerMedia provides server.library.media,
 ) {
-    LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, onRegisterAgain)
+    // Sound recordings play while the app is in front: leaving it pauses them (no background playing).
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val audioPlayer = remember { AudioPlayer(context.applicationContext, scope) }
+    DisposableEffect(audioPlayer) { onDispose { audioPlayer.stop() } }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { audioPlayer.pause() }
+    CompositionLocalProvider(
+        LocalServerPreviews provides server.previews,
+        LocalPhoneStorage provides server.storage,
+        LocalServerMedia provides server.library.media,
+        LocalAudioPlayer provides audioPlayer,
+    ) {
+        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, onRegisterAgain)
+    }
 }
 
 /** The routing table: each [Route] on the back stack rendered as its screen, with the actions wired to the controllers. */
@@ -178,7 +193,7 @@ private fun LibraryScreens(
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
     val systemDark = isSystemInDarkTheme()
-    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop } || systemDark)
+    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop || it is Route.Audio } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
         CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge) {
@@ -194,7 +209,7 @@ private fun LibraryScreens(
                     NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
                         val route = entry.route
                         val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
-                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || systemDark) {
+                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || route is Route.Audio || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
                                     library = libraryState,
@@ -239,6 +254,7 @@ private fun LibraryScreens(
                                         openRevealed = { section, source, item ->
                                             push(Route.Viewer(section.key, LibraryFilter.ALL, item.id, revealed = source))
                                         },
+                                        openRecording = { push(Route.Audio(it)) },
                                         search = SearchActions(
                                             search = search::search,
                                             clear = search::clear,
@@ -367,6 +383,7 @@ private fun LibraryScreens(
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
                                 Route.Hidden -> HiddenScreen(server.library, back = pop)
+                                is Route.Audio -> RecordingScreen(route.sha256, storiesState, server.library, back = pop)
                                 Route.SearchSettings -> {
                                     LaunchedEffect(Unit) { localIndexes.refresh() }
                                     // Asked every 2 s while a run goes, every 30 s otherwise, while the screen shows.
@@ -542,4 +559,41 @@ private fun SystemBars(activity: ComponentActivity?, dark: Boolean) {
         activity?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
         onDispose { activity?.enableEdgeToEdge() }
     }
+}
+
+/**
+ * A sound recording's page ([AudioPage]), with the photos its moment in Moments took in, playing through the app's
+ * [AudioPlayer]. A recording no longer shown (hidden since, or gone) goes back.
+ */
+@androidx.compose.runtime.Composable
+private fun RecordingScreen(sha256: String, stories: com.chencohensolution.journal.stories.StoriesState, server: ServerLibrary, back: () -> Unit) {
+    val recording = stories.sounds[sha256]
+    if (recording == null) {
+        LaunchedEffect(Unit) { back() }
+        return
+    }
+    val player = LocalAudioPlayer.current
+    val playback = player?.playback?.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val moment = remember(stories.feed, sha256) {
+        stories.feed.entries.asSequence()
+            .mapNotNull { (it as? com.chencohensolution.journal.stories.FeedEntry.Section)?.section }
+            .flatMap { it.moments }
+            .firstOrNull { it.recording?.sha256 == sha256 }
+    }
+    AudioPage(
+        AudioPageState(recording, moment?.place, moment?.items.orEmpty().sortedBy { it.takenAtMillis }, playback?.value),
+        AudioPageActions(
+            play = { player?.play(recording) },
+            pause = { player?.pause() },
+            seek = { player?.seek(recording, it) },
+            setSpeed = { player?.setSpeed(it) },
+            back = back,
+            dial = { number -> runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))) } },
+            setCall = { contact, number ->
+                scope.launch { server.setCall(sha256, contact.ifBlank { null }, number.ifBlank { null }) }
+            },
+        ),
+    )
 }

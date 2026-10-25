@@ -39,6 +39,11 @@ data class LibraryState(
     val loadError: String? = null,
     /** The sources backup takes, whose photos count as not backed up; null (backup off) counts every photo. */
     val backupSources: Set<MediaSource>? = null,
+    /**
+     * The server's sound recordings the user shows, newest first: never in [days], so nothing that expects a picture
+     * meets one; only Moments and a recording's page show them. Private ones are left out like private photos.
+     */
+    val sounds: List<SoundRecording> = emptyList(),
 ) {
     val itemCount: Int = days.sumOf { it.items.size }
 
@@ -136,16 +141,17 @@ class LibraryController internal constructor(
     /** Puts the current device items, server-only items and backup statuses into [state]. */
     private fun publish() {
         val backupState = backup?.value
-        val serverMedia = server?.media?.value.orEmpty()
+        val (soundMedia, serverMedia) = server?.media?.value.orEmpty().partition { it.isAudio }
         val hiddenOnServer = server?.hidden?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
         val private = privateMedia?.value ?: savedPrivateMedia
         val scored = scores?.value.orEmpty()
-        val inputs = listOf(readItems, backupState?.entries, serverMedia, hiddenOnServer, kept, private, scored)
+        val inputs = listOf(readItems, backupState?.entries, server?.media?.value, hiddenOnServer, kept, private, scored)
         if (mergedFrom == null || mergedFrom!!.indices.any { mergedFrom!![it] !== inputs[it] }) {
             merged = groupByDay(
                 mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
             )
+            sounds = soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
             mergedFrom = inputs
         }
         // Statuses change only when a file finishes, the queue changes or the uploading one's ring moves a step: the
@@ -174,8 +180,11 @@ class LibraryController internal constructor(
                 },
             )
         }
-        _state.update { it.copy(days = days, backupSources = backupState?.countedSources) }
+        _state.update { it.copy(days = days, backupSources = backupState?.countedSources, sounds = sounds) }
     }
+
+    /** The sound recordings of the last [publish], built with [merged]. */
+    private var sounds: List<SoundRecording> = emptyList()
 
     /** What [state] was last built from (see [publish]). */
     private var publishedKey: List<Any?>? = null

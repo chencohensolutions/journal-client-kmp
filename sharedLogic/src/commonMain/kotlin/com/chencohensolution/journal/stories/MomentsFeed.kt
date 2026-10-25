@@ -1,12 +1,15 @@
 package com.chencohensolution.journal.stories
 
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.places.distanceMeters
+import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.TimelineGrouping
 import com.chencohensolution.journal.similarity.PhotoLooks
@@ -14,7 +17,8 @@ import com.chencohensolution.journal.similarity.PhotoLooks
 /*
  * The Moments tab: every photo reads like a story that arranged itself: each row of the journal (a day, or a run of photos; see
  * the grouping setting) split into moments by time, place and source, with near-duplicates shown as one photo you
- * swipe. Nothing here is saved: it is worked out again from the library.
+ * swipe. Sound recordings the user shows are in it too: a recording with the photos taken while it ran, calls folded,
+ * voice messages. Nothing here is saved: it is worked out again from the library.
  */
 
 /** One photo, or near-duplicates (a burst, or photos that look alike) shown as one photo you swipe through. */
@@ -28,20 +32,45 @@ sealed interface FeedBlock {
     data class Similar(override val items: List<MediaItem>) : FeedBlock
 }
 
-/** Photos from one source taken close together, in one place; oldest first. */
+/**
+ * Photos from one source taken close together, in one place; oldest first. With a [recording], the camera photos
+ * taken while it ran (maybe none), one moment however long it ran.
+ */
 data class FeedMoment(
     val source: MediaSource,
     val blocks: List<FeedBlock>,
     /** The most precise name of where most of them were taken, once looked up. */
     val place: String?,
+    val recording: SoundRecording? = null,
 ) {
     val items: List<MediaItem> get() = blocks.flatMap { it.items }
-    val key: String get() = blocks.first().items.first().id
-    val startMillis: Long get() = blocks.first().items.first().takenAtMillis
-    val endMillis: Long get() = blocks.last().items.last().takenAtMillis
+    val key: String get() = recording?.let { SOUND_PREFIX + it.sha256 } ?: blocks.first().items.first().id
+    val startMillis: Long get() = recording?.startMillis ?: blocks.first().items.first().takenAtMillis
+    val endMillis: Long get() = recording?.endMillis ?: blocks.last().items.last().takenAtMillis
 
     /** Its blocks newest first, as shown: the feed reads back in time all the way down. */
     val shownBlocks: List<FeedBlock> get() = blocks.asReversed()
+}
+
+/** Calls and voice messages of a row of Moments (recordings are moments: [FeedMoment.recording]). */
+sealed interface FeedSound {
+    val key: String
+    val startMillis: Long
+    val endMillis: Long
+
+    /** Calls one after another (less than [MOMENT_GAP_MILLIS] apart), newest first: one row, folded until opened. */
+    data class Calls(val calls: List<SoundRecording>) : FeedSound {
+        override val key: String get() = SOUND_PREFIX + calls.last().sha256
+        override val startMillis: Long get() = calls.last().startMillis
+        override val endMillis: Long get() = calls.maxOf { it.endMillis }
+    }
+
+    /** A WhatsApp voice message. */
+    data class Voice(val recording: SoundRecording) : FeedSound {
+        override val key: String get() = SOUND_PREFIX + recording.sha256
+        override val startMillis: Long get() = recording.startMillis
+        override val endMillis: Long get() = recording.endMillis
+    }
 }
 
 /** One row of the journal ([span]: a day, or a run of photos), its moments newest first. */
@@ -57,11 +86,31 @@ data class FeedSection(
     val hidden: Map<MediaSource, Int> = emptyMap(),
     /** Hidden photos shown for this row only (tapping a chip), per source, each newest first: the tinted bands. */
     val revealed: List<RevealedPhotos> = emptyList(),
+    /** Its calls and voice messages, newest first; drawn among the moments by time ([parts]). */
+    val sounds: List<FeedSound> = emptyList(),
 ) {
     val key: String get() = span.key
 
     /** Its days, newest first: what "Always show this day" keeps showing. */
     val days: List<LocalDay> get() = span.items.map { it.day }.distinct()
+
+    /** Its moments and sounds as drawn, newest first: each a [FeedMoment] or a [FeedSound]. */
+    val parts: List<Any> get() = (moments + sounds).sortedByDescending {
+        when (it) {
+            is FeedMoment -> it.startMillis
+            is FeedSound -> it.startMillis
+            else -> 0L
+        }
+    }
+
+    /** Every recording, call and voice message on it. */
+    val recordings: List<SoundRecording>
+        get() = moments.mapNotNull { it.recording } + sounds.flatMap {
+            when (it) {
+                is FeedSound.Calls -> it.calls
+                is FeedSound.Voice -> listOf(it.recording)
+            }
+        }
 
     /** In the order shown: moments newest first, each newest first ([FeedMoment.shownBlocks]). */
     val items: List<MediaItem> get() = moments.flatMap { moment -> moment.shownBlocks.flatMap { it.items } }
@@ -115,11 +164,19 @@ internal const val VIDEO_SET_METERS = 150.0
 /** Home is only guessed from this many located photos or more. */
 internal const val HOME_MIN_PHOTOS = 20
 
+/** Keys of the feed's sound recordings, and of the stand-ins that place them in rows ([soundMarks]). */
+const val SOUND_PREFIX = "sound:"
+private const val SOUND_END_PREFIX = "sound-end:"
+
 /**
  * The feed of [items] (the whole library, newest first): only what [shown] shows, split into rows ([grouping]),
  * each into moments ([splitMoments]) of blocks ([blocksOf]). Photos in [alone] (cropped, or taken out of a set) are never in
  * a near-duplicate set; photos merged by hand ([sets]: photo id to set id) are one set, where its oldest photo is.
  * Each row counts the photos it hides ([FeedSection.hidden]) and shows those of the sources in [revealed].
+ *
+ * [sounds] (the server's sound recordings the user shows) join the rows of their time: a recording takes the camera
+ * photos taken while it ran into one moment ([FeedMoment.recording]), even across the gap that splits camera moments;
+ * calls one after another fold into one row; voice messages show while WhatsApp does. They don't count as photos.
  */
 internal fun buildFeed(
     items: List<MediaItem>,
@@ -130,6 +187,7 @@ internal fun buildFeed(
     alone: Set<String> = emptySet(),
     sets: Map<String, String> = emptyMap(),
     revealed: Set<FeedReveal> = emptySet(),
+    sounds: List<SoundRecording> = emptyList(),
 ): MomentsFeed {
     val counts = items.groupingBy { it.source }.eachCount()
     val (visible, hidden) = items.partition(shown::shows)
@@ -138,15 +196,33 @@ internal fun buildFeed(
         .map { members -> members.sortedBy { it.takenAtMillis } }
         .associateBy { it.first().id }
     val inLaterPlace = merged.values.flatMap { it.drop(1) }.map { it.id }.toSet()
-    val sections = groupMoments(visible.filter { it.id !in inLaterPlace }, grouping).map { span ->
-        val moments = span.items.groupBy { it.source }
+    val shownSounds = sounds.filter { it.kind != AudioKind.VOICE_MESSAGE || shown.shows(it.day, it.source) }.associateBy { it.sha256 }
+    val marks = soundMarks(shownSounds.values, grouping)
+    val rowItems = if (marks.isEmpty()) visible else (visible + marks).sortedByDescending { it.takenAtMillis }
+    val sections = groupMoments(rowItems.filter { it.id !in inLaterPlace }, grouping).mapNotNull { span ->
+        val photos = span.items.filter { it.type != MediaType.AUDIO }
+        // A sound belongs to the row its start is in.
+        val spanSounds = span.items.filter { it.id.startsWith(SOUND_PREFIX) }.mapNotNull { shownSounds[it.id.removePrefix(SOUND_PREFIX)] }
+        val taken = HashSet<String>()
+        val recordings = spanSounds.filter { it.kind == AudioKind.RECORDING }.sortedBy { it.startMillis }.map { recording ->
+            val during = photos.filter {
+                it.source == MediaSource.CAMERA && it.id !in taken && it.takenAtMillis in recording.startMillis..recording.endMillis
+            }.sortedBy { it.takenAtMillis }
+            during.forEach { taken += it.id }
+            FeedMoment(MediaSource.CAMERA, blocksOf(during, looks, alone, merged, places), mostCommon(during) { places.nameOf(it)?.label }, recording)
+        }
+        val moments = (photos.filter { it.id !in taken }.groupBy { it.source }
             .flatMap { (source, items) -> splitMoments(source, items.reversed(), places) }
-            .map { items -> FeedMoment(items.first().source, blocksOf(items, looks, alone, merged, places), mostCommon(items) { places.nameOf(it)?.label }) }
+            .map { items -> FeedMoment(items.first().source, blocksOf(items, looks, alone, merged, places), mostCommon(items) { places.nameOf(it)?.label }) } + recordings)
             .sortedByDescending { it.startMillis }
+        val soundRows = callRuns(spanSounds.filter { it.kind == AudioKind.CALL }) +
+            spanSounds.filter { it.kind == AudioKind.VOICE_MESSAGE }.map(FeedSound::Voice)
+        // A row made only of where a recording ended (it started in the row before) shows nothing.
+        if (moments.isEmpty() && soundRows.isEmpty()) return@mapNotNull null
         val towns = moments.reversed()
             .filter { it.source == MediaSource.CAMERA }
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
-        FeedSection(span, moments, towns.distinct())
+        FeedSection(span, moments, towns.distinct(), sounds = soundRows.sortedByDescending { it.startMillis })
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
     return MomentsFeed(sections.map(FeedEntry::Section), counts, shown.sources)
 }
@@ -184,6 +260,32 @@ private fun List<FeedSection>.withHidden(hidden: List<MediaItem>, say: Boolean, 
 }
 
 private fun Places.nameOf(item: MediaItem) = location(item)?.let(::name)
+
+/**
+ * Stand-ins that place [sounds] in the rows ([groupMoments] takes photos): one where each starts, and with
+ * [GroupingMode.BY_GAP] more along it to where it ends, closer than the gap, so a long recording isn't cut into two
+ * rows. Never shown.
+ */
+private fun soundMarks(sounds: Collection<SoundRecording>, grouping: TimelineGrouping): List<MediaItem> = sounds.flatMap { sound ->
+    fun mark(id: String, at: Long) = MediaItem(id, MediaType.AUDIO, at, sound.day, sound.durationMillis, 0, 0, null, null, source = sound.source, isOnDevice = false)
+    val start = mark(SOUND_PREFIX + sound.sha256, sound.startMillis)
+    if (grouping.mode != GroupingMode.BY_GAP || sound.durationMillis <= 0) return@flatMap listOf(start)
+    val step = (grouping.gapMillis / 2).coerceAtLeast(MINUTE_MILLIS)
+    val along = generateSequence(sound.startMillis + step) { it + step }.takeWhile { it < sound.endMillis } + sound.endMillis
+    listOf(start) + along.mapIndexed { i, t -> mark("$SOUND_END_PREFIX${sound.sha256}/$i", t) }
+}
+
+private const val MINUTE_MILLIS = 60_000L
+
+/** Calls (any order) as rows: those less than [MOMENT_GAP_MILLIS] apart are one row. */
+private fun callRuns(calls: List<SoundRecording>): List<FeedSound.Calls> {
+    val runs = mutableListOf<MutableList<SoundRecording>>()
+    calls.sortedBy { it.startMillis }.forEach { call ->
+        val run = runs.lastOrNull()
+        if (run != null && call.startMillis - run.maxOf { it.endMillis } <= MOMENT_GAP_MILLIS) run += call else runs += mutableListOf(call)
+    }
+    return runs.map { FeedSound.Calls(it.sortedByDescending { call -> call.startMillis }) }
+}
 
 /**
  * Splits one source's photos of a row (oldest first) into moments. Camera photos split after [MOMENT_GAP_MILLIS]

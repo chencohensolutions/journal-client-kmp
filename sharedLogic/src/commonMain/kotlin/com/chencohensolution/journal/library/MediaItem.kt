@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.library
 
-enum class MediaType { IMAGE, VIDEO }
+/** AUDIO is a sound recording; those are kept out of the library's items (see [SoundRecording]). */
+enum class MediaType { IMAGE, VIDEO, AUDIO }
 
 /** A calendar day in the device's time zone. */
 data class LocalDay(val year: Int, val month: Int, val day: Int) : Comparable<LocalDay> {

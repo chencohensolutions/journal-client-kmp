@@ -702,4 +702,61 @@
     <string name="timeline_open">הצגת ימי החודש</string>
     <string name="timeline_close">סגירה</string>
     <string name="timeline_counts">%1$d תמונות · %2$d ימים</string>
+
+    <!-- Sound recordings: Moments, a recording's page, Hidden collections (since Oct 25, 2026). -->
+    <string name="audio_recording">הקלטה</string>
+    <string name="audio_recording_at">הקלטה · %s</string>
+    <string name="audio_voice_message">הודעה קולית</string>
+    <string name="audio_call_unknown">שיחה</string>
+    <string name="audio_times">%1$s – %2$s · %3$s</string>
+    <string name="audio_day_times">%1$s · %2$s – %3$s</string>
+    <string name="audio_time_length">%1$s · %2$s</string>
+    <string name="audio_voice_line">%1$s · %2$s</string>
+    <string name="audio_position">%1$s מתוך %2$s · ב־%3$s</string>
+    <string name="audio_calls_line">%1$s · %2$s – %3$s</string>
+    <plurals name="audio_calls">
+        <item quantity="one">שיחה אחת</item>
+        <item quantity="two">%d שיחות</item>
+        <item quantity="other">%d שיחות</item>
+    </plurals>
+    <plurals name="audio_photos_during">
+        <item quantity="one">תמונה אחת בזמן ההקלטה</item>
+        <item quantity="two">%d תמונות בזמן ההקלטה</item>
+        <item quantity="other">%d תמונות בזמן ההקלטה</item>
+    </plurals>
+    <string name="audio_play">נגן</string>
+    <string name="audio_pause">השהה</string>
+    <string name="audio_offset">‎+%s</string>
+    <string name="audio_remaining">‎−%s</string>
+    <string name="audio_back">חזרה</string>
+    <string name="audio_back_15">15 שניות אחורה</string>
+    <string name="audio_forward_15">15 שניות קדימה</string>
+    <string name="audio_speed">%s×</string>
+    <string name="audio_dial">חייג</string>
+    <string name="audio_edit_contact">ערוך איש קשר</string>
+    <string name="hidden_audio_title">הקלטות קול</string>
+    <string name="hidden_audio_recordings">הקלטות</string>
+    <string name="hidden_audio_calls">שיחות טלפון</string>
+    <string name="hidden_audio_voice">הודעות קוליות מוואטסאפ</string>
+    <string name="hidden_audio_body">מוסתרות בכל המכשירים שלך עד שתכבה אחת מהן. שיחות שומרות עם מי היו, כפי שהטלפון קרא להן.</string>
+    <plurals name="hidden_audio_recordings_count">
+        <item quantity="one">הקלטה אחת</item>
+        <item quantity="two">%s הקלטות</item>
+        <item quantity="other">%s הקלטות</item>
+    </plurals>
+    <plurals name="hidden_audio_calls_count">
+        <item quantity="one">שיחה אחת</item>
+        <item quantity="two">%s שיחות</item>
+        <item quantity="other">%s שיחות</item>
+    </plurals>
+    <plurals name="hidden_audio_voice_count">
+        <item quantity="one">הודעה קולית אחת</item>
+        <item quantity="two">%s הודעות קוליות</item>
+        <item quantity="other">%s הודעות קוליות</item>
+    </plurals>
+    <string name="audio_failed">לא ניתן לנגן את ההקלטה</string>
+    <string name="audio_contact">איש קשר</string>
+    <string name="audio_number">מספר טלפון</string>
+    <string name="audio_save">שמור</string>
+    <string name="audio_cancel">ביטול</string>
 </resources>

@@ -4,16 +4,20 @@ import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.ChangesQuery
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
+import com.chencohensolution.journal.graphql.SetCallMutation
 import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
 import com.chencohensolution.journal.graphql.SetPrivateMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
+import com.chencohensolution.journal.graphql.type.CallInput
 import com.chencohensolution.journal.graphql.type.MediaKind
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.settings.JournalSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +41,7 @@ import okio.FileSystem
 import okio.Path
 import kotlin.coroutines.cancellation.CancellationException
 
-/** A photo or video on the server, as the change feed describes it. */
+/** A photo, video or sound recording on the server, as the change feed describes it. */
 @Serializable
 data class ServerMedia(
     val sha256: String,
@@ -61,7 +65,35 @@ data class ServerMedia(
     val isPrivate: Boolean = false,
     /** How good it looks, about 1 to 10 (the server's aesthetic score); null until scored. */
     val aesthetic: Double? = null,
+    /** A sound recording (kind AUDIO): kept apart from the photos, as [toSoundRecording]. */
+    val isAudio: Boolean = false,
+    /** A sound recording that is a phone call, with who it was with as the phone named the file. */
+    val isCall: Boolean = false,
+    val callContact: String? = null,
+    val callNumber: String? = null,
 ) {
+    /** A sound recording as Moments and its page show it; only for [isAudio]. */
+    fun toSoundRecording(): SoundRecording {
+        val taken = takenAt?.let(::parseTimestamp) ?: parseTimestamp(uploadedAt)
+        val mediaSource = MediaSource.entries.firstOrNull { it.name.equals(source, ignoreCase = true) } ?: MediaSource.OTHER
+        return SoundRecording(
+            sha256 = sha256,
+            kind = when {
+                isCall -> AudioKind.CALL
+                mediaSource == MediaSource.WHATSAPP -> AudioKind.VOICE_MESSAGE
+                else -> AudioKind.RECORDING
+            },
+            startMillis = taken?.millis ?: 0,
+            day = taken?.day ?: LocalDay(1970, 1, 1),
+            durationMillis = durationMillis ?: 0,
+            contact = callContact,
+            number = callNumber,
+            mimeType = mimeType,
+            source = mediaSource,
+            isPrivate = isPrivate,
+        )
+    }
+
     /**
      * The library's view of it, for a photo that isn't in the device's library: shown from the server's previews, or
      * from [keptOriginal]. [id] is the device id it had when it was on this device, so its stories and note still find
@@ -116,6 +148,9 @@ internal fun parseTimestamp(text: String): Timestamp? {
     return Timestamp(local - offsetMinutes * 60_000L, day)
 }
 
+/** The version of `server/media.json` written now (see [ServerMediaFile]). */
+private const val FILE_VERSION = 2
+
 /** What the user's originals take up on the server. */
 data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
 
@@ -124,7 +159,8 @@ data class SyncProgress(val done: Int, val total: Int)
 
 @Serializable
 private data class ServerMediaFile(
-    val v: Int = 1,
+    /** 2 since sound recordings are kept (v 1 left them out, so its cursor is dropped once to fetch them). */
+    val v: Int = FILE_VERSION,
     val cursor: String? = null,
     val media: List<ServerMedia> = emptyList(),
     /** [ServerLibrary.hidden]. */
@@ -263,6 +299,28 @@ class ServerLibrary internal constructor(
     }
 
     /**
+     * Corrects who a recorded call was with (both replaced; empty is none), then syncs so the recording follows. False
+     * when the server couldn't be reached or refused.
+     */
+    suspend fun setCall(sha256: String, contact: String?, number: String?): Boolean {
+        try {
+            http.graphql { apollo ->
+                val call = CallInput(contact = Optional.presentIfNotNull(contact?.trim()), number = Optional.presentIfNotNull(number?.trim()))
+                val response = apollo.mutation(SetCallMutation(sha256, call)).execute()
+                response.exception?.let { throw it }
+                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            } ?: return false
+            syncJob?.join()
+            sync()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return false
+        }
+        return true
+    }
+
+    /**
      * Marks [sha256s] private ([isPrivate]), or no longer private, on the server (with their edits and paired files), then syncs so
      * the library follows. False when the server couldn't be reached or refused.
      */
@@ -341,9 +399,8 @@ class ServerLibrary internal constructor(
                     val page = response.data?.changes ?: break
                     page.changes.forEach { change ->
                         val sha = change.path.removePrefix("media/")
-                        // Kinds the app can't show yet (audio) are left out like deleted files; the version that
-                        // shows them starts the feed again to fetch them.
-                        val media = change.media?.takeIf { it.kind == MediaKind.PHOTO || it.kind == MediaKind.VIDEO }
+                        // A kind this version doesn't know is left out like a deleted file.
+                        val media = change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }
                         hiddenChanged = (if (change.hidden) hidden.add(sha) else hidden.remove(sha)) || hiddenChanged
                         if (change.deleted || media == null) {
                             if (known.remove(sha) != null) {
@@ -376,7 +433,9 @@ class ServerLibrary internal constructor(
         if (!fileSystem.exists(file)) return@withContext
         val saved = runCatching { fileSystem.read(file) { json.decodeFromBufferedSource(ServerMediaFile.serializer(), this) } }.getOrNull()
             ?: return@withContext
-        cursor = saved.cursor
+        // A file from before sound recordings were kept: its cursor is past the ones it left out, so the feed starts
+        // again (the list is kept meanwhile and replaced as the pages come).
+        cursor = saved.cursor.takeIf { saved.v >= FILE_VERSION }
         _media.value = saved.media
         _hidden.value = saved.hidden.toSet()
     }
@@ -398,6 +457,10 @@ class ServerLibrary internal constructor(
 private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     sha256 = sha256,
     isVideo = kind == MediaKind.VIDEO,
+    isAudio = kind == MediaKind.AUDIO,
+    isCall = call != null,
+    callContact = call?.contact,
+    callNumber = call?.number,
     fileName = fileName,
     mimeType = mimeType,
     size = size,

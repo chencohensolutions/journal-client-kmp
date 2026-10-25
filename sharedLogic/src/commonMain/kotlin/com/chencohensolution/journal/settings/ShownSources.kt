@@ -16,7 +16,10 @@ data class ShownSources(
     /** Days whose photos of a hidden source show anyway ("Always show this day"). */
     val alwaysShown: Set<DaySource> = emptySet(),
 ) {
-    fun shows(item: MediaItem): Boolean = item.source in sources || DaySource(item.day, item.source) in alwaysShown
+    fun shows(item: MediaItem): Boolean = shows(item.day, item.source)
+
+    /** Whether what [source] saved on [day] shows. */
+    fun shows(day: LocalDay, source: MediaSource): Boolean = source in sources || DaySource(day, source) in alwaysShown
 
     /** Whether [source] is on; for Swift, where a Kotlin set's `contains` takes `Any`. */
     fun isShown(source: MediaSource): Boolean = source in sources

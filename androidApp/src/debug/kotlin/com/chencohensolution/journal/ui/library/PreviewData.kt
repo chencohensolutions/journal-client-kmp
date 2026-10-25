@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
@@ -12,6 +13,7 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.PhotoAccess
+import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.places.PlaceName
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.settings.GroupingMode
@@ -20,6 +22,7 @@ import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedMoment
 import com.chencohensolution.journal.stories.FeedSection
+import com.chencohensolution.journal.stories.FeedSound
 import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.CropRect
@@ -101,6 +104,9 @@ internal object PreviewData {
 
     private var tripCoverItem: MediaItem? = null
 
+    /** The sound recordings in [feed], for a recording's page. */
+    private var labSounds: List<SoundRecording> = emptyList()
+
     /** The Moments tab as a feed: rows split into moments by time, place and source, near-duplicates as one photo. */
     val feed: MomentsFeed = run {
         fun shot(daysAgo: Int, hour: Int, ratio: Float, source: MediaSource = MediaSource.CAMERA, video: Int? = null) =
@@ -119,13 +125,25 @@ internal object PreviewData {
             ),
             "Tel Aviv", "Jaffa",
         )
+        // A recording of the evening with the photos taken while it ran, calls in the morning, a voice message.
+        fun sound(sha: String, kind: AudioKind, hour: Int, minute: Int, minutes: Int, contact: String? = null, number: String? = null, source: MediaSource = MediaSource.OTHER): SoundRecording {
+            val start = Instant.ofEpochMilli(now - DAY).atZone(ZoneId.systemDefault()).withHour(hour).withMinute(minute).withSecond(0)
+            return SoundRecording(sha, kind, start.toInstant().toEpochMilli(), LocalDay(start.year, start.monthValue, start.dayOfMonth), minutes * 60_000L, contact, number, source = source)
+        }
+        val evening = sound("lab-recording", AudioKind.RECORDING, 19, 50, 105)
+        val calls = listOf(
+            sound("lab-call-1", AudioKind.CALL, 9, 42, 1, number = "0501234567"),
+            sound("lab-call-2", AudioKind.CALL, 9, 10, 12, contact = "אבא"),
+        )
+        val voice = sound("lab-voice", AudioKind.VOICE_MESSAGE, 8, 30, 1, source = MediaSource.WHATSAPP)
+        labSounds = listOf(evening, voice) + calls
         val yesterday = section(
             listOf(
                 FeedMoment(MediaSource.SCREENSHOTS, listOf(single(shot(1, 15, screen, MediaSource.SCREENSHOTS)), single(shot(1, 16, screen, MediaSource.SCREENSHOTS))), null),
-                FeedMoment(MediaSource.CAMERA, listOf(single(shot(1, 20, 3f / 4f)), similar(1, 21, 4f / 3f, 5)), "Old North"),
+                FeedMoment(MediaSource.CAMERA, listOf(single(shot(1, 20, 3f / 4f)), similar(1, 21, 4f / 3f, 5)), "Old North", recording = evening),
             ),
             "Tel Aviv",
-        )
+        ).copy(sounds = listOf(FeedSound.Calls(calls), FeedSound.Voice(voice)))
         val tripDay = section(listOf(FeedMoment(MediaSource.CAMERA, listOf(single(tripCover), similar(14, 12, 3f / 4f, 3)), "Bahá’í Gardens")), "Haifa")
         MomentsFeed(
             entries = listOf(FeedEntry.Section(today), FeedEntry.Section(yesterday), FeedEntry.Section(tripDay)),
@@ -175,6 +193,7 @@ internal object PreviewData {
         notes = feedNotes,
         storyline = listOf(notedPhoto, croppedPhoto, tripPhoto).sortedByDescending { it.takenAtMillis },
         itemsById = stories.itemsById + feed.entries.flatMap { (it as FeedEntry.Section).section.items }.associateBy { it.id },
+        sounds = labSounds.associateBy { it.sha256 },
     )
 
     /**

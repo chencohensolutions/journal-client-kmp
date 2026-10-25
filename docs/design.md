@@ -185,7 +185,10 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   probably run **Windows** (as an application for now, a service later), so the server stays cross-platform: no cgo,
   Windows-safe names, libvips/ffmpeg as separate programs. Backup to another machine and scrubbing come later.
 - The server's data folder is the truth: originals byte for byte under `media/YYYY/YYYY-MM/` (photo's local time) with
-  a sidecar each (`format`, `sha256`, `facts`, later `note`), and a rebuildable `.cache/`.
+  a sidecar each (`format`, `sha256`, `facts`, later `note`), and a rebuildable `.cache/`. Sound recordings (Oct 25,
+  2026: recordings, phone calls, WhatsApp voice messages, brought in by the server's import) are files of kind
+  `audio` like any other, a call's sidecar naming who it was with (`call`); a WAV is kept as FLAC. The user shows each
+  kind in Hidden collections; the apps keep them apart from photos (Moments and their page only).
 
 **Uploading** (built on the server)
 - `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;

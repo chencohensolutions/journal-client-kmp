@@ -47,7 +47,7 @@ import com.chencohensolution.journal.server.ServerLibrary
 import java.text.NumberFormat
 
 /**
- * Settings → Private media → Hidden collections: all of WhatsApp, and screenshots by app, hidden on every device by the
+ * Settings → Private media → Hidden collections: all of WhatsApp, screenshots by app, nudity and sound recordings, hidden on every device by the
  * server (see [HiddenCollections]). Behind the phone's lock. Each switch is saved on the server at once; nothing is kept
  * on this phone. The logic is [HiddenCollectionsController]. See docs/screens/settings.md.
  */
@@ -111,6 +111,26 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                     val set = actions.set
                     SectionTitle(stringResource(R.string.hidden_nudity_title))
                     SettingsCard { NudityRows(shown.nudity, state.saving, actions) }
+                    // Sound recordings, on a server that has them: each hidden until turned off.
+                    val recordings = shown.recordings
+                    val calls = shown.calls
+                    val voiceMessages = shown.voiceMessages
+                    if (recordings != null && calls != null && voiceMessages != null) {
+                        SectionTitle(stringResource(R.string.hidden_audio_title))
+                        SettingsCard {
+                            CollectionRow(stringResource(R.string.hidden_audio_recordings), recordings, R.plurals.hidden_audio_recordings_count, state.saving, set)
+                            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+                            CollectionRow(stringResource(R.string.hidden_audio_calls), calls, R.plurals.hidden_audio_calls_count, state.saving, set)
+                            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+                            CollectionRow(stringResource(R.string.hidden_audio_voice), voiceMessages, R.plurals.hidden_audio_voice_count, state.saving, set)
+                        }
+                        Text(
+                            stringResource(R.string.hidden_audio_body),
+                            color = LibraryColors.Muted,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
+                        )
+                    }
                     SectionTitle(stringResource(R.string.hidden_whatsapp_title))
                     SettingsCard {
                         CollectionRow(stringResource(R.string.hidden_whatsapp), shown.whatsapp, R.plurals.hidden_files, state.saving, set)

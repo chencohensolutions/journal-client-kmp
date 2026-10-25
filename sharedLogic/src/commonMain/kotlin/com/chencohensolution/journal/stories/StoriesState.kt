@@ -3,6 +3,7 @@ package com.chencohensolution.journal.stories
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.TimelineGrouping
@@ -44,6 +45,8 @@ data class StoriesState(
     val looks: PhotoLooks = PhotoLooks.NONE,
     /** What the app shows of each source; Moments, Explore, All photos and Tags follow it. */
     val shownSources: ShownSources = ShownSources(),
+    /** The sound recordings the user shows, by sha256: for a recording's page. */
+    val sounds: Map<String, SoundRecording> = emptyMap(),
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -126,7 +129,9 @@ internal fun buildState(
             alone = aloneIn(notes),
             sets = setsIn(notes),
             revealed = revealed,
+            sounds = library.sounds,
         ),
+        sounds = library.sounds.associateBy { it.sha256 },
         error = error,
     )
 }
