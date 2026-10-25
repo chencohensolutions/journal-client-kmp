@@ -2,7 +2,9 @@
 
 One page per screen: what it's for, what it shows, how it behaves, and where the code is on each platform.
 Clickable mockups of every screen are in [mockups/](mockups/README.md): open `mockups/index.html` in a browser.
-The earlier design canvas (https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf) is no longer updated. Stories, with
+Rounds of UX suggestions, and how to bring one back, are in [docs/ux-history/](../ux-history/README.md), linked from
+each screen's "Design history". The earlier design canvas (https://claude.ai/artifact/QKsfaEgFs3bCC4Qeqt4qPf) is no
+longer updated. Stories, with
 their story and group pages, were replaced by the storyline on Oct 21, 2026 (owner's decision) and are gone.
 
 | Screen | Shown when | Doc |
