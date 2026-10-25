@@ -250,3 +250,7 @@ takeKeys {
     INSERT OR IGNORE INTO library_keys
         SELECT 'd', id FROM library_item WHERE is_on_device = 1 AND server_sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
 }
+
+-- The newest rows, by the day index: what the top of the screens shows at start, before the rest is read.
+newestLibraryItems:
+SELECT * FROM library_item ORDER BY epoch_day DESC, taken_millis DESC LIMIT ?;

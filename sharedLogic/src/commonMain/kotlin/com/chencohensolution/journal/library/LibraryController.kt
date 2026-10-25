@@ -119,7 +119,8 @@ class LibraryController internal constructor(
     private var merged: List<DayGroup> = emptyList()
     private var mergedFrom: List<Any?>? = null
 
-    private val _state = MutableStateFlow(LibraryState(access = currentAccess()))
+    // With a table, loading until its first rows are read (see libraryReady).
+    private val _state = MutableStateFlow(LibraryState(access = currentAccess(), loading = table != null))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
     // Photos taken, received or removed while the app is open: read again once they settle (a burst is one read).
@@ -172,9 +173,9 @@ class LibraryController internal constructor(
                 ) { hidden, privateFiles, private -> Triple(hidden, privateFiles, private) }
                     .distinctUntilChanged()
                     .collect { (hidden, privateFiles, private) ->
-                        stored.leaveOut(hiddenOnPhone(backup?.value?.entries.orEmpty(), hidden, privateFiles, private))
+                        val changed = stored.leaveOut(hiddenOnPhone(backup?.value?.entries.orEmpty(), hidden, privateFiles, private))
                         val access = currentAccess()
-                        if (readItems.isNotEmpty() && (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED)) load()
+                        if (changed && readItems.isNotEmpty() && (access == PhotoAccess.FULL || access == PhotoAccess.LIMITED)) load()
                     }
             }
         }
@@ -253,6 +254,10 @@ class LibraryController internal constructor(
     private var refreshAgain = false
     private var keptRead = false
 
+    /** Whether the library has rows to show: at once without a table, else once its newest rows are read or made. */
+    private val libraryReady: Boolean get() = table == null || ready
+    private var ready = false
+
     /**
      * [publish] with [table]: the rows are made again in the database when the phone's library, the server's list or
      * what is hidden changed, or a ledger change touches one of them (a backup of calls doesn't); only the rows that
@@ -295,9 +300,13 @@ class LibraryController internal constructor(
         }
         refreshJob = scope.launch {
             if (!keptRead) {
-                // What the database kept since the last start, shown before anything is read again.
-                val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
+                // What the database kept since the last start, shown before anything is read again: the newest rows
+                // first (the top of the screens, in milliseconds), then the rest.
+                val newest = withContext(io) { Measure.time({ "Library's newest rows read" }) { table.newest(FIRST_ROWS) } }
                 keptRead = true
+                patch(newest, emptyList())
+                if (newest.isNotEmpty()) showReady()
+                val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
                 patch(kept, emptyList())
             }
             do {
@@ -309,7 +318,16 @@ class LibraryController internal constructor(
                 Measure.log?.invoke("Library: ${delta.changed.size} rows changed, ${delta.removed.size} gone")
                 patch(delta.changed, delta.removed)
             } while (refreshAgain)
+            // A new database is made whole by its first refresh: ready once it is.
+            showReady()
         }
+    }
+
+    /** The library has rows to show (or is known to be empty): the spinner goes, unless the phone's library is read. */
+    private fun showReady() {
+        if (ready) return
+        ready = true
+        _state.update { it.copy(loading = loadJob?.isActive == true) }
     }
 
     /** Patches [changed] and [removed] rows into [merged]: only their days are made again. */
@@ -410,7 +428,7 @@ class LibraryController internal constructor(
             // Without photo access only the server's photos are shown.
             loadJob?.cancel()
             readItems = emptyList()
-            _state.update { it.copy(loading = false, loadError = null) }
+            _state.update { it.copy(loading = !libraryReady, loadError = null) }
             publish()
         }
     }
@@ -452,12 +470,12 @@ class LibraryController internal constructor(
         loadJob = scope.launch {
             try {
                 readItems = library.loadItems()
-                _state.update { it.copy(loading = false) }
+                _state.update { it.copy(loading = !libraryReady) }
                 publish()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, loadError = e.describe()) }
+                _state.update { it.copy(loading = !libraryReady, loadError = e.describe()) }
             }
         }
     }
@@ -532,6 +550,9 @@ internal fun mergeWithServer(
 
 /** The uploading photo's ring moves in this many steps (5%). */
 private const val STATUS_STEPS = 20
+
+/** Rows read first at start, newest first: a few screens of Moments. */
+private const val FIRST_ROWS = 600L
 
 /** How long the library must be quiet after a change before it is read again. */
 private const val CHANGE_SETTLE_MILLIS = 1_000L

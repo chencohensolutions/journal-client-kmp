@@ -35,7 +35,8 @@ internal interface ChangingLibrary : MediaLibrary {
 
 /** A library that keeps out what the user hides (see [StoredMediaLibrary.leaveOut]). */
 internal interface LeavesOut {
-    suspend fun leaveOut(hides: (MediaItem) -> Boolean)
+    /** Returns whether anything left the table or came back to it. */
+    suspend fun leaveOut(hides: (MediaItem) -> Boolean): Boolean
 }
 
 /**
@@ -113,7 +114,7 @@ internal class StoredMediaLibrary(
      * What the user hides changed (or is first known): items it now hides leave the table, and those it hides no more
      * are read again from the platform. A platform that can't read items by id is read whole.
      */
-    override suspend fun leaveOut(hides: (MediaItem) -> Boolean) {
+    override suspend fun leaveOut(hides: (MediaItem) -> Boolean): Boolean =
         mutex.withLock {
             this.hides = hides
             val gone = withContext(io) { queries.leftOutIds().executeAsList() }
@@ -123,8 +124,9 @@ internal class StoredMediaLibrary(
                 else -> platform.loadItems().filter { it.id in gone.toSet() && !hides(it) }
             }
             withContext(io) {
-                database.transaction {
-                    items().filter { it.id !in madeUpIds && hides(it) }.forEach { item ->
+                database.transactionWithResult {
+                    val leaving = items().filter { it.id !in madeUpIds && hides(it) }
+                    leaving.forEach { item ->
                         queries.deleteDeviceItem(item.id)
                         queries.addLeftOut(item.id)
                     }
@@ -132,10 +134,10 @@ internal class StoredMediaLibrary(
                         queries.removeLeftOut(item.id)
                         queries.upsertDeviceItem(item.toRow())
                     }
+                    leaving.isNotEmpty() || back.isNotEmpty()
                 }
             }
         }
-    }
 
     private fun items(): List<MediaItem> = queries.allDeviceItems().executeAsList().map { it.toMediaItem() }
 

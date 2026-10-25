@@ -23,6 +23,9 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     /** Every row, as kept. */
     fun all(): List<LibraryRow> = queries.allLibraryItems(::libraryRow).executeAsList()
 
+    /** The [count] newest rows, read through the day index in milliseconds: the top of the screens at start. */
+    fun newest(count: Long): List<LibraryRow> = queries.newestLibraryItems(count, ::libraryRow).executeAsList()
+
     /**
      * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened

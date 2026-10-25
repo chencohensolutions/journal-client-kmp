@@ -239,8 +239,11 @@ Confirmed by the owner on Oct 25, 2026:
          of the phone's database on the PC).
        - A second start draws its first Moments frame after 4.3–4.8 s (5.3–6 s before phase 4). What is left is
          reading every row into memory (about 2 s) and building the whole feed (0.6–1 s): phase 5's work.
-       - The owner sees two spinners at start (the library read, then the feed built from it); phase 5 replaces
-         both with the first page.
+       - The owner saw two spinners at start: the phone's library read, then the same read again (`leaveOut` re-read
+         it even when nothing changed), while every row was read and the whole feed built. Fixed the same day:
+         `leaveOut` says whether it changed anything, the spinner stays until the library's first rows are in, and
+         the newest 600 rows are read first by the day index (57–151 ms) so Moments shows its top at once; the rest
+         (2.4 s) loads behind it. First Moments frame: 1.4–1.9 s after start (4.3–4.8 s before).
      - Still in memory: `LibraryState.days` (the adapter), `BackupState.entries` (statuses), backup's queue.
        `mergeWithServer` stays as the tests' reference until phase 9.
 5. **Moments paged.**
