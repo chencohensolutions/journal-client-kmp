@@ -155,6 +155,5 @@ Today every screen reads one list held in memory:
 ## Before starting (state on Oct 25, 2026)
 - Client `main` is at `0c1a97c` (sound folders, WAV as FLAC, Free up by groups, merges one at a time); server `main`
   is at `17d02b6`. Neither is pushed.
-- Uncommitted on client `main`: temporary `println("TIMING …")` lines in `LibraryController.kt`,
-  `StoriesController.kt` and `ServerLibrary.kt`, added to measure start-up. Use them for phase 0's baseline, then
-  revert them (`git checkout -- sharedLogic/src/commonMain`). The Journal build on the owner's phone has them.
+- The temporary start-up timing lines used on Oct 25 were discarded, not committed. Phase 0 adds its own
+  measurements. The Journal build on the owner's phone still has them, until the next install.
