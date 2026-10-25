@@ -520,9 +520,9 @@
         <item quantity="one">Show %d photo</item>
         <item quantity="other">Show %d photos</item>
     </plurals>
-    <string name="settings_hidden_title">Hidden collections</string>
+    <string name="settings_hidden_title">Private settings</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
-    <string name="settings_hidden_row_body">Nudity, WhatsApp and screenshots by app, hidden on all your devices</string>
+    <string name="settings_hidden_row_body">Private media, nudity, sound recordings, WhatsApp and screenshots by app</string>
     <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
     <string name="hidden_whatsapp_title">WhatsApp</string>
     <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
@@ -707,10 +707,10 @@
     <string name="audio_dial">Call</string>
     <string name="audio_edit_contact">Edit contact</string>
     <string name="hidden_audio_title">Sound recordings</string>
-    <string name="hidden_audio_recordings">Recordings</string>
-    <string name="hidden_audio_calls">Phone calls</string>
-    <string name="hidden_audio_voice">WhatsApp voice messages</string>
-    <string name="hidden_audio_body">Hidden on all your devices until you turn one off. Calls keep who they were with, as the phone named them.</string>
+    <string name="hidden_audio_recordings">Show recordings</string>
+    <string name="hidden_audio_calls">Show phone calls</string>
+    <string name="hidden_audio_voice">Show WhatsApp voice messages</string>
+    <string name="hidden_audio_body">Off at first: sound recordings stay hidden on all your devices until you show them here. Shown ones appear in Moments.</string>
     <plurals name="hidden_audio_recordings_count">
         <item quantity="one">%s recording</item>
         <item quantity="other">%s recordings</item>
@@ -728,4 +728,5 @@
     <string name="audio_number">Phone number</string>
     <string name="audio_save">Save</string>
     <string name="audio_cancel">Cancel</string>
+    <string name="hidden_apps_pills">Tap an app to hide its screenshots; filled ones are hidden.</string>
 </resources>

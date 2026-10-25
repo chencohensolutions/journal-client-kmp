@@ -28,6 +28,13 @@ Still missing on iOS:
   another decoder or a server-side stream. Strings: the `audio_*` and `hidden_audio_*` keys in Android's
   `strings.xml`. See [screens/moments.md](screens/moments.md), [screens/viewer.md](screens/viewer.md).
 
+- **Private settings** (Android Oct 25, 2026) — Settings › Private media is one row, **Private settings** (the
+  Hidden collections screen renamed). **Show private media** moved into it, at the top (`PrivateMedia.show`, this
+  phone's). The sound recordings are **Show** switches, off at first (on means shown). Screenshot apps are pills
+  (filled with a check while hidden) instead of a switch each. Mirror in `HiddenView.swift` and the Settings view;
+  strings `settings_hidden_title`, `settings_hidden_row_body`, `hidden_audio_*`, `hidden_apps_pills`. See
+  [screens/settings.md](screens/settings.md).
+
 Planned, not built on either platform yet:
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

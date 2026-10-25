@@ -3,6 +3,8 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.runtime.Composable
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
+import com.chencohensolution.journal.server.HiddenCollectionsState
+import com.chencohensolution.journal.server.HiddenCollections
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
 
@@ -23,6 +25,27 @@ internal val labScreens: List<LabScreen> = listOf(
     LabScreen("moments", "Moments", listOf(
         current {
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        },
+    )),
+    LabScreen("private", "Private settings", listOf(
+        current {
+            val apps = listOf("Bumble" to 1458, "Chrome" to 310, "WhatsApp" to 96, "Instagram" to 88, "Maps" to 41, "Google Pay" to 12)
+                .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) }
+            val collections = HiddenCollections(
+                whatsapp = HiddenCollections.Collection("WhatsApp", 3412, false),
+                screenshotsWithoutApp = HiddenCollections.Collection("", 128, false),
+                screenshotApps = apps,
+                nudity = HiddenCollections.Nudity(true, 50, 61, 0),
+                recordings = HiddenCollections.Collection("recordings", 1204, true),
+                calls = HiddenCollections.Collection("calls", 6196, true),
+                voiceMessages = HiddenCollections.Collection("voiceMessages", 14, true),
+            )
+            HiddenContent(
+                androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title),
+                HiddenCollectionsState.Ready(collections, "", apps, saving = false, notChanged = false),
+                HiddenActions(retry = {}, set = { _, _ -> }, setQuery = {}),
+                back = {},
+            )
         },
     )),
     LabScreen("recording", "A sound recording's page", listOf(

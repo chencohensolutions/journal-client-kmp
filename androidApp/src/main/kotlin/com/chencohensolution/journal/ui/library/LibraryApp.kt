@@ -363,7 +363,6 @@ private fun LibraryScreens(
                                             setGapHours = settings::setGapHours,
                                             setSimilarityPercent = settings::setSimilarityPercent,
                                             resetSimilarity = settings::resetSimilarity,
-                                            setShowPrivateMedia = settings::setShowPrivateMedia,
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
@@ -382,7 +381,7 @@ private fun LibraryScreens(
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
-                                Route.Hidden -> HiddenScreen(server.library, back = pop)
+                                Route.Hidden -> HiddenScreen(server.library, settingsState.privateMedia.show, settings::setShowPrivateMedia, back = pop)
                                 is Route.Audio -> RecordingScreen(route.sha256, storiesState, server.library, back = pop)
                                 Route.SearchSettings -> {
                                     LaunchedEffect(Unit) { localIndexes.refresh() }

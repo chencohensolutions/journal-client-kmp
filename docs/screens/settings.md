@@ -71,24 +71,27 @@ The user's choices, kept on this device (SharedPreferences / NSUserDefaults). Op
   (since Oct 21, 2026 only there; it also drove story suggestions until stories were removed). Higher sets only
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
-- **Private media** (both platforms; iOS since Oct 21, 2026): **Show private media**, a switch, **off** by
-  default, for the photos the user marked private; then **Hidden collections** (both platforms, Oct 22, 2026; a row
-  with a lock, "Nudity, WhatsApp and screenshots by app, hidden on all your devices", see below). The nudity slider
+- **Private media** (both platforms; iOS since Oct 21, 2026): one row with a lock, **Private settings** (called
+  Hidden collections until Oct 25, 2026), "Private media, nudity, sound recordings, WhatsApp and screenshots by app",
+  see below. On Android, **Show private media** moved into that screen on Oct 25, 2026 (iOS still has it here). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
 - **Hidden collections** (its own screen, asked for Oct 22, 2026; both platforms): opens only after the phone's lock
   (Android: fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential; iOS:
   Face ID, Touch ID or the passcode, `LAContext` `.deviceOwnerAuthentication`), every time it opens and again after
   the app was in the background; a phone without a screen lock (or passcode) can't open it. An intro says
   hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
-  off shows them again. **Nudity** (Oct 23, 2026): "Photos and videos with nudity · N photos and videos · M not
+  off shows them again. Above that, on Android (Oct 25, 2026), **Private media** with **Show private media**, a
+  switch, **off** by default, for the photos the user marked private; it is this phone's choice, not the server's.
+  **Nudity** (Oct 23, 2026): "Photos and videos with nudity · N photos and videos · M not
   scanned yet", **on** by default, and while on **Hide from**, a slider from 10% to 95% in steps of 5 (default
   **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
-  **Sound recordings** (Android, Oct 25, 2026; on a server that has them): **Recordings**, **Phone calls** and
-  **WhatsApp voice messages**, each with its count, all **on** (hidden) until the user turns one off, and "Hidden on
-  all your devices until you turn one off". Shown ones appear in [Moments](moments.md).
+  **Sound recordings** (Android, Oct 25, 2026; on a server that has them): **Show recordings**, **Show phone calls**
+  and **Show WhatsApp voice messages**, each with how many there are, all **off** at first (here on means shown,
+  unlike the other switches). Shown ones appear in [Moments](moments.md).
   **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
-  N", **Find an app** (filters the list), then a switch per app with its screenshots, most first ("Bumble · 1,458
-  screenshots"). On means hidden. The list and the choice live on the server (`hiddenCollections`,
+  N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Bumble 1,458"; on Android
+  since Oct 25, 2026, a switch per app before that and still on iOS): tapping one hides its screenshots, and a hidden
+  app's pill is filled with a check. On means hidden. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if
   the server can't be reached the switch goes back with "Not changed: can't reach your server". The library syncs
   once, when the screen is left (`HiddenCollectionsController.close` → `ServerLibrary.syncAgain`), not after each

@@ -538,9 +538,9 @@
         <item quantity="two">הצגת %d תמונות</item>
         <item quantity="other">הצגת %d תמונות</item>
     </plurals>
-    <string name="settings_hidden_title">אוספים מוסתרים</string>
+    <string name="settings_hidden_title">הגדרות פרטיות</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
-    <string name="settings_hidden_row_body">עירום, וואטסאפ וצילומי מסך לפי אפליקציה, מוסתרים בכל המכשירים שלך</string>
+    <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, וואטסאפ וצילומי מסך לפי אפליקציה</string>
     <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
     <string name="hidden_whatsapp_title">וואטסאפ</string>
     <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
@@ -735,10 +735,10 @@
     <string name="audio_dial">חייג</string>
     <string name="audio_edit_contact">ערוך איש קשר</string>
     <string name="hidden_audio_title">הקלטות קול</string>
-    <string name="hidden_audio_recordings">הקלטות</string>
-    <string name="hidden_audio_calls">שיחות טלפון</string>
-    <string name="hidden_audio_voice">הודעות קוליות מוואטסאפ</string>
-    <string name="hidden_audio_body">מוסתרות בכל המכשירים שלך עד שתכבה אחת מהן. שיחות שומרות עם מי היו, כפי שהטלפון קרא להן.</string>
+    <string name="hidden_audio_recordings">הצגת הקלטות</string>
+    <string name="hidden_audio_calls">הצגת שיחות טלפון</string>
+    <string name="hidden_audio_voice">הצגת הודעות קוליות מוואטסאפ</string>
+    <string name="hidden_audio_body">כבוי בהתחלה: הקלטות הקול מוסתרות בכל המכשירים שלך עד שתציג אותן כאן. מה שמוצג מופיע ברגעים.</string>
     <plurals name="hidden_audio_recordings_count">
         <item quantity="one">הקלטה אחת</item>
         <item quantity="two">%s הקלטות</item>
@@ -759,4 +759,5 @@
     <string name="audio_number">מספר טלפון</string>
     <string name="audio_save">שמור</string>
     <string name="audio_cancel">ביטול</string>
+    <string name="hidden_apps_pills">הקש על אפליקציה כדי להסתיר את צילומי המסך שלה; המלאות מוסתרות.</string>
 </resources>

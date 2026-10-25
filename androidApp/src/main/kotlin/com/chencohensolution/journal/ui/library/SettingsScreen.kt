@@ -66,7 +66,6 @@ internal class SettingsActions(
     val setGapHours: (Int) -> Unit = {},
     val setSimilarityPercent: (Int) -> Unit = {},
     val resetSimilarity: () -> Unit = {},
-    val setShowPrivateMedia: (Boolean) -> Unit = {},
     /** Opens Hidden collections (behind the phone's lock). */
     val openHidden: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
@@ -162,7 +161,7 @@ internal fun SettingsScreen(
             SectionTitle(stringResource(R.string.settings_similarity_title))
             SimilarityCard(settings.similarity, actions)
             SectionTitle(stringResource(R.string.settings_private_title))
-            PrivateMediaCard(settings.privateMedia, syncProgress, actions)
+            PrivateMediaCard(syncProgress, actions)
             SectionTitle(stringResource(R.string.settings_search_title))
             Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
             if (storage != null) AdvancedSection(storage, storageActions)
@@ -306,19 +305,12 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
 }
 
 /**
- * "Show private media" (off by default), and Hidden collections (where nudity is hidden too), with how far the library
- * is in reading the server's list again after a change there.
+ * The row that opens Private settings (Show private media, nudity, sound recordings, WhatsApp, screenshots), behind the
+ * phone's lock, with how far the library is in reading the server's list again after a change there.
  */
 @Composable
-private fun PrivateMediaCard(privateMedia: PrivateMedia, syncProgress: SyncProgress?, actions: SettingsActions) {
+private fun PrivateMediaCard(syncProgress: SyncProgress?, actions: SettingsActions) {
     Card {
-        SwitchRow(
-            title = stringResource(R.string.settings_private_switch),
-            body = stringResource(R.string.settings_private_switch_body),
-            checked = privateMedia.show,
-            onChange = actions.setShowPrivateMedia,
-        )
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         Row(
             Modifier.fillMaxWidth().clickable(onClick = actions.openHidden).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,

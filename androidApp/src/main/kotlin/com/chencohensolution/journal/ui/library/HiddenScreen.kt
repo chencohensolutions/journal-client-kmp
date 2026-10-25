@@ -1,6 +1,18 @@
 package com.chencohensolution.journal.ui.library
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -47,12 +59,12 @@ import com.chencohensolution.journal.server.ServerLibrary
 import java.text.NumberFormat
 
 /**
- * Settings → Private media → Hidden collections: all of WhatsApp, screenshots by app, nudity and sound recordings, hidden on every device by the
+ * Settings → Private media → Private settings: "Show private media" (this phone's), then what is hidden on every device: all of WhatsApp, screenshots by app, nudity and sound recordings, hidden on every device by the
  * server (see [HiddenCollections]). Behind the phone's lock. Each switch is saved on the server at once; nothing is kept
  * on this phone. The logic is [HiddenCollectionsController]. See docs/screens/settings.md.
  */
 @Composable
-internal fun HiddenScreen(library: ServerLibrary, back: () -> Unit) {
+internal fun HiddenScreen(library: ServerLibrary, showPrivate: Boolean, setShowPrivate: (Boolean) -> Unit, back: () -> Unit) {
     val title = stringResource(R.string.settings_hidden_title)
     PhoneLocked(title, back) {
         val controller = remember(library) { HiddenCollectionsController(library) }
@@ -66,9 +78,10 @@ internal fun HiddenScreen(library: ServerLibrary, back: () -> Unit) {
                 setQuery = controller::setQuery,
                 setNudityHidden = controller::setNudityHidden,
                 setNudityFromPercent = controller::setNudityFromPercent,
+                setShowPrivate = setShowPrivate,
             )
         }
-        HiddenContent(title, state, actions, back)
+        HiddenContent(title, state, actions, back, showPrivate)
     }
 }
 
@@ -79,11 +92,14 @@ internal class HiddenActions(
     val setQuery: (String) -> Unit,
     val setNudityHidden: (Boolean) -> Unit = {},
     val setNudityFromPercent: (Int) -> Unit = {},
+    /** "Show private media", kept on this phone (not on the server). */
+    val setShowPrivate: (Boolean) -> Unit = {},
 )
 
 /** Draws [state]; once unlocked. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions: HiddenActions, back: () -> Unit) {
+internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions: HiddenActions, back: () -> Unit, showPrivate: Boolean = false) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
@@ -91,6 +107,16 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                 .verticalScroll(rememberScrollState())
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
+            // This phone's own choice (moved here from Settings, Oct 25, 2026); the rest is the server's, for every device.
+            SectionTitle(stringResource(R.string.settings_private_title))
+            SettingsCard {
+                SwitchRow(
+                    title = stringResource(R.string.settings_private_switch),
+                    body = stringResource(R.string.settings_private_switch_body),
+                    checked = showPrivate,
+                    onChange = actions.setShowPrivate,
+                )
+            }
             Text(
                 stringResource(R.string.hidden_intro),
                 color = LibraryColors.Muted,
@@ -111,18 +137,19 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                     val set = actions.set
                     SectionTitle(stringResource(R.string.hidden_nudity_title))
                     SettingsCard { NudityRows(shown.nudity, state.saving, actions) }
-                    // Sound recordings, on a server that has them: each hidden until turned off.
+                    // Sound recordings, on a server that has them: how many of each, and whether to show them (off at
+                    // first: on means shown here, unlike the collections below).
                     val recordings = shown.recordings
                     val calls = shown.calls
                     val voiceMessages = shown.voiceMessages
                     if (recordings != null && calls != null && voiceMessages != null) {
                         SectionTitle(stringResource(R.string.hidden_audio_title))
                         SettingsCard {
-                            CollectionRow(stringResource(R.string.hidden_audio_recordings), recordings, R.plurals.hidden_audio_recordings_count, state.saving, set)
+                            ShowRow(stringResource(R.string.hidden_audio_recordings), recordings, R.plurals.hidden_audio_recordings_count, state.saving, set)
                             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                            CollectionRow(stringResource(R.string.hidden_audio_calls), calls, R.plurals.hidden_audio_calls_count, state.saving, set)
+                            ShowRow(stringResource(R.string.hidden_audio_calls), calls, R.plurals.hidden_audio_calls_count, state.saving, set)
                             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                            CollectionRow(stringResource(R.string.hidden_audio_voice), voiceMessages, R.plurals.hidden_audio_voice_count, state.saving, set)
+                            ShowRow(stringResource(R.string.hidden_audio_voice), voiceMessages, R.plurals.hidden_audio_voice_count, state.saving, set)
                         }
                         Text(
                             stringResource(R.string.hidden_audio_body),
@@ -152,7 +179,19 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                             )
-                            state.shownApps.forEach { app -> CollectionRow(app.name, app, R.plurals.hidden_screenshots, state.saving, set) }
+                            Text(
+                                stringResource(R.string.hidden_apps_pills),
+                                color = LibraryColors.Muted,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                            )
+                            FlowRow(
+                                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                state.shownApps.forEach { app -> AppPill(app) { if (!state.saving) set(app, !app.hidden) } }
+                            }
                         }
                     }
                 }
@@ -225,6 +264,65 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
         )
         Text(stringResource(R.string.hidden_nudity_from_body), color = LibraryColors.Muted, fontSize = 13.sp)
     }
+}
+
+/**
+ * A screenshot app as a pill you tap: filled, with a check, while its screenshots are hidden; outlined while shown.
+ * The count is how many screenshots it has.
+ */
+@Composable
+private fun AppPill(app: HiddenCollections.Collection, onClick: () -> Unit) {
+    val on = app.hidden
+    val content = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground
+    Row(
+        Modifier
+            .height(36.dp)
+            .then(
+                if (on) {
+                    Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50))
+                } else {
+                    Modifier.border(1.dp, LibraryColors.Muted.copy(alpha = 0.45f), RoundedCornerShape(50))
+                },
+            )
+            .clip(RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Checkbox
+                selected = on
+            }
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (on) Icon(LibraryIcons.Check, null, tint = content, modifier = Modifier.size(15.dp))
+        Text(app.name, color = content, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            NumberFormat.getIntegerInstance().format(app.files),
+            color = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted,
+            fontSize = 13.sp,
+        )
+    }
+}
+
+/**
+ * A collection's "Show" switch, with how many files it has: on means shown, the opposite of [CollectionRow]. For sound
+ * recordings, hidden until the user shows them. Disabled while a change is being saved.
+ */
+@Composable
+private fun ShowRow(
+    title: String,
+    collection: HiddenCollections.Collection,
+    countText: Int,
+    saving: Boolean,
+    set: (HiddenCollections.Collection, Boolean) -> Unit,
+) {
+    val count = NumberFormat.getIntegerInstance().format(collection.files)
+    SwitchRow(
+        title = title,
+        body = pluralStringResource(countText, collection.files, count),
+        checked = !collection.hidden,
+        onChange = { if (!saving) set(collection, !it) },
+    )
 }
 
 /** A collection's switch, with how many files it has; on means hidden. Disabled while a change is being saved. */
