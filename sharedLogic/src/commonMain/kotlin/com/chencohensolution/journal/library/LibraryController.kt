@@ -4,6 +4,7 @@ import com.chencohensolution.journal.backup.BackupActivity
 import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.server.KeptOriginals
+import com.chencohensolution.journal.server.PrivateFile
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerMedia
 import com.chencohensolution.journal.connection.ObservationHandle
@@ -142,7 +143,14 @@ class LibraryController internal constructor(
         server?.let { serverLibrary -> scope.launch { serverLibrary.media.collect { publish() } } }
         server?.let { serverLibrary -> scope.launch { serverLibrary.hidden.collect { publish() } } }
         originals?.let { kept -> scope.launch { kept.load(); kept.kept.collect { publish() } } }
-        privateMedia?.let { flow -> scope.launch { flow.collect { publish() } } }
+        // The server's list keeps the private files only while they are shown (ServerLibrary.showPrivate).
+        server?.let { serverLibrary -> scope.launch { serverLibrary.privateFiles.collect { publish() } } }
+        scope.launch {
+            (privateMedia ?: MutableStateFlow(savedPrivateMedia)).collect {
+                server?.showPrivate(it.show)
+                publish()
+            }
+        }
         scores?.let { flow -> scope.launch { flow.collect { publish() } } }
     }
 
@@ -158,10 +166,11 @@ class LibraryController internal constructor(
         val backupState = backup?.value
         val serverList = server?.media?.value
         val hiddenOnServer = server?.hidden?.value.orEmpty()
+        val privateFiles = server?.privateFiles?.value.orEmpty()
         val kept = originals?.kept?.value.orEmpty()
         val private = privateMedia?.value ?: savedPrivateMedia
         val scored = scores?.value.orEmpty()
-        val inputs = listOf(readItems, backupState?.entries, serverList, hiddenOnServer, kept, private, scored)
+        val inputs = listOf(readItems, backupState?.entries, serverList, hiddenOnServer, kept, private, scored, privateFiles)
         fun same(other: List<Any?>?) = other != null && other.indices.all { other[it] === inputs[it] }
         if (!same(mergedFrom)) {
             // Already being merged from these: it shows them when done.
@@ -177,7 +186,7 @@ class LibraryController internal constructor(
                     Measure.time({ "Merge of ${readItems.size} + ${serverList.orEmpty().size} items" }) {
                         val (soundMedia, serverMedia) = serverList.orEmpty().partition { it.isAudio }
                         groupByDay(
-                            mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored),
+                            mergeWithServer(readItems, backupState?.entries.orEmpty(), serverMedia, kept.mapValues { it.value.toString() }, private, hiddenOnServer, scored, privateFiles),
                         ) to soundMedia.filterNot { private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
                     }
                 }
@@ -188,6 +197,8 @@ class LibraryController internal constructor(
                 showStatuses()
                 if (mergeAgain) {
                     mergeAgain = false
+                    // This merge is done: the next one may start (this job still counts as active until it returns).
+                    mergeJob = null
                     publish()
                 }
             }
@@ -333,20 +344,25 @@ internal fun mergeWithServer(
     hiddenOnServer: Set<String> = emptySet(),
     /** Aesthetic scores kept on this phone, by sha256; they go before the change feed's. */
     scores: Map<String, Float> = emptyMap(),
+    /** Private files the server's list left out (ServerLibrary.privateFiles): hidden like those it lists as private. */
+    privateFiles: List<PrivateFile> = emptyList(),
 ): List<MediaItem> {
     val items = device.map { item -> entries[item.id]?.takeIf { it.matches(item) }?.let { item.copy(sha256 = it.sha256) } ?: item }
         .filter { it.sha256 == null || it.sha256 !in hiddenOnServer }
-    if (server.isEmpty()) return items
+    if (server.isEmpty() && privateFiles.isEmpty()) return items
     val shas = items.mapNotNullTo(HashSet()) { it.sha256 }
     val namesAndSizes = items.mapNotNullTo(HashSet()) { item -> item.fileName?.lowercase()?.let { it to item.sizeBytes } }
     val deviceIds = device.mapTo(HashSet()) { it.id }
     val formerIds = entries.values.filter { it.uploaded && it.id !in deviceIds }.associate { it.sha256 to it.id }
     val hidden = server.filter { privateMedia.hides(it.isPrivate) }
-    val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }
+    val leftOut = if (privateMedia.hides(true)) privateFiles else emptyList()
+    val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }.apply { leftOut.mapTo(this) { it.sha256 } }
     val hiddenNamesAndSizes = hidden.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
+        .apply { leftOut.mapTo(this) { it.fileName.lowercase() to it.size } }
     val marked = server.filter { it.isPrivate }
-    val markedShas = marked.mapTo(HashSet()) { it.sha256 }
+    val markedShas = marked.mapTo(HashSet()) { it.sha256 }.apply { privateFiles.mapTo(this) { it.sha256 } }
     val markedNamesAndSizes = marked.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
+        .apply { privateFiles.mapTo(this) { it.fileName.lowercase() to it.size } }
     fun MediaItem.matches(shas: Set<String>, namesAndSizes: Set<Pair<String?, Long?>>): Boolean {
         val sha = sha256
         return if (sha != null) sha in shas else (fileName?.lowercase() to sizeBytes) in namesAndSizes

@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.util.Log
+import androidx.sqlite.db.SupportSQLiteDatabase
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import com.chencohensolution.journal.db.LibraryDatabase
 import android.os.Build
 import com.chencohensolution.journal.backup.AndroidMediaFiles
 import com.chencohensolution.journal.backup.AndroidSoundFolders
@@ -238,7 +241,29 @@ private fun serverHttp(context: Context): ServerHttp =
     serverHttp ?: ServerHttp(JournalSettings(SharedPreferencesStore(context)), AndroidMtlsHttpClientFactory(context), decodePemCertificates(SERVER_CA_PEM))
         .also { serverHttp = it }
 
-/** What the server holds, kept in `files/server/media.json`. One per process. */
+private var libraryDatabase: LibraryDatabase? = null
+
+/**
+ * The library on the phone (docs/plans/library-on-disk.md), `no_backup/library.db`: a cache, so it stays out of
+ * Android's backups. One per process; WAL lets readers go on while a sync writes.
+ */
+@Synchronized
+private fun libraryDatabase(context: Context): LibraryDatabase =
+    libraryDatabase ?: LibraryDatabase(
+        AndroidSqliteDriver(
+            schema = LibraryDatabase.Schema,
+            context = context.applicationContext,
+            name = "library.db",
+            useNoBackupDirectory = true,
+            callback = object : AndroidSqliteDriver.Callback(LibraryDatabase.Schema) {
+                override fun onConfigure(db: SupportSQLiteDatabase) {
+                    db.enableWriteAheadLogging()
+                }
+            },
+        ),
+    ).also { libraryDatabase = it }
+
+/** What the server holds, kept in the library database ([libraryDatabase]). One per process. */
 @Synchronized
 fun serverLibrary(context: Context): ServerLibrary =
     serverLibrary ?: ServerLibrary(
@@ -246,6 +271,8 @@ fun serverLibrary(context: Context): ServerLibrary =
         http = serverHttp(context),
         fileSystem = FileSystem.SYSTEM,
         directory = context.filesDir.toOkioPath() / "server",
+        database = libraryDatabase(context),
+        showPrivateAtStart = { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
         // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too.
         removed = { sha256s ->
             phoneStorage(context).remove(sha256s)

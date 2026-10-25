@@ -60,6 +60,8 @@ import com.chencohensolution.journal.storage.IosFreeUp
 import com.chencohensolution.journal.storage.PhoneStorage
 import com.chencohensolution.journal.storage.ServerVerifyApi
 import kotlinx.coroutines.flow.StateFlow
+import app.cash.sqldelight.driver.native.NativeSqliteDriver
+import com.chencohensolution.journal.db.LibraryDatabase
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNumber
 import platform.Foundation.NSURL
@@ -229,13 +231,31 @@ object IosJournal {
         serverHttp ?: ServerHttp(JournalSettings(UserDefaultsStore()), IosMtlsHttpClientFactory(), decodePemCertificates(SERVER_CA_PEM))
             .also { serverHttp = it }
 
-    /** What the server holds, kept in Application Support (`server/media.json`). */
+    /**
+     * The library on the phone (docs/plans/library-on-disk.md), `library/library.db` in Application Support: a cache,
+     * so its folder is kept out of iCloud backups. The native driver writes WAL.
+     */
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    private val libraryDatabase by lazy {
+        val directory = supportDir() + "/library"
+        NSFileManager.defaultManager.createDirectoryAtPath(directory, withIntermediateDirectories = true, attributes = null, error = null)
+        NSURL.fileURLWithPath(directory).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+        LibraryDatabase(
+            NativeSqliteDriver(LibraryDatabase.Schema, "library.db", onConfiguration = { config ->
+                config.copy(extendedConfig = config.extendedConfig.copy(basePath = directory))
+            }),
+        )
+    }
+
+    /** What the server holds, kept in the library database. */
     fun serverLibrary(): ServerLibrary =
         serverLibrary ?: ServerLibrary(
             settings = JournalSettings(UserDefaultsStore()),
             http = serverHttp(),
             fileSystem = FileSystem.SYSTEM,
             directory = supportDir().toPath() / "server",
+            database = libraryDatabase,
+            showPrivateAtStart = { JournalSettings(UserDefaultsStore()).privateMedia.show },
             // What this phone keeps of a file the server took off its list (deleted, or hidden by the user) goes too;
             // streamed videos stay until their cache trims them (Swift's cache attaches no removal yet).
             removed = { sha256s ->

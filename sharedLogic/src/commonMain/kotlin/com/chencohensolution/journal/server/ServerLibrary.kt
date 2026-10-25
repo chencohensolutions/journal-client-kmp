@@ -10,6 +10,7 @@ import com.chencohensolution.journal.graphql.SetPrivateMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
 import com.chencohensolution.journal.graphql.type.CallInput
 import com.chencohensolution.journal.graphql.type.MediaKind
+import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.GeoPoint
@@ -36,7 +37,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
-import kotlinx.serialization.json.okio.encodeToBufferedSink
 import okio.FileSystem
 import okio.Path
 import kotlin.coroutines.cancellation.CancellationException
@@ -169,15 +169,22 @@ private data class ServerMediaFile(
 
 /**
  * What the server holds, kept on this device so the library can show photos that are only there (deleted from the
- * device, or taken on another one). Filled from the server's change feed, page by page, and saved with the cursor of the
- * last page applied, so the next sync asks only for what changed since. A cache: losing it means downloading the list
- * again. Kept in `server/media.json`.
+ * device, or taken on another one). Filled from the server's change feed, page by page, each page written to the
+ * library database with its cursor ([ServerMediaStore]), so the next sync asks only for what changed since. A cache:
+ * losing it means downloading the list again. Until Oct 25, 2026 it was kept in `server/media.json`, which is read
+ * into the database once and deleted.
+ *
+ * While "Show private media" is off ([showPrivate]), the private files are left out of the database but for what hides
+ * this phone's copies of them ([privateFiles]), asked by the owner on Oct 25, 2026; turning it on reads the whole feed
+ * again ([showPrivate]).
  */
 class ServerLibrary internal constructor(
     private val settings: JournalSettings,
     private val http: ServerHttp,
     private val fileSystem: FileSystem,
-    directory: Path,
+    /** Where `media.json` was kept, read once into [database]. */
+    private val directory: Path,
+    database: LibraryDatabase,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     /**
      * Called with the files the server took off its list (deleted, or hidden: see [HiddenCollections]) after a sync
@@ -186,22 +193,30 @@ class ServerLibrary internal constructor(
     private val removed: suspend (List<String>) -> Unit = {},
     /** Made-up files listed after the server's own (debug builds: MadeUpLibrary); never saved, never synced. */
     private val madeUp: List<ServerMedia> = emptyList(),
+    /** "Show private media" as saved: whether the database keeps the private files when it is first filled. */
+    private val showPrivateAtStart: () -> Boolean = { true },
+    /** Where the database is read and written. */
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val file = directory / "media.json"
-    private val tempFile = directory / "media.json.tmp"
+    private val store = ServerMediaStore(database)
     private val mutex = Mutex()
     private var cursor: String? = null
     private var syncJob: Job? = null
 
+    /** Whether the database keeps the private files (see [showPrivate]); set by [load]. */
+    private var holdsPrivate = true
+
+    private val _privateFiles = MutableStateFlow<List<PrivateFile>>(emptyList())
+
+    /** The private files left out while "Show private media" is off: the library hides this phone's copies of them. */
+    val privateFiles: StateFlow<List<PrivateFile>> = _privateFiles.asStateFlow()
+
     private val _media = MutableStateFlow(madeUp)
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
 
-    /** The server's own files, as saved: [media] without [madeUp]. */
-    private var real: List<ServerMedia> = emptyList()
-
     private fun show(list: List<ServerMedia>) {
-        real = list
         _media.value = if (madeUp.isEmpty()) list else list + madeUp
     }
 
@@ -388,14 +403,10 @@ class ServerLibrary internal constructor(
     }
 
     /**
-     * One sync: every page since the saved cursor. What was applied is saved and shown once at the end, also when a page
-     * fails partway, so the cursor and the list on disk always agree. Saving after every page wrote the whole list again
-     * each time, which for a large library ran the phone out of memory.
+     * One sync: every page since the saved cursor, each written to the database with its cursor as it comes. The list
+     * is shown once at the end, also when a page fails partway.
      */
     internal suspend fun sync(): Unit = mutex.withLock {
-        val known = real.associateByTo(LinkedHashMap()) { it.sha256 }
-        val hidden = _hidden.value.toMutableSet()
-        val savedCursor = cursor
         var changed = false
         var hiddenChanged = false
         val gone = mutableListOf<String>()
@@ -407,55 +418,77 @@ class ServerLibrary internal constructor(
                     response.exception?.let { throw it }
                     response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                     val page = response.data?.changes ?: break
+                    val media = mutableListOf<ServerMedia>()
+                    val pageGone = mutableListOf<String>()
+                    val hidden = mutableListOf<String>()
+                    val shownAgain = mutableListOf<String>()
                     page.changes.forEach { change ->
                         val sha = change.path.removePrefix("media/")
+                        if (change.hidden) hidden += sha else shownAgain += sha
                         // A kind this version doesn't know is left out like a deleted file.
-                        val media = change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }
-                        hiddenChanged = (if (change.hidden) hidden.add(sha) else hidden.remove(sha)) || hiddenChanged
-                        if (change.deleted || media == null) {
-                            if (known.remove(sha) != null) {
-                                changed = true
-                                gone += sha
-                            }
-                        } else {
-                            known[media.sha256] = media.toServerMedia()
-                            changed = true
-                        }
+                        val item = change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }
+                        if (change.deleted || item == null) pageGone += sha else media += item.toServerMedia()
                     }
+                    val applied = withContext(io) { store.apply(FeedPage(media, pageGone, hidden, shownAgain, page.cursor), holdsPrivate) }
                     cursor = page.cursor
+                    changed = changed || applied.mediaChanged
+                    hiddenChanged = hiddenChanged || applied.hiddenChanged
+                    gone += applied.removed
                     done += page.changes.size
                     if (page.hasMore || _syncProgress.value != null) _syncProgress.value = SyncProgress(done, done + page.remaining)
                 } while (page.hasMore)
             }
         } finally {
             _syncProgress.value = null
-            if (changed || hiddenChanged || cursor != savedCursor) withContext(NonCancellable) {
-                val list = known.values.toList()
-                save(list, hidden)
-                if (hiddenChanged) _hidden.value = hidden.toSet()
-                if (changed) show(list)
-                if (gone.isNotEmpty()) runCatching { removed(gone) }
-            }
+            if (changed || hiddenChanged) withContext(NonCancellable) { publish(media = changed, hidden = hiddenChanged) }
+            if (gone.isNotEmpty()) withContext(NonCancellable) { runCatching { removed(gone) } }
         }
     }
 
-    private suspend fun load() = withContext(Dispatchers.IO) {
-        if (!fileSystem.exists(file)) return@withContext
-        val saved = runCatching { fileSystem.read(file) { json.decodeFromBufferedSource(ServerMediaFile.serializer(), this) } }.getOrNull()
-            ?: return@withContext
-        // A file from before sound recordings were kept: its cursor is past the ones it left out, so the feed starts
-        // again (the list is kept meanwhile and replaced as the pages come).
-        cursor = saved.cursor.takeIf { saved.v >= FILE_VERSION }
-        show(saved.media)
-        _hidden.value = saved.hidden.toSet()
+    /**
+     * "Show private media" changed: while off, the private files leave the database but for what hides this phone's
+     * copies of them ([privateFiles]); turned on, the whole feed is read again to bring them back.
+     */
+    fun showPrivate(show: Boolean) {
+        scope.launch {
+            val again = mutex.withLock {
+                if (show == holdsPrivate) return@withLock false
+                withContext(io) { store.holdPrivate(show) }
+                holdsPrivate = show
+                if (show) cursor = null
+                withContext(NonCancellable) { publish(media = true, hidden = false) }
+                show
+            }
+            if (again) syncAgain()
+        }
     }
 
-    /** Streams the list to the file, so a large library never sits in memory as one string. */
-    private suspend fun save(media: List<ServerMedia>, hidden: Set<String>) = withContext(Dispatchers.IO) {
-        fileSystem.createDirectories(file.parent!!)
-        val saved = ServerMediaFile(cursor = cursor, media = media, hidden = hidden.sorted())
-        fileSystem.write(tempFile) { json.encodeToBufferedSink(ServerMediaFile.serializer(), saved, this) }
-        fileSystem.atomicMove(tempFile, file)
+    /** Puts what the database holds into [media] (and [privateFiles]) and [hidden]. */
+    private suspend fun publish(media: Boolean, hidden: Boolean) {
+        val list = if (media) withContext(io) { store.media() to store.privateFiles() } else null
+        val hiddenShas = if (hidden) withContext(io) { store.hidden() } else null
+        hiddenShas?.let { _hidden.value = it }
+        list?.let { (rows, keys) ->
+            _privateFiles.value = keys
+            show(rows)
+        }
+    }
+
+    /** Reads the database at start; the first time, `server/media.json` is read into it and deleted. */
+    private suspend fun load() {
+        withContext(io) {
+            if (fileSystem.exists(file)) {
+                val saved = runCatching { fileSystem.read(file) { json.decodeFromBufferedSource(ServerMediaFile.serializer(), this) } }.getOrNull()
+                // A file from before sound recordings were kept: its cursor is past the ones it left out, so the feed
+                // starts again.
+                if (saved != null) store.replaceAll(saved.media, saved.hidden, saved.cursor.takeIf { saved.v >= FILE_VERSION }, showPrivateAtStart())
+                fileSystem.delete(file)
+            }
+            fileSystem.delete(directory / "media.json.tmp", mustExist = false)
+            cursor = store.cursor()
+            holdsPrivate = store.holdsPrivate() ?: showPrivateAtStart().also { store.holdPrivate(it) }
+        }
+        publish(media = true, hidden = true)
     }
 
     private companion object {

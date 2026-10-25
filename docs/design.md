@@ -145,7 +145,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 Agreed with the owner Oct 19–20, 2026. **Built:** server upload and previews (journal-server-go
 [docs/media.md](../../journal-server-go/docs/media.md)), and **Android backup** (Settings → Backup, WorkManager, progress
 notification; see [screens/settings.md](screens/settings.md)), and **photos only on the server** (Android): the
-library adds them from the server's change feed (`changes`, kept in `files/server/media.json`) and draws them from
+library adds them from the server's change feed (`changes`, kept in the library database `no_backup/library.db` since Oct 25, 2026; see [plans/library-on-disk.md](plans/library-on-disk.md)) and draws them from
 previews the server makes at the tile's exact size (cached in `cache/previews`, up to the limit in Settings, 10 GB by
 default). Previews and
 downloaded originals are in the app's private storage, which the gallery never scans, and both folders also hold a
@@ -161,7 +161,7 @@ only files where both match the sha256 backup uploaded go to the phone's **trash
 purpose: they are fetched as you scroll, like any server photo. See [screens/settings.md](screens/settings.md).
 Server-only videos stream from their original (HTTP Range, ExoPlayer) into `cache/videos`, keeping what was
 fetched, and their tiles show the poster frame the server makes. **iOS** (Oct 21, 2026) has the same photos only on
-the server: the list in `Application Support/server/media.json` (refreshed when the app comes to the foreground),
+the server: the list in the library database `Application Support/library/library.db` (refreshed when the app comes to the foreground),
 exact-size previews in `Caches/previews` decoded with ImageIO (WebP, HEIF, AVIF, JPEG XL), the viewer's original
 card (its Download original and Delete from this phone went Oct 22, 2026; originals downloaded before stay in
 `Application Support/originals`, left out of iCloud backup), and Settings →

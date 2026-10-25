@@ -2,6 +2,7 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
+import com.chencohensolution.journal.server.PrivateFile
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.settings.JournalSettings
@@ -12,6 +13,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -61,7 +63,7 @@ class SoundLibraryTest {
         val settings = JournalSettings(SoundStore()).apply { identityAlias = "hen" }
         val files = FakeFileSystem()
         val dispatcher = StandardTestDispatcher(testScheduler)
-        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), dispatcher)
+        val library = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), testLibraryDatabase(), dispatcher, io = dispatcher)
         advanceUntilIdle()
         library.sync()
 
@@ -75,18 +77,87 @@ class SoundLibraryTest {
         assertEquals(232_000, recording.durationMillis)
         assertEquals(AudioKind.VOICE_MESSAGE, byKind.getValue(voice).toSoundRecording().kind)
 
-        // A media.json from before sound recordings were kept (v 1) starts the feed again; one saved now goes on.
+        // A media.json from before the database is read into it once and deleted: one from before sound recordings
+        // were kept (v 1) starts the feed again, one of v 2 goes on from its cursor.
         val saved = "/server/media.json".toPath()
-        val text = files.read(saved) { readUtf8() }
-        assertTrue(""""v":2""" in text || !text.contains(""""v":"""), text)
-        files.write(saved) { writeUtf8(text.replace(""""v":2,""", "").replaceFirst("{", """{"v":1,""")) }
-        val older = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), dispatcher)
+        files.createDirectories(saved.parent!!)
+        files.write(saved) { writeUtf8("""{"v":1,"cursor":"c1","media":[]}""") }
+        val older = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), testLibraryDatabase(), dispatcher, io = dispatcher)
         advanceUntilIdle()
+        assertFalse(files.exists(saved))
         older.sync()
         assertEquals(listOf<String?>(null, null), sinces)
-        val current = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), dispatcher)
+        files.write(saved) { writeUtf8("""{"v":2,"cursor":"c1","media":[]}""") }
+        val current = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), files, "/server".toPath(), testLibraryDatabase(), dispatcher, io = dispatcher)
         advanceUntilIdle()
         current.sync()
         assertEquals("c1", sinces.last())
+    }
+
+    @Test
+    fun privateFilesStayOutOfTheDatabaseWhileHidden() = runTest {
+        val sinces = mutableListOf<String?>()
+        val factory = MtlsHttpClientFactory { _, _ ->
+            HttpClient(MockEngine { request ->
+                val body = (request.body as io.ktor.http.content.TextContent).text
+                sinces += Regex(""""since":"([^"]*)"""").find(body)?.groupValues?.get(1)
+                val changes = listOf(
+                    change(media(photo, "PHOTO", "camera").replace(""""private":false""", """"private":true"""), photo),
+                    change(media(voice, "AUDIO", "whatsapp"), voice),
+                ).joinToString(",")
+                respond("""{"data":{"changes":{"cursor":"c1","hasMore":false,"remaining":0,"changes":[$changes]}}}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            })
+        }
+        val settings = JournalSettings(SoundStore()).apply { identityAlias = "hen" }
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val library = ServerLibrary(
+            settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), testLibraryDatabase(), dispatcher,
+            io = dispatcher, showPrivateAtStart = { false },
+        )
+        advanceUntilIdle()
+        library.sync()
+        // Only what hides this phone's copy of it: no row.
+        assertEquals(listOf(voice), library.media.value.map { it.sha256 })
+        assertEquals(listOf(PrivateFile(photo, "x", 10)), library.privateFiles.value)
+
+        // Shown: the whole feed is read again and brings its row back.
+        library.showPrivate(true)
+        library.media.first { it.size == 2 }
+        assertEquals(listOf<String?>(null, null), sinces)
+        assertEquals(setOf(photo, voice), library.media.value.map { it.sha256 }.toSet())
+        assertTrue(library.media.value.first { it.sha256 == photo }.isPrivate)
+        assertEquals(emptyList(), library.privateFiles.value)
+
+        // Hidden again: the row goes at once, without asking the server.
+        library.showPrivate(false)
+        library.media.first { it.size == 1 }
+        assertEquals(listOf(voice), library.media.value.map { it.sha256 })
+        assertEquals(listOf(PrivateFile(photo, "x", 10)), library.privateFiles.value)
+        assertEquals(2, sinces.size)
+    }
+
+    @Test
+    fun aLibraryOpenedAgainGoesOnFromItsDatabase() = runTest {
+        val sinces = mutableListOf<String?>()
+        val factory = MtlsHttpClientFactory { _, _ ->
+            HttpClient(MockEngine { request ->
+                val body = (request.body as io.ktor.http.content.TextContent).text
+                sinces += Regex(""""since":"([^"]*)"""").find(body)?.groupValues?.get(1)
+                val changes = if (sinces.size == 1) change(media(photo, "PHOTO", "camera"), photo) else ""
+                respond("""{"data":{"changes":{"cursor":"c${sinces.size}","hasMore":false,"remaining":0,"changes":[$changes]}}}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            })
+        }
+        val settings = JournalSettings(SoundStore()).apply { identityAlias = "hen" }
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val database = testLibraryDatabase()
+        val first = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), database, dispatcher, io = dispatcher)
+        advanceUntilIdle()
+        first.sync()
+
+        val again = ServerLibrary(settings, ServerHttp(settings, factory, emptyList()), FakeFileSystem(), "/server".toPath(), database, dispatcher, io = dispatcher)
+        advanceUntilIdle()
+        assertEquals(listOf(photo), again.media.value.map { it.sha256 })
+        again.sync()
+        assertEquals(listOf(null, "c1"), sinces)
     }
 }

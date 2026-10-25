@@ -1,0 +1,100 @@
+-- What the server holds, as its change feed describes it (ServerLibrary): one row per photo, video or sound recording.
+-- Written a page of the feed at a time; a cache, read again from the feed when lost.
+CREATE TABLE server_media (
+    sha256 TEXT NOT NULL PRIMARY KEY,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    is_audio INTEGER AS kotlin.Boolean NOT NULL,
+    file_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    -- RFC 3339 with the offset of where it was taken, as the uploading device sent it.
+    taken_at TEXT,
+    -- taken_at (else uploaded_at) as epoch milliseconds, for ordering by time.
+    taken_millis INTEGER NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    duration_millis INTEGER,
+    latitude REAL,
+    longitude REAL,
+    source TEXT,
+    uploaded_at TEXT NOT NULL,
+    nudity REAL,
+    is_private INTEGER AS kotlin.Boolean NOT NULL,
+    aesthetic REAL,
+    is_call INTEGER AS kotlin.Boolean NOT NULL,
+    call_contact TEXT,
+    call_number TEXT
+);
+
+-- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.
+CREATE TABLE server_hidden (
+    sha256 TEXT NOT NULL PRIMARY KEY
+);
+
+-- Small values of the sync: the change feed's cursor.
+CREATE TABLE sync_state (
+    name TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+allMedia:
+SELECT * FROM server_media;
+
+countMedia:
+SELECT count(*) FROM server_media;
+
+upsertMedia:
+INSERT OR REPLACE INTO server_media VALUES ?;
+
+deleteMedia:
+DELETE FROM server_media WHERE sha256 = ?;
+
+allHidden:
+SELECT sha256 FROM server_hidden;
+
+addHidden:
+INSERT OR IGNORE INTO server_hidden VALUES (?);
+
+removeHidden:
+DELETE FROM server_hidden WHERE sha256 = ?;
+
+stateValue:
+SELECT value FROM sync_state WHERE name = ?;
+
+setState:
+INSERT OR REPLACE INTO sync_state VALUES (?, ?);
+
+clearState:
+DELETE FROM sync_state WHERE name = ?;
+
+-- Files marked private while "Show private media" is off: only what hides this phone's own copy of each (its sha256,
+-- else its name and size, as the library matches them). Nothing else of them is kept until private media is shown.
+CREATE TABLE server_private (
+    sha256 TEXT NOT NULL PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    size INTEGER NOT NULL
+);
+
+allPrivate:
+SELECT * FROM server_private;
+
+addPrivate:
+INSERT OR REPLACE INTO server_private VALUES (?, ?, ?);
+
+removePrivate:
+DELETE FROM server_private WHERE sha256 = ?;
+
+privateMediaToKeys:
+INSERT OR REPLACE INTO server_private SELECT sha256, file_name, size FROM server_media WHERE is_private;
+
+deletePrivateMedia:
+DELETE FROM server_media WHERE is_private;
+
+clearPrivate:
+DELETE FROM server_private;
+
+clearMedia:
+DELETE FROM server_media;
+
+clearHidden:
+DELETE FROM server_hidden;

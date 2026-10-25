@@ -47,15 +47,16 @@ Confirmed by the owner on Oct 25, 2026:
 4. **Paging library:** AndroidX Paging (`paging-common` is multiplatform; `paging-compose` on Android). On iOS a
    small Swift adapter asks the shared pager for pages as rows appear.
 
-5. **Private media stays out of what screens read** (owner, Oct 25, 2026). While "Show private media" is off
-   (`PrivateMedia`), photos marked private, by the user or by the server, get no row in `library_item`, so no
-   `feed_section`, count, grid or search sees them. They keep rows only where backup needs them:
-   - `device_item` and `ledger`, so a private photo on the phone isn't hashed and offered for upload again;
-   - `server_media`, with its `private` column, so turning the setting on fills `library_item` from these tables at
-     once, without reading the server's feed again.
-
-   Changing the setting adds or removes those rows of `library_item` in one transaction, and rebuilds the rows of
-   Moments on their days.
+5. **The whole library is in the database, except what is hidden** (owner, Oct 25, 2026, twice; this replaces the
+   first version of this decision, which kept private rows in `server_media`).
+   - What the server hides (hidden collections, nudity) it never sends. `server_hidden` keeps only those files'
+     sha256s, to leave out the phone's own copies.
+   - While "Show private media" is off (`PrivateMedia`), a private file has no row in `server_media`,
+     `device_item` or `library_item`. `server_private` keeps only its sha256, name and size, to hide the phone's
+     copy. The `ledger` keeps its record of what backup read and sent (id, size, sha256), so the phone's copy
+     isn't hashed and offered again.
+   - Turning the switch off deletes those rows at once. Turning it on reads the server's feed again from the start
+     (and, from phase 2, the phone's library), and the rows of Moments on their days are rebuilt.
 
 6. **Moments looks exactly as it does now** (owner, Oct 25, 2026). The rows built one at a time must match what
    `buildFeed` makes over the whole library today, photo for photo, set for set. Phase 5 checks this with a host test
@@ -158,6 +159,18 @@ Confirmed by the owner on Oct 25, 2026:
    - SQLDelight setup; `server_media` and `sync_state`; `ServerLibrary` reads and writes them.
    - `media.json` is imported once and then deleted.
    - The rest still gets a `List<ServerMedia>` from a query (temporarily) so nothing else changes.
+   - **Built Oct 25, 2026.**
+     - `Server.sq`: `server_media`, `server_hidden`, `server_private`, `sync_state`. `ServerMediaStore` writes each
+       feed page with its cursor in one transaction, on the IO dispatcher.
+     - On Android the database is `no_backup/library.db` (WAL). On iOS it is `Application Support/library/library.db`,
+       kept out of iCloud backup; not compiled yet (docs/ios-todo.md).
+     - On the owner's phone, the first start read the 37 MB `media.json` into a 33 MB database and deleted it.
+     - The whole library goes into the database except what is hidden (owner, Oct 25, 2026). The server sends
+       nothing of what it hides, and `server_hidden` keeps only those files' sha256s. While "Show private media" is
+       off, private files keep only sha256, name and size (`server_private`, `ServerLibrary.privateFiles`), to hide
+       the phone's copies of them. Turning the switch on reads the feed again from the start.
+     - Fixed on the way: a change that came during a merge was never merged again (since `0c1a97c`). The merge
+       job called `publish()` while it still counted as active.
 2. **Device items.** `device_item` with incremental MediaStore / PhotoKit sync; `MediaLibrary.loadItems()` callers
    switch to queries one by one.
 3. **Ledger.** `UploadLedger` on the `ledger` table; `BackupEngine` takes its queue from a query; `BackupState` no
@@ -167,6 +180,9 @@ Confirmed by the owner on Oct 25, 2026:
    - Until phase 5 lands, a temporary adapter reads the whole list for the screens. Memory is no better yet, but
      the merges are gone.
 5. **Moments paged.**
+   - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
+     sync with the server (and the phone's library) goes on in the background, off the main thread, and updates
+     only the rows it changes.
    - **Page size in Settings** (asked by the owner, Oct 25, 2026): an **Advanced** section at the end of Settings
      with **Rows loaded at a time** (how many rows of Moments one page reads) and **Load ahead** (how many rows before
      the end of what is loaded the next page starts).

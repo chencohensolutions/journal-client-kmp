@@ -8,6 +8,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
 import com.chencohensolution.journal.library.mergeWithServer
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
+import com.chencohensolution.journal.server.PrivateFile
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerMedia
@@ -53,7 +54,7 @@ class ServerLibraryTest {
             override fun putString(key: String, value: String?) {}
         }
         val factory = MtlsHttpClientFactory { _, _ -> error("no network in this test") }
-        val library = ServerLibrary(JournalSettings(store), ServerHttp(JournalSettings(store), factory, emptyList()), files, "/server".toPath(), StandardTestDispatcher(testScheduler))
+        val library = ServerLibrary(JournalSettings(store), ServerHttp(JournalSettings(store), factory, emptyList()), files, "/server".toPath(), testLibraryDatabase(), StandardTestDispatcher(testScheduler), io = StandardTestDispatcher(testScheduler))
         library.media.first { it.isNotEmpty() }
 
         assertEquals(imported.sha256, library.sha256Of(device("1", "20261008_210329.HEIC", 714_000)))
@@ -143,6 +144,22 @@ class ServerLibraryTest {
         val shown = mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateMedia = PrivateMedia(show = true))
         assertEquals(listOf("22" to true, "23" to true, "server:" + "c".repeat(64) to true, "server:" + "e".repeat(64) to false),
             shown.map { it.id to it.isPrivate })
+    }
+
+    @Test
+    fun thePhonesCopiesOfPrivateFilesLeftOutOfTheListAreHiddenToo() {
+        val backedUp = device("22", "IMG_1.heic", 999)
+        val notReadYet = device("23", "IMG_2.heic", 555)
+        val entries = mapOf("22" to LedgerEntry("22", 999, 1, "b".repeat(64), uploaded = true))
+        val leftOut = listOf(PrivateFile("b".repeat(64), "IMG_1.heic", 999), PrivateFile("d".repeat(64), "IMG_2.heic", 555))
+        val server = listOf(server('e', "beach.heic", 321))
+        // Matched by sha256, or by name and size before backup read it; as when the list held them as private.
+        assertEquals(listOf("server:" + "e".repeat(64)), mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateFiles = leftOut).map { it.id })
+        assertEquals(
+            mergeWithServer(listOf(backedUp, notReadYet), entries, listOf(server('b', "IMG_1.heic", 999, isPrivate = true), server('d', "IMG_2.heic", 555, isPrivate = true)) + server)
+                .map { it.id },
+            mergeWithServer(listOf(backedUp, notReadYet), entries, server, privateFiles = leftOut).map { it.id },
+        )
     }
 
     @Test

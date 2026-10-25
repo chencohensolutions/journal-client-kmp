@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.apollo)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -52,15 +53,20 @@ kotlin {
             implementation(libs.okhttp.tls)
             implementation(libs.mediapipe.tasks.vision)
             implementation(libs.onnxruntime.android)
+            implementation(libs.sqldelight.android.driver)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(libs.sqldelight.native.driver)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.okio.fakefilesystem)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.sqldelight.sqlite.driver)
         }
     }
 }
@@ -170,4 +176,16 @@ tasks.matching { it.name == "testAndroidHostTest" }.configureEach {
     listOf("androidApp/src", "iosApp/iosApp").forEach { dir ->
         inputs.dir(rootProject.file(dir)).withPropertyName("scanned-$dir").withPathSensitivity(PathSensitivity.RELATIVE)
     }
+}
+
+// The library on the phone (docs/plans/library-on-disk.md): a cache rebuilt from the platform's library and the
+// server's change feed, so a new version may simply drop it (except the ledger, once it moves in).
+sqldelight {
+    databases {
+        create("LibraryDatabase") {
+            packageName.set("com.chencohensolution.journal.db")
+        }
+    }
+    // The iOS framework asks the linker for SQLite.
+    linkSqlite.set(true)
 }

@@ -27,6 +27,7 @@ okhttp = "5.3.2"
 okio = "3.16.4"
 onnxruntime = "1.31.0"
 screenshot = "0.0.1-alpha16"
+sqldelight = "2.4.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -77,7 +78,13 @@ androidx-tracing-perfetto-binary = { module = "androidx.tracing:tracing-perfetto
 screenshot-validation-api = { module = "com.android.tools.screenshot:screenshot-validation-api", version.ref = "screenshot" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "androidx-compose-material3" }
 
+# The library on the phone (docs/plans/library-on-disk.md): SQLite through SQLDelight.
+sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+
 [plugins]
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 apollo = { id = "com.apollographql.apollo", version.ref = "apollo" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

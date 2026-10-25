@@ -227,7 +227,10 @@ The pages, and what each holds:
   is asked when **Free up** is tapped. Either answer to the prompt clears the list and that notification.
 - Private media: while **Show private media** is off, a file the user marked private is left out of the library
   (`mergeWithServer`), so no screen shows it and no preview or original of it is downloaded; the phone's own copy
-  (same sha256, or same name and size) is left out too. Turning the switch on applies at once.
+  (same sha256, or same name and size) is left out too. Since Oct 25, 2026 (asked by the owner) a private file is not
+  even kept in the library database while the switch is off, only its sha256, name and size to hide the phone's
+  copy (`ServerLibrary.privateFiles`). Turning the switch off applies at once; turning it on reads the server's
+  change feed again from the start to bring the private files back, which takes a moment with a large library.
 - Nudity: the server scores each new file with NudeNet, by itself (journal-server-go docs/media.md "Nudity
   scan") and, since Oct 23, 2026, hides those at or over the user's score itself, like a hidden collection (below);
   the app used to hide them and no longer reads the score for that. It is never a tag. A file not scanned yet is
@@ -237,7 +240,7 @@ The pages, and what each holds:
   server" and search don't count them. Whatever the phone keeps of a file the server drops (previews, a downloaded
   original, a kept original, the streamed video) is deleted then (`ServerLibrary`'s `removed`,
   `PhoneStorage.remove`). The phone's own gallery is never touched, but the library leaves out the phone's own copy
-  of a hidden file once backup has read it (its sha256 is in `ServerLibrary.hidden`, kept in `server/media.json`); a
+  of a hidden file once backup has read it (its sha256 is in `ServerLibrary.hidden`, kept in the library database); a
   photo backup hasn't read yet still shows until it has. Changing the choice makes every device read the whole change
   feed again on its next sync.
 - A lowered preview limit applies at once (the oldest previews are deleted); **Clear previews** deletes them all.

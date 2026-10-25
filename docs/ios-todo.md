@@ -52,4 +52,11 @@ Still missing on iOS:
 
 Planned, not built on either platform yet:
 
+- **The library database** (plan B phase 1, Oct 25, 2026, written on Windows, never compiled for iOS) —
+  `IosJournal.libraryDatabase` opens `Application Support/library/library.db` with SQLDelight's native driver, and
+  `TestDatabase.ios.kt` an in-memory one for the tests. On the Mac: build the framework and run the iOS tests; the
+  framework is static, so if the app fails to link with missing `sqlite3_*` symbols, add `-lsqlite3` to the app
+  target's Other Linker Flags. Then check that `server/media.json` is read in once and deleted. See
+  [plans/library-on-disk.md](plans/library-on-disk.md).
+
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.
