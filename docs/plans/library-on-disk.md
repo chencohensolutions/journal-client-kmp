@@ -244,6 +244,12 @@ Confirmed by the owner on Oct 25, 2026:
          `leaveOut` says whether it changed anything, the spinner stays until the library's first rows are in, and
          the newest 600 rows are read first by the day index (57–151 ms) so Moments shows its top at once; the rest
          (2.4 s) loads behind it. First Moments frame: 1.4–1.9 s after start (4.3–4.8 s before).
+       - The owner then saw Moments draw three times: a "nothing to show" line, the feed, then the feed again with
+         its places and counts. Now it draws once (asked by the owner): `StoriesState.ready` waits for the library's
+         newest rows with the whole library's counts per source (`LibraryState.counts`, by SQL), and for the place
+         names and fingerprints kept on the phone (`PhotoPlaces.loaded`, `PhotoSimilarity.loaded`, read at start).
+         Until then the feed is empty and Moments shows one spinner; the rest of the library loads behind it without
+         changing the top. First Moments frame still 1.4–1.9 s.
      - Still in memory: `LibraryState.days` (the adapter), `BackupState.entries` (statuses), backup's queue.
        `mergeWithServer` stays as the tests' reference until phase 9.
 5. **Moments paged.**

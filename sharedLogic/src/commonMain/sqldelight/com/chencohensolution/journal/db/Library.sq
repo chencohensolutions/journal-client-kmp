@@ -254,3 +254,7 @@ takeKeys {
 -- The newest rows, by the day index: what the top of the screens shows at start, before the rest is read.
 newestLibraryItems:
 SELECT * FROM library_item ORDER BY epoch_day DESC, taken_millis DESC LIMIT ?;
+
+-- Photos and videos per source, of the whole library.
+sourceCounts:
+SELECT source, count(*) FROM library_item GROUP BY source;

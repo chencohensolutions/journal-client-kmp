@@ -223,7 +223,7 @@ internal fun JournalHomeScreen(
     // Measuring (debug builds; docs/plans/library-on-disk.md): how long after the process started Moments first drew rows.
     if (Measure.log != null) {
         LaunchedEffect(feedRows.isNotEmpty()) {
-            if (feedRows.isEmpty() || firstMomentsFrameLogged) return@LaunchedEffect
+            if (feedRows.isEmpty() || !stories.ready || firstMomentsFrameLogged) return@LaunchedEffect
             withFrameNanos {}
             firstMomentsFrameLogged = true
             Measure.log?.invoke("First Moments frame ${SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()} ms after start")
@@ -425,8 +425,10 @@ internal fun JournalHomeScreen(
                     item(key = "error") { Message(stringResource(R.string.library_load_error, error)) }
                 }
                 val canRead = library.access == PhotoAccess.FULL || library.access == PhotoAccess.LIMITED
+                // Moments draws once: one spinner until its feed is ready and its rows are worked out (asked Oct 25, 2026).
+                val momentsWaiting = moments && (!stories.ready || (feedRows.isEmpty() && stories.feed.entries.isNotEmpty()))
                 when {
-                    library.loading && library.days.isEmpty() -> item(key = "loading") {
+                    momentsWaiting || (library.loading && library.days.isEmpty()) -> item(key = "loading") {
                         Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = LibraryColors.OnBackground)
                         }
@@ -437,11 +439,11 @@ internal fun JournalHomeScreen(
                 if (storyline && stories.storyline.isEmpty() && library.days.isNotEmpty()) {
                     item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
                 }
-                if (moments && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
+                if (moments && !momentsWaiting && stories.feed.entries.isEmpty() && library.days.isNotEmpty()) {
                     item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
                 }
                 // Last, so landing from the viewer can count them from the end.
-                feedItems(rows, feedActions, landing, video, stories.notes, selection, audio)
+                if (!momentsWaiting) feedItems(rows, feedActions, landing, video, stories.notes, selection, audio)
             }
         }
 

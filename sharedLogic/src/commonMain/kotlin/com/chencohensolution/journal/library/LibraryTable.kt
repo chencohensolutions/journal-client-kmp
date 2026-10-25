@@ -26,6 +26,16 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     /** The [count] newest rows, read through the day index in milliseconds: the top of the screens at start. */
     fun newest(count: Long): List<LibraryRow> = queries.newestLibraryItems(count, ::libraryRow).executeAsList()
 
+    /** Photos and videos per source of the whole library, in [MediaSource] order, as `sourceCounts` makes them. */
+    fun sourceCounts(): Map<MediaSource, Int> {
+        val counts = HashMap<MediaSource, Int>()
+        queries.sourceCounts().executeAsList().forEach { row ->
+            val source = MediaSource.parse(row.source) ?: MediaSource.OTHER
+            counts[source] = (counts[source] ?: 0) + row.count.toInt()
+        }
+        return counts.keys.sorted().associateWith { counts.getValue(it) }
+    }
+
     /**
      * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened

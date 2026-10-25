@@ -47,6 +47,11 @@ data class StoriesState(
     val shownSources: ShownSources = ShownSources(),
     /** The sound recordings the user shows, by sha256: for a recording's page. */
     val sounds: Map<String, SoundRecording> = emptyMap(),
+    /**
+     * True once it is built from the whole library and the places and fingerprints this phone keeps: Moments shows a
+     * spinner until then, so it draws once (asked by the owner, Oct 25, 2026).
+     */
+    val ready: Boolean = false,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -98,6 +103,7 @@ internal fun buildState(
     shown: ShownSources = ShownSources(),
     places: Places = Places.NONE,
     revealed: Set<FeedReveal> = emptySet(),
+    ready: Boolean = true,
 ): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     // A tag counts the photos it shows; those not on this device yet count too.
@@ -124,14 +130,17 @@ internal fun buildState(
         notes = notes,
         tags = tags,
         itemsById = itemsById,
-        feed = buildFeed(
+        // Empty until ready, so Moments never draws a feed that is about to change.
+        feed = if (!ready) MomentsFeed() else buildFeed(
             library.days.flatMap { it.items }, shown, grouping, places, looks,
             alone = aloneIn(notes),
             sets = setsIn(notes),
             revealed = revealed,
             sounds = library.sounds,
+            counts = library.counts,
         ),
         sounds = library.sounds.associateBy { it.sha256 },
+        ready = ready,
         error = error,
     )
 }

@@ -41,6 +41,15 @@ class PhotoSimilarity internal constructor(
     /** Every fingerprint worked out so far; grows in batches while photos are read. */
     val looks: StateFlow<PhotoLooks> = _looks.asStateFlow()
 
+    private val _loaded = MutableStateFlow(false)
+
+    /** True once the fingerprints kept on this phone are in [looks]: they are read at once, before any request. */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
+    init {
+        scope.launch { known() }
+    }
+
     /** The photos to fingerprint, most wanted first; replaces the previous request. Known ones are skipped. */
     fun request(items: List<MediaItem>) {
         scope.launch {
@@ -53,11 +62,15 @@ class PhotoSimilarity internal constructor(
         scope.cancel()
     }
 
+    /** The fingerprints kept on this phone, read once and published. */
+    private fun known(): MutableMap<String, PhotoFingerprint> = known ?: cache.load(analyzer.modelId).toMutableMap().also {
+        known = it
+        publish(it)
+        _loaded.value = true
+    }
+
     private suspend fun work() {
-        val known = known ?: cache.load(analyzer.modelId).toMutableMap().also {
-            known = it
-            publish(it)
-        }
+        val known = known()
         var added = 0
         while (true) {
             // A photo only on the server is never read here (its fingerprint, if any, was made while it was on the device).

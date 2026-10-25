@@ -92,6 +92,9 @@ class StoriesController internal constructor(
         scope.launch { settingsState.collect { outsideChanges.value++ } }
         similarity?.let { scope.launch { it.looks.collect { backgroundChanges.value++ } } }
         places?.let { scope.launch { it.places.collect { backgroundChanges.value++ } } }
+        // The caches kept on this phone being read: the feed is ready once they are (StoriesState.ready).
+        similarity?.let { scope.launch { it.loaded.collect { outsideChanges.value++ } } }
+        places?.let { scope.launch { it.loaded.collect { outsideChanges.value++ } } }
         scope.launch {
             backgroundChanges.collect {
                 outsideChanges.value++
@@ -263,7 +266,12 @@ class StoriesController internal constructor(
     }
 
     /** Everything the state is built from, as it is now. */
-    private fun inputs() = Inputs(libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed)
+    private fun inputs() = Inputs(
+        libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed,
+        // The whole library, or its newest rows with the counts of the whole (LibraryState.counts), and the caches read.
+        ready = (libraryState.value.complete || libraryState.value.counts != null) &&
+            similarity?.loaded?.value != false && places?.loaded?.value != false,
+    )
 
     private class Inputs(
         val library: LibraryState,
@@ -273,6 +281,7 @@ class StoriesController internal constructor(
         val looks: PhotoLooks,
         val places: Places,
         val revealed: Set<FeedReveal>,
+        val ready: Boolean,
     ) {
         fun build(): Built {
             val state = buildState(
@@ -280,6 +289,7 @@ class StoriesController internal constructor(
                 shown = settings.shownSources,
                 places = places,
                 revealed = revealed,
+                ready = ready,
             )
             return Built(
                 state,

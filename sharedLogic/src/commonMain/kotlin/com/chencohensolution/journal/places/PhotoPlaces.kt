@@ -97,6 +97,15 @@ class PhotoPlaces internal constructor(
     /** Grows in batches while photos are read. */
     val places: StateFlow<Places> = _places.asStateFlow()
 
+    private val _loaded = MutableStateFlow(false)
+
+    /** True once the places kept on this phone are in [places]: they are read at once, before any request. */
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
+    init {
+        scope.launch { contents() }
+    }
+
     /** The photos to locate, most wanted first; replaces the previous request. Known ones are skipped. */
     fun request(items: List<MediaItem>) {
         scope.launch {
@@ -109,11 +118,15 @@ class PhotoPlaces internal constructor(
         scope.cancel()
     }
 
+    /** The places kept on this phone, read once and published. */
+    private fun contents(): PlaceCache.Contents = saved ?: cache.load().also {
+        saved = it
+        publish(it)
+        _loaded.value = true
+    }
+
     private suspend fun work() {
-        val contents = saved ?: cache.load().also {
-            saved = it
-            publish(it)
-        }
+        val contents = contents()
         var changed = 0
         // Locations first: a photo's moment needs its own; names can follow.
         if (reader.canReadLocations) {

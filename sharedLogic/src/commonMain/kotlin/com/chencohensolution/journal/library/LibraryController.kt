@@ -39,6 +39,16 @@ data class LibraryState(
     val access: PhotoAccess = PhotoAccess.NOT_DETERMINED,
     /** True while the library is being read. */
     val loading: Boolean = false,
+    /**
+     * True once [days] holds the whole library, not only its newest rows (read first at start): Moments waits for it,
+     * so it draws once.
+     */
+    val complete: Boolean = false,
+    /**
+     * Photos and videos per source of the whole library, counted by the database, while [days] holds only its newest
+     * rows; null once [complete]. With it Moments can draw its top (and its filter bar) before the rest is read.
+     */
+    val counts: Map<MediaSource, Int>? = null,
     /** Every item, grouped by day, newest day first. */
     val days: List<DayGroup> = emptyList(),
     val loadError: String? = null,
@@ -220,6 +230,7 @@ class LibraryController internal constructor(
                 }
                 merged = days
                 sounds = soundList
+                _state.update { it.copy(complete = true) }
                 mergedFrom = inputs
                 mergingFrom = null
                 showStatuses()
@@ -305,6 +316,10 @@ class LibraryController internal constructor(
                 val newest = withContext(io) { Measure.time({ "Library's newest rows read" }) { table.newest(FIRST_ROWS) } }
                 keptRead = true
                 patch(newest, emptyList())
+                if (newest.isNotEmpty()) {
+                    val counts = withContext(io) { table.sourceCounts() }
+                    if (!_state.value.complete) _state.update { it.copy(counts = counts) }
+                }
                 if (newest.isNotEmpty()) showReady()
                 val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
                 patch(kept, emptyList())
@@ -318,8 +333,9 @@ class LibraryController internal constructor(
                 Measure.log?.invoke("Library: ${delta.changed.size} rows changed, ${delta.removed.size} gone")
                 patch(delta.changed, delta.removed)
             } while (refreshAgain)
-            // A new database is made whole by its first refresh: ready once it is.
+            // A new database is made whole by its first refresh: ready once it is. Either way every row is in now.
             showReady()
+            if (!_state.value.complete) _state.update { it.copy(complete = true, counts = null) }
         }
     }
 
