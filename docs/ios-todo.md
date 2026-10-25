@@ -32,16 +32,9 @@ Still missing on iOS:
   `PhotoRemoval.swift` and the Free up space view. Strings: the `backup_*` folder keys and `free_up_sounds*` in
   Android's `strings.xml`. See [screens/settings.md](screens/settings.md).
 
-- **Sound recordings** (Android Oct 25, 2026) — recordings, calls and voice messages from the server, hidden until
-  shown. Shared logic is done (`LibraryState.sounds`, `FeedMoment.recording`, `FeedSection.sounds`/`parts`,
-  `StoriesState.sounds`, `HiddenCollections.recordings/calls/voiceMessages`, `ServerLibrary.setCall`). iOS needs:
-  the recording bar pinned under the title, the photos' "+32:10" offsets, folded calls and voice-message bubbles in
-  `MomentsFeedViews.swift`; a recording's page (bars with photo marks, ±15 s, speed, the photo strip, Call and Edit
-  contact) beside `MediaViewerView.swift`; the Sound recordings card in `HiddenView.swift`; one player streaming
-  `/media/{sha256}` through the mTLS loader in `ServerVideos.swift`, pausing when the app leaves (no background audio).
-  AVPlayer plays m4a, aac, mp3, wav and flac but **not Ogg/Opus** (WhatsApp voice messages, some recorders): those need
-  another decoder or a server-side stream. Strings: the `audio_*` and `hidden_audio_*` keys in Android's
-  `strings.xml`. See [screens/moments.md](screens/moments.md), [screens/viewer.md](screens/viewer.md).
+- **Sound recordings in Ogg or Opus** (some WhatsApp voice messages and recorders): AVPlayer can't play them, so iOS
+  says "The recording couldn’t be played" (sound recordings were built on iOS on Oct 26, 2026). They need another
+  decoder or a stream the server converts.
 
 - **The library database, what is left** (plan B; built on iOS on Oct 26, 2026: the database and its `-lsqlite3` link
   flag in `Config.xcconfig`, Moments read a page at a time with going to a date and "show in Moments" reading down to

@@ -44,7 +44,12 @@ enum FeedRow: Identifiable {
     case heading(FeedSection)
     /// `showPlace`: a camera moment whose place differs from the camera moment above it in its row.
     case label(FeedMoment, showPlace: Bool)
-    case photo(FeedSection, FeedBlock)
+    /// `recording`: the recording it was taken during, whose offset it shows.
+    case photo(FeedSection, FeedBlock, recording: SoundRecording? = nil)
+    /// A recording's bar where its moment starts, in place of the moment's label.
+    case recordingBar(FeedSection, FeedMoment)
+    /// Calls one after another, or a voice message.
+    case sound(FeedSection, FeedSound)
     /// After a row's moments, for each hidden source shown on it (tapping its chip).
     case band(FeedSection, RevealedPhotos, BandPart)
 
@@ -52,7 +57,9 @@ enum FeedRow: Identifiable {
         switch self {
         case .heading(let section): return "heading-\(section.key)"
         case .label(let moment, _): return "label-\(moment.key)"
-        case .photo(_, let block): return "photo-\(block.key)"
+        case .photo(_, let block, _): return "photo-\(block.key)"
+        case .recordingBar(_, let moment): return "recording-\(moment.key)"
+        case .sound(_, let sound): return "sound-\(sound.key)"
         case let .band(section, revealed, part): return "band-\(section.key)-\(revealed.source.id)-\(part)"
         }
     }
@@ -73,7 +80,18 @@ extension MomentsFeed {
             guard let section = (entry as? FeedEntrySection)?.section else { return [] }
             var place: String?
             var rows: [FeedRow] = [.heading(section)]
-            for moment in section.moments {
+            // Its moments and sound recordings, newest first.
+            for part in section.parts {
+                if let sound = part as? FeedSound {
+                    rows.append(.sound(section, sound))
+                    continue
+                }
+                guard let moment = part as? FeedMoment else { continue }
+                if let recording = moment.recording {
+                    rows.append(.recordingBar(section, moment))
+                    rows += moment.shownBlocks.map { .photo(section, $0, recording: recording) }
+                    continue
+                }
                 let camera = moment.source == .camera
                 rows.append(.label(moment, showPlace: camera && moment.place != nil && moment.place != place))
                 if camera { place = moment.place }
@@ -94,7 +112,7 @@ extension Array where Element == FeedRow {
     func place(of itemId: String) -> PhotoPlace? {
         lazy.compactMap { row -> PhotoPlace? in
             switch row {
-            case .photo(_, let block) where block.items.contains(where: { $0.id == itemId }):
+            case .photo(_, let block, _) where block.items.contains(where: { $0.id == itemId }):
                 return PhotoPlace(section: row.id, tile: ZoomID.item(itemId))
             case let .band(_, revealed, .line(start)) where revealed.items[start..<Swift.min(start + bandColumns, revealed.items.count)].contains(where: { $0.id == itemId }):
                 return PhotoPlace(section: row.id, tile: ZoomID.item(itemId))
@@ -107,7 +125,7 @@ extension Array where Element == FeedRow {
     /// The block that shows `itemId`.
     func block(of itemId: String) -> FeedBlock? {
         lazy.compactMap { row -> FeedBlock? in
-            guard case .photo(_, let block) = row, block.items.contains(where: { $0.id == itemId }) else { return nil }
+            guard case .photo(_, let block, _) = row, block.items.contains(where: { $0.id == itemId }) else { return nil }
             return block
         }.first
     }
@@ -123,6 +141,7 @@ struct FeedRowsView: View {
     let actions: FeedActions
     @Binding var selection: Set<String>
     @ObservedObject var playback: FeedPlayback
+    @Environment(\.feedAudio) private var audio
 
     var body: some View {
         ForEach(rows) { row in
@@ -133,9 +152,21 @@ struct FeedRowsView: View {
                 RevealedBandPart(section: section, revealed: revealed, part: part, width: width, actions: actions)
             case let .label(moment, showPlace):
                 FeedMomentLabel(moment: moment, showPlace: showPlace)
-            case let .photo(section, block):
+            case let .recordingBar(_, moment):
+                if let player = audio.player {
+                    RecordingBar(moment: moment, player: player, open: audio.open).padding(.top, 16)
+                }
+            case let .sound(_, sound):
+                if let player = audio.player {
+                    if let calls = sound as? FeedSoundCalls {
+                        CallsRow(calls: calls.calls, player: player, open: audio.open)
+                    } else if let voice = sound as? FeedSoundVoice {
+                        VoiceMessageRow(recording: voice.recording, player: player, open: audio.open)
+                    }
+                }
+            case let .photo(section, block, recording):
                 if let single = block as? FeedBlockSingle {
-                    singlePhoto(single.item, block: block, in: section)
+                    singlePhoto(single.item, block: block, in: section, recording: recording)
                 } else {
                     FeedSet(
                         block: block,
@@ -147,13 +178,19 @@ struct FeedRowsView: View {
                         menu: { item in menu(for: item, block: block) },
                         turnSet: actions.turnSet
                     )
+                    // During a recording: how far into it the set's first photo was taken.
+                    .overlay(alignment: .topLeading) {
+                        if let recording, selection.isEmpty, let first = block.items.first {
+                            RecordingOffset(item: first, recording: recording).padding(10)
+                        }
+                    }
                     .padding(.bottom, tileGap)
                 }
             }
         }
     }
 
-    private func singlePhoto(_ item: MediaItem, block: FeedBlock, in section: FeedSection) -> some View {
+    private func singlePhoto(_ item: MediaItem, block: FeedBlock, in section: FeedSection, recording: SoundRecording?) -> some View {
         // Videos aren't cropped (yet).
         let crop = item.isVideo ? nil : note(item.id)?.crops.moments
         let ratio = crop.map { CGFloat($0.ratioOn(photoRatio: Float(item.ratio))) } ?? item.ratio
@@ -161,10 +198,13 @@ struct FeedRowsView: View {
             FeedNoteTitle(title: note(item.id)?.title)
             FeedPhoto(item: item, size: CGSize(width: width, height: width / ratio), crop: crop, playback: playback)
                 .overlay { if !selection.isEmpty { SelectionOverlay(selected: selection.contains(block.key)) } }
+                .overlay(alignment: .topLeading) {
+                    if let recording, selection.isEmpty { RecordingOffset(item: item, recording: recording).padding(10) }
+                }
                 .zoomSource(ZoomID.item(item.id))
                 .contentShape(Rectangle())
                 .onTapGesture { tap(item, block: block, in: section) }
-                .contextMenu { menu(for: item, block: block) }
+                .modifier(PhotoHold(recording: selection.isEmpty ? recording : nil, item: item, player: audio.player) { menu(for: item, block: block) })
                 .modifier(ReportsVideo(active: item.isVideo, key: block.key, itemId: item.id, playback: playback))
             FeedNoteText(caption: note(item.id)?.caption)
         }
@@ -206,6 +246,25 @@ struct FeedRowsView: View {
                     Button { actions.takeOutOfSet(item) } label: { Label("Take out of this set", systemImage: "minus.circle") }
                 }
             }
+        }
+    }
+}
+
+/// A photo's long press: during a recording it plays the recording from when the photo was taken (instead of the
+/// photo's menu, as on Android); otherwise the menu.
+private struct PhotoHold<Menu: View>: ViewModifier {
+    let recording: SoundRecording?
+    let item: MediaItem
+    let player: AudioPlayer?
+    @ViewBuilder let menu: () -> Menu
+
+    func body(content: Content) -> some View {
+        if let recording, let player {
+            content.onLongPressGesture {
+                player.play(recording, from: max(item.takenAtMillis - recording.startMillis, 0))
+            }
+        } else {
+            content.contextMenu { menu() }
         }
     }
 }

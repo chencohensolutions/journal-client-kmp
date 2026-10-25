@@ -17,6 +17,8 @@ struct LibraryRootView: View {
     var onRegisterAgain: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
+    /// Sound recordings play here; a recording that couldn't be played (Ogg, Opus) says so once.
+    @ObservedObject private var audioPlayer = AudioPlayer.shared
     /// The system's scheme: the map over the always-dark viewer follows it, as the map from Explore does.
     @Environment(\.colorScheme) private var colorScheme
     @State private var path: [Route] = []
@@ -49,6 +51,8 @@ struct LibraryRootView: View {
         case person(String)
         /// The photos that look like this one (its details › Looks like this › More).
         case similar(String)
+        /// A sound recording's page, by its sha256.
+        case recording(String)
     }
 
     /// Opened from the storyline (`storyline`), a tag (`tag`), a row of Moments (`feedSection`, its key, with
@@ -225,6 +229,8 @@ struct LibraryRootView: View {
                             }
                             SimilarPageView(items: items) { openInOrder(items, $0) }
                                 .task(id: itemId) { await stories.want(opened.map(\.id)) }
+                        case .recording(let sha256):
+                            recordingPage(sha256)
                         case .tags:
                             TagsView(stories: stories.state) { path.append(.tag($0)) }
                         case .tag(let name):
@@ -236,6 +242,7 @@ struct LibraryRootView: View {
                 }
                 .environment(\.zoomNamespace, zoom)
                 .environment(\.exploreReads, exploreReads)
+                .environment(\.feedAudio, FeedAudio(player: AudioPlayer.shared) { path.append(.recording($0.sha256)) })
                 .environment(\.showOnPhoneBadge, settings.state.showOnPhoneBadge)
                 .cropCover($crop, stories: stories.state, want: stories.want) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
@@ -304,16 +311,48 @@ struct LibraryRootView: View {
                 }
             }
         }
+        .alert("The recording couldn’t be played", isPresented: $audioPlayer.failed) {
+            Button("OK", role: .cancel) {}
+        }
         .task { journal.connect() }
         // The search page offers people's faces once the server says it has face search.
         .onChange(of: journal.features.faces, initial: true) { _, faces in if faces { people.load() } }
         // Picks up photos taken and permission changes made while the app was in the background.
         .onChange(of: scenePhase, initial: true) { _, phase in
+            // A recording plays only while the app is in front: no background audio.
+            if phase == .background { AudioPlayer.shared.pause() }
             if phase == .active {
                 library.refresh()
                 // The indexes kept on this phone catch up once a day.
                 phoneSearch.updateIfDue()
             }
+        }
+    }
+
+    /// A sound recording's page: the photos taken while it ran come from its moment in Moments. Gone (hidden again,
+    /// say) closes it.
+    @ViewBuilder
+    private func recordingPage(_ sha256: String) -> some View {
+        if let recording = stories.state.sounds[sha256] {
+            let moment = stories.state.feed.entries.lazy
+                .compactMap { ($0 as? FeedEntrySection)?.section }
+                .flatMap { $0.moments }
+                .first { $0.recording?.sha256 == sha256 }
+            AudioPageView(
+                recording: recording,
+                place: moment?.place,
+                during: (moment?.items ?? []).sorted { $0.takenAtMillis < $1.takenAtMillis },
+                player: AudioPlayer.shared
+            ) { contact, number in
+                Task {
+                    _ = try? await IosJournal.shared.serverLibrary().setCall(
+                        sha256: sha256, contact: contact.isEmpty ? nil : contact, number: number.isEmpty ? nil : number
+                    )
+                }
+            }
+            .preferredColorScheme(.dark)
+        } else {
+            Color.clear.onAppear { if !path.isEmpty { path.removeLast() } }
         }
     }
 

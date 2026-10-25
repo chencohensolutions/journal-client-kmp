@@ -470,7 +470,7 @@ extension Array where Element == FeedRow {
         for (index, row) in enumerated() {
             switch row {
             case .heading(let s): section = s.key
-            case .photo(let s, _), .band(let s, _, _): section = s.key
+            case .photo(let s, _, _), .band(let s, _, _), .recordingBar(let s, _), .sound(let s, _): section = s.key
             case .label: break
             }
             if let section { keys[row.id] = (index, section) }

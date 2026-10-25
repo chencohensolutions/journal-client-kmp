@@ -37,6 +37,26 @@
         }
       }
     },
+    "%@ of %@ shown" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ מתוך %2$@ מוצגות"
+          }
+        }
+      }
+    },
+    "%@ of %@ · at %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ מתוך %2$@ · ב־%3$@"
+          }
+        }
+      }
+    },
     "%@ of %lld GB" : {
       "localizations" : {
         "he" : {
@@ -320,6 +340,58 @@
     "%lld" : {
       "shouldTranslate" : false
     },
+    "%lld calls" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld call"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld calls"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "שיחה אחת"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld שיחות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld more sources" : {
       "localizations" : {
         "he" : {
@@ -524,6 +596,58 @@
         }
       }
     },
+    "%lld photos while it recorded" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo while it recorded"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos while it recorded"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות בזמן ההקלטה"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת בזמן ההקלטה"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות בזמן ההקלטה"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות בזמן ההקלטה"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld photos · %lld days" : {
       "localizations" : {
         "he" : {
@@ -580,6 +704,58 @@
         }
       }
     },
+    "%lld recordings" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recording"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld recordings"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הקלטות"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הקלטה אחת"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הקלטות"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הקלטות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld screenshots" : {
       "localizations" : {
         "en" : {
@@ -625,6 +801,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld צילומי מסך"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld voice messages" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld voice message"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld voice messages"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הודעות קוליות"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "הודעה קולית אחת"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הודעות קוליות"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld הודעות קוליות"
                 }
               }
             }
@@ -2171,6 +2399,16 @@
         }
       }
     },
+    "Apps" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפליקציות"
+          }
+        }
+      }
+    },
     "Arrange" : {
       "localizations" : {
         "he" : {
@@ -2237,6 +2475,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חזרה"
+          }
+        }
+      }
+    },
+    "Back 15 seconds" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 שניות אחורה"
           }
         }
       }
@@ -2377,6 +2625,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לפי יום"
+          }
+        }
+      }
+    },
+    "Call" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חייג"
           }
         }
       }
@@ -2643,6 +2901,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חיבור המכשיר הזה ליומן שלך"
+          }
+        }
+      }
+    },
+    "Contact" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איש קשר"
           }
         }
       }
@@ -3028,6 +3296,16 @@
         }
       }
     },
+    "Edit contact" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערוך איש קשר"
+          }
+        }
+      }
+    },
     "Edit what you wrote" : {
       "localizations" : {
         "he" : {
@@ -3324,6 +3602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פורמט"
+          }
+        }
+      }
+    },
+    "Forward 15 seconds" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 שניות קדימה"
           }
         }
       }
@@ -4220,6 +4508,16 @@
         }
       }
     },
+    "No app’s screenshots are shown. Open the list to show some." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג."
+          }
+        }
+      }
+    },
     "No run yet" : {
       "localizations" : {
         "he" : {
@@ -4236,6 +4534,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סריקת עירום"
+          }
+        }
+      }
+    },
+    "Off at first: sound recordings stay hidden on all your devices until you show them here. Shown ones appear in Moments." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבוי בהתחלה: הקלטות הקול מוסתרות בכל המכשירים שלך עד שתציג אותן כאן. מה שמוצג מופיע ברגעים."
           }
         }
       }
@@ -4300,6 +4608,16 @@
         }
       }
     },
+    "Phone number" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מספר טלפון"
+          }
+        }
+      }
+    },
     "Photos and videos you marked private. Off: hidden on this phone, and not downloaded." : {
       "localizations" : {
         "he" : {
@@ -4320,12 +4638,42 @@
         }
       }
     },
+    "Play" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נגן"
+          }
+        }
+      }
+    },
     "Privacy" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "פרטיות"
+          }
+        }
+      }
+    },
+    "Private media, nudity, sound recordings, WhatsApp and screenshots by app" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מדיה פרטית, עירום, הקלטות קול, וואטסאפ וצילומי מסך לפי אפליקציה"
+          }
+        }
+      }
+    },
+    "Private settings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדרות פרטיות"
           }
         }
       }
@@ -4346,6 +4694,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קורא את התמונות שלך"
+          }
+        }
+      }
+    },
+    "Recording" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטה"
+          }
+        }
+      }
+    },
+    "Recording · %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטה · %@"
           }
         }
       }
@@ -4420,12 +4788,82 @@
         }
       }
     },
+    "Set a passcode on this phone to open Private settings." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדר קוד גישה בטלפון הזה כדי לפתוח את ההגדרות הפרטיות."
+          }
+        }
+      }
+    },
     "Sets of similar photos" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "קבוצות של תמונות דומות"
+          }
+        }
+      }
+    },
+    "Show WhatsApp voice messages" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת הודעות קוליות מוואטסאפ"
+          }
+        }
+      }
+    },
+    "Show all apps" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת כל האפליקציות"
+          }
+        }
+      }
+    },
+    "Show only the apps shown" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת המוצגות בלבד"
+          }
+        }
+      }
+    },
+    "Show phone calls" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת שיחות טלפון"
+          }
+        }
+      }
+    },
+    "Show photos and videos with nudity" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת תמונות וסרטונים עם עירום"
+          }
+        }
+      }
+    },
+    "Show recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצגת הקלטות"
           }
         }
       }
@@ -4446,6 +4884,63 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מציג את ימי החודש ואת שאר החודשים"
+          }
+        }
+      }
+    },
+    "Sound recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטות קול"
+          }
+        }
+      }
+    },
+    "Tap an app to show or hide its screenshots; filled ones are shown." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקש על אפליקציה כדי להציג או להסתיר את צילומי המסך שלה; המלאות מוצגות."
+          }
+        }
+      }
+    },
+    "The recording couldn’t be played" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ניתן לנגן את ההקלטה"
+          }
+        }
+      }
+    },
+    "Voice message" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הודעה קולית"
+          }
+        }
+      }
+    },
+    "call.unnamed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Call"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיחה"
           }
         }
       }

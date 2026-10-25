@@ -151,7 +151,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
 
 ## A sound recording's page
 
-Android, Oct 25, 2026 (iOS not built yet). Opened from a recording's bar, a call or a voice message in
+Android Oct 25, 2026; iOS Oct 26, 2026 (`AudioPageView` in AudioViews.swift, `Route.recording`). Opened from a recording's bar, a call or a voice message in
 [Moments](moments.md); its own screen (`Route.Audio`), not a page of the photo pager, since recordings aren't photos.
 Always dark. Chosen in the UI lab as "filmstrip":
 - Back, and the day with the times ("Yesterday · 18:10 – 19:55").

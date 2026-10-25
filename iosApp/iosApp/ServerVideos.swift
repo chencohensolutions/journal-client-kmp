@@ -12,11 +12,16 @@ enum ServerVideos {
 
     /// `item`'s original to play, streamed; nil when it has no sha256 or this device isn't registered. Main thread.
     static func asset(_ item: MediaItem) -> AVURLAsset? {
-        guard let sha = item.sha256, ServerVideoSession.shared.stream.url(sha256: sha) != nil,
-              let url = URL(string: "\(scheme)://\(sha)")
-        else { return nil }
+        guard let sha = item.sha256 else { return nil }
+        return asset(sha256: sha, fileName: item.fileName)
+    }
+
+    /// The file `sha256` to play, streamed. `keep`: what is fetched stays in the cache; a long sound recording isn't
+    /// kept, as one could push out every kept video (AudioPlayer). Main thread.
+    static func asset(sha256 sha: String, fileName: String?, keep: Bool = true) -> AVURLAsset? {
+        guard ServerVideoSession.shared.stream.url(sha256: sha) != nil, let url = URL(string: "\(scheme)://\(sha)") else { return nil }
         let asset = AVURLAsset(url: url)
-        let loader = ServerVideoLoader(sha: sha, fileName: item.fileName)
+        let loader = ServerVideoLoader(sha: sha, fileName: fileName, keep: keep)
         asset.resourceLoader.setDelegate(loader, queue: loader.queue)
         // The resource loader holds its delegate weakly: the asset keeps it.
         objc_setAssociatedObject(asset, &loaderKey, loader, .OBJC_ASSOCIATION_RETAIN)
@@ -34,25 +39,34 @@ final class ServerVideoLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
     let queue = DispatchQueue(label: "ServerVideoLoader")
     private let sha: String
     private let fileName: String?
+    /// Whether what is fetched is written to the cache (and what is there read).
+    private let keep: Bool
+    /// Without `keep`: the file's length and type, from its first bytes.
+    private var info: (length: Int64, type: String)?
     private var tasks: [ObjectIdentifier: Task<Void, Never>] = [:]
 
-    init(sha: String, fileName: String?) {
+    init(sha: String, fileName: String?, keep: Bool = true) {
         self.sha = sha
         self.fileName = fileName
+        self.keep = keep
         super.init()
-        ServerVideoCache.shared.retain(sha)
+        if keep { ServerVideoCache.shared.retain(sha) }
     }
 
     deinit {
         tasks.values.forEach { $0.cancel() }
-        ServerVideoCache.shared.release(sha)
+        if keep { ServerVideoCache.shared.release(sha) }
     }
 
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource request: AVAssetResourceLoadingRequest) -> Bool {
         let id = ObjectIdentifier(request)
-        tasks[id] = Task { [sha, fileName, weak self] in
+        tasks[id] = Task { [sha, fileName, keep, weak self] in
             do {
-                try await Self.load(request, sha: sha, fileName: fileName)
+                if keep {
+                    try await Self.load(request, sha: sha, fileName: fileName)
+                } else {
+                    try await self?.stream(request)
+                }
                 request.finishLoading()
             } catch {
                 if !Task.isCancelled { request.finishLoading(with: error) }
@@ -64,6 +78,35 @@ final class ServerVideoLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
 
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader, didCancel request: AVAssetResourceLoadingRequest) {
         tasks.removeValue(forKey: ObjectIdentifier(request))?.cancel()
+    }
+
+    /// Answers `request` from the server alone, nothing kept: for long sound recordings.
+    private func stream(_ request: AVAssetResourceLoadingRequest) async throws {
+        var known = queue.sync { info }
+        if known == nil {
+            let first = try await ServerVideoSession.shared.fetch(sha, from: 0, to: 0)
+            known = (first.total, first.type)
+            queue.sync { info = known }
+        }
+        guard let (length, type) = known else { return }
+        if let content = request.contentInformationRequest {
+            let ext = (fileName as NSString?)?.pathExtension ?? ""
+            content.contentType = (UTType(mimeType: type) ?? UTType(filenameExtension: ext) ?? .audio).identifier
+            content.contentLength = length
+            content.isByteRangeAccessSupported = true
+        }
+        guard let data = request.dataRequest else { return }
+        var offset = data.currentOffset
+        let end = data.requestsAllDataToEndOfResource ? length : min(length, data.requestedOffset + Int64(data.requestedLength))
+        var piece = Self.firstPiece
+        while offset < end {
+            try Task.checkCancellation()
+            let fetched = try await ServerVideoSession.shared.fetch(sha, from: offset, to: min(end, offset + piece) - 1).data
+            guard !fetched.isEmpty else { throw URLError(.zeroByteResource) }
+            data.respond(with: fetched)
+            offset += Int64(fetched.count)
+            piece = min(piece * 2, Self.largestPiece)
+        }
     }
 
     private static let firstPiece: Int64 = 512 << 10

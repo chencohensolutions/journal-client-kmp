@@ -70,7 +70,7 @@ too, until it is turned off or the app is closed. A muted video doesn't take aud
 keeps playing. With sound it takes focus while it plays, and mutes itself when another app takes it back. Built on
 the platform `MediaPlayer` and a `TextureView` ([FeedVideo.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedVideo.kt)).
 
-**Sound recordings** (Android, Oct 25, 2026; iOS not built yet, see [ios-todo.md](../ios-todo.md)): the server's
+**Sound recordings** (Android Oct 25, 2026; iOS Oct 26, 2026): the server's
 recordings, phone calls and WhatsApp voice messages, once the user shows them in
 [Hidden collections](settings.md) (all three are hidden until then). They are never photos: not counted, not in All
 photos, Explore, the Storyline or search; Moments and their [page](viewer.md#a-sound-recordings-page) only.
@@ -91,7 +91,9 @@ photos, Explore, the Storyline or search; Moments and their [page](viewer.md#a-s
   streaming `/media/{sha256}` with Range). It takes audio focus, so a feed video playing aloud falls silent. It
   pauses when the app leaves the screen: no background playing and no lock-screen controls (the owner's choice).
   Calls and voice messages up to 10 minutes are kept in the video cache once played; longer recordings aren't, so one
-  can't push out every kept preview.
+  can't push out every kept preview. On iOS the player is AVPlayer reading through the videos' mTLS loader
+  ([AudioPlayer.swift](../../iosApp/iosApp/AudioPlayer.swift)); it plays m4a, aac, mp3, wav and flac but not Ogg or
+  Opus (some WhatsApp voice messages and recorders): those say "The recording couldn’t be played".
 
 Tapping a photo opens the [viewer](viewer.md) on its row's photos, in the order shown. When the viewer closes, the
 feed scrolls to that photo, and a near-duplicate set turns to it.
@@ -153,7 +155,8 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
   (the bar), [AudioParts.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioParts.kt)
   (calls, voice messages, play button, bars), [AudioPlayer.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/AudioPlayer.kt);
   shared `SoundRecording` and `LibraryState.sounds` (kept apart from the photos), tested in `SoundFeedTest` and
-  `SoundLibraryTest`.
+  `SoundLibraryTest`. iOS: [AudioViews.swift](../../iosApp/iosApp/AudioViews.swift) (the bar, calls, voice messages,
+  the page), [AudioPlayer.swift](../../iosApp/iosApp/AudioPlayer.swift); the bar is pinned in `JournalHomeView.swift`.
 - Android: [MomentsFeedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentsFeedViews.kt),
   [FeedVideo.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FeedVideo.kt), the
   screen's state and menus in [JournalHomeScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/JournalHomeScreen.kt).

@@ -26,6 +26,7 @@ final class FeedPlayback: ObservableObject {
     /// The photo each swipe set shows, by the set's key.
     private(set) var pages: [String: String] = [:]
     private var interruption: NSObjectProtocol?
+    private var recording: NSObjectProtocol?
 
     init() {
         // With sound, a video gives way when another app takes the audio back.
@@ -35,10 +36,15 @@ final class FeedPlayback: ObservableObject {
             let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init)
             if type == .began, self?.muted == false { self?.toggleMute() }
         }
+        // A sound recording starting silences a video playing aloud, as on Android.
+        recording = NotificationCenter.default.addObserver(forName: AudioPlayer.willPlay, object: nil, queue: .main) { [weak self] _ in
+            if self?.muted == false { self?.toggleMute() }
+        }
     }
 
     deinit {
         interruption.map(NotificationCenter.default.removeObserver)
+        recording.map(NotificationCenter.default.removeObserver)
     }
 
     func toggleMute() {
@@ -102,6 +108,8 @@ final class FeedPlayback: ObservableObject {
 
     /// Muted, the feed mixes with music from other apps; with sound it takes the audio while a video plays.
     private func updateAudioSession() {
+        // While a sound recording is loaded the session is the AudioPlayer's.
+        if MainActor.assumeIsolated({ AudioPlayer.shared.isActive }) { return }
         let session = AVAudioSession.sharedInstance()
         if playingId != nil && !muted {
             try? session.setCategory(.playback, mode: .moviePlayback)

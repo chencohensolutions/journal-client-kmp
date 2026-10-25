@@ -101,6 +101,9 @@ struct JournalHomeView: View {
     @State private var landing: PhotoRequest?
     /// A photo to land on whose row isn't read yet, and since when it waits (up to 15 s, as Android's `LandOn`).
     @State private var landingWait: (request: PhotoRequest, since: Date)?
+    /// The recording whose photos are at the top, once its own bar has scrolled away: its bar is pinned under the title.
+    @State private var pinned: FeedMoment?
+    @Environment(\.feedAudio) private var audio
     /// How many rows were read when the next page was asked for: asked once per page.
     @State private var askedMoreAt = -1
     /// When the pill last jumped: the rows reported just after are where the feed was, not where it went.
@@ -210,6 +213,7 @@ struct JournalHomeView: View {
                     askedMoreAt = rows.count
                     actions.loadMoreMoments()
                 }
+                pin(visible: ids)
                 guard Date().timeIntervalSince(jumpedAt) > 0.8,
                       let key = ids.compactMap({ rowSections[$0] }).min(by: { $0.index < $1.index })?.section else { return }
                 if key != topSection { topSection = key }
@@ -264,6 +268,13 @@ struct JournalHomeView: View {
         .onDisappear { onScreen = false }
         .sheet(item: $sheet, content: sheetContent)
         .background(LibraryColors.background.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            if let pinned, let player = audio.player, tab == .moments, !searching {
+                PinnedRecording(scroll: scroll) {
+                    RecordingBar(moment: pinned, player: player, open: audio.open)
+                }
+            }
+        }
         .overlay(alignment: .top) {
             if searching { SearchTitleBar() } else { topBar }
         }
@@ -429,11 +440,25 @@ struct JournalHomeView: View {
     /// The photos of the picked sets and photos, in the feed's order.
     private func merge() {
         let ids = rows.flatMap { row -> [String] in
-            guard case .photo(_, let block) = row, selection.contains(block.key) else { return [] }
+            guard case .photo(_, let block, _) = row, selection.contains(block.key) else { return [] }
             return block.items.map(\.id)
         }
         selection = []
         actions.merge(ids)
+    }
+
+    /// Pins the bar of the recording whose photo is the top row in view, once its own bar is above the screen.
+    private func pin(visible ids: [String]) {
+        let top = ids.compactMap { id in rowSections[id].map { (id, $0.index) } }.min { $0.1 < $1.1 }
+        var next: FeedMoment?
+        if let top, top.1 < rows.count, case let .photo(_, _, recording?) = rows[top.1] {
+            let bar = rows[..<top.1].lastIndex {
+                if case let .recordingBar(_, moment) = $0 { return moment.recording?.sha256 == recording.sha256 }
+                return false
+            }
+            if let bar, case let .recordingBar(_, moment) = rows[bar], !ids.contains(rows[bar].id) { next = moment }
+        }
+        if next?.key != pinned?.key { pinned = next }
     }
 
     private var topBar: some View {
@@ -631,5 +656,15 @@ struct UndoBar: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+/// A recording's bar under the title row, following it as it slides away and back.
+private struct PinnedRecording<Content: View>: View {
+    let scroll: HomeScroll
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content().padding(.top, max(scroll.titleHeight + scroll.titleShift, 0))
     }
 }
