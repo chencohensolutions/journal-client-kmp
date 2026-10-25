@@ -48,7 +48,8 @@ Confirmed by the owner on Oct 25, 2026:
    small Swift adapter asks the shared pager for pages as rows appear.
 
 5. **The whole library is in the database, except what is hidden** (owner, Oct 25, 2026, twice; this replaces the
-   first version of this decision, which kept private rows in `server_media`).
+   first version of this decision, which kept full entries for private files in the phone's copy of the server's
+   list, `server_media`).
    - What the server hides (hidden collections, nudity) it never sends. `server_hidden` keeps only those files'
      sha256s, to leave out the phone's own copies.
    - While "Show private media" is off (`PrivateMedia`), a private file has no row in `server_media`,
