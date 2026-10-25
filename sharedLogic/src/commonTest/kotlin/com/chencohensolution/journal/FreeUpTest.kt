@@ -320,6 +320,18 @@ class FreeUpTest {
         assertEquals(0, plan.ofFolder(voice.treeUri).files)
 
         val trash = Trash(allowed = true)
+        val removal = object : SoundRemoval {
+            override suspend fun delete(items: List<MediaItem>): Set<String> {
+                removed += items.map { it.id }
+                return items.mapTo(mutableSetOf()) { it.id }
+            }
+        }
+        // Not agreed to in the app's dialog: sound files stay; photos still go to the trash.
+        controller.runOnce(trash, removal)
+        assertTrue(removed.isEmpty())
+        assertEquals(listOf("p"), trash.trashed)
+
+        controller.confirmSounds()
         val result = controller.runOnce(trash, object : SoundRemoval {
             override suspend fun delete(items: List<MediaItem>): Set<String> {
                 removed += items.map { it.id }
@@ -328,8 +340,7 @@ class FreeUpTest {
         })!!
 
         assertEquals(listOf(call.id, wav.id).sorted(), removed.sorted())
-        assertEquals(listOf("p"), trash.trashed, "photos still go to the trash")
-        assertEquals(3, result.removed)
+        assertEquals(3, result.removed, "the two sound files, and the photo the fake library still lists")
         assertEquals(mapOf(KeptReason.CHANGED_ON_PHONE to 1), result.kept)
         assertTrue(changed.id !in removed && recording.id !in removed)
         assertEquals(0, result.waiting)

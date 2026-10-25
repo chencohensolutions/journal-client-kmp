@@ -102,4 +102,6 @@ internal class EncodedFlac(
     val open: (offset: Long) -> Source,
     /** Deletes the FLAC made to send it (the phone keeps the WAV, or the FLAC was written into the folder). */
     val discard: () -> Unit,
+    /** Where the platform made it, for [MediaFiles.replaceWithFlac]. */
+    val localPath: String? = null,
 )

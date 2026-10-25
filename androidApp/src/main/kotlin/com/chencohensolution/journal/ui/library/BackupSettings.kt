@@ -37,7 +37,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.semantics.contentDescription
 import com.chencohensolution.journal.R
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import com.chencohensolution.journal.backup.BackupActivity
+import com.chencohensolution.journal.backup.BackupPill
+import com.chencohensolution.journal.backup.KeepOnPhone
+import com.chencohensolution.journal.backup.SoundFolder
+import com.chencohensolution.journal.backup.pills
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.WaitReason
@@ -71,9 +78,22 @@ internal class BackupActions(
     val removeNetwork: (String) -> Unit = {},
     val allowBackgroundLocation: () -> Unit = {},
     val backUpNow: () -> Unit = {},
+    val toggleFolder: (SoundFolder) -> Unit = {},
+    /** Opens the system's folder picker; a folder picked opens the add dialog ([picked]). */
+    val pickFolder: () -> Unit = {},
+    val addFolder: (PickedFolder, AudioKind) -> Unit = { _, _ -> },
+    val cancelAdd: () -> Unit = {},
+    /** Stops backing up a folder (the server keeps what it sent). */
+    val removeFolder: (SoundFolder) -> Unit = {},
+    val setKeepOnPhone: (KeepOnPhone) -> Unit = {},
+    /** A folder just picked: the add dialog is open on it. */
+    val picked: State<PickedFolder?> = mutableStateOf(null),
 )
 
-/** Settings › Backup: on or off with its status, then what uploads (a pill per source), when, and in which order. */
+/**
+ * Settings › Backup: on or off with its status, then what uploads (a pill per source and per folder of calls or
+ * recordings, "+ Add a folder" last), when, and in which order.
+ */
 @Composable
 internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: () -> Unit) {
     val insets = WindowInsets.systemBars.asPaddingValues()
@@ -87,6 +107,7 @@ internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: ()
         }
         TitleBar(stringResource(R.string.settings_backup_title), back, Modifier.align(Alignment.TopCenter))
     }
+    actions.picked.value?.let { picked -> AddFolderDialog(picked, { kind -> actions.addFolder(picked, kind) }, actions.cancelAdd) }
 }
 
 /** Backup: on or off with its status, then what uploads, when, and in which order. */
@@ -116,7 +137,21 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
     if (!settings.enabled) return
 
     SectionTitle(stringResource(R.string.settings_backup_sources_title))
-    SourcePills(settings.choices(ui.counts), ui.counts, { it in settings.sources }, actions.toggleSource)
+    BackupPills(
+        ui.state.pills(ui.counts),
+        toggle = { pill ->
+            when (pill) {
+                is BackupPill.Source -> actions.toggleSource(pill.source)
+                is BackupPill.Folder -> actions.toggleFolder(pill.folder)
+            }
+        },
+        pickFolder = actions.pickFolder,
+        remove = actions.removeFolder,
+    )
+    if (settings.soundFolders.isNotEmpty()) {
+        Text(stringResource(R.string.backup_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
+    }
+    if (ui.state.hasWavs) KeepOnPhoneChoice(settings.keepOnPhone, actions.setKeepOnPhone)
 
     SectionTitle(stringResource(R.string.settings_backup_when_title))
     SettingsCard {

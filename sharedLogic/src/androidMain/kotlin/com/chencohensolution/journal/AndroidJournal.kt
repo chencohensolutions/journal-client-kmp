@@ -3,6 +3,7 @@ package com.chencohensolution.journal
 import android.content.Context
 import android.os.Build
 import com.chencohensolution.journal.backup.AndroidMediaFiles
+import com.chencohensolution.journal.backup.AndroidSoundFolders
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.backup.UploadLedger
 import com.chencohensolution.journal.connection.JournalController
@@ -293,6 +294,8 @@ fun backupController(context: Context, scheduler: BackupScheduler): BackupContro
         locate = AndroidPlaceReader(context).let { reader -> { item -> if (reader.canReadLocations) reader.location(item) else null } },
         onSettingsChanged = scheduler::settingsChanged,
         onBackUpNow = scheduler::backUpNow,
+        soundFolders = AndroidSoundFolders(context),
+        check = ServerVerifyApi(serverHttp(context)),
     ).also { backupController = it }
 
 private var freeUpController: FreeUpController? = null
@@ -310,6 +313,7 @@ fun freeUpController(context: Context, backup: BackupController, start: () -> Un
         library = AndroidMediaLibrary(context),
         files = AndroidMediaFiles(context),
         server = ServerVerifyApi(serverHttp(context)),
+        soundFolders = AndroidSoundFolders(context),
         fileSystem = FileSystem.SYSTEM,
         directory = context.filesDir.toOkioPath() / "freeup",
         now = System::currentTimeMillis,

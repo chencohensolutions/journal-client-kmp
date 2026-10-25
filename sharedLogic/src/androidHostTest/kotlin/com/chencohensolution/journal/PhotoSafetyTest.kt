@@ -20,6 +20,8 @@ class PhotoSafetyTest {
         "openOutputStream", "openFileDescriptor", "contentResolver.delete", "contentResolver.update",
         "contentResolver.insert", ".applyBatch(", "MediaStore.setRequireOriginal", "Environment.getExternalStorage",
         "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "MANAGE_MEDIA", "ACCESS_MEDIA_LOCATION",
+        // Android: writes in folders picked with the system's folder picker (the Storage Access Framework).
+        "deleteDocument", "createDocument", "renameDocument", "moveDocument", "copyDocument", "FLAG_GRANT_WRITE_URI_PERMISSION",
         // iOS: PhotoKit changes, and the add-only permission.
         "performChanges", "PHAssetChangeRequest", "PHAssetCreationRequest", "PHAssetCollectionChangeRequest",
         "deleteAssets", "PHContentEditingOutput", "NSPhotoLibraryAddUsageDescription", "UIImageWriteToSavedPhotosAlbum",
@@ -45,6 +47,16 @@ class PhotoSafetyTest {
         "deleteAssets" to setOf("PhotoRemoval.swift"),
         "MANAGE_MEDIA" to setOf("PhotoRemoval.kt", "AndroidManifest.xml"),
         "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt", "AndroidMediaFiles.kt"),
+        // Not read-only, and never the photo library: backup of calls and recordings (asked for by the owner on Oct 25,
+        // 2026) keeps write access to the folders the user picks with the system's folder picker (LibraryActions.kt
+        // asks for it), so that "Free up space" can delete sound files the server confirmed it holds, after the app's
+        // own dialog, and a WAV can be replaced by its FLAC once the server confirmed the FLAC (writing the FLAC into
+        // the folder). These folders have no trash: deleted is gone for good, which the owner accepted. Only in
+        // AndroidSoundRemoval.kt.
+        "openOutputStream" to setOf("AndroidSoundRemoval.kt"),
+        "deleteDocument" to setOf("AndroidSoundRemoval.kt"),
+        "createDocument" to setOf("AndroidSoundRemoval.kt"),
+        "FLAG_GRANT_WRITE_URI_PERMISSION" to setOf("LibraryActions.kt"),
         "ACCESS_MEDIA_LOCATION" to setOf("AndroidPlaceReader.kt", "AndroidManifest.xml", "LibraryActions.kt"),
     )
 

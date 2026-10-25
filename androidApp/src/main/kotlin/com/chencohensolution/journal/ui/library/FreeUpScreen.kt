@@ -41,6 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
+import androidx.compose.ui.res.pluralStringResource
+import java.text.NumberFormat
+import com.chencohensolution.journal.backup.pills
+import com.chencohensolution.journal.backup.BackupPill
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.storage.FreeUpActivity
 import com.chencohensolution.journal.storage.FreeUpPlan
@@ -64,6 +68,9 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
     val plan = freeUp.plan
     val running = freeUp.activity is FreeUpActivity.Running
     var askAccess by rememberSaveable { mutableStateOf(false) }
+    // Sound files have no trash: the app asks before any run that deletes them.
+    var askSounds by rememberSaveable { mutableStateOf(false) }
+    val freeUpNow = { if (ui.canTrashWithoutAsking || plan?.photos == 0 && plan.videos == 0) actions.freeUp() else askAccess = true }
     var moreOptions by rememberSaveable { mutableStateOf(rule != FreeUpRule.Everything) }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -91,7 +98,7 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
                         Text(stringResource(R.string.settings_free_up_plan_none), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
                     }
                     Button(
-                        onClick = { if (ui.canTrashWithoutAsking) actions.freeUp() else askAccess = true },
+                        onClick = { if ((plan?.sounds ?: 0) > 0) askSounds = true else freeUpNow() },
                         enabled = !running && plan != null && plan.groups.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
@@ -117,11 +124,16 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
             }
 
             SectionTitle(stringResource(R.string.free_up_sources))
-            FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                freeUp.choices.forEach { source ->
-                    Chip(sourceName(source), freeUp.allows(source)) { actions.toggleSource(source) }
-                }
-            }
+            BackupPills(
+                freeUp.pills(),
+                toggle = { pill ->
+                    when (pill) {
+                        is BackupPill.Source -> actions.toggleSource(pill.source)
+                        is BackupPill.Folder -> actions.toggleFolder(pill.folder.treeUri)
+                    }
+                },
+                showBytes = true,
+            )
 
             Row(
                 Modifier
@@ -184,6 +196,23 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
         TitleBar(stringResource(R.string.settings_free_up_title), back, Modifier.align(Alignment.TopCenter))
     }
 
+    if (askSounds && plan != null) {
+        val count = NumberFormat.getIntegerInstance().format(plan.sounds)
+        AlertDialog(
+            onDismissRequest = { askSounds = false },
+            title = { Text(stringResource(R.string.free_up_sounds_title)) },
+            text = { Text(pluralStringResource(R.plurals.free_up_sounds_body, plan.sounds, count)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    askSounds = false
+                    actions.confirmSounds()
+                    freeUpNow()
+                }) { Text(stringResource(R.string.free_up_sounds_confirm), color = LibraryColors.Warning) }
+            },
+            dismissButton = { TextButton(onClick = { askSounds = false }) { Text(stringResource(R.string.backup_add_cancel)) } },
+        )
+    }
+
     if (askAccess) {
         AlertDialog(
             onDismissRequest = { askAccess = false },
@@ -229,7 +258,9 @@ private fun ruleSummary(rule: FreeUpRule): String = when (rule) {
 /** "1,240 photos, 38 videos · Mar 2019 – Oct 2025". */
 @Composable
 private fun planDetails(plan: FreeUpPlan): String {
-    val counts = photosAndVideos(plan.photos, plan.videos)
+    val photos = if (plan.photos + plan.videos > 0) photosAndVideos(plan.photos, plan.videos) else null
+    val sounds = if (plan.sounds > 0) pluralStringResource(R.plurals.free_up_sounds, plan.sounds, NumberFormat.getIntegerInstance().format(plan.sounds)) else null
+    val counts = listOfNotNull(photos, sounds).joinToString(", ")
     val (oldest, newest) = plan.takenRange ?: return counts
     val month = DateTimeFormatter.ofPattern("MMM yyyy")
     fun format(millis: Long) = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(month)

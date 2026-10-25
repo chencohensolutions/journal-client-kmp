@@ -740,4 +740,42 @@
     <string name="hidden_apps_none_shown">No app’s screenshots are shown. Open the list to show some.</string>
     <string name="hidden_apps_open">Show all apps</string>
     <string name="hidden_apps_fold">Show only the apps shown</string>
+
+    <!-- Settings › Backup: folders of calls and recordings (promoted from UI lab round ux/backup/2026-10-25, b2). -->
+    <string name="backup_pick">Add a folder</string>
+    <string name="backup_note">Folders of calls and recordings are backed up even while they are hidden in Private settings.</string>
+    <string name="backup_add_title">Back up %s?</string>
+    <plurals name="backup_files">
+        <item quantity="one">%s sound file</item>
+        <item quantity="other">%s sound files</item>
+    </plurals>
+    <string name="backup_add_found">%1$s · %2$s</string>
+    <string name="backup_add_kind">What are they?</string>
+    <string name="backup_kind_calls">Phone calls</string>
+    <string name="backup_kind_recordings">Recordings</string>
+    <string name="backup_kind_voice">Voice messages</string>
+    <string name="backup_add_body">New files in it are backed up as they come, even while hidden. Calls keep who they were with, as the phone named each file.</string>
+    <string name="backup_add_confirm">Back it up</string>
+    <string name="backup_add_cancel">Cancel</string>
+    <string name="backup_folder_unreadable">The app can\'t read that folder.</string>
+    <string name="backup_folder_lost">%s · pick again</string>
+    <string name="backup_wav_note">WAV recordings are sent as FLAC: the same sound in about half the space.</string>
+    <string name="backup_keep_title">Keep on this phone</string>
+    <string name="backup_keep_wav">WAV</string>
+    <string name="backup_keep_flac">FLAC</string>
+    <string name="backup_keep_wav_body">The WAV stays as it is.</string>
+    <string name="backup_keep_flac_body">The FLAC replaces the WAV once the server has it.</string>
+    <string name="backup_remove_title">Stop backing up %s?</string>
+    <string name="backup_remove_body">What it sent stays on the server.</string>
+    <string name="backup_remove_confirm">Stop</string>
+    <plurals name="free_up_sounds">
+        <item quantity="one">%s sound file</item>
+        <item quantity="other">%s sound files</item>
+    </plurals>
+    <string name="free_up_sounds_title">Delete for good?</string>
+    <plurals name="free_up_sounds_body">
+        <item quantity="one">%s call or recording will be deleted from this phone for good: its folder has no trash. Your server keeps it.</item>
+        <item quantity="other">%s calls and recordings will be deleted from this phone for good: their folders have no trash. Your server keeps them.</item>
+    </plurals>
+    <string name="free_up_sounds_confirm">Delete and free up</string>
 </resources>

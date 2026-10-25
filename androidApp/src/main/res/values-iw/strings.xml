@@ -768,4 +768,45 @@
     <string name="hidden_apps_none_shown">צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג.</string>
     <string name="hidden_apps_open">הצגת כל האפליקציות</string>
     <string name="hidden_apps_fold">הצגת המוצגות בלבד</string>
+
+    <!-- הגדרות › גיבוי: תיקיות של שיחות והקלטות (מסבב מעבדת הממשק ux/backup/2026-10-25, b2). -->
+    <string name="backup_pick">הוספת תיקייה</string>
+    <string name="backup_note">תיקיות של שיחות והקלטות מגובות גם כשהן מוסתרות בהגדרות הפרטיות.</string>
+    <string name="backup_add_title">לגבות את %s?</string>
+    <plurals name="backup_files">
+        <item quantity="one">קובץ קול אחד</item>
+        <item quantity="two">%s קובצי קול</item>
+        <item quantity="other">%s קובצי קול</item>
+    </plurals>
+    <string name="backup_add_found">%1$s · %2$s</string>
+    <string name="backup_add_kind">מה הם?</string>
+    <string name="backup_kind_calls">שיחות טלפון</string>
+    <string name="backup_kind_recordings">הקלטות</string>
+    <string name="backup_kind_voice">הודעות קוליות</string>
+    <string name="backup_add_body">קבצים חדשים בה מגובים כשהם מגיעים, גם כשהם מוסתרים. שיחות שומרות עם מי היו, כפי שהטלפון קרא לכל קובץ.</string>
+    <string name="backup_add_confirm">לגבות</string>
+    <string name="backup_add_cancel">ביטול</string>
+    <string name="backup_folder_unreadable">האפליקציה לא יכולה לקרוא את התיקייה הזו.</string>
+    <string name="backup_folder_lost">%s · לבחור שוב</string>
+    <string name="backup_wav_note">הקלטות WAV נשלחות כ-FLAC: אותו קול בכמחצית מהמקום.</string>
+    <string name="backup_keep_title">מה נשאר בטלפון</string>
+    <string name="backup_keep_wav">WAV</string>
+    <string name="backup_keep_flac">FLAC</string>
+    <string name="backup_keep_wav_body">קובץ ה-WAV נשאר כמו שהוא.</string>
+    <string name="backup_keep_flac_body">קובץ ה-FLAC מחליף את ה-WAV כשהשרת מחזיק אותו.</string>
+    <string name="backup_remove_title">להפסיק לגבות את %s?</string>
+    <string name="backup_remove_body">מה שנשלח נשאר בשרת.</string>
+    <string name="backup_remove_confirm">להפסיק</string>
+    <plurals name="free_up_sounds">
+        <item quantity="one">קובץ קול אחד</item>
+        <item quantity="two">%s קובצי קול</item>
+        <item quantity="other">%s קובצי קול</item>
+    </plurals>
+    <string name="free_up_sounds_title">למחוק לצמיתות?</string>
+    <plurals name="free_up_sounds_body">
+        <item quantity="one">שיחה או הקלטה אחת יימחקו מהטלפון לצמיתות: אין לתיקייה סל מחזור. השרת שלך שומר אותה.</item>
+        <item quantity="two">%s שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן.</item>
+        <item quantity="other">%s שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן.</item>
+    </plurals>
+    <string name="free_up_sounds_confirm">למחוק ולפנות מקום</string>
 </resources>

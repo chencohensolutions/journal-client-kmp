@@ -65,6 +65,10 @@ internal class StorageActions(
     val moveWaitingToTrash: () -> Unit = {},
     /** Lets a source's photos leave the phone, or keeps them. */
     val toggleSource: (MediaSource) -> Unit = {},
+    /** Lets the files of a sound folder (its tree URI) leave the phone, or keeps them. */
+    val toggleFolder: (String) -> Unit = {},
+    /** The user agreed that the next run deletes sound files for good (they have no trash). */
+    val confirmSounds: () -> Unit = {},
     /** Opens the Free up space screen. */
     val openFreeUp: () -> Unit = {},
 )

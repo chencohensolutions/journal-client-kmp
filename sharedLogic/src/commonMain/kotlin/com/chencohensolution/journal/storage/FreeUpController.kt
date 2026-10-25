@@ -261,10 +261,22 @@ class FreeUpController internal constructor(
     fun start() = onStart()
 
     /**
+     * The user agreed, in the app's dialog, that the next run deletes sound files for good. Until then a run leaves
+     * them; the agreement lasts one run, in this process only.
+     */
+    fun confirmSounds() {
+        soundsConfirmed = true
+    }
+
+    private var soundsConfirmed = false
+
+    /**
      * One run, called by the platform's background worker; runs never overlap. Null when it stopped early (see
      * [FreeUpState.activity]).
      */
     suspend fun runOnce(trash: PhotoTrash, sounds: SoundRemoval? = null, onProgress: (FreeUpProgress) -> Unit = {}): FreeUpResult? = runMutex.withLock {
+        val sounds = sounds?.takeIf { soundsConfirmed }
+        soundsConfirmed = false
         val soundItems = if (sounds != null) soundFiles(settings.backup.soundFolders) else emptyList()
         val plan = freeUpPlan(library.loadItems() + soundItems, ledger.all(), settings.freeUpRule, now(), settings.freeUpKept, settings.freeUpKeptFolders)
         var progress = FreeUpProgress(0, plan.groups.size, 0, plan.bytes)

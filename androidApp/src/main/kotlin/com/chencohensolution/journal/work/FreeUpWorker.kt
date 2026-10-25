@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import com.chencohensolution.journal.backup.AndroidSoundRemoval
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -43,7 +44,7 @@ class FreeUpWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         createChannel(applicationContext)
         runCatching { setForeground(foregroundInfo(null)) }
         try {
-            val result = freeUp.runOnce(AndroidPhotoTrash(applicationContext), ::showProgress)
+            val result = freeUp.runOnce(AndroidPhotoTrash(applicationContext), AndroidSoundRemoval(applicationContext), ::showProgress)
             Log.i(TAG, "run ended: $result, ${freeUp.currentState.activity}")
         } finally {
             notifications.cancel(PROGRESS_ID)

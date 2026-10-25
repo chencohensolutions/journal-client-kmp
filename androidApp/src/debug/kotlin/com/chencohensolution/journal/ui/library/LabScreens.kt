@@ -175,12 +175,6 @@ internal val labScreens: List<LabScreen> = listOf(
             CropScreen(PreviewData.croppedPhoto, CropKind.MOMENTS, crops.moments!!, PhotoCrops(moments = crops.moments), PreviewData.SCREEN_RATIO, CropActions())
         },
     )),
-    // Backing up calls and recordings from folders on the phone (ux/backup): lab/backup/.
-    LabScreen("backup", "Settings › Backup", listOf(
-        current { BackupSettingsScreen(backupLabUi(), BackupActions(), back = {}) },
-        backupOptionB2,
-        backupOptionB2Adding,
-    )),
     LabScreen("settings", "Settings", listOf(
         current { SettingsScreen(SettingsState(), SettingsActions()) },
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {

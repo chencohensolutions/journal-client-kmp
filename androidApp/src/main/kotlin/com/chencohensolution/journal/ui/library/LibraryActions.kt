@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
@@ -24,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.backup.BackupController
+import com.chencohensolution.journal.backup.SoundFolder
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
@@ -141,6 +144,21 @@ internal fun libraryActions(
         if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) addCurrentNetwork()
     }
     val backgroundLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { backgroundLocation = it }
+    // Folders of calls and recordings: picked with the system's folder picker, which opens where Samsung keeps calls.
+    // Write access is kept too (allowed by the owner on Oct 25, 2026): "Free up space" deletes backed-up files there,
+    // and a WAV can be replaced by its FLAC (AndroidSoundRemoval, the only code that writes there).
+    val picked = remember { mutableStateOf<PickedFolder?>(null) }
+    val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        scope.launch {
+            val folder = pickedFolder(uri)
+            val look = backup.look(folder)
+            if (look == null) Toast.makeText(context, R.string.backup_folder_unreadable, Toast.LENGTH_SHORT).show() else picked.value = PickedFolder(folder, look)
+        }
+    }
     val backupActions = BackupActions(
         setEnabled = { on ->
             if (on && !granted(Manifest.permission.POST_NOTIFICATIONS)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -160,6 +178,24 @@ internal fun libraryActions(
         removeNetwork = backup::removeWifiNetwork,
         allowBackgroundLocation = { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
         backUpNow = backup::backUpNow,
+        toggleFolder = { backup.setSoundFolderEnabled(it.treeUri, !it.enabled) },
+        pickFolder = { folderLauncher.launch(SAMSUNG_CALLS) },
+        addFolder = { folder, kind ->
+            picked.value = null
+            backup.addSoundFolder(folder.folder.copy(kind = kind, enabled = true), folder.look)
+        },
+        cancelAdd = { picked.value = null },
+        removeFolder = { folder ->
+            backup.removeSoundFolder(folder.treeUri)
+            runCatching {
+                context.contentResolver.releasePersistableUriPermission(
+                    Uri.parse(folder.treeUri),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+        },
+        setKeepOnPhone = backup::setKeepOnPhone,
+        picked = picked,
     )
 
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean = { item, isPrivate ->
@@ -234,8 +270,26 @@ internal fun libraryActions(
                 allowTrashWithoutAsking = { manageMediaLauncher.launch(manageMediaSettingsIntent(context)) },
                 moveWaitingToTrash = moveWaitingToTrash,
                 toggleSource = freeUp::toggleSource,
+                toggleFolder = freeUp::toggleFolder,
+                confirmSounds = freeUp::confirmSounds,
                 openFreeUp = openFreeUp,
             )
         },
     )
+}
+
+/** Where the folder picker opens: Samsung's call recordings (Internal storage › Recordings › Call). */
+private val SAMSUNG_CALLS: Uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Recordings/Call")
+
+/**
+ * A folder the picker returned, named as the phone shows it: "primary:Recordings/Call" is "Call", at "Recordings ›
+ * Call"; a folder on an SD card says so. Its kind is a recording until the add dialog says otherwise.
+ */
+private fun pickedFolder(tree: Uri): SoundFolder {
+    val id = DocumentsContract.getTreeDocumentId(tree)
+    val volume = id.substringBefore(':')
+    val parts = id.substringAfter(':').split('/').filter { it.isNotEmpty() }
+    val name = parts.lastOrNull() ?: volume
+    val path = (if (volume == "primary") parts else listOf(volume) + parts).joinToString(" › ").ifEmpty { name }
+    return SoundFolder(treeUri = tree.toString(), name = name, path = path, kind = AudioKind.RECORDING)
 }
