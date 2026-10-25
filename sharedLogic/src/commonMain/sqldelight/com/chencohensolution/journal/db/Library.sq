@@ -27,6 +27,7 @@ CREATE TABLE library_item (
 );
 
 CREATE INDEX library_item_day ON library_item(epoch_day, taken_millis);
+CREATE INDEX library_item_server ON library_item(server_sha256);
 
 -- Scratch: the library made afresh, compared with library_item to find what changed.
 CREATE TABLE library_fresh (
@@ -60,6 +61,81 @@ CREATE INDEX server_media_name ON server_media(lower(file_name), size);
 CREATE INDEX server_private_name ON server_private(lower(file_name), size);
 CREATE INDEX ledger_sha ON ledger(sha256);
 
+-- What changed since the library was last made, noted by each writer in its own transaction: a phone item ("d", its
+-- id), a server file or a ledger sha256 ("s", the sha256), or everything ("*", the key empty).
+CREATE TABLE library_dirty (
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    PRIMARY KEY (kind, key)
+);
+
+-- Scratch: the noted keys, widened to every item they can change (LibraryTable.refresh).
+CREATE TABLE library_keys (
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    PRIMARY KEY (kind, key)
+);
+
+-- Each write to what the library is made from notes its keys (see library_dirty).
+CREATE TRIGGER device_item_added AFTER INSERT ON device_item BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('d', new.id); END;
+-- A changed or deleted item also notes what its old self matched: a server file it kept out of the server-only ones.
+CREATE TRIGGER device_item_changed AFTER UPDATE ON device_item BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('d', new.id);
+    INSERT OR IGNORE INTO library_dirty SELECT 's', l.sha256 FROM ledger l WHERE l.id = old.id;
+    INSERT OR IGNORE INTO library_dirty SELECT 's', s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(old.file_name) AND s.size = old.size;
+END;
+CREATE TRIGGER device_item_gone AFTER DELETE ON device_item BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('d', old.id);
+    INSERT OR IGNORE INTO library_dirty SELECT 's', l.sha256 FROM ledger l WHERE l.id = old.id;
+    INSERT OR IGNORE INTO library_dirty SELECT 's', s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(old.file_name) AND s.size = old.size;
+END;
+CREATE TRIGGER server_media_added AFTER INSERT ON server_media BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256); END;
+CREATE TRIGGER server_media_changed AFTER UPDATE ON server_media BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256);
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
+END;
+CREATE TRIGGER server_media_gone AFTER DELETE ON server_media BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256);
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
+END;
+CREATE TRIGGER server_hidden_added AFTER INSERT ON server_hidden BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256); END;
+CREATE TRIGGER server_hidden_gone AFTER DELETE ON server_hidden BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256); END;
+CREATE TRIGGER server_private_added AFTER INSERT ON server_private BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('*', ''); END;
+CREATE TRIGGER server_private_gone AFTER DELETE ON server_private BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('*', ''); END;
+CREATE TRIGGER ledger_added AFTER INSERT ON ledger BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('d', new.id);
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256);
+END;
+CREATE TRIGGER ledger_changed AFTER UPDATE ON ledger BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('d', new.id);
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256);
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256);
+END;
+CREATE TRIGGER ledger_gone AFTER DELETE ON ledger BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('d', old.id);
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256);
+END;
+
+-- INSERT OR REPLACE replaces a row without firing the triggers of an update or a delete: these note what the row it
+-- replaces matched, before it goes.
+CREATE TRIGGER device_item_replacing BEFORE INSERT ON device_item BEGIN
+    INSERT OR IGNORE INTO library_dirty SELECT 's', l.sha256 FROM ledger l WHERE l.id = new.id;
+    INSERT OR IGNORE INTO library_dirty
+        SELECT 's', s.sha256 FROM device_item d JOIN server_media s ON lower(s.file_name) = lower(d.file_name) AND s.size = d.size WHERE d.id = new.id;
+END;
+CREATE TRIGGER server_media_replacing BEFORE INSERT ON server_media BEGIN
+    INSERT OR IGNORE INTO library_dirty
+        SELECT 'd', d.id FROM server_media s JOIN device_item d ON lower(d.file_name) = lower(s.file_name) AND d.size = s.size WHERE s.sha256 = new.sha256;
+END;
+CREATE TRIGGER ledger_replacing BEFORE INSERT ON ledger BEGIN
+    INSERT OR IGNORE INTO library_dirty SELECT 's', l.sha256 FROM ledger l WHERE l.id = new.id;
+END;
+
+-- A new database has no library yet: make it whole once.
+INSERT INTO library_dirty VALUES ('*', '');
+
 -- Each phone item with the sha256 backup read for it as it is now (same size and modified time), else null.
 CREATE VIEW device_with_sha AS
 SELECT d.*, (SELECT l.sha256 FROM ledger l WHERE l.id = d.id AND l.size = d.size AND l.modified_millis IS d.modified_millis) AS sha
@@ -73,17 +149,18 @@ DELETE FROM library_fresh;
 freshFromDevice:
 INSERT OR REPLACE INTO library_fresh
 SELECT v.id, v.sha,
-    CASE WHEN v.sha IS NOT NULL THEN (SELECT s.sha256 FROM server_media s WHERE s.sha256 = v.sha)
-        ELSE (SELECT s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size ORDER BY s.sha256 LIMIT 1) END,
+    CASE WHEN v.sha IS NOT NULL THEN (SELECT s.sha256 FROM server_media s WHERE s.sha256 = v.sha AND s.is_audio = 0)
+        ELSE (SELECT s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_audio = 0 ORDER BY s.sha256 LIMIT 1) END,
     1, v.is_video, v.taken_millis, v.epoch_day, v.duration_millis, v.width, v.height, v.size, v.file_name, v.burst_id, v.source,
     v.latitude, v.longitude, v.modified_millis, v.mime_type,
-    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE s.sha256 = v.sha AND s.is_private)
-        ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_private) END,
+    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE s.sha256 = v.sha AND s.is_private AND s.is_audio = 0)
+        ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_private AND s.is_audio = 0) END,
     NULL
 FROM device_with_sha v
 WHERE (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
     AND (CASE WHEN v.sha IS NOT NULL THEN v.sha NOT IN (SELECT sha256 FROM server_private)
-        ELSE NOT EXISTS (SELECT 1 FROM server_private p WHERE lower(p.file_name) = lower(v.file_name) AND p.size = v.size) END);
+        ELSE NOT EXISTS (SELECT 1 FROM server_private p WHERE lower(p.file_name) = lower(v.file_name) AND p.size = v.size) END)
+    AND (:everything = 1 OR v.id IN (SELECT key FROM library_keys WHERE kind = 'd'));
 
 -- The server's score for the phone's items, once their server file is known.
 freshScores:
@@ -104,6 +181,7 @@ SELECT coalesce(
     s.latitude, s.longitude, NULL, s.mime_type, s.is_private, s.aesthetic
 FROM server_media s
 WHERE s.is_audio = 0
+    AND (:everything = 1 OR s.sha256 IN (SELECT key FROM library_keys WHERE kind = 's'))
     AND NOT EXISTS (
         SELECT 1 FROM ledger l JOIN device_item d ON d.id = l.id AND d.size = l.size AND d.modified_millis IS l.modified_millis
         WHERE l.sha256 = s.sha256 AND l.sha256 NOT IN (SELECT sha256 FROM server_hidden)
@@ -113,14 +191,22 @@ WHERE s.is_audio = 0
         WHERE lower(v.file_name) = lower(s.file_name) AND v.size = s.size AND (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
     );
 
+-- Rows made afresh that differ from the kept ones (only the kept rows of the same ids are read).
 changedRows:
-SELECT * FROM library_fresh EXCEPT SELECT * FROM library_item;
+SELECT * FROM library_fresh EXCEPT SELECT i.* FROM library_item i WHERE i.id IN (SELECT id FROM library_fresh);
 
+-- Rows of the keyed items (all with everything) that came out of nothing.
 removedIds:
-SELECT id FROM library_item WHERE id NOT IN (SELECT id FROM library_fresh);
+SELECT id FROM library_item WHERE :everything = 1 AND id NOT IN (SELECT id FROM library_fresh)
+UNION
+SELECT i.id FROM library_keys k JOIN library_item i ON i.id = k.key
+WHERE k.kind = 'd' AND i.is_on_device = 1 AND i.id NOT IN (SELECT id FROM library_fresh)
+UNION
+SELECT i.id FROM library_keys k JOIN library_item i ON i.server_sha256 = k.key
+WHERE k.kind = 's' AND i.is_on_device = 0 AND i.id NOT IN (SELECT id FROM library_fresh);
 
 deleteRemoved:
-DELETE FROM library_item WHERE id NOT IN (SELECT id FROM library_fresh);
+DELETE FROM library_item WHERE id IN ?;
 
 upsertLibraryItem:
 INSERT OR REPLACE INTO library_item VALUES ?;
@@ -128,12 +214,39 @@ INSERT OR REPLACE INTO library_item VALUES ?;
 allLibraryItems:
 SELECT * FROM library_item;
 
--- Whether a change of these ledger rows can change the library: a phone item, or a server photo, of theirs.
-deviceItemCount:
-SELECT count(*) FROM device_item WHERE id IN ?;
-
-serverPhotoCount:
-SELECT count(*) FROM server_media WHERE sha256 IN ? AND is_audio = 0;
 
 applyChanged:
-INSERT OR REPLACE INTO library_item SELECT * FROM library_fresh EXCEPT SELECT * FROM library_item;
+INSERT OR REPLACE INTO library_item
+SELECT * FROM library_fresh EXCEPT SELECT i.* FROM library_item i WHERE i.id IN (SELECT id FROM library_fresh);
+
+markDirty:
+INSERT OR IGNORE INTO library_dirty VALUES (?, ?);
+
+dirtyCount:
+SELECT count(*) FROM library_dirty;
+
+everythingDirty:
+SELECT count(*) FROM library_dirty WHERE kind = '*';
+
+-- The noted keys, and every item they can change, now or as the library was made last time: a phone item's server
+-- file (by its sha256, or by name and size) and a server file's phone items. The notes are cleared.
+takeKeys {
+    DELETE FROM library_keys;
+    INSERT INTO library_keys SELECT kind, key FROM library_dirty WHERE kind != '*';
+    DELETE FROM library_dirty;
+    INSERT OR IGNORE INTO library_keys
+        SELECT 's', v.sha FROM device_with_sha v WHERE v.sha IS NOT NULL AND v.id IN (SELECT key FROM library_keys WHERE kind = 'd');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 's', s.sha256 FROM device_item d JOIN server_media s ON lower(s.file_name) = lower(d.file_name) AND s.size = d.size
+        WHERE d.id IN (SELECT key FROM library_keys WHERE kind = 'd');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 's', server_sha256 FROM library_item
+        WHERE is_on_device = 1 AND server_sha256 IS NOT NULL AND id IN (SELECT key FROM library_keys WHERE kind = 'd');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 'd', l.id FROM ledger l JOIN device_item d ON d.id = l.id WHERE l.sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 'd', d.id FROM server_media s JOIN device_item d ON lower(d.file_name) = lower(s.file_name) AND d.size = s.size
+        WHERE s.sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 'd', id FROM library_item WHERE is_on_device = 1 AND server_sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
+}

@@ -144,6 +144,59 @@ class LibraryTableTest {
     }
 
     @Test
+    fun refreshingOnlyWhatChangedStaysTheMerge() = runTest {
+        repeat(30) { seed ->
+            val s = scenario(seed)
+            val random = Random(seed + 1_000)
+            val database = testLibraryDatabase()
+            var device = s.device
+            StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            s.entries.forEach { ledger.record(it) }
+            val store = ServerMediaStore(database)
+            store.replaceAll(s.server, s.hiddenOnServer, cursor = null, showPrivate = s.showPrivate)
+            val table = LibraryTable(database)
+            table.refresh()
+
+            repeat(5) { round ->
+                // The phone: some deleted, some edited in place (or renamed), a few new.
+                device = device.filter { random.nextInt(10) != 0 }.map { item ->
+                    when (random.nextInt(8)) {
+                        0 -> item.copy(sizeBytes = item.sizeBytes!! + 7, modifiedMillis = item.modifiedMillis!! + 1)
+                        1 -> item.copy(fileName = "only_${100 + random.nextInt(26)}.jpg", sizeBytes = 5_100L + random.nextInt(26))
+                        else -> item
+                    }
+                } + (0..random.nextInt(3)).map { n ->
+                    s.device.first().copy(id = "new$round-$n", fileName = "IMG_${random.nextInt(40)}.jpg", sizeBytes = 1_000L + random.nextInt(40))
+                }
+                StoredMediaLibrary(TableTestLibrary(device), database, Dispatchers.Unconfined).loadItems()
+                // Backup reads some (maybe to a sha256 the server has), forgets some.
+                device.filter { random.nextInt(6) == 0 }.forEach { item ->
+                    ledger.record(LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(random.nextInt(140)), uploaded = random.nextBoolean()))
+                }
+                ledger.all().keys.filter { random.nextInt(15) == 0 }.forEach { ledger.forget(it) }
+                // The server: some deleted, some made private or not, some hidden or shown again, a few new.
+                val now = store.media()
+                val gone = now.filter { random.nextInt(12) == 0 }.map { it.sha256 }
+                val changed = now.filter { random.nextInt(10) == 0 }.map { it.copy(isPrivate = !it.isPrivate) } +
+                    (0..random.nextInt(3)).map { n -> s.server.first().copy(sha256 = sha(2_000 + round * 10 + n), fileName = "IMG_${random.nextInt(40)}.jpg", size = 1_000L + random.nextInt(40)) }
+                val hidden = now.filter { random.nextInt(20) == 0 }.map { it.sha256 }
+                val shownAgain = store.hidden().filter { random.nextInt(4) == 0 }
+                store.apply(com.chencohensolution.journal.server.FeedPage(changed, gone + hidden, hidden, shownAgain, "c$round"), s.showPrivate)
+                table.refresh()
+
+                val expected = mergeWithServer(
+                    device, ledger.all(), store.media().filterNot { it.isAudio }, s.kept, PrivateMedia(s.showPrivate),
+                    store.hidden(), s.scores, store.privateFiles(),
+                ).associateBy { it.id }
+                val actual = table.all().map { shown(it, s.kept, s.scores) }.associateBy { it.id }
+                assertEquals(emptySet(), (expected.keys - actual.keys) + (actual.keys - expected.keys), "seed $seed round $round: ids missing ${expected.keys - actual.keys}, extra ${actual.keys - expected.keys}")
+                expected.forEach { (id, item) -> assertEquals(item, actual.getValue(id), "seed $seed round $round: $id") }
+            }
+        }
+    }
+
+    @Test
     fun theControllerPatchesOnlyTheDayThatChanged() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val device = (0..8).map { n ->
@@ -193,14 +246,12 @@ class LibraryTableTest {
         // A photo backup reads: one row changes (it learns its sha256), nothing else.
         val item = s.device.first { id -> s.entries.none { it.id == id.id } }
         ledger.record(LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(9_999)))
-        assertTrue(table.affects(listOf(item.id), listOf(sha(9_999))))
         val delta = table.refresh()
         assertEquals(listOf(item.id), delta.changed.map { it.item.id })
         assertEquals(sha(9_999), delta.changed.single().item.sha256)
 
         // A call backup reads: nothing of the library.
         ledger.record(LedgerEntry("sound:call1", 10, null, sha(8_888), uploaded = true))
-        assertTrue(!table.affects(listOf("sound:call1"), listOf(sha(8_888))))
         assertTrue(table.refresh().isEmpty)
     }
 }

@@ -251,6 +251,7 @@ class LibraryController internal constructor(
 
     private var refreshJob: Job? = null
     private var refreshAgain = false
+    private var keptRead = false
 
     /**
      * [publish] with [table]: the rows are made again in the database when the phone's library, the server's list or
@@ -270,15 +271,11 @@ class LibraryController internal constructor(
             tableFrom = inputs
             refreshTable(table)
         }
+        // The ledger changed: its triggers noted which items that can touch (a call backup reads touches none).
         val entries = backupState?.entries.orEmpty()
         if (entries !== entriesSeen) {
-            val before = entriesSeen
             entriesSeen = entries
-            val ids = (entries.keys + before.keys).filter { entries[it] !== before[it] }
-            if (ids.isNotEmpty()) {
-                val shas = ids.flatMap { listOfNotNull(entries[it]?.sha256, before[it]?.sha256) }
-                scope.launch { if (withContext(io) { table.affects(ids, shas) }) refreshTable(table) }
-            }
+            refreshTable(table)
         }
         val overlay = listOf(originals?.kept?.value, scores?.value)
         if (shownFrom == null || shownFrom!!.indices.any { shownFrom!![it] !== overlay[it] }) {
@@ -297,17 +294,20 @@ class LibraryController internal constructor(
             return
         }
         refreshJob = scope.launch {
-            if (merges == 0) {
+            if (!keptRead) {
                 // What the database kept since the last start, shown before anything is read again.
                 val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
+                keptRead = true
                 patch(kept, emptyList())
             }
             do {
                 refreshAgain = false
+                val delta = withContext(io) { table.refresh() }
+                if (delta.isEmpty) continue
+                // Only refreshes that changed rows count: one with nothing noted is a single quick query.
                 merges++
-                val delta = withContext(io) { Measure.time({ "Library made in the database" }) { table.refresh() } }
                 Measure.log?.invoke("Library: ${delta.changed.size} rows changed, ${delta.removed.size} gone")
-                if (!delta.isEmpty) patch(delta.changed, delta.removed)
+                patch(delta.changed, delta.removed)
             } while (refreshAgain)
         }
     }

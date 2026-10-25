@@ -23,22 +23,27 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     /** Every row, as kept. */
     fun all(): List<LibraryRow> = queries.allLibraryItems(::libraryRow).executeAsList()
 
+    /**
+     * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
+     * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened
+     * to the items they touch (`takeKeys`). With nothing noted it does nothing; a note of everything makes it whole.
+     */
     fun refresh(): LibraryDelta = database.transactionWithResult {
+        if (queries.dirtyCount().executeAsOne() == 0L) return@transactionWithResult LibraryDelta(emptyList(), emptyList())
+        val everything = if (queries.everythingDirty().executeAsOne() > 0) 1L else 0L
+        queries.takeKeys()
         queries.clearFresh()
-        queries.freshFromDevice()
+        queries.freshFromDevice(everything)
         queries.freshScores()
-        queries.freshFromServer()
+        queries.freshFromServer(everything)
         val changed = queries.changedRows(::libraryRow).executeAsList()
-        val removed = queries.removedIds().executeAsList()
-        queries.deleteRemoved()
+        val removed = queries.removedIds(everything).executeAsList()
+        removed.chunked(CHUNK).forEach { queries.deleteRemoved(it) }
         queries.applyChanged()
+        // Emptied now, so the next refresh (usually a few rows) doesn't first pay for this one's rows.
+        queries.clearFresh()
         LibraryDelta(changed, removed)
     }
-
-    /** Whether a change of the ledger rows of [ids] (now or before of [shas]) can change the library. */
-    fun affects(ids: Collection<String>, shas: Collection<String>): Boolean =
-        ids.chunked(CHUNK).any { queries.deviceItemCount(it).executeAsOne() > 0 } ||
-            shas.chunked(CHUNK).any { queries.serverPhotoCount(it).executeAsOne() > 0 }
 
     private companion object {
         /** SQLite takes at most 999 parameters in a statement. */

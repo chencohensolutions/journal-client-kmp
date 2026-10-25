@@ -204,18 +204,27 @@ Confirmed by the owner on Oct 25, 2026:
    - `library_item` kept by upserts; `LibraryState.days` is replaced by queries.
    - Until phase 5 lands, a temporary adapter reads the whole list for the screens. Memory is no better yet, but
      the merges are gone.
-   - **Built Oct 25, 2026; not yet tried on the phone** (wireless adb dropped).
-     - `Library.sq` (database version 4, migration `3.sqm`).
+   - **Built Oct 25, 2026.**
+     - `Library.sq` (database version 5, migrations `3.sqm`, `4.sqm`).
        - `library_item` is made inside SQLite from `device_item`, `ledger` and `server_media`, by the rules of
          `mergeWithServer`, with indexes on lowercase name and size and on the ledger's sha256.
-       - `LibraryTable.refresh` makes it afresh in `library_fresh`, and writes and returns only the rows that came
-         out different (`EXCEPT`).
+       - Triggers on `device_item`, `server_media`, `server_hidden`, `server_private` and `ledger` note each write
+         in `library_dirty`: a phone item's id, a sha256, or everything (private files, a new database). They fire
+         before an `INSERT OR REPLACE` too, which fires no update or delete trigger, so a replaced row's old matches
+         are noted.
+       - `LibraryTable.refresh` widens the notes to every item they can change (`takeKeys`) and makes only those
+         again in `library_fresh`. It writes and returns only the rows that came out different. With nothing noted
+         it is one count query.
        - `LibraryTableTest` checks it equals `mergeWithServer` over 40 generated libraries. Every case appears:
          private, kept originals, scores, photos deleted from the phone, matched by name and size.
+         `refreshingOnlyWhatChangedStaysTheMerge` changes 30 libraries in 5 random rounds each (the phone, the
+         ledger, the server, hidden and private files) and checks each incremental refresh against the full merge.
+         It found two holes, now closed: an `INSERT OR REPLACE` fired no trigger for the row it replaced, and a phone
+         photo could match a server sound recording by name and size.
      - `LibraryController` with a `table`:
        - It shows what the database kept at once.
        - It makes the rows again only when the phone's library, the server's list or what is hidden changed, or a
-         ledger change touches a photo of the library (`LibraryTable.affects`).
+         ledger change was written (the notes decide whether there is anything to make).
        - It patches only the changed rows' days. Days whose statuses didn't change stay the same objects (also on
          the old path).
        - Scores and kept originals are laid over in memory (`shown`).
@@ -223,6 +232,15 @@ Confirmed by the owner on Oct 25, 2026:
        rebuilds (2,001 merges before). Its limit is 5.
      - The made-up library goes into the database beside the real rows (marked, written once, deleted when turned
        off), so measurements go the real way. Backup still reads MediaStore and drops made-up items.
+     - On the owner's phone (113,331 rows):
+       - The first build after the migration took 11 s; it happens once.
+       - Before the notes, every refresh took 3.8–4.9 s even with nothing changed.
+       - With the notes, a refresh with nothing noted takes 4 ms and one changed ledger row 62 ms (measured on a copy
+         of the phone's database on the PC).
+       - A second start draws its first Moments frame after 4.3–4.8 s (5.3–6 s before phase 4). What is left is
+         reading every row into memory (about 2 s) and building the whole feed (0.6–1 s): phase 5's work.
+       - The owner sees two spinners at start (the library read, then the feed built from it); phase 5 replaces
+         both with the first page.
      - Still in memory: `LibraryState.days` (the adapter), `BackupState.entries` (statuses), backup's queue.
        `mergeWithServer` stays as the tests' reference until phase 9.
 5. **Moments paged.**
