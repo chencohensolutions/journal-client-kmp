@@ -2,6 +2,8 @@ package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.LibraryTable
+import com.chencohensolution.journal.library.LocatedRow
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
@@ -397,4 +399,30 @@ internal fun home(library: List<MediaItem>, places: Places): GeoPoint? {
     if (located.size < HOME_MIN_PHOTOS) return null
     val square = located.groupBy { (it.latitude * 10).toInt() to (it.longitude * 10).toInt() }.maxBy { it.value.size }.value
     return GeoPoint(square.map { it.latitude }.average(), square.map { it.longitude }.average())
+}
+
+/**
+ * [home] of the library's photos [shown] shows, from the database (step 6b): the photos with a location of their own
+ * counted per square by SQL, and those without one that a place was [found] for (by id). The same square as [home]
+ * (on a tie, the one whose newest photo comes first) and the same average, added up in the same order. Blocking.
+ */
+internal fun home(table: LibraryTable, found: Map<String, GeoPoint>, shown: ShownSources): GeoPoint? {
+    fun square(point: GeoPoint) = (point.latitude * 10).toInt().toLong() to (point.longitude * 10).toInt().toLong()
+    val counts = HashMap<Pair<Long, Long>, Int>()
+    table.squareCounts(shown.alwaysShown.map { it.day }).forEach { group ->
+        if (if (group.day != null) shown.shows(group.day, group.source) else shown.isShown(group.source)) {
+            counts[group.square] = (counts[group.square] ?: 0) + group.count
+        }
+    }
+    val placed = table.unlocated(found.keys).mapNotNull { row ->
+        found[row.key.id]?.takeIf { shown.shows(row.key.day, row.source) }?.let { LocatedRow(row.key, row.source, it) }
+    }
+    placed.forEach { row -> square(row.point!!).let { counts[it] = (counts[it] ?: 0) + 1 } }
+    if (counts.values.sum() < HOME_MIN_PHOTOS) return null
+    val most = counts.values.max()
+    // Each square with the most photos, its photos in the library's order: groupBy meets the square of the first first.
+    val photos = counts.filterValues { it == most }.keys.map { square ->
+        (table.inSquare(square).filter { shown.shows(it.key.day, it.source) } + placed.filter { square(it.point!!) == square }).sortedBy { it.key }
+    }.minBy { it.first().key }.map { it.point!! }
+    return GeoPoint(photos.map { it.latitude }.average(), photos.map { it.longitude }.average())
 }

@@ -1,6 +1,9 @@
 package com.chencohensolution.journal.similarity
 
+import com.chencohensolution.journal.library.BatchWalk
+import com.chencohensolution.journal.library.LibraryKey
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.key
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +30,8 @@ class PhotoSimilarity internal constructor(
     private val analyzer: PhotoAnalyzer,
     private val cache: FingerprintCache,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Rows read from the database at a time ([requestFrom]); tests read fewer. */
+    private val batchSize: Int = BATCH,
 ) {
     // One coroutine at a time touches the fields below; analyzing suspends, so new requests still get in.
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -35,6 +40,13 @@ class PhotoSimilarity internal constructor(
     private val failed = mutableSetOf<String>()
     private var wanted: List<MediaItem> = emptyList()
     private var worker: Job? = null
+
+    /** With [requestFrom]: the phone's photos read from the database a batch at a time, and which of them are wanted. */
+    private var batches: (suspend (after: LibraryKey?, limit: Int) -> List<MediaItem>)? = null
+    private var wants: (MediaItem) -> Boolean = { true }
+
+    /** Set by [requestFrom] while the worker reads: it starts again from the newest. */
+    private var again = false
 
     private val _looks = MutableStateFlow(PhotoLooks.NONE)
 
@@ -54,6 +66,22 @@ class PhotoSimilarity internal constructor(
     fun request(items: List<MediaItem>) {
         scope.launch {
             wanted = items
+            batches = null
+            if (worker?.isActive != true) worker = scope.launch { work() }
+        }
+    }
+
+    /**
+     * The photos to fingerprint read from the library database instead of a list (docs/plans/library-on-disk.md, step 6b):
+     * [batches] gives the phone's photos a batch at a time, newest first, after a row; those [wants] takes are read in
+     * that order, as [request] reads a list. Called again (the library or what it shows changed), the next read starts
+     * from the newest.
+     */
+    internal fun requestFrom(batches: suspend (after: LibraryKey?, limit: Int) -> List<MediaItem>, wants: (MediaItem) -> Boolean) {
+        scope.launch {
+            this@PhotoSimilarity.batches = batches
+            this@PhotoSimilarity.wants = wants
+            again = true
             if (worker?.isActive != true) worker = scope.launch { work() }
         }
     }
@@ -72,27 +100,40 @@ class PhotoSimilarity internal constructor(
     private suspend fun work() {
         val known = known()
         var added = 0
-        while (true) {
-            // A photo only on the server is never read here (its fingerprint, if any, was made while it was on the device).
-            val next = wanted.firstOrNull { it.isOnDevice && it.id !in known && it.id !in failed } ?: break
-            val analysis = try {
-                analyzer.analyze(next)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
+        // A photo only on the server is never read here (its fingerprint, if any, was made while it was on the device).
+        fun needed(item: MediaItem) = item.isOnDevice && item.id !in known && item.id !in failed
+        do {
+            again = false
+            val walk = batches?.let { BatchWalk(MediaItem::key, batchSize, it) }
+            while (true) {
+                val next = (if (walk != null) walk.next { needed(it) && wants(it) } else wanted.firstOrNull(::needed)) ?: break
+                // Asked again while this batch was read: from the newest.
+                if (again) break
+                if (!fingerprint(next, known)) continue
+                if (++added % PUBLISH_EVERY == 0) publish(known)
             }
-            if (analysis == null) {
-                failed += next.id
-                continue
-            }
-            known[next.id] = PhotoFingerprint(dHashes(analysis.gray), analysis.embeddings.mapNotNull(::quantize))
-            if (++added % PUBLISH_EVERY == 0) publish(known)
-        }
+        } while (again)
         if (added > 0) {
             publish(known)
             cache.save(analyzer.modelId, known)
         }
+    }
+
+    /** Reads [next]'s fingerprint into [known]; false when it can't be read (it isn't tried again while the app runs). */
+    private suspend fun fingerprint(next: MediaItem, known: MutableMap<String, PhotoFingerprint>): Boolean {
+        val analysis = try {
+            analyzer.analyze(next)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        if (analysis == null) {
+            failed += next.id
+            return false
+        }
+        known[next.id] = PhotoFingerprint(dHashes(analysis.gray), analysis.embeddings.mapNotNull(::quantize))
+        return true
     }
 
     private fun publish(known: Map<String, PhotoFingerprint>) {
@@ -102,6 +143,9 @@ class PhotoSimilarity internal constructor(
     private companion object {
         /** Screens update after this many new photos, not after each one. */
         const val PUBLISH_EVERY = 12
+
+        /** Rows read from the database at a time ([requestFrom]): a few hundred photos. */
+        const val BATCH = 500
     }
 }
 

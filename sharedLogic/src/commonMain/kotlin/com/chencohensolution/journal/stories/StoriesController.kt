@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LibraryState
@@ -20,6 +21,7 @@ import com.chencohensolution.journal.similarity.PhotoSimilarity
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -205,6 +207,65 @@ class StoriesController internal constructor(
         }
         soundsSeen = nowSounds
         if (days.isNotEmpty()) feed.markDays(days)
+    }
+
+    // MARK: The background readers and home from the database
+
+    /** Explore's home as last worked out from the database, and what from (the places found, the sources shown, rows). */
+    private var home: ExploreHome? = null
+    private var homeFound: Map<String, GeoPoint>? = null
+    private var homeFrom: List<Any?>? = null
+
+    /** What the fingerprints and places were last asked for from (the rows, the sources shown), to ask again on a change. */
+    private var comparedFrom: List<Any?>? = null
+    private var locatedFrom: Int? = null
+
+    private var homeJob: Job? = null
+
+    /**
+     * Works Explore's home out again from the database when the places found, the sources shown or the rows changed, in
+     * the background (it reads every located row's square), and shows it once known.
+     */
+    private fun findHome(feed: FeedPager) {
+        if (homeJob?.isActive == true) return
+        homeJob = scope.launch {
+            while (true) {
+                val found = places?.places?.value?.locations.orEmpty()
+                val shown = settingsState.value.shownSources
+                val from = listOf(shown.hidden, shown.alwaysShown, library.rowsChanged)
+                // The places found by identity: comparing thousands of them each time would cost more than it saves.
+                if (found === homeFound && from == homeFrom) break
+                homeFound = found
+                homeFrom = from
+                val now = ExploreHome(Measure.time({ "Explore's home worked out" }) { feed.home(found, shown) })
+                if (now != home) {
+                    home = now
+                    _state.value = _state.value.copy(home = now)
+                }
+            }
+        }
+    }
+
+    /**
+     * Asks for the photos to fingerprint and to locate from the database, a batch at a time (step 6b), instead of handing
+     * over the whole library: again (from the newest) when rows came, went or moved, or the sources shown changed. Not
+     * before the library's first whole read, so they don't slow it down; Explore's home likewise.
+     */
+    private fun readFromDatabase(feed: FeedPager) {
+        if (!libraryState.value.complete) return
+        findHome(feed)
+        val rows = library.rowsChanged
+        val shown = settingsState.value.shownSources
+        val compare = listOf(rows, shown.hidden, shown.alwaysShown)
+        if (similarity != null && compare != comparedFrom) {
+            comparedFrom = compare
+            // The photos Moments shows, as the rows are made with their fingerprints.
+            similarity.requestFrom(feed::deviceImages) { shown.shows(it) }
+        }
+        if (places != null && rows != locatedFrom) {
+            locatedFrom = rows
+            places.requestFrom(feed.placeBatches)
+        }
     }
 
     // MARK: Items by id from the database
@@ -453,9 +514,14 @@ class StoriesController internal constructor(
     }
 
     private fun show(built: Built) {
-        _state.value = built.state
-        similarity?.request(built.toCompare)
-        places?.request(built.toLocate)
+        // Home may have been worked out while this state was built.
+        _state.value = if (feed != null && built.state.home != home) built.state.copy(home = home) else built.state
+        if (feed != null) {
+            readFromDatabase(feed)
+        } else {
+            similarity?.request(built.toCompare)
+            places?.request(built.toLocate)
+        }
     }
 
     /** Everything the state is built from, as it is now. */
@@ -467,6 +533,7 @@ class StoriesController internal constructor(
         paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
         items = if (feed != null) readItems else null,
         missing = missing,
+        home = if (feed != null) home else null,
     )
 
     private class Inputs(
@@ -481,6 +548,7 @@ class StoriesController internal constructor(
         val paged: MomentsFeed?,
         val items: Map<String, MediaItem>?,
         val missing: Set<String>,
+        val home: ExploreHome?,
     ) {
         fun build(): Built {
             val state = buildState(
@@ -492,17 +560,15 @@ class StoriesController internal constructor(
                 paged = paged,
                 items = items,
                 missing = missing,
+                home = home,
             )
+            // From the database the readers are fed a batch at a time instead (readFromDatabase, step 6b).
+            if (paged != null) return Built(state, emptyList(), emptyList())
             return Built(
                 state,
-                // The Moments tab's photos, newest first; from the database, the library's photos Moments shows (its
-                // rows are read a page at a time, and older rows are made with the fingerprints found meanwhile).
-                if (paged != null) {
-                    library.days.flatMap { day -> day.items.filter { it.type == MediaType.IMAGE && settings.shownSources.shows(it) } }
-                } else {
-                    state.feed.entries.flatMap { entry ->
-                        (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
-                    }
+                // The Moments tab's photos, newest first.
+                state.feed.entries.flatMap { entry ->
+                    (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
                 },
                 // All of them: they tell where home is, for Explore.
                 library.days.flatMap { it.items },
@@ -510,7 +576,7 @@ class StoriesController internal constructor(
         }
     }
 
-    /** A state, and the photos to fingerprint and to locate for it. */
+    /** A state, and without the database the photos to fingerprint and to locate for it. */
     private class Built(val state: StoriesState, val toCompare: List<MediaItem>, val toLocate: List<MediaItem>)
 
     /** [ids]' items from the library's whole list: without Moments from the database (tests). */

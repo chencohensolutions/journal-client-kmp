@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.LibraryKey
 import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.LocalDay
@@ -9,7 +10,9 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.places.CELL_DEGREES
+import com.chencohensolution.journal.places.PlaceBatches
 import com.chencohensolution.journal.places.cellKey
+import com.chencohensolution.journal.settings.ShownSources
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -89,6 +92,19 @@ internal class FeedPager(
         days += library.daysOfUnlocated(placed.filter { (_, point) -> cellKey(point) in cells }.keys)
         days
     }
+
+    /** Up to [limit] of the phone's photos in the screens' order after [after]: what fingerprints are read for (step 6b). */
+    suspend fun deviceImages(after: LibraryKey?, limit: Int): List<MediaItem> = withContext(io) { library.deviceImages(after, limit) }
+
+    /** The photos to locate and the places to name, a batch at a time (step 6b). */
+    val placeBatches: PlaceBatches = object : PlaceBatches {
+        override suspend fun unlocated(after: LibraryKey?, limit: Int) = withContext(io) { library.deviceUnlocated(after, limit) }
+
+        override suspend fun points(after: LibraryKey?, limit: Int) = withContext(io) { library.points(after, limit) }
+    }
+
+    /** Explore's home among the photos [shown] shows, with the places [found] for photos without their own (step 6b). */
+    suspend fun home(found: Map<String, GeoPoint>, shown: ShownSources): GeoPoint? = withContext(io) { com.chencohensolution.journal.stories.home(library, found, shown) }
 
     /** The newest [count] rows, those with shown hidden photos made again with them. */
     private fun read(count: Int, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): MomentsFeed {

@@ -60,6 +60,8 @@ data class StoriesState(
      * spinner until then, so it draws once (asked by the owner, Oct 25, 2026).
      */
     val ready: Boolean = false,
+    /** Explore's home from the library database; null without one (Explore works it out from the items, see [placesOf]). */
+    val home: ExploreHome? = null,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -122,6 +124,7 @@ internal fun buildState(
      */
     items: Map<String, MediaItem>? = null,
     missing: Set<String> = emptySet(),
+    home: ExploreHome? = null,
 ): StoriesState {
     val itemsById = if (paged != null && items != null) paged.itemsById() + items else library.days.flatMap { it.items }.associateBy { it.id }
     // A tag counts the photos it shows; those not on this device yet count too.
@@ -161,6 +164,7 @@ internal fun buildState(
         ),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,
+        home = home,
         error = error,
     )
 }

@@ -5,6 +5,34 @@ import com.chencohensolution.journal.db.LibraryDatabase
 /** An item of the library as `library_item` holds it, and the server file it is ([serverSha], for scores). */
 internal class LibraryRow(val item: MediaItem, val serverSha: String?)
 
+/**
+ * Where a row is in the screens' order: newest day first, newest first, then by id (LibraryController). Ordered that
+ * way; a batch read goes on after one (step 6b).
+ */
+internal data class LibraryKey(val epochDay: Long, val takenMillis: Long, val id: String) : Comparable<LibraryKey> {
+    override fun compareTo(other: LibraryKey): Int = when {
+        epochDay != other.epochDay -> other.epochDay.compareTo(epochDay)
+        takenMillis != other.takenMillis -> other.takenMillis.compareTo(takenMillis)
+        else -> id.compareTo(other.id)
+    }
+
+    val day: LocalDay get() = LocalDay.fromEpochDay(epochDay)
+
+    companion object {
+        /** Before every row: a read from the newest. */
+        val FIRST = LibraryKey(Long.MAX_VALUE, Long.MAX_VALUE, "")
+    }
+}
+
+/** [this]'s place in the screens' order. */
+internal val MediaItem.key: LibraryKey get() = LibraryKey(day.toEpochDay(), takenAtMillis, id)
+
+/** Items with a location of their own in a 0.1° [square] from [source], on [day] when counted per day. */
+internal class SquareCount(val source: MediaSource, val square: Pair<Long, Long>, val day: LocalDay?, val count: Int)
+
+/** A row's place in the screens' order, its source and where it was taken (when known). */
+internal class LocatedRow(val key: LibraryKey, val source: MediaSource, val point: GeoPoint?)
+
 /** What [LibraryTable.refresh] changed: rows added or different, and the ids of rows gone. */
 internal class LibraryDelta(val changed: List<LibraryRow>, val removed: List<String>) {
     val isEmpty: Boolean get() = changed.isEmpty() && removed.isEmpty()
@@ -81,6 +109,53 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         ids.distinct().chunked(CHUNK).flatMapTo(HashSet()) { chunk -> queries.daysOfUnlocated(chunk).executeAsList().map(LocalDay::fromEpochDay) }
 
     /**
+     * Up to [limit] of the phone's photos (not videos) in the screens' order after the row [after] (null: from the newest):
+     * what fingerprints are read from, a batch at a time (step 6b).
+     */
+    fun deviceImages(after: LibraryKey?, limit: Int): List<MediaItem> = (after ?: LibraryKey.FIRST).let { key ->
+        queries.deviceImagesAfter(day = key.epochDay, taken = key.takenMillis, id = key.id, limit = limit.toLong(), mapper = ::libraryRow)
+            .executeAsList().map { it.item }
+    }
+
+    /** Up to [limit] of the phone's photos and videos without a location of their own, in the screens' order after [after]. */
+    fun deviceUnlocated(after: LibraryKey?, limit: Int): List<MediaItem> = (after ?: LibraryKey.FIRST).let { key ->
+        queries.deviceUnlocatedAfter(day = key.epochDay, taken = key.takenMillis, id = key.id, limit = limit.toLong(), mapper = ::libraryRow)
+            .executeAsList().map { it.item }
+    }
+
+    /** Up to [limit] items in the screens' order after [after], each with its own location (null without): places to name. */
+    fun points(after: LibraryKey?, limit: Int): List<Pair<LibraryKey, GeoPoint?>> = (after ?: LibraryKey.FIRST).let { key ->
+        queries.pointsAfter(day = key.epochDay, taken = key.takenMillis, id = key.id, limit = limit.toLong()) { id, epochDay, takenMillis, latitude, longitude ->
+            LibraryKey(epochDay, takenMillis, id) to if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null
+        }.executeAsList()
+    }
+
+    /**
+     * The items with a location of their own counted per 0.1° square (truncated toward zero, as Explore's home does) and
+     * source; those on [days] (days a hidden source is always shown on) counted per day too.
+     */
+    fun squareCounts(days: Collection<LocalDay>): List<SquareCount> =
+        queries.homeSquares(days.map { it.toEpochDay() }.distinct()) { source, lat10, lon10, onDay, anyDay, photos ->
+            // Never null: only rows with a location are counted.
+            SquareCount(MediaSource.parse(source) ?: MediaSource.OTHER, lat10!! to lon10!!, if (onDay) LocalDay.fromEpochDay(anyDay) else null, photos.toInt())
+        }.executeAsList()
+
+    /** The items with a location of their own in the 0.1° [square], in the screens' order. */
+    fun inSquare(square: Pair<Long, Long>): List<LocatedRow> =
+        queries.homeSquareRows(lat10 = square.first, lon10 = square.second) { id, epochDay, takenMillis, source, latitude, longitude ->
+            LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.parse(source) ?: MediaSource.OTHER, GeoPoint(latitude, longitude))
+        }.executeAsList()
+
+    /** Those of [ids] without a location of their own (where a place found for them counts), with no point. */
+    fun unlocated(ids: Collection<String>): List<LocatedRow> = database.transactionWithResult {
+        ids.distinct().chunked(CHUNK).flatMap { chunk ->
+            queries.unlocatedLibraryRows(chunk) { id, epochDay, takenMillis, source ->
+                LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.parse(source) ?: MediaSource.OTHER, null)
+            }.executeAsList()
+        }
+    }
+
+    /**
      * Makes again the items that what changed since the last refresh can change: the database's triggers note each write
      * to the phone's items, the server's list, the ledger and what is hidden (`library_dirty`), and the notes are widened
      * to the items they touch (`takeKeys`). With nothing noted it does nothing; a note of everything makes it whole.
@@ -150,4 +225,29 @@ internal fun shown(row: LibraryRow, kept: Map<String, String>, scores: Map<Strin
     row.serverSha?.let(scores::get)?.let { score -> if (score != item.aesthetic) item = item.copy(aesthetic = score) }
     if (!item.isOnDevice) item.sha256?.let(kept::get)?.let { item = item.copy(keptOriginal = it) }
     return item
+}
+
+/**
+ * A walk through the library read [limit] rows at a time in the screens' order ([read] gives those after a key, null for
+ * the newest), so a background reader never holds the whole list (step 6b). [next] gives the next row [accept] takes.
+ */
+internal class BatchWalk<T>(
+    private val key: (T) -> LibraryKey,
+    private val limit: Int,
+    private val read: suspend (after: LibraryKey?, limit: Int) -> List<T>,
+) {
+    private val batch = ArrayDeque<T>()
+    private var after: LibraryKey? = null
+    private var end = false
+
+    suspend fun next(accept: (T) -> Boolean): T? {
+        while (true) {
+            while (batch.isNotEmpty()) batch.removeFirst().let { if (accept(it)) return it }
+            if (end) return null
+            val rows = read(after, limit)
+            end = rows.size < limit
+            rows.lastOrNull()?.let { after = key(it) }
+            batch.addAll(rows)
+        }
+    }
 }

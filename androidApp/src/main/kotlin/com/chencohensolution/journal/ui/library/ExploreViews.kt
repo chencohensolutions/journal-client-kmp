@@ -161,7 +161,7 @@ private class ExploreSummaries(
 private fun exploreSummaries(library: LibraryState, stories: StoriesState): ExploreSummaries {
     val (items, hidden) = library.days.flatMap { it.items }.partition(stories::shows)
     return ExploreSummaries(
-        countriesOf(placesOf(items, stories.places)),
+        countriesOf(placesOf(items, stories.places, stories.home)),
         yearsOf(items, stories.places, hidden),
         items.any { stories.places.location(it) != null },
         sourceCounts(items + hidden),
@@ -184,7 +184,7 @@ internal fun ExploreContent(
     }
     // Worked out at once in previews, where the background work never lands in the image.
     val preview = LocalInspectionMode.current
-    val summaries by produceState(if (preview) exploreSummaries(library, stories) else null, library, stories.places, stories.shownSources) {
+    val summaries by produceState(if (preview) exploreSummaries(library, stories) else null, library, stories.places, stories.shownSources, stories.home) {
         value = withContext(Dispatchers.Default) { exploreSummaries(library, stories) }
     }
     val loaded = summaries ?: return

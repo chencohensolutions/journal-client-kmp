@@ -1,7 +1,10 @@
 package com.chencohensolution.journal.places
 
+import com.chencohensolution.journal.library.BatchWalk
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.LibraryKey
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.key
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -82,6 +85,8 @@ class PhotoPlaces internal constructor(
     private val reader: PlaceReader,
     private val cache: PlaceCache,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Photos read from the database at a time ([requestFrom]), and four times as many items' locations; tests read fewer. */
+    private val batchSize: Int = BATCH,
 ) {
     // One coroutine at a time touches the fields below; reading suspends, so new requests still get in.
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -91,6 +96,12 @@ class PhotoPlaces internal constructor(
     private val failedNames = mutableSetOf<String>()
     private var wanted: List<MediaItem> = emptyList()
     private var worker: Job? = null
+
+    /** With [requestFrom]: the library read from the database a batch at a time. */
+    private var batches: PlaceBatches? = null
+
+    /** Set by [requestFrom] while the worker reads: it starts again from the newest. */
+    private var again = false
 
     private val _places = MutableStateFlow(Places.NONE)
 
@@ -110,6 +121,20 @@ class PhotoPlaces internal constructor(
     fun request(items: List<MediaItem>) {
         scope.launch {
             wanted = items
+            batches = null
+            if (worker?.isActive != true) worker = scope.launch { work() }
+        }
+    }
+
+    /**
+     * The photos to locate and the places to name read from the library database instead of a list
+     * (docs/plans/library-on-disk.md, step 6b), a batch at a time, newest first: the same photos and places as [request]
+     * with the whole library, in the same order. Called again (the library changed), the next read starts from the newest.
+     */
+    internal fun requestFrom(batches: PlaceBatches) {
+        scope.launch {
+            this@PhotoPlaces.batches = batches
+            again = true
             if (worker?.isActive != true) worker = scope.launch { work() }
         }
     }
@@ -128,44 +153,66 @@ class PhotoPlaces internal constructor(
     private suspend fun work() {
         val contents = contents()
         var changed = 0
-        // Locations first: a photo's moment needs its own; names can follow.
-        if (reader.canReadLocations) {
-            while (true) {
-                val next = wanted.firstOrNull {
-                    it.isOnDevice && it.location == null && it.id !in contents.located && it.id !in failedPhotos
-                } ?: break
-                try {
-                    contents.located[next.id] = reader.location(next)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // Unreadable now (only in the cloud, or the permission went away): not saved, tried next launch.
-                    failedPhotos += next.id
-                    continue
+        fun toLocate(item: MediaItem) = item.isOnDevice && item.location == null && item.id !in contents.located && item.id !in failedPhotos
+        fun toName(point: GeoPoint?) = point != null && cellKey(point).let { it !in contents.names && it !in failedNames }
+        do {
+            again = false
+            val fed = batches
+            // Locations first: a photo's moment needs its own; names can follow.
+            if (reader.canReadLocations) {
+                val walk = fed?.let { BatchWalk(MediaItem::key, batchSize, it::unlocated) }
+                while (true) {
+                    val next = (if (walk != null) walk.next(::toLocate) else wanted.firstOrNull(::toLocate)) ?: break
+                    // Asked again while this batch was read: from the newest.
+                    if (again) break
+                    if (locate(next, contents) && ++changed % PUBLISH_EVERY == 0) publish(contents)
                 }
-                if (++changed % PUBLISH_EVERY == 0) publish(contents)
             }
-        }
-        while (true) {
-            val next = wanted.asSequence()
-                .mapNotNull { item -> item.location ?: contents.located[item.id] }
-                .firstOrNull { point -> cellKey(point).let { it !in contents.names && it !in failedNames } }
-                ?: break
-            val key = cellKey(next)
-            val name = try {
-                reader.name(cellCenter(next))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
+            if (again) continue
+            // Each item's own location, else the one found for it.
+            val walk = fed?.let { BatchWalk<Pair<LibraryKey, GeoPoint?>>({ it.first }, batchSize * 4, it::points) }
+            while (true) {
+                val next = if (walk != null) {
+                    walk.next { (key, point) -> toName(point ?: contents.located[key.id]) }?.let { (key, point) -> point ?: contents.located[key.id] }
+                } else {
+                    wanted.asSequence().mapNotNull { item -> item.location ?: contents.located[item.id] }.firstOrNull(::toName)
+                } ?: break
+                if (again) break
+                if (name(next, contents) && ++changed % PUBLISH_EVERY == 0) publish(contents)
             }
-            if (name == null) failedNames += key else contents.names[key] = name
-            if (++changed % PUBLISH_EVERY == 0) publish(contents)
-        }
+        } while (again)
         if (changed > 0) {
             publish(contents)
             cache.save(contents)
         }
+    }
+
+    /** Reads where [next] was taken into [contents]; false when it can't be read now. */
+    private suspend fun locate(next: MediaItem, contents: PlaceCache.Contents): Boolean {
+        try {
+            contents.located[next.id] = reader.location(next)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Unreadable now (only in the cloud, or the permission went away): not saved, tried next launch.
+            failedPhotos += next.id
+            return false
+        }
+        return true
+    }
+
+    /** Names the place at [next] into [contents] (or marks it failed, to ask again next launch); true either way. */
+    private suspend fun name(next: GeoPoint, contents: PlaceCache.Contents): Boolean {
+        val key = cellKey(next)
+        val name = try {
+            reader.name(cellCenter(next))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        if (name == null) failedNames += key else contents.names[key] = name
+        return true
     }
 
     private fun publish(contents: PlaceCache.Contents) {
@@ -176,7 +223,22 @@ class PhotoPlaces internal constructor(
     private companion object {
         /** Screens update after this many photos or names, not after each one. */
         const val PUBLISH_EVERY = 40
+
+        /** Photos read from the database at a time ([requestFrom]): a few hundred. */
+        const val BATCH = 500
     }
+}
+
+/**
+ * Where [PhotoPlaces.requestFrom] reads the library: the database, a batch at a time in the screens' order (newest day
+ * first, newest first, then by id) after a row, null for the newest (step 6b).
+ */
+internal interface PlaceBatches {
+    /** Up to [limit] of the phone's photos and videos without a location of their own. */
+    suspend fun unlocated(after: LibraryKey?, limit: Int): List<MediaItem>
+
+    /** Up to [limit] items of the whole library, each with its own location (null without one). */
+    suspend fun points(after: LibraryKey?, limit: Int): List<Pair<LibraryKey, GeoPoint?>>
 }
 
 /** Places are named once per square this many degrees wide (about 500 m). */

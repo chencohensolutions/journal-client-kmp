@@ -356,6 +356,37 @@ Confirmed by the owner on Oct 25, 2026:
      - Left for later steps: `Inputs.build` still reads the whole list for the photos to fingerprint and to locate
        (6b), search's map points and a town's box (6c), the viewer's Explore and map lists (6c),
        `serverSha` over the server's list (6e), and `LibraryState.days` itself (6f).
+   - **6b built Oct 25, 2026: the background readers fed from the database.**
+     - `PhotoSimilarity.requestFrom` and `PhotoPlaces.requestFrom` read the library a batch at a time, newest first, in
+       the screens' order (a keyset on `epoch_day`, `taken_millis`, `id` through the day index: `BatchWalk`,
+       `LibraryKey`). Fingerprints read the phone's photos (500 at a time) and keep those Moments shows. Places read
+       the phone's photos and videos without a location, then every item's own location (2,000 at a time, a few numbers
+       each) with the places found for the rest, so the cells are named in the same order as before. Known and failed
+       ids are skipped in memory as before, `PUBLISH_EVERY` is unchanged, and `request(items)` still serves the tests
+       and the path without a database. Asked again while reading, a reader starts over from the newest.
+     - `StoriesController` with the pager no longer builds `toCompare` and `toLocate` from `library.days`. It asks the
+       readers once the library's first whole read is done, and again when rows came, went or changed their location,
+       source, type or place on the phone (`LibraryController.rowsChanged`; a backup's new sha256s don't), or the
+       sources shown changed (fingerprints).
+     - Explore's home: `home(table, found, shown)` counts located rows per 0.1° square and source in SQL (per day on
+       the days a hidden source is always shown on), adds the places found for photos without their own, and reads
+       the winning square's rows (and, on a tie, each tied square's) in order, so the square and the average are
+       exactly `home(library, places)`'s. It is worked out in the background when places, the sources shown or the
+       rows change, and published as `StoriesState.home`; Android's Explore passes it to `placesOf`. Without the
+       database Explore works it out from the items as before. iOS: docs/ios-todo.md.
+     - Tests (`BackgroundReadersTest`): over generated libraries that grow in 3 rounds (ties in time, days that aren't
+       their time's, server-only rows under former ids, points across the equator and the meridian), the photos
+       fingerprinted and located and the places named, in order, equal the whole list's with batches of 1 to 7; home
+       equals the in-memory one over 60 libraries with random shown sources and found places, ties included; a
+       `StoriesController` with the pager feeds both readers from the database and publishes the same home, and reads
+       only the new photos once more come. Reversing the id order in the queries or the tie-break fails them.
+     - On the owner's phone (debug build, phone locked): Moments made no windows again once settled (40 s watched),
+       the library's whole read took 3.9 s, home took 1.7 s in the background, Dalvik heap about 330–370 MB (the whole
+       list is still read for the other screens). Starting the build before this one began a Journal backup, which the
+       install ended.
+     - Left for later steps: Explore's summaries and pages still read `LibraryState.days` (6c); home's query reads the
+       winning square's rows each time (about 1.7 s on the phone with every IO going on at start), which a cached
+       count per square could make cheaper if it matters.
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.

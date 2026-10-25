@@ -287,3 +287,49 @@ WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN :south
 -- The days of these items that have no location of their own (a place found for them counts instead).
 daysOfUnlocated:
 SELECT DISTINCT epoch_day FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL);
+
+-- The phone's photos (not videos), a batch at a time in the screens' order (newest day first, newest first, then by id)
+-- after the row (:day, :taken, :id): what Moments' fingerprints are read from (step 6b).
+deviceImagesAfter:
+SELECT * FROM library_item
+WHERE is_on_device = 1 AND is_video = 0 AND epoch_day <= :day
+  AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
+ORDER BY epoch_day DESC, taken_millis DESC, id
+LIMIT :limit;
+
+-- The phone's photos and videos without a location of their own, a batch at a time in the screens' order after a row:
+-- what places are read for (step 6b).
+deviceUnlocatedAfter:
+SELECT * FROM library_item
+WHERE is_on_device = 1 AND (latitude IS NULL OR longitude IS NULL) AND epoch_day <= :day
+  AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
+ORDER BY epoch_day DESC, taken_millis DESC, id
+LIMIT :limit;
+
+-- Every item's place in the screens' order and its own location, a batch at a time after a row: the places to name.
+pointsAfter:
+SELECT id, epoch_day, taken_millis, latitude, longitude FROM library_item
+WHERE epoch_day <= :day AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
+ORDER BY epoch_day DESC, taken_millis DESC, id
+LIMIT :limit;
+
+-- Explore's home: the items with a location of their own per 0.1° square (truncated, as home() does) and source, and
+-- per day on the days given (those a hidden source is always shown on): on_day says whether a group is such a day's,
+-- and any_day is then that day.
+homeSquares:
+SELECT source, CAST(latitude * 10 AS INTEGER) AS lat10, CAST(longitude * 10 AS INTEGER) AS lon10,
+  epoch_day IN :days AS on_day, max(epoch_day) AS any_day, count(*) AS photos
+FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+GROUP BY source, lat10, lon10, CASE WHEN epoch_day IN :days THEN epoch_day END;
+
+-- The items with a location of their own in one 0.1° square, in the screens' order: home's position.
+homeSquareRows:
+SELECT id, epoch_day, taken_millis, source, latitude, longitude FROM library_item
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+  AND CAST(latitude * 10 AS INTEGER) = :lat10 AND CAST(longitude * 10 AS INTEGER) = :lon10
+ORDER BY epoch_day DESC, taken_millis DESC, id;
+
+-- Those of these items without a location of their own: where a place found for them counts instead.
+unlocatedLibraryRows:
+SELECT id, epoch_day, taken_millis, source FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL);

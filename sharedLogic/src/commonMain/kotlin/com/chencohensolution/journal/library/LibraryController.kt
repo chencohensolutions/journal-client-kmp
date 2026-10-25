@@ -342,13 +342,18 @@ class LibraryController internal constructor(
             idsByDay[old.item.day]?.let { ids -> ids -= id; if (ids.isEmpty()) idsByDay -= old.item.day }
         }
         removed.forEach(::take)
+        var addsWork = false
         changed.forEach { row ->
-            take(row.item.id)
-            rows[row.item.id] = row
-            days += row.item.day
-            idsByDay.getOrPut(row.item.day) { HashSet() } += row.item.id
+            val old = rows[row.item.id]?.item
+            val item = row.item
+            if (old == null || old.location != item.location || old.isOnDevice != item.isOnDevice || old.source != item.source || old.type != item.type) addsWork = true
+            take(item.id)
+            rows[item.id] = row
+            days += item.day
+            idsByDay.getOrPut(item.day) { HashSet() } += item.id
         }
         if (days.isEmpty()) return
+        if (addsWork || removed.isNotEmpty()) rowsChanged++
         val kept = merged.filter { it.day !in days }
         val made = days.filter { it in idsByDay }.map(::dayGroup)
         merged = (kept + made).sortedByDescending { it.day }
@@ -450,6 +455,14 @@ class LibraryController internal constructor(
 
     /** Merges started so far, for the tests that keep them few (docs/plans/library-on-disk.md). */
     internal var merges = 0
+        private set
+
+    /**
+     * With a table, counts the changes that can give the background readers (fingerprints, places) work or move Explore's
+     * home: rows new to the library or gone, or whose location, source, type or place on the phone changed (a backup's
+     * new sha256s don't). The readers start again from the newest when it moves (StoriesController, step 6b).
+     */
+    internal var rowsChanged = 0
         private set
 
     /** What [state] was last built from (see [publish]). */

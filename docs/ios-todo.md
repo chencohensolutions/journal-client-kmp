@@ -69,5 +69,10 @@ Planned, not built on either platform yet:
   `CropView.swift` (don't close while the photo is still being read). Showing a photo in Moments goes through
   `StoriesController.loadMomentsToItem(itemId:)`. Search, a person's page and a photo's similar photos read their
   items from the database already (`LibraryController.itemsOfShas`, wired in `IosJournal.kt`).
+  Step 6b (Android Oct 25, 2026): Explore's home comes from the database as `StoriesState.home`. In
+  `ExploreViews.swift`, call `ExploreKt.placesOf(library:places:known: stories.home)` where it calls
+  `placesOf(library:places:)` (both places), and add `stories.home` to what the summaries' task is keyed on. Until
+  then iOS works home out from the items as before (same result, more work). Fingerprints and places are fed from the
+  database in shared code; nothing in Swift changes for them.
 
 - **Hiding one photo or moment** (screen 4 of [plans/hide-whatsapp.md](plans/hide-whatsapp.md)); needs the server.

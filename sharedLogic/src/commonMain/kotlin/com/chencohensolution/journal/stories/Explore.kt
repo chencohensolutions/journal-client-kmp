@@ -106,6 +106,12 @@ data class GeoArea(val south: Double, val west: Double, val north: Double, val e
             if (west <= east) point.longitude in west..east else point.longitude >= west || point.longitude <= east
 }
 
+/**
+ * Where home is (see [placesOf]), worked out from the library database (docs/plans/library-on-disk.md, step 6b);
+ * [point] is null while too few photos are located.
+ */
+data class ExploreHome(val point: GeoPoint?)
+
 /** The year covers show this many photos. */
 internal const val YEAR_COVERS = 4
 
@@ -119,9 +125,12 @@ private const val YEAR_TOWNS = 4
  * Every town with photos among [library] (newest first): the home town first, then the others by number of photos.
  * Photos whose place isn't known yet are left out until it is.
  */
-fun placesOf(library: List<MediaItem>, places: Places): List<PlaceSummary> {
+fun placesOf(library: List<MediaItem>, places: Places): List<PlaceSummary> = placesOf(library, places, null)
+
+/** [placesOf], with home as the database worked it out ([StoriesState.home]); null works it out from [library]. */
+fun placesOf(library: List<MediaItem>, places: Places, known: ExploreHome?): List<PlaceSummary> {
     val byTown = library.groupBy { item -> places.location(item)?.let(places::name)?.town }
-    val home = home(library, places)
+    val home = if (known != null) known.point else home(library, places)
     val homeTown = home?.let { point ->
         library.mapNotNull { item ->
             places.location(item)?.takeIf { distanceMeters(it, point) <= HOME_TOWN_METERS }?.let(places::name)?.town
