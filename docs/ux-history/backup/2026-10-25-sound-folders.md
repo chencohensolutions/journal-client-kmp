@@ -14,7 +14,7 @@ folder picker, which shows real folders and lets the app keep reading that one.
   down*: the owner wanted one list.
 - **b2 — One list of pills** (from b): photo sources and sound folders in one list, not grouped, the backed-up ones
   first; "+ Add a folder" last. **b2-add**: after the picker, what was found in the folder, what its files are (calls,
-  recordings or voice messages, guessed from their names), Back it up. *Picked*, promoted in (pending).
+  recordings or voice messages, guessed from their names), Back it up. *Picked*, promoted in 764d4f6.
 - **c — A page of its own** (and **c-add**): one row in Backup opening a page with each folder, what it holds
   (changeable), how much is on the server, and Add a folder with the same question. *Turned down* for b2.
 

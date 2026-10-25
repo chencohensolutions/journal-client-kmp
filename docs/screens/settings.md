@@ -49,7 +49,22 @@ The pages, and what each holds:
     and those chosen; **Camera** on by default). A new folder is off
     until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
     choices of their own, off, as the owner chose; what they uploaded stays on the server. The server is told each
-    file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder;
+    file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder.
+    **Folders of calls and recordings** share that list (Android, since Oct 25, 2026; UX round
+    `ux/backup/2026-10-25`, b2): one list of pills (`BackupPills`, `BackupState.pills`), photo sources and sound folders
+    side by side, not grouped, the ones backed up first, each the most files first, a folder with the icon of what it
+    holds; **+ Add a folder** last. It opens Android's folder picker at Internal storage › Recordings › Call (where
+    Samsung keeps calls); after **Use this folder** and **Allow**, a dialog shows the folder's name and place, what was
+    found ("6,196 sound files · 3.2 GB"), **What are they?** (Phone calls, Recordings or Voice messages, the app's guess
+    from the names chosen: Samsung's "Call recording …"/"הקלטת שיחה …"/"שיחה …" are calls, WhatsApp's `PTT-`/`AUD-`
+    voice messages), and **Back it up**. The folders are found only this way: the owner keeps a `.nomedia` file in them,
+    so Android's media index never lists them. The app keeps read and write access to the folder (write for Free up
+    space and for keeping FLAC). A tap turns a folder on or off; a long press asks **Stop backing up Call?** (what it
+    sent stays on the server); a folder the app can no longer read says "Call · pick again", and a tap opens the picker.
+    Under the pills, once a folder is added: "Folders of calls and recordings are backed up even while they are hidden
+    in Private settings." Once a folder has WAVs: "WAV recordings are sent as FLAC: the same sound in about half the
+    space", with **Keep on this phone**: **WAV** (default; the WAV stays as it is) or **FLAC** (the FLAC replaces the WAV
+    once the server confirmed it);
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging** ("Saves the battery;
     uploads wait for the charger."), and, under Wi-Fi only,
     **Only on these Wi-Fi networks** with **Add this network** (asks for location, then lists the network the phone is
@@ -82,8 +97,13 @@ The pages, and what each holds:
   - A summary: the size in large type, what the rule takes ("Photos and videos already on your server", "Taken more
     than 1 year ago", "All but the newest 10 GB"), "1,240 photos, 38 videos · Mar 2019 – Oct 2025", and one button,
     **Free up 14 GB**. No per-photo review.
-  - **From**: the same sources as What to back up, folders included (all on by default, a new folder too; kept as the
-    sources kept on the phone, `free_up_kept`; at least one stays on).
+  - **From**: the same list of pills as What to back up, folders of calls and recordings included (`FreeUpState.pills`),
+    each with what of it would go ("Call · 5,810 · 3.2 GB"); all on by default, a new folder too; kept as the sources
+    kept on the phone (`free_up_kept`; at least one source stays on) and the sound folders kept (`free_up_kept_folders`).
+    The summary counts them: "1,240 photos, 38 videos, 5,810 sound files". Sound files have no trash, so when the plan
+    has any, **Free up** first asks **Delete for good?** ("5,810 calls and recordings will be deleted from this phone for
+    good: their folders have no trash. Your server keeps them."), and only **Delete and free up** lets the run delete
+    them (`FreeUpController.confirmSounds`, for that one run).
   - **More options** (open when a rule other than the default is chosen): **Everything backed up** (default), **Older
     than** 1, 3, 6 months, **1 year** or 2 years (by date taken), or **Keep the newest** 1, 2, 5, **10**, 20 or 50 GB
     (by date taken; everything on the phone counts toward what is kept, backed up or not, of any source). Each choice's
@@ -146,6 +166,17 @@ The pages, and what each holds:
   better default later reaches everyone who didn't choose one.
 - The grouping setting changes only the rows of the Moments tab (and Explore's pages). Tags stay by
   day, and the storyline has a heading for each day.
+- Sound folders are listed on every backup run (the 15-minute runs and Back up now; a `.nomedia` folder never changes
+  the media index, so nothing else starts one) through the access the folder picker gave (`AndroidSoundFolders`,
+  subfolders included, names starting with a dot left out). A file changed in the last 2 minutes (a call going on, a
+  recording not stopped) waits for a later run. They go whatever photo sources are chosen; a calls folder's files go as
+  calls (the server reads who from the name), a voice-messages folder's as WhatsApp. A **WAV** is hashed as it is and
+  asked about first: the server answers a WAV's sha256 through its FLAC (`encodedFrom`), so a WAV kept as FLAC (by
+  this phone, the server or the import) is never encoded or sent again. Only a missing WAV is encoded, with Android's
+  own FLAC encoder (`FlacEncoder`, MediaCodec; 16- and 24-bit PCM), and the FLAC is sent with the WAV's sha256 as
+  `encodedFrom`. A WAV the encoder doesn't take is sent as it is, and the server keeps it as FLAC. With **Keep on this
+  phone: FLAC**, the FLAC is written beside the WAV and the WAV deleted, once the server's verify confirmed the FLAC;
+  else the FLAC in the cache is deleted.
 - Backup runs in the background with WorkManager, also with the app closed: every 15 minutes, 10 s after new photos
   appear in MediaStore, and right away when turned on or on **Back up now**. All wait for the network (and charging)
   condition; a listed network is checked when a run starts. Progress shows in a notification ("Backing up 3 of 120",
@@ -178,6 +209,9 @@ The pages, and what each holds:
     opens the app, which shows **one** system prompt for all of them (also on the next app open, or with **Move to
     trash**). A file changed since it was checked (size or date) is left out of the prompt, with its pair. Either
     answer clears the list.
+  - Sound files of the picked folders are checked the same way (the server verifies a WAV by its FLAC) and, after the
+    app's own **Delete for good?** dialog, deleted at once (`AndroidSoundRemoval`, `DocumentsContract.deleteDocument`):
+    those folders have no trash. One that fails stays.
 - **Free up space on iOS** (Oct 21, 2026): the same shared `FreeUpController`, rules, sources, checks and lines; the
   screen is a list like the rest of Settings (From is a switch per source, More options a disclosure with the rule
   as an inline choice and its values in a menu under it). The difference is the deletion: PhotoKit always asks, so
@@ -278,8 +312,10 @@ indexes on the phone, to search without the server, offline too (journal-server-
   the rows are built by `groupMoments` in
   [Moment.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/Moment.kt).
 - Backup: [backup/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/backup/BackupController.kt)
-  (`BackupController`, `BackupEngine`, `UploadLedger`, `ServerBackupApi`); Android reads originals in
-  `AndroidMediaFiles.kt`, and runs it from [work/](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/BackupWorker.kt)
+  (`BackupController`, `BackupEngine`, `UploadLedger`, `ServerBackupApi`; sound folders in `SoundFolders.kt`, the pills
+  in `BackupPills.kt`); Android reads originals in `AndroidMediaFiles.kt`, sound folders in `AndroidSoundFolders.kt`,
+  encodes WAVs in `FlacEncoder.kt`, and writes in picked folders only in `AndroidSoundRemoval.kt`; the pills and the add
+  dialog are drawn in `BackupPills.kt` (androidApp), and runs it from [work/](../../androidApp/src/main/kotlin/com/chencohensolution/journal/work/BackupWorker.kt)
   (`BackupWorker`, `WorkBackupScheduler`, `currentWifiName`).
 - Storage: [FreeUpScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/FreeUpScreen.kt), [storage/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/storage/FreeUpController.kt)
   (`FreeUpController`, `freeUpPlan`, `FreeUpChecker`, `ServerVerifyApi`); previews in `ServerPreviews`. Android:

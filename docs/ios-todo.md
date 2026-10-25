@@ -17,6 +17,21 @@ Still missing on iOS:
   (`NEHotspotNetwork.fetchCurrent`), which needs the owner's Apple developer team and a real iPhone to check; the row
   is hidden on iOS until then. See [screens/settings.md](screens/settings.md).
 
+- **Backup of calls and recordings from folders, Free up space by groups** (Android Oct 25, 2026) — Settings › Backup's
+  one list of pills (photo sources and sound folders, on first, **+ Add a folder** last), the add dialog (what was
+  found, What are they?, Back it up), **Keep on this phone: WAV / FLAC**, and Free up space's From with the same pills
+  and the **Delete for good?** dialog. Shared logic is done (`SoundFolder`, `BackupSettings.soundFolders`/`keepOnPhone`,
+  `BackupState.pills`, `FreeUpState.pills`, `FolderLook`, `BackupController.addSoundFolder`/`look`,
+  `FreeUpController.toggleFolder`/`confirmSounds`, `SoundRemoval`). Doable on iOS (checked Oct 25, 2026): the Files
+  folder picker (`UIDocumentPickerViewController(forOpeningContentTypes: [.folder])`) with a security-scoped bookmark
+  keeps read and write access, also from a background task; FLAC encoding is built in (AudioToolbox
+  `kAudioFormatFLAC`); deleting and writing through `FileManager`. But an iPhone keeps call recordings in Notes, and
+  Voice Memos and WhatsApp's voice notes inside their apps, out of the picker's reach: only recordings saved into Files
+  can be backed up. iOS needs `SoundFolders`, `MediaFiles.encodeFlac`/`replaceWithFlac` and a `SoundRemoval` in
+  `IosMediaFiles.kt`/`IosJournal.kt`, and the screens in `BackupSettingsView.swift`, `BackupViewModel.swift`,
+  `PhotoRemoval.swift` and the Free up space view. Strings: the `backup_*` folder keys and `free_up_sounds*` in
+  Android's `strings.xml`. See [screens/settings.md](screens/settings.md).
+
 - **Sound recordings** (Android Oct 25, 2026) — recordings, calls and voice messages from the server, hidden until
   shown. Shared logic is done (`LibraryState.sounds`, `FeedMoment.recording`, `FeedSection.sounds`/`parts`,
   `StoriesState.sounds`, `HiddenCollections.recordings/calls/voiceMessages`, `ServerLibrary.setCall`). iOS needs:
