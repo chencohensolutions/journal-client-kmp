@@ -87,7 +87,7 @@ let labScreens: [LabScreen] = [
     LabScreen(id: "free-up", title: "Free up space", options: [
         current { FreeUpScreen(state: data.freeUp, actions: .lab) },
     ]),
-    LabScreen(id: "hidden", title: "Hidden collections", options: [
+    LabScreen(id: "hidden", title: "Private settings", options: [
         current { HiddenScreen(state: data.hiddenCollections, actions: .lab) },
     ]),
 ]

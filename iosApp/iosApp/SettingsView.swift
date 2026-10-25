@@ -34,7 +34,7 @@ struct SettingsView: View {
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
         } hiddenScreen: {
-            HiddenView()
+            HiddenView(settings: settings)
         }
         // Counted on open (and again when the limit changes or Clear is tapped).
         .task {
@@ -99,7 +99,7 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     var backupScreen: (() -> AnyView)? = nil
     /// The Free up space screen, opened from its row.
     @ViewBuilder let freeUpScreen: () -> FreeUp
-    /// Hidden collections, opened from Privacy and from Show in the app.
+    /// Private settings, opened from Privacy and from Show in the app.
     @ViewBuilder let hiddenScreen: () -> Hidden
 
     var body: some View {
@@ -126,7 +126,6 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
             .listRowBackground(LibraryColors.raised)
 
             Section {
-                PrivateMediaToggle(content: content)
                 NavigationLink { hiddenScreen() } label: { HiddenCollectionsLabel(syncProgress: content.syncProgress) }
             } header: {
                 Text("Privacy")

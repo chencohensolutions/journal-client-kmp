@@ -125,26 +125,25 @@ The pages, and what each holds:
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 - **Privacy** (on the first page; both platforms; iOS since Oct 21, 2026): one row with a lock, **Private settings**
   (called Hidden collections until Oct 25, 2026), "Private media, nudity, sound recordings, WhatsApp and screenshots by
-  app", see below. On Android, **Show private media** moved into that screen on Oct 25, 2026 (iOS still has it here,
-  a switch, **off** by default, for the photos the user marked private). The nudity slider
+  app", see below. **Show private media** moved into that screen (Android Oct 25, 2026; iOS Oct 26, 2026). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
 - **Hidden collections** (its own screen, asked for Oct 22, 2026; both platforms): opens only after the phone's lock
   (Android: fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential; iOS:
   Face ID, Touch ID or the passcode, `LAContext` `.deviceOwnerAuthentication`), every time it opens and again after
   the app was in the background; a phone without a screen lock (or passcode) can't open it. An intro says
   hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
-  off shows them again. Above that, on Android (Oct 25, 2026), **Private media** with **Show private media**, a
+  off shows them again. Above that (Android Oct 25, 2026; iOS Oct 26, 2026), **Private media** with **Show private media**, a
   switch, **off** by default, for the photos the user marked private; it is this phone's choice, not the server's.
   **Nudity** (Oct 23, 2026): "Show photos and videos with nudity · N photos and videos · M
-  not scanned yet" (a Show switch since Oct 25, 2026 on Android: **off**, so hidden, by default; it read "Photos and
+  not scanned yet" (a Show switch since Oct 25, 2026 on Android and Oct 26 on iOS: **off**, so hidden, by default; it read "Photos and
   videos with nudity", on meaning hidden, before), and while off **Hide from**, a slider from 10% to 95% in steps of 5 (default
   **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
-  **Sound recordings** (Android, Oct 25, 2026; on a server that has them): **Show recordings**, **Show phone calls**
+  **Sound recordings** (Android Oct 25, 2026, iOS Oct 26, 2026; on a server that has them): **Show recordings**, **Show phone calls**
   and **Show WhatsApp voice messages**, each with how many there are, all **off** at first (here on means shown,
   unlike the other switches). Shown ones appear in [Moments](moments.md).
   **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
   N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Bumble 1,458"; on Android
-  since Oct 25, 2026, a switch per app before that and still on iOS). A pill is filled with a check while its app's
+  since Oct 25, 2026 and iOS since Oct 26, 2026, a switch per app before that). A pill is filled with a check while its app's
   screenshots are **shown**, outlined while hidden; tapping it switches. The list is folded at first: **Apps** "5 of 6
   shown" with only the shown apps' pills; tapping the row opens it with every app, **Find an app** and a hint. On means hidden. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if

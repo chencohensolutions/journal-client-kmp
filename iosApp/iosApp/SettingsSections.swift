@@ -184,32 +184,17 @@ struct MomentsSections: View {
 
 // MARK: - Privacy
 
-/// "Show private media" (off by default), a row for a group to place.
-struct PrivateMediaToggle: View {
-    let content: SettingsContent
-
-    var body: some View {
-        Toggle(isOn: Binding(get: { content.settings.privateMedia.show }, set: content.actions.setShowPrivateMedia)) {
-            SettingsLabel(
-                "Show private media",
-                detail: "Photos and videos you marked private. Off: hidden on this phone, and not downloaded."
-            )
-        }
-        .tint(LibraryColors.accent)
-    }
-}
-
-/// The Hidden collections row, with the library's sync after a change there.
+/// The Private settings row (Hidden collections until Oct 25, 2026), with the library's sync after a change there.
 struct HiddenCollectionsLabel: View {
     let syncProgress: SyncProgress?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text("Hidden collections").foregroundStyle(LibraryColors.onBackground)
+                Text("Private settings").foregroundStyle(LibraryColors.onBackground)
                 Image(systemName: "lock.fill").font(.caption).foregroundStyle(LibraryColors.muted)
             }
-            Text("Nudity, WhatsApp and screenshots by app, hidden on all your devices")
+            Text("Private media, nudity, sound recordings, WhatsApp and screenshots by app")
                 .font(.footnote)
                 .foregroundStyle(LibraryColors.muted)
             if let syncProgress {
