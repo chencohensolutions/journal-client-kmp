@@ -178,12 +178,8 @@ internal val labScreens: List<LabScreen> = listOf(
     // Backing up calls and recordings from folders on the phone (ux/backup): lab/backup/.
     LabScreen("backup", "Settings › Backup", listOf(
         current { BackupSettingsScreen(backupLabUi(), BackupActions(), back = {}) },
-        backupOptionA,
-        backupOptionB,
         backupOptionB2,
         backupOptionB2Adding,
-        backupOptionC,
-        backupOptionCAdding,
     )),
     LabScreen("settings", "Settings", listOf(
         current { SettingsScreen(SettingsState(), SettingsActions()) },

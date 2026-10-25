@@ -313,3 +313,7 @@ indexes on the phone, to search without the server, offline too (journal-server-
   iCloud backup). Backup in [BackupViewModel.swift](../../iosApp/iosApp/BackupViewModel.swift) and
   [BackupService.swift](../../iosApp/iosApp/BackupService.swift) (when runs start), with `IosMediaFiles` and
   `BackgroundPieceSender` in [iosMain/backup/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/backup/BackgroundPieceSender.kt).
+
+## Design history
+
+- [Backup — calls and recordings from folders](../ux-history/backup/2026-10-25-sound-folders.md) (Oct 25, 2026): one list of pills with "+ Add a folder" (b2) picked.
