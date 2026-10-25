@@ -104,6 +104,17 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         state.setState(HOLDS_PRIVATE, showPrivate.toString())
     }
 
+    /**
+     * Keeps the made-up files ([madeUp], debug builds: MadeUpLibrary) beside the server's own: written when their number
+     * changed, all deleted when there are none.
+     */
+    fun keepMadeUp(madeUp: List<ServerMedia>) = database.transaction {
+        if (state.stateValue(MADE_UP).executeAsOneOrNull() == madeUp.size.toString()) return@transaction
+        queries.deleteMadeUpMedia()
+        madeUp.forEach { queries.upsertMedia(it.toRow()) }
+        state.setState(MADE_UP, madeUp.size.toString())
+    }
+
     private fun setCursor(cursor: String?) {
         if (cursor == null) state.clearState(CURSOR) else state.setState(CURSOR, cursor)
     }
@@ -111,6 +122,7 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
     private companion object {
         const val CURSOR = "server_cursor"
         const val HOLDS_PRIVATE = "server_holds_private"
+        const val MADE_UP = "server_made_up"
     }
 }
 

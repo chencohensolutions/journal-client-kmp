@@ -83,3 +83,7 @@ DELETE FROM server_media;
 
 clearHidden:
 DELETE FROM server_hidden;
+
+-- The made-up library's files (debug builds, MadeUpLibrary): their sha256s start with this prefix.
+deleteMadeUpMedia:
+DELETE FROM server_media WHERE substr(sha256, 1, 8) = '0000made';

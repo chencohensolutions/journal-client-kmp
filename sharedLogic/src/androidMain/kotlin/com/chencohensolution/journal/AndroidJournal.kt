@@ -21,10 +21,10 @@ import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.MadeUpLibrary
 import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.library.StoredMediaLibrary
-import com.chencohensolution.journal.library.WithMadeUp
 import com.chencohensolution.journal.network.AndroidMtlsHttpClientFactory
 import com.chencohensolution.journal.places.AndroidPlaceReader
 import com.chencohensolution.journal.server.HttpIndexingApi
@@ -126,10 +126,8 @@ fun createLibraryController(
     privateMedia: StateFlow<PrivateMedia>? = null,
 ): LibraryController =
     LibraryController(
-        // Made-up photos (debug builds) go on top of the database, never into it.
-        library = StoredMediaLibrary(AndroidMediaLibrary(context), libraryDatabase(context)).let { stored ->
-            madeUpLibrary(context)?.let { WithMadeUp(stored, it) } ?: stored
-        },
+        library = StoredMediaLibrary(AndroidMediaLibrary(context), libraryDatabase(context), madeUp = madeUpLibrary(context)?.deviceItems.orEmpty()),
+        table = LibraryTable(libraryDatabase(context)),
         settings = JournalSettings(SharedPreferencesStore(context)),
         backup = backup?.state,
         server = server,

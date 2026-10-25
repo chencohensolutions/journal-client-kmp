@@ -69,10 +69,16 @@ internal class StoredMediaLibrary(
     private val database: LibraryDatabase,
     /** Where the database is read and written. */
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    /**
+     * Made-up items kept beside the real ones (debug builds, MadeUpLibrary): written once, never left out, and deleted
+     * once this is empty. Backup never reads them: it reads the platform's library itself, and drops made-up items.
+     */
+    private val madeUp: List<MediaItem> = emptyList(),
 ) : MediaLibrary, LeavesOut {
     private val queries get() = database.deviceQueries
     private val state get() = database.stateQueries
     private val mutex = Mutex()
+    private val madeUpIds = madeUp.mapTo(HashSet()) { it.id }
 
     /** What the user hides on this phone, as [leaveOut] last set it. */
     private var hides: (MediaItem) -> Boolean = { false }
@@ -88,10 +94,14 @@ internal class StoredMediaLibrary(
             Measure.time({ "Phone's library: ${changes?.let { if (it.full) "read whole, ${it.changed.size}" else "${it.changed.size} changed" } ?: "read whole"}" }) {
                 database.transaction {
                     if (changes != null) {
-                        apply(changes.changed, changes.present, changes.full)
+                        apply(changes.changed, changes.present + madeUpIds, changes.full)
                         state.setState(MARK, changes.mark)
                     } else {
-                        apply(all!!, all.mapTo(HashSet()) { it.id }, full = true)
+                        apply(all!!, all.mapTo(HashSet()) { it.id } + madeUpIds, full = true)
+                    }
+                    if (state.stateValue(MADE_UP).executeAsOneOrNull() != madeUp.size.toString()) {
+                        madeUp.forEach { queries.upsertDeviceItem(it.toRow()) }
+                        state.setState(MADE_UP, madeUp.size.toString())
                     }
                 }
             }
@@ -114,7 +124,7 @@ internal class StoredMediaLibrary(
             }
             withContext(io) {
                 database.transaction {
-                    items().filter(hides).forEach { item ->
+                    items().filter { it.id !in madeUpIds && hides(it) }.forEach { item ->
                         queries.deleteDeviceItem(item.id)
                         queries.addLeftOut(item.id)
                     }
@@ -143,13 +153,14 @@ internal class StoredMediaLibrary(
         }
         val written = if (full) changed.mapTo(HashSet()) { it.id } else null
         queries.deviceIds().executeAsList().forEach { id ->
-            if (id !in present || (written != null && id !in written)) queries.deleteDeviceItem(id)
+            if (id !in present || (written != null && id !in written && id !in madeUpIds)) queries.deleteDeviceItem(id)
         }
         leftOut.forEach { id -> if (id !in present) queries.removeLeftOut(id) }
     }
 
     private companion object {
         const val MARK = "device_mark"
+        const val MADE_UP = "device_made_up"
     }
 }
 

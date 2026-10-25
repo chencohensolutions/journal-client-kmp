@@ -94,6 +94,11 @@ class LibraryController internal constructor(
     private val privateMedia: StateFlow<PrivateMedia>? = null,
     /** Aesthetic scores this phone keeps (On this phone), by sha256: a set's best photo, covers, Best first. */
     private val scores: StateFlow<Map<String, Float>>? = null,
+    /**
+     * The library kept in the database (docs/plans/library-on-disk.md, phase 4): each change writes, and patches into
+     * [state], only the rows it changes. Without it (tests) everything is merged in memory ([mergeWithServer]).
+     */
+    private val table: LibraryTable? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loadJob: Job? = null
@@ -183,6 +188,7 @@ class LibraryController internal constructor(
      * ledger every second; starting a merge of the whole library for each ran out of memory (Oct 25, 2026).
      */
     private fun publish() {
+        if (table != null) return publishFromTable(table)
         val readItems = readItems
         val backupState = backup?.value
         val serverList = server?.media?.value
@@ -228,6 +234,115 @@ class LibraryController internal constructor(
         showStatuses()
     }
 
+    // MARK: The library from the database
+
+    /** Database work: off the main thread; tests pass their own dispatcher, so waiting for it is deterministic. */
+    private val io: CoroutineDispatcher = if (dispatcher === Dispatchers.Main) Dispatchers.IO else dispatcher
+
+    /** The rows of [table] as read, by id, before scores, kept originals and backup statuses. */
+    private val rows = HashMap<String, LibraryRow>()
+    private val idsByDay = HashMap<LocalDay, MutableSet<String>>()
+
+    /** What the rows were last made from, by identity (see [publishFromTable]). */
+    private var tableFrom: List<Any?>? = null
+    private var shownFrom: List<Any?>? = null
+    private var soundsFrom: Any? = null
+    private var entriesSeen: Map<String, LedgerEntry> = emptyMap()
+
+    private var refreshJob: Job? = null
+    private var refreshAgain = false
+
+    /**
+     * [publish] with [table]: the rows are made again in the database when the phone's library, the server's list or
+     * what is hidden changed, or a ledger change touches one of them (a backup of calls doesn't); only the rows that
+     * came out different are patched in, day by day. Scores and kept originals change only what is shown.
+     */
+    private fun publishFromTable(table: LibraryTable) {
+        val backupState = backup?.value
+        val serverList = server?.media?.value
+        val private = privateMedia?.value ?: savedPrivateMedia
+        if (serverList !== soundsFrom) {
+            soundsFrom = serverList
+            sounds = serverList.orEmpty().filter { it.isAudio && !private.hides(it.isPrivate) }.map { it.toSoundRecording() }.sortedByDescending { it.startMillis }
+        }
+        val inputs = listOf(readItems, serverList, server?.hidden?.value, server?.privateFiles?.value, private)
+        if (tableFrom == null || tableFrom!!.indices.any { tableFrom!![it] !== inputs[it] }) {
+            tableFrom = inputs
+            refreshTable(table)
+        }
+        val entries = backupState?.entries.orEmpty()
+        if (entries !== entriesSeen) {
+            val before = entriesSeen
+            entriesSeen = entries
+            val ids = (entries.keys + before.keys).filter { entries[it] !== before[it] }
+            if (ids.isNotEmpty()) {
+                val shas = ids.flatMap { listOfNotNull(entries[it]?.sha256, before[it]?.sha256) }
+                scope.launch { if (withContext(io) { table.affects(ids, shas) }) refreshTable(table) }
+            }
+        }
+        val overlay = listOf(originals?.kept?.value, scores?.value)
+        if (shownFrom == null || shownFrom!!.indices.any { shownFrom!![it] !== overlay[it] }) {
+            shownFrom = overlay
+            if (rows.isNotEmpty()) {
+                merged = idsByDay.keys.sortedDescending().map(::dayGroup)
+            }
+        }
+        showStatuses()
+    }
+
+    /** Makes the rows again in the database, one refresh at a time; the first one reads what was kept first. */
+    private fun refreshTable(table: LibraryTable) {
+        if (refreshJob?.isActive == true) {
+            refreshAgain = true
+            return
+        }
+        refreshJob = scope.launch {
+            if (merges == 0) {
+                // What the database kept since the last start, shown before anything is read again.
+                val kept = withContext(io) { Measure.time({ "Library read from the database" }) { table.all() } }
+                patch(kept, emptyList())
+            }
+            do {
+                refreshAgain = false
+                merges++
+                val delta = withContext(io) { Measure.time({ "Library made in the database" }) { table.refresh() } }
+                Measure.log?.invoke("Library: ${delta.changed.size} rows changed, ${delta.removed.size} gone")
+                if (!delta.isEmpty) patch(delta.changed, delta.removed)
+            } while (refreshAgain)
+        }
+    }
+
+    /** Patches [changed] and [removed] rows into [merged]: only their days are made again. */
+    private fun patch(changed: List<LibraryRow>, removed: List<String>) {
+        val days = HashSet<LocalDay>()
+        fun take(id: String) {
+            val old = rows.remove(id) ?: return
+            days += old.item.day
+            idsByDay[old.item.day]?.let { ids -> ids -= id; if (ids.isEmpty()) idsByDay -= old.item.day }
+        }
+        removed.forEach(::take)
+        changed.forEach { row ->
+            take(row.item.id)
+            rows[row.item.id] = row
+            days += row.item.day
+            idsByDay.getOrPut(row.item.day) { HashSet() } += row.item.id
+        }
+        if (days.isEmpty()) return
+        val kept = merged.filter { it.day !in days }
+        val made = days.filter { it in idsByDay }.map(::dayGroup)
+        merged = (kept + made).sortedByDescending { it.day }
+        showStatuses()
+    }
+
+    /** One day of the rows, as shown, newest first. */
+    private fun dayGroup(day: LocalDay): DayGroup {
+        val kept = originals?.kept?.value.orEmpty().mapValues { it.value.toString() }
+        val scored = scores?.value.orEmpty()
+        val items = idsByDay.getValue(day).map { shown(rows.getValue(it), kept, scored) }
+            .sortedWith(compareByDescending<MediaItem> { it.takenAtMillis }.thenBy { it.id })
+        return DayGroup(day, items)
+    }
+
     /** Puts [merged] into [state] with each photo's backup status as it is now. */
     private fun showStatuses() {
         val backupState = backup?.value
@@ -248,14 +363,14 @@ class LibraryController internal constructor(
         ) return
         publishedKey = statusKey
         val days = if (backupState == null) merged else merged.map { group ->
-            group.copy(
-                items = group.items.map { item ->
-                    if (!item.isOnDevice) return@map item
-                    val status = backupState.status(item)
-                    // Unchanged photos stay the same object, so screens skip them.
-                    if (status == item.backup) item else item.copy(backup = status)
-                },
-            )
+            var changed = false
+            val items = group.items.map { item ->
+                if (!item.isOnDevice) return@map item
+                val status = backupState.status(item)
+                // Unchanged photos stay the same object, so screens skip them; so do days with none changed.
+                if (status == item.backup) item else item.copy(backup = status).also { changed = true }
+            }
+            if (changed) group.copy(items = items) else group
         }
         _state.update { it.copy(days = days, backupSources = backupState?.countedSources, sounds = sounds) }
     }

@@ -204,6 +204,27 @@ Confirmed by the owner on Oct 25, 2026:
    - `library_item` kept by upserts; `LibraryState.days` is replaced by queries.
    - Until phase 5 lands, a temporary adapter reads the whole list for the screens. Memory is no better yet, but
      the merges are gone.
+   - **Built Oct 25, 2026; not yet tried on the phone** (wireless adb dropped).
+     - `Library.sq` (database version 4, migration `3.sqm`).
+       - `library_item` is made inside SQLite from `device_item`, `ledger` and `server_media`, by the rules of
+         `mergeWithServer`, with indexes on lowercase name and size and on the ledger's sha256.
+       - `LibraryTable.refresh` makes it afresh in `library_fresh`, and writes and returns only the rows that came
+         out different (`EXCEPT`).
+       - `LibraryTableTest` checks it equals `mergeWithServer` over 40 generated libraries. Every case appears:
+         private, kept originals, scores, photos deleted from the phone, matched by name and size.
+     - `LibraryController` with a `table`:
+       - It shows what the database kept at once.
+       - It makes the rows again only when the phone's library, the server's list or what is hidden changed, or a
+         ledger change touches a photo of the library (`LibraryTable.affects`).
+       - It patches only the changed rows' days. Days whose statuses didn't change stay the same objects (also on
+         the old path).
+       - Scores and kept originals are laid over in memory (`shown`).
+     - The guard (`LibraryLoadTest`) now uses the database: backing up 2,000 calls starts 0 merges and 0 Moments
+       rebuilds (2,001 merges before). Its limit is 5.
+     - The made-up library goes into the database beside the real rows (marked, written once, deleted when turned
+       off), so measurements go the real way. Backup still reads MediaStore and drops made-up items.
+     - Still in memory: `LibraryState.days` (the adapter), `BackupState.entries` (statuses), backup's queue.
+       `mergeWithServer` stays as the tests' reference until phase 9.
 5. **Moments paged.**
    - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
      sync with the server (and the phone's library) goes on in the background, off the main thread, and updates

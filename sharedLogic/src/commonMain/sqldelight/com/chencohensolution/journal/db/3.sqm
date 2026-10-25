@@ -1,0 +1,65 @@
+-- Version 3 to 4 (Oct 25, 2026, plan B phase 4): the library the screens read, made in the database.
+CREATE TABLE library_item (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- Its sha256: the phone's copy's once backup read it, a server-only file's own.
+    sha256 TEXT,
+    -- The server file it is: matched by sha256, else by name and size (scores and kept originals go by it).
+    server_sha256 TEXT,
+    is_on_device INTEGER AS kotlin.Boolean NOT NULL,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT,
+    is_private INTEGER AS kotlin.Boolean NOT NULL,
+    aesthetic REAL
+);
+
+CREATE INDEX library_item_day ON library_item(epoch_day, taken_millis);
+
+-- Scratch: the library made afresh, compared with library_item to find what changed.
+CREATE TABLE library_fresh (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- Its sha256: the phone's copy's once backup read it, a server-only file's own.
+    sha256 TEXT,
+    -- The server file it is: matched by sha256, else by name and size (scores and kept originals go by it).
+    server_sha256 TEXT,
+    is_on_device INTEGER AS kotlin.Boolean NOT NULL,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT,
+    is_private INTEGER AS kotlin.Boolean NOT NULL,
+    aesthetic REAL
+);
+
+-- Photos backup hasn't read are matched by name (ignoring case) and size.
+CREATE INDEX device_item_name ON device_item(lower(file_name), size);
+CREATE INDEX server_media_name ON server_media(lower(file_name), size);
+CREATE INDEX server_private_name ON server_private(lower(file_name), size);
+CREATE INDEX ledger_sha ON ledger(sha256);
+
+-- Each phone item with the sha256 backup read for it as it is now (same size and modified time), else null.
+CREATE VIEW device_with_sha AS
+SELECT d.*, (SELECT l.sha256 FROM ledger l WHERE l.id = d.id AND l.size = d.size AND l.modified_millis IS d.modified_millis) AS sha
+FROM device_item d;
+

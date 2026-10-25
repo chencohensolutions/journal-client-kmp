@@ -1,0 +1,139 @@
+-- The library the screens read (LibraryTable): the phone's items and the server's photos not on the phone, made from
+-- device_item, ledger and server_media by the queries below, as mergeWithServer made it in memory until Oct 25, 2026.
+-- Kept between starts; each change writes only the rows that came out different.
+CREATE TABLE library_item (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- Its sha256: the phone's copy's once backup read it, a server-only file's own.
+    sha256 TEXT,
+    -- The server file it is: matched by sha256, else by name and size (scores and kept originals go by it).
+    server_sha256 TEXT,
+    is_on_device INTEGER AS kotlin.Boolean NOT NULL,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT,
+    is_private INTEGER AS kotlin.Boolean NOT NULL,
+    aesthetic REAL
+);
+
+CREATE INDEX library_item_day ON library_item(epoch_day, taken_millis);
+
+-- Scratch: the library made afresh, compared with library_item to find what changed.
+CREATE TABLE library_fresh (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- Its sha256: the phone's copy's once backup read it, a server-only file's own.
+    sha256 TEXT,
+    -- The server file it is: matched by sha256, else by name and size (scores and kept originals go by it).
+    server_sha256 TEXT,
+    is_on_device INTEGER AS kotlin.Boolean NOT NULL,
+    is_video INTEGER AS kotlin.Boolean NOT NULL,
+    taken_millis INTEGER NOT NULL,
+    epoch_day INTEGER NOT NULL,
+    duration_millis INTEGER,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    size INTEGER,
+    file_name TEXT,
+    burst_id TEXT,
+    source TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    modified_millis INTEGER,
+    mime_type TEXT,
+    is_private INTEGER AS kotlin.Boolean NOT NULL,
+    aesthetic REAL
+);
+
+-- Photos backup hasn't read are matched by name (ignoring case) and size.
+CREATE INDEX device_item_name ON device_item(lower(file_name), size);
+CREATE INDEX server_media_name ON server_media(lower(file_name), size);
+CREATE INDEX server_private_name ON server_private(lower(file_name), size);
+CREATE INDEX ledger_sha ON ledger(sha256);
+
+-- Each phone item with the sha256 backup read for it as it is now (same size and modified time), else null.
+CREATE VIEW device_with_sha AS
+SELECT d.*, (SELECT l.sha256 FROM ledger l WHERE l.id = d.id AND l.size = d.size AND l.modified_millis IS d.modified_millis) AS sha
+FROM device_item d;
+
+clearFresh:
+DELETE FROM library_fresh;
+
+-- The phone's items, but for its copies of what the server hides and of the private files left out, each with the
+-- server file it is (by sha256, else by name and size), whether that is private, and its score.
+freshFromDevice:
+INSERT OR REPLACE INTO library_fresh
+SELECT v.id, v.sha,
+    CASE WHEN v.sha IS NOT NULL THEN (SELECT s.sha256 FROM server_media s WHERE s.sha256 = v.sha)
+        ELSE (SELECT s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size ORDER BY s.sha256 LIMIT 1) END,
+    1, v.is_video, v.taken_millis, v.epoch_day, v.duration_millis, v.width, v.height, v.size, v.file_name, v.burst_id, v.source,
+    v.latitude, v.longitude, v.modified_millis, v.mime_type,
+    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE s.sha256 = v.sha AND s.is_private)
+        ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_private) END,
+    NULL
+FROM device_with_sha v
+WHERE (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
+    AND (CASE WHEN v.sha IS NOT NULL THEN v.sha NOT IN (SELECT sha256 FROM server_private)
+        ELSE NOT EXISTS (SELECT 1 FROM server_private p WHERE lower(p.file_name) = lower(v.file_name) AND p.size = v.size) END);
+
+-- The server's score for the phone's items, once their server file is known.
+freshScores:
+UPDATE library_fresh SET aesthetic = (SELECT s.aesthetic FROM server_media s WHERE s.sha256 = library_fresh.server_sha256)
+WHERE is_on_device = 1 AND server_sha256 IS NOT NULL;
+
+-- The server's photos and videos not on the phone (by sha256, or by name and size), with the id the phone gave one it
+-- had before it was deleted from it (its stories and notes use that id), else "server:" and its sha256.
+freshFromServer:
+INSERT OR REPLACE INTO library_fresh
+SELECT coalesce(
+        (SELECT l.id FROM ledger l WHERE l.sha256 = s.sha256 AND l.uploaded AND l.id NOT IN (SELECT id FROM device_item) ORDER BY l.id LIMIT 1),
+        'server:' || s.sha256
+    ),
+    s.sha256, s.sha256, 0, s.is_video, s.taken_millis,
+    CAST(coalesce(julianday(substr(coalesce(s.taken_at, s.uploaded_at), 1, 10)) - 2440587.5, 0) AS INTEGER),
+    s.duration_millis, coalesce(s.width, 0), coalesce(s.height, 0), s.size, s.file_name, NULL, coalesce(s.source, 'other'),
+    s.latitude, s.longitude, NULL, s.mime_type, s.is_private, s.aesthetic
+FROM server_media s
+WHERE s.is_audio = 0
+    AND NOT EXISTS (
+        SELECT 1 FROM ledger l JOIN device_item d ON d.id = l.id AND d.size = l.size AND d.modified_millis IS l.modified_millis
+        WHERE l.sha256 = s.sha256 AND l.sha256 NOT IN (SELECT sha256 FROM server_hidden)
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM device_with_sha v
+        WHERE lower(v.file_name) = lower(s.file_name) AND v.size = s.size AND (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
+    );
+
+changedRows:
+SELECT * FROM library_fresh EXCEPT SELECT * FROM library_item;
+
+removedIds:
+SELECT id FROM library_item WHERE id NOT IN (SELECT id FROM library_fresh);
+
+deleteRemoved:
+DELETE FROM library_item WHERE id NOT IN (SELECT id FROM library_fresh);
+
+upsertLibraryItem:
+INSERT OR REPLACE INTO library_item VALUES ?;
+
+allLibraryItems:
+SELECT * FROM library_item;
+
+-- Whether a change of these ledger rows can change the library: a phone item, or a server photo, of theirs.
+deviceItemCount:
+SELECT count(*) FROM device_item WHERE id IN ?;
+
+serverPhotoCount:
+SELECT count(*) FROM server_media WHERE sha256 IN ? AND is_audio = 0;
+
+applyChanged:
+INSERT OR REPLACE INTO library_item SELECT * FROM library_fresh EXCEPT SELECT * FROM library_item;

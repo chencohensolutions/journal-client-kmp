@@ -10,9 +10,10 @@ import kotlin.random.Random
  * are the same on every run: fifteen years of moments of 1 to 30 photos, a few videos, from the camera, WhatsApp,
  * screenshots and a Telegram folder, every one with a location so nothing tries to read one from a file.
  *
- * Nothing real is touched: backup and Free up space read the real library, never this one; the device ids are past any
- * MediaStore id and the sha256s start with [SHA_PREFIX], so every preview of them is blank; and the server's list keeps
- * them out of `server/media.json`.
+ * Nothing real is touched: backup and Free up space read the real library, never this one, and drop made-up items
+ * ([isMadeUp]); the device ids are past any MediaStore id and the sha256s start with [SHA_PREFIX], so every preview of
+ * them is blank. They go into the library database beside the real rows (so the measurements go the real way), and
+ * turning them off deletes them from it.
  */
 internal class MadeUpLibrary(val count: Int, private val endMillis: Long = END_MILLIS) {
     private val all: List<Made> by lazy { make() }
@@ -126,15 +127,5 @@ internal class MadeUpLibrary(val count: Int, private val endMillis: Long = END_M
             fun two(n: Long) = n.toString().padStart(2, '0')
             return "${day}T${two(ofDay / 3_600_000)}:${two(ofDay / 60_000 % 60)}:${two(ofDay / 1_000 % 60)}+03:00"
         }
-    }
-}
-
-/** The real library with a [madeUp] one added: what [LibraryController] reads while the made-up library is on. */
-internal class WithMadeUp(private val real: MediaLibrary, private val madeUp: MadeUpLibrary) : MediaLibrary, LeavesOut {
-    override fun access(): PhotoAccess = real.access()
-    override suspend fun loadItems(): List<MediaItem> = real.loadItems() + madeUp.deviceItems
-    override fun watch(onChange: () -> Unit): () -> Unit = real.watch(onChange)
-    override suspend fun leaveOut(hides: (MediaItem) -> Boolean) {
-        (real as? LeavesOut)?.leaveOut(hides)
     }
 }

@@ -7,6 +7,8 @@ import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.backupQueue
 import com.chencohensolution.journal.backup.LedgerEntry
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.LibraryTable
+import com.chencohensolution.journal.library.StoredMediaLibrary
 import com.chencohensolution.journal.library.MadeUpLibrary
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaLibrary
@@ -84,16 +86,20 @@ class LibraryLoadTest {
     /**
      * Backing up 2,000 small files (calls, one a second, none of them a photo of the library) on a library of 20,000:
      * how many merges of the whole library and rebuilds of Moments it starts. The goal of the library on disk is a
-     * handful of each. Measured Oct 25, 2026: 2,001 merges (one per file; the app ran out of memory doing this) and 1
-     * rebuild (the merged list came out equal, so nothing redrew). Until phase 4 the test holds that level, so it
-     * catches anything worse; phase 4 lowers [MERGES] to [FEW].
+     * handful of each. Measured Oct 25, 2026 before the library was in the database: 2,001 merges (one per file; the app
+     * ran out of memory doing this). With the library in the database (phase 4), a ledger change that touches no photo
+     * makes nothing again.
      */
     @Test
     fun backupOfManySmallFilesMergesTheLibraryFewTimes() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val madeUp = MadeUpLibrary(20_000)
         val backup = MutableStateFlow(BackupState())
-        val library = LibraryController(LoadTestLibrary(madeUp.deviceItems), JournalSettings(LoadTestStore()), dispatcher, backup = backup)
+        val database = testLibraryDatabase()
+        val library = LibraryController(
+            StoredMediaLibrary(LoadTestLibrary(madeUp.deviceItems), database, dispatcher), JournalSettings(LoadTestStore()), dispatcher,
+            backup = backup, table = LibraryTable(database),
+        )
         val settings = SettingsController(JournalSettings(LoadTestStore()), dispatcher)
         val stories = StoriesController(
             noteStore = FilePhotoNoteStore(FakeFileSystem(), "/data/journal".toPath()),
@@ -121,7 +127,8 @@ class LibraryLoadTest {
         val merges = library.merges - mergesBefore
         val rebuilds = stories.rebuilds - rebuildsBefore
         println("Backup of $FILES small files: $merges merges, $rebuilds Moments rebuilds")
-        assertTrue(merges <= MERGES, "$merges merges of the library")
+        assertEquals(10_000, library.currentState.itemCount)
+        assertTrue(merges <= FEW, "$merges merges of the library")
         assertTrue(rebuilds <= FEW, "$rebuilds rebuilds of Moments")
         stories.close()
         settings.close()
@@ -132,7 +139,5 @@ class LibraryLoadTest {
         const val FILES = 2_000
         const val FEW = 5
 
-        /** Today's merges: one per file, and the first. Phase 4 makes it [FEW]. */
-        const val MERGES = FILES + 1
     }
 }

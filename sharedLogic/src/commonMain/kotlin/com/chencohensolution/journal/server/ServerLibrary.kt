@@ -191,7 +191,7 @@ class ServerLibrary internal constructor(
      * applied them, so this phone deletes what it keeps of them (previews, originals, videos).
      */
     private val removed: suspend (List<String>) -> Unit = {},
-    /** Made-up files listed after the server's own (debug builds: MadeUpLibrary); never saved, never synced. */
+    /** Made-up files kept beside the server's own (debug builds: MadeUpLibrary): written once, deleted once this is empty. */
     private val madeUp: List<ServerMedia> = emptyList(),
     /** "Show private media" as saved: whether the database keeps the private files when it is first filled. */
     private val showPrivateAtStart: () -> Boolean = { true },
@@ -218,11 +218,11 @@ class ServerLibrary internal constructor(
     /** True once what the database holds is in [media], [hidden] and [privateFiles]. */
     val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
-    private val _media = MutableStateFlow(madeUp)
+    private val _media = MutableStateFlow<List<ServerMedia>>(emptyList())
     val media: StateFlow<List<ServerMedia>> = _media.asStateFlow()
 
     private fun show(list: List<ServerMedia>) {
-        _media.value = if (madeUp.isEmpty()) list else list + madeUp
+        _media.value = list
     }
 
     private val _hidden = MutableStateFlow<Set<String>>(emptySet())
@@ -492,6 +492,7 @@ class ServerLibrary internal constructor(
             fileSystem.delete(directory / "media.json.tmp", mustExist = false)
             cursor = store.cursor()
             holdsPrivate = store.holdsPrivate() ?: showPrivateAtStart().also { store.holdPrivate(it) }
+            store.keepMadeUp(madeUp)
         }
         publish(media = true, hidden = true)
         _loaded.value = true
