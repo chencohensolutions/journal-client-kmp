@@ -149,7 +149,9 @@ class LibraryController internal constructor(
     /**
      * Puts the current device items, server-only items and backup statuses into [state]. When the items or the server's
      * list changed, they are merged again in the background ([background]) and shown once done; meanwhile the last
-     * merge stays on screen, and a newer change starts over.
+     * merge stays on screen. One merge runs at a time: a merge can't be stopped part way (it never suspends), so a
+     * change during one is merged once it ends, from whatever is newest then. Backing up many small files changes the
+     * ledger every second; starting a merge of the whole library for each ran out of memory (Oct 25, 2026).
      */
     private fun publish() {
         val readItems = readItems
@@ -164,8 +166,11 @@ class LibraryController internal constructor(
         if (!same(mergedFrom)) {
             // Already being merged from these: it shows them when done.
             if (same(mergingFrom)) return
+            if (mergeJob?.isActive == true) {
+                mergeAgain = true
+                return
+            }
             mergingFrom = inputs
-            mergeJob?.cancel()
             mergeJob = scope.launch {
                 val (days, soundList) = withContext(background) {
                     val (soundMedia, serverMedia) = serverList.orEmpty().partition { it.isAudio }
@@ -178,6 +183,10 @@ class LibraryController internal constructor(
                 mergedFrom = inputs
                 mergingFrom = null
                 showStatuses()
+                if (mergeAgain) {
+                    mergeAgain = false
+                    publish()
+                }
             }
             return
         }
@@ -222,6 +231,9 @@ class LibraryController internal constructor(
     /** The merge running in the background, and what it merges from (see [publish]). */
     private var mergeJob: Job? = null
     private var mergingFrom: List<Any?>? = null
+
+    /** Something changed while a merge ran: merge again when it ends. */
+    private var mergeAgain = false
 
     /** What [state] was last built from (see [publish]). */
     private var publishedKey: List<Any?>? = null

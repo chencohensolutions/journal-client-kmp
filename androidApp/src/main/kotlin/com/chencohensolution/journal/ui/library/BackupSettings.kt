@@ -151,7 +151,8 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
     if (settings.soundFolders.isNotEmpty()) {
         Text(stringResource(R.string.backup_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
     }
-    if (ui.state.hasWavs) KeepOnPhoneChoice(settings.keepOnPhone, actions.setKeepOnPhone)
+    // Always shown, as the owner asked (Oct 25, 2026), also before a sound folder is added.
+    KeepOnPhoneChoice(settings.keepOnPhone, actions.setKeepOnPhone)
 
     SectionTitle(stringResource(R.string.settings_backup_when_title))
     SettingsCard {

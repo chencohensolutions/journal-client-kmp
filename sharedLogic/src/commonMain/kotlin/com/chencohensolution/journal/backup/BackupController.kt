@@ -68,8 +68,6 @@ data class BackupState(
     val lostFolders: Set<String> = emptySet(),
     /** Files in each sound folder, by tree URI, as of the last run or when it was added. */
     val soundCounts: Map<String, Int> = emptyMap(),
-    /** Whether a sound folder has WAV recordings: Settings then says they go as FLAC, and offers what to keep. */
-    val hasWavs: Boolean = false,
 ) {
     /** Where [item] is in the backup process. */
     fun status(item: MediaItem): BackupStatus {
@@ -197,7 +195,6 @@ class BackupController internal constructor(
             state.copy(
                 lostFolders = state.lostFolders - folder.treeUri,
                 soundCounts = look?.let { state.soundCounts + (folder.treeUri to it.files) } ?: state.soundCounts,
-                hasWavs = state.hasWavs || (look?.wavs ?: 0) > 0,
             )
         }
         backUpNow()
@@ -350,14 +347,12 @@ class BackupController internal constructor(
         val lost = mutableSetOf<String>()
         val counts = mutableMapOf<String, Int>()
         val now = clock.now().toEpochMilliseconds()
-        var wavs = false
         val items = folders.flatMap { folder ->
             val listed = access.list(folder)
             if (listed == null) lost += folder.treeUri else counts[folder.treeUri] = listed.size
-            if (listed.orEmpty().any { it.isWav }) wavs = true
             finished(listed.orEmpty(), now)
         }
-        _state.update { it.copy(lostFolders = lost, soundCounts = it.soundCounts + counts, hasWavs = wavs) }
+        _state.update { it.copy(lostFolders = lost, soundCounts = it.soundCounts + counts) }
         return items
     }
 

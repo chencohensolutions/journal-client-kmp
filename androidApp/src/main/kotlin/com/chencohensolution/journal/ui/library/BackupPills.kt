@@ -144,7 +144,7 @@ private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: 
     }
 }
 
-/** Under Backup's pills, once a folder has WAVs: they go as FLAC, and which of the two stays on the phone. */
+/** Under Backup's pills, once a sound folder is added: WAVs go as FLAC, and which of the two stays on the phone. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun KeepOnPhoneChoice(keep: KeepOnPhone, setKeep: (KeepOnPhone) -> Unit) {

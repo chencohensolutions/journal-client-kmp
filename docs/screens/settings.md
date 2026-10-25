@@ -62,7 +62,7 @@ The pages, and what each holds:
     space and for keeping FLAC). A tap turns a folder on or off; a long press asks **Stop backing up Call?** (what it
     sent stays on the server); a folder the app can no longer read says "Call · pick again", and a tap opens the picker.
     Under the pills, once a folder is added: "Folders of calls and recordings are backed up even while they are hidden
-    in Private settings." Once a folder has WAVs: "WAV recordings are sent as FLAC: the same sound in about half the
+    in Private settings." Then, always (as the owner asked): "WAV recordings are sent as FLAC: the same sound in about half the
     space", with **Keep on this phone**: **WAV** (default; the WAV stays as it is) or **FLAC** (the FLAC replaces the WAV
     once the server confirmed it);
     **When**: **Only on Wi-Fi** (on by default; never on mobile data), **Only while charging** ("Saves the battery;
