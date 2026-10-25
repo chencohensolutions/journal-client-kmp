@@ -3,12 +3,10 @@ package com.chencohensolution.journal.ui.library
 import android.text.format.Formatter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -16,7 +14,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -25,8 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.ui.semantics.contentDescription
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
@@ -39,7 +34,7 @@ import com.chencohensolution.journal.storage.FreeUpRule
 import com.chencohensolution.journal.storage.FreeUpState
 import com.chencohensolution.journal.storage.KeptReason
 
-// Settings, Storage on this phone: previews, their limit and format, and Free up space.
+// Settings › Storage on this phone: the space previews may take, and how they look; and the lines of Free up space.
 
 /** What the Storage section shows. */
 internal data class StorageUi(
@@ -75,48 +70,20 @@ internal class StorageActions(
 )
 
 /**
- * How server photos are shown (previews in a format and quality, or originals) and the space they may take here, and
- * "Free up space": a rule, what it would remove, and the last run.
+ * Settings › Storage on this phone: the space photos from the server may take here (with Clear), then how they look:
+ * previews in a format and quality, or the originals, and the quick first image of a photo only on the server, shown at
+ * once and while a list moves fast, before its sharp preview (docs/design.md): its width in percent of the screen's,
+ * or none, and its format.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
     val context = LocalContext.current
     val options = ui.previewOptions
-    SectionTitle(stringResource(R.string.settings_storage_title))
+    SectionTitle(stringResource(R.string.settings_storage_kept))
     SettingsCard {
-        SwitchRow(
-            title = stringResource(R.string.settings_storage_previews),
-            body = stringResource(if (options.enabled) R.string.settings_storage_previews_on else R.string.settings_storage_previews_off),
-            checked = options.enabled,
-            onChange = actions.setPreviewsEnabled,
-        )
-        if (options.enabled) {
-            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 4.dp)) {
-                Text(stringResource(R.string.settings_storage_format), color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PreviewFormat.entries.forEach { format ->
-                        Chip(formatName(format), options.format == format) { actions.setPreviewFormat(format) }
-                    }
-                }
-                Text(formatHint(options.format), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
-                Text(
-                    stringResource(R.string.settings_storage_quality),
-                    color = LibraryColors.OnBackground,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PreviewQuality.entries.forEach { quality ->
-                        Chip(qualityName(quality), options.quality == quality) { actions.setPreviewQuality(quality) }
-                    }
-                }
-            }
-        }
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Text(stringResource(R.string.settings_storage_kept), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_storage_used), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 ui.previewBytes?.let {
                     stringResource(
@@ -138,31 +105,38 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
         }
     }
 
-    SectionTitle(stringResource(R.string.settings_free_up_title))
+    SectionTitle(stringResource(R.string.settings_image_quality_title))
     SettingsCard {
-        Row(
-            Modifier.fillMaxWidth().clickable(onClick = actions.openFreeUp).padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_free_up_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(freeUpRowText(ui.freeUp), color = LibraryColors.Muted, fontSize = 13.sp)
+        SwitchRow(
+            title = stringResource(R.string.settings_storage_previews),
+            body = stringResource(if (options.enabled) R.string.settings_storage_previews_on else R.string.settings_storage_previews_off),
+            checked = options.enabled,
+            onChange = actions.setPreviewsEnabled,
+        )
+        if (options.enabled) {
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 12.dp)) {
+                Text(stringResource(R.string.settings_storage_format), color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewFormat.entries.forEach { format ->
+                        Chip(formatName(format), options.format == format) { actions.setPreviewFormat(format) }
+                    }
+                }
+                Text(formatHint(options.format), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(
+                    stringResource(R.string.settings_storage_quality),
+                    color = LibraryColors.OnBackground,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewQuality.entries.forEach { quality ->
+                        Chip(qualityName(quality), options.quality == quality) { actions.setPreviewQuality(quality) }
+                    }
+                }
             }
-            Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         }
-    }
-}
-
-/**
- * Settings → Advanced: the first image of a photo only on the server, shown at once and while a list moves fast,
- * before its sharp preview (docs/design.md): its format and its width in percent of the screen's, or none.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun AdvancedSection(ui: StorageUi, actions: StorageActions) {
-    val options = ui.previewOptions
-    SectionTitle(stringResource(R.string.settings_advanced_title))
-    SettingsCard {
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
             Text(stringResource(R.string.settings_first_image), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(stringResource(R.string.settings_first_image_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
@@ -198,11 +172,22 @@ internal fun AdvancedSection(ui: StorageUi, actions: StorageActions) {
     }
 }
 
+/** Storage on this phone's row in Settings: "1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off. */
+@Composable
+internal fun storageSummary(ui: StorageUi): String {
+    val limit = stringResource(R.string.settings_storage_gigabytes, ui.previewLimitGigabytes)
+    val used = ui.previewBytes?.let { stringResource(R.string.settings_storage_summary, Formatter.formatShortFileSize(LocalContext.current, it), limit) }
+        ?: stringResource(R.string.settings_storage_counting)
+    val options = ui.previewOptions
+    val images = if (options.enabled) "${formatName(options.format)}, ${qualityName(options.quality)}" else stringResource(R.string.settings_storage_originals)
+    return stringResource(R.string.feed_place_time, used, images)
+}
+
 internal const val DEFAULT_KEEP_GIGABYTES = 10
 
 /** The Settings row ([FreeUpState.summary]): what Free up space would free, or what it is doing. */
 @Composable
-private fun freeUpRowText(state: FreeUpState): String {
+internal fun freeUpRowText(state: FreeUpState): String {
     val context = LocalContext.current
     return when (val summary = state.summary) {
         is FreeUpSummary.Checking -> stringResource(R.string.settings_free_up_running, summary.number, summary.total)

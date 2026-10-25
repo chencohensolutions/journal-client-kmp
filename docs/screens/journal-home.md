@@ -12,7 +12,12 @@ A round **🔍** beside the tabs opens [search](search.md) over them (Oct 22, 20
 Photos fill the screen on the page background (light or dark with the system); the controls float on top.
 
 - **Top bar:** "Journal", the **Offline** pill (only when the server can't be reached), a **Tags** button
-  ([tags.md](tags.md)) and a **⋯** menu with **All photos** and **Settings** ([settings.md](settings.md)).
+  ([tags.md](tags.md)) and a **Settings** button ([settings.md](settings.md)); until Oct 24, 2026 a **⋯** menu with All
+  photos and Settings (All photos, its screen and its filters were removed then). The title row and the bar under
+  it (Moments' filter bar, Explore's) slide up and fade out, whole, as the list scrolls down, and come back as it
+  scrolls up; they always show at the top of the list and when the tab changes. Behind them, once the list is away
+  from its top, the fade comes back with them (fading in and out); at the top there is none (Oct 24, 2026). The list starts under the bar: with Moments' filter bar off
+  it leaves no room for it.
 - **Cards above the timeline**, when they apply:
   - **This device isn't registered with the server · Register again**: the server answered 401, or there is no
     identity. Opens the enrollment wizard.
@@ -31,8 +36,14 @@ Photos fill the screen on the page background (light or dark with the system); t
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).
 - **Bottom controls:**
+  - While the list scrolls down, the tabs and **N not backed up** slide away and Moments' month pill slides down into
+    the tabs' place at the bottom; they
+    come back as it scrolls up, at the top of the list, and when the tab changes, the ruler opens or photos are picked
+    (Oct 24, 2026).
   - **N not backed up**, while anything isn't on the server.
-  - **Storyline / Moments / Explore** switch: Storyline shows the photos you wrote about, Moments every photo,
+  - No fade behind them (removed Oct 24, 2026): the controls float over the photos, above the system's gesture bar.
+  - **Moments / Storyline / Explore** switch (Moments first, and the tab home opens on, since Oct 24, 2026): Moments
+    every photo, Storyline the photos you wrote about,
     Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
     **Cancel · N selected · Merge** takes its place.
 

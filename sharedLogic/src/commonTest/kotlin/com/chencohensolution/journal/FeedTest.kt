@@ -1,6 +1,7 @@
 package com.chencohensolution.journal
 
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.isSourceApp
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -35,6 +36,7 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertSame
@@ -67,10 +69,10 @@ private val TEL_AVIV = GeoPoint(32.0853, 34.7818)
 private val JAFFA = GeoPoint(32.0504, 34.7522)
 private val HAIFA = GeoPoint(32.7940, 34.9896)
 
-private fun feed(vararg items: MediaItem, places: Places = Places.NONE, looks: PhotoLooks = PhotoLooks.NONE, shown: Set<MediaSource> = MediaSource.entries.toSet()) =
-    buildFeed(newestFirst(*items), ShownSources(shown), TimelineGrouping(), places, looks)
+private fun feed(vararg items: MediaItem, places: Places = Places.NONE, looks: PhotoLooks = PhotoLooks.NONE, hidden: Set<MediaSource> = emptySet()) =
+    buildFeed(newestFirst(*items), ShownSources(hidden), TimelineGrouping(), places, looks)
 
-private val ALL_SOURCES = ShownSources(MediaSource.entries.toSet())
+private val ALL_SOURCES = ShownSources(hidden = emptySet())
 
 private fun MomentsFeed.sections() = entries.filterIsInstance<FeedEntry.Section>().map { it.section }
 
@@ -87,6 +89,63 @@ class FeedTest {
         assertEquals(MediaSource.WHATSAPP, sourceOfFolder("Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/"))
         assertEquals(MediaSource.OTHER, sourceOfFolder("Download/"))
         assertEquals(MediaSource.OTHER, sourceOfFolder(null))
+    }
+
+    @Test
+    fun eachFolderIsASource() {
+        // Each folder in DCIM is its own source (asked Oct 24, 2026); files right in DCIM are Camera, as before.
+        assertEquals(MediaSource.CAMERA, sourceOfFolder("DCIM/"))
+        assertEquals(MediaSource.CAMERA, sourceOfFolder("DCIM/camera/"))
+        assertEquals(MediaSource.folder("Flowers"), sourceOfFolder("DCIM/Flowers/"))
+        assertEquals("Flowers", sourceOfFolder("DCIM/Flowers/2024/").folder)
+        assertEquals(MediaSource.folder("ספירלה יום"), sourceOfFolder("DCIM/ספירלה יום/"))
+        // So is a folder an app saves into, wherever it is; the same name is one source.
+        assertEquals(MediaSource.folder("Petcube"), sourceOfFolder("Movies/Petcube/"))
+        assertEquals(MediaSource.folder("Telegram"), sourceOfFolder("Pictures/Telegram/"))
+        assertEquals(sourceOfFolder("Pictures/Telegram/"), sourceOfFolder("Download/Telegram/"))
+        assertEquals(MediaSource.folder("Youtube"), sourceOfFolder("Youtube/"))
+        // WhatsApp and screenshots stay one source each, in any folder.
+        assertEquals(MediaSource.WHATSAPP, sourceOfFolder("Pictures/WhatsApp/"))
+        assertEquals(MediaSource.WHATSAPP, sourceOfFolder("Movies/WhatsApp/", appName = "WhatsApp"))
+        assertEquals(MediaSource.SCREENSHOTS, sourceOfFolder("DCIM/Screen recordings/"))
+    }
+
+    @Test
+    fun aFileLooseInASharedFolderIsItsApps() {
+        assertEquals(MediaSource.folder("ChatGPT"), sourceOfFolder("Pictures/", appName = "ChatGPT"))
+        // The same source as the app's own folder.
+        assertEquals(sourceOfFolder("Pictures/ChatGPT/"), sourceOfFolder("Pictures/", appName = "ChatGPT"))
+        assertEquals(MediaSource.folder("Chrome"), sourceOfFolder("Download/", appName = "Chrome"))
+        assertEquals(MediaSource.folder("Petcube"), sourceOfFolder("Android/media/com.petcube.android/", appName = "Petcube"))
+        assertEquals(MediaSource.OTHER, sourceOfFolder("Pictures/", appName = null))
+        // The app doesn't change a folder's source.
+        assertEquals(MediaSource.folder("X"), sourceOfFolder("Download/X/", appName = "Chrome"))
+        assertEquals(MediaSource.CAMERA, sourceOfFolder("DCIM/Camera/", appName = "Camera"))
+        // Apps that copy other apps' files (from an old phone, the files app) say nothing.
+        assertTrue(isSourceApp("com.petcube.android"))
+        assertFalse(isSourceApp("com.sec.android.easyMover"))
+        assertFalse(isSourceApp("com.android.externalstorage"))
+        assertFalse(isSourceApp(null))
+    }
+
+    @Test
+    fun sourcesKeepTheirOrderAndIds() {
+        val flowers = MediaSource.folder("Flowers")
+        val petcube = MediaSource.folder("petcube")
+        assertEquals(
+            listOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, flowers, petcube, MediaSource.OTHER),
+            MediaSource.choices(setOf(petcube, MediaSource.OTHER), setOf(flowers)),
+        )
+        assertEquals("folder:Flowers", flowers.id)
+        assertEquals(flowers, MediaSource.parse("folder:Flowers"))
+        assertEquals(MediaSource.CAMERA, MediaSource.parse("camera"))
+        // What Settings and the server kept before folders.
+        assertEquals(MediaSource.CAMERA, MediaSource.parse("CAMERA"))
+        assertEquals(MediaSource.WHATSAPP, MediaSource.parse("whatsapp"))
+        assertEquals(null, MediaSource.parse("dcim"))
+        // A folder named like a fixed source is that source.
+        assertEquals(MediaSource.CAMERA, MediaSource.folder("Camera"))
+        assertEquals(null, MediaSource.CAMERA.folder)
     }
 
     @Test
@@ -122,9 +181,40 @@ class FeedTest {
         )
         assertEquals(listOf(listOf("s1"), listOf("w1", "w2"), listOf("cam")), feed(*items).moments())
 
-        val cameraOnly = feed(*items, shown = setOf(MediaSource.CAMERA))
+        val cameraOnly = feed(*items, hidden = setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS))
         assertEquals(listOf(listOf("cam")), cameraOnly.moments())
         assertEquals(mapOf(MediaSource.CAMERA to 1, MediaSource.WHATSAPP to 2, MediaSource.SCREENSHOTS to 1), cameraOnly.counts)
+        assertEquals(setOf(MediaSource.CAMERA, MediaSource.OTHER), cameraOnly.shown)
+    }
+
+    @Test
+    fun aFolderSeenForTheFirstTimeShows() {
+        val petcube = MediaSource.folder("Petcube")
+        val items = arrayOf(pic("cam", 0), pic("pet", 60, source = petcube), pic("w", 120, source = MediaSource.WHATSAPP))
+        val feed = buildFeed(newestFirst(*items), ShownSources(), TimelineGrouping())
+        assertEquals(listOf(listOf("pet"), listOf("cam")), feed.moments())
+        assertEquals(listOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, petcube, MediaSource.OTHER), feed.choices)
+        assertEquals(setOf(MediaSource.CAMERA, petcube, MediaSource.OTHER), feed.shown)
+
+        val noPets = buildFeed(newestFirst(*items), ShownSources(hidden = ShownSources.DEFAULT_HIDDEN + petcube), TimelineGrouping())
+        assertEquals(listOf(listOf("cam")), noPets.moments())
+    }
+
+    @Test
+    fun theFilterBarShowsWhatShowsTheMostFirstAndCountsTheRest() {
+        val petcube = MediaSource.folder("Petcube")
+        val gone = MediaSource.folder("Old phone")
+        val items = arrayOf(
+            pic("cam", 0), pic("pet1", 60, source = petcube), pic("pet2", 61, source = petcube),
+            pic("w1", 120, source = MediaSource.WHATSAPP), pic("w2", 121, source = MediaSource.WHATSAPP), pic("w3", 122, source = MediaSource.WHATSAPP),
+        )
+        val feed = buildFeed(newestFirst(*items), ShownSources(hidden = ShownSources.DEFAULT_HIDDEN + gone), TimelineGrouping())
+        // Only what shows and has photos, the most first.
+        assertEquals(listOf(petcube, MediaSource.CAMERA), feed.bar)
+        // "+1": WhatsApp; Screenshots and the folder with no photos left aren't counted…
+        assertEquals(1, feed.hiddenCount)
+        // …but the sheet offers them, the most photos first.
+        assertEquals(listOf(MediaSource.WHATSAPP, petcube, MediaSource.CAMERA, MediaSource.SCREENSHOTS, gone, MediaSource.OTHER), feed.sheet)
     }
 
     @Test

@@ -29,17 +29,21 @@ stories deleted (see "Storyline" below).
 ## Decisions (and why)
 
 **Look and navigation**
-- The library screens are immersive: photos edge to edge, controls floating over a fade. They follow the system
+- The library screens are immersive: photos edge to edge, controls floating over them (over a fade; on the home
+  screen only behind the top bar while the list is away from its top, since Oct 24, 2026). They follow the system
   light or dark theme; the photo viewer is always dark.
-- Home has three tabs: **Storyline**, **Moments** and **Explore**. (Journal / Unsorted until Oct 19, 2026, then
-  Stories / Moments; Explore from Oct 20; Storyline replaced Stories on Oct 21, 2026.) Moments shows **every photo**,
-  also those tagged or written about.
+- Home has three tabs: **Moments**, **Storyline** and **Explore**, and opens on Moments (first and the default since
+  Oct 24, 2026, as the owner asked; Storyline was before). (Journal / Unsorted until Oct 19, 2026, then Stories /
+  Moments; Explore from Oct 20; Storyline replaced Stories on Oct 21, 2026.) Moments shows **every photo**, also those
+  tagged or written about.
 - Moments are **by day** by default; Settings can switch to **by breaks between photos**
   (a new row after 12 h without photos by default, 2–48 h), so a night out that crosses midnight stays together.
 - Moments reads **like a story that arranged itself** (asked Oct 18, 2026; Android first, iOS since Oct 21, 2026): full-width photos at
   their own shape, moments split by time, GPS place and source folder ("place · time" labels), near-duplicates as
   one photo you swipe (no peek), and a filter bar of source toggles. See [screens/moments.md](screens/moments.md).
-- Top bar: **Tags** button and a **⋯** menu with **All photos** and **Settings**. Bottom bar: Storyline / Moments / Explore, plus "N not backed up".
+- Top bar: **Tags** and **Settings** buttons (a ⋯ menu with All photos and Settings until Oct 24, 2026, when All photos
+  was removed); the title row and the bar under it slide away while scrolling down. Bottom bar: Moments / Storyline / Explore, plus "N not
+  backed up", and over it the month pill with the day at the top of the feed.
 - Server status shows only when something is wrong: an **Offline** pill, or a **Register again** card on 401.
 
 **Storyline** (owner, Oct 21, 2026)
@@ -99,7 +103,8 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 ## Status
 
 **Built (Android and iOS, logic shared in `sharedLogic`)**
-- Photo access screen, the Storyline, Moments and Explore tabs, All photos (2×2 hero per day, filters), viewer (photos, video, details).
+- Photo access screen, the Storyline, Moments and Explore tabs, viewer (photos, video, details). (All photos, a 2×2
+  hero per day with filters, was removed Oct 24, 2026.)
 - Backup to the server with its badges, the bottom pill and Settings → Backup (iOS since Oct 21, 2026; see "Upload
   and sync").
 - Writing on a photo: a title and a paragraph, with History (versions, what changed, Restore); the storyline with
@@ -132,7 +137,7 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 **Not built yet**
 - On iOS: "Only on these Wi-Fi networks". Everywhere: note sync.
 - More than one photo for a storyline entry (the owner will decide how).
-- Multi-select on All photos (tag several at once; the shared logic already takes lists).
+- Multi-select in Moments for tagging (tag several at once; the shared logic already takes lists).
 - Renaming/merging tags; month scrubber; similarity search in the app (the server has `searchMedia`).
 
 ## Upload and sync
@@ -196,7 +201,8 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   edit in one asset, so it always knows; on Android only in-place edits are known). Saved copies stay separate photos.
 - **Live Photos / RAW**: the second file is uploaded after the first with `pairedWith` naming it. Samsung motion
   photos are one JPEG and upload as is.
-- **What uploads**: sources chosen in Settings, **default Camera only**. **When**: Settings conditions Wi-Fi only,
+- **What uploads**: sources chosen in Settings, **default Camera only** (since Oct 24, 2026 each folder or app is a
+  source of its own, and Camera is DCIM/Camera; see [screens/moments.md](screens/moments.md)). **When**: Settings conditions Wi-Fi only,
   only listed Wi-Fi networks (needs location permission to read the network name), only while charging. **Order**:
   oldest first by default, newest first as an option.
 - **Several files at once** (Oct 21, 2026, approved by the owner; the same shared `BackupEngine` on both platforms,

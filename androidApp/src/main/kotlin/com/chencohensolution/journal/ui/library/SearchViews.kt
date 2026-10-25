@@ -356,7 +356,7 @@ private fun SearchMessage(text: String) {
 /** "Search" at the top of the page; the field is at the bottom. */
 @Composable
 internal fun SearchTopBar(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().background(LibraryColors.TopFade).statusBarsPadding().padding(start = 16.dp, top = 8.dp, bottom = 24.dp)) {
+    Box(modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, top = 8.dp, bottom = 8.dp)) {
         Text(
             stringResource(R.string.search_title),
             color = LibraryColors.OnBackground,

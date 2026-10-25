@@ -33,7 +33,6 @@ enum LibraryColors {
     /// Behind the floating top bar: the page color at the edge, fading into the content.
     static let topFade = LinearGradient(
         colors: [background.opacity(0.95), background.opacity(0.75), .clear], startPoint: .top, endPoint: .bottom)
-    static let bottomFade = LinearGradient(colors: [.clear, background.opacity(0.9)], startPoint: .top, endPoint: .bottom)
     /// Under text written over the top or bottom of a photo.
     static let labelFade = LinearGradient(colors: [scrim.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
     static let photoFade = LinearGradient(colors: [.clear, scrim.opacity(0.9)], startPoint: .top, endPoint: .bottom)
@@ -213,24 +212,33 @@ struct SegmentedBar<Value: Equatable>: View {
 /// The bottom controls: the backup summary (`backupSummary`: the running backup, or what isn't backed up) above a bar.
 struct BottomControls<Bar: View>: View {
     let summary: String?
+    /// The summary slid away (scrolling down the home screen).
+    var summaryHidden = false
     @ViewBuilder let bar: Bar
 
     var body: some View {
         VStack(spacing: 10) {
+            // It slides down into its own place as that closes, not over what is below it.
             if let summary {
-                Label(summary, systemImage: "icloud.slash")
-                    .monospacedDigit()
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(LibraryColors.onBackground)
-                    .padding(.horizontal, 14)
-                    .frame(height: 36)
-                    .background(LibraryColors.onBackground.opacity(0.12), in: Capsule())
+                VStack {
+                    if !summaryHidden {
+                        Label(summary, systemImage: "icloud.slash")
+                            .monospacedDigit()
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(LibraryColors.onBackground)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .background(LibraryColors.onBackground.opacity(0.12), in: Capsule())
+                            .transition(.move(edge: .bottom))
+                    }
+                }
+                .clipped()
             }
             bar
         }
-        .padding(.top, 48)
+        .padding(.top, 12)
         .padding(.bottom, 8)
+        // No fade behind them (removed Oct 24, 2026): they float over the photos.
         .frame(maxWidth: .infinity)
-        .background(LibraryColors.bottomFade.ignoresSafeArea())
     }
 }

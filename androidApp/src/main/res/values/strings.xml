@@ -15,9 +15,7 @@
     <!-- Journal home, All photos, viewer -->
     <string name="library_title">Journal</string>
     <string name="library_offline">Offline</string>
-    <string name="library_more">More</string>
     <string name="library_back">Back</string>
-    <string name="library_all_photos">All photos</string>
     <string name="library_today">Today</string>
     <string name="library_yesterday">Yesterday</string>
     <string name="library_tab_storyline">Storyline</string>
@@ -45,11 +43,7 @@
     <string name="library_rejected_body">The server doesn\'t accept this device\'s certificate anymore. Register it again with a new enrollment code.</string>
     <string name="library_rejected_action">Register again</string>
     <string name="library_empty">No photos or videos on this device yet.</string>
-    <string name="library_filter_empty">Nothing here.</string>
     <string name="library_load_error">Couldn\'t read your photos: %s</string>
-    <string name="library_filter_all">All</string>
-    <string name="library_filter_not_backed_up">Not backed up</string>
-    <string name="library_filter_videos">Videos</string>
     <string name="library_photo_description">Photo, %s</string>
     <string name="library_video_description">Video, %s</string>
     <string name="library_backup_not_backed_up">Only on this device</string>
@@ -187,16 +181,15 @@
     <string name="settings_grouping_by_day_body">One row for each calendar day.</string>
     <string name="settings_grouping_by_gap">By breaks between photos</string>
     <string name="settings_grouping_by_gap_body">A new row starts after a break without photos, so an evening that runs past midnight stays in one row.</string>
-    <string name="settings_similarity_title">Suggestions for similar photos</string>
+    <string name="settings_similarity_title">Sets of similar photos</string>
     <string name="settings_similarity_label">How alike</string>
-    <string name="settings_similarity_body">Higher: only photos that look nearly the same are suggested together. Lower: more photos in each suggestion, but less alike.</string>
+    <string name="settings_similarity_body">Higher: only photos that look nearly the same are set together. Lower: bigger sets, less alike.</string>
     <string name="settings_similarity_reset">Reset to %d%%</string>
-    <string name="settings_badges_title">Badges</string>
     <string name="settings_on_phone_badge">Show the phone badge</string>
     <string name="settings_on_phone_badge_body">Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge.</string>
     <string name="settings_private_title">Private media</string>
     <string name="settings_private_switch">Show private media</string>
-    <string name="settings_private_switch_body">When off, photos and videos you marked private are hidden everywhere, and not downloaded to this phone.</string>
+    <string name="settings_private_switch_body">Photos and videos you marked private. Off: hidden on this phone, and not downloaded.</string>
     <string name="settings_gap_title">New row after a break of</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">%d hour</item>
@@ -213,6 +206,10 @@
     <string name="feed_source_other">Other</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
+    <plurals name="feed_more_sources">
+        <item quantity="one">%1$d more source</item>
+        <item quantity="other">%1$d more sources</item>
+    </plurals>
     <string name="feed_source_count">%1$s · %2$d</string>
     <string name="feed_similar_position">%1$d / %2$d</string>
     <string name="feed_nothing_shown">Nothing to show. Turn on a source above.</string>
@@ -371,7 +368,7 @@
     </plurals>
     <string name="free_up_notification_confirm_body">%1$s can leave this phone. Your server has every one of them.</string>
     <string name="settings_storage_previews_on">The server makes each photo at the size it is shown, in the format and quality below.</string>
-    <string name="settings_storage_previews_off">The original files are downloaded and kept in the space below. Videos are not downloaded.</string>
+    <string name="settings_storage_previews_off">The original files are downloaded and kept in the space above. Videos are not downloaded.</string>
     <string name="settings_storage_format">Format</string>
     <string name="settings_storage_format_webp">WebP</string>
     <string name="settings_storage_format_heif">HEIF</string>
@@ -453,20 +450,12 @@
     <string name="map_no_photos">No photos with a location yet.</string>
     <!-- Which sources the app shows: Settings › Show in the app, the Moments chips and band, Explore's line and sheet -->
     <string name="settings_shown_title">Show in the app</string>
-    <plurals name="settings_shown_camera">
-        <item quantity="one">%1$,d photo</item>
-        <item quantity="other">%1$,d photos</item>
-    </plurals>
-    <plurals name="settings_shown_whatsapp">
-        <item quantity="one">%1$,d photo or video</item>
-        <item quantity="other">%1$,d photos and videos</item>
-    </plurals>
-    <string name="settings_shown_screenshots">Screenshots and screen recordings · %1$,d</string>
-    <string name="settings_shown_other">Downloads, other apps · %1$,d</string>
     <string name="settings_say_hidden">Say what\'s hidden</string>
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
-    <string name="settings_shown_where">Applies to Moments, All photos, Explore, Tags and picking photos for a story.</string>
-    <string name="settings_shown_stories">Photos you already put in a story always show there. Hiding never deletes anything and doesn\'t change what is backed up.</string>
+    <string name="settings_filter_bar">Filter bar in Moments</string>
+    <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
+    <string name="settings_shown_where">On this phone only. Applies to Moments, Explore and Tags.</string>
+    <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
     <string name="feed_reveal_always">Always show this day</string>
@@ -481,10 +470,7 @@
     <string name="explore_show_them">Show them</string>
     <string name="explore_sheet_title">Showing</string>
     <string name="explore_sheet_body">The same in Moments, Explore and All photos.</string>
-    <string name="explore_sheet_here">%1$,d here</string>
-    <string name="explore_sheet_none">—</string>
     <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
-    <string name="settings_advanced_title">Advanced</string>
     <string name="settings_first_image">Quick image while scrolling</string>
     <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>
     <string name="settings_first_image_size">Width, of the screen\'s</string>
@@ -676,4 +662,24 @@
     <string name="timeline_open">Show the month\'s days</string>
     <string name="timeline_close">Close</string>
     <string name="timeline_counts">%1$d photos · %2$d days</string>
+    <!-- Settings' first page: its groups, and each row's line (Oct 24, 2026) -->
+    <string name="settings_library_title">Library</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_backup_storage_title">Backup and storage</string>
+    <string name="settings_moments_title">Moments</string>
+    <!-- "Showing Camera, Other" -->
+    <string name="settings_shown_summary">Showing %s</string>
+    <string name="settings_shown_none">Nothing shown</string>
+    <plurals name="settings_moments_gap_summary">
+        <item quantity="one">New row after %d hour</item>
+        <item quantity="other">New row after %d hours</item>
+    </plurals>
+    <string name="settings_moments_similar_summary">similar at %d%%</string>
+    <!-- "1.8 GB of 10 GB" -->
+    <string name="settings_storage_summary">%1$s of %2$s</string>
+    <string name="settings_storage_originals">Originals</string>
+    <string name="settings_storage_used">Used</string>
+    <string name="settings_image_quality_title">Image quality</string>
+    <string name="settings_all_devices_title">On all your devices</string>
+    <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
 </resources>

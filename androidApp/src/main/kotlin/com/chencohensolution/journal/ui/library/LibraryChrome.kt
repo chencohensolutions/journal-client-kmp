@@ -1,5 +1,10 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.backup.BackupProgress
@@ -8,6 +13,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -95,15 +103,34 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
     }
 }
 
-/** The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar]. */
+/**
+ * The bottom controls: the backup summary (when something isn't backed up) above a [SegmentedBar], floating over the
+ * photos with no fade behind them (removed Oct 24, 2026); [insets] keep them above the system's gesture bar. While
+ * [summaryHidden] (scrolling down the home screen) the summary slides away.
+ */
 @Composable
-internal fun BottomControls(summary: String?, modifier: Modifier = Modifier, bar: @Composable () -> Unit) {
+internal fun BottomControls(
+    summary: String?,
+    modifier: Modifier = Modifier,
+    insets: WindowInsets = WindowInsets.navigationBars,
+    summaryHidden: Boolean = false,
+    bar: @Composable () -> Unit,
+) {
     Column(
-        modifier.background(LibraryColors.BottomFade).padding(top = 48.dp, bottom = 16.dp),
+        modifier.windowInsetsPadding(insets).padding(top = 12.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (summary != null) BackupSummaryPill(summary)
+        if (summary != null) {
+            // It slides down into its own place as that closes, not over what is below it.
+            AnimatedVisibility(
+                !summaryHidden,
+                enter = expandVertically(expandFrom = Alignment.Top) + slideInVertically { it },
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically { it },
+            ) {
+                BackupSummaryPill(summary)
+            }
+        }
         bar()
     }
 }

@@ -715,6 +715,7 @@ func typeName(_ mimeType: String) -> String {
 
 extension MediaSource {
     var label: String {
+        if let folder { return folder }
         switch self {
         case .whatsapp: return String(localized: "WhatsApp")
         case .screenshots: return String(localized: "Screenshots")

@@ -197,6 +197,8 @@ private fun LibraryScreens(
                         LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
+                                    // Moments first and opened on start (asked Oct 24, 2026); previews keep the storyline.
+                                    initialTab = HomeTab.MOMENTS,
                                     library = libraryState,
                                     stories = storiesState,
                                     health = journalState.health,
@@ -205,7 +207,6 @@ private fun LibraryScreens(
                                         openStoryline = { push(Route.Viewer(null, LibraryFilter.ALL, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
                                         toggleSource = settings::toggleFeedSource,
-                                        openAllPhotos = { push(Route.AllPhotos) },
                                         openSettings = { push(Route.Settings) },
                                         allowAccess = actions.requestAccess,
                                         changeSelection = actions.changeSelection,
@@ -311,21 +312,7 @@ private fun LibraryScreens(
                                         },
                                     ),
                                 )
-                                Route.AllPhotos -> {
-                                    var filter by rememberSaveable { mutableStateOf(LibraryFilter.ALL) }
-                                    AllPhotosScreen(
-                                        library = libraryState,
-                                        stories = storiesState,
-                                        health = journalState.health,
-                                        filter = filter,
-                                        onFilter = { filter = it },
-                                        onOpenItem = { push(Route.Viewer(null, filter, it.id)) },
-                                        onBack = pop,
-                                        landing = landingHere,
-                                        backupRunning = backupRunning,
-                                    )
-                                }
-                                Route.Settings -> {
+                                Route.Settings, is Route.SettingsPageRoute -> {
                                     // Search's row says how the server's reading of this user's photos is going.
                                     LaunchedEffect(features?.indexing) { if (features?.indexing == true) serverIndexing.refresh() }
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
@@ -339,10 +326,12 @@ private fun LibraryScreens(
                                     }
                                     SettingsScreen(
                                         settings = settingsState,
+                                        page = (route as? Route.SettingsPageRoute)?.page ?: SettingsPage.MAIN,
                                         sourceCounts = storiesState.feed.counts,
                                         actions = SettingsActions(
                                             toggleSource = settings::toggleFeedSource,
                                             setSayWhatsHidden = settings::setSayWhatsHidden,
+                                            setShowFilterBar = settings::setShowFilterBar,
                                             setGroupingMode = settings::setGroupingMode,
                                             setGapHours = settings::setGapHours,
                                             setSimilarityPercent = settings::setSimilarityPercent,
@@ -351,15 +340,27 @@ private fun LibraryScreens(
                                             openHidden = { push(Route.Hidden) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
+                                            openPage = { push(Route.SettingsPageRoute(it)) },
+                                            openBackup = { push(Route.BackupSettings) },
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
                                         indexing = indexingState.takeIf { features?.indexing == true && it.loaded },
-                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage),
+                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
                                         storageActions = actions.storage,
                                         syncProgress = syncProgress,
+                                    )
+                                }
+                                Route.BackupSettings -> {
+                                    LaunchedEffect(backupState.activity is BackupActivity.Running) {
+                                        if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
+                                    }
+                                    BackupSettingsScreen(
+                                        BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
+                                        actions.backup,
+                                        back = pop,
                                     )
                                 }
                                 Route.FreeUp -> {

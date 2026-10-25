@@ -50,8 +50,8 @@ struct FreeUpScreen: View {
         Form {
             summarySection(state)
             Section {
-                ForEach(MediaSource.entries, id: \.self) { source in
-                    Toggle(source.title, isOn: Binding(get: { state.sources.contains(source) }, set: { _ in actions.toggleSource(source) }))
+                ForEach(state.choices, id: \.self) { source in
+                    Toggle(source.title, isOn: Binding(get: { state.allows(source: source) }, set: { _ in actions.toggleSource(source) }))
                         .tint(LibraryColors.accent)
                 }
             } header: {

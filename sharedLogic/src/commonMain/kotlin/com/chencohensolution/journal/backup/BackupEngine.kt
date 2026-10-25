@@ -445,4 +445,4 @@ internal suspend fun MediaFiles.sha256(item: MediaItem, io: CoroutineDispatcher 
 private const val READ_SIZE = 1L shl 20
 
 /** How the server's sidecars name a source. */
-internal val MediaSource.serverName: String get() = name.lowercase()
+internal val MediaSource.serverName: String get() = id

@@ -16,7 +16,6 @@ story and group mockups were deleted.
 | `photo-access.html` | [Photo access](../photo-access.md) | Allow access, Not now |
 | `journal-home.html` | [Journal](../journal-home.md) (out of date) | ⋯, the tabs |
 | `viewer.html` | [Viewer](../viewer.md) (out of date) | ⓘ, + Tag |
-| `all-photos.html` | [All photos](../all-photos.md) | the filter bar |
 | `tags.html` | [Tags](../tags.md) | search, open a tag |
 | `settings.html` | [Settings](../settings.md) | By breaks between photos |
 
