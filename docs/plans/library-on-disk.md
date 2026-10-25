@@ -284,6 +284,8 @@ Confirmed by the owner on Oct 25, 2026:
      - On the owner's phone: the first start after the update makes every row once (about 10 s). Later starts
        make nothing again, and the first Moments frame comes 1.5–1.7 s after start, without waiting for the
        library's full read (2.1 s).
+     - The owner scrolled far and went to dates with the ruler on the phone: it looked right, and the log showed no
+       errors (Oct 25, 2026).
      - Found on the phone: fingerprinting every photo of the library (also hidden sources) rebuilt windows every
        3 seconds. Now it fingerprints only the photos Moments shows, as before.
      - Not yet: the Advanced settings for page size (Rows loaded at a time, Load ahead). The heap is not lower yet
