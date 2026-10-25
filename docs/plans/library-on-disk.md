@@ -35,19 +35,48 @@ Today every screen reads one list held in memory:
   - Deleting it only means reading MediaStore / PhotoKit and the server's feed again.
   - Nothing in it is the only copy of anything, except what is already a per-device cache today (the backup ledger).
 
-## Decisions to confirm with the owner first
+## Decisions
 
-1. **SQLDelight** (KMP: Android driver, native driver on iOS) as the database. It is the usual choice for KMP and
-   needs no cgo-like native build. Room KMP is the alternative.
+Confirmed by the owner on Oct 25, 2026:
+
+1. **SQLDelight** (KMP: Android driver, native driver on iOS) as the database, not Room KMP.
 2. **Where the database lives:** Android `noBackupFilesDir/library.db`; iOS Application Support, excluded from iCloud
    backup.
-3. **The backup ledger moves into the database** (`ledger.jsonl` is read once, then removed). Alternatively it stays a
-   file and is copied into a table at start; one source is simpler.
+3. **The backup ledger moves into the database**: `ledger.jsonl` is read once, then removed. One source, no copy kept
+   in step.
 4. **Paging library:** AndroidX Paging (`paging-common` is multiplatform; `paging-compose` on Android). On iOS a
    small Swift adapter asks the shared pager for pages as rows appear.
-5. **What Moments may lose for a while:** the hidden-sources band and the near-duplicate sets are computed per
-   section from now on, never across the whole library (they already are per row today, so nothing visible should
-   change).
+
+5. **Private media stays out of what screens read** (owner, Oct 25, 2026). While "Show private media" is off
+   (`PrivateMedia`), photos marked private, by the user or by the server, get no row in `library_item`, so no
+   `feed_section`, count, grid or search sees them. They keep rows only where backup needs them:
+   - `device_item` and `ledger`, so a private photo on the phone isn't hashed and offered for upload again;
+   - `server_media`, with its `private` column, so turning the setting on fills `library_item` from these tables at
+     once, without reading the server's feed again.
+
+   Changing the setting adds or removes those rows of `library_item` in one transaction, and rebuilds the rows of
+   Moments on their days.
+
+6. **Moments looks exactly as it does now** (owner, Oct 25, 2026). The rows built one at a time must match what
+   `buildFeed` makes over the whole library today, photo for photo, set for set. Phase 5 checks this with a host test
+   that compares both builders on the same library: the fake one, and a copy of the owner's.
+   - The owner will refine the near-images logic (`blocksOf`, `PhotoLooks.similar`) later. So the row builder calls
+     it as it is, per moment. `feed_section` stores the version of the grouping logic, and a new version rebuilds
+     every row in the background while the old rows stay on screen.
+   - Sets merged by hand get a `feed_set` table (photo id to set id, from `PhotoNote.feedSet`). A set is shown in
+     the row of its oldest photo, as today. Changing a set rebuilds every row its photos are in.
+
+   What `buildFeed` reads today beyond one row (checked Oct 25, 2026):
+   - Near-duplicate and burst sets (`blocksOf`) are made within one moment, and hidden-source chips go to the nearest
+     row of the photo's own day (`withHidden`). Both stay the same when built per row.
+   - **Sets merged by hand** (`PhotoNote.feedSet`) can hold photos from any days. The set is shown where its oldest
+     photo is, and its other photos leave their own rows. Built per row, this needs a set-membership table, and a
+     change to a set rebuilds every row it touches.
+   - Rows depend on their neighbours: "by breaks" grouping, and a long recording's marks (`soundMarks`), can run a row
+     past midnight (see Risks).
+   - The whole library is used for the filter bar's counts per source (a `GROUP BY source`), the timeline's months
+     and days (a query on `feed_section`), and Explore's `home` (a grouped query on located photos). None of these
+     needs the items in memory.
 
 ## Design
 
@@ -116,7 +145,15 @@ Today every screen reads one list held in memory:
    - `library_item` kept by upserts; `LibraryState.days` is replaced by queries.
    - Until phase 5 lands, a temporary adapter reads the whole list for the screens. Memory is no better yet, but
      the merges are gone.
-5. **Moments paged.** `feed_section` and the pager; Android `LazyColumn` with `paging-compose`, keeping today's look
+5. **Moments paged.**
+   - **Page size in Settings** (asked by the owner, Oct 25, 2026): an **Advanced** section at the end of Settings
+     with **Rows loaded at a time** (how many rows of Moments one page reads) and **Load ahead** (how many rows before
+     the end of what is loaded the next page starts).
+     - Both are kept in `JournalSettings`, and a change starts a new pager at the same position.
+     - The defaults come from the phase 0 measurements on the owner's phone.
+     - The other paged screens of phase 6 use the same two values, scaled to their item size (a grid page is that
+       many rows of photos).
+     - The section's look is tried in the UI lab first (the `ui-lab` skill), and docs/screens/settings.md gets it. `feed_section` and the pager; Android `LazyColumn` with `paging-compose`, keeping today's look
    (UX unchanged; check it in the UI lab per docs/previews.md).
 6. **The other screens:**
    - day grids, the viewer's neighbours, Explore (places, years, people), the map, search results;
