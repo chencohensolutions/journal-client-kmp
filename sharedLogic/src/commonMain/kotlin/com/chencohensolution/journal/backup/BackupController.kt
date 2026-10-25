@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
+import com.chencohensolution.journal.storage.ServerCheck
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
@@ -41,7 +43,7 @@ enum class WaitReason {
     /** The device has no certificate, or the server refused it: register again. */
     NOT_REGISTERED,
 
-    /** The app may not read the photo library. */
+    /** The app may not read the photo library, and no sound folder is backed up. */
     NO_PHOTO_ACCESS,
 }
 
@@ -62,6 +64,10 @@ data class BackupState(
     internal val entries: Map<String, LedgerEntry> = emptyMap(),
     /** Files the current run still has to send, by device id. */
     internal val queued: Set<String> = emptySet(),
+    /** Sound folders the app could no longer read on the last run, by tree URI: picked again to back them up. */
+    val lostFolders: Set<String> = emptySet(),
+    /** Files in each sound folder, by tree URI, as of the last run or when it was added. */
+    val soundCounts: Map<String, Int> = emptyMap(),
 ) {
     /** Where [item] is in the backup process. */
     fun status(item: MediaItem): BackupStatus {
@@ -134,6 +140,11 @@ class BackupController internal constructor(
     private val onBackUpNow: (BackupSettings) -> Unit = {},
     /** How pieces travel; by default with the app's own client. */
     private val pieceSender: PieceSender? = null,
+    /** The sound folders the user picked; null on a platform without them. */
+    private val soundFolders: SoundFolders? = null,
+    /** The server's check of a file, before a WAV kept as FLAC leaves the phone. */
+    private val check: ServerCheck? = null,
+    private val clock: Clock = Clock.System,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -171,6 +182,35 @@ class BackupController internal constructor(
     }
 
     fun removeWifiNetwork(name: String) = changeSettings { it.copy(wifiNetworks = it.wifiNetworks - name) }
+
+    /**
+     * Backs up [folder], which the user just picked (again, for a folder whose access was lost). Its files go on the
+     * next run, which starts now.
+     */
+    fun addSoundFolder(folder: SoundFolder, files: Int? = null) {
+        changeSettings { current -> current.copy(soundFolders = current.soundFolders.filterNot { it.treeUri == folder.treeUri } + folder) }
+        _state.update { state ->
+            state.copy(
+                lostFolders = state.lostFolders - folder.treeUri,
+                soundCounts = files?.let { state.soundCounts + (folder.treeUri to it) } ?: state.soundCounts,
+            )
+        }
+        backUpNow()
+    }
+
+    fun setSoundFolderEnabled(treeUri: String, enabled: Boolean) = changeSettings { current ->
+        current.copy(soundFolders = current.soundFolders.map { if (it.treeUri == treeUri) it.copy(enabled = enabled) else it })
+    }
+
+    /** Stops backing up a folder and forgets it; the server keeps what was sent. */
+    fun removeSoundFolder(treeUri: String) = changeSettings { current ->
+        current.copy(soundFolders = current.soundFolders.filterNot { it.treeUri == treeUri })
+    }
+
+    fun setKeepOnPhone(keep: KeepOnPhone) = changeSettings { it.copy(keepOnPhone = keep) }
+
+    /** What [folder] holds, for the add dialog; null when it can't be read. */
+    suspend fun look(folder: SoundFolder): FolderLook? = soundFolders?.look(folder)
 
     /** "Back up now": runs in the background as soon as the conditions allow. */
     fun backUpNow() {
@@ -221,13 +261,15 @@ class BackupController internal constructor(
             reportWaiting(WaitReason.NOT_REGISTERED)
             return RunOutcome.Skipped
         }
-        if (library.access() == PhotoAccess.DENIED || library.access() == PhotoAccess.NOT_DETERMINED) {
+        val photos = library.access().let { it != PhotoAccess.DENIED && it != PhotoAccess.NOT_DETERMINED }
+        val folders = current.soundFolders.filter { it.enabled }
+        if (!photos && (folders.isEmpty() || soundFolders == null)) {
             reportWaiting(WaitReason.NO_PHOTO_ACCESS)
             return RunOutcome.Skipped
         }
         val url = settings.serverUrl
         try {
-            val items = library.loadItems()
+            val items = (if (photos) library.loadItems() else emptyList()) + soundFiles(folders)
             val queue = backupQueue(items, current).filterNot { ledger.isUploaded(it) }.map { it.id }.toSet()
             _state.update { it.copy(queued = queue) }
             val http = clientFactory.create(alias, trustedCas)
@@ -236,7 +278,7 @@ class BackupController internal constructor(
             var shownFile: String? = null
             var shownAt: TimeMark? = null
             val result = createApolloClient(http, url).useClient { apollo ->
-                BackupEngine(files, ledger, ServerBackupApi(apollo, url, pieceSender ?: KtorPieceSender(http)), locate).run(items, current) { counted ->
+                BackupEngine(files, ledger, ServerBackupApi(apollo, url, pieceSender ?: KtorPieceSender(http)), locate, check).run(items, current) { counted ->
                     // Bytes are reported many times a second; the screens redraw from this state, so it changes at
                     // most every PROGRESS_EVERY, except when a file starts or finishes.
                     val newFile = counted.currentId != shownFile || counted.done != done
@@ -292,6 +334,24 @@ class BackupController internal constructor(
 
     fun close() {
         scope.cancel()
+    }
+
+    /**
+     * The finished files of the backed-up sound folders; a folder the app can't read any more is marked lost (its pill
+     * says so) and skipped.
+     */
+    private suspend fun soundFiles(folders: List<SoundFolder>): List<MediaItem> {
+        val access = soundFolders ?: return emptyList()
+        val lost = mutableSetOf<String>()
+        val counts = mutableMapOf<String, Int>()
+        val now = clock.now().toEpochMilliseconds()
+        val items = folders.flatMap { folder ->
+            val listed = access.list(folder)
+            if (listed == null) lost += folder.treeUri else counts[folder.treeUri] = listed.size
+            finished(listed.orEmpty(), now)
+        }
+        _state.update { it.copy(lostFolders = lost, soundCounts = it.soundCounts + counts) }
+        return items
     }
 
     private suspend fun reloadLedger() {

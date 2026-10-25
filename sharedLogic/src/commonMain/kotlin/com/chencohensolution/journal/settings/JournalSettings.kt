@@ -1,6 +1,8 @@
 package com.chencohensolution.journal.settings
 
 import com.chencohensolution.journal.backup.BackupSettings
+import com.chencohensolution.journal.backup.KeepOnPhone
+import com.chencohensolution.journal.backup.SoundFolder
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaSource
@@ -102,6 +104,10 @@ internal class JournalSettings(private val store: KeyValueStore) {
             // Camera kept from before folders (Oct 24, 2026) is the Camera folder now, as the owner asked: the other
             // DCIM folders it took then are choices of their own, off until turned on.
             sources = store.getString(KEY_BACKUP_SOURCES)?.let(::sourcesOf) ?: BackupSettings.DEFAULT_SOURCES,
+            soundFolders = store.getString(KEY_BACKUP_SOUND_FOLDERS)
+                ?.let { runCatching { featuresJson.decodeFromString(StoredSoundFolders.serializer(), it).folders }.getOrNull() }
+                .orEmpty(),
+            keepOnPhone = if (store.getString(KEY_BACKUP_KEEP_ON_PHONE) == KeepOnPhone.FLAC.name) KeepOnPhone.FLAC else KeepOnPhone.WAV,
             wifiOnly = store.getString(KEY_BACKUP_WIFI_ONLY) != "false",
             // One per line: network names may contain commas.
             wifiNetworks = store.getString(KEY_BACKUP_WIFI_NETWORKS)?.split("\n")?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
@@ -112,6 +118,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         set(value) {
             store.putString(KEY_BACKUP_ENABLED, value.enabled.toString())
             store.putString(KEY_BACKUP_SOURCES, idsOf(value.sources))
+            store.putString(
+                KEY_BACKUP_SOUND_FOLDERS,
+                value.soundFolders.takeIf { it.isNotEmpty() }?.let { featuresJson.encodeToString(StoredSoundFolders.serializer(), StoredSoundFolders(v = 1, folders = it)) },
+            )
+            store.putString(KEY_BACKUP_KEEP_ON_PHONE, value.keepOnPhone.name)
             store.putString(KEY_BACKUP_WIFI_ONLY, value.wifiOnly.toString())
             store.putString(KEY_BACKUP_WIFI_NETWORKS, value.wifiNetworks.joinToString("\n").ifEmpty { null })
             store.putString(KEY_BACKUP_CHARGING_ONLY, value.chargingOnly.toString())
@@ -247,6 +258,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"
         private const val KEY_BACKUP_SOURCES = "backup_sources"
+        private const val KEY_BACKUP_SOUND_FOLDERS = "backup_sound_folders"
+        private const val KEY_BACKUP_KEEP_ON_PHONE = "backup_keep_on_phone"
         private const val KEY_BACKUP_WIFI_ONLY = "backup_wifi_only"
         private const val KEY_BACKUP_WIFI_NETWORKS = "backup_wifi_networks"
         private const val KEY_BACKUP_CHARGING_ONLY = "backup_charging_only"
@@ -267,3 +280,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
     }
 }
+
+/** The picked sound folders as kept in settings; [v] is the format's version, for a change later. */
+@kotlinx.serialization.Serializable
+private class StoredSoundFolders(val v: Int, val folders: List<SoundFolder>)

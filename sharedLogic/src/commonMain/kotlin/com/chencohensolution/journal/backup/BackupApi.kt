@@ -5,10 +5,13 @@ import com.apollographql.apollo.api.Optional
 import com.apollographql.apollo.exception.ApolloHttpException
 import com.chencohensolution.journal.graphql.MissingMediaQuery
 import com.chencohensolution.journal.graphql.StartUploadMutation
+import com.chencohensolution.journal.graphql.type.CallInput
+import com.chencohensolution.journal.graphql.type.EncodedFromInput
 import com.chencohensolution.journal.graphql.type.GeoPointInput
 import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.graphql.type.StartUploadInput
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.library.MediaType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.header
@@ -31,7 +34,7 @@ internal data class UploadRequest(
     val size: Long,
     val fileName: String,
     val mimeType: String,
-    val isVideo: Boolean,
+    val kind: MediaType,
     /** RFC 3339 with the offset of where it was taken. */
     val takenAt: String?,
     val width: Int?,
@@ -40,7 +43,14 @@ internal data class UploadRequest(
     val location: GeoPoint?,
     val source: String?,
     val versionOf: String?,
+    /** A sound file from a folder of calls: a call, with whoever its name says (the server reads the name). */
+    val isCall: Boolean = false,
+    /** For a FLAC made on the phone from a WAV: the WAV, which the server then answers as this file. */
+    val encodedFrom: EncodedFrom? = null,
 )
+
+/** The WAV a FLAC was made from. */
+internal data class EncodedFrom(val sha256: String, val mimeType: String, val size: Long)
 
 internal sealed interface StartResult {
     data class Ready(val url: String, val offset: Long, val chunkSize: Long) : StartResult
@@ -172,7 +182,11 @@ internal class ServerBackupApi(
             size = request.size,
             fileName = request.fileName,
             mimeType = request.mimeType,
-            kind = if (request.isVideo) MediaKind.VIDEO else MediaKind.PHOTO,
+            kind = when (request.kind) {
+                MediaType.IMAGE -> MediaKind.PHOTO
+                MediaType.VIDEO -> MediaKind.VIDEO
+                MediaType.AUDIO -> MediaKind.AUDIO
+            },
             takenAt = Optional.presentIfNotNull(request.takenAt),
             width = Optional.presentIfNotNull(request.width),
             height = Optional.presentIfNotNull(request.height),
@@ -180,6 +194,8 @@ internal class ServerBackupApi(
             location = Optional.presentIfNotNull(request.location?.let { GeoPointInput(lat = it.latitude, lon = it.longitude) }),
             source = Optional.presentIfNotNull(request.source),
             versionOf = Optional.presentIfNotNull(request.versionOf),
+            call = if (request.isCall) Optional.present(CallInput()) else Optional.absent(),
+            encodedFrom = Optional.presentIfNotNull(request.encodedFrom?.let { EncodedFromInput(sha256 = it.sha256, mimeType = it.mimeType, size = it.size) }),
         )
         val response = apollo.mutation(StartUploadMutation(input)).execute()
         response.exception?.let { throw it.asServerException() }

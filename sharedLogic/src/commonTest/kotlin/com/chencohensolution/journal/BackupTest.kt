@@ -47,7 +47,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TestTimeSource
 
-private class FakeFiles : MediaFiles {
+internal open class FakeFiles : MediaFiles {
     val bytes = mutableMapOf<String, ByteArray>()
     override fun open(item: MediaItem, offset: Long): Source =
         Buffer().write(bytes.getValue(item.id).copyOfRange(offset.toInt(), bytes.getValue(item.id).size))
@@ -56,7 +56,7 @@ private class FakeFiles : MediaFiles {
 }
 
 /** The server's upload rules (journal-server-go media/upload.go), in memory. */
-private class FakeServer : BackupApi {
+internal class FakeServer : BackupApi {
     val stored = mutableMapOf<String, ByteArray>()
     val requests = mutableMapOf<String, UploadRequest>()
     private val partial = mutableMapOf<String, Buffer>()
@@ -102,14 +102,17 @@ private class FakeServer : BackupApi {
     /** Whether two pieces of one file were ever on their way at once. */
     var overlapped = false
 
-    override suspend fun missing(hashes: List<String>) = hashes.filterNot { it in stored }.toSet()
+    /** WAVs kept as FLAC: the WAV's sha256 to the FLAC's (journal-server-go Store.Find). */
+    val encoded = mutableMapOf<String, String>()
+
+    override suspend fun missing(hashes: List<String>) = hashes.filterNot { it in stored || it in encoded }.toSet()
 
     override suspend fun start(request: UploadRequest): StartResult {
         starts++
         started += request.fileName
         if (request.fileName in unauthorizedNames) throw BackupServerException("The server refused this device", unauthorized = true)
         if (request.fileName in refusedNames) throw com.chencohensolution.journal.backup.BackupServerException("time should be RFC3339Nano formatted string")
-        if (request.sha256 in stored) return StartResult.Exists
+        if (request.sha256 in stored || request.sha256 in encoded || request.encodedFrom?.sha256 in encoded) return StartResult.Exists
         if (request.versionOf != null && request.versionOf !in stored) return StartResult.Rejected("UNKNOWN_ORIGINAL")
         requests[request.sha256] = request
         val received = partial.getOrPut(request.sha256) { Buffer() }
@@ -140,6 +143,7 @@ private class FakeServer : BackupApi {
         partial.remove(sha)
         if (content.toByteString().sha256().hex() != sha) return PieceResult.HashMismatch
         stored[sha] = content
+        requests[sha]?.encodedFrom?.let { encoded[it.sha256] = sha }
         return PieceResult.Accepted(total, complete = true)
     }
 

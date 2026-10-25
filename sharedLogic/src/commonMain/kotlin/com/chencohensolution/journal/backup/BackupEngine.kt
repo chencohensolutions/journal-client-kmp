@@ -2,10 +2,13 @@
 
 package com.chencohensolution.journal.backup
 
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.storage.ServerCheck
+import com.chencohensolution.journal.storage.ServerVerdict
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -45,6 +48,18 @@ internal interface MediaFiles {
 
     /** A run ended: what was copied out of the library to read it can go. */
     fun runEnded() {}
+
+    /**
+     * A FLAC of the WAV [item], finished being written, made to be sent in its place; null when the phone can't encode
+     * it (the WAV is then sent as it is, and the server keeps it as FLAC).
+     */
+    suspend fun encodeFlac(item: MediaItem): EncodedFlac? = null
+
+    /**
+     * Writes [flac] beside the WAV [item] in its folder and deletes the WAV, once the server confirmed the FLAC
+     * ([KeepOnPhone.FLAC]); false when it couldn't (the WAV stays).
+     */
+    suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFlac): Boolean = false
 }
 
 /**
@@ -75,9 +90,12 @@ data class BackupProgress(
 
 data class BackupRunResult(val uploaded: Int, val alreadyOnServer: Int, val failed: Int)
 
-/** The photos backup takes, in the order it takes them: the chosen sources, oldest or newest first. */
+/**
+ * The files backup takes, in the order it takes them: the chosen sources' photos and the sound folders' files (listed
+ * only for the folders backed up), oldest or newest first.
+ */
 internal fun backupQueue(items: List<MediaItem>, settings: BackupSettings): List<MediaItem> =
-    items.filter { it.source in settings.sources && (it.sizeBytes ?: 0) > 0 }
+    items.filter { (it.source in settings.sources || SoundIds.isSound(it.id)) && (it.sizeBytes ?: 0) > 0 }
         .let { scope ->
             when (settings.order) {
                 UploadOrder.OLDEST_FIRST -> scope.sortedBy { it.takenAtMillis }
@@ -98,6 +116,8 @@ internal class BackupEngine(
     private val ledger: UploadLedger,
     private val api: BackupApi,
     private val locate: suspend (MediaItem) -> GeoPoint? = { null },
+    /** The server's check of a file it has, before a WAV kept as FLAC is deleted ([KeepOnPhone.FLAC]). */
+    private val check: ServerCheck? = null,
     /** Where files are read. */
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -105,7 +125,7 @@ internal class BackupEngine(
         val pending = backupQueue(items, settings).filterNot { ledger.isUploaded(it) }
         // The run's own bookkeeping happens on one thread at a time; the reading and sending go on elsewhere.
         val caller = currentCoroutineContext()[ContinuationInterceptor] as? CoroutineDispatcher ?: Dispatchers.Default
-        return withContext(caller.limitedParallelism(1)) { Run(pending, onProgress).go() }
+        return withContext(caller.limitedParallelism(1)) { Run(pending, settings, onProgress).go() }
     }
 
     /** A file on its way: how far the server is, and how many bytes this run moved (not what it had before). */
@@ -127,7 +147,11 @@ internal class BackupEngine(
         val fraction: Float get() = offset.load().toFloat() / (item.sizeBytes ?: 1).coerceAtLeast(1)
     }
 
-    private inner class Run(private val pending: List<MediaItem>, private val onProgress: (BackupProgress) -> Unit) {
+    private inner class Run(
+        private val pending: List<MediaItem>,
+        private val settings: BackupSettings,
+        private val onProgress: (BackupProgress) -> Unit,
+    ) {
         private val bytesTotal = pending.sumOf { it.sizeBytes ?: 0 }
         private var done = 0
         private var finishedBytes = 0L
@@ -222,7 +246,7 @@ internal class BackupEngine(
             sendingBytes += size
             bySha[entry.sha256] = scope.async {
                 val outcome = try {
-                    upload(item, entry) { offset ->
+                    upload(item, entry, settings) { offset ->
                         file.moved(offset)
                         progressChanged()
                     }
@@ -322,11 +346,70 @@ internal class BackupEngine(
 
     private enum class Outcome { UPLOADED, ALREADY, FAILED }
 
-    private suspend fun upload(item: MediaItem, entry: LedgerEntry, onSent: (Long) -> Unit): Outcome {
-        val size = entry.size
+    /** What a run sends for a file: the file as it is, or a WAV's FLAC. */
+    private class Payload(
+        val sha256: String,
+        val size: Long,
+        val fileName: String,
+        val mimeType: String,
+        val open: (offset: Long) -> Source,
+        val encodedFrom: EncodedFrom? = null,
+    )
+
+    private fun asItIs(item: MediaItem, entry: LedgerEntry) = Payload(
+        sha256 = entry.sha256,
+        size = entry.size,
+        fileName = item.fileName ?: item.id,
+        mimeType = item.mimeType ?: when (item.type) {
+            MediaType.VIDEO -> "video/mp4"
+            MediaType.AUDIO -> audioMimeType(item.fileName)
+            MediaType.IMAGE -> "image/jpeg"
+        },
+        open = { offset -> files.open(item, offset) },
+    )
+
+    /**
+     * Sends [item], which the server lacks. A WAV goes as the FLAC the phone makes of it, with the WAV's sha256 as
+     * `encodedFrom` (the server never keeps a WAV); then, with [KeepOnPhone.FLAC], the FLAC replaces the WAV on the phone
+     * once the server confirms it.
+     */
+    private suspend fun upload(item: MediaItem, entry: LedgerEntry, settings: BackupSettings, onSent: (Long) -> Unit): Outcome {
+        if (!item.isWav) return send(item, entry, asItIs(item, entry), settings, onSent)
+        val flac = try {
+            withContext(io) { files.encodeFlac(item) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ledger.record(entry.copy(rejected = "Couldn't make a FLAC of it: ${e.message}"))
+            return Outcome.FAILED
+        } ?: return send(item, entry, asItIs(item, entry), settings, onSent)
+        try {
+            val wav = asItIs(item, entry)
+            val payload = Payload(
+                sha256 = flac.sha256,
+                size = flac.size,
+                fileName = flac.fileName,
+                mimeType = "audio/flac",
+                open = flac.open,
+                encodedFrom = EncodedFrom(sha256 = entry.sha256, mimeType = wav.mimeType, size = entry.size),
+            )
+            val outcome = send(item, entry, payload, settings, onSent)
+            if (outcome != Outcome.FAILED && settings.keepOnPhone == KeepOnPhone.FLAC) {
+                // A check that can't be made leaves the WAV: never deleted without the server's word.
+                val verdict = runCatching { check?.verify(flac.sha256) }.getOrNull()
+                if (verdict == ServerVerdict.OK) files.replaceWithFlac(item, flac)
+            }
+            return outcome
+        } finally {
+            flac.discard()
+        }
+    }
+
+    private suspend fun send(item: MediaItem, entry: LedgerEntry, payload: Payload, settings: BackupSettings, onSent: (Long) -> Unit): Outcome {
+        val size = payload.size
         repeat(MAX_STARTS) {
             val answer = try {
-                api.start(request(item, entry))
+                api.start(request(item, entry, payload, settings))
             } catch (e: BackupServerException) {
                 if (e.unauthorized) throw e
                 // The server refused this file's details (not the connection): skip it, the others go on.
@@ -360,7 +443,7 @@ internal class BackupEngine(
                             currentCoroutineContext().ensureActive()
                             if (source == null || position != offset) {
                                 source?.close()
-                                source = files.open(item, offset).buffer()
+                                source = payload.open(offset).buffer()
                                 position = offset
                             }
                             val from: BufferedSource = source
@@ -402,19 +485,22 @@ internal class BackupEngine(
         return Outcome.FAILED
     }
 
-    private suspend fun request(item: MediaItem, entry: LedgerEntry) = UploadRequest(
-        sha256 = entry.sha256,
-        size = entry.size,
-        fileName = item.fileName ?: item.id,
-        mimeType = item.mimeType ?: if (item.type == MediaType.VIDEO) "video/mp4" else "image/jpeg",
-        isVideo = item.type == MediaType.VIDEO,
+    private suspend fun request(item: MediaItem, entry: LedgerEntry, payload: Payload, settings: BackupSettings) = UploadRequest(
+        sha256 = payload.sha256,
+        size = payload.size,
+        fileName = payload.fileName,
+        mimeType = payload.mimeType,
+        kind = item.type,
         takenAt = files.takenAt(item),
         width = item.width.takeIf { it > 0 },
         height = item.height.takeIf { it > 0 },
         durationMillis = item.durationMillis,
         location = item.location ?: runCatching { locate(item) }.getOrNull(),
         source = item.source.serverName,
-        versionOf = entry.versionOf,
+        // A sound file changed in place is a new recording, not an edit.
+        versionOf = entry.versionOf.takeIf { item.type != MediaType.AUDIO },
+        isCall = settings.soundFolders.firstOrNull { it.treeUri == SoundIds.treeOf(item.id) }?.kind == AudioKind.CALL,
+        encodedFrom = payload.encodedFrom,
     )
 
     private companion object {
