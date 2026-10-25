@@ -90,8 +90,35 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
      * Up to [limit] rows older than [beforeMillis] (their newest moment), newest first, with their items read by id
      * and laid over by [shown] (scores, kept originals, backup statuses), and their recordings from [sounds].
      */
-    fun sections(beforeMillis: Long, limit: Long, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> {
-        val rows = queries.sectionsBefore(beforeMillis, limit).executeAsList()
+    fun sections(beforeMillis: Long, limit: Long, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> =
+        decode(queries.sectionsBefore(beforeMillis, limit).executeAsList(), sounds, shown)
+
+    /** The rows from the newest down to the one keyed [key], with it; none when there is no such row. */
+    fun sectionsDownTo(key: String, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> =
+        decode(queries.sectionsDownTo(key).executeAsList(), sounds, shown)
+
+    /** The items of days [first]..[last] as shown ([shown]: scores, kept originals, statuses laid over). */
+    fun shownItems(first: LocalDay, last: LocalDay, shown: (LibraryRow) -> MediaItem): List<MediaItem> =
+        queries.itemsOfDays(first.toEpochDay(), last.toEpochDay(), ::libraryRow).executeAsList().map(shown)
+
+    /** The key of the newest row with photos of [day]. */
+    fun sectionOf(day: LocalDay): String? = queries.sectionOfDay(day.toEpochDay(), day.toEpochDay()).executeAsOneOrNull()
+
+    /** The months and days of the whole feed, from each row's photos per day: the timeline, without reading a row. */
+    fun timeline(): FeedTimeline {
+        val days = LinkedHashMap<LocalDay, TimelineDay>()
+        queries.timelineRows().executeAsList().forEach { row ->
+            row.day_counts.split(",").filter { it.isNotEmpty() }.forEach { entry ->
+                val day = LocalDay.fromEpochDay(entry.substringBefore(":").toLong())
+                val count = entry.substringAfter(":").toInt()
+                val known = days[day]
+                days[day] = known?.copy(count = known.count + count) ?: TimelineDay(day, count, row.key)
+            }
+        }
+        return FeedTimeline.of(days.values)
+    }
+
+    private fun decode(rows: List<Feed_section>, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> {
         val data = rows.map { json.decodeFromString(SectionData.serializer(), it.data_) }
         val ids = data.flatMap { it.itemIds() }.distinct()
         val items = ids.chunked(CHUNK).flatMap { queries.itemsById(it, ::libraryRow).executeAsList() }.associate { it.item.id to shown(it) }
@@ -113,6 +140,8 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
         first_day = span.oldestDay.toEpochDay(),
         last_day = span.newestDay.toEpochDay(),
         newest_millis = span.endMillis,
+        day_counts = items.groupingBy { it.day }.eachCount().entries.sortedByDescending { it.key }
+            .joinToString(",") { "${it.key.toEpochDay()}:${it.value}" },
         data_ = json.encodeToString(SectionData.serializer(), SectionData.of(this)),
     )
 }

@@ -266,8 +266,28 @@ Confirmed by the owner on Oct 25, 2026:
        parameters by first use) and recordings outside the photos' days.
      - On a copy of the owner's database (PC): every row built in 2.3 s (2,176 rows, once), nothing noted 6 ms,
        one day 31 ms, the first page of 30 rows (668 items) 47 ms.
-     - Not yet: the app doesn't use it (StoriesController keeps building the whole feed), and recordings, notes,
-       places and fingerprints changing don't yet mark their days.
+   - **5b built Oct 25, 2026: Moments reads its rows a page at a time.** The owner left the choice open, so it is the
+     growing list (recommended) rather than AndroidX Paging: rows are read as the list nears its end and kept while
+     the app runs. Switching to Paging later stays possible.
+     - `FeedPager` refreshes `FeedTable` in the background and reads again the rows read so far after each change.
+       It reads the next page (30 rows) as the list nears its end (`LOAD_AHEAD_ROWS`), and down to a row for going
+       to a date or showing a photo in Moments. A row with shown hidden photos is made again in memory with them.
+     - Each stored row keeps its photos per day (`day_counts`), so the timeline covers the whole feed from one
+       query, and the filter bar's counts come from SQL.
+     - `StoriesController` with a pager doesn't build the whole feed. Note changes mark their photos' days, and so do
+       newly read places and fingerprints and recordings that came or went. Settings, grouping and the look-alike
+       threshold are in the rows' version, so a change makes them all again once.
+     - Items are laid over by `LibraryController.shownRow` (scores, kept originals, backup statuses), so they look
+       the same before and after the full library is read.
+     - Tests: the timeline from the rows equals the whole feed's, and pages read in order equal the whole build's
+       first rows.
+     - On the owner's phone: the first start after the update makes every row once (about 10 s). Later starts
+       make nothing again, and the first Moments frame comes 1.5–1.7 s after start, without waiting for the
+       library's full read (2.1 s).
+     - Found on the phone: fingerprinting every photo of the library (also hidden sources) rebuilt windows every
+       3 seconds. Now it fingerprints only the photos Moments shows, as before.
+     - Not yet: the Advanced settings for page size (Rows loaded at a time, Load ahead). The heap is not lower yet
+       (about 410 MB just after start): the whole library list is still read for the other screens until phase 6.
    - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
      sync with the server (and the phone's library) goes on in the background, off the main thread, and updates
      only the rows it changes.

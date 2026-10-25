@@ -12,6 +12,8 @@ import com.chencohensolution.journal.tls.secCertificateObject
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.enrollment.IosDeviceKeyStore
 import com.chencohensolution.journal.stories.StoryIds
+import com.chencohensolution.journal.stories.FeedPager
+import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.deleteOldStories
@@ -61,6 +63,8 @@ import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.IosFreeUp
 import com.chencohensolution.journal.storage.PhoneStorage
 import com.chencohensolution.journal.storage.ServerVerifyApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.StateFlow
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import com.chencohensolution.journal.db.LibraryDatabase
@@ -414,6 +418,9 @@ object IosJournal {
             newId = StoryIds(JournalSettings(UserDefaultsStore())) { (NSDate().timeIntervalSince1970 * 1000).toLong() }::next,
             similarity = PhotoSimilarity(IosPhotoAnalyzer(), FingerprintCache(FileSystem.SYSTEM, caches.toPath() / "similarity")),
             places = PhotoPlaces(IosPlaceReader(), PlaceCache(FileSystem.SYSTEM, caches.toPath() / "places")),
+            // Moments read from the library database a page at a time.
+            feed = FeedPager(FeedTable(libraryDatabase), LibraryTable(libraryDatabase), Dispatchers.IO),
+            shownRow = library::shownRow,
         )
     }
 

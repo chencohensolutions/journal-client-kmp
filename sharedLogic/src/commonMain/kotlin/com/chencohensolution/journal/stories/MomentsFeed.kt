@@ -141,6 +141,8 @@ data class MomentsFeed(
      * those hidden, so a hidden folder with no photos left can be shown again ([ShownSources.choices]).
      */
     val sheet: List<MediaSource> = MediaSource.byCount(counts),
+    /** The whole feed's timeline when [entries] are only its first rows (read from the database: FeedPager). */
+    val givenTimeline: FeedTimeline? = null,
 
 ) {
     // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
@@ -161,7 +163,7 @@ data class MomentsFeed(
     val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 }
 
     /** Its months and days, for going to a date: worked out once, when first asked for. */
-    val timeline: FeedTimeline by lazy { FeedTimeline.of(this) }
+    val timeline: FeedTimeline by lazy { givenTimeline ?: FeedTimeline.of(this) }
 }
 
 /** A new camera moment starts after this long without a photo… */

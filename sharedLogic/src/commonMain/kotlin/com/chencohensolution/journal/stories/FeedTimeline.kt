@@ -79,7 +79,12 @@ class FeedTimeline(val months: List<TimelineMonth>) {
                     days[day] = known?.copy(count = known.count + count) ?: TimelineDay(day, count, section.key)
                 }
             }
-            val months = days.values.sortedByDescending { it.day }.groupBy { it.day.year to it.day.month }
+            return of(days.values)
+        }
+
+        /** The timeline of [days], each with the row it is in (the database's rows: FeedTable.timeline). */
+        internal fun of(days: Collection<TimelineDay>): FeedTimeline {
+            val months = days.sortedByDescending { it.day }.groupBy { it.day.year to it.day.month }
                 .map { (yearMonth, days) -> TimelineMonth(yearMonth.first, yearMonth.second, days) }
             return FeedTimeline(months)
         }

@@ -368,6 +368,18 @@ class LibraryController internal constructor(
         showStatuses()
     }
 
+    /**
+     * A row of the library database as the screens show it: with this phone's score and kept original ([shown]) and its
+     * backup status now. For what reads the database itself (Moments' pages: FeedPager). Safe from any thread.
+     */
+    internal fun shownRow(row: LibraryRow): MediaItem {
+        val item = shown(row, originals?.kept?.value.orEmpty().mapValues { it.value.toString() }, scores?.value.orEmpty())
+        val backupState = backup?.value ?: return item
+        if (!item.isOnDevice) return item
+        val status = backupState.status(item)
+        return if (status == item.backup) item else item.copy(backup = status)
+    }
+
     /** One day of the rows, as shown, newest first. */
     private fun dayGroup(day: LocalDay): DayGroup {
         val kept = originals?.kept?.value.orEmpty().mapValues { it.value.toString() }

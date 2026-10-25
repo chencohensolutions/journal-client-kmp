@@ -2,15 +2,18 @@ package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.library.LibraryController
+import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.Measure
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.places.PhotoPlaces
 import com.chencohensolution.journal.places.Places
+import com.chencohensolution.journal.places.cellKey
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.similarity.PhotoLooks
@@ -31,6 +34,9 @@ import kotlin.time.ExperimentalTime
 
 /** Fingerprints and places found in the background are shown at most this often. */
 internal const val BACKGROUND_REBUILD_MILLIS = 3_000L
+
+/** Bumped when the way Moments' rows are made changes, so the database's rows are all made again once. */
+private const val FEED_VERSION = 1
 
 /**
  * What the user adds to their photos, kept on this device: each photo's writing (and its earlier versions), tags,
@@ -57,6 +63,13 @@ class StoriesController internal constructor(
      * dispatcher, so waiting for it is deterministic.
      */
     private val background: CoroutineDispatcher = if (dispatcher === Dispatchers.Main) Dispatchers.Default else dispatcher,
+    /**
+     * Moments read from the database a page at a time (docs/plans/library-on-disk.md, phase 5); without it (tests)
+     * the whole feed is built in memory.
+     */
+    private val feed: FeedPager? = null,
+    /** A database row as the screens show it (LibraryController.shownRow), for [feed]'s items. */
+    private val shownRow: (LibraryRow) -> MediaItem = { it.item },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
@@ -104,6 +117,13 @@ class StoriesController internal constructor(
         scope.launch {
             outsideChanges.collect {
                 val startedAt = version
+                // Moments from the database: what changed outside the library marks its days, then the rows of the
+                // marked days are made again and the rows shown so far read again. Not before the caches are read,
+                // so the rows are made with the places and fingerprints the phone keeps.
+                if (feed != null && cachesLoaded) {
+                    markChangedDays(feed)
+                    pagedFeed = feed.refresh(feedContext(), revealed, shownRow)
+                }
                 val inputs = inputs()
                 rebuilds++
                 val built = withContext(background) { Measure.time({ "Moments rebuilt" }) { inputs.build() } }
@@ -115,18 +135,105 @@ class StoriesController internal constructor(
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: StoriesState get() = state.value
 
+    // MARK: Moments from the database
+
+    /** The rows of Moments read so far ([feed]); null until the first page is read. */
+    private var pagedFeed: MomentsFeed? = null
+
+    /** What the rows were last made with, to mark the days of what changed since. */
+    private var placesSeen: Places? = null
+    private var looksSeen: PhotoLooks? = null
+    private var soundsSeen: List<SoundRecording>? = null
+
+    private val cachesLoaded: Boolean get() = similarity?.loaded?.value != false && places?.loaded?.value != false
+
+    /** Everything besides the library's items that Moments' rows are made from. */
+    private fun feedContext(): FeedContext {
+        val settings = settingsState.value
+        val shown = settings.shownSources
+        val version = listOf(
+            shown.hidden.map { it.id }.sorted(), shown.sayWhatsHidden, shown.alwaysShown.map { "${it.day}:${it.source.id}" }.sorted(),
+            settings.grouping.mode, settings.grouping.gapHours, settings.similarity.percent, FEED_VERSION,
+        ).joinToString("|")
+        return FeedContext(
+            shown, settings.grouping, places?.places?.value ?: Places.NONE, looks, aloneIn(notes), setsIn(notes),
+            libraryState.value.sounds, version,
+        )
+    }
+
+    /**
+     * Marks the days of what changed since the rows were made, besides the library's items (which the database's
+     * triggers mark): photos newly located or in a place newly named, newly fingerprinted, recordings that came or went.
+     */
+    private suspend fun markChangedDays(feed: FeedPager) {
+        val items = _state.value.itemsById
+        val days = HashSet<LocalDay>()
+        val nowPlaces = places?.places?.value ?: Places.NONE
+        placesSeen?.takeIf { it !== nowPlaces }?.let { before ->
+            val moved = nowPlaces.locations.filter { (id, point) -> before.locations[id] != point }.keys
+            val named = nowPlaces.names.filter { (cell, name) -> before.names[cell] != name }.keys
+            items.values.forEach { item ->
+                if (item.id in moved || (named.isNotEmpty() && nowPlaces.location(item)?.let { cellKey(it) in named } == true)) days += item.day
+            }
+        }
+        placesSeen = nowPlaces
+        val nowLooks = similarity?.looks?.value
+        looksSeen?.takeIf { nowLooks != null && it.fingerprints !== nowLooks.fingerprints }?.let { before ->
+            nowLooks!!.fingerprints.forEach { (id, print) -> if (before.fingerprints[id] != print) items[id]?.let { days += it.day } }
+        }
+        looksSeen = nowLooks
+        val nowSounds = libraryState.value.sounds
+        soundsSeen?.takeIf { it !== nowSounds }?.let { before ->
+            val was = before.associateBy { it.sha256 }
+            val now = nowSounds.associateBy { it.sha256 }
+            (was.keys + now.keys).forEach { sha -> if (was[sha] != now[sha]) listOfNotNull(was[sha]?.day, now[sha]?.day).forEach { days += it } }
+        }
+        soundsSeen = nowSounds
+        if (days.isNotEmpty()) feed.markDays(days)
+    }
+
+    /** Reads the next page of Moments' rows, if there is one (the screen scrolled near the end). */
+    fun loadMoreMoments() {
+        val pager = feed ?: return
+        scope.launch {
+            val more = pager.loadMore(feedContext(), revealed, shownRow) ?: return@launch
+            pagedFeed = more
+            _state.value = _state.value.copy(feed = more)
+        }
+    }
+
+    /**
+     * Reads Moments' rows down to the row of [day] (going to a date, showing a photo in Moments); calls [onLoaded]
+     * with that row's key once it is in the feed, null when no row has that day.
+     */
+    fun loadMomentsTo(day: LocalDay, onLoaded: (String?) -> Unit) {
+        val pager = feed ?: return onLoaded(null)
+        scope.launch {
+            val key = pager.sectionOf(day)
+            if (key != null) {
+                pager.loadTo(key, feedContext(), revealed, shownRow)?.let { more ->
+                    pagedFeed = more
+                    _state.value = _state.value.copy(feed = more)
+                }
+            }
+            onLoaded(key)
+        }
+    }
+
     /**
      * Shows [source]'s hidden photos on the Moments row [sectionKey] ([FeedSection.key]), in a band under its
      * photos: its "+6 WhatsApp" chip. The setting doesn't change, and nothing is saved.
      */
     fun showOnRow(sectionKey: String, source: MediaSource) {
         revealed = revealed + FeedReveal(sectionKey, source)
+        if (feed != null) outsideChanges.value++
         publish()
     }
 
     /** Hides again what [showOnRow] showed. */
     fun hideOnRow(sectionKey: String, source: MediaSource) {
         revealed = revealed - FeedReveal(sectionKey, source)
+        if (feed != null) outsideChanges.value++
         publish()
     }
 
@@ -244,6 +351,14 @@ class StoriesController internal constructor(
         } catch (e: Exception) {
             error = e.describe()
         }
+        // From the database: the days of the photos whose notes changed are made again (a crop, a set).
+        if (changedAny && rebuild && feed != null) {
+            val days = items.mapTo(HashSet()) { it.day }
+            scope.launch {
+                feed.markDays(days)
+                outsideChanges.value++
+            }
+        }
         if (rebuild || error != null) publish() else if (changedAny) _state.value = _state.value.copy(notes = notes)
     }
 
@@ -268,9 +383,10 @@ class StoriesController internal constructor(
     /** Everything the state is built from, as it is now. */
     private fun inputs() = Inputs(
         libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed,
-        // The whole library, or its newest rows with the counts of the whole (LibraryState.counts), and the caches read.
-        ready = (libraryState.value.complete || libraryState.value.counts != null) &&
-            similarity?.loaded?.value != false && places?.loaded?.value != false,
+        // From the database: its first page read. Else the whole library, or its newest rows with the counts of the
+        // whole (LibraryState.counts). Either way with the caches read.
+        ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete || libraryState.value.counts != null),
+        paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
     )
 
     private class Inputs(
@@ -282,6 +398,7 @@ class StoriesController internal constructor(
         val places: Places,
         val revealed: Set<FeedReveal>,
         val ready: Boolean,
+        val paged: MomentsFeed?,
     ) {
         fun build(): Built {
             val state = buildState(
@@ -290,12 +407,18 @@ class StoriesController internal constructor(
                 places = places,
                 revealed = revealed,
                 ready = ready,
+                paged = paged,
             )
             return Built(
                 state,
-                // The Moments tab's photos, newest first.
-                state.feed.entries.flatMap { entry ->
-                    (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
+                // The Moments tab's photos, newest first; from the database, the library's photos Moments shows (its
+                // rows are read a page at a time, and older rows are made with the fingerprints found meanwhile).
+                if (paged != null) {
+                    library.days.flatMap { day -> day.items.filter { it.type == MediaType.IMAGE && settings.shownSources.shows(it) } }
+                } else {
+                    state.feed.entries.flatMap { entry ->
+                        (entry as? FeedEntry.Section)?.section?.items.orEmpty().filter { it.type == MediaType.IMAGE }
+                    }
                 },
                 // All of them: they tell where home is, for Explore.
                 library.days.flatMap { it.items },

@@ -52,8 +52,8 @@ internal interface PlaceReader {
 
 /** Where photos were taken and what those places are called, as far as worked out. */
 class Places internal constructor(
-    private val locations: Map<String, GeoPoint>,
-    private val names: Map<String, PlaceName>,
+    internal val locations: Map<String, GeoPoint>,
+    internal val names: Map<String, PlaceName>,
 ) {
     /** Where [item] was taken, if known. */
     fun location(item: MediaItem): GeoPoint? = item.location ?: locations[item.id]

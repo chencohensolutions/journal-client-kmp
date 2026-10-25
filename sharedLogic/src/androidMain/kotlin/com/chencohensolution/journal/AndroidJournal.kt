@@ -16,6 +16,8 @@ import com.chencohensolution.journal.connection.JournalController
 import com.chencohensolution.journal.enrollment.AndroidDeviceKeyStore
 import com.chencohensolution.journal.enrollment.EnrollmentController
 import com.chencohensolution.journal.stories.StoryIds
+import com.chencohensolution.journal.stories.FeedPager
+import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.deleteOldStories
@@ -66,6 +68,8 @@ import com.chencohensolution.journal.similarity.FingerprintCache
 import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.decodePemCertificates
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.StateFlow
 import okhttp3.OkHttpClient
 import okio.FileSystem
@@ -407,5 +411,8 @@ fun createStoriesController(context: Context, library: LibraryController, settin
             FingerprintCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "similarity"),
         ),
         places = PhotoPlaces(AndroidPlaceReader(context), PlaceCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "places")),
+        // Moments read from the library database a page at a time.
+        feed = FeedPager(FeedTable(libraryDatabase(context)), LibraryTable(libraryDatabase(context)), Dispatchers.IO),
+        shownRow = library::shownRow,
     )
 }

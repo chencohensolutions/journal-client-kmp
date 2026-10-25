@@ -155,6 +155,8 @@ class FeedTableTest {
                 val differ = (wholeKeys.keys - keptKeys.keys) + (keptKeys.keys - wholeKeys.keys)
                 assertEquals(emptySet(), differ, "seed $seed round $round: " + differ.map { k -> k + " whole=" + wholeKeys[k]?.days + " kept=" + keptKeys[k]?.let { s -> s.days.toString() + s.items.map { it.id } } } + " changed: " + lastChanged)
                 assertEquals(whole, kept, "seed $seed round $round")
+                val wholeTimeline = com.chencohensolution.journal.stories.FeedTimeline.of(com.chencohensolution.journal.stories.MomentsFeed(whole.map(FeedEntry::Section)))
+                assertEquals(wholeTimeline.months, table.timeline().months, "seed $seed round $round: timeline")
                 // Some photos deleted, some moved to another time, a few new.
                 val gone = items.filter { random.nextInt(25) == 0 }
                 val moved = items.filter { it !in gone && random.nextInt(30) == 0 }.map { item ->
@@ -174,5 +176,37 @@ class FeedTableTest {
                 items = items.filter { it !in gone }.map { movedIds[it.id] ?: it } + added
             }
         }
+    }
+}
+
+class FeedPagerTest {
+    @Test
+    fun momentsAreReadAPageAtATimeAsTheWholeBuildsRows() = kotlinx.coroutines.test.runTest {
+        val library = library(3)
+        val database = testLibraryDatabase()
+        database.transaction { library.items.forEach { database.libraryQueries.upsertLibraryItem(it.toLibraryRow()) } }
+        val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+        val pager = com.chencohensolution.journal.stories.FeedPager(
+            com.chencohensolution.journal.stories.FeedTable(database), com.chencohensolution.journal.library.LibraryTable(database), dispatcher, pageSize = { 5 },
+        )
+        val grouping = TimelineGrouping(GroupingMode.BY_DAY)
+        val context = com.chencohensolution.journal.stories.FeedContext(
+            ShownSources(hidden = emptySet()), grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, library.sounds, "v",
+        )
+        val whole = buildFeed(ListSource(library.items).items, ShownSources(hidden = emptySet()), grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds)
+        val wholeSections = whole.entries.mapNotNull { (it as? FeedEntry.Section)?.section }
+
+        val first = pager.refresh(context, emptySet()) { it.item }
+        assertEquals(wholeSections.take(5), first.entries.map { (it as FeedEntry.Section).section })
+        assertEquals(whole.counts, first.counts)
+        assertEquals(whole.timeline.months, first.timeline.months)
+        val more = pager.loadMore(context, emptySet()) { it.item }!!
+        assertEquals(wholeSections.take(10), more.entries.map { (it as FeedEntry.Section).section })
+        // Going to an old day reads down to its row.
+        val old = wholeSections[wholeSections.size - 3]
+        val key = pager.sectionOf(old.days.first())!!
+        assertEquals(old.key, key)
+        val down = pager.loadTo(key, context, emptySet()) { it.item }!!
+        assertTrue(down.entries.any { (it as FeedEntry.Section).section.key == old.key })
     }
 }

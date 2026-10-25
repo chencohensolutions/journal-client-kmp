@@ -104,6 +104,8 @@ internal fun buildState(
     places: Places = Places.NONE,
     revealed: Set<FeedReveal> = emptySet(),
     ready: Boolean = true,
+    /** Moments read from the database a page at a time (FeedPager): used as it is, the whole feed isn't built. */
+    paged: MomentsFeed? = null,
 ): StoriesState {
     val itemsById = library.days.flatMap { it.items }.associateBy { it.id }
     // A tag counts the photos it shows; those not on this device yet count too.
@@ -131,7 +133,7 @@ internal fun buildState(
         tags = tags,
         itemsById = itemsById,
         // Empty until ready, so Moments never draws a feed that is about to change.
-        feed = if (!ready) MomentsFeed() else buildFeed(
+        feed = paged ?: if (!ready) MomentsFeed() else buildFeed(
             library.days.flatMap { it.items }, shown, grouping, places, looks,
             alone = aloneIn(notes),
             sets = setsIn(notes),
@@ -146,9 +148,9 @@ internal fun buildState(
 }
 
 /** A cropped photo is shown on its own, out of its near-duplicate set, and so is one taken out of a set. */
-private fun aloneIn(notes: Map<String, PhotoNote>): Set<String> =
+internal fun aloneIn(notes: Map<String, PhotoNote>): Set<String> =
     notes.values.filter { !it.crops.isEmpty || it.apart }.map { it.deviceId }.toSet()
 
 /** Photos merged by hand in the feed: photo id to set id. */
-private fun setsIn(notes: Map<String, PhotoNote>): Map<String, String> =
+internal fun setsIn(notes: Map<String, PhotoNote>): Map<String, String> =
     notes.values.mapNotNull { note -> note.feedSet?.let { note.deviceId to it } }.toMap()

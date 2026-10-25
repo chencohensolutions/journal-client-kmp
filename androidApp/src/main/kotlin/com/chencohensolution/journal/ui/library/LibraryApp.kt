@@ -247,6 +247,8 @@ private fun LibraryScreens(
                                             reloadPeople = people::reload,
                                         ),
                                         showOnRow = stories::showOnRow,
+                                        loadMoreMoments = stories::loadMoreMoments,
+                                        loadMomentsTo = { day -> stories.loadMomentsTo(day) {} },
                                         hideOnRow = stories::hideOnRow,
                                         alwaysShow = { section, source ->
                                             settings.alwaysShow(section.days, source)

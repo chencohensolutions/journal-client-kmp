@@ -8,6 +8,8 @@ CREATE TABLE feed_section (
     last_day INTEGER NOT NULL,
     -- Its newest moment: the feed's order, newest first.
     newest_millis INTEGER NOT NULL,
+    -- Its shown photos per day, newest first, as "day:count,day:count" (days since 1970-01-01): the timeline.
+    day_counts TEXT NOT NULL,
     data TEXT NOT NULL
 );
 

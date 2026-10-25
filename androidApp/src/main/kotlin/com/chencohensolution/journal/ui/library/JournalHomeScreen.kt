@@ -3,6 +3,7 @@ package com.chencohensolution.journal.ui.library
 import android.os.Process
 import android.os.SystemClock
 import androidx.compose.runtime.withFrameNanos
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.Measure
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
@@ -100,6 +101,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import java.time.ZoneId
@@ -108,6 +110,9 @@ internal enum class HomeTab { STORYLINE, MOMENTS, EXPLORE }
 
 /** Named people offered on the search page before anything is searched. */
 private const val SEARCH_FACES = 16
+
+/** Moments reads its next page when the list is this many items from the end of what is read. */
+private const val LOAD_AHEAD_ROWS = 40
 
 internal class HomeActions(
     /** A photo of the Moments tab; the viewer swipes through its row. */
@@ -145,6 +150,10 @@ internal class HomeActions(
     val search: SearchActions = SearchActions(),
     /** A sound recording's page, by sha256: from its bar in Moments, a call or a voice message. */
     val openRecording: (sha256: String) -> Unit = {},
+    /** Moments is read a page at a time: the next page, as the list nears its end. */
+    val loadMoreMoments: () -> Unit = {},
+    /** Moments' rows down to the row of a day, for going to a date or showing a photo there. */
+    val loadMomentsTo: (LocalDay) -> Unit = {},
 )
 
 /**
@@ -236,6 +245,15 @@ internal fun JournalHomeScreen(
     LaunchedEffect(tab, searching, selection.active) { timelineOpen = false }
     val timeline = shownFeed.timeline
     val rowSections = remember(feedRows) { feedRows.sectionKeys() }
+    // A row going to a date asked for before it was read: gone to once it is.
+    var jumpTo by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(jumpTo, feedRows) {
+        val key = jumpTo ?: return@LaunchedEffect
+        val row = feedRows.indexOfFirst { it.key == "heading-$key" }
+        if (row < 0) return@LaunchedEffect
+        jumpTo = null
+        list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row)
+    }
     // The row at the top, under the title: the first whose bottom is below the list's top padding (the row behind the
     // title counts as visible). Its month and day are the pill's; derived, so the screen recomposes only when they change.
     val topSection by remember(feedRows) {
@@ -299,6 +317,18 @@ internal fun JournalHomeScreen(
         }
     }
     val shownPhoto = showInMoments?.itemId?.takeIf { moments }
+    // Moments is read a page at a time: a photo to show further down than what is read reads down to its day first.
+    LaunchedEffect(shownPhoto) {
+        val id = shownPhoto ?: return@LaunchedEffect
+        if (rows.rowOf(id) < 0) stories.itemsById[id]?.let { actions.loadMomentsTo(it.day) }
+    }
+    // …and the next page, once the list is near the end of what is read.
+    LaunchedEffect(list, moments) {
+        if (!moments) return@LaunchedEffect
+        snapshotFlow { list.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - LOAD_AHEAD_ROWS } }
+            .distinctUntilChanged()
+            .collect { near -> if (near) actions.loadMoreMoments() }
+    }
     list.LandOn(shownPhoto ?: landing.takeUnless { searching }, rows.size) { id -> rows.rowOf(id) }
     // Sharp photos decode once the list slows down; until then each shows its quick image, loaded ahead of the scroll.
     val scrollSettled = rememberScrollSettled(list)
@@ -504,8 +534,14 @@ internal fun JournalHomeScreen(
                     Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
                         TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
                             val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
-                            // The feed's rows come last in the list, after its banners.
-                            if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                            // The feed's rows come last in the list, after its banners. A row not read yet is read
+                            // first (down to it), then gone to.
+                            if (row >= 0) {
+                                scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                            } else {
+                                jumpTo = day.sectionKey
+                                actions.loadMomentsTo(day.day)
+                            }
                         }
                     }
                 }
