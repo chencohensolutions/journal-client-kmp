@@ -360,3 +360,4 @@ indexes on the phone, to search without the server, offline too (journal-server-
 ## Design history
 
 - [Backup — calls and recordings from folders](../ux-history/backup/2026-10-25-sound-folders.md) (Oct 25, 2026): one list of pills with "+ Add a folder" (b2) picked.
+- [Settings — Loading Moments](../ux-history/settings/2026-10-26-loading-moments.md) (Oct 26, 2026): an Advanced section with a page of chips (a) picked.
