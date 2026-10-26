@@ -266,6 +266,14 @@ Confirmed by the owner on Oct 25, 2026:
        parameters by first use) and recordings outside the photos' days.
      - On a copy of the owner's database (PC): every row built in 2.3 s (2,176 rows, once), nothing noted 6 ms,
        one day 31 ms, the first page of 30 rows (668 items) 47 ms.
+     - **Every row a span at a time (Oct 26, 2026).** When every row is made again (a new database, a migration, a
+       large library read in, other settings), `FeedTable.refreshAll` makes them from the newest day down in spans
+       of about 4,000 items (`SPAN_ITEMS`), each widened like a window so its edges are breaks between rows, and
+       writes each span as it is made. Only a span's items are in memory. Before, all items were read in one query.
+       On the emulator with 300,000 made-up photos and a new database: 212 s with the Dalvik heap rising from about
+       183 to 305 MB before; 75 spans in 21 s with the heap staying near 183–197 MB after. `FeedSpansTest`: the
+       rows made span by span are byte for byte those made all at once (12 generated libraries, spans of 1, 20 and
+       100 items), also when photos go while the spans are made.
    - **5b built Oct 25, 2026: Moments reads its rows a page at a time.** The owner left the choice open, so it is the
      growing list (recommended) rather than AndroidX Paging: rows are read as the list nears its end and kept while
      the app runs. Switching to Paging later stays possible.

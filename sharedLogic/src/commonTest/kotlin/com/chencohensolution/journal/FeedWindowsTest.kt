@@ -216,6 +216,76 @@ class FeedDirtyRaceTest {
 }
 
 /**
+ * Every row made again a span of a few thousand items at a time (a new database: 300,000 made-up photos read in one
+ * query took about 4 minutes on the emulator): the same rows, to the last byte, as making them all at once, also with
+ * the library changing while the spans are made.
+ */
+class FeedSpansTest {
+    private fun rows(database: com.chencohensolution.journal.db.LibraryDatabase) =
+        database.feedQueries.sectionsBefore(Long.MAX_VALUE, 1_000_000).executeAsList()
+
+    @Test
+    fun rowsMadeSpanBySpanAreTheRowsMadeAllAtOnce() {
+        var spans = 0
+        repeat(12) { seed ->
+            val library = library(seed)
+            val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_DAY) else TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6)
+            val shown = ShownSources(hidden = if (seed % 3 == 0) setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) else emptySet())
+            val context = com.chencohensolution.journal.stories.FeedContext(
+                shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, library.sounds, version = "v$seed",
+            )
+            fun made(spanItems: Int): Pair<Int, List<com.chencohensolution.journal.db.Feed_section>> {
+                val database = testLibraryDatabase()
+                database.transaction { library.items.forEach { database.libraryQueries.upsertLibraryItem(it.toLibraryRow()) } }
+                val count = com.chencohensolution.journal.stories.FeedTable(database, spanItems).refresh(context)
+                return count to rows(database)
+            }
+            val (one, allAtOnce) = made(Int.MAX_VALUE)
+            assertEquals(1, one, "seed $seed: one span")
+            val whole = buildFeed(ListSource(library.items).items, shown, grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds)
+                .entries.mapNotNull { (it as? FeedEntry.Section)?.section }
+            assertEquals(whole.map { it.key }.sorted(), allAtOnce.map { it.key }.sorted(), "seed $seed: all at once is the whole build")
+            listOf(1, 20, 100).forEach { spanItems ->
+                val (count, bySpan) = made(spanItems)
+                // A set merged by hand across far days makes one span of all the days between (seed 8: the library).
+                spans += count
+                assertEquals(allAtOnce, bySpan, "seed $seed, $grouping, spans of $spanItems")
+            }
+        }
+        assertTrue(spans > 200, "$spans spans")
+    }
+
+    @Test
+    fun theLibraryChangingWhileSpansAreMadeIsMadeAgain() {
+        repeat(6) { seed ->
+            val library = library(seed)
+            val database = testLibraryDatabase()
+            val queries = database.libraryQueries
+            database.transaction { library.items.forEach { queries.upsertLibraryItem(it.toLibraryRow()) } }
+            val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_DAY) else TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6)
+            val context = com.chencohensolution.journal.stories.FeedContext(
+                ShownSources(), grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, library.sounds, version = "v",
+            )
+            val table = com.chencohensolution.journal.stories.FeedTable(database, spanItems = 50)
+            // While the first span is made, photos of every span go: of spans already made, of this one, and of those to come.
+            val random = Random(seed)
+            val gone = library.items.filter { random.nextInt(4) == 0 }.map { it.id }.toSet()
+            table.afterBuild = {
+                table.afterBuild = {}
+                database.transaction { gone.forEach { queries.deleteRemoved(listOf(it)) } }
+            }
+            table.refresh(context)
+            table.refresh(context)
+            val left = library.items.filter { it.id !in gone }
+            val whole = buildFeed(ListSource(left).items, ShownSources(), grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds)
+                .entries.mapNotNull { (it as? FeedEntry.Section)?.section }
+            assertEquals(whole, table.sections(Long.MAX_VALUE, 1_000_000, library.sounds.associateBy { it.sha256 }) { it.item }, "seed $seed")
+            assertEquals(0, table.refresh(context), "seed $seed: nothing left to make")
+        }
+    }
+}
+
+/**
  * Step 6f (the owner, Oct 26, 2026: calls turned on didn't show in Moments): rows made before the recordings were known
  * take them once they are, also in a new table on the same database (after a restart); recordings hidden again or
  * changed leave or change their rows; the same recordings again make nothing.
