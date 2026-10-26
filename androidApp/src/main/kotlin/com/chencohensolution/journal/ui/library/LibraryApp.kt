@@ -256,7 +256,7 @@ private fun LibraryScreens(
                                         ),
                                         showOnRow = stories::showOnRow,
                                         loadMoreMoments = stories::loadMoreMoments,
-                                        loadMomentsTo = { day -> stories.loadMomentsTo(day) {} },
+                                        loadMomentsTo = stories::loadMomentsTo,
                                         loadMomentsToItem = stories::loadMomentsToItem,
                                         hideOnRow = stories::hideOnRow,
                                         alwaysShow = { section, source ->

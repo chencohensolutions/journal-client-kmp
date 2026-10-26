@@ -60,11 +60,16 @@ internal class FeedPager(
         withContext(io) { read(loaded + pageSize(), context, revealed, shown) }
     }
 
-    /** The rows down to the one keyed [key] (the timeline's day, a photo shown in Moments), and a page after it. */
-    suspend fun loadTo(key: String, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): MomentsFeed? = mutex.withLock {
+    /**
+     * The rows down to the row of [day] (the timeline's day, a photo shown in Moments), and a page after it: that row's
+     * key, and the feed when more had to be read (null when the row is read already). The row is looked up and read in
+     * one turn, so a refresh making the rows again (with new keys) can't come between.
+     */
+    suspend fun loadTo(day: LocalDay, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): FeedJump = mutex.withLock {
         withContext(io) {
+            val key = table.sectionOf(day) ?: return@withContext FeedJump(null, null)
             val down = table.sectionsDownTo(key, context.sounds.associateBy { it.sha256 }, shown).size
-            if (down == 0 || down <= loaded) null else read(down + pageSize(), context, revealed, shown)
+            FeedJump(key, if (down == 0 || down <= loaded) null else read(down + pageSize(), context, revealed, shown))
         }
     }
 
@@ -72,7 +77,7 @@ internal class FeedPager(
     suspend fun markDays(days: Collection<LocalDay>) = withContext(io) { table.markDirty(days) }
 
     /** The key of the row with photos of [day]. */
-    suspend fun sectionOf(day: LocalDay): String? = withContext(io) { table.sectionOf(day) }
+    suspend fun sectionOf(day: LocalDay): String? = mutex.withLock { withContext(io) { table.sectionOf(day) } }
 
     /** The days of the library's items [ids] (those it has). */
     suspend fun daysOf(ids: Collection<String>): Set<LocalDay> = if (ids.isEmpty()) emptySet() else withContext(io) { table.daysOf(ids) }
@@ -142,3 +147,6 @@ internal class FeedPager(
         const val PAGE = 30
     }
 }
+
+/** Where going to a day lands ([FeedPager.loadTo]): its row's key (null when no row has the day), and the feed read down to it, if more was read. */
+internal class FeedJump(val key: String?, val feed: MomentsFeed?)

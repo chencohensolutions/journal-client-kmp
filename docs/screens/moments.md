@@ -119,6 +119,13 @@ month or day with one finger. Android and iOS.
 - **Where it lands:** a month lands on its newest day with photos, the top of the month in a feed read newest first; a
   day lands on its row's divider, just under the sources bar. A row over two days (grouping by gaps) is landed on for
   either day.
+- **A day further down than what is read** (Moments is read from the database a page at a time) reads the rows down to
+  it first (`StoriesController.loadMomentsTo`), then lands on the row the read names once the list has it. The row is
+  the one the timeline gives the day: the newest with photos of it, not a row that only reaches over it with a recording
+  or photos of a hidden source (until Oct 26, 2026 such a row was landed on, the day beside the one tapped). The row is
+  looked up and read in one turn, so rows made again meanwhile (with other keys) can't send it elsewhere, and a state
+  made from the rows read before never takes the new rows away again. A later tap cancels a jump still waiting.
+  Tested in `FeedPagerTest.everyDayOfTheTimelineGoesToItsRow` and `goingToADayKeepsItsRowsThroughARebuild`.
 - A light tick per month or day, a firmer one when the year changes.
 - It hides while picking photos, while a "Showing 6 from WhatsApp" note shows, and when the feed is empty.
 - Nothing is saved: the months and days are worked out from the feed shown (`MomentsFeed.timeline`, a

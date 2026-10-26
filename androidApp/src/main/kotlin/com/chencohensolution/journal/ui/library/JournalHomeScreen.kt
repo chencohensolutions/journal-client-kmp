@@ -152,8 +152,11 @@ internal class HomeActions(
     val openRecording: (sha256: String) -> Unit = {},
     /** Moments is read a page at a time: the next page, as the list nears its end. */
     val loadMoreMoments: () -> Unit = {},
-    /** Moments' rows down to the row of a day, for going to a date or showing a photo there. */
-    val loadMomentsTo: (LocalDay) -> Unit = {},
+    /**
+     * Moments' rows down to the row of a day, for going to a date: calls back with that row's key once it is read (null
+     * when no row has the day).
+     */
+    val loadMomentsTo: (LocalDay, (String?) -> Unit) -> Unit = { _, done -> done(null) },
     /** Moments' rows down to the row of a photo, its day looked up in the library (it may be in no row read yet). */
     val loadMomentsToItem: (itemId: String) -> Unit = {},
 )
@@ -247,8 +250,11 @@ internal fun JournalHomeScreen(
     LaunchedEffect(tab, searching, selection.active) { timelineOpen = false }
     val timeline = shownFeed.timeline
     val rowSections = remember(feedRows) { feedRows.sectionKeys() }
-    // A row going to a date asked for before it was read: gone to once it is.
+    // A row going to a date asked for before it was read: gone to once it is in the list (the list's rows follow the
+    // feed only once a scroll stops).
     var jumpTo by remember { mutableStateOf<String?>(null) }
+    // Which tap asked last: a read that comes back after a later tap doesn't go anywhere.
+    val jumpsAsked = remember { IntArray(1) }
     LaunchedEffect(jumpTo, feedRows) {
         val key = jumpTo ?: return@LaunchedEffect
         val row = feedRows.indexOfFirst { it.key == "heading-$key" }
@@ -536,13 +542,15 @@ internal fun JournalHomeScreen(
                     Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
                         TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
                             val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
-                            // The feed's rows come last in the list, after its banners. A row not read yet is read
-                            // first (down to it), then gone to.
+                            // The feed's rows come last in the list, after its banners. A row not in the list yet is
+                            // read first (down to it), then gone to by the key the read names: the rows may have been
+                            // made again since this timeline, with other keys.
+                            jumpTo = null
+                            val asked = ++jumpsAsked[0]
                             if (row >= 0) {
                                 scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
                             } else {
-                                jumpTo = day.sectionKey
-                                actions.loadMomentsTo(day.day)
+                                actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key }
                             }
                         }
                     }

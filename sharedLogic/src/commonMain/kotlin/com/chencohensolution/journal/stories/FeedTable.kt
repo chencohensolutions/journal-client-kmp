@@ -134,8 +134,17 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
     fun shownItems(first: LocalDay, last: LocalDay, shown: (LibraryRow) -> MediaItem): List<MediaItem> =
         queries.itemsOfDays(first.toEpochDay(), last.toEpochDay(), ::libraryRow).executeAsList().map(shown)
 
-    /** The key of the newest row with photos of [day]. */
-    fun sectionOf(day: LocalDay): String? = queries.sectionOfDay(day.toEpochDay(), day.toEpochDay()).executeAsOneOrNull()
+    /**
+     * The key of the newest row with photos of [day]: the row [timeline] gives the day. A row's days reach further than
+     * its shown photos (a recording into the next day, photos of a hidden source), so a newer row may take in the day
+     * without showing any of it; that one only when no row shows the day.
+     */
+    fun sectionOf(day: LocalDay): String? {
+        val epochDay = day.toEpochDay()
+        val rows = queries.sectionsOfDay(epochDay).executeAsList()
+        val shown = rows.firstOrNull { row -> row.day_counts.split(",").any { it.substringBefore(":") == epochDay.toString() } }
+        return (shown ?: rows.firstOrNull())?.key
+    }
 
     /** The months and days of the whole feed, from each row's photos per day: the timeline, without reading a row. */
     fun timeline(): FeedTimeline {

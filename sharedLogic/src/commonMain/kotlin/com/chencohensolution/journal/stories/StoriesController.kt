@@ -134,7 +134,6 @@ class StoriesController internal constructor(
         }
         scope.launch {
             outsideChanges.collect {
-                val startedAt = version
                 // From the database: the notes' photos and those screens asked for read again (their statuses, or
                 // gone). Then what changed outside the library marks its days, the rows of the marked days are made
                 // again and the rows shown so far read again. Not before the caches are read, so the rows are made
@@ -144,6 +143,9 @@ class StoriesController internal constructor(
                     markChangedDays(feed)
                     pagedFeed = feed.refresh(feedContext(), revealed, shownRow)
                 }
+                // Shown unless another state is published while this one is built (an edit, rows read further down);
+                // one published before now was made from no more than this one is.
+                val startedAt = version
                 val inputs = inputs()
                 rebuilds++
                 val built = withContext(background) { Measure.time({ "Moments rebuilt" }) { inputs.build() } }
@@ -384,8 +386,7 @@ class StoriesController internal constructor(
         val pager = feed ?: return
         scope.launch {
             val more = pager.loadMore(feedContext(), revealed, shownRow) ?: return@launch
-            pagedFeed = more
-            _state.value = _state.value.copy(feed = more)
+            showPaged(more)
         }
     }
 
@@ -396,15 +397,22 @@ class StoriesController internal constructor(
     fun loadMomentsTo(day: LocalDay, onLoaded: (String?) -> Unit) {
         val pager = feed ?: return onLoaded(null)
         scope.launch {
-            val key = pager.sectionOf(day)
-            if (key != null) {
-                pager.loadTo(key, feedContext(), revealed, shownRow)?.let { more ->
-                    pagedFeed = more
-                    _state.value = _state.value.copy(feed = more)
-                }
-            }
-            onLoaded(key)
+            val jump = pager.loadTo(day, feedContext(), revealed, shownRow)
+            jump.feed?.let { showPaged(it) }
+            onLoaded(jump.key)
         }
+    }
+
+    /**
+     * Publishes the rows read [more], built off the main thread like a rebuild. A rebuild already going, made from the
+     * rows read before, is not shown after it (it would take the new rows away again, and a jump to them with it).
+     */
+    private suspend fun showPaged(more: MomentsFeed) {
+        pagedFeed = more
+        val startedAt = ++version
+        val inputs = inputs()
+        val built = withContext(background) { inputs.build() }
+        if (version == startedAt) show(built)
     }
 
     /**

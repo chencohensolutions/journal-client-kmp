@@ -289,7 +289,61 @@ class FeedPagerTest {
         val old = wholeSections[wholeSections.size - 3]
         val key = pager.sectionOf(old.days.first())!!
         assertEquals(old.key, key)
-        val down = pager.loadTo(key, context, emptySet()) { it.item }!!
-        assertTrue(down.entries.any { (it as FeedEntry.Section).section.key == old.key })
+        val jump = pager.loadTo(old.days.first(), context, emptySet()) { it.item }
+        assertEquals(old.key, jump.key)
+        assertTrue(jump.feed!!.entries.any { (it as FeedEntry.Section).section.key == old.key })
+    }
+
+    /**
+     * Going to a date (the owner, Oct 26, 2026: the month ruler didn't always go to the day tapped): every day of the
+     * timeline is in the row its key names, and reading down to the day ([FeedPager.sectionOf], [FeedPager.loadTo])
+     * reads that row, also after rows are made again. With hidden sources and recordings a row's days reach past its
+     * shown photos, which once sent a day to the row next to it.
+     */
+    @Test
+    fun everyDayOfTheTimelineGoesToItsRow() = kotlinx.coroutines.test.runTest {
+        repeat(8) { seed ->
+            val library = library(seed)
+            val database = testLibraryDatabase()
+            val queries = database.libraryQueries
+            database.transaction { library.items.forEach { queries.upsertLibraryItem(it.toLibraryRow()) } }
+            val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6) else TimelineGrouping(GroupingMode.BY_DAY)
+            val shown = ShownSources(hidden = if (seed % 4 < 2) setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) else emptySet())
+            val context = com.chencohensolution.journal.stories.FeedContext(
+                shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, library.sounds, "v",
+            )
+            val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher(testScheduler)
+            val table = com.chencohensolution.journal.stories.FeedTable(database)
+            val pager = com.chencohensolution.journal.stories.FeedPager(
+                table, com.chencohensolution.journal.library.LibraryTable(database), dispatcher, pageSize = { 5 },
+            )
+            val random = Random(seed)
+            repeat(3) { round ->
+                val feed = pager.refresh(context, emptySet()) { it.item }
+                val timeline = feed.timeline
+                assertEquals(table.timeline().months, timeline.months, "seed $seed round $round: the timeline is the table's")
+                val days = timeline.months.flatMap { it.days }
+                assertTrue(days.size > 10, "seed $seed: days")
+                // Days far down and days already read, newest to oldest and back.
+                val picked = days.filterIndexed { i, _ -> i % 3 == round % 3 }
+                (picked + picked.reversed()).forEach { day ->
+                    val case = "seed $seed round $round ${day.day}"
+                    assertEquals(day.sectionKey, pager.sectionOf(day.day), "$case: sectionOf is the timeline's row")
+                    val jump = pager.loadTo(day.day, context, emptySet()) { it.item }
+                    assertEquals(day.sectionKey, jump.key, "$case: loadTo lands on the timeline's row")
+                    val read = jump.feed ?: pager.refresh(context, emptySet()) { it.item }
+                    val row = read.entries.map { (it as FeedEntry.Section).section }.firstOrNull { it.key == day.sectionKey }
+                    assertTrue(row != null, "$case: the row is read")
+                    assertTrue(row.items.any { it.day == day.day }, "$case: the row has the day's photos")
+                }
+                // Some photos moved and some new: rows are made again, their keys may change.
+                database.transaction {
+                    library.items.filter { random.nextInt(15) == 0 }.forEach { item ->
+                        val at = item.takenAtMillis + random.nextLong(-30 * HOUR, 30 * HOUR)
+                        queries.upsertLibraryItem(item.copy(takenAtMillis = at, day = LocalDay.fromEpochDay(at / 86_400_000L)).toLibraryRow())
+                    }
+                }
+            }
+        }
     }
 }

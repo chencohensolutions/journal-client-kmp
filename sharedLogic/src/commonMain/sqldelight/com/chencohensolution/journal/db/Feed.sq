@@ -104,9 +104,10 @@ SELECT key, day_counts FROM feed_section ORDER BY newest_millis DESC, key ASC;
 sectionsDownTo:
 SELECT * FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM feed_section WHERE key = ?) ORDER BY newest_millis DESC, key ASC;
 
--- The key of the row a photo is in (its own day, or the day of the set it was merged into).
-sectionOfDay:
-SELECT key FROM feed_section WHERE first_day <= ? AND last_day >= ? ORDER BY newest_millis DESC LIMIT 1;
+-- The rows whose days reach over this day, in the feed's order, with their photos per day: the one a photo is in (its
+-- own day, or the day of the set it was merged into) is the first with photos of the day, as the timeline has it.
+sectionsOfDay:
+SELECT key, day_counts FROM feed_section WHERE first_day <= :day AND last_day >= :day ORDER BY newest_millis DESC, key ASC;
 
 feedSounds:
 SELECT * FROM feed_sound;

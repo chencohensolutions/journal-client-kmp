@@ -23,6 +23,7 @@ import com.chencohensolution.journal.stories.FeedPager
 import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.StoriesController
+import com.chencohensolution.journal.stories.itemsById
 import com.chencohensolution.journal.library.LibraryTable
 import com.chencohensolution.journal.library.LibraryUpdate
 import com.chencohensolution.journal.library.LocalDay
@@ -363,6 +364,67 @@ class LibraryTableTest {
         stories.loadMomentsToItem("2")
         advanceUntilIdle()
         assertTrue(stories.currentState.feed.entries.any { entry -> (entry as FeedEntry.Section).section.items.any { it.id == "2" } })
+        stories.close()
+        settings.close()
+        library.close()
+    }
+
+    /**
+     * Going to a date while Moments is being made again (the owner, Oct 26, 2026: the month ruler didn't always go to
+     * the day): the rows read down to the day stay in the feed, a state made from the rows read before never takes
+     * their place, and the row the callback names is in the feed when it is called.
+     */
+    @Test
+    fun goingToADayKeepsItsRowsThroughARebuild() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val first = LocalDay(2026, 1, 1)
+        val device = (0 until 400).map { n ->
+            val day = first.plusDays((n / 2).toLong())
+            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
+        }
+        val database = testLibraryDatabase()
+        fun store() = object : KeyValueStore {
+            private val values = mutableMapOf<String, String>()
+            override fun getString(key: String): String? = values[key]
+            override fun putString(key: String, value: String?) {
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+        val library = LibraryController(
+            StoredMediaLibrary(TableTestLibrary(device), database, dispatcher), JournalSettings(store()), dispatcher, table = LibraryTable(database),
+        )
+        val settings = SettingsController(JournalSettings(store()), dispatcher)
+        val stories = StoriesController(
+            noteStore = FilePhotoNoteStore(FakeFileSystem(), "/data/journal".toPath()),
+            library = library,
+            settings = settings,
+            newId = { "set" },
+            dispatcher = dispatcher,
+            feed = FeedPager(FeedTable(database), LibraryTable(database), dispatcher, pageSize = { 3 }),
+            shownRow = library::shownRow,
+        )
+        library.refresh()
+        advanceUntilIdle()
+        val timeline = stories.currentState.feed.timeline
+        val days = timeline.months.flatMap { it.days }
+        assertEquals(200, days.size)
+        fun keys() = stories.currentState.feed.entries.map { (it as FeedEntry.Section).section.key }.toSet()
+        // Far down, then back up to a day read already, then further down; each while the rows are made again.
+        listOf(150, 40, 199, 120).forEachIndexed { i, index ->
+            val day = days[index]
+            var landed: String? = null
+            var inFeed = false
+            if (i % 2 == 0) stories.showOnRow("none", MediaSource.WHATSAPP) else stories.hideOnRow("none", MediaSource.WHATSAPP)
+            stories.loadMomentsTo(day.day) { key ->
+                landed = key
+                inFeed = key in keys()
+            }
+            advanceUntilIdle()
+            assertEquals(day.sectionKey, landed, "${day.day}: the timeline's row")
+            assertTrue(inFeed, "${day.day}: in the feed when called back")
+            assertTrue(day.sectionKey in keys(), "${day.day}: still in the feed")
+            assertTrue(stories.currentState.itemsById.keys.containsAll(stories.currentState.feed.itemsById().keys), "${day.day}: its photos by id")
+        }
         stories.close()
         settings.close()
         library.close()

@@ -95,6 +95,10 @@ struct JournalHomeView: View {
     @State private var topSection: String?
     /// The pill, ruler or day strip asked for a row.
     @State private var jump: RowJump?
+    /// A row going to a date read further down, by its key: gone to once the feed's rows have it.
+    @State private var jumpWait: String?
+    /// Which tap on the timeline asked last: a read that comes back after a later tap doesn't go anywhere.
+    @State private var jumpsAsked = 0
     /// Each feed row's id to its place in the feed and its section's key, worked out once per feed.
     @State private var rowSections: [String: (index: Int, section: String)] = [:]
     /// The photo "Show in Moments" lands on, once its row is read (`showInMoments` asks for it).
@@ -224,6 +228,11 @@ struct JournalHomeView: View {
         .onChange(of: stories.feed, initial: true) {
             rows = stories.feed.rows
             rowSections = rows.sectionKeys
+            // A date gone to lands on its row once the rows have it, on the next turn so the stack has them first.
+            if let wait = jumpWait, rowSections["heading-\(wait)"] != nil {
+                jumpWait = nil
+                goTo(section: wait)
+            }
             // A photo shown in Moments lands on its row once it is read.
             if let wait = landingWait {
                 if rows.place(of: wait.request.itemId) != nil {
@@ -336,14 +345,22 @@ struct JournalHomeView: View {
                         // A jump doesn't report the rows it scrolled past, so the pill learns its month here.
                         topSection = day.sectionKey
                         jumpedAt = Date()
+                        jumpWait = nil
+                        jumpsAsked += 1
+                        let asked = jumpsAsked
                         if rowSections["heading-\(day.sectionKey)"] != nil {
                             jump = RowJump(rowId: "heading-\(day.sectionKey)")
                         } else {
-                            // A row not read yet is read first (down to it), then gone to.
+                            // A row not read yet is read first (down to it), then gone to by the key the read names:
+                            // the rows may have been made again since this timeline, with other keys. The feed with
+                            // the rows read comes after this callback, so the jump waits for it when it isn't in yet.
                             actions.loadMomentsTo(day.day) { key in
-                                guard let key else { return }
-                                jumpedAt = Date()
-                                DispatchQueue.main.async { jump = RowJump(rowId: "heading-\(key)") }
+                                guard let key, asked == jumpsAsked else { return }
+                                if rowSections["heading-\(key)"] != nil {
+                                    goTo(section: key)
+                                } else {
+                                    jumpWait = key
+                                }
                             }
                         }
                     }
@@ -438,6 +455,13 @@ struct JournalHomeView: View {
     }
 
     /// The photos of the picked sets and photos, in the feed's order.
+    /// Goes to the Moments row `section` (a date gone to), on the next turn so a row just read is laid out first.
+    private func goTo(section: String) {
+        topSection = section
+        jumpedAt = Date()
+        DispatchQueue.main.async { jump = RowJump(rowId: "heading-\(section)") }
+    }
+
     private func merge() {
         let ids = rows.flatMap { row -> [String] in
             guard case .photo(_, let block, _) = row, selection.contains(block.key) else { return [] }
