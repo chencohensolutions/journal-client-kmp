@@ -180,6 +180,9 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
+        settingsOptionA,
+        settingsOptionB,
+        settingsOptionC,
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },

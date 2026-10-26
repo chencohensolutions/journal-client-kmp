@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, Settings option b (sliders on the first page). Moves to the app's strings, without the settings_b_ prefix, if chosen. -->
+<resources>
+    <string name="settings_b_advanced_title">Advanced</string>
+    <string name="settings_b_rows_title">Moments: rows loaded at a time</string>
+    <string name="settings_b_rows_body">More: fewer pauses when scrolling far, more memory.</string>
+    <string name="settings_b_ahead_title">Moments: load ahead</string>
+    <string name="settings_b_ahead_body">Rows before the end of what is loaded when the next rows start loading. More: smoother fast scrolling.</string>
+    <string name="settings_b_note">Only on this phone. Moments starts again where you are when either is changed.</string>
+    <string name="settings_b_reset">Reset to %1$d and %2$d</string>
+</resources>

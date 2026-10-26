@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, Settings option a (Advanced page). Moves to the app's strings, without the settings_a_ prefix, if chosen. -->
+<resources>
+    <string name="settings_a_advanced_title">Advanced</string>
+    <string name="settings_a_row_title">Loading Moments</string>
+    <string name="settings_a_row_body">%1$d rows at a time · %2$d ahead</string>
+    <string name="settings_a_rows_title">Rows loaded at a time</string>
+    <string name="settings_a_rows_body">More: fewer pauses when scrolling far, more memory.</string>
+    <string name="settings_a_ahead_title">Load ahead</string>
+    <string name="settings_a_ahead_body">How many rows before the end of what is loaded the next rows start loading. More: smoother fast scrolling.</string>
+    <string name="settings_a_default_chip">%d (default)</string>
+    <string name="settings_a_note">Only on this phone. Moments starts again where you are when either is changed.</string>
+    <string name="settings_a_reset">Reset to 30 and 40</string>
+</resources>
