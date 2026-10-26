@@ -9,6 +9,10 @@ import com.chencohensolution.journal.local.TableHead
 import com.chencohensolution.journal.local.TextTable
 import com.chencohensolution.journal.local.VectorTable
 import com.chencohensolution.journal.local.hexBytes
+import com.chencohensolution.journal.local.ocrFind
+import com.chencohensolution.journal.local.ocrMatches
+import com.chencohensolution.journal.local.ocrWords
+import com.chencohensolution.journal.local.wordIndex
 import com.chencohensolution.journal.local.readStream
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.test.runTest
@@ -225,6 +229,155 @@ class LocalIndexTest {
         val text = LocalTable.of(TableHead(index = "ocr", model = "m", format = "jsonl", dim = 0), fs, "/".toPath()) as TextTable
         text.put("""{"sha256":"${sha('a')}","lines":[{"text":"קבלה","box":[0,0,1,1],"score":0.9}]}""".encodeToByteArray())
         text.save(fs, "/t.bin".toPath())
-        assertEquals(listOf("קבלה"), (LocalTable.load(fs, "/t.bin".toPath()) as TextTable).lines[sha('a')])
+        assertEquals(listOf("קבלה"), (LocalTable.load(fs, "/t.bin".toPath()) as TextTable).lines(sha('a')))
+    }
+
+    private val ocrFolder = "/local/ocr".toPath()
+    private val ocrTable = ocrFolder / "table.bin"
+    private val textHead = TableHead(index = "ocr", model = "m", format = "jsonl", dim = 0)
+
+    private fun textRecord(sha: String, vararg lines: String) =
+        """{"sha256":"$sha","lines":[${lines.joinToString(",") { """{"text":"$it","score":0.9}""" }}]}""".encodeToByteArray()
+
+    /** Text in photos through downloads that add, replace and drop files: what is read back is what was kept. */
+    @Test
+    fun textIsReadFromItsFileThroughAppendsDropsAndCompaction() {
+        val fs = FakeFileSystem()
+        val random = kotlin.random.Random(3)
+        var table = LocalTable.of(textHead, fs, ocrFolder) as TextTable
+        val kept = HashMap<String, List<String>>()
+        fun shaOf(n: Int) = n.toString(16).padStart(64, '0')
+        val words = listOf("קבלה", "בקבלה", "total", "receipt", "חלב", "וחלב", "12", "90", "שלום", "milk")
+        repeat(3) { round ->
+            for (n in 0 until 6000) {
+                if (random.nextInt(3) == 0 && round > 0) {
+                    table.drop(shaOf(n))
+                    kept.remove(shaOf(n))
+                } else if (round == 0 || random.nextBoolean()) {
+                    // Most files read have no text.
+                    val lines = List(if (random.nextInt(3) == 0) random.nextInt(1, 6) else 0) {
+                        List(random.nextInt(1, 5)) { words[random.nextInt(words.size)] }.joinToString(" ")
+                    }
+                    table.put(textRecord(shaOf(n), *lines.toTypedArray()))
+                    kept[shaOf(n)] = lines
+                }
+            }
+            table.save(fs, ocrTable)
+            table = LocalTable.load(fs, ocrTable) as TextTable
+            assertEquals(kept.size, table.size, "round $round")
+        }
+        for (n in 0 until 6000) assertEquals(kept[shaOf(n)], table.lines(shaOf(n)), "lines of $n")
+        assertEquals(kept.isNotEmpty(), table.has(kept.keys.first()))
+        // Compaction left one file of only the rows kept.
+        assertEquals(setOf("text.json"), fs.list(ocrFolder).map { it.name }.filter { !it.endsWith(".bin") }.toSet())
+        assertEquals(1, fs.list(ocrFolder).count { it.name.endsWith(".bin") })
+        // The words read from the file find what the words of the lines kept find.
+        val fromFile = wordIndex(table)
+        val fromKept = wordIndex(kept)
+        for (query in listOf("קבלה", "total 12", "חלב", "rec", "שלום milk", "nothing")) {
+            assertEquals(ocrFind(fromKept, query) { true }, ocrFind(fromFile, query) { true }, query)
+        }
+    }
+
+    /** A text download cut off after appending rows: they are kept; half a row at the end is cut off. */
+    @Test
+    fun textRowsPastTheLastSaveAreKeptAndHalfARowIsCutOff() {
+        val fs = FakeFileSystem()
+        val table = LocalTable.of(textHead, fs, ocrFolder) as TextTable
+        table.put(textRecord(sha('a'), "one"))
+        table.save(fs, ocrTable)
+        table.put(textRecord(sha('b'), "two", "שתיים"))
+        table.flush()
+        fs.appendingSink(ocrFolder / "text-1.bin").buffer().use { it.write(hexBytes(sha('c'))).writeIntLe(100).write(ByteArray(10)) }
+        val loaded = LocalTable.load(fs, ocrTable) as TextTable
+        assertEquals(2, loaded.size)
+        assertEquals(listOf("two", "שתיים"), loaded.lines(sha('b')))
+        loaded.put(textRecord(sha('c'), "three"))
+        loaded.drop(sha('a'))
+        loaded.save(fs, ocrTable)
+        val again = LocalTable.load(fs, ocrTable) as TextTable
+        assertEquals(listOf("three"), again.lines(sha('c')))
+        assertNull(again.lines(sha('a')))
+        assertEquals(2, again.size)
+    }
+
+    /** Text an earlier version saved whole in table.bin is moved into its own file once, without downloading. */
+    @Test
+    fun anEarlierWholeTextTableIsMovedIntoItsOwnFile() {
+        val fs = FakeFileSystem()
+        fs.createDirectories(ocrFolder)
+        fs.write(ocrTable) {
+            writeUtf8("""{"v":1,"index":"ocr","model":"m","format":"jsonl","dim":0,"cursor":"c4"}""" + "\n")
+            writeUtf8("""{"sha256":"${sha('a')}","lines":[{"text":"קבלה מס׳ 4521"},{"text":"סה״כ 89.90"}]}""" + "\n")
+            writeUtf8("""{"sha256":"${sha('b')}","lines":[]}""" + "\n")
+        }
+        val table = LocalTable.load(fs, ocrTable) as TextTable
+        assertEquals("c4", table.head.cursor)
+        assertEquals(listOf("קבלה מס׳ 4521", "סה״כ 89.90"), table.lines(sha('a')))
+        // A file read and found without text is kept too: it counts as read.
+        assertEquals(emptyList(), table.lines(sha('b')))
+        assertEquals(2, table.size)
+        assertTrue(!fs.exists(ocrTable))
+        val again = LocalTable.load(fs, ocrTable) as TextTable
+        assertEquals(2, again.size)
+        assertEquals(listOf(sha('a')), ocrFind(wordIndex(again), "4521") { true })
+    }
+
+    /** A stream that starts again from nothing: an empty table whose file replaces the old at saving. */
+    @Test
+    fun clearedTextStartsANewFile() {
+        val fs = FakeFileSystem()
+        val table = LocalTable.of(textHead, fs, ocrFolder) as TextTable
+        table.put(textRecord(sha('a'), "one"))
+        table.save(fs, ocrTable)
+        table.clear()
+        table.put(textRecord(sha('b'), "two"))
+        table.save(fs, ocrTable)
+        assertEquals(setOf("text.json", "text-2.bin"), fs.list(ocrFolder).map { it.name }.toSet())
+        val loaded = LocalTable.load(fs, ocrTable) as TextTable
+        assertEquals(1, loaded.size)
+        assertNull(loaded.lines(sha('a')))
+        assertEquals(listOf("two"), loaded.lines(sha('b')))
+    }
+
+    /** The compact words find what maps of every word's files found (the code before), counts of 255 and more too. */
+    @Test
+    fun compactWordsFindAsPlainMapsDo() {
+        val random = kotlin.random.Random(5)
+        val vocabulary = listOf("קבלה", "בקבלה", "ובקבלה", "שבבקבלה", "קבלות", "rec", "receipt", "RECEIPT", "חלב", "וחלב", "4521", "a", "ab", "abc", "abcd")
+        val lines = HashMap<String, List<String>>()
+        for (n in 0 until 400) {
+            lines[n.toString(16).padStart(64, '0')] = List(random.nextInt(0, 4)) {
+                List(random.nextInt(1, 6)) { vocabulary[random.nextInt(vocabulary.size)] }.joinToString(" ")
+            }
+        }
+        lines[sha('f')] = listOf(List(300) { "קבלה" }.joinToString(" "))
+        val plain = HashMap<String, HashMap<String, Int>>()
+        for ((sha, text) in lines) for (line in text) for (w in ocrWords(line)) {
+            val files = plain.getOrPut(w) { HashMap() }
+            files[sha] = (files[sha] ?: 0) + 1
+        }
+        fun plainFind(query: String): List<String> {
+            var counts: Map<String, Int>? = null
+            for (token in ocrWords(query)) {
+                val these = HashMap<String, Int>()
+                for ((w, shas) in plain) {
+                    if (!ocrMatches(w, token)) continue
+                    for ((sha, n) in shas) if (counts == null || (counts[sha] ?: 0) > 0) these[sha] = (these[sha] ?: 0) + n
+                }
+                for ((sha, n) in these.toList()) these[sha] = n + (counts?.get(sha) ?: 0)
+                counts = these
+                if (counts.isEmpty()) return emptyList()
+            }
+            val c = counts ?: return emptyList()
+            return c.keys.sortedWith(compareByDescending<String> { c[it] }.thenBy { it })
+        }
+        val words = wordIndex(lines)
+        for (query in vocabulary + listOf("קבלה rec", "קבלה קבלה", "abc ab", "nothing", "ab", "")) {
+            assertEquals(plainFind(query), ocrFind(words, query) { true }, query)
+        }
+        assertEquals(sha('f'), ocrFind(words, "קבלה") { true }.first())
+        // What keep refuses is left out.
+        assertEquals(plainFind("rec").filter { it != sha('f') && it.startsWith("0") }, ocrFind(words, "rec") { it.startsWith("0") })
     }
 }

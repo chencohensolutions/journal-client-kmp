@@ -71,20 +71,25 @@ internal sealed class LocalTable(var head: TableHead) {
     companion object {
         internal val json = Json { ignoreUnknownKeys = true }
 
-        /** The table of [head]'s format: vectors (dim 1: scores; the others kept in files in [folder]), faces or text. */
+        /**
+         * The table of [head]'s format: vectors (dim 1: scores; the others kept in files in [folder]), faces or text (kept
+         * in files in [folder]).
+         */
         fun of(head: TableHead, fileSystem: FileSystem, folder: Path): LocalTable = when (head.format) {
             FORMAT_FACES -> FaceTable(head)
-            FORMAT_JSONL -> TextTable(head)
+            FORMAT_JSONL -> TextTable.create(head, fileSystem, folder)
             else -> if (head.dim == 1) ScoreTable(head) else VectorTable.create(head, fileSystem, folder)
         }
 
         /**
-         * The table saved at [path] (or, for vectors, in its folder); null when there is none or it can't be read (it is
-         * downloaded again). Vectors saved whole in [path] by an earlier version are moved into their own file once.
+         * The table saved at [path] (or, for vectors and text, in its folder); null when there is none or it can't be read
+         * (it is downloaded again). Vectors or text saved whole in [path] by an earlier version are moved into their own
+         * file once.
          */
         fun load(fileSystem: FileSystem, path: Path): LocalTable? = runCatching {
             val folder = path.parent!!
             VectorTable.open(fileSystem, folder)?.let { return it }
+            TextTable.open(fileSystem, folder)?.let { return it }
             if (!fileSystem.exists(path)) return null
             val table = fileSystem.read(path) {
                 val head = json.decodeFromString(TableHead.serializer(), readUtf8LineStrict())
@@ -92,7 +97,7 @@ internal sealed class LocalTable(var head: TableHead) {
                 if (head.format == FORMAT_FACES && head.v < FaceTable.VERSION) return null
                 of(head, fileSystem, folder).also { it.readRows(this) }
             }
-            if (table is VectorTable) {
+            if (table is VectorTable || table is TextTable) {
                 table.save(fileSystem, path)
                 fileSystem.delete(path)
             }
@@ -264,7 +269,7 @@ internal class VectorTable private constructor(
         val temp = folder / "$HEAD_FILE.tmp"
         fileSystem.createDirectories(folder)
         if (!fileSystem.exists(file)) fileSystem.write(file) {}
-        fileSystem.write(temp) { writeUtf8(json.encodeToString(VectorFiles.serializer(), VectorFiles(file.name, head))) }
+        fileSystem.write(temp) { writeUtf8(json.encodeToString(TableFiles.serializer(), TableFiles(file.name, head))) }
         fileSystem.atomicMove(temp, folder / HEAD_FILE)
         for (other in fileSystem.list(folder)) {
             if (other.name != file.name && other.name.startsWith(FILE_PREFIX) && other.name.endsWith(".bin")) fileSystem.delete(other)
@@ -430,7 +435,7 @@ internal class VectorTable private constructor(
         fun open(fileSystem: FileSystem, folder: Path): VectorTable? {
             val headPath = folder / HEAD_FILE
             if (!fileSystem.exists(headPath)) return null
-            val saved = json.decodeFromString(VectorFiles.serializer(), fileSystem.read(headPath) { readUtf8() })
+            val saved = json.decodeFromString(TableFiles.serializer(), fileSystem.read(headPath) { readUtf8() })
             val file = folder / saved.file
             val rowBytes = ROW_HEAD + saved.head.dim
             if (!fileSystem.exists(file)) return null
@@ -445,57 +450,8 @@ internal class VectorTable private constructor(
         private fun emptyRows(fileSystem: FileSystem, folder: Path) =
             Rows(nextFile(fileSystem, folder), 0, ByteArray(0), BooleanArray(0), IntArray(slotsFor(0)), 0)
 
-        /** A file name in [folder] not used yet: one more than the highest. */
-        private fun nextFile(fileSystem: FileSystem, folder: Path): Path {
-            val used = fileSystem.listOrNull(folder).orEmpty().mapNotNull { it.name.removePrefix(FILE_PREFIX).removeSuffix(".bin").toIntOrNull() }
-            return folder / "$FILE_PREFIX${(used.maxOrNull() ?: 0) + 1}.bin"
-        }
+        private fun nextFile(fileSystem: FileSystem, folder: Path) = nextFile(fileSystem, folder, FILE_PREFIX)
 
-        private fun slotsFor(rows: Int): Int {
-            var size = 64
-            while (size < rows * 2 + 2) size *= 2
-            return size
-        }
-
-        /** All 32 bytes mixed, so sha256s alike in part (made-up ones in tests) don't crowd one place. */
-        private fun hashOf(shas: ByteArray, at: Int): Int {
-            // FNV-1a, then MurmurHash3's finish to spread the bits.
-            var h = 0x811C9DC5.toInt()
-            for (i in at until at + 32) h = (h xor (shas[i].toInt() and 0xFF)) * 0x01000193
-            h = (h xor (h ushr 16)) * 0x85EBCA6B.toInt()
-            h = (h xor (h ushr 13)) * 0xC2B2AE35.toInt()
-            return h xor (h ushr 16)
-        }
-
-        private fun sameSha(shas: ByteArray, row: Int, sha: ByteArray, from: Int = 0): Boolean {
-            for (i in 0 until 32) if (shas[row * 32 + i] != sha[from + i]) return false
-            return true
-        }
-
-        private fun findIn(slots: IntArray, shas: ByteArray, sha: ByteArray): Int {
-            val mask = slots.size - 1
-            var i = hashOf(sha, 0) and mask
-            while (true) {
-                val row = slots[i] - 1
-                if (row < 0) return -1
-                if (sameSha(shas, row, sha)) return row
-                i = (i + 1) and mask
-            }
-        }
-
-        /** Points [row]'s sha256 at [row] (its latest). */
-        private fun place(slots: IntArray, shas: ByteArray, row: Int) {
-            val mask = slots.size - 1
-            var i = hashOf(shas, row * 32) and mask
-            while (true) {
-                val there = slots[i] - 1
-                if (there < 0 || sameSha(shas, there, shas, row * 32)) {
-                    slots[i] = row + 1
-                    return
-                }
-                i = (i + 1) and mask
-            }
-        }
     }
 
     /** Reads the rows of [file] (sha256 and scale of each) into the table's rows. */
@@ -524,9 +480,65 @@ internal class VectorTable private constructor(
     }
 }
 
-/** `vectors.json`: which file of the folder is current, and the table's head. */
+/** `vectors.json` or `text.json`: which file of the folder is current, and the table's head. */
 @Serializable
-private data class VectorFiles(val file: String, val head: TableHead)
+private data class TableFiles(val file: String, val head: TableHead)
+
+/** A file name in [folder] not used yet: [prefix] and one more than the highest. */
+private fun nextFile(fileSystem: FileSystem, folder: Path, prefix: String): Path {
+    val used = fileSystem.listOrNull(folder).orEmpty().mapNotNull { it.name.removePrefix(prefix).removeSuffix(".bin").toIntOrNull() }
+    return folder / "$prefix${(used.maxOrNull() ?: 0) + 1}.bin"
+}
+
+// The row index the tables on disk share: each row's sha256 in one array, and an open-addressing hash from a sha256 to
+// its latest row.
+
+private fun slotsFor(rows: Int): Int {
+    var size = 64
+    while (size < rows * 2 + 2) size *= 2
+    return size
+}
+
+/** All 32 bytes mixed, so sha256s alike in part (made-up ones in tests) don't crowd one place. */
+private fun hashOf(shas: ByteArray, at: Int): Int {
+    // FNV-1a, then MurmurHash3's finish to spread the bits.
+    var h = 0x811C9DC5.toInt()
+    for (i in at until at + 32) h = (h xor (shas[i].toInt() and 0xFF)) * 0x01000193
+    h = (h xor (h ushr 16)) * 0x85EBCA6B.toInt()
+    h = (h xor (h ushr 13)) * 0xC2B2AE35.toInt()
+    return h xor (h ushr 16)
+}
+
+private fun sameSha(shas: ByteArray, row: Int, sha: ByteArray, from: Int = 0): Boolean {
+    for (i in 0 until 32) if (shas[row * 32 + i] != sha[from + i]) return false
+    return true
+}
+
+/** The latest row of the sha256 at [from] of [sha]; -1 when it has none. */
+private fun findIn(slots: IntArray, shas: ByteArray, sha: ByteArray, from: Int = 0): Int {
+    val mask = slots.size - 1
+    var i = hashOf(sha, from) and mask
+    while (true) {
+        val row = slots[i] - 1
+        if (row < 0) return -1
+        if (sameSha(shas, row, sha, from)) return row
+        i = (i + 1) and mask
+    }
+}
+
+/** Points [row]'s sha256 at [row] (its latest). */
+private fun place(slots: IntArray, shas: ByteArray, row: Int) {
+    val mask = slots.size - 1
+    var i = hashOf(shas, row * 32) and mask
+    while (true) {
+        val there = slots[i] - 1
+        if (there < 0 || sameSha(shas, there, shas, row * 32)) {
+            slots[i] = row + 1
+            return
+        }
+        i = (i + 1) and mask
+    }
+}
 
 /** Reads exactly [length] bytes at [offset] of the file into [target]. */
 private fun FileHandle.readFully(offset: Long, target: ByteArray, length: Int) {
@@ -808,39 +820,338 @@ private data class TextRecord(val sha256: String, val lines: List<TextLine> = em
 @Serializable
 private data class TextLine(val text: String = "")
 
-/** Text in photos: each file's lines, and its words (as [ocrWords] makes them) to find files by. */
-internal class TextTable(head: TableHead) : LocalTable(head) {
-    val lines = HashMap<String, List<String>>()
+/**
+ * Text in photos: each file's lines, in a file of their own that is read, not held (plan B phase 7): in memory is only
+ * which row of the file is which file's and where it starts, about 60 bytes a file (6 MB for 95,000 photos, whose lines
+ * took 45 MB held whole). A photo's lines are read when asked for ([lines]); search reads the whole file once to make
+ * its words ([TextWords]).
+ *
+ * The file, `text-<n>.bin` in [folder], is rows of the sha256, the length of what follows (-1: the file was dropped)
+ * and the file's lines, each as its length and its UTF-8 bytes (a file read and found without text has none). A later
+ * row of a file replaces an earlier one. As with [VectorTable], what changes is appended a few thousand rows at a time
+ * ([flush]), [save] writes the file again without the rows replaced once they are an eighth of it, and `text.json`
+ * beside it has the head and which file is current. Each append publishes a new [Rows], and a reader reads the rows
+ * of the one it started with, so a download and a search share no lock.
+ */
+internal class TextTable private constructor(
+    head: TableHead,
+    private val fileSystem: FileSystem,
+    private val folder: Path,
+    rows: Rows,
+) : LocalTable(head) {
+    /** Which file's each row is, where it starts, whether it is current, and each file's latest row. Never changed once made. */
+    private class Rows(
+        val file: Path,
+        val count: Int,
+        val shas: ByteArray,
+        /** Where each row starts in the file. */
+        val starts: LongArray,
+        /** Where the last row ends: the file's length. */
+        val end: Long,
+        val current: BooleanArray,
+        /** Open addressing: row + 1 of each file's latest row, by its sha256; 0 is empty. */
+        val slots: IntArray,
+        val live: Int,
+    ) {
+        /** The latest row of [sha], current or dropped; -1 when it has none. */
+        fun find(sha: ByteArray): Int = findIn(slots, shas, sha)
 
-    override val size: Int get() = lines.size
+        /** The whole of row [r]: sha256, length and lines. */
+        fun bytes(r: Int): Long = (if (r + 1 < count) starts[r + 1] else end) - starts[r]
+    }
 
-    override fun has(sha256: String) = sha256 in lines
+    @Volatile
+    private var rows: Rows = rows
 
+    /** Rows waiting to be appended: sha256 and lines as the file keeps them (null: dropped). */
+    private class Pending(val sha: ByteArray, val lines: ByteArray?)
+
+    private val pending = ArrayList<Pending>()
+
+    /** The files kept, as of the last [flush]. */
+    override val size: Int get() = rows.live
+
+    override fun has(sha256: String): Boolean {
+        val sha = shaBytes(sha256) ?: return false
+        pending.lastOrNull { it.sha.contentEquals(sha) }?.let { return it.lines != null }
+        val now = rows
+        val row = now.find(sha)
+        return row >= 0 && now.current[row]
+    }
+
+    /** A record as the server's cache keeps it: `{"sha256": …, "lines": [{"text": …}, …]}`. */
     override fun put(record: ByteArray) {
         val parsed = runCatching { json.decodeFromString(TextRecord.serializer(), record.decodeToString()) }.getOrNull() ?: return
-        lines[parsed.sha256] = parsed.lines.map { it.text }
+        set(parsed.sha256, parsed.lines.map { it.text })
+    }
+
+    /** Keeps [lines] as [sha256]'s. */
+    fun set(sha256: String, lines: List<String>) {
+        val sha = shaBytes(sha256) ?: return
+        add(Pending(sha, encodeLines(lines)))
     }
 
     override fun drop(sha256: String) {
-        lines.remove(sha256)
+        val sha = shaBytes(sha256) ?: return
+        if (has(sha256)) add(Pending(sha, null))
     }
 
-    override fun clear() = lines.clear()
+    private fun add(row: Pending) {
+        pending += row
+        if (pending.size >= FLUSH_ROWS) flush()
+    }
 
+    /** Starts an empty file; the old one goes at the next [save]. */
+    override fun clear() {
+        pending.clear()
+        rows = emptyRows(fileSystem, folder)
+    }
+
+    /** Appends the rows waiting to the file, then publishes the rows with them. */
+    fun flush() {
+        if (pending.isEmpty()) return
+        val old = rows
+        fileSystem.createDirectories(folder)
+        // Bytes past the rows known (an append cut off half way) would put every later row in the wrong place.
+        val onDisk = fileSystem.metadataOrNull(old.file)?.size ?: 0
+        if (onDisk > old.end) fileSystem.openReadWrite(old.file).use { it.resize(old.end) }
+        val count = old.count + pending.size
+        val shas = old.shas.copyOf(count * 32)
+        val starts = old.starts.copyOf(count)
+        val current = old.current.copyOf(count)
+        var end = old.end
+        fileSystem.appendingSink(old.file).buffer().use { sink ->
+            pending.forEachIndexed { i, row ->
+                starts[old.count + i] = end
+                sink.write(row.sha)
+                sink.writeIntLe(row.lines?.size ?: -1)
+                if (row.lines != null) sink.write(row.lines)
+                end += ROW_HEAD + (row.lines?.size ?: 0)
+            }
+        }
+        var live = old.live
+        val slots = if (count * 2 <= old.slots.size) {
+            old.slots.copyOf()
+        } else {
+            IntArray(slotsFor(count)).also { slots -> for (r in 0 until old.count) if (old.current[r]) place(slots, shas, r) }
+        }
+        pending.forEachIndexed { i, row ->
+            val r = old.count + i
+            row.sha.copyInto(shas, r * 32)
+            val before = findIn(slots, shas, row.sha)
+            if (before >= 0 && current[before]) {
+                current[before] = false
+                live--
+            }
+            if (row.lines != null) {
+                current[r] = true
+                live++
+            }
+            place(slots, shas, r)
+        }
+        pending.clear()
+        rows = Rows(old.file, count, shas, starts, end, current, slots, live)
+    }
+
+    /**
+     * Saves the table in [path]'s folder (the path itself is the other tables'): the rows waiting appended, the file
+     * written again without the rows replaced or dropped once they are an eighth of it, then the head, then the files
+     * no longer current deleted.
+     */
+    override fun save(fileSystem: FileSystem, path: Path) {
+        flush()
+        val now = rows
+        if (now.count - now.live > now.live / 8) compact(now)
+        val file = rows.file
+        val temp = folder / "$HEAD_FILE.tmp"
+        fileSystem.createDirectories(folder)
+        if (!fileSystem.exists(file)) fileSystem.write(file) {}
+        fileSystem.write(temp) { writeUtf8(json.encodeToString(TableFiles.serializer(), TableFiles(file.name, head))) }
+        fileSystem.atomicMove(temp, folder / HEAD_FILE)
+        for (other in fileSystem.list(folder)) {
+            if (other.name != file.name && other.name.startsWith(FILE_PREFIX) && other.name.endsWith(".bin")) fileSystem.delete(other)
+        }
+    }
+
+    /** The current rows of [from] in a new file. */
+    private fun compact(from: Rows) {
+        val target = nextFile(fileSystem, folder, FILE_PREFIX)
+        val shas = ByteArray(from.live * 32)
+        val starts = LongArray(from.live)
+        val current = BooleanArray(from.live) { true }
+        val slots = IntArray(slotsFor(from.live))
+        var count = 0
+        var end = 0L
+        fileSystem.write(target) {
+            forEachRow(from) { _, buffer, length ->
+                write(buffer, 0, length)
+                buffer.copyInto(shas, count * 32, 0, 32)
+                starts[count] = end
+                place(slots, shas, count)
+                end += length
+                count++
+            }
+        }
+        rows = Rows(target, count, shas, starts, end, current, slots, count)
+    }
+
+    override fun bytes(fileSystem: FileSystem, path: Path): Long = fileSystem.metadataOrNull(rows.file)?.size ?: 0
+
+    /** [sha256]'s lines, read from the file; null when it has none (or it is still waiting to be appended). */
+    fun lines(sha256: String): List<String>? {
+        val sha = shaBytes(sha256) ?: return null
+        val now = rows
+        val row = now.find(sha)
+        if (row < 0 || !now.current[row]) return null
+        val length = (now.bytes(row) - ROW_HEAD).toInt()
+        val bytes = ByteArray(length)
+        fileSystem.openReadOnly(now.file).use { it.readFully(now.starts[row] + ROW_HEAD, bytes, length) }
+        return decodeLines(bytes, 0, length)
+    }
+
+    /** Every file kept, as of the last [flush]: its sha256 (32 bytes, good only during the call) and its lines, in the file's order. */
+    fun forEach(each: (sha: ByteArray, lines: List<String>) -> Unit) {
+        val sha = ByteArray(32)
+        forEachRow(rows) { _, buffer, length ->
+            buffer.copyInto(sha, 0, 0, 32)
+            each(sha, decodeLines(buffer, ROW_HEAD, length - ROW_HEAD))
+        }
+    }
+
+    /** Reads [of]'s current rows in order, each whole into a buffer: [each] gets the row, the buffer and its length. */
+    private inline fun forEachRow(of: Rows, each: (Int, ByteArray, Int) -> Unit) {
+        if (of.count == 0) return
+        var buffer = ByteArray(4096)
+        fileSystem.read(of.file) {
+            for (r in 0 until of.count) {
+                val length = of.bytes(r)
+                if (!of.current[r]) {
+                    skip(length)
+                    continue
+                }
+                if (length > buffer.size) buffer = ByteArray(maxOf(length.toInt(), buffer.size * 2))
+                readInto(buffer, 0, length.toInt())
+                each(r, buffer, length.toInt())
+            }
+        }
+    }
+
+    /** Every current row, as the server's records (the table.bin of an earlier version). */
     override fun writeRows(sink: BufferedSink) {
-        for ((sha, text) in lines) {
-            sink.writeUtf8(json.encodeToString(TextRecord.serializer(), TextRecord(sha, text.map(::TextLine))))
+        flush()
+        forEach { sha, lines ->
+            sink.writeUtf8(json.encodeToString(TextRecord.serializer(), TextRecord(sha.hex(), lines.map(::TextLine))))
             sink.writeByte('\n'.code)
         }
     }
 
+    /** Rows as [writeRows] writes them (an earlier version's whole table), added to this one. */
     override fun readRows(source: BufferedSource) {
-        clear()
         while (true) {
             val line = source.readUtf8Line() ?: break
             if (line.isNotBlank()) put(line.encodeToByteArray())
         }
+        flush()
     }
+
+    companion object {
+        /** sha256 and length, before the lines. */
+        private const val ROW_HEAD = 36
+
+        /** Rows a download gathers before appending them. */
+        private const val FLUSH_ROWS = 4096
+
+        private const val HEAD_FILE = "text.json"
+        private const val FILE_PREFIX = "text-"
+
+        /** A new, empty table in [folder] (its file is made when rows come). */
+        fun create(head: TableHead, fileSystem: FileSystem, folder: Path) = TextTable(head, fileSystem, folder, emptyRows(fileSystem, folder))
+
+        private fun emptyRows(fileSystem: FileSystem, folder: Path) =
+            Rows(nextFile(fileSystem, folder, FILE_PREFIX), 0, ByteArray(0), LongArray(0), 0, BooleanArray(0), IntArray(slotsFor(0)), 0)
+
+        /**
+         * The table saved in [folder]; null when there is none. Rows past what was saved last (a download cut off before
+         * its end) are kept, as the stream only sends them again; half a row at the end is cut off.
+         */
+        fun open(fileSystem: FileSystem, folder: Path): TextTable? {
+            val headPath = folder / HEAD_FILE
+            if (!fileSystem.exists(headPath)) return null
+            val saved = json.decodeFromString(TableFiles.serializer(), fileSystem.read(headPath) { readUtf8() })
+            val file = folder / saved.file
+            if (!fileSystem.exists(file)) return null
+            val size = fileSystem.metadataOrNull(file)?.size ?: 0
+            var shas = ByteArray(32 * 1024)
+            var starts = LongArray(1024)
+            var dropped = BooleanArray(1024)
+            var count = 0
+            var end = 0L
+            fileSystem.read(file) {
+                while (end + ROW_HEAD <= size) {
+                    if (count == starts.size) {
+                        shas = shas.copyOf(shas.size * 2)
+                        starts = starts.copyOf(starts.size * 2)
+                        dropped = dropped.copyOf(dropped.size * 2)
+                    }
+                    readInto(shas, count * 32, 32)
+                    val length = readIntLe()
+                    if (length < -1 || end + ROW_HEAD + maxOf(length, 0) > size) break
+                    skip(maxOf(length, 0).toLong())
+                    starts[count] = end
+                    dropped[count] = length < 0
+                    end += ROW_HEAD + maxOf(length, 0)
+                    count++
+                }
+            }
+            if (end < size) fileSystem.openReadWrite(file).use { it.resize(end) }
+            val slots = IntArray(slotsFor(count))
+            val current = BooleanArray(count)
+            var live = 0
+            for (r in 0 until count) {
+                val before = findIn(slots, shas, shas, r * 32)
+                if (before >= 0 && current[before]) {
+                    current[before] = false
+                    live--
+                }
+                if (!dropped[r]) {
+                    current[r] = true
+                    live++
+                }
+                place(slots, shas, r)
+            }
+            return TextTable(saved.head, fileSystem, folder, Rows(file, count, shas.copyOf(count * 32), starts.copyOf(count), end, current, slots, live))
+        }
+
+        /** Lines as the file keeps them: each its length in bytes, then its UTF-8. */
+        private fun encodeLines(lines: List<String>): ByteArray {
+            val buffer = okio.Buffer()
+            for (line in lines) {
+                val bytes = line.encodeToByteArray()
+                buffer.writeIntLe(bytes.size)
+                buffer.write(bytes)
+            }
+            return buffer.readByteArray()
+        }
+
+        private fun decodeLines(bytes: ByteArray, from: Int, length: Int): List<String> {
+            if (length == 0) return emptyList()
+            val lines = ArrayList<String>()
+            var at = from
+            while (at < from + length) {
+                val n = (bytes[at].toInt() and 0xFF) or ((bytes[at + 1].toInt() and 0xFF) shl 8) or
+                    ((bytes[at + 2].toInt() and 0xFF) shl 16) or ((bytes[at + 3].toInt() and 0xFF) shl 24)
+                lines += bytes.decodeToString(at + 4, at + 4 + n)
+                at += 4 + n
+            }
+            return lines
+        }
+    }
+}
+
+/** [sha] as 32 bytes; null when it isn't 64 hex digits. */
+private fun shaBytes(sha: String): ByteArray? {
+    if (sha.length != 64) return null
+    return runCatching { hexBytes(sha) }.getOrNull()
 }
 
 /** Reads exactly [length] bytes into [target] at [offset]. */
