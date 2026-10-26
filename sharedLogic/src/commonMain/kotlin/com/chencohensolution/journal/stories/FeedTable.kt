@@ -67,7 +67,9 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
         markSoundDays(context.sounds)
         val marks = queries.dirtyMarks().executeAsList()
         val dirty = marks.map { it.day }
-        val everything = ALL in dirty || state.stateValue(VERSION).executeAsOneOrNull() != context.version
+        // Many days noted (a large library read in, or changed while its rows were made): made all at once, which
+        // takes seconds, rather than a window per day, which took minutes for 5,467 days on the emulator.
+        val everything = ALL in dirty || dirty.size > MANY_DAYS || state.stateValue(VERSION).executeAsOneOrNull() != context.version
         if (dirty.isEmpty() && !everything) return 0
         val windows = if (everything) {
             // Every day with an item or a recording.
@@ -159,6 +161,9 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
     fun sectionCount(): Long = queries.sectionCount().executeAsOne()
 
     private companion object {
+        /** Noted days past which all rows are made again at once. */
+        const val MANY_DAYS = 365
+
         /** In `feed_dirty`: every day. */
         const val ALL = -1L
         const val VERSION = "feed_version"
