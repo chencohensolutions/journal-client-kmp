@@ -16,6 +16,7 @@ import com.chencohensolution.journal.server.FileFacts
 import com.chencohensolution.journal.server.parseTimestamp
 import com.chencohensolution.journal.stories.GeoArea
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 import okio.FileSystem
@@ -68,7 +69,7 @@ internal class LocalSearchApi(
     private val includePrivate: () -> Boolean,
     private val fileSystem: FileSystem,
 ) : SearchApi {
-    private var words: Pair<Int, Map<String, Map<String, Int>>>? = null
+    private var words: Pair<Int, TextWords>? = null
 
     /** Whether this phone keeps something to search words with. */
     val canSearch: Boolean get() = indexes.canSearchWords || indexes.table(PhoneIndexKind.TEXT) != null
@@ -119,10 +120,10 @@ internal class LocalSearchApi(
     }
 
     /** The text table's words, made again when the table changed. */
-    private fun wordsOf(table: TextTable): Map<String, Map<String, Int>> {
+    private fun wordsOf(table: TextTable): TextWords {
         val version = indexes.version.value
         words?.takeIf { it.first == version }?.let { return it.second }
-        return wordIndex(table.lines).also { words = version to it }
+        return wordIndex(table).also { words = version to it }
     }
 
     private var tokenizer: Pair<String, SentencePiece>? = null
@@ -300,7 +301,8 @@ internal class PhoneFallbackFindingsApi(
         } catch (_: Exception) {
             null
         }
-        return answer ?: local(sha256)
+        // The text's lines are read from their file.
+        return answer ?: withContext(Dispatchers.IO) { local(sha256) }
     }
 
     override suspend fun similar(sha256: String, limit: Int, includePrivate: Boolean): List<String> {
@@ -331,6 +333,6 @@ internal class PhoneFallbackFindingsApi(
             val p = owner[id]
             Face(id, sha256, FaceBox(boxes[4 * n], boxes[4 * n + 1], boxes[4 * n + 2], boxes[4 * n + 3]), p?.id, p?.name?.takeIf { it.isNotEmpty() })
         }
-        return found to texts?.lines?.get(sha256).orEmpty()
+        return found to texts?.lines(sha256).orEmpty()
     }
 }

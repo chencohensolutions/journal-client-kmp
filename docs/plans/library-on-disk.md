@@ -550,6 +550,16 @@ Confirmed by the owner on Oct 25, 2026:
      a new immutable index, so a search during a download needs no lock; `save` writes the file again once an eighth
      of it is replaced or dropped. Measured on the PC (`VectorTableMeasureTest`, `JOURNAL_MEASURE=1`): 95,000 rows of
      768, a 76 MB file, 5 MB held, opened in 0.12 s, a search 0.17 s. Not yet checked on the owner's phone.
+   - **Text in photos, Oct 26, 2026.** `TextTable` keeps each file's lines in `text-<n>.bin` beside `text.json` (rows
+     of sha256, length and lines; appended, compacted and opened as `VectorTable`'s, sharing its row index) and holds
+     only the row index; a photo's details read its lines from the file. Search's words (`TextWords`, made from the
+     file when the table changes) keep each word's letters once in one array and its files as numbers with a byte for
+     how often, instead of maps of strings; matching is unchanged and checked against the plain maps
+     (`LocalIndexTest`) and the server (`LocalFixturesTest`). A `table.bin` of jsonl rows from before is moved into the
+     new file once. Measured on the PC (`TextTableMeasureTest`, `JOURNAL_MEASURE=1`; 95,000 photos, 28,469 with text,
+     314,000 lines): held 45 MB of lines and 97 MB of words before, 6 MB and 14 MB now; a search 50 ms before, 17 ms
+     now; the words made in about 2.5 s at the first search after a change, as before; a photo's lines 0.2 ms. Not yet
+     checked on the owner's phone.
    - Left: the faces table (full floats, in memory; about 60 MB for 120,000 faces) could go the same way.
 8. **iOS.** The same shared logic is already in place. Port Moments and the grids to the pager in SwiftUI
    (`MomentsFeedViews.swift`, `DayGrid.swift`, `ExploreViews.swift`, `LibraryRootView.swift`, the map). Add an entry
