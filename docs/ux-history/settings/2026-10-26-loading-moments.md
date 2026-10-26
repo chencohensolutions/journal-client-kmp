@@ -10,7 +10,8 @@ Moments is read from the library database a page at a time (plan B, [library-on-
 ## Options
 - **a — A page of chips**: an Advanced section after Search with a Loading Moments row ("30 rows at a time · 40
   ahead") opening a page: Rows loaded at a time (15, 30, 60, 120) and Load ahead (10, 20, 40, 80), each saying what
-  more of it gives, the default's chip marked, and a reset once either is changed. *Picked*.
+  more of it gives, the default's chip marked, and a reset once either is changed. *Picked*, promoted in a04c01c
+  (as a page of Settings, `LoadingMomentsPage`; its note now says a change applies as Moments loads its next rows).
 - **b — Sliders on the first page**: the two values as sliders in the Advanced section itself (10–200 rows, 5–100
   ahead), saved when let go, as How alike is. *Turned down* for a.
 - **c — Presets**: the Loading Moments row opens Light on memory (15, 20), Balanced (30, 40), Smooth scrolling
