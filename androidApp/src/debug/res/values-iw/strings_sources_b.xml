@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sources_b_imported">מיובא</string>
+    <string name="sources_b_of_imported">מתוך מה שיובא</string>
+</resources>

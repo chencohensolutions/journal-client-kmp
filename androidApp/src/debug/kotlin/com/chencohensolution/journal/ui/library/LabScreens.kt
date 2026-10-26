@@ -181,6 +181,24 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
     )),
+    LabScreen("sources", "Settings › Show in the app: imported", listOf(
+        current {
+            val counts = mapOf(
+                com.chencohensolution.journal.library.MediaSource.CAMERA to 39650,
+                com.chencohensolution.journal.library.MediaSource.WHATSAPP to 10378,
+                com.chencohensolution.journal.library.MediaSource.OTHER to 3948,
+                com.chencohensolution.journal.library.MediaSource.SCREENSHOTS to 2268,
+                com.chencohensolution.journal.library.MediaSource.folder("Petcube") to 5,
+            )
+            SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
+        },
+        sourcesOptionA,
+        sourcesOptionABar,
+        sourcesOptionB,
+        sourcesOptionBBar,
+        sourcesOptionC,
+        sourcesOptionCBar,
+    )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
         LabOption("nightly", "Nightly run", "The nightly run reading this user's photos") {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sources_c_phones">טלפונים</string>
+    <string name="sources_c_imported">מיובא</string>
+    <string name="sources_c_note">טלפונים: לפי התיקייה בטלפון שצילם או שמר אותם. מיובא: גיבויים ישנים שיובאו לשרת שלך, לפי מה שהייבוא מצא.</string>
+</resources>
