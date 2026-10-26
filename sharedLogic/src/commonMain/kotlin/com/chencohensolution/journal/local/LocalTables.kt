@@ -72,23 +72,24 @@ internal sealed class LocalTable(var head: TableHead) {
         internal val json = Json { ignoreUnknownKeys = true }
 
         /**
-         * The table of [head]'s format: vectors (dim 1: scores; the others kept in files in [folder]), faces or text (kept
-         * in files in [folder]).
+         * The table of [head]'s format: vectors (dim 1: scores), faces or text; all but the scores kept in files in
+         * [folder].
          */
         fun of(head: TableHead, fileSystem: FileSystem, folder: Path): LocalTable = when (head.format) {
-            FORMAT_FACES -> FaceTable(head)
+            FORMAT_FACES -> FaceTable.create(head, fileSystem, folder)
             FORMAT_JSONL -> TextTable.create(head, fileSystem, folder)
             else -> if (head.dim == 1) ScoreTable(head) else VectorTable.create(head, fileSystem, folder)
         }
 
         /**
-         * The table saved at [path] (or, for vectors and text, in its folder); null when there is none or it can't be read
-         * (it is downloaded again). Vectors or text saved whole in [path] by an earlier version are moved into their own
-         * file once.
+         * The table saved at [path] (or, for vectors, faces and text, in its folder); null when there is none or it can't
+         * be read (it is downloaded again). Vectors, faces or text saved whole in [path] by an earlier version are moved
+         * into their own file once.
          */
         fun load(fileSystem: FileSystem, path: Path): LocalTable? = runCatching {
             val folder = path.parent!!
             VectorTable.open(fileSystem, folder)?.let { return it }
+            FaceTable.open(fileSystem, folder)?.let { return it }
             TextTable.open(fileSystem, folder)?.let { return it }
             if (!fileSystem.exists(path)) return null
             val table = fileSystem.read(path) {
@@ -97,7 +98,7 @@ internal sealed class LocalTable(var head: TableHead) {
                 if (head.format == FORMAT_FACES && head.v < FaceTable.VERSION) return null
                 of(head, fileSystem, folder).also { it.readRows(this) }
             }
-            if (table is VectorTable || table is TextTable) {
+            if (table is VectorTable || table is FaceTable || table is TextTable) {
                 table.save(fileSystem, path)
                 fileSystem.delete(path)
             }
@@ -271,14 +272,12 @@ internal class VectorTable private constructor(
         if (!fileSystem.exists(file)) fileSystem.write(file) {}
         fileSystem.write(temp) { writeUtf8(json.encodeToString(TableFiles.serializer(), TableFiles(file.name, head))) }
         fileSystem.atomicMove(temp, folder / HEAD_FILE)
-        for (other in fileSystem.list(folder)) {
-            if (other.name != file.name && other.name.startsWith(FILE_PREFIX) && other.name.endsWith(".bin")) fileSystem.delete(other)
-        }
+        deleteOthers(fileSystem, folder, FILE_PREFIX, file)
     }
 
     /** The current rows of [from] in a new file. */
     private fun compact(from: Rows) {
-        val target = nextFile(fileSystem, folder)
+        val target = nextFile(fileSystem, folder, FILE_PREFIX)
         val shas = ByteArray(from.live * 32)
         val current = BooleanArray(from.live) { true }
         val slots = IntArray(slotsFor(from.live))
@@ -480,15 +479,9 @@ internal class VectorTable private constructor(
     }
 }
 
-/** `vectors.json` or `text.json`: which file of the folder is current, and the table's head. */
+/** `vectors.json`, `faces.json` or `text.json`: which file of the folder is current, and the table's head. */
 @Serializable
 private data class TableFiles(val file: String, val head: TableHead)
-
-/** A file name in [folder] not used yet: [prefix] and one more than the highest. */
-private fun nextFile(fileSystem: FileSystem, folder: Path, prefix: String): Path {
-    val used = fileSystem.listOrNull(folder).orEmpty().mapNotNull { it.name.removePrefix(prefix).removeSuffix(".bin").toIntOrNull() }
-    return folder / "$prefix${(used.maxOrNull() ?: 0) + 1}.bin"
-}
 
 // The row index the tables on disk share: each row's sha256 in one array, and an open-addressing hash from a sha256 to
 // its latest row.
@@ -537,6 +530,21 @@ private fun place(slots: IntArray, shas: ByteArray, row: Int) {
             return
         }
         i = (i + 1) and mask
+    }
+}
+
+/** A file name in [folder] starting with [prefix] not used yet: one more than the highest. */
+private fun nextFile(fileSystem: FileSystem, folder: Path, prefix: String): Path {
+    val used = fileSystem.listOrNull(folder).orEmpty()
+        .filter { it.name.startsWith(prefix) }
+        .mapNotNull { it.name.removePrefix(prefix).removeSuffix(".bin").toIntOrNull() }
+    return folder / "$prefix${(used.maxOrNull() ?: 0) + 1}.bin"
+}
+
+/** Deletes the files of [folder] starting with [prefix] other than [keep]. */
+private fun deleteOthers(fileSystem: FileSystem, folder: Path, prefix: String, keep: Path) {
+    for (other in fileSystem.list(folder)) {
+        if (other.name != keep.name && other.name.startsWith(prefix) && other.name.endsWith(".bin")) fileSystem.delete(other)
     }
 }
 
@@ -729,80 +737,332 @@ internal class ShaScores private constructor(private val shas: ByteArray, privat
 
 /**
  * Faces: where each face is in each file (x, y, w, h) and its vector (the server's SFace numbers, at full precision),
- * in the record's order, which a face id `<sha256>:<n>` counts. The five points are left out. Version 2 of the file;
- * version 1 kept no vectors, and is downloaded again.
+ * in the record's order, which a face id `<sha256>:<n>` counts. The score and the five points are left out.
+ *
+ * The vectors stay on disk, as the search vectors do (plan B phase 7): in `faces-<n>.bin` in [folder], one row a file:
+ * its sha256, how many faces (0xFFFF says the file was dropped), their boxes, then their vectors. A later row of a file
+ * replaces an earlier one. In memory are only the boxes (16 bytes a face, all in one array) and which row is which
+ * file's: about 4 MB for 120,000 faces in 40,000 files, where holding the vectors took about 60 MB. [vector] reads one
+ * face's numbers from the file. What changes is appended a few thousand rows at a time ([flush]), and [save] writes the
+ * file again without the rows replaced once they are an eighth of it. `faces.json` beside it has the head and which
+ * file is current. As with the vectors, the writer (a download) and the readers share no lock: each append publishes a
+ * new [Rows], and a reader uses the one it started with.
+ *
+ * A `table.bin` from before (version 2, everything in it) is moved into these files once, without downloading; version
+ * 1 kept no vectors and is downloaded again.
  */
-internal class FaceTable(head: TableHead) : LocalTable(head.copy(v = VERSION)) {
-    val boxes = HashMap<String, FloatArray>()
+internal class FaceTable private constructor(
+    head: TableHead,
+    private val fileSystem: FileSystem,
+    private val folder: Path,
+    rows: Rows,
+) : LocalTable(head.copy(v = VERSION)) {
+    /** Which file's each row is, its faces' boxes, and where each file's latest row is. Never changed once made. */
+    private class Rows(
+        val file: Path,
+        val count: Int,
+        val shas: ByteArray,
+        /** How many faces the rows before each row have ([count] + 1 of them, the last every face's). */
+        val firstFace: IntArray,
+        /** The boxes of every row's faces, four numbers a face, in row order. */
+        val boxes: FloatArray,
+        val current: BooleanArray,
+        /** Open addressing: row + 1 of each file's latest row, by its sha256; 0 is empty. */
+        val slots: IntArray,
+        val live: Int,
+    ) {
+        fun faces(row: Int) = firstFace[row + 1] - firstFace[row]
 
-    /** Each file's faces' vectors, one after another ([dim] numbers a face). */
-    val vectors = HashMap<String, FloatArray>()
+        /** [sha256]'s current row; -1 when it has none. */
+        fun currentRow(sha256: String): Int {
+            val sha = shaBytesOrNull(sha256) ?: return -1
+            val row = findIn(slots, shas, sha)
+            return if (row >= 0 && current[row]) row else -1
+        }
+    }
+
+    /**
+     * Rows being made: [from]'s (copied, so it stays as it was) with room for [rows] rows and [faces] faces in all, and
+     * those [add]ed after them. It grows if more come.
+     */
+    private class Builder(val file: Path, from: Rows?, rows: Int, faces: Int) {
+        var count = from?.count ?: 0
+        var shas = (from?.shas ?: ByteArray(0)).copyOf(rows * 32)
+        var firstFace = (from?.firstFace ?: IntArray(1)).copyOf(rows + 1)
+        var boxes = (from?.boxes ?: FloatArray(0)).copyOf(faces * 4)
+        var current = (from?.current ?: BooleanArray(0)).copyOf(rows)
+        var slots = if (from != null && rows * 2 + 2 <= from.slots.size) from.slots.copyOf() else rehashed(slotsFor(rows))
+        var live = from?.live ?: 0
+
+        /** Slots of [size] pointing at the current rows. */
+        fun rehashed(size: Int) = IntArray(size).also { for (r in 0 until count) if (current[r]) place(it, shas, r) }
+
+        /** A row of [sha]'s with [faces] faces ([box] gives the boxes' numbers in order); [kept] false: it was dropped. */
+        inline fun add(sha: ByteArray, faces: Int, kept: Boolean, box: (Int) -> Float) {
+            if (count == current.size) {
+                val rows = maxOf(64, count * 2)
+                shas = shas.copyOf(rows * 32)
+                firstFace = firstFace.copyOf(rows + 1)
+                current = current.copyOf(rows)
+            }
+            if ((count + 1) * 2 + 2 > slots.size) slots = rehashed(slotsFor(current.size))
+            val first = firstFace[count]
+            if ((first + faces) * 4 > boxes.size) boxes = boxes.copyOf(maxOf((first + faces) * 4, boxes.size * 2))
+            val r = count
+            sha.copyInto(shas, r * 32, 0, 32)
+            val before = findIn(slots, shas, sha)
+            if (before >= 0 && current[before]) {
+                current[before] = false
+                live--
+            }
+            if (kept) {
+                current[r] = true
+                live++
+            }
+            for (i in 0 until faces * 4) boxes[first * 4 + i] = box(i)
+            firstFace[r + 1] = first + faces
+            place(slots, shas, r)
+            count++
+        }
+
+        fun build(): Rows {
+            val faces = firstFace[count]
+            return Rows(
+                file,
+                count,
+                if (shas.size == count * 32) shas else shas.copyOf(count * 32),
+                if (firstFace.size == count + 1) firstFace else firstFace.copyOf(count + 1),
+                if (boxes.size == faces * 4) boxes else boxes.copyOf(faces * 4),
+                if (current.size == count) current else current.copyOf(count),
+                slots,
+                live,
+            )
+        }
+    }
+
+    @Volatile
+    private var rows: Rows = rows
+
+    /** Rows waiting to be appended: sha256, how many faces, then their boxes and their vectors (null: dropped). */
+    private class Pending(val sha: ByteArray, val faces: Int, val data: ByteArray?)
+
+    private val pending = ArrayList<Pending>()
+    private var pendingFaces = 0
 
     private val dim get() = head.dim
 
-    override val size: Int get() = boxes.size
+    /** What a face takes in a row: its box and its vector. */
+    private val faceBytes get() = 16 + 4 * dim
 
-    override fun has(sha256: String) = sha256 in boxes
+    /** The files kept, as of the last [flush]. */
+    override val size: Int get() = rows.live
+
+    override fun has(sha256: String): Boolean {
+        val sha = hexBytes(sha256)
+        pending.lastOrNull { it.sha.contentEquals(sha) }?.let { return it.data != null }
+        val now = rows
+        val row = findIn(now.slots, now.shas, sha)
+        return row >= 0 && now.current[row]
+    }
 
     override fun put(record: ByteArray) {
-        val sha = record.hex(0, 32)
         val n = (record[32].toInt() and 0xFF) or ((record[33].toInt() and 0xFF) shl 8)
         val per = 4 * (FACE_FIELDS + dim)
-        boxes[sha] = FloatArray(n * 4) { i -> record.floatAt(34 + (i / 4) * per + 4 * (i % 4)) }
-        vectors[sha] = FloatArray(n * dim) { i -> record.floatAt(34 + (i / dim) * per + 4 * (FACE_FIELDS + i % dim)) }
+        val data = ByteArray(n * faceBytes)
+        for (face in 0 until n) {
+            val at = 34 + face * per
+            record.copyInto(data, 16 * face, at, at + 16)
+            record.copyInto(data, 16 * n + 4 * dim * face, at + 4 * FACE_FIELDS, at + per)
+        }
+        add(Pending(record.copyOfRange(0, 32), n, data))
+    }
+
+    override fun drop(sha256: String) {
+        if (has(sha256)) add(Pending(hexBytes(sha256), 0, null))
+    }
+
+    private fun add(row: Pending) {
+        pending += row
+        if (row.data != null) pendingFaces += row.faces
+        if (pending.size >= FLUSH_ROWS || pendingFaces >= FLUSH_FACES) flush()
+    }
+
+    /** Starts an empty file; the old one goes at the next [save]. */
+    override fun clear() {
+        pending.clear()
+        pendingFaces = 0
+        rows = emptyRows(nextFile(fileSystem, folder, FILE_PREFIX))
+    }
+
+    /** Appends the rows waiting to the file, then publishes the rows with them. Called as a download goes and by [save]. */
+    fun flush() {
+        if (pending.isEmpty()) return
+        val old = rows
+        fileSystem.createDirectories(folder)
+        fileSystem.appendingSink(old.file).buffer().use { sink ->
+            for (row in pending) {
+                sink.write(row.sha)
+                sink.writeShortLe(if (row.data == null) DROPPED else row.faces)
+                if (row.data != null) sink.write(row.data)
+            }
+        }
+        val builder = Builder(old.file, old, old.count + pending.size, old.firstFace[old.count] + pendingFaces)
+        for (row in pending) {
+            val data = row.data
+            if (data == null) builder.add(row.sha, 0, kept = false) { 0f } else builder.add(row.sha, row.faces, kept = true) { data.floatAt(4 * it) }
+        }
+        pending.clear()
+        pendingFaces = 0
+        rows = builder.build()
+    }
+
+    /**
+     * Saves the table in [path]'s folder (the path itself is the other tables'): the rows waiting appended, the file
+     * written again without the rows replaced or dropped once they are an eighth of it, then the head, then the files no
+     * longer current deleted.
+     */
+    override fun save(fileSystem: FileSystem, path: Path) {
+        flush()
+        val now = rows
+        if (now.count - now.live > now.live / 8) compact(now)
+        val file = rows.file
+        val temp = folder / "$HEAD_FILE.tmp"
+        fileSystem.createDirectories(folder)
+        if (!fileSystem.exists(file)) fileSystem.write(file) {}
+        fileSystem.write(temp) { writeUtf8(json.encodeToString(TableFiles.serializer(), TableFiles(file.name, head))) }
+        fileSystem.atomicMove(temp, folder / HEAD_FILE)
+        deleteOthers(fileSystem, folder, FILE_PREFIX, file)
+    }
+
+    /** The current rows of [from] in a new file. */
+    private fun compact(from: Rows) {
+        val target = nextFile(fileSystem, folder, FILE_PREFIX)
+        var faces = 0
+        for (r in 0 until from.count) if (from.current[r]) faces += from.faces(r)
+        val builder = Builder(target, null, from.live, faces)
+        fileSystem.openReadOnly(from.file).use { handle ->
+            handle.source().buffer().use { source ->
+                fileSystem.write(target) {
+                    for (r in 0 until from.count) {
+                        val length = rowBytes(from, r)
+                        if (!from.current[r]) {
+                            source.skip(length)
+                            continue
+                        }
+                        write(source, length)
+                        val first = from.firstFace[r] * 4
+                        builder.add(from.shas.copyOfRange(r * 32, r * 32 + 32), from.faces(r), kept = true) { from.boxes[first + it] }
+                    }
+                }
+            }
+        }
+        rows = builder.build()
+    }
+
+    /** Where [row] starts in [of]'s file: every row has its head, and each face before it its box and vector. */
+    private fun offsetOf(of: Rows, row: Int): Long = ROW_HEAD.toLong() * row + of.firstFace[row].toLong() * faceBytes
+
+    private fun rowBytes(of: Rows, row: Int): Long = ROW_HEAD + of.faces(row).toLong() * faceBytes
+
+    override fun bytes(fileSystem: FileSystem, path: Path): Long = fileSystem.metadataOrNull(rows.file)?.size ?: 0
+
+    /** The boxes of [sha256]'s faces, four numbers a face; null when it has none kept (or it is still waiting to be appended). */
+    fun boxes(sha256: String): FloatArray? {
+        val now = rows
+        val row = now.currentRow(sha256)
+        if (row < 0) return null
+        return now.boxes.copyOfRange(now.firstFace[row] * 4, now.firstFace[row + 1] * 4)
     }
 
     /** Face [n] of [sha256]'s box, or null. */
     fun box(sha256: String, n: Int): FloatArray? {
-        val all = boxes[sha256] ?: return null
-        if (n < 0 || 4 * n + 4 > all.size) return null
-        return all.copyOfRange(4 * n, 4 * n + 4)
+        val now = rows
+        val row = now.currentRow(sha256)
+        if (row < 0 || n < 0 || n >= now.faces(row)) return null
+        val at = (now.firstFace[row] + n) * 4
+        return now.boxes.copyOfRange(at, at + 4)
     }
 
-    /** Face [n] of [sha256]'s vector, or null. */
+    /** Face [n] of [sha256]'s vector, read from the file; null when there is none. */
     fun vector(sha256: String, n: Int): FloatArray? {
-        val all = vectors[sha256] ?: return null
-        if (n < 0 || dim == 0 || dim * n + dim > all.size) return null
-        return all.copyOfRange(dim * n, dim * n + dim)
+        val now = rows
+        val row = now.currentRow(sha256)
+        if (row < 0 || dim == 0) return null
+        val faces = now.faces(row)
+        if (n < 0 || n >= faces) return null
+        val bytes = ByteArray(4 * dim)
+        val at = offsetOf(now, row) + ROW_HEAD + 16L * faces + 4L * dim * n
+        fileSystem.openReadOnly(now.file).use { it.readFully(at, bytes, bytes.size) }
+        return FloatArray(dim) { bytes.floatAt(4 * it) }
     }
 
-    override fun drop(sha256: String) {
-        boxes.remove(sha256)
-        vectors.remove(sha256)
-    }
-
-    override fun clear() {
-        boxes.clear()
-        vectors.clear()
-    }
-
+    /** Every current row as version 2's `table.bin` kept it: sha256, how many faces, and each face's box and vector. */
     override fun writeRows(sink: BufferedSink) {
-        for ((sha, all) in boxes) {
-            val n = all.size / 4
-            val numbers = vectors[sha]
-            sink.write(hexBytes(sha))
-            sink.writeShortLe(n)
-            for (face in 0 until n) {
-                for (i in 0 until 4) sink.writeIntLe(all[4 * face + i].toBits())
-                for (i in 0 until dim) sink.writeIntLe((numbers?.getOrNull(dim * face + i) ?: 0f).toBits())
+        flush()
+        val now = rows
+        if (now.count == 0) return
+        fileSystem.openReadOnly(now.file).use { handle ->
+            for (r in 0 until now.count) {
+                if (!now.current[r]) continue
+                val faces = now.faces(r)
+                val bytes = ByteArray(rowBytes(now, r).toInt())
+                handle.readFully(offsetOf(now, r), bytes, bytes.size)
+                sink.write(bytes, 0, ROW_HEAD)
+                for (face in 0 until faces) {
+                    sink.write(bytes, ROW_HEAD + 16 * face, 16)
+                    sink.write(bytes, ROW_HEAD + 16 * faces + 4 * dim * face, 4 * dim)
+                }
             }
         }
     }
 
+    /** Rows as [writeRows] writes them (version 2's whole table), added to this one. */
     override fun readRows(source: BufferedSource) {
-        clear()
         while (!source.exhausted()) {
-            val sha = source.readByteArray(32).hex()
+            val sha = source.readByteArray(32)
             val n = source.readShortLe().toInt() and 0xFFFF
-            val box = FloatArray(n * 4)
-            val numbers = FloatArray(n * dim)
+            val data = ByteArray(n * faceBytes)
             for (face in 0 until n) {
-                for (i in 0 until 4) box[4 * face + i] = Float.fromBits(source.readIntLe())
-                for (i in 0 until dim) numbers[dim * face + i] = Float.fromBits(source.readIntLe())
+                source.readInto(data, 16 * face, 16)
+                source.readInto(data, 16 * n + 4 * dim * face, 4 * dim)
             }
-            boxes[sha] = box
-            vectors[sha] = numbers
+            add(Pending(sha, n, data))
         }
+        flush()
+    }
+
+    /**
+     * Reads [file]'s rows (each sha256 and its faces' boxes; the vectors are skipped) into the table's rows. Returns how
+     * many bytes of it are whole rows: half a row at the end (a download cut off while appending) is left out.
+     */
+    private fun index(file: Path): Long {
+        val size = fileSystem.metadataOrNull(file)?.size ?: 0
+        val builder = Builder(file, null, 1024, 1024)
+        val sha = ByteArray(32)
+        var box = FloatArray(64)
+        var at = 0L
+        fileSystem.openReadOnly(file).use { handle ->
+            handle.source().buffer().use { source ->
+                while (size - at >= ROW_HEAD) {
+                    source.readInto(sha, 0, 32)
+                    val n = source.readShortLe().toInt() and 0xFFFF
+                    if (n == DROPPED) {
+                        builder.add(sha, 0, kept = false) { 0f }
+                        at += ROW_HEAD
+                        continue
+                    }
+                    val length = n.toLong() * faceBytes
+                    if (size - at - ROW_HEAD < length) break
+                    if (box.size < 4 * n) box = FloatArray(4 * n)
+                    for (i in 0 until 4 * n) box[i] = Float.fromBits(source.readIntLe())
+                    source.skip(4L * dim * n)
+                    builder.add(sha, n, kept = true) { box[it] }
+                    at += ROW_HEAD + length
+                }
+            }
+        }
+        rows = builder.build()
+        return at
     }
 
     companion object {
@@ -811,6 +1071,45 @@ internal class FaceTable(head: TableHead) : LocalTable(head.copy(v = VERSION)) {
 
         /** The file's version: 2 keeps the vectors. */
         const val VERSION = 2
+
+        /** sha256 and how many faces, before the faces. */
+        private const val ROW_HEAD = 34
+
+        /** The count of faces that says a file was dropped. */
+        private const val DROPPED = 0xFFFF
+
+        /** Rows, and faces, a download gathers before appending them (8,192 faces of 128 numbers: about 4 MB). */
+        private const val FLUSH_ROWS = 4096
+        private const val FLUSH_FACES = 8192
+
+        private const val HEAD_FILE = "faces.json"
+        private const val FILE_PREFIX = "faces-"
+
+        /** A new, empty table in [folder] (its file is made when rows come). */
+        fun create(head: TableHead, fileSystem: FileSystem, folder: Path) =
+            FaceTable(head, fileSystem, folder, emptyRows(nextFile(fileSystem, folder, FILE_PREFIX)))
+
+        /**
+         * The table saved in [folder]; null when there is none. Rows past what was saved last (a download cut off before
+         * its end) are kept, as the stream only sends them again; half a row at the end is cut off.
+         */
+        fun open(fileSystem: FileSystem, folder: Path): FaceTable? {
+            val headPath = folder / HEAD_FILE
+            if (!fileSystem.exists(headPath)) return null
+            val saved = json.decodeFromString(TableFiles.serializer(), fileSystem.read(headPath) { readUtf8() })
+            val file = folder / saved.file
+            if (!fileSystem.exists(file)) return null
+            val table = FaceTable(saved.head, fileSystem, folder, emptyRows(file))
+            val whole = table.index(file)
+            if (whole < (fileSystem.metadataOrNull(file)?.size ?: 0)) fileSystem.openReadWrite(file).use { it.resize(whole) }
+            return table
+        }
+
+        private fun emptyRows(file: Path) = Rows(file, 0, ByteArray(0), IntArray(1), FloatArray(0), BooleanArray(0), IntArray(slotsFor(0)), 0)
+
+        /** [sha256] as its 32 bytes; null when it isn't one (a face id written wrong). */
+        private fun shaBytesOrNull(sha256: String): ByteArray? =
+            if (sha256.length == 64 && sha256.all { it in '0'..'9' || it in 'a'..'f' }) hexBytes(sha256) else null
     }
 }
 

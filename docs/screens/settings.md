@@ -317,12 +317,14 @@ indexes on the phone, to search without the server, offline too (journal-server-
   looks up are kept compact (each word once, its files as numbers): about 20 MB for 95,000 photos instead of about
   140 MB, with the same results. People and a photo's details fall back to what is kept the same way.
 - Kept in `files/local` (Android) and Application Support `local` (iOS, out of iCloud backup): `<index>/table.bin`
-  (`LocalTables.kt`; for `search` and `similar`, `vectors.json` and `vectors-<n>.bin` instead, and for `ocr`,
-  `text.json` and `text-<n>.bin`: rows appended as a download goes, the file written again without replaced rows once
-  they are an eighth of it; a `table.bin` of theirs from before is moved into these once, without downloading),
-  `faces/people.json`, `models/`. The faces table keeps each face's box and its vector at full
-  precision (asked Oct 24, 2026: about 60 MB for 120,000 faces), for matching faces on the phone; a table from before
-  is downloaded again.
+  (`LocalTables.kt`; for `search` and `similar`, `vectors.json` and `vectors-<n>.bin` instead, for `faces`,
+  `faces.json` and `faces-<n>.bin`, and for `ocr`, `text.json` and `text-<n>.bin`: rows appended as a download goes,
+  the file written again without replaced rows once they are an eighth of it; a `table.bin` of theirs from before is
+  moved into these once, without downloading), `faces/people.json`, `models/`. The faces table keeps each face's box
+  and its vector at full precision (asked Oct 24, 2026: about 60 MB for 120,000 faces), for matching faces on the
+  phone. Since Oct 26, 2026 the vectors stay on disk and are read one face at a time (a correction reads the face it
+  moves); only the boxes and which row is which file's are held, about 5 MB for 120,000 faces instead of about 63 MB.
+  A faces table from before the vectors were kept is downloaded again.
 - Code: [local/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/local/) (`LocalIndexes`,
   `LocalIndexApi`, `LocalTables`, `LocalSearch`), the model run by `AndroidTextEncoding` (ONNX Runtime for Android) and
   `OnnxTextEncoding` in `PeopleViewModels.swift` (onnxruntime-swift-package-manager); Android
