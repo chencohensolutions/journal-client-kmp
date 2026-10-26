@@ -222,6 +222,7 @@ private fun LibraryScreens(
                                 Route.Journal -> JournalHomeScreen(
                                     // Moments first and opened on start (asked Oct 24, 2026); previews keep the storyline.
                                     initialTab = HomeTab.MOMENTS,
+                                    loadAhead = settingsState.momentsPaging.loadAhead,
                                     library = libraryState,
                                     stories = storiesState,
                                     health = journalState.health,
@@ -373,6 +374,9 @@ private fun LibraryScreens(
                                             openSearch = { push(Route.SearchSettings) },
                                             openPage = { push(Route.SettingsPageRoute(it)) },
                                             openBackup = { push(Route.BackupSettings) },
+                                            setMomentsRowsPerPage = settings::setMomentsRowsPerPage,
+                                            setMomentsLoadAhead = settings::setMomentsLoadAhead,
+                                            resetMomentsPaging = settings::resetMomentsPaging,
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },

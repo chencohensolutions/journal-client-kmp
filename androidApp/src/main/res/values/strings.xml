@@ -778,4 +778,15 @@
         <item quantity="other">%s calls and recordings will be deleted from this phone for good: their folders have no trash. Your server keeps them.</item>
     </plurals>
     <string name="free_up_sounds_confirm">Delete and free up</string>
+    <!-- Settings › Advanced › Loading Moments (UX round ux/settings/2026-10-26, a) -->
+    <string name="settings_advanced_title">Advanced</string>
+    <string name="settings_loading_title">Loading Moments</string>
+    <string name="settings_loading_row_body">%1$d rows at a time · %2$d ahead</string>
+    <string name="settings_loading_rows_title">Rows loaded at a time</string>
+    <string name="settings_loading_rows_body">More: fewer pauses when scrolling far, more memory.</string>
+    <string name="settings_loading_ahead_title">Load ahead</string>
+    <string name="settings_loading_ahead_body">How many rows before the end of what is loaded the next rows start loading. More: smoother fast scrolling.</string>
+    <string name="settings_loading_default_chip">%d (default)</string>
+    <string name="settings_loading_note">Only on this phone. Applies as Moments loads its next rows.</string>
+    <string name="settings_loading_reset">Reset to %1$d and %2$d</string>
 </resources>

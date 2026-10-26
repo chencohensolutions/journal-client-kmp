@@ -15,6 +15,7 @@ saying how it stands and opening a page of its own; the switches used most stay 
   **Storage on this phone ›** ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›**
   (its line, below).
 - **Search ›** on its own (its line, below).
+- **Advanced:** **Loading Moments ›** ("30 rows at a time · 40 ahead"; below).
 
 The pages, and what each holds:
 
@@ -160,6 +161,13 @@ The pages, and what each holds:
 - **Search** (both platforms; its own screen since Oct 24, 2026, see "Search" below): one row, "Server: reading 40 of
   200", "Server: paused at 40 of 200", "Server: waiting to read your photos", or "200 per page · 3 kept on this
   phone".
+- **Loading Moments** (a page, under Advanced at the end of the first page; Android since Oct 26, 2026, chosen by the
+  owner from the UI lab, round `ux/settings/2026-10-26`; iOS not yet): how [Moments](moments.md) is read from the
+  library database a page at a time. **Rows loaded at a time** (15, **30**, 60, 120: "More: fewer pauses when
+  scrolling far, more memory.") and **Load ahead** (10, 20, **40**, 80: how many rows before the end of what is loaded
+  the next rows start loading), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
+  changed. On this phone only, and applied as Moments loads its next rows (no restart). Kept as
+  `moments_rows_per_page` and `moments_load_ahead` (`SettingsState.momentsPaging`, `MomentsPaging`).
 
 ## Behavior
 

@@ -370,6 +370,58 @@ class LibraryTableTest {
     }
 
     /**
+     * Settings › Advanced › Loading Moments: Moments reads as many rows at a time as the setting says, and a change
+     * applies from the next page.
+     */
+    @Test
+    fun momentsReadTheRowsPerPageOfTheSetting() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val first = LocalDay(2026, 1, 1)
+        val device = (0 until 100).map { n ->
+            val day = first.plusDays(n.toLong())
+            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
+        }
+        val database = testLibraryDatabase()
+        fun store() = object : KeyValueStore {
+            private val values = mutableMapOf<String, String>()
+            override fun getString(key: String): String? = values[key]
+            override fun putString(key: String, value: String?) {
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+        val library = LibraryController(
+            StoredMediaLibrary(TableTestLibrary(device), database, dispatcher), JournalSettings(store()), dispatcher, table = LibraryTable(database),
+        )
+        val settings = SettingsController(JournalSettings(store()), dispatcher)
+        settings.setMomentsRowsPerPage(4)
+        val stories = StoriesController(
+            noteStore = FilePhotoNoteStore(FakeFileSystem(), "/data/journal".toPath()),
+            library = library,
+            settings = settings,
+            newId = { "set" },
+            dispatcher = dispatcher,
+            feed = FeedPager(FeedTable(database), LibraryTable(database), dispatcher, pageSize = { settings.currentState.momentsPaging.rowsPerPage }),
+            shownRow = library::shownRow,
+        )
+        fun rows() = stories.currentState.feed.entries.count { it is FeedEntry.Section }
+        library.refresh()
+        advanceUntilIdle()
+        assertEquals(4, rows())
+
+        stories.loadMoreMoments()
+        advanceUntilIdle()
+        assertEquals(8, rows())
+
+        settings.setMomentsRowsPerPage(10)
+        stories.loadMoreMoments()
+        advanceUntilIdle()
+        assertEquals(18, rows())
+        stories.close()
+        settings.close()
+        library.close()
+    }
+
+    /**
      * Going to a date while Moments is being made again (the owner, Oct 26, 2026: the month ruler didn't always go to
      * the day): the rows read down to the day stay in the feed, a state made from the rows read before never takes
      * their place, and the row the callback names is in the feed when it is called.

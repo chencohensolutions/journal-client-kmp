@@ -13,6 +13,14 @@ their page), and backup of calls and recordings from folders with Free up space 
 
 Still missing on iOS:
 
+- **Settings › Advanced › Loading Moments** (Android since Oct 26, 2026; see [screens/settings.md](screens/settings.md)):
+  an Advanced section after Search with a Loading Moments row ("30 rows at a time · 40 ahead") opening a page with
+  Rows loaded at a time (15, 30, 60, 120) and Load ahead (10, 20, 40, 80), the defaults marked, and Reset to 30 and
+  40. The shared part is done: `settings.state.momentsPaging`, `setMomentsRowsPerPage`, `setMomentsLoadAhead`,
+  `resetMomentsPaging`, and the pager already reads the rows per page on iOS. Left in Swift: the section and page
+  (`SettingsSections.swift`), and `JournalHomeView.swift`'s `loadAheadRows` (40 today) read from
+  `momentsPaging.loadAhead`.
+
 - **Backup → "Only on these Wi-Fi networks"** — Android lists the networks backup may run on. iOS reads the
   network's name only with the Access WiFi Information entitlement plus location permission
   (`NEHotspotNetwork.fetchCurrent`), which needs the owner's Apple developer team and a real iPhone to check; the row

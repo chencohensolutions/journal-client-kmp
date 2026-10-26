@@ -69,6 +69,26 @@ data class PrivateMedia(val show: Boolean = false) {
     fun hides(isPrivate: Boolean): Boolean = !show && isPrivate
 }
 
+/**
+ * How Moments is read from the library database a page at a time (Settings › Advanced › Loading Moments):
+ * [rowsPerPage] rows per page, and the next page starts once the list is [loadAhead] rows from the end of what is read.
+ */
+data class MomentsPaging(val rowsPerPage: Int = DEFAULT_ROWS_PER_PAGE, val loadAhead: Int = DEFAULT_LOAD_AHEAD) {
+    val isDefault: Boolean get() = rowsPerPage == DEFAULT_ROWS_PER_PAGE && loadAhead == DEFAULT_LOAD_AHEAD
+
+    companion object {
+        const val DEFAULT_ROWS_PER_PAGE = 30
+        const val DEFAULT_LOAD_AHEAD = 40
+
+        /** What the Settings screen offers. */
+        val ROWS_PER_PAGE_OPTIONS: List<Int> = listOf(15, 30, 60, 120)
+        val LOAD_AHEAD_OPTIONS: List<Int> = listOf(10, 20, 40, 80)
+
+        /** Anything stored or set outside this falls back to the default or is ignored. */
+        val RANGE: IntRange = 1..1000
+    }
+}
+
 /** The user's choices on the Settings screen, and the Moments tab's filter bar. */
 data class SettingsState(
     val grouping: TimelineGrouping = TimelineGrouping(),
@@ -88,6 +108,8 @@ data class SettingsState(
     val showOnPhoneBadge: Boolean = false,
     /** Photos per page of search results; scrolling near the end shows the next page. */
     val searchPageSize: Int = JournalSettings.DEFAULT_SEARCH_PAGE_SIZE,
+    /** How Moments is read a page at a time. */
+    val momentsPaging: MomentsPaging = MomentsPaging(),
 ) {
     companion object {
         /** What the Settings screen offers for [searchPageSize] (the server sends at most 1000 at a time). */
@@ -117,6 +139,7 @@ class SettingsController internal constructor(
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
             searchPageSize = settings.searchPageSize,
+            momentsPaging = settings.momentsPaging,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -170,6 +193,26 @@ class SettingsController internal constructor(
         if (size !in 1..1000) return
         settings.searchPageSize = size
         _state.update { it.copy(searchPageSize = size) }
+    }
+
+    /** Rows of Moments read at a time; values outside [MomentsPaging.RANGE] are ignored. Applies from the next page. */
+    fun setMomentsRowsPerPage(rows: Int) {
+        if (rows !in MomentsPaging.RANGE) return
+        changeMomentsPaging { it.copy(rowsPerPage = rows) }
+    }
+
+    /** How near the end of what is read Moments reads more; values outside [MomentsPaging.RANGE] are ignored. */
+    fun setMomentsLoadAhead(rows: Int) {
+        if (rows !in MomentsPaging.RANGE) return
+        changeMomentsPaging { it.copy(loadAhead = rows) }
+    }
+
+    fun resetMomentsPaging() = changeMomentsPaging { MomentsPaging() }
+
+    private fun changeMomentsPaging(transform: (MomentsPaging) -> MomentsPaging) {
+        val paging = transform(_state.value.momentsPaging)
+        settings.momentsPaging = paging
+        _state.update { it.copy(momentsPaging = paging) }
     }
 
     /** The previews' limit; the platform trims them to it. Values below 1 are ignored. */

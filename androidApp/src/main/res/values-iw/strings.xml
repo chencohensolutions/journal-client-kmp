@@ -809,4 +809,14 @@
         <item quantity="other">%s שיחות והקלטות יימחקו מהטלפון לצמיתות: אין לתיקיות שלהן סל מחזור. השרת שלך שומר אותן.</item>
     </plurals>
     <string name="free_up_sounds_confirm">למחוק ולפנות מקום</string>
+    <string name="settings_advanced_title">מתקדם</string>
+    <string name="settings_loading_title">טעינת ״רגעים״</string>
+    <string name="settings_loading_row_body">%1$d שורות בכל פעם · %2$d מראש</string>
+    <string name="settings_loading_rows_title">שורות שנטענות בכל פעם</string>
+    <string name="settings_loading_rows_body">יותר: פחות עצירות בגלילה ארוכה, יותר זיכרון.</string>
+    <string name="settings_loading_ahead_title">טעינה מראש</string>
+    <string name="settings_loading_ahead_body">כמה שורות לפני סוף מה שנטען מתחילה טעינת השורות הבאות. יותר: גלילה מהירה חלקה יותר.</string>
+    <string name="settings_loading_default_chip">%d (ברירת מחדל)</string>
+    <string name="settings_loading_note">רק בטלפון הזה. חל כש״רגעים״ טוען את השורות הבאות.</string>
+    <string name="settings_loading_reset">איפוס ל־%1$d ו־%2$d</string>
 </resources>

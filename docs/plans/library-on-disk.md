@@ -288,7 +288,7 @@ Confirmed by the owner on Oct 25, 2026:
        errors (Oct 25, 2026).
      - Found on the phone: fingerprinting every photo of the library (also hidden sources) rebuilt windows every
        3 seconds. Now it fingerprints only the photos Moments shows, as before.
-     - Not yet: the Advanced settings for page size (Rows loaded at a time, Load ahead). The heap is not lower yet
+     - The Advanced settings for page size are built since Oct 26, 2026 (below). The heap is not lower yet
        (about 410 MB just after start): the whole library list is still read for the other screens until phase 6.
    - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
      sync with the server (and the phone's library) goes on in the background, off the main thread, and updates
@@ -296,8 +296,12 @@ Confirmed by the owner on Oct 25, 2026:
    - **Page size in Settings** (asked by the owner, Oct 25, 2026): an **Advanced** section at the end of Settings
      with **Rows loaded at a time** (how many rows of Moments one page reads) and **Load ahead** (how many rows before
      the end of what is loaded the next page starts).
-     - Both are kept in `JournalSettings`, and a change starts a new pager at the same position.
-     - The defaults come from the phase 0 measurements on the owner's phone.
+     - **Built on Android, Oct 26, 2026** (UI lab round `ux/settings/2026-10-26`, option a: an Advanced section
+       with a Loading Moments page of chips, see docs/screens/settings.md). Both are kept in `JournalSettings`
+       (`MomentsPaging`). There is no new pager: `FeedPager` reads its page size for every page, so a change applies
+       from the next page. The shared pager reads the setting on iOS too; iOS's page and its load-ahead are in
+       docs/ios-todo.md.
+     - The defaults are the values used since phase 5 (30 rows, 40 ahead), not yet measured on the owner's phone.
      - The other paged screens of phase 6 use the same two values, scaled to their item size (a grid page is that
        many rows of photos).
      - The section's look is tried in the UI lab first (the `ui-lab` skill), and docs/screens/settings.md gets it. `feed_section` and the pager; Android `LazyColumn` with `paging-compose`, keeping today's look

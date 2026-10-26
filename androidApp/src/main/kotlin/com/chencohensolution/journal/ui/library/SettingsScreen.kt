@@ -77,11 +77,15 @@ internal class SettingsActions(
     val setSayWhatsHidden: (Boolean) -> Unit = {},
     /** "Filter bar in Moments". */
     val setShowFilterBar: (Boolean) -> Unit = {},
+    /** Settings › Loading Moments: rows read at a time, how near the end the next are read, and both back to the defaults. */
+    val setMomentsRowsPerPage: (Int) -> Unit = {},
+    val setMomentsLoadAhead: (Int) -> Unit = {},
+    val resetMomentsPaging: () -> Unit = {},
     val back: () -> Unit = {},
 )
 
 /** Settings' first page, and the pages its rows open. Backup, Free up space, Hidden collections and Search are screens of their own. */
-internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, STORAGE }
+internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, STORAGE, LOADING_MOMENTS }
 
 /**
  * The user's choices, kept on this device: on [SettingsPage.MAIN] a short page of groups (Library, Privacy, Backup and
@@ -112,6 +116,7 @@ internal fun SettingsScreen(
         SettingsPage.SHOWN -> R.string.settings_shown_title
         SettingsPage.MOMENTS -> R.string.settings_moments_title
         SettingsPage.STORAGE -> R.string.settings_storage_title
+        SettingsPage.LOADING_MOMENTS -> R.string.settings_loading_title
     }
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -129,6 +134,7 @@ internal fun SettingsScreen(
                 }
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
+                SettingsPage.LOADING_MOMENTS -> LoadingMomentsPage(settings.momentsPaging, actions)
             }
         }
         TitleBar(stringResource(title), actions.back, Modifier.align(Alignment.TopCenter))
@@ -179,6 +185,7 @@ private fun MainPage(
     Column(Modifier.padding(top = 20.dp)) {
         Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
     }
+    AdvancedSection(settings.momentsPaging) { actions.openPage(SettingsPage.LOADING_MOMENTS) }
 }
 
 /** Moments: how its rows are made, with the break's length under "By breaks", and how alike a set's photos are. */

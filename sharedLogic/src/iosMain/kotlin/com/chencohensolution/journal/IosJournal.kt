@@ -452,7 +452,12 @@ object IosJournal {
             similarity = PhotoSimilarity(IosPhotoAnalyzer(), FingerprintCache(FileSystem.SYSTEM, caches.toPath() / "similarity")),
             places = PhotoPlaces(IosPlaceReader(), PlaceCache(FileSystem.SYSTEM, caches.toPath() / "places")),
             // Moments read from the library database a page at a time.
-            feed = FeedPager(FeedTable(libraryDatabase), LibraryTable(libraryDatabase), Dispatchers.IO),
+            feed = FeedPager(
+                FeedTable(libraryDatabase),
+                LibraryTable(libraryDatabase),
+                Dispatchers.IO,
+                pageSize = { settings.currentState.momentsPaging.rowsPerPage },
+            ),
             shownRow = library::shownRow,
         )
     }

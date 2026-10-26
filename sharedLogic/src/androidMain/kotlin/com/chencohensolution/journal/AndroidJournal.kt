@@ -414,7 +414,12 @@ fun createStoriesController(context: Context, library: LibraryController, settin
         ),
         places = PhotoPlaces(AndroidPlaceReader(context), PlaceCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "places")),
         // Moments read from the library database a page at a time.
-        feed = FeedPager(FeedTable(libraryDatabase(context)), LibraryTable(libraryDatabase(context)), Dispatchers.IO),
+        feed = FeedPager(
+            FeedTable(libraryDatabase(context)),
+            LibraryTable(libraryDatabase(context)),
+            Dispatchers.IO,
+            pageSize = { settings.currentState.momentsPaging.rowsPerPage },
+        ),
         shownRow = library::shownRow,
     )
 }

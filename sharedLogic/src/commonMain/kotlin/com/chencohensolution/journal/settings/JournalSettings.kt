@@ -143,6 +143,19 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SEARCH_PAGE_SIZE)?.toIntOrNull()?.takeIf { it in 1..1000 } ?: DEFAULT_SEARCH_PAGE_SIZE
         set(value) = store.putString(KEY_SEARCH_PAGE_SIZE, value.toString())
 
+    /** How Moments is read a page at a time (Settings › Advanced › Loading Moments); each value falls back on its own. */
+    var momentsPaging: MomentsPaging
+        get() = MomentsPaging(
+            rowsPerPage = store.getString(KEY_MOMENTS_ROWS_PER_PAGE)?.toIntOrNull()?.takeIf { it in MomentsPaging.RANGE }
+                ?: MomentsPaging.DEFAULT_ROWS_PER_PAGE,
+            loadAhead = store.getString(KEY_MOMENTS_LOAD_AHEAD)?.toIntOrNull()?.takeIf { it in MomentsPaging.RANGE }
+                ?: MomentsPaging.DEFAULT_LOAD_AHEAD,
+        )
+        set(value) {
+            store.putString(KEY_MOMENTS_ROWS_PER_PAGE, value.rowsPerPage.toString())
+            store.putString(KEY_MOMENTS_LOAD_AHEAD, value.loadAhead.toString())
+        }
+
     var previewCacheGigabytes: Int
         get() = store.getString(KEY_PREVIEW_CACHE_GB)?.toIntOrNull()?.takeIf { it > 0 } ?: DEFAULT_PREVIEW_CACHE_GB
         set(value) = store.putString(KEY_PREVIEW_CACHE_GB, value.toString())
@@ -280,6 +293,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_ORDER = "backup_order"
         private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
         private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
+        private const val KEY_MOMENTS_ROWS_PER_PAGE = "moments_rows_per_page"
+        private const val KEY_MOMENTS_LOAD_AHEAD = "moments_load_ahead"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_FREE_UP_KEPT = "free_up_kept"

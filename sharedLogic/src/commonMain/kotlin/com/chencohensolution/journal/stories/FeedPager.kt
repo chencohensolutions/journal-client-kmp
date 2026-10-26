@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.library.GeoPoint
+import com.chencohensolution.journal.settings.MomentsPaging
 import com.chencohensolution.journal.library.LibraryKey
 import com.chencohensolution.journal.library.LibraryRow
 import com.chencohensolution.journal.library.LibraryTable
@@ -29,8 +30,8 @@ internal class FeedPager(
     private val library: LibraryTable,
     /** Where the database is read and written. */
     private val io: CoroutineDispatcher,
-    /** Rows read at a time. */
-    private val pageSize: () -> Int = { PAGE },
+    /** Rows read at a time (Settings › Advanced › Loading Moments), read again for each page. */
+    private val pageSize: () -> Int = { MomentsPaging.DEFAULT_ROWS_PER_PAGE },
 ) {
     private val mutex = Mutex()
     private var loaded = 0
@@ -140,11 +141,6 @@ internal class FeedPager(
         }
         return buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, revealed, context.sounds)
             .firstOrNull { it.key == section.key }
-    }
-
-    private companion object {
-        /** Rows read at a time: several screens of Moments. */
-        const val PAGE = 30
     }
 }
 

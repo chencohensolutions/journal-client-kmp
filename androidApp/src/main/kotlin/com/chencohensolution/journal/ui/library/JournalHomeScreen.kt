@@ -96,6 +96,7 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.settings.GroupingMode
+import com.chencohensolution.journal.settings.MomentsPaging
 import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,9 +111,6 @@ internal enum class HomeTab { STORYLINE, MOMENTS, EXPLORE }
 
 /** Named people offered on the search page before anything is searched. */
 private const val SEARCH_FACES = 16
-
-/** Moments reads its next page when the list is this many items from the end of what is read. */
-private const val LOAD_AHEAD_ROWS = 40
 
 internal class HomeActions(
     /** A photo of the Moments tab; the viewer swipes through its row. */
@@ -195,6 +193,8 @@ internal fun JournalHomeScreen(
     initialSearching: Boolean = false,
     /** Explore's People, when the server has face search; null: no People pill. */
     people: com.chencohensolution.journal.people.PeopleState? = null,
+    /** Moments reads its next page when the list is this many rows from the end of what is read (Settings › Loading Moments). */
+    loadAhead: Int = MomentsPaging.DEFAULT_LOAD_AHEAD,
 ) {
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     // Search covers the tab until its ✕ (or back), and the tab is as it was.
@@ -331,9 +331,9 @@ internal fun JournalHomeScreen(
         if (rows.rowOf(id) < 0) actions.loadMomentsToItem(id)
     }
     // …and the next page, once the list is near the end of what is read.
-    LaunchedEffect(list, moments) {
+    LaunchedEffect(list, moments, loadAhead) {
         if (!moments) return@LaunchedEffect
-        snapshotFlow { list.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - LOAD_AHEAD_ROWS } }
+        snapshotFlow { list.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - loadAhead } }
             .distinctUntilChanged()
             .collect { near -> if (near) actions.loadMoreMoments() }
     }
