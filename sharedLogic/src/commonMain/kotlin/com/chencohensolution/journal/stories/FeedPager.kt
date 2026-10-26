@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.time.TimeSource
 
 /**
  * Moments read from the database a page at a time (docs/plans/library-on-disk.md, phase 5): the newest rows first,
@@ -45,9 +46,10 @@ internal class FeedPager(
      */
     suspend fun refresh(context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): MomentsFeed = mutex.withLock {
         withContext(io) {
+            val start = TimeSource.Monotonic.markNow()
             val windows = table.refresh(context)
             if (windows > 0 || timeline === FeedTimeline.NONE) {
-                Measure.log?.invoke("Moments: $windows windows made again")
+                Measure.log?.invoke("Moments: $windows windows made again in ${start.elapsedNow().inWholeMilliseconds} ms")
                 timeline = table.timeline()
                 counts = library.sourceCounts()
             }

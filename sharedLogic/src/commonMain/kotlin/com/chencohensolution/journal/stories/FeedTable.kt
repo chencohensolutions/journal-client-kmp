@@ -33,11 +33,15 @@ internal class FeedContext(
 
 /**
  * Moments' rows kept in `feed_section` (docs/plans/library-on-disk.md, phase 5): made a window of days at a time
- * ([windowsFor], [buildWindow]) where `library_item` changed, as its triggers note in `feed_dirty`, and read a page at a
- * time ([sections]). A row keeps its structure by ids ([SectionData]); its items are read from `library_item` when it is
+ * ([windowsFor], [buildWindow]) where `library_item` changed, as its triggers note in `feed_dirty`, or all of them a span
+ * of a few thousand items at a time, and read a page at a time ([sections]). A row keeps its structure by ids ([SectionData]); its items are read from `library_item` when it is
  * read. Blocking: call off the main thread.
  */
-internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
+internal class FeedTable(
+    private val database: LibraryDatabase,
+    /** Items per span when every row is made again ([refreshAll]); tests make it small. */
+    private val spanItems: Int = SPAN_ITEMS,
+) : FeedSource {
     private val queries get() = database.feedQueries
     private val state get() = database.stateQueries
 
@@ -67,35 +71,96 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
         markSoundDays(context.sounds)
         val marks = queries.dirtyMarks().executeAsList()
         val dirty = marks.map { it.day }
-        // Many days noted (a large library read in, or changed while its rows were made): made all at once, which
-        // takes seconds, rather than a window per day, which took minutes for 5,467 days on the emulator.
+        // Many days noted (a large library read in, or changed while its rows were made): all made again a span at a
+        // time ([refreshAll]), which takes seconds, rather than a window per day, which took minutes for 5,467 days on
+        // the emulator.
         val everything = ALL in dirty || dirty.size > MANY_DAYS || state.stateValue(VERSION).executeAsOneOrNull() != context.version
         if (dirty.isEmpty() && !everything) return 0
-        val windows = if (everything) {
-            // Every day with an item or a recording.
-            val days = queries.libraryDays().executeAsOne()
-            val all = listOfNotNull(days.first, days.last).map(LocalDay::fromEpochDay) + context.sounds.map { it.day }
-            if (all.isEmpty()) emptyList() else listOf(DayWindow(all.min(), all.max()))
-        } else {
-            windowsFor(dirty.mapTo(HashSet(), LocalDay::fromEpochDay), this, context.grouping, context.sounds, context.sets)
-        }
-        val built = windows.map { window ->
-            window to buildWindow(window, this, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds)
-        }
-        afterBuild()
-        database.transaction {
-            if (everything) queries.deleteAllSections()
-            built.forEach { (window, sections) ->
-                if (!everything) queries.deleteSectionsOfDays(first = window.first.toEpochDay(), last = window.last.toEpochDay())
-                sections.forEach { queries.insertSection(it.toRow()) }
-            }
-            // Only the notings read: a day noted again while its rows were made stays noted and is made again next time.
+        // Only the notings read are cleared: a day noted again while its rows were made stays noted and is made again
+        // next time.
+        fun finish() {
             marks.forEach { queries.clearFeedMark(it.day, it.n) }
             state.setState(VERSION, context.version)
             queries.clearFeedSounds()
             context.sounds.forEach { queries.insertFeedSound(Feed_sound(it.sha256, it.day.toEpochDay(), it.facts())) }
         }
+        if (everything) {
+            val spans = refreshAll(context)
+            database.transaction { finish() }
+            return spans
+        }
+        val windows = windowsFor(dirty.mapTo(HashSet(), LocalDay::fromEpochDay), this, context.grouping, context.sounds, context.sets)
+        val built = windows.map { window -> window to build(window, this, context) }
+        afterBuild()
+        database.transaction {
+            built.forEach { (window, sections) ->
+                queries.deleteSectionsOfDays(first = window.first.toEpochDay(), last = window.last.toEpochDay())
+                sections.forEach { queries.insertSection(it.toRow()) }
+            }
+            finish()
+        }
         return windows.size
+    }
+
+    /**
+     * Every row made again (a new database, a migration, a large library read in, other settings), a span of about
+     * [spanItems] items at a time from the newest day down, each span written as it is made. A span is widened as a
+     * window is ([widened]), so its edges are breaks between rows and the rows come out as building the whole library at
+     * once would make them; but only a span's items are in memory, never the library's (all at once, 300,000 made-up
+     * photos took about 4 minutes on the emulator with the heap near 300 MB). Returns how many spans were made.
+     */
+    private fun refreshAll(context: FeedContext): Int {
+        // Items per day, a recording counting as one, newest day first.
+        val weights = HashMap<Long, Long>()
+        queries.itemsPerDay().executeAsList().forEach { weights[it.epoch_day] = it.items }
+        context.sounds.forEach { val day = it.day.toEpochDay(); weights[day] = (weights[day] ?: 0) + 1 }
+        if (weights.isEmpty()) {
+            database.transaction { queries.deleteAllSections() }
+            return 0
+        }
+        val days = weights.keys.sortedDescending()
+        var next = 0
+        // The newest day not made yet.
+        var below = days.first()
+        var spans = 0
+        while (next < days.size) {
+            var count = 0L
+            val start = next
+            while (next < days.size && (next == start || count < spanItems)) count += weights.getValue(days[next++])
+            val source = LastItems(this)
+            var window = widened(DayWindow(LocalDay.fromEpochDay(days[next - 1]), LocalDay.fromEpochDay(below)), source, context.grouping, context.sounds, context.sets)
+            // The span above ends at a break, so this one never reaches into it; if it ever did, the days above are
+            // noted, and made again as a window next time.
+            val reachedAbove = window.last.toEpochDay() > below
+            val above = window.last.toEpochDay()
+            if (reachedAbove) window = DayWindow(window.first, LocalDay.fromEpochDay(below))
+            val sections = build(window, source, context)
+            afterBuild()
+            database.transaction {
+                queries.deleteSectionsOfDays(first = window.first.toEpochDay(), last = window.last.toEpochDay())
+                sections.forEach { queries.insertSection(it.toRow()) }
+                if (reachedAbove) (below + 1..above).forEach { queries.markFeedDirty(it) }
+            }
+            spans++
+            below = window.first.toEpochDay() - 1
+            while (next < days.size && days[next] > below) next++
+        }
+        // Rows of days the library no longer has.
+        database.transaction { queries.deleteSectionsOutside(first = days.last(), last = days.first()) }
+        return spans
+    }
+
+    private fun build(window: DayWindow, source: FeedSource, context: FeedContext): List<FeedSection> =
+        buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds)
+
+    /** [table] keeping the items it read last: a span is read once more to widen it, and again to make its rows. */
+    private class LastItems(private val table: FeedTable) : FeedSource by table {
+        private var last: Triple<LocalDay, LocalDay, List<MediaItem>>? = null
+
+        override fun items(first: LocalDay, last: LocalDay): List<MediaItem> {
+            this.last?.let { (f, l, items) -> if (f == first && l == last) return items }
+            return table.items(first, last).also { this.last = Triple(first, last, it) }
+        }
     }
 
     /**
@@ -172,6 +237,9 @@ internal class FeedTable(private val database: LibraryDatabase) : FeedSource {
     private companion object {
         /** Noted days past which all rows are made again at once. */
         const val MANY_DAYS = 365
+
+        /** Items per span when every row is made again: a few thousand items in memory at a time. */
+        const val SPAN_ITEMS = 4_000
 
         /** In `feed_dirty`: every day. */
         const val ALL = -1L

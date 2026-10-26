@@ -59,6 +59,15 @@ internal fun windowsFor(
     }
 }
 
+/** [window] widened until its edges are breaks between rows, as [windowsFor] widens the days it is given. */
+internal fun widened(
+    window: DayWindow,
+    source: FeedSource,
+    grouping: TimelineGrouping,
+    sounds: List<SoundRecording>,
+    sets: Map<String, String>,
+): DayWindow = widen(window, source, grouping, sounds, sets.entries.groupBy({ it.value }, { it.key }))
+
 /** [windows] sorted, those that meet or overlap joined. */
 private fun joined(windows: List<DayWindow>): List<DayWindow> {
     val joined = mutableListOf<DayWindow>()

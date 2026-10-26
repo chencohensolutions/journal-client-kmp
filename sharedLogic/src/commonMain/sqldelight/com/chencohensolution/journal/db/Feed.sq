@@ -68,8 +68,9 @@ SELECT DISTINCT epoch_day FROM library_item WHERE id IN ?;
 itemsById:
 SELECT * FROM library_item WHERE id IN ?;
 
-libraryDays:
-SELECT min(epoch_day) AS first, max(epoch_day) AS last FROM library_item;
+-- How many items each day has, newest day first: where the spans of a build of every row end (FeedTable).
+itemsPerDay:
+SELECT epoch_day, count(*) AS items FROM library_item GROUP BY epoch_day ORDER BY epoch_day DESC;
 
 dirtyMarks:
 SELECT day, n FROM feed_dirty;
@@ -86,6 +87,10 @@ DELETE FROM feed_section WHERE first_day <= :last AND last_day >= :first;
 
 deleteAllSections:
 DELETE FROM feed_section;
+
+-- Rows with days outside first..last: those of days the library no longer has, after every row was made again.
+deleteSectionsOutside:
+DELETE FROM feed_section WHERE first_day < :first OR last_day > :last;
 
 insertSection:
 INSERT OR REPLACE INTO feed_section VALUES ?;
