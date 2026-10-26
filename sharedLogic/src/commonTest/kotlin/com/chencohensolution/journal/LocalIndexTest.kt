@@ -199,6 +199,169 @@ class LocalIndexTest {
         assertEquals(2, (LocalTable.load(fs, searchTable) as VectorTable).size)
     }
 
+    private val facesHead = TableHead(index = "faces", model = "m", format = "faces", dim = 2)
+    private val facesFolder = "/local/faces".toPath()
+    private val facesTable = facesFolder / "table.bin"
+
+    /** A file's record in the faces stream: each face's box, its score and five points (left 0), then its vector. */
+    private fun faceRecord(sha: String, faces: List<Pair<FloatArray, FloatArray>>): ByteArray {
+        var bytes = hexBytes(sha) + byteArrayOf(faces.size.toByte(), (faces.size shr 8).toByte())
+        for ((box, vector) in faces) bytes += floats(*box, *FloatArray(11), *vector)
+        return bytes
+    }
+
+    private fun face(x: Float, v0: Float, v1: Float) = floatArrayOf(x, 0.2f, 0.3f, 0.4f) to floatArrayOf(v0, v1)
+
+    /** Faces' boxes are held and their vectors read from the file; a file dropped or sent again replaces its row. */
+    @Test
+    fun facesSurviveSavingDroppingAndReplacing() {
+        val fs = FakeFileSystem()
+        fs.createDirectories(facesFolder)
+        fs.write(facesFolder / "people.json") { writeUtf8("{}") }
+        val table = LocalTable.of(facesHead, fs, facesFolder) as FaceTable
+        table.put(faceRecord(sha('a'), listOf(face(0.1f, 1f, 2f), face(0.5f, 3f, 4f))))
+        table.put(faceRecord(sha('b'), listOf(face(0.7f, 5f, 6f))))
+        table.put(faceRecord(sha('c'), emptyList()))
+        // Waiting to be appended: not read yet.
+        assertNull(table.box(sha('a'), 0))
+        table.save(fs, facesTable)
+        assertEquals(listOf(0.5f, 0.2f, 0.3f, 0.4f), table.box(sha('a'), 1)?.toList())
+
+        val loaded = LocalTable.load(fs, facesTable) as FaceTable
+        assertEquals(3, loaded.size)
+        assertEquals(listOf(0.5f, 0.2f, 0.3f, 0.4f), loaded.box(sha('a'), 1)?.toList())
+        assertEquals(listOf(3f, 4f), loaded.vector(sha('a'), 1)?.toList())
+        assertEquals(listOf(1f, 2f), loaded.vector(sha('a'), 0)?.toList())
+        assertEquals(listOf(5f, 6f), loaded.vector(sha('b'), 0)?.toList())
+        assertEquals(8, loaded.boxes(sha('a'))?.size)
+        // A file read without faces is kept, with none.
+        assertTrue(loaded.has(sha('c')))
+        assertEquals(0, loaded.boxes(sha('c'))?.size)
+        assertNull(loaded.box(sha('a'), 2))
+        assertNull(loaded.vector(sha('a'), -1))
+        assertNull(loaded.box("not a sha", 0))
+
+        loaded.drop(sha('b'))
+        loaded.put(faceRecord(sha('a'), listOf(face(0.9f, 7f, 8f))))
+        loaded.save(fs, facesTable)
+        // Three of five rows replaced or dropped: the file was written again, without them.
+        assertTrue(!fs.exists(facesFolder / "faces-1.bin"))
+        assertEquals(34L + 24 + 34, fs.metadata(facesFolder / "faces-2.bin").size)
+        assertTrue(fs.exists(facesFolder / "people.json"))
+
+        val again = LocalTable.load(fs, facesTable) as FaceTable
+        assertEquals(2, again.size)
+        assertNull(again.box(sha('b'), 0))
+        assertNull(again.box(sha('a'), 1))
+        assertEquals(listOf(0.9f, 0.2f, 0.3f, 0.4f), again.box(sha('a'), 0)?.toList())
+        assertEquals(listOf(7f, 8f), again.vector(sha('a'), 0)?.toList())
+    }
+
+    /** Thousands of files through appends, drops, replacements and a rewrite read as a plain map of them says. */
+    @Test
+    fun manyFacesReadAsTheyWereSent() {
+        val fs = FakeFileSystem()
+        val table = LocalTable.of(facesHead, fs, facesFolder) as FaceTable
+        fun shaOf(n: Int) = n.toString(16).padStart(64, '0')
+        val expected = HashMap<String, List<Pair<FloatArray, FloatArray>>>()
+        fun send(n: Int, round: Int) {
+            val faces = (0 until (n + round) % 5).map { face(n.toFloat(), round.toFloat(), it.toFloat()) }
+            table.put(faceRecord(shaOf(n), faces))
+            expected[shaOf(n)] = faces
+        }
+        for (n in 0 until 6000) send(n, 0)
+        table.save(fs, facesTable)
+        for (n in 0 until 6000 step 7) {
+            table.drop(shaOf(n))
+            expected.remove(shaOf(n))
+        }
+        for (n in 0 until 6000 step 3) if (shaOf(n) in expected) send(n, 1)
+        table.save(fs, facesTable)
+
+        val loaded = LocalTable.load(fs, facesTable) as FaceTable
+        assertEquals(expected.size, loaded.size)
+        for (n in 0 until 6000) {
+            val faces = expected[shaOf(n)]
+            if (faces == null) {
+                assertNull(loaded.boxes(shaOf(n)), "file $n")
+                continue
+            }
+            assertEquals(faces.size * 4, loaded.boxes(shaOf(n))?.size, "file $n")
+            faces.forEachIndexed { i, (box, vector) ->
+                assertEquals(box.toList(), loaded.box(shaOf(n), i)?.toList(), "file $n face $i")
+                assertEquals(vector.toList(), loaded.vector(shaOf(n), i)?.toList(), "file $n face $i")
+            }
+        }
+    }
+
+    /** A face read while a download appends reads the rows published before; the rows waiting come with the next flush. */
+    @Test
+    fun aFaceIsReadWhileADownloadAppends() {
+        // As on a phone: one handle appends while another reads (the fake refuses it by default).
+        val fs = FakeFileSystem().apply { allowReadsWhileWriting = true }
+        val table = FaceTable.create(facesHead, fs, facesFolder)
+        table.put(faceRecord(sha('a'), listOf(face(0.1f, 1f, 2f))))
+        table.flush()
+        table.put(faceRecord(sha('b'), listOf(face(0.2f, 3f, 4f))))
+        // The file open for appending (as a flush has it) while a face is read.
+        fs.appendingSink(facesFolder / "faces-1.bin").use {
+            assertEquals(listOf(1f, 2f), table.vector(sha('a'), 0)?.toList())
+            assertNull(table.vector(sha('b'), 0))
+        }
+        table.flush()
+        assertEquals(listOf(3f, 4f), table.vector(sha('b'), 0)?.toList())
+        assertEquals(listOf(1f, 2f), table.vector(sha('a'), 0)?.toList())
+    }
+
+    /** A download cut off after appending faces: they are kept; half a row at the end is cut off. */
+    @Test
+    fun facesPastTheLastSaveAreKeptAndHalfARowIsCutOff() {
+        val fs = FakeFileSystem()
+        val table = FaceTable.create(facesHead, fs, facesFolder)
+        table.put(faceRecord(sha('a'), listOf(face(0.1f, 1f, 2f))))
+        table.save(fs, facesTable)
+        table.put(faceRecord(sha('b'), listOf(face(0.2f, 3f, 4f))))
+        table.flush()
+        // The head of a row of one face, and only part of the face.
+        fs.appendingSink(facesFolder / "faces-1.bin").buffer().use { it.write(hexBytes(sha('e')) + byteArrayOf(1, 0) + ByteArray(5)) }
+        val loaded = LocalTable.load(fs, facesTable) as FaceTable
+        assertEquals(2, loaded.size)
+        assertTrue(!loaded.has(sha('e')))
+        assertEquals(2L * (34 + 24), fs.metadata(facesFolder / "faces-1.bin").size)
+        assertEquals(listOf(3f, 4f), loaded.vector(sha('b'), 0)?.toList())
+        loaded.put(faceRecord(sha('c'), listOf(face(0.3f, 5f, 6f))))
+        loaded.save(fs, facesTable)
+        assertEquals(listOf(5f, 6f), (LocalTable.load(fs, facesTable) as FaceTable).vector(sha('c'), 0)?.toList())
+    }
+
+    /** A faces table version 2 saved whole in table.bin is moved into the faces' own files once, without downloading. */
+    @Test
+    fun anEarlierWholeFacesTableIsMovedIntoItsOwnFiles() {
+        val fs = FakeFileSystem()
+        fs.createDirectories(facesFolder)
+        val rows = Buffer()
+        rows.write(hexBytes(sha('a'))).writeShortLe(2)
+        rows.write(floats(0.1f, 0.2f, 0.3f, 0.4f, 1f, 2f)).write(floats(0.5f, 0.6f, 0.7f, 0.8f, 3f, 4f))
+        rows.write(hexBytes(sha('b'))).writeShortLe(0)
+        val old = rows.readByteArray()
+        fs.write(facesTable) {
+            writeUtf8("""{"v":2,"index":"faces","model":"m","format":"faces","dim":2,"cursor":"c9"}""" + "\n")
+            write(old)
+        }
+        val table = LocalTable.load(fs, facesTable) as FaceTable
+        assertEquals("c9", table.head.cursor)
+        assertEquals(2, table.size)
+        assertEquals(listOf(0.5f, 0.6f, 0.7f, 0.8f), table.box(sha('a'), 1)?.toList())
+        assertEquals(listOf(3f, 4f), table.vector(sha('a'), 1)?.toList())
+        assertTrue(!fs.exists(facesTable))
+        assertTrue(fs.exists(facesFolder / "faces.json"))
+        // What it writes as a whole table is what it was given.
+        val written = Buffer()
+        table.writeRows(written)
+        assertEquals(old.toList(), written.readByteArray().toList())
+        assertEquals(2, (LocalTable.load(fs, facesTable) as FaceTable).size)
+    }
+
     @Test
     fun scoresFacesAndTextAreKept() {
         val fs = FakeFileSystem()
@@ -207,20 +370,21 @@ class LocalIndexTest {
         scores.save(fs, "/s.bin".toPath())
         assertEquals(6.5f, (LocalTable.load(fs, "/s.bin".toPath()) as ScoreTable).scores[sha('a')])
 
-        val faces = LocalTable.of(TableHead(index = "faces", model = "m", format = "faces", dim = 1), fs, "/".toPath()) as FaceTable
+        val faces = LocalTable.of(TableHead(index = "faces", model = "m", format = "faces", dim = 1), fs, facesFolder) as FaceTable
         // Two faces: box, score and points (15 numbers) and a vector of 1.
         val face1 = floats(0.1f, 0.2f, 0.3f, 0.4f, *FloatArray(11), 0.5f)
         val face2 = floats(0.5f, 0.6f, 0.1f, 0.1f, *FloatArray(11), 0.5f)
         faces.put(hexBytes(sha('a')) + byteArrayOf(2, 0) + face1 + face2)
-        faces.save(fs, "/f.bin".toPath())
-        val loadedFaces = LocalTable.load(fs, "/f.bin".toPath()) as FaceTable
+        faces.save(fs, facesTable)
+        val loadedFaces = LocalTable.load(fs, facesTable) as FaceTable
         val box = assertNotNull(loadedFaces.box(sha('a'), 1))
         assertEquals(listOf(0.5f, 0.6f, 0.1f, 0.1f), box.toList())
         // The vectors are kept whole.
         assertEquals(listOf(0.5f), loadedFaces.vector(sha('a'), 1)?.toList())
         // A table from before the vectors were kept isn't read: it is downloaded again.
-        fs.write("/old.bin".toPath()) { writeUtf8("""{"v":1,"index":"faces","model":"m","format":"faces","dim":1}""" + "\n") }
-        assertNull(LocalTable.load(fs, "/old.bin".toPath()))
+        fs.createDirectories("/old".toPath())
+        fs.write("/old/table.bin".toPath()) { writeUtf8("""{"v":1,"index":"faces","model":"m","format":"faces","dim":1}""" + "\n") }
+        assertNull(LocalTable.load(fs, "/old/table.bin".toPath()))
 
         val text = LocalTable.of(TableHead(index = "ocr", model = "m", format = "jsonl", dim = 0), fs, "/".toPath()) as TextTable
         text.put("""{"sha256":"${sha('a')}","lines":[{"text":"קבלה","box":[0,0,1,1],"score":0.9}]}""".encodeToByteArray())

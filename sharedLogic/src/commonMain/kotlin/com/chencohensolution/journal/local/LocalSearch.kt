@@ -325,7 +325,7 @@ internal class PhoneFallbackFindingsApi(
         if (faces == null && texts == null) return null
         val doc = indexes.peopleDoc()
         val owner = doc?.people.orEmpty().flatMap { p -> p.faces.map { it to p } }.toMap()
-        val boxes = faces?.boxes?.get(sha256)
+        val boxes = faces?.boxes(sha256)
         val found = if (boxes == null) emptyList() else (0 until boxes.size / 4).map { n ->
             val id = "$sha256:$n"
             val p = owner[id]

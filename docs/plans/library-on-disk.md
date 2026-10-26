@@ -550,7 +550,15 @@ Confirmed by the owner on Oct 25, 2026:
      a new immutable index, so a search during a download needs no lock; `save` writes the file again once an eighth
      of it is replaced or dropped. Measured on the PC (`VectorTableMeasureTest`, `JOURNAL_MEASURE=1`): 95,000 rows of
      768, a 76 MB file, 5 MB held, opened in 0.12 s, a search 0.17 s. Not yet checked on the owner's phone.
-   - Left: the faces table (full floats, in memory; about 60 MB for 120,000 faces) could go the same way.
+   - **The faces table, built Oct 26, 2026** the same way. `FaceTable` keeps each file's row (sha256, how many faces,
+     their boxes, then their full-precision SFace vectors) in `faces-<n>.bin` beside `faces.json`, and holds only the
+     boxes (all in one array, 16 bytes a face) and the same index of rows; `vector()` reads one face's 128 numbers
+     from the file (only a face correction asks for one). Appends every 4,096 rows or 8,192 faces, an immutable index
+     published each time, the rewrite once an eighth is dead, half a row cut off at open, and a `table.bin` of version
+     2 moved into the new files once, as for the vectors. Measured on the PC (`FaceTableMeasureTest`,
+     `JOURNAL_MEASURE=1`): 120,000 faces in 40,000 files, a 64 MB file, 5.4 MB held (63 to 68 MB held as before),
+     opened in 0.27 s (0.15 s warm; the whole file is read once to find the boxes), a face's box and vector about
+     0.1 ms. Not yet checked on the owner's phone.
 8. **iOS.** The same shared logic is already in place. Port Moments and the grids to the pager in SwiftUI
    (`MomentsFeedViews.swift`, `DayGrid.swift`, `ExploreViews.swift`, `LibraryRootView.swift`, the map). Add an entry
    in docs/ios-todo.md for whatever is left when a phase ships Android-first.
