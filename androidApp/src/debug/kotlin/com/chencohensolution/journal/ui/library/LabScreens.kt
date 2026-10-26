@@ -196,6 +196,8 @@ internal val labScreens: List<LabScreen> = listOf(
         sourcesOptionABar,
         sourcesOptionB,
         sourcesOptionBBar,
+        sourcesOptionB2,
+        sourcesOptionB2Bar,
         sourcesOptionC,
         sourcesOptionCBar,
     )),
