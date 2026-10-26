@@ -2,6 +2,7 @@ package com.chencohensolution.journal.local
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okio.Buffer
 import okio.BufferedSink
 import okio.BufferedSource
 import okio.FileHandle
@@ -537,36 +538,179 @@ private fun FileHandle.readFully(offset: Long, target: ByteArray, length: Int) {
     }
 }
 
-/** Scores (aesthetic: one number a file), kept as they come. */
+/**
+ * Scores (aesthetic: one number a file). Kept as [ShaScores], which the library reads as it is (no copy): 36 bytes a
+ * file instead of about 250 for a map of hex strings to boxed numbers. A download's changes gather in [pending] and
+ * make a new [scores] every few thousand, and at the end.
+ */
 internal class ScoreTable(head: TableHead) : LocalTable(head) {
-    val scores = HashMap<String, Float>()
+    var scores: ShaScores = ShaScores.EMPTY
+        private set
+
+    /** Changes not in [scores] yet: a score, or null for one dropped. */
+    private val pending = HashMap<String, Float?>()
 
     override val size: Int get() = scores.size
 
-    override fun has(sha256: String) = sha256 in scores
+    override fun has(sha256: String): Boolean = if (sha256 in pending) pending[sha256] != null else scores.containsKey(sha256)
 
-    override fun put(record: ByteArray) {
-        scores[record.hex(0, 32)] = record.floatAt(32)
+    override fun put(record: ByteArray) = change(record.hex(0, 32), record.floatAt(32))
+
+    override fun drop(sha256: String) = change(sha256, null)
+
+    private fun change(sha256: String, score: Float?) {
+        pending[sha256] = score
+        if (pending.size >= FLUSH_CHANGES) flush()
     }
 
-    override fun drop(sha256: String) {
-        scores.remove(sha256)
+    /** Makes [scores] with the changes gathered. */
+    fun flush() {
+        if (pending.isEmpty()) return
+        scores = scores.with(pending)
+        pending.clear()
     }
 
-    override fun clear() = scores.clear()
+    override fun clear() {
+        pending.clear()
+        scores = ShaScores.EMPTY
+    }
 
     override fun writeRows(sink: BufferedSink) {
-        for ((sha, score) in scores) {
-            sink.write(hexBytes(sha))
+        flush()
+        scores.forEachRow { sha, from, score ->
+            sink.write(sha, from, 32)
             sink.writeIntLe(score.toBits())
         }
     }
 
     override fun readRows(source: BufferedSource) {
         clear()
+        val shas = Buffer()
+        val values = ArrayList<Float>()
         while (!source.exhausted()) {
-            val sha = source.readByteArray(32).hex()
-            scores[sha] = Float.fromBits(source.readIntLe())
+            shas.write(source.readByteArray(32))
+            values += Float.fromBits(source.readIntLe())
+        }
+        scores = ShaScores.of(shas.readByteArray(), values.toFloatArray())
+    }
+
+    private companion object {
+        const val FLUSH_CHANGES = 4096
+    }
+}
+
+/**
+ * Numbers by sha256, compact and never changed once made: the sha256s as bytes, sorted, and a number each, looked up
+ * by binary search. A read-only [Map] by hex sha256, so what reads scores needn't know. Two are equal only when they
+ * are the same one (a [kotlinx.coroutines.flow.StateFlow] compares what it is given; comparing every entry would be
+ * slow and is never needed).
+ */
+internal class ShaScores private constructor(private val shas: ByteArray, private val numbers: FloatArray) : AbstractMap<String, Float>() {
+    override val size: Int get() = numbers.size
+
+    override fun get(key: String): Float? {
+        val at = indexOf(key)
+        return if (at < 0) null else numbers[at]
+    }
+
+    override fun containsKey(key: String): Boolean = indexOf(key) >= 0
+
+    override val entries: Set<Map.Entry<String, Float>>
+        get() = (0 until size).mapTo(LinkedHashSet(size)) { i -> Entry(shas.hex(i * 32, i * 32 + 32), numbers[i]) }
+
+    override fun equals(other: Any?): Boolean = this === other
+
+    override fun hashCode(): Int = identity
+
+    private val identity = kotlin.random.Random.nextInt()
+
+    /** Each row: the bytes holding its sha256 (32 from the given place), and its number. */
+    fun forEachRow(each: (ByteArray, Int, Float) -> Unit) {
+        for (i in 0 until size) each(shas, i * 32, numbers[i])
+    }
+
+    /** These with [changes] made: a number, or null to leave a sha256 out. */
+    fun with(changes: Map<String, Float?>): ShaScores {
+        val changed = changes.keys.mapNotNullTo(HashSet()) { key -> parse(key)?.let(::Key) }
+        val keptShas = Buffer()
+        val keptValues = ArrayList<Float>(size + changes.size)
+        for (i in 0 until size) {
+            if (Key(shas.copyOfRange(i * 32, i * 32 + 32)) in changed) continue
+            keptShas.write(shas, i * 32, 32)
+            keptValues += numbers[i]
+        }
+        for ((key, value) in changes) {
+            val bytes = parse(key) ?: continue
+            if (value == null) continue
+            keptShas.write(bytes)
+            keptValues += value
+        }
+        return of(keptShas.readByteArray(), keptValues.toFloatArray())
+    }
+
+    private fun indexOf(key: String): Int {
+        val sha = parse(key) ?: return -1
+        var low = 0
+        var high = size - 1
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val c = compare(shas, mid * 32, sha, 0)
+            when {
+                c < 0 -> low = mid + 1
+                c > 0 -> high = mid - 1
+                else -> return mid
+            }
+        }
+        return -1
+    }
+
+    private class Entry(override val key: String, override val value: Float) : Map.Entry<String, Float>
+
+    /** A sha256's bytes, compared by content. */
+    private class Key(val bytes: ByteArray) {
+        override fun equals(other: Any?) = other is Key && bytes.contentEquals(other.bytes)
+        override fun hashCode() = bytes.contentHashCode()
+    }
+
+    companion object {
+        val EMPTY = ShaScores(ByteArray(0), FloatArray(0))
+
+        /** From [shas] (32 bytes each) and their [values], in any order; a sha256 given twice keeps its last number. */
+        fun of(shas: ByteArray, values: FloatArray): ShaScores {
+            val count = values.size
+            val order = (0 until count).sortedWith { a, b -> compare(shas, a * 32, shas, b * 32).let { if (it != 0) it else b - a } }
+            val sortedShas = ByteArray(count * 32)
+            val sortedValues = FloatArray(count)
+            var n = 0
+            for (i in order) {
+                // Sorted with the later of equal sha256s first: the one kept.
+                if (n > 0 && compare(sortedShas, (n - 1) * 32, shas, i * 32) == 0) continue
+                shas.copyInto(sortedShas, n * 32, i * 32, i * 32 + 32)
+                sortedValues[n] = values[i]
+                n++
+            }
+            return ShaScores(sortedShas.copyOf(n * 32), sortedValues.copyOf(n))
+        }
+
+        /** A hex sha256's bytes; null when it isn't one. */
+        private fun parse(hex: String): ByteArray? {
+            if (hex.length != 64) return null
+            val bytes = ByteArray(32)
+            for (i in 0 until 32) {
+                val high = hex[2 * i].digitToIntOrNull(16) ?: return null
+                val low = hex[2 * i + 1].digitToIntOrNull(16) ?: return null
+                bytes[i] = (high * 16 + low).toByte()
+            }
+            return bytes
+        }
+
+        private fun compare(a: ByteArray, at: Int, b: ByteArray, bt: Int): Int {
+            for (i in 0 until 32) {
+                val x = a[at + i].toInt() and 0xFF
+                val y = b[bt + i].toInt() and 0xFF
+                if (x != y) return x - y
+            }
+            return 0
         }
     }
 }

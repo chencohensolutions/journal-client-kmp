@@ -174,7 +174,7 @@ class LocalIndexes internal constructor(
             if (fileSystem.exists(peoplePath)) json.decodeFromString(PeopleFile.serializer(), fileSystem.read(peoplePath) { readUtf8() }) else null
         }.getOrNull()
         loaded = true
-        (tables[PhoneIndexKind.AESTHETIC] as? ScoreTable)?.let { _scores.value = HashMap(it.scores) }
+        (tables[PhoneIndexKind.AESTHETIC] as? ScoreTable)?.let { _scores.value = it.scores }
     }
 
     /** Settings › On this phone opened: asks the server what it offers now (sizes, what is new). */
@@ -328,7 +328,7 @@ class LocalIndexes internal constructor(
         } finally {
             withContext(NonCancellable + Dispatchers.IO) { table.save(fileSystem, tablePath(kind)) }
             tables[kind] = table
-            if (kind == PhoneIndexKind.AESTHETIC) (table as? ScoreTable)?.let { _scores.value = HashMap(it.scores) }
+            if (kind == PhoneIndexKind.AESTHETIC) (table as? ScoreTable)?.let { _scores.value = it.scores }
             _version.update { it + 1 }
         }
     }
