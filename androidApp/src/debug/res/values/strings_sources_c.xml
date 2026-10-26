@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="sources_c_phones">Phones</string>
-    <string name="sources_c_imported">Imported</string>
-    <string name="sources_c_note">Phones: by the folder on the phone that took or saved them. Imported: old backups imported into your server, by what the import found.</string>
-</resources>

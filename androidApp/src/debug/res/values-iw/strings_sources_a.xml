@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="sources_a_from_phones">מהטלפונים שלך</string>
-    <string name="sources_a_from_phones_body">לפי התיקייה בטלפון שצילם או שמר אותם</string>
-    <string name="sources_a_imported">מיובא</string>
-    <string name="sources_a_imported_body">גיבויים ישנים שיובאו לשרת שלך, לפי מה שהייבוא מצא</string>
-</resources>

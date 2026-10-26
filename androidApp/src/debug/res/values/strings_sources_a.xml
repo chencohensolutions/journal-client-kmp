@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="sources_a_from_phones">From your phones</string>
-    <string name="sources_a_from_phones_body">By the folder on the phone that took or saved them</string>
-    <string name="sources_a_imported">Imported</string>
-    <string name="sources_a_imported_body">Old backups imported into your server, by what the import found</string>
-</resources>

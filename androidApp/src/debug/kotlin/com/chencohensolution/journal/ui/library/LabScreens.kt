@@ -192,14 +192,8 @@ internal val labScreens: List<LabScreen> = listOf(
             )
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
-        sourcesOptionA,
-        sourcesOptionABar,
-        sourcesOptionB,
-        sourcesOptionBBar,
         sourcesOptionB2,
         sourcesOptionB2Bar,
-        sourcesOptionC,
-        sourcesOptionCBar,
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
