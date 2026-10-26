@@ -477,6 +477,12 @@ class LibraryTableTest {
             assertTrue(day.sectionKey in keys(), "${day.day}: still in the feed")
             assertTrue(stories.currentState.itemsById.keys.containsAll(stories.currentState.feed.itemsById().keys), "${day.day}: its photos by id")
         }
+        // Dragging the ruler's dial asks for one month after another: only the last is read and called back.
+        val called = mutableListOf<String?>()
+        for (index in listOf(60, 90, 180)) stories.loadMomentsTo(days[index].day) { called += it }
+        advanceUntilIdle()
+        assertEquals<List<String?>>(listOf(days[180].sectionKey), called)
+        assertTrue(days[180].sectionKey in keys())
         stories.close()
         settings.close()
         library.close()

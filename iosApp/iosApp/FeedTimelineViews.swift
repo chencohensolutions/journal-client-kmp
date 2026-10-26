@@ -74,6 +74,13 @@ struct TimelineBar: View {
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { titleSize = $0 }
         }
         .onAppear { progress = open ? 1 : 0 }
+        .onChange(of: current) { _, now in
+            // The feed got to the month gone to.
+            if sent != nil, now == sent {
+                settle?.cancel()
+                sent = nil
+            }
+        }
         .onChange(of: open) { _, isOpen in
             // Android's FastOutSlowIn, over the same time.
             withAnimation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.36)) { progress = isOpen ? 1 : 0 }
@@ -90,12 +97,18 @@ struct TimelineBar: View {
         return formatter.string(from: day.date)
     }
 
-    /// Shows `month` while the feed gets there.
+    /// Shows `month` until the feed is there (`current`, see `.onChange` in `body`): a month further down is read first,
+    /// which can take more than a moment, and showing the feed's old month meanwhile sent the dial back and forth (Oct 26,
+    /// 2026). Given up after 4 s, in case the feed never gets there.
     private func hold(_ month: Int) {
-        sent = month
         settle?.cancel()
+        if current == month {
+            sent = nil
+            return
+        }
+        sent = month
         settle = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(700))
+            try? await Task.sleep(for: .seconds(4))
             if !Task.isCancelled { sent = nil }
         }
     }

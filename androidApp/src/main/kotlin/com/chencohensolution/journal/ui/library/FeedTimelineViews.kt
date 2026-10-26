@@ -122,12 +122,18 @@ internal fun TimelineBar(
     onOpen: (Boolean) -> Unit,
     go: (TimelineDay) -> Unit,
 ) {
+    // The month last gone to, shown until the feed is there: a month further down is read first, which can take more
+    // than a moment, and the ruler showing the feed's old month meanwhile sent the dial back and forth (Oct 26, 2026).
     var sent by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(sent) {
-        if (sent != null) {
-            delay(700)
+    LaunchedEffect(sent, current) {
+        if (sent == null) return@LaunchedEffect
+        if (current == sent) {
             sent = null
+            return@LaunchedEffect
         }
+        // In case the feed never gets there (the row went, or the feed was scrolled away meanwhile).
+        delay(SENT_GIVE_UP_MILLIS)
+        sent = null
     }
     val shown = (sent ?: current ?: 0).coerceIn(0, timeline.months.size - 1)
     val goToMonth = { month: Int ->
@@ -218,6 +224,9 @@ internal fun TimelineBar(
 }
 
 private const val MORPH_MILLIS = 360
+
+/** How long the month gone to is shown when the feed doesn't get there. */
+private const val SENT_GIVE_UP_MILLIS = 4_000L
 private const val PILL_TITLE_SP = 15f
 private const val RULER_TITLE_SP = 20f
 private val PILL_RADIUS = 20.dp

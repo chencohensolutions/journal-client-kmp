@@ -396,12 +396,21 @@ class StoriesController internal constructor(
      */
     fun loadMomentsTo(day: LocalDay, onLoaded: (String?) -> Unit) {
         val pager = feed ?: return onLoaded(null)
-        scope.launch {
-            val jump = pager.loadTo(day, feedContext(), revealed, shownRow)
-            jump.feed?.let { showPaged(it) }
-            onLoaded(jump.key)
+        // A later date cancels one still being read: dragging the ruler's dial asks for every month it passes, and read
+        // one after another the last one came long after the finger stopped (Oct 26, 2026). The one cancelled never
+        // calls back; the screens only follow the last one anyway.
+        jumpJob?.cancel()
+        jumpJob = scope.launch {
+            val key = Measure.time({ "Moments: went to $day" }) {
+                val jump = pager.loadTo(day, feedContext(), revealed, shownRow)
+                jump.feed?.let { showPaged(it) }
+                jump.key
+            }
+            onLoaded(key)
         }
     }
+
+    private var jumpJob: Job? = null
 
     /**
      * Publishes the rows read [more], built off the main thread like a rebuild. A rebuild already going, made from the
