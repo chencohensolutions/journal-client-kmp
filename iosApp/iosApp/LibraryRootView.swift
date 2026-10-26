@@ -180,7 +180,8 @@ struct LibraryRootView: View {
                                 openItem: { item in openViewer(ViewerRequest(search: true, itemId: item.id)) },
                                 prepare: search.prepare,
                                 addPerson: search.addPerson,
-                                removePerson: search.removePerson
+                                removePerson: search.removePerson,
+                                markPrivate: { items in await ServerImages.shared.markPrivate(items) }
                             ),
                             loadMoreMoments: stories.controller.loadMoreMoments,
                             loadMomentsTo: { day, done in stories.controller.loadMomentsTo(day: day, onLoaded: done) },

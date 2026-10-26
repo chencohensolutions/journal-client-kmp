@@ -97,6 +97,12 @@ class IosServerFiles internal constructor(
         library.setPrivate(listOf(sha), isPrivate)
     }
 
+    /** Marks [items] private at once (search's picked photos); those the server doesn't have are left as they are. */
+    fun markPrivate(items: List<MediaItem>, onDone: (Boolean) -> Unit): ObservationHandle = run({ onDone(it ?: false) }) {
+        val shas = items.mapNotNull { library.sha256Of(it) }
+        shas.isEmpty() || library.setPrivate(shas, true)
+    }
+
     /** What is kept here of [item] (a server-only photo or video): [PhoneStorage.keptHere]. */
     fun keptHere(item: MediaItem, onResult: (KeptHere?) -> Unit): ObservationHandle = run(onResult) {
         val sha = item.sha256 ?: return@run null

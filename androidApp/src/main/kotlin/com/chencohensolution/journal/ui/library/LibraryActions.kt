@@ -58,6 +58,8 @@ internal class LibraryActions(
     val backup: BackupActions,
     /** Marks a photo on the server private, or no longer private; false when the server couldn't be reached. */
     val setPrivate: suspend (MediaItem, Boolean) -> Boolean,
+    /** Marks many photos private at once (search's picked photos); those the server doesn't have are left as they are. */
+    val markPrivate: suspend (List<MediaItem>) -> Boolean,
     /** The viewer's Share: the original to another app; false when it can't be had. */
     val share: suspend (MediaItem) -> Boolean,
     backgroundLocation: State<Boolean>,
@@ -202,6 +204,10 @@ internal fun libraryActions(
         val sha = server.library.sha256Of(item)
         sha != null && server.library.setPrivate(listOf(sha), isPrivate)
     }
+    val markPrivate: suspend (List<MediaItem>) -> Boolean = { items ->
+        val shas = items.mapNotNull { server.library.sha256Of(it) }
+        shas.isEmpty() || server.library.setPrivate(shas, true)
+    }
     // "Free up space": checked files that wait go to the trash with one system prompt, shown when a run has ended (the
     // notification at its end opens the app), or from Settings.
     val freeUpTrashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -247,6 +253,7 @@ internal fun libraryActions(
         changeSelection = { permissionLauncher.launch(PHOTO_PERMISSIONS) },
         backup = backupActions,
         setPrivate = setPrivate,
+        markPrivate = markPrivate,
         share = { item -> shareOriginal(context, server.previews, item) },
         backgroundLocation = backgroundLocationState,
         canTrashWithoutAsking = canTrashWithoutAskingState,

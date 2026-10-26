@@ -888,14 +888,17 @@ struct FilterBarChip: View {
     }
 }
 
-/// While picking, in place of the tabs: Cancel, "2 selected", and Merge once two or more are picked.
+/// While picking, in place of the tabs: Cancel, "2 selected", and Merge once two or more are picked (or search's Mark
+/// private, `action`, once `minimum` are).
 struct FeedSelectionBar: View {
     let count: Int
     let onCancel: () -> Void
     let onMerge: () -> Void
+    var action: LocalizedStringKey = "Merge"
+    var minimum = 2
 
     var body: some View {
-        let canMerge = count >= 2
+        let canMerge = count >= minimum
         HStack(spacing: 6) {
             Button(action: onCancel) {
                 Text("Cancel").padding(.horizontal, 14).frame(height: 40)
@@ -903,7 +906,7 @@ struct FeedSelectionBar: View {
             .foregroundStyle(LibraryColors.onInverse)
             Text("\(count) selected").foregroundStyle(LibraryColors.onInverseMuted).padding(.horizontal, 6)
             Button(action: onMerge) {
-                Text("Merge")
+                Text(action)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
                     .frame(height: 40)

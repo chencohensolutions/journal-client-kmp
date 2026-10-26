@@ -142,9 +142,19 @@ internal fun SelectMark(selected: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-/** While picking, in place of the tabs: Cancel, "2 picked", and Merge once two or more are picked. */
+/**
+ * While picking, in place of the tabs: Cancel, "2 selected", and Merge once two or more are picked (or search's Mark
+ * private, [action], once [minimum] are).
+ */
 @Composable
-internal fun FeedSelectionBar(count: Int, onCancel: () -> Unit, onMerge: () -> Unit, modifier: Modifier = Modifier) {
+internal fun FeedSelectionBar(
+    count: Int,
+    onCancel: () -> Unit,
+    onMerge: () -> Unit,
+    modifier: Modifier = Modifier,
+    action: String = stringResource(R.string.feed_merge),
+    minimum: Int = 2,
+) {
     Row(
         modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -157,7 +167,7 @@ internal fun FeedSelectionBar(count: Int, onCancel: () -> Unit, onMerge: () -> U
             fontSize = 14.sp,
             modifier = Modifier.padding(horizontal = 6.dp),
         )
-        val canMerge = count >= 2
+        val canMerge = count >= minimum
         Box(
             Modifier
                 .height(40.dp)
@@ -166,7 +176,7 @@ internal fun FeedSelectionBar(count: Int, onCancel: () -> Unit, onMerge: () -> U
                 .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(stringResource(R.string.feed_merge), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(action, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

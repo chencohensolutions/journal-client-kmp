@@ -151,6 +151,9 @@ internal fun parseTimestamp(text: String): Timestamp? {
 /** The version of `server/media.json` written now (see [ServerMediaFile]). */
 private const val FILE_VERSION = 2
 
+/** The most sha256s `setPrivate` takes in one call. */
+private const val SET_PRIVATE_BATCH = 1000
+
 /** What the user's originals take up on the server. */
 data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
 
@@ -356,36 +359,54 @@ class ServerLibrary internal constructor(
                 val response = apollo.mutation(SetCallMutation(sha256, call)).execute()
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                Unit // not the line above's null, which reads as "not registered"
             } ?: return false
-            syncJob?.join()
-            sync()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             return false
         }
+        follow()
         return true
     }
 
     /**
      * Marks [sha256s] private ([isPrivate]), or no longer private, on the server (with their edits and paired files), then syncs so
-     * the library follows. False when the server couldn't be reached or refused.
+     * the library follows. Many are sent [SET_PRIVATE_BATCH] at a time, the most the server takes in one call. False when
+     * the server couldn't be reached or refused (the batches sent before that stay marked).
      */
     suspend fun setPrivate(sha256s: List<String>, isPrivate: Boolean): Boolean {
         try {
-            http.graphql { apollo ->
-                val response = apollo.mutation(SetPrivateMutation(sha256s, isPrivate)).execute()
-                response.exception?.let { throw it }
-                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
-            } ?: return false
-            syncJob?.join()
-            sync()
+            for (batch in sha256s.distinct().chunked(SET_PRIVATE_BATCH)) {
+                http.graphql { apollo ->
+                    val response = apollo.mutation(SetPrivateMutation(batch, isPrivate)).execute()
+                    response.exception?.let { throw it }
+                    response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                    Unit // not the line above's null, which reads as "not registered" (until Oct 26, 2026 every mark said it failed)
+                } ?: return false
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             return false
         }
+        follow()
         return true
+    }
+
+    /**
+     * Syncs after a change the server made, so the library follows. The change is made whether or not this sync gets
+     * through, so a failed one isn't the change's failure: the next sync brings it.
+     */
+    private suspend fun follow() {
+        try {
+            syncJob?.join()
+            sync()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Offline or the server refused: the journal shows that already; the next refresh tries again.
+        }
     }
 
     /** What the user hides on every device; null when the server couldn't be reached or refused. */

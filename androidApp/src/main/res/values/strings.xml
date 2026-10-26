@@ -303,6 +303,11 @@
     <string name="library_private_mark_title">Mark private?</string>
     <string name="library_private_mark_body">It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
     <string name="library_private_mark_confirm">Mark private</string>
+    <plurals name="search_private_title">
+        <item quantity="one">Mark %d photo private?</item>
+        <item quantity="other">Mark %d photos private?</item>
+    </plurals>
+    <string name="search_private_body">They’re hidden on all your devices while Show private media is off, and nothing of them is downloaded. Their edits and paired files are marked too. You can unmark each with Show private media on.</string>
     <string name="library_private_unreachable">Not changed: can’t reach your server. Try again when connected to it.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>

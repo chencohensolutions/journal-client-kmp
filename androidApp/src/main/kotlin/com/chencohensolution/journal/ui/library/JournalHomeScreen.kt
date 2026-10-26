@@ -207,7 +207,11 @@ internal fun JournalHomeScreen(
     // Photos and sets picked to merge; back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
     BackHandler(enabled = selection.active) { selection.clear() }
-    BackHandler(enabled = searching && !selection.active) { searching = false }
+    // Search's results picked to mark private; closing search stops picking.
+    val searchPicks = remember { FeedSelection() }
+    LaunchedEffect(searching) { if (!searching) searchPicks.clear() }
+    BackHandler(enabled = searchPicks.active) { searchPicks.clear() }
+    BackHandler(enabled = searching && !selection.active && !searchPicks.active) { searching = false }
     // The band just shown, for its note above the tabs: "Showing 6 from WhatsApp on Oct 4 · Hide".
     var reveal by remember { mutableStateOf(initialReveal) }
     val inPreview = LocalInspectionMode.current
@@ -432,6 +436,7 @@ internal fun JournalHomeScreen(
                 actions.search,
                 PaddingValues(top = insets.calculateTopPadding() + 80.dp, bottom = insets.calculateBottomPadding() + 150.dp),
                 faces = people?.list?.people.orEmpty().sortedByDescending { it.files }.take(SEARCH_FACES),
+                selection = searchPicks,
             )
         } else if (tab == HomeTab.EXPLORE) {
             ExploreContent(
@@ -492,7 +497,11 @@ internal fun JournalHomeScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                 insets = WindowInsets.navigationBars.union(WindowInsets.ime),
             ) {
-                SearchBottomBar(search, actions.search, onClose = { searching = false })
+                if (searchPicks.active) {
+                    SearchPickingBar(search, searchPicks, actions.search)
+                } else {
+                    SearchBottomBar(search, actions.search, onClose = { searching = false })
+                }
             }
         } else TopBar(
             health,

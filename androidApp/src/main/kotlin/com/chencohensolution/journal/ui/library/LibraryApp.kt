@@ -278,6 +278,7 @@ private fun LibraryScreens(
                                             prepare = search::prepare,
                                             addPerson = search::addPerson,
                                             removePerson = search::removePerson,
+                                            markPrivate = actions.markPrivate,
                                         ),
                                     ),
                                     landing = landingHere,

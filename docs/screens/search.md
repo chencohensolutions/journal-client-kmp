@@ -56,6 +56,12 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   [settings.md](settings.md#search--on-this-phone).
 - Tapping a photo opens the viewer, which swipes through the results in their order; closing it lands back on that
   photo. "Show in Moments" from there closes search and goes to the Moments tab.
+- **Mark private, many at once** (asked Oct 26, 2026): a **long press** on a result starts picking it, as Moments'
+  Select does (a check at its corner, the photo outlined); a set is picked whole. While picking, a tap picks or
+  unpicks instead of opening, and the field gives way to **Cancel · N selected · Mark private** (N counts photos, a
+  set each of its own). Mark private asks first ("Mark 12 photos private?", as the viewer's does), then sends them all
+  (`setPrivate`, 1000 at a time); picking stops, and with Show private media off they leave the results. Offline it
+  says so and keeps the picks. Back, Cancel or ✕ stop picking.
 
 ## What is shown
 
@@ -79,7 +85,8 @@ results follow without searching again. All sources are searched, whatever Momen
   `graphql/Search.graphql`, the schema copied to `graphql/search.graphqls`. Made by `createSearchController` (Android)
   and `IosJournal.createSearchController`. Tests: `SearchTest`.
 - Android: [SearchViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SearchViews.kt)
-  (page, top bar, field, Filter pill and sheet, 🔍 button), wired in `JournalHomeScreen` (`searching`, kept across rotation) and
+  (page, top bar, field, Filter pill and sheet, 🔍 button, `SearchPickingBar`), wired in `JournalHomeScreen` (`searching`,
+  kept across rotation; `searchPicks`) and
   `LibraryApp` (`Route.Viewer(search = true)`). Previews: `SearchScreenshots.kt`.
 - iOS: [SearchViews.swift](../../iosApp/iosApp/SearchViews.swift) and `SearchViewModel.swift`,
-  wired in `JournalHomeView` (`searching`, `search`) and `LibraryRootView` (`ViewerRequest(search: true)`).
+  wired in `JournalHomeView` (`searching`, `search`, `searchPicks`) and `LibraryRootView` (`ViewerRequest(search: true)`).

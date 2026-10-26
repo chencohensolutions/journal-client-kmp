@@ -143,6 +143,13 @@ extension ServerImages {
             self.files.setPrivate(item: item, isPrivate: isPrivate, onDone: { done($0.boolValue) })
         }
     }
+
+    /// Marks many photos private at once (search's picked photos); false when the server couldn't be reached.
+    func markPrivate(_ items: [MediaItem]) async -> Bool {
+        await awaiting { done in
+            self.files.markPrivate(items: items, onDone: { done($0.boolValue) })
+        }
+    }
 }
 
 /// Awaits a shared-logic call that answers through a callback (exactly once, nil when cancelled) and returns a handle

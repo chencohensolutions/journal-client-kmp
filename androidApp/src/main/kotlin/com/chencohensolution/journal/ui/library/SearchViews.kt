@@ -3,6 +3,11 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,7 +88,8 @@ import java.text.NumberFormat
 // server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
 // almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
 // Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
-// keeping the search for next time. See docs/screens/search.md.
+// keeping the search for next time. A long press starts picking photos (a set is picked whole) to mark them private
+// together. See docs/screens/search.md.
 
 internal class SearchActions(
     val search: (text: String) -> Unit = {},
@@ -101,6 +107,8 @@ internal class SearchActions(
     val addPerson: (Person) -> Unit = {},
     /** A person chip's ×. */
     val removePerson: (String) -> Unit = {},
+    /** The picked photos' Mark private; false when the server couldn't be reached. */
+    val markPrivate: suspend (List<MediaItem>) -> Boolean = { true },
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
@@ -113,6 +121,8 @@ internal fun SearchContent(
     contentPadding: PaddingValues,
     /** Named people to search by, before anything is searched (when the server has face search). */
     faces: List<Person> = emptyList(),
+    /** The sets picked, by their first photo's id; a tap picks while any is. */
+    selection: FeedSelection = FeedSelection(),
 ) {
     val list = rememberLazyListState()
     list.LandOn(landing, search.sets.size) { id -> search.sets.indexOfFirst { set -> set.any { it.id == id } } }
@@ -160,10 +170,13 @@ internal fun SearchContent(
         // spinner.
         if (search.status == SearchStatus.DONE || search.status == SearchStatus.SEARCHING) {
             items(search.sets, key = { it.first().id }) { set ->
+                val key = set.first().id
+                val picked = if (selection.active) key in selection.keys else null
+                val pick = { selection.toggle(key) }
                 if (set.size == 1) {
-                    FoundPhoto(set.first(), places, onClick = { actions.openItem(set.first()) })
+                    FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
                 } else {
-                    FoundSet(set, places, landing, actions.openItem)
+                    FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
                 }
             }
             if (search.loadingMore) item(key = "more") {
@@ -213,11 +226,14 @@ private fun FoundNote(search: SearchState) {
     }
 }
 
-/** A photo found: the screen's full width at its own shape (very tall ones kept to about a screen), and when and where under it. */
+/**
+ * A photo found: the screen's full width at its own shape (very tall ones kept to about a screen), and when and where
+ * under it. [picked] is null while not picking.
+ */
 @Composable
-private fun FoundPhoto(item: MediaItem, places: Places, onClick: () -> Unit) {
+private fun FoundPhoto(item: MediaItem, places: Places, picked: Boolean?, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(Modifier.padding(bottom = 14.dp)) {
-        MediaTile(item, onClick, Modifier.fillMaxWidth().aspectRatio(shapeOf(item)))
+        MediaTile(item, onClick, Modifier.fillMaxWidth().aspectRatio(shapeOf(item)), onLongClick = onLongClick, selected = picked)
         Caption(item, places)
     }
 }
@@ -246,10 +262,17 @@ private fun Caption(item: MediaItem, places: Places) {
 
 /**
  * Almost identical photos as one, at the best one's shape: swipe for the others ("2 / 4" and dots), with the date, time
- * and place of the one shown. Turns to the photo the viewer closes on.
+ * and place of the one shown. Turns to the photo the viewer closes on. Picked ([picked]) as a whole.
  */
 @Composable
-private fun FoundSet(set: List<MediaItem>, places: Places, landing: String?, onOpen: (MediaItem) -> Unit) {
+private fun FoundSet(
+    set: List<MediaItem>,
+    places: Places,
+    landing: String?,
+    picked: Boolean?,
+    onOpen: (MediaItem) -> Unit,
+    onLongClick: () -> Unit,
+) {
     val pager = rememberPagerState { set.size }
     LaunchedEffect(landing) {
         val page = set.indexOfFirst { it.id == landing }
@@ -259,7 +282,7 @@ private fun FoundSet(set: List<MediaItem>, places: Places, landing: String?, onO
     Column(Modifier.padding(bottom = 14.dp)) {
         Box(Modifier.fillMaxWidth().aspectRatio(shapeOf(set.first()))) {
             HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP, beyondViewportPageCount = 1) { page ->
-                MediaTile(set[page], onClick = { onOpen(set[page]) }, modifier = Modifier.fillMaxSize())
+                MediaTile(set[page], onClick = { onOpen(set[page]) }, modifier = Modifier.fillMaxSize(), onLongClick = onLongClick, selected = picked)
             }
             Row(
                 Modifier.align(Alignment.TopEnd).padding(10.dp)
@@ -380,6 +403,48 @@ internal fun SearchBottomBar(search: SearchState, actions: SearchActions, onClos
         SearchField(search, actions.search, actions.clear, onClose)
     }
     if (filtering) FilterSheet(search, actions) { filtering = false }
+}
+
+/**
+ * While picking, in place of the field: Cancel, "3 selected" (the photos, a set counting each of its own), and Mark
+ * private, asked first as the viewer's is. Picking stops once they are marked; offline, it stays for another try.
+ */
+@Composable
+internal fun SearchPickingBar(search: SearchState, selection: FeedSelection, actions: SearchActions) {
+    val picked = search.sets.filter { it.first().id in selection.keys }.flatten()
+    var confirming by remember { mutableStateOf(false) }
+    var marking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    FeedSelectionBar(
+        count = picked.size,
+        onCancel = selection::clear,
+        onMerge = { if (!marking) confirming = true },
+        action = stringResource(R.string.library_private_mark),
+        minimum = 1,
+    )
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(pluralStringResource(R.plurals.search_private_title, picked.size, picked.size)) },
+            text = { Text(stringResource(R.string.search_private_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirming = false
+                    marking = true
+                    scope.launch {
+                        if (actions.markPrivate(picked)) {
+                            selection.clear()
+                        } else {
+                            Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+                        }
+                        marking = false
+                    }
+                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.library_cancel)) } },
+        )
+    }
 }
 
 /** Whether there is a year or a town to choose: more than one of either among the matches, or one chosen already. */

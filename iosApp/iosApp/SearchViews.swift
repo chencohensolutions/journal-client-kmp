@@ -5,7 +5,8 @@ import SharedLogic
 // server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
 // almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
 // Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
-// keeping the search for next time. See docs/screens/search.md. As Android's SearchViews.kt.
+// keeping the search for next time. A long press starts picking photos (a set is picked whole) to mark them private
+// together. See docs/screens/search.md. As Android's SearchViews.kt.
 
 /// What the search can ask its parent to do.
 struct SearchActions {
@@ -24,6 +25,8 @@ struct SearchActions {
     var addPerson: (Person) -> Void = { _ in }
     /// A person chip's ×.
     var removePerson: (String) -> Void = { _ in }
+    /// The picked photos' Mark private; false when the server couldn't be reached.
+    var markPrivate: ([MediaItem]) async -> Bool = { _ in true }
 }
 
 /// The results page, under `SearchTitleBar` and above `SearchFieldBar`; goes in the home screen's scroll view.
@@ -34,6 +37,8 @@ struct SearchResultsView: View {
     let actions: SearchActions
     /// Named people to search by, before anything is searched (when the server has face search).
     var faces: [Person] = []
+    /// The sets picked, by their first photo's id; a tap picks while any is.
+    var selection: Binding<Set<String>> = .constant([])
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -110,14 +115,21 @@ struct SearchResultsView: View {
             if search.status == .done || search.status == .searching {
                 let loadFrom = max(search.sets.count - loadAheadRows, 0)
                 ForEach(Array(search.sets.enumerated()), id: \.element.first!.id) { index, set in
+                    let key = set[0].id
+                    let picked: Bool? = selection.wrappedValue.isEmpty ? nil : selection.wrappedValue.contains(key)
+                    let pick: () -> Void = { toggle(key) }
                     Group {
                         if set.count == 1 {
-                            FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width) { actions.openItem(set[0]) }
+                            FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width, picked: picked, onHold: pick) {
+                                if picked != nil { pick() } else { actions.openItem(set[0]) }
+                            }
                         } else {
-                            FoundSet(items: set, place: placeLabel, width: width, onOpen: actions.openItem)
+                            FoundSet(items: set, place: placeLabel, width: width, picked: picked, onHold: pick) { item in
+                                if picked != nil { pick() } else { actions.openItem(item) }
+                            }
                         }
                     }
-                    .id(set[0].id)
+                    .id(key)
                     // The next page once the last rows come into view: a few ahead, so it is usually there by the end.
                     .onAppear { if index >= loadFrom && search.canLoadMore && !search.loadingMore { actions.loadMore() } }
                 }
@@ -129,6 +141,15 @@ struct SearchResultsView: View {
         .task { actions.prepare() }
         .followsViewer { id in
             search.sets.first { set in set.contains { $0.id == id } }.map { PhotoPlace(section: $0[0].id, tile: ZoomID.item(id)) }
+        }
+    }
+
+    /// Picks the set whose first photo is `key`, or unpicks it.
+    private func toggle(_ key: String) {
+        if selection.wrappedValue.contains(key) {
+            selection.wrappedValue.remove(key)
+        } else {
+            selection.wrappedValue.insert(key)
         }
     }
 
@@ -175,11 +196,13 @@ private struct FoundNote: View {
 }
 
 /// A photo found: the screen's full width at its own shape (very tall ones kept to about a screen), and when and where
-/// under it.
+/// under it. `picked` is nil while not picking; a long press (`onHold`) picks.
 private struct FoundPhoto: View {
     let item: MediaItem
     let place: String?
     let width: CGFloat
+    let picked: Bool?
+    let onHold: () -> Void
     let onOpen: () -> Void
 
     var body: some View {
@@ -187,9 +210,11 @@ private struct FoundPhoto: View {
             MediaTileView(item: item, badgeSize: 22)
                 .frame(width: width, height: width / foundShape(item))
                 .clipped()
+                .overlay { if let picked { SelectionOverlay(selected: picked) } }
                 .zoomSource(ZoomID.item(item.id))
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onOpen)
+                .onLongPressGesture(perform: onHold)
             FoundCaption(item: item, place: place)
         }
         .padding(.bottom, 14)
@@ -197,21 +222,29 @@ private struct FoundPhoto: View {
 }
 
 /// Almost identical photos as one, at the best one's shape: swipe for the others ("2 / 4" and dots), with the date, time
-/// and place of the one shown. Turns to the photo the viewer shows, so closing it lands on its own page.
+/// and place of the one shown. Turns to the photo the viewer shows, so closing it lands on its own page. Picked
+/// (`picked`) as a whole.
 private struct FoundSet: View {
     let items: [MediaItem]
     let place: (MediaItem) -> String?
     let width: CGFloat
+    let picked: Bool?
+    let onHold: () -> Void
     let onOpen: (MediaItem) -> Void
 
     /// The photo shown; the scroll view tracks it only when it starts on one.
     @State private var current: String?
     @Environment(\.viewerShowing) private var viewerShowing
 
-    init(items: [MediaItem], place: @escaping (MediaItem) -> String?, width: CGFloat, onOpen: @escaping (MediaItem) -> Void) {
+    init(
+        items: [MediaItem], place: @escaping (MediaItem) -> String?, width: CGFloat, picked: Bool?,
+        onHold: @escaping () -> Void, onOpen: @escaping (MediaItem) -> Void
+    ) {
         self.items = items
         self.place = place
         self.width = width
+        self.picked = picked
+        self.onHold = onHold
         self.onOpen = onOpen
         _current = State(initialValue: items.first?.id)
     }
@@ -231,8 +264,10 @@ private struct FoundSet: View {
                                 .clipped()
                                 .zoomSource(ZoomID.item(item.id))
                         }
+                        .overlay { if let picked { SelectionOverlay(selected: picked) } }
                         .contentShape(Rectangle())
                         .onTapGesture { onOpen(item) }
+                        .onLongPressGesture(perform: onHold)
                     }
                 }
                 .scrollTargetLayout()
@@ -392,6 +427,48 @@ struct SearchFieldBar: View {
         }
         .padding(.horizontal, 16)
         .onAppear { if search.query.isEmpty && !UiLab.isOn { focused = true } }
+    }
+}
+
+/// While picking, in place of the field: Cancel, "3 selected" (the photos, a set counting each of its own), and Mark
+/// private, asked first as the viewer's is. Picking stops once they are marked; offline, it stays for another try.
+struct SearchPickingBar: View {
+    let search: SearchState
+    @Binding var selection: Set<String>
+    let actions: SearchActions
+
+    @State private var confirming = false
+    @State private var marking = false
+    @State private var failed = false
+
+    var body: some View {
+        let picked = search.sets.filter { selection.contains($0[0].id) }.flatMap { $0 }
+        FeedSelectionBar(
+            count: picked.count,
+            onCancel: { selection = [] },
+            onMerge: { if !marking { confirming = true } },
+            action: "Mark private",
+            minimum: 1
+        )
+        .alert("Mark \(picked.count) \(picked.count == 1 ? "photo" : "photos") private?", isPresented: $confirming) {
+            Button("Mark private") {
+                marking = true
+                Task {
+                    if await actions.markPrivate(picked) {
+                        selection = []
+                    } else {
+                        failed = true
+                    }
+                    marking = false
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("They’re hidden on all your devices while Show private media is off, and nothing of them is downloaded. Their edits and paired files are marked too. You can unmark each with Show private media on.")
+        }
+        .alert("Not changed: can’t reach your server. Try again when connected to it.", isPresented: $failed) {
+            Button("OK", role: .cancel) {}
+        }
     }
 }
 

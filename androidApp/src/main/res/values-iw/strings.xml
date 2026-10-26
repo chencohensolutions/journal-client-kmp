@@ -300,6 +300,12 @@
     <string name="library_private_mark_title">לסמן כפרטי?</string>
     <string name="library_private_mark_body">הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_mark_confirm">סימון כפרטי</string>
+    <plurals name="search_private_title">
+        <item quantity="one">לסמן תמונה אחת כפרטית?</item>
+        <item quantity="two">לסמן %d תמונות כפרטיות?</item>
+        <item quantity="other">לסמן %d תמונות כפרטיות?</item>
+    </plurals>
+    <string name="search_private_body">הן יוסתרו בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר מהן לא יורד. גם העריכות והקבצים המשויכים אליהן מסומנים. אפשר לבטל את הסימון של כל אחת כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>

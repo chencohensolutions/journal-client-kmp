@@ -83,6 +83,8 @@ struct JournalHomeView: View {
     @State private var sheet: FeedSheet?
     /// Photos and sets picked to merge, by their first photo's id; picking is on while any is.
     @State private var selection = Set<String>()
+    /// Search's results picked to mark private, by their set's first photo; closing search stops picking.
+    @State private var searchPicks = Set<String>()
     /// The feed as stack items, worked out once per feed.
     @State private var rows: [FeedRow] = []
     @StateObject private var playback = FeedPlayback()
@@ -127,7 +129,8 @@ struct JournalHomeView: View {
                 if searching {
                     SearchResultsView(
                         search: shownSearch, places: stories.places, width: geometry.size.width, actions: actions.search,
-                        faces: Array((people?.list.people ?? []).sorted { $0.files > $1.files }.prefix(16))
+                        faces: Array((people?.list.people ?? []).sorted { $0.files > $1.files }.prefix(16)),
+                        selection: $searchPicks
                     )
                         .padding(.top, 80)
                         .padding(.bottom, 150)
@@ -248,6 +251,7 @@ struct JournalHomeView: View {
             scroll.showTitle()
         }
         .onChange(of: searching) {
+            searchPicks = []
             timelineOpen = false
             scroll.showTitle()
         }
@@ -301,8 +305,12 @@ struct JournalHomeView: View {
         .overlay(alignment: .bottom) {
             if searching {
                 BottomControls(summary: nil) {
-                    SearchFieldBar(search: shownSearch, actions: actions.search) {
-                        withAnimation { searching = false }
+                    if searchPicks.isEmpty {
+                        SearchFieldBar(search: shownSearch, actions: actions.search) {
+                            withAnimation { searching = false }
+                        }
+                    } else {
+                        SearchPickingBar(search: shownSearch, selection: $searchPicks, actions: actions.search)
                     }
                 }
             } else {
