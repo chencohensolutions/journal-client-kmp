@@ -297,14 +297,14 @@ class LocalIndexes internal constructor(
     /** [kind]'s stream from its cursor, applied to its table, which is saved at the end (and when it breaks). */
     private suspend fun stream(kind: PhoneIndexKind, info: LocalIndexInfo) {
         val existing = tables[kind]
-        var table = existing ?: LocalTable.of(TableHead(index = kind.index, model = info.model, format = info.format, dim = info.dim))
+        var table = existing ?: LocalTable.of(TableHead(index = kind.index, model = info.model, format = info.format, dim = info.dim), fileSystem, directory / kind.index)
         var cursor = existing?.head?.cursor
         var applied = 0L
         _state.update { it.copy(download = PhoneDownload(kind, 0, info.bytes)) }
         val sink = object : StreamSink {
             override fun head(head: StreamHead) {
                 if (head.reset || table.head.model != head.model || table.head.dim != head.dim || table.head.format != head.format) {
-                    table = LocalTable.of(TableHead(index = kind.index, model = head.model, format = head.format, dim = head.dim))
+                    table = LocalTable.of(TableHead(index = kind.index, model = head.model, format = head.format, dim = head.dim), fileSystem, directory / kind.index)
                 }
                 // Room for every file the server has read, and a little more, before the records come.
                 table.reserve(info.files + info.files / 16)
@@ -346,7 +346,7 @@ class LocalIndexes internal constructor(
                 available = offered == null || info != null,
                 bytes = info?.bytes ?: 0,
                 modelBytes = models.sumOf { it.bytes },
-                keptBytes = if (table == null) 0 else (fileSystem.metadataOrNull(tablePath(kind))?.size ?: 0) +
+                keptBytes = if (table == null) 0 else table.bytes(fileSystem, tablePath(kind)) +
                     (if (kind == PhoneIndexKind.WORDS) models.sumOf { fileSystem.metadataOrNull(modelPath(it))?.size ?: 0 } else 0),
                 files = info?.files ?: 0,
                 keptFiles = table?.size ?: 0,

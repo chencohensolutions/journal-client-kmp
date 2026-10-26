@@ -97,10 +97,7 @@ internal class LocalSearchApi(
             val tokens = tokenizer(model)?.textTokens(text) ?: throw SearchUnreachable("The search model's tokenizer is missing")
             val query = encoding.encode(model, tokens) ?: throw SearchUnreachable("The search model couldn't run")
             unit(query)
-            vectors.scores(query) { it !in inText && keep(it) }
-                .sortedByDescending { it.second }
-                .take(wanted - hits.size)
-                .forEach { hits += it.first }
+            vectors.top(query, wanted - hits.size) { it !in inText && keep(it) }.forEach { hits += it.first }
         } else if (texts == null) {
             throw SearchUnreachable("Nothing to search with on this phone")
         }
@@ -318,7 +315,7 @@ internal class PhoneFallbackFindingsApi(
         val table = indexes.table(PhoneIndexKind.SIMILAR) as? VectorTable ?: return answer.orEmpty()
         val query = table.vector(sha256) ?: return answer.orEmpty()
         return withContext(Dispatchers.Default) {
-            table.scores(query) { it != sha256 }.sortedByDescending { it.second }.take(limit).map { it.first }
+            table.top(query, limit) { it != sha256 }.map { it.first }
         }
     }
 

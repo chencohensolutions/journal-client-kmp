@@ -537,12 +537,20 @@ Confirmed by the owner on Oct 25, 2026:
        Moments, the viewer, the storyline, Explore, the map and search opened without a crash. A photo noted on Dec 31,
        2025, opened from the storyline after a restart, landed on its row in Moments. First Moments frame about 18 s
        after start on both builds (the emulator, with every read at start).
-     - Left: phase 7 (local search vectors on disk), phase 8 (iOS: the Swift side of 6c–6f, docs/ios-todo.md), phase 9
+     - Left: phase 8 (iOS: the Swift side of 6c–6f, docs/ios-todo.md), phase 9
        (removing the in-memory path). Free up space still plans from MediaStore and the ledger (on purpose, 6d). The
        made-up library's own lists (debug only) are still built in memory when it is on.
 7. **Local search vectors on disk.** Today they are `FloatArray`s in memory (75 MB for 95k photos, about 800 MB at a
    million). Read them memory-mapped from the index files in chunks while scoring, or keep int8 copies; the top
    results are kept in a small heap.
+   - **Built Oct 26, 2026** (shared, so Android and iOS). They were already 8-bit numbers; now `VectorTable` (text
+     search and Similar) keeps them in `vectors-<n>.bin` and holds only an index of rows (sha256s in one array, an
+     open-addressing hash, which rows are current). `top()` reads the file in 1 MB chunks through okio's `FileHandle`
+     (no memory mapping in common code) with a min-heap of the best; a download appends rows every 4,096 and publishes
+     a new immutable index, so a search during a download needs no lock; `save` writes the file again once an eighth
+     of it is replaced or dropped. Measured on the PC (`VectorTableMeasureTest`, `JOURNAL_MEASURE=1`): 95,000 rows of
+     768, a 76 MB file, 5 MB held, opened in 0.12 s, a search 0.17 s. Not yet checked on the owner's phone.
+   - Left: the faces table (full floats, in memory; about 60 MB for 120,000 faces) could go the same way.
 8. **iOS.** The same shared logic is already in place. Port Moments and the grids to the pager in SwiftUI
    (`MomentsFeedViews.swift`, `DayGrid.swift`, `ExploreViews.swift`, `LibraryRootView.swift`, the map). Add an entry
    in docs/ios-todo.md for whatever is left when a phase ships Android-first.
