@@ -71,7 +71,18 @@ data class ServerMedia(
     val isCall: Boolean = false,
     val callContact: String? = null,
     val callNumber: String? = null,
+    /** The device that uploaded it, or "import" for what the server's import placed ([isImported]). */
+    val uploadedBy: String? = null,
 ) {
+    /** The server's import placed it: its source is "import:" and its kind ([MediaSource.imported]). */
+    val isImported: Boolean get() = uploadedBy == IMPORTED_BY
+
+    /** Where it came from as the library shows it: the phone's folder, or what was imported of which kind. */
+    val mediaSource: MediaSource get() {
+        val plain = source?.let(MediaSource::parse) ?: MediaSource.OTHER
+        return if (isImported) MediaSource.imported(plain) else plain
+    }
+
     /** A sound recording as Moments and its page show it; only for [isAudio]. */
     fun toSoundRecording(): SoundRecording {
         val taken = takenAt?.let(::parseTimestamp) ?: parseTimestamp(uploadedAt)
@@ -112,7 +123,7 @@ data class ServerMedia(
             sizeBytes = size,
             fileName = fileName,
             backup = BackupStatus.BackedUp,
-            source = source?.let(MediaSource::parse) ?: MediaSource.OTHER,
+            source = mediaSource,
             location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
             mimeType = mimeType,
             sha256 = sha256,
@@ -126,6 +137,9 @@ data class ServerMedia(
     companion object {
         /** Ids of server-only items, so they never look like a device id (MediaStore ids are numbers). */
         const val SERVER_ID_PREFIX = "server:"
+
+        /** [uploadedBy] of what the server's import placed (scripts/import). */
+        const val IMPORTED_BY = "import"
     }
 }
 
@@ -250,6 +264,15 @@ class ServerLibrary internal constructor(
      * The server sends nothing more of them; the library leaves out this phone's own copies of them too.
      */
     val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
+
+    private val _hiddenEverywhere = MutableStateFlow<HiddenCollections?>(null)
+
+    /**
+     * What Private settings hides on every device, as it last read or saved it: null until it is opened, behind the
+     * phone's lock, while the app runs (asked Oct 27, 2026). Show in the app says from it what is hidden of each
+     * source; it is never kept on the device.
+     */
+    val hiddenEverywhere: StateFlow<HiddenCollections?> = _hiddenEverywhere.asStateFlow()
 
     private val _syncProgress = MutableStateFlow<SyncProgress?>(null)
 
@@ -417,7 +440,7 @@ class ServerLibrary internal constructor(
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                 response.data?.hiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
-            }
+            }?.also { _hiddenEverywhere.value = it }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -437,7 +460,7 @@ class ServerLibrary internal constructor(
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                 response.data?.setHiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
-            }
+            }?.also { _hiddenEverywhere.value = it }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -563,4 +586,5 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     nudity = nudity,
     isPrivate = private,
     aesthetic = aesthetic,
+    uploadedBy = uploadedBy,
 )

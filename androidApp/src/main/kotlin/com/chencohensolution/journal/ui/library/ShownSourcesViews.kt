@@ -74,7 +74,7 @@ internal fun presentSources(counts: Map<MediaSource, Int>, shown: Set<MediaSourc
 
 /** Of the fixed sources and those [counts] has photos of, the ones the setting shows. */
 internal fun ShownSources.shownAmong(counts: Map<MediaSource, Int>?): Set<MediaSource> =
-    shownOf(MediaSource.choices(counts?.keys.orEmpty()))
+    shownAmong(counts.orEmpty())
 
 /**
  * Explore's "Showing": a pill per source with how many photos of it are where Explore looks ([here]), the most first.

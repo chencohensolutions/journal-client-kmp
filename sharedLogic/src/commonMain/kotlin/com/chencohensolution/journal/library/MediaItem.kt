@@ -75,6 +75,15 @@ class MediaSource private constructor(
     /** The folder's name for a folder ("Flowers", "Petcube", "Telegram"); null for the fixed sources. */
     val folder: String? get() = if (id.startsWith(FOLDER)) id.removePrefix(FOLDER) else null
 
+    /**
+     * Whether the server's import placed it ("import:whatsapp"), rather than a phone uploading it: kept apart from the
+     * phones' folders, under "Imported" in Show in the app (asked Oct 27, 2026).
+     */
+    val isImported: Boolean get() = id.startsWith(IMPORT)
+
+    /** What it is of: Camera for "import:camera", the source itself for one that isn't imported. */
+    val kind: MediaSource get() = if (isImported) FIXED.firstOrNull { it.id == id.removePrefix(IMPORT) } ?: OTHER else this
+
     override fun equals(other: Any?): Boolean = other is MediaSource && other.id == id
     override fun hashCode(): Int = id.hashCode()
     override fun toString(): String = id
@@ -83,7 +92,7 @@ class MediaSource private constructor(
     override fun compareTo(other: MediaSource): Int =
         compareValuesBy(this, other, { it.rank }, { it.folder?.lowercase() }, { it.folder })
 
-    private val rank: Int get() = when (this) {
+    private val rank: Int get() = if (isImported) 5 + kind.rank else when (this) {
         CAMERA -> 0
         WHATSAPP -> 1
         SCREENSHOTS -> 2
@@ -93,6 +102,7 @@ class MediaSource private constructor(
 
     companion object {
         private const val FOLDER = "folder:"
+        private const val IMPORT = "import:"
 
         /** Taken with the phone's camera: DCIM/Camera and files right in DCIM (Android), the iPhone's own photos. */
         val CAMERA = MediaSource("camera")
@@ -109,6 +119,12 @@ class MediaSource private constructor(
         /** The sources every phone has, in their order. */
         val FIXED: List<MediaSource> = listOf(CAMERA, WHATSAPP, SCREENSHOTS, OTHER)
 
+        /** What the server's import placed, of [kind] (one of [FIXED]; anything else is Other). */
+        fun imported(kind: MediaSource): MediaSource = MediaSource(IMPORT + (kind.kind.takeIf { it in FIXED } ?: OTHER).id)
+
+        /** The imported sources, one per fixed source, in order. */
+        val IMPORTED: List<MediaSource> = FIXED.map(::imported)
+
         /** A folder by its name; one named like a fixed source ("Camera", "WhatsApp", "Screenshots") is that source. */
         fun folder(name: String): MediaSource {
             val trimmed = name.trim()
@@ -124,12 +140,23 @@ class MediaSource private constructor(
          */
         fun parse(id: String): MediaSource? = when {
             id.startsWith(FOLDER) -> folder(id.removePrefix(FOLDER))
+            id.startsWith(IMPORT) -> FIXED.firstOrNull { it.id.equals(id.removePrefix(IMPORT), ignoreCase = true) }?.let(::imported)
             else -> FIXED.firstOrNull { it.id.equals(id, ignoreCase = true) }
         }
 
-        /** What a screen offers: the fixed sources, then [present] (those with photos) and [chosen] ones, in order. */
+        /**
+         * What a screen offers: the fixed sources, then [present] (those with photos) and [chosen] ones, in order. The
+         * imported ones are offered apart, under Imported ([importedChoices]).
+         */
         fun choices(present: Set<MediaSource>, chosen: Set<MediaSource> = emptySet()): List<MediaSource> =
-            (FIXED + present + chosen).distinct().sorted()
+            (FIXED + present + chosen).filterNot { it.isImported }.distinct().sorted()
+
+        /**
+         * The kinds Imported offers, the most photos in [counts] first: all four once anything imported has photos,
+         * else none (a server without imports shows no Imported).
+         */
+        fun importedChoices(counts: Map<MediaSource, Int>): List<MediaSource> =
+            if (IMPORTED.none { (counts[it] ?: 0) > 0 }) emptyList() else IMPORTED.sortedByDescending { counts[it] ?: 0 }
 
         /**
          * The same as [choices], with photos per source in [counts], the most photos first (ties in order): the pills
@@ -241,6 +268,12 @@ data class MediaItem(
     val modifiedMillis: Long? = null,
     /** "image/jpeg", "video/mp4", …; null when unknown. */
     val mimeType: String? = null,
+    /**
+     * Where it is on this device, as the platform names it: Android's folder in shared storage ("Pictures/Telegram/"),
+     * the albums an iPhone keeps it in ("WhatsApp"). Sent with its upload, so the server keeps what [source] was told
+     * from (deviceFolder). Null when unknown, and for what isn't in the device's library.
+     */
+    val folder: String? = null,
     /** The sha256 of its bytes, once known (read by backup, or from the server). */
     val sha256: String? = null,
     /** False for a photo that isn't in the device's library: it is shown from the server, never read from the library. */

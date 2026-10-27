@@ -68,7 +68,7 @@ class HiddenSoundsTest {
     private fun media(sha: String, kind: String, takenAt: String, endedAt: String, call: String = "null", private: Boolean = false, durationMs: Long = 240_000) =
         """{"sha256":"$sha","kind":"$kind","fileName":"$sha.m4a","mimeType":"audio/mp4","size":10,"takenAt":"$takenAt",""" +
             """"endedAt":"$endedAt","width":null,"height":null,"durationMs":$durationMs,"call":$call,"location":null,""" +
-            """"source":"other","uploadedAt":"2026-10-22T10:00:00Z","nudity":null,"aesthetic":null,"private":$private}"""
+            """"source":"other","uploadedAt":"2026-10-22T10:00:00Z","uploadedBy":"Galaxy S25","nudity":null,"aesthetic":null,"private":$private}"""
 
     private val number = """{"contact":null,"number":"0501234567"}"""
 

@@ -42,16 +42,16 @@ class HiddenCollectionsTest {
     private val photo = "c".repeat(64)
 
     private fun media(sha: String) = """{"sha256":"$sha","kind":"PHOTO","fileName":"x.jpg","mimeType":"image/jpeg","size":10,""" +
-        """"takenAt":null,"width":null,"height":null,"durationMs":null,"location":null,"source":"screenshots","uploadedAt":"2026-10-22T10:00:00Z",""" +
+        """"takenAt":null,"width":null,"height":null,"durationMs":null,"location":null,"source":"screenshots","uploadedAt":"2026-10-22T10:00:00Z","uploadedBy":"Galaxy S25",""" +
         """"nudity":null,"private":false}"""
 
-    private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"hidden":false},""" +
-        """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"hidden":false},""" +
-        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"hidden":false}],""" +
+    private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"imported":0,"hidden":false},""" +
+        """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"imported":0,"hidden":false},""" +
+        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"imported":0,"hidden":false}],""" +
         """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3},""" +
-        """"recordings":{"__typename":"Collection","name":"recordings","files":4,"hidden":true},""" +
-        """"calls":{"__typename":"Collection","name":"calls","files":5,"hidden":true},""" +
-        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"hidden":true}}"""
+        """"recordings":{"__typename":"Collection","name":"recordings","files":4,"imported":0,"hidden":true},""" +
+        """"calls":{"__typename":"Collection","name":"calls","files":5,"imported":0,"hidden":true},""" +
+        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"imported":0,"hidden":true}}"""
 
     @Test
     fun aFileTheServerHidesIsDroppedWithWhatThisPhoneKeepsOfIt() = runTest {
@@ -64,7 +64,7 @@ class HiddenCollectionsTest {
                 val json = when {
                     "SetHiddenCollections" in body -> {
                         hidden = true
-                        """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
+                        """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"imported":0,"hidden":false""", """"files":1,"imported":0,"hidden":true""")}}}"""
                     }
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
                     hidden -> """{"data":{"changes":{"cursor":"c2","hasMore":false,"remaining":0,"changes":[{"kind":"MEDIA","path":"media/$bumble","deleted":true,"hidden":true,"media":null}]}}}"""
@@ -135,7 +135,7 @@ class HiddenCollectionsTest {
                 if (!up()) return@MockEngine respond("", HttpStatusCode.ServiceUnavailable)
                 val body = (request.body as io.ktor.http.content.TextContent).text
                 val json = when {
-                    "SetHiddenCollections" in body -> """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
+                    "SetHiddenCollections" in body -> """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"imported":0,"hidden":false""", """"files":1,"imported":0,"hidden":true""")}}}"""
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
                     else -> """{"data":{"changes":{"cursor":"c1","hasMore":false,"remaining":0,"changes":[""" +
                         """{"kind":"MEDIA","path":"media/$photo","deleted":false,"hidden":false,"media":${media(photo)}}]}}}"""

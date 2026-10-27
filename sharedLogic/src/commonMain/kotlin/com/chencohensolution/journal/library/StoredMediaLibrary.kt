@@ -208,6 +208,7 @@ private fun MediaItem.toRow() = Device_item(
     longitude = location?.longitude,
     modified_millis = modifiedMillis,
     mime_type = mimeType,
+    folder = folder,
 )
 
 private fun Device_item.toMediaItem() = MediaItem(
@@ -225,4 +226,5 @@ private fun Device_item.toMediaItem() = MediaItem(
     location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
     modifiedMillis = modified_millis,
     mimeType = mime_type,
+    folder = folder,
 )

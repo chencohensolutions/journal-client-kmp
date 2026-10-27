@@ -185,6 +185,7 @@ private fun ServerMedia.toRow() = Server_media(
     is_call = isCall,
     call_contact = callContact,
     call_number = callNumber,
+    uploaded_by = uploadedBy,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -208,4 +209,5 @@ private fun Server_media.toServerMedia() = ServerMedia(
     isCall = is_call,
     callContact = call_contact,
     callNumber = call_number,
+    uploadedBy = uploaded_by,
 )

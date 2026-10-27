@@ -16,7 +16,9 @@ CREATE TABLE device_item (
     latitude REAL,
     longitude REAL,
     modified_millis INTEGER,
-    mime_type TEXT
+    mime_type TEXT,
+    -- Where it is on the phone: Android's folder in shared storage, an iPhone's albums (since version 9).
+    folder TEXT
 );
 
 CREATE INDEX device_item_taken ON device_item(epoch_day, taken_millis);

@@ -77,11 +77,20 @@ internal class JournalSettings(private val store: KeyValueStore) {
                     MediaSource.FIXED.toSet() - sourcesOf(old) + ShownSources.DEFAULT_HIDDEN
                 }
                 ?: ShownSources.DEFAULT_HIDDEN
+            // Kept before Imported was a choice (Oct 27, 2026): its WhatsApp and screenshots start off, as for everyone.
+            val imported = store.getString(KEY_SHOW_IMPORTED)
+            val hiddenNow = if (imported == null) hidden + ShownSources.DEFAULT_HIDDEN_IMPORTED else hidden
             val alwaysShown = store.getString(KEY_ALWAYS_SHOWN_DAYS)?.split(",")?.mapNotNull { entry ->
                 val day = LocalDay.parse(entry.substringBefore(":")) ?: return@mapNotNull null
                 DaySource(day, MediaSource.parse(unescape(entry.substringAfter(":", ""))) ?: return@mapNotNull null)
             }?.toSet().orEmpty()
-            return ShownSources(hidden, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown, store.getString(KEY_SHOW_FILTER_BAR) != "false")
+            return ShownSources(
+                hiddenNow,
+                store.getString(KEY_SAY_WHATS_HIDDEN) != "false",
+                alwaysShown,
+                store.getString(KEY_SHOW_FILTER_BAR) != "false",
+                importedShown = imported != "false",
+            )
         }
         set(value) {
             store.putString(KEY_HIDDEN_SOURCES, idsOf(value.hidden))
@@ -89,6 +98,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_FEED_SOURCES, null)
             store.putString(KEY_SAY_WHATS_HIDDEN, value.sayWhatsHidden.toString())
             store.putString(KEY_SHOW_FILTER_BAR, value.showFilterBar.toString())
+            store.putString(KEY_SHOW_IMPORTED, value.importedShown.toString())
             store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${escape(it.source.id)}" }.ifEmpty { null })
         }
 
@@ -281,6 +291,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SHOWN_SOURCES = "shown_sources"
         private const val KEY_HIDDEN_SOURCES = "hidden_sources"
         private const val KEY_SHOW_FILTER_BAR = "show_filter_bar"
+        private const val KEY_SHOW_IMPORTED = "show_imported"
         private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"

@@ -124,6 +124,7 @@ internal class AndroidMediaLibrary(context: Context) : ChangingLibrary {
                     ),
                     modifiedMillis = cursor.getLong(dateModified).takeIf { it > 0 }?.let { it * 1000 },
                     mimeType = cursor.getString(mime),
+                    folder = cursor.getString(folder),
                 )
             }
         }

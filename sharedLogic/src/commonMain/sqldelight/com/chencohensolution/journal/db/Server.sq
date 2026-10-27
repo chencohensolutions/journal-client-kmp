@@ -23,7 +23,9 @@ CREATE TABLE server_media (
     aesthetic REAL,
     is_call INTEGER AS kotlin.Boolean NOT NULL,
     call_contact TEXT,
-    call_number TEXT
+    call_number TEXT,
+    -- The device that uploaded it, or "import" for what the server's import placed (since version 9).
+    uploaded_by TEXT
 );
 
 -- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.

@@ -172,6 +172,9 @@ class SettingsController internal constructor(
         shown.copy(hidden = if (source in shown.hidden) shown.hidden - source else shown.hidden + source)
     }
 
+    /** "Imported": everything the server's import placed, shown or hidden at once; its kinds keep their choice. */
+    fun toggleImported() = changeShownSources { it.copy(importedShown = !it.importedShown) }
+
     /** "Say what's hidden": the "+6 WhatsApp" chips on the days of Moments. */
     fun setSayWhatsHidden(say: Boolean) = changeShownSources { it.copy(sayWhatsHidden = say) }
 

@@ -107,6 +107,7 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
                 location = asset.location?.coordinate?.useContents { GeoPoint(latitude, longitude) },
                 modifiedMillis = file?.modifiedMillis,
                 mimeType = file?.mimeType,
+                folder = albums[asset.localIdentifier].orEmpty().joinToString(", ").ifEmpty { null },
             )
         }
     }

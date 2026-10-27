@@ -6,6 +6,7 @@ import com.chencohensolution.journal.graphql.type.AudioHidingInput
 import com.chencohensolution.journal.graphql.type.HiddenCollectionsInput
 import com.chencohensolution.journal.graphql.type.NudityHidingInput
 import com.apollographql.apollo.api.Optional
+import com.chencohensolution.journal.library.MediaSource
 import kotlin.math.roundToInt
 
 /**
@@ -31,8 +32,29 @@ data class HiddenCollections(
     val calls: Collection? = null,
     val voiceMessages: Collection? = null,
 ) {
-    /** One group of files: how many it has, hidden or not, and whether it is hidden. */
-    data class Collection(val name: String, val files: Int, val hidden: Boolean)
+    /**
+     * One group of files: how many it has, hidden or not, and whether it is hidden. [imported] of [files] the server's
+     * import placed; the rest came from phones (0 from a server that doesn't say).
+     */
+    data class Collection(val name: String, val files: Int, val hidden: Boolean, val imported: Int = 0)
+
+    /** What this hides of one source on every device: all of it ([whole]), or [files] of it. */
+    data class OfSource(val whole: Boolean, val files: Int)
+
+    /**
+     * What this hides of [source] on every device, for Show in the app: all of WhatsApp while it is hidden, and of
+     * screenshots those of the hidden apps and, while hidden, those without an app; counted of what phones uploaded or
+     * of what was imported, as [source] is. Nothing of the other sources (nudity isn't by source).
+     */
+    fun hiddenOf(source: MediaSource): OfSource = when (source.kind) {
+        MediaSource.WHATSAPP -> OfSource(whatsapp.hidden, 0)
+        MediaSource.SCREENSHOTS -> OfSource(
+            whole = false,
+            files = (screenshotApps + screenshotsWithoutApp).filter { it.hidden }
+                .sumOf { if (source.isImported) it.imported else it.files - it.imported },
+        )
+        else -> OfSource(false, 0)
+    }
 
     /**
      * The files the nudity scan scored at [fromPercent] or more, hidden while [hidden] (on, from 50%, until the user
@@ -86,4 +108,4 @@ internal fun HiddenCollectionsFields.toHiddenCollections() = HiddenCollections(
     voiceMessages = voiceMessages.collectionFields.toCollection(),
 )
 
-private fun CollectionFields.toCollection() = HiddenCollections.Collection(name, files, hidden)
+private fun CollectionFields.toCollection() = HiddenCollections.Collection(name, files, hidden, imported)

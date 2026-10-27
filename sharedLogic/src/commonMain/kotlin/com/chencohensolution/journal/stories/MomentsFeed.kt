@@ -145,7 +145,10 @@ data class MomentsFeed(
     val sheet: List<MediaSource> = MediaSource.byCount(counts),
     /** The whole feed's timeline when [entries] are only its first rows (read from the database: FeedPager). */
     val givenTimeline: FeedTimeline? = null,
-
+    /** Whether what the server's import placed shows ([ShownSources.importedShown]). */
+    val importedShown: Boolean = true,
+    /** The kinds under Imported in the sheet, the most photos first; empty while nothing imported has photos. */
+    val importedSheet: List<MediaSource> = MediaSource.importedChoices(counts),
 ) {
     // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
     override fun equals(other: Any?): Boolean = this === other
@@ -158,11 +161,20 @@ data class MomentsFeed(
     /** The sources its filter bar offers: the fixed ones and those with photos, in order. */
     val choices: List<MediaSource> get() = MediaSource.choices(counts.keys)
 
-    /** The filter bar's chips: the sources shown that have photos, the most first (asked Oct 24, 2026). */
+    /**
+     * The filter bar's chips: the phones' sources shown that have photos, the most first (asked Oct 24, 2026); what
+     * was imported is one chip after them ([importedCount]).
+     */
     val bar: List<MediaSource> get() = sheet.filter { it in shown && (counts[it] ?: 0) > 0 }
 
-    /** The filter bar's "+N": the sources hidden that have photos. */
-    val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 }
+    /** The filter bar's Imported chip: the imported photos shown; 0 while Imported is off or none show. */
+    val importedCount: Int get() = if (!importedShown) 0 else importedSheet.filter { it in shown }.sumOf { counts[it] ?: 0 }
+
+    /** Whether anything imported has photos, shown or not: the sheet and Settings offer Imported. */
+    val hasImported: Boolean get() = importedSheet.isNotEmpty()
+
+    /** The filter bar's "+N": the phones' sources hidden that have photos, and Imported while it is off. */
+    val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 } + if (hasImported && !importedShown) 1 else 0
 
     /** Its months and days, for going to a date: worked out once, when first asked for. */
     val timeline: FeedTimeline by lazy { givenTimeline ?: FeedTimeline.of(this) }
@@ -226,7 +238,7 @@ internal fun buildFeed(
         val taken = HashSet<String>()
         val recordings = spanSounds.filter { it.kind == AudioKind.RECORDING }.sortedBy { it.startMillis }.map { recording ->
             val during = photos.filter {
-                it.source == MediaSource.CAMERA && it.id !in taken && it.takenAtMillis in recording.startMillis..recording.endMillis
+                it.source.kind == MediaSource.CAMERA && it.id !in taken && it.takenAtMillis in recording.startMillis..recording.endMillis
             }.sortedBy { it.takenAtMillis }
             during.forEach { taken += it.id }
             FeedMoment(MediaSource.CAMERA, blocksOf(during, looks, alone, merged, places), mostCommon(during) { places.nameOf(it)?.label }, recording)
@@ -240,11 +252,18 @@ internal fun buildFeed(
         // A row made only of where a recording ended (it started in the row before) shows nothing.
         if (moments.isEmpty() && soundRows.isEmpty()) return@mapNotNull null
         val towns = moments.reversed()
-            .filter { it.source == MediaSource.CAMERA }
+            .filter { it.source.kind == MediaSource.CAMERA }
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
         FeedSection(span, moments, towns.distinct(), sounds = soundRows.sortedByDescending { it.startMillis })
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
-    return MomentsFeed(sections.map(FeedEntry::Section), counts, shown.shownOf(MediaSource.choices(counts.keys)), shown.choices(counts))
+    return MomentsFeed(
+        sections.map(FeedEntry::Section),
+        counts,
+        shown.shownAmong(counts),
+        shown.choices(counts),
+        importedShown = shown.importedShown,
+        importedSheet = shown.importedChoices(counts),
+    )
 }
 
 /**

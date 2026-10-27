@@ -1,6 +1,7 @@
 fragment CollectionFields on Collection {
   name
   files
+  imported
   hidden
 }
 

@@ -58,6 +58,7 @@ query Changes($since: String, $limit: Int) {
         }
         source
         uploadedAt
+        uploadedBy
         nudity
         aesthetic
         private

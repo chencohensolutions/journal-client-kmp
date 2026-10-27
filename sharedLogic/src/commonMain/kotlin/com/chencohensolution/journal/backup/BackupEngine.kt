@@ -498,6 +498,7 @@ internal class BackupEngine(
         durationMillis = item.durationMillis,
         location = item.location ?: runCatching { locate(item) }.getOrNull(),
         source = item.source.serverName,
+        folder = item.folder,
         // A sound file changed in place is a new recording, not an edit.
         versionOf = entry.versionOf.takeIf { item.type != MediaType.AUDIO },
         isCall = settings.soundFolders.firstOrNull { it.treeUri == SoundIds.treeOf(item.id) }?.kind == AudioKind.CALL,
