@@ -35,6 +35,8 @@ data class ServerFeatures(
     val indexing: Boolean = false,
     /** Sound recordings can be in the library: recordings, calls and voice messages (Moments, Hidden collections). */
     val audio: Boolean = false,
+    /** Each photo's camera is known (a photo's info), and the user can mark their own (Settings › Your cameras). */
+    val cameras: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */
@@ -56,6 +58,7 @@ internal fun ServerInfoQuery.ServerInfo.toFeatures() = ServerFeatures(
     localIndexes = localIndexes,
     indexing = indexing,
     audio = audio,
+    cameras = cameras,
 )
 
 /**

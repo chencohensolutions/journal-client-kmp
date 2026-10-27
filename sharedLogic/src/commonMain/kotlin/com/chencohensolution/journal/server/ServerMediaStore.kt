@@ -186,6 +186,9 @@ private fun ServerMedia.toRow() = Server_media(
     call_contact = callContact,
     call_number = callNumber,
     uploaded_by = uploadedBy,
+    screenshot_app = screenshotApp,
+    camera_make = cameraMake,
+    camera_model = cameraModel,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -210,4 +213,7 @@ private fun Server_media.toServerMedia() = ServerMedia(
     callContact = call_contact,
     callNumber = call_number,
     uploadedBy = uploaded_by,
+    screenshotApp = screenshot_app,
+    cameraMake = camera_make,
+    cameraModel = camera_model,
 )

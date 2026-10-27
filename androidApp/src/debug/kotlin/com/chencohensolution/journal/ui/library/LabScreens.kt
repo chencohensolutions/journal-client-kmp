@@ -29,12 +29,13 @@ internal val labScreens: List<LabScreen> = listOf(
     )),
     LabScreen("private", "Private settings", listOf(
         current {
-            val apps = listOf("Bumble" to 1458, "Chrome" to 310, "WhatsApp" to 96, "Instagram" to 88, "Maps" to 41, "Google Pay" to 12)
+            val shots = listOf("Bumble" to 1458, "Chrome" to 310, "WhatsApp" to 96, "Instagram" to 88, "Maps" to 41, "Google Pay" to 12)
                 .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) }
             val collections = HiddenCollections(
-                whatsapp = HiddenCollections.Collection("WhatsApp", 3412, false),
+                apps = listOf("WhatsApp" to 3412, "Telegram" to 640, "Signal" to 210, "Petcube" to 5)
+                    .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) },
                 screenshotsWithoutApp = HiddenCollections.Collection("", 128, false),
-                screenshotApps = apps,
+                screenshotApps = shots,
                 nudity = HiddenCollections.Nudity(true, 50, 61, 0),
                 recordings = HiddenCollections.Collection("recordings", 1204, true),
                 calls = HiddenCollections.Collection("calls", 6196, true),
@@ -42,7 +43,7 @@ internal val labScreens: List<LabScreen> = listOf(
             )
             HiddenContent(
                 androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title),
-                HiddenCollectionsState.Ready(collections, "", apps, saving = false, notChanged = false),
+                HiddenCollectionsState.Ready(collections, "", shots, saving = false, notChanged = false),
                 HiddenActions(retry = {}, set = { _, _ -> }, setQuery = {}),
                 back = {},
             )

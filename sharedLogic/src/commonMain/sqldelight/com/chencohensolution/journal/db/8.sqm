@@ -2,6 +2,11 @@
 -- source of its own ("import:folder:WhatsApp"), apart from the phones' folders (asked Oct 27, 2026).
 ALTER TABLE server_media ADD COLUMN uploaded_by TEXT;
 
+-- The app on screen in a screenshot, and the camera that took each file as its tags say, for a photo's info.
+ALTER TABLE server_media ADD COLUMN screenshot_app TEXT;
+ALTER TABLE server_media ADD COLUMN camera_make TEXT;
+ALTER TABLE server_media ADD COLUMN camera_model TEXT;
+
 -- And where each of the phone's own files is, sent with its upload so the server keeps what its source was told from.
 ALTER TABLE device_item ADD COLUMN folder TEXT;
 

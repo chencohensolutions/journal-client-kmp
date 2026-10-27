@@ -6,7 +6,7 @@ fragment CollectionFields on Collection {
 }
 
 fragment HiddenCollectionsFields on HiddenCollections {
-  whatsapp { ...CollectionFields }
+  apps { ...CollectionFields }
   screenshotsWithoutApp { ...CollectionFields }
   screenshotApps { ...CollectionFields }
   nudity { hidden from files notScanned }

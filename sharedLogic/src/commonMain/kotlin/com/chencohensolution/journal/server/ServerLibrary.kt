@@ -1,7 +1,9 @@
 package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.api.Optional
+import com.chencohensolution.journal.graphql.CamerasQuery
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
 import com.chencohensolution.journal.graphql.SetCallMutation
@@ -56,7 +58,7 @@ data class ServerMedia(
     val durationMillis: Long? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    /** camera, whatsapp, screenshots, other. */
+    /** camera, screenshots, received, other, or a folder ("folder:WhatsApp"): see [MediaSource]. */
     val source: String? = null,
     val uploadedAt: String,
     /** The server's nudity scan, 0 to 1; null until scanned. The server hides what scores high (see HiddenCollections). */
@@ -73,7 +75,15 @@ data class ServerMedia(
     val callNumber: String? = null,
     /** The device that uploaded it, or "import" for what the server's import placed ([isImported]). */
     val uploadedBy: String? = null,
+    /** The app on screen in a screenshot, as its file name says ("Bumble"); null for anything else. */
+    val screenshotApp: String? = null,
+    /** The camera that took it, as its tags say ("Canon", "Canon EOS 80D"); null without tags or from an older server. */
+    val cameraMake: String? = null,
+    val cameraModel: String? = null,
 ) {
+    /** "Canon EOS 80D", "samsung SM-S931B": the camera as a photo's info names it; null when its tags name none. */
+    val camera: String? get() = cameraName(cameraMake, cameraModel)
+
     /** The server's import placed it: its source is "import:" and its kind ([MediaSource.imported]). */
     val isImported: Boolean get() = uploadedBy == IMPORTED_BY
 
@@ -468,6 +478,33 @@ class ServerLibrary internal constructor(
         }
     }
 
+    /** Every camera model the user's files name, most files first; null when the server couldn't be reached or refused. */
+    suspend fun cameras(): List<CameraModel>? = cameraCall { apollo ->
+        val response = apollo.query(CamerasQuery()).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.cameras?.map { it.cameraModelFields.toCameraModel() }
+    }
+
+    /**
+     * Marks [camera] as the user's ([mine]) or not, and answers with every model, or null when the server couldn't be
+     * reached or refused. The model's files then move on the server in the background ([CameraModel.pending]).
+     */
+    suspend fun setCamera(camera: CameraModel, mine: Boolean): List<CameraModel>? = cameraCall { apollo ->
+        val response = apollo.mutation(SetCameraMutation(camera.make, camera.model, mine)).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.setCamera?.map { it.cameraModelFields.toCameraModel() }
+    }
+
+    private suspend fun cameraCall(call: suspend (com.apollographql.apollo.ApolloClient) -> List<CameraModel>?): List<CameraModel>? = try {
+        http.graphql(call)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
     /**
      * One sync: every page since the saved cursor, each written to the database with its cursor as it comes. The list
      * is shown once at the end, also when a page fails partway.
@@ -587,4 +624,7 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     isPrivate = private,
     aesthetic = aesthetic,
     uploadedBy = uploadedBy,
+    screenshotApp = screenshotApp,
+    cameraMake = camera?.make,
+    cameraModel = camera?.model,
 )

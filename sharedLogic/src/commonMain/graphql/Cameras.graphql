@@ -1,0 +1,18 @@
+fragment CameraModelFields on CameraModel {
+  make
+  model
+  files
+  imported
+  years
+  mine
+  marked
+  pending
+}
+
+query Cameras {
+  cameras { ...CameraModelFields }
+}
+
+mutation SetCamera($make: String!, $model: String!, $mine: Boolean!) {
+  setCamera(make: $make, model: $model, mine: $mine) { ...CameraModelFields }
+}

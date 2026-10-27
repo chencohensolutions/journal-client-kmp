@@ -45,7 +45,7 @@ class HiddenCollectionsTest {
         """"takenAt":null,"width":null,"height":null,"durationMs":null,"location":null,"source":"screenshots","uploadedAt":"2026-10-22T10:00:00Z","uploadedBy":"Galaxy S25",""" +
         """"nudity":null,"private":false}"""
 
-    private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"imported":0,"hidden":false},""" +
+    private val collections = """{"__typename":"HiddenCollections","apps":[{"__typename":"Collection","name":"WhatsApp","files":7,"imported":2,"hidden":false}],""" +
         """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"imported":0,"hidden":false},""" +
         """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"imported":0,"hidden":false}],""" +
         """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3},""" +
@@ -89,7 +89,7 @@ class HiddenCollectionsTest {
         val saved = library.setHiddenCollections(shown.with(shown.screenshotApps[0], hidden = true))!!
         assertEquals(true, saved.screenshotApps[0].hidden)
         assertTrue(
-            sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it },
+            sent.any { """"apps":[]""" in it && """"screenshotApps":["Bumble"]""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it && "whatsapp" !in it },
             sent.joinToString("\n"),
         )
         // The sound recordings stay as they were: all three hidden.
@@ -114,10 +114,39 @@ class HiddenCollectionsTest {
     fun withChangesOnlyTheCollectionGiven() {
         val whatsapp = HiddenCollections.Collection("WhatsApp", 3, false)
         val app = HiddenCollections.Collection("WhatsApp", 3, false)
-        val choice = HiddenCollections(whatsapp, HiddenCollections.Collection("", 0, false), listOf(app), HiddenCollections.Nudity(true, 50, 0, 0))
+        val choice = HiddenCollections(listOf(whatsapp), HiddenCollections.Collection("", 0, false), listOf(app), HiddenCollections.Nudity(true, 50, 0, 0))
         val changed = choice.with(choice.screenshotApps[0], hidden = true)
         assertEquals(false, changed.whatsapp.hidden)
         assertEquals(true, changed.screenshotApps[0].hidden)
+        val apps = choice.with(choice.whatsapp, hidden = true)
+        assertEquals(true, apps.whatsapp.hidden)
+        assertEquals(false, apps.screenshotApps[0].hidden)
+    }
+
+    @Test
+    fun anAppNotListedIsAddedWhenHidden() {
+        val choice = HiddenCollections(emptyList(), HiddenCollections.Collection("", 0, false), emptyList(), HiddenCollections.Nudity(true, 50, 0, 0))
+        val hidden = choice.with(choice.whatsapp, hidden = true)
+        assertEquals(listOf(HiddenCollections.Collection("WhatsApp", 0, true)), hidden.apps)
+    }
+
+    @Test
+    fun whatItHidesOfEachSource() {
+        val choice = HiddenCollections(
+            apps = listOf(HiddenCollections.Collection("WhatsApp", 10, true, imported = 4), HiddenCollections.Collection("Telegram", 5, false)),
+            screenshotsWithoutApp = HiddenCollections.Collection("", 3, true, imported = 1),
+            screenshotApps = listOf(HiddenCollections.Collection("Bumble", 6, true, imported = 2), HiddenCollections.Collection("Maps", 9, false)),
+            nudity = HiddenCollections.Nudity(true, 50, 0, 0),
+        )
+        assertEquals(HiddenCollections.OfSource(true, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.WHATSAPP))
+        assertEquals(HiddenCollections.OfSource(true, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.parse("import:folder:whatsapp")!!))
+        assertEquals(HiddenCollections.OfSource(false, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.folder("Telegram")))
+        // Screenshots: of the hidden apps and those without one, the phones' (6 + 3 - 2 - 1) or the imported (2 + 1).
+        assertEquals(HiddenCollections.OfSource(false, 6), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS))
+        assertEquals(HiddenCollections.OfSource(false, 3), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS)))
+        assertEquals(HiddenCollections.OfSource(false, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.CAMERA))
+        assertEquals(listOf("folder:WhatsApp"), choice.hiddenApps(imported = false).map { it.id })
+        assertEquals(listOf("import:folder:WhatsApp"), choice.hiddenApps(imported = true).map { it.id })
     }
 
     @Test
