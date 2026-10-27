@@ -106,7 +106,7 @@ The pages, and what each holds:
   - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
     `storageUsage`), also with backup off. Asked when Settings or Backup opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
-  - With backup on: **What to back up**, a pill per source with its count ("Petcube · 5"), filled with a ✓ when on,
+  - With backup on: **What to back up**, a pill per source, just its name ("Petcube"; no counts since Oct 27, 2026), filled with a ✓ when on,
     the most photos first (`BackupSettings.choices`: the fixed sources, each folder or app the phone has photos of,
     and those chosen; **Camera** on by default). A new folder is off
     until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
