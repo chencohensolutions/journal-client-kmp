@@ -52,6 +52,9 @@ internal val labScreens: List<LabScreen> = listOf(
         },
         privateOptionA,
         privateOptionB,
+        privateOptionC,
+        privateOptionCUnlocked,
+        privateOptionCConfirm,
     )),
     LabScreen("recording", "A sound recording's page", listOf(
         current {
@@ -229,6 +232,7 @@ internal val labScreens: List<LabScreen> = listOf(
         },
         kindsOptionA,
         kindsOptionB,
+        kindsOptionC,
     )),
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(
