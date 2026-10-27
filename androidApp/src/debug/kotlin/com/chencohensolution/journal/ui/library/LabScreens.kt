@@ -234,6 +234,7 @@ internal val labScreens: List<LabScreen> = listOf(
         kindsOptionB,
         kindsOptionC,
         kindsOptionC2,
+        kindsOptionC3,
     )),
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(
