@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="sources_b2_imported">Imported</string>
-    <string name="sources_b2_of_imported">Of what was imported</string>
-    <string name="sources_b2_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
-    <string name="sources_b2_more">%1$s more</string>
-    <string name="sources_b2_private">Private settings</string>
-</resources>

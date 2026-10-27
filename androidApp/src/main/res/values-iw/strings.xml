@@ -768,6 +768,12 @@
     <string name="settings_moments_title">רגעים</string>
     <string name="settings_shown_summary">מוצגים: %s</string>
     <string name="settings_shown_none">לא מוצג דבר</string>
+    <string name="sources_imported">מיובא</string>
+    <string name="sources_of_imported">מתוך מה שיובא</string>
+    <string name="sources_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
+    <string name="sources_more">עוד %1$s</string>
+    <string name="sources_private_about">הגדרות פרטיות יכולות להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן.</string>
+    <string name="sources_other_about">%1$s: קבצים שהשם והתיקייה שלהם לא מספרים דבר: הורדות, תמונות שנשמרו, קבצים ממחשב.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">שורה חדשה אחרי שעה</item>
         <item quantity="two">שורה חדשה אחרי שעתיים</item>
@@ -778,7 +784,7 @@
     <string name="settings_storage_originals">מקוריים</string>
     <string name="settings_storage_used">בשימוש</string>
     <string name="settings_image_quality_title">איכות תמונה</string>
-    <string name="settings_all_devices_title">בכל המכשירים שלך</string>
+
     <string name="settings_backup_charging_only_body">חוסך בסוללה; ההעלאות ממתינות למטען.</string>
     <string name="hidden_apps_title">אפליקציות</string>
     <string name="hidden_apps_count">%1$s מתוך %2$s מוצגות</string>

@@ -48,6 +48,8 @@ import androidx.compose.material3.SwitchDefaults
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.settings.ShownSourcesPills
+import com.chencohensolution.journal.server.HiddenCollections
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsState
@@ -74,6 +76,8 @@ internal class SettingsActions(
     val openBackup: () -> Unit = {},
     /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
     val toggleSource: (MediaSource) -> Unit = {},
+    /** Show in the app: Imported, all of it, on or off. */
+    val toggleImported: () -> Unit = {},
     val setSayWhatsHidden: (Boolean) -> Unit = {},
     /** "Filter bar in Moments". */
     val setShowFilterBar: (Boolean) -> Unit = {},
@@ -109,6 +113,8 @@ internal fun SettingsScreen(
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState? = null,
     /** Search › On your server, when the server offers it; null: none. For Search's row. */
     indexing: ServerIndexingState? = null,
+    /** What Private settings hides on every device, for Show in the app; null until it was opened in this run. */
+    hiddenEverywhere: HiddenCollections? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val title = when (page) {
@@ -127,11 +133,7 @@ internal fun SettingsScreen(
         ) {
             when (page) {
                 SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing)
-                SettingsPage.SHOWN -> {
-                    ShownSourcesSection(settings.shownSources, sourceCounts, actions)
-                    SectionTitle(stringResource(R.string.settings_all_devices_title))
-                    Card { HiddenRow(syncProgress, actions.openHidden) }
-                }
+                SettingsPage.SHOWN -> ShownSourcesSection(settings.shownSources, sourceCounts, hiddenEverywhere, actions)
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
                 SettingsPage.LOADING_MOMENTS -> LoadingMomentsPage(settings.momentsPaging, actions)
@@ -239,10 +241,12 @@ internal fun PageRow(title: String, body: String, onClick: () -> Unit) {
     }
 }
 
-/** Show in the app's row: "Showing Camera, Other, Petcube +2", the most photos first. */
+/** Show in the app's row: "Showing Camera, Other, Petcube +2", the most photos first, then Imported while on. */
 @Composable
 private fun shownSummary(shown: ShownSources, counts: Map<MediaSource, Int>): String {
-    val names = shown.choices(counts).filter { shown.isShown(it) }.map { sourceName(it) }
+    val imported = shown.importedShown && shown.importedChoices(counts).any { shown.isShown(it) }
+    val names = shown.choices(counts).filter { shown.isShown(it) }.map { sourceName(it) } +
+        listOfNotNull(stringResource(R.string.sources_imported).takeIf { imported })
     if (names.isEmpty()) return stringResource(R.string.settings_shown_none)
     val first = names.take(3).joinToString(", ")
     return stringResource(R.string.settings_shown_summary, if (names.size > 3) "$first +${names.size - 3}" else first)
@@ -314,14 +318,17 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
 }
 
 /**
- * Show in the app: a pill per source with its count, the most photos first (asked Oct 24, 2026, when each folder
- * became a source), then "Say what's hidden" and "Filter bar in Moments", then where it applies and that hiding never deletes or changes backup.
+ * Show in the app (option b2 of the UI lab, Oct 27, 2026): a pill per source with its count, the most photos first
+ * (asked Oct 24, 2026, when each folder became a source), one "Imported" with its kinds under it while on, and what
+ * Private settings hides on every device ([ShownSourcesPillsSection]); then "Say what's hidden" and "Filter bar in
+ * Moments", then where it applies and that hiding never deletes or changes backup.
  */
 @Composable
-private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
+private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, hiddenEverywhere: HiddenCollections?, actions: SettingsActions) {
     SectionTitle(stringResource(R.string.settings_shown_title))
-    SourcePills(shown.choices(counts), counts, shown::isShown, actions.toggleSource)
-    Column(Modifier.padding(top = 12.dp)) {
+    val pills = remember(shown, counts, hiddenEverywhere) { ShownSourcesPills.of(shown, counts, hiddenEverywhere) }
+    ShownSourcesPillsSection(pills, ShownSourcesActions(actions.toggleSource, actions.toggleImported, actions.openHidden))
+    Column(Modifier.padding(top = 20.dp)) {
         Card {
             SwitchRow(
                 title = stringResource(R.string.settings_say_hidden),

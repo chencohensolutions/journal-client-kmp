@@ -18,6 +18,7 @@ import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.settings.ShownSourcesPills
 import com.chencohensolution.journal.stories.FeedReveal
 
 // Hiding WhatsApp, screenshots and other sources everywhere (Settings › Show in the app): what Moments says it
@@ -97,7 +98,7 @@ fun ExploreShowingSheet() = Screen {
         ) {
             val shown = ShownSources()
             val here = mapOf(MediaSource.CAMERA to 922, MediaSource.WHATSAPP to 31, MediaSource.folder("Petcube") to 5)
-            ShowingSheetContent(shown.choices(here), here, shown::isShown, onToggle = {}, whatsAppNote = true)
+            ShowingSheetContent(ShownSourcesPills.of(shown, here, hidden = null), ShownSourcesActions(), whatsAppNote = true)
         }
     }
 }

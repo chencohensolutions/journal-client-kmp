@@ -190,11 +190,12 @@ internal val labScreens: List<LabScreen> = listOf(
                 com.chencohensolution.journal.library.MediaSource.OTHER to 3948,
                 com.chencohensolution.journal.library.MediaSource.SCREENSHOTS to 2268,
                 com.chencohensolution.journal.library.MediaSource.folder("Petcube") to 5,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.CAMERA) to 38410,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.OTHER) to 3917,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS) to 540,
             )
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
-        sourcesOptionB2,
-        sourcesOptionB2Bar,
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },

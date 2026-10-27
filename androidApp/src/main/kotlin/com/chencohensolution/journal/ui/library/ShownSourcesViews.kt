@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -32,21 +30,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
-import java.text.NumberFormat
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.settings.ShownSourcesPills
 
 // Which sources the app shows, as Explore says it: the line under Places / Years / Map ("Camera · Other · WhatsApp
-// hidden — Change") and the "Showing" sheet it opens, with the same switches as Settings › Show in the app.
+// hidden — Change") and the "Showing" sheet it opens, with the same pills as Settings › Show in the app.
 
 /**
- * "Camera · Other · WhatsApp, Screenshots hidden" and "Change": the sources [shown] and those of [present] it hides.
- * Tapping it opens the "Showing" sheet.
+ * "Camera · Imported · WhatsApp, Screenshots hidden" and "Change": the sources [shown] and those of [present] it hides,
+ * what was imported said once as "Imported". Tapping it opens the "Showing" sheet.
  */
 @Composable
 internal fun ShowingLine(shown: Set<MediaSource>, present: Set<MediaSource>, onChange: () -> Unit, modifier: Modifier = Modifier) {
-    val on = shown.sorted().map { sourceName(it) }
-    val off = present.filter { it !in shown }.sorted().map { sourceName(it) }
+    val importedShown = LocalShownSources.current.shown.importedShown
+    val imported = stringResource(R.string.sources_imported)
+    val anyImported = present.any { it.isImported }
+    val on = shown.filterNot { it.isImported }.sorted().map { sourceName(it) } +
+        listOfNotNull(imported.takeIf { importedShown && shown.any { it.isImported } })
+    val off = present.filter { !it.isImported && it !in shown }.sorted().map { sourceName(it) } +
+        listOfNotNull(imported.takeIf { anyImported && !importedShown })
     val text = when {
         off.isEmpty() -> on.joinToString(" · ")
         on.isEmpty() -> stringResource(R.string.explore_all_hidden, off.joinToString(", "))
@@ -76,47 +79,31 @@ internal fun presentSources(counts: Map<MediaSource, Int>, shown: Set<MediaSourc
 internal fun ShownSources.shownAmong(counts: Map<MediaSource, Int>?): Set<MediaSource> =
     shownAmong(counts.orEmpty())
 
-/**
- * Explore's "Showing": a pill per source with how many photos of it are where Explore looks ([here]), the most first.
- * The same setting as Settings › Show in the app and the Moments filter bar.
- */
-@Composable
-internal fun ShowingSheet(shown: Set<MediaSource>, here: Map<MediaSource, Int>, onToggle: (MediaSource) -> Unit, onDismiss: () -> Unit) =
-    ShowingPillsSheet(MediaSource.byCount(here, shown), here, { it in shown }, onToggle, onDismiss, whatsAppNote = explainsWhatsApp(shown, here))
-
 /** Explore's note that hiding WhatsApp changes little on the map: when it has photos here, or is hidden. */
-internal fun explainsWhatsApp(shown: Set<MediaSource>, here: Map<MediaSource, Int>) =
-    (here[MediaSource.WHATSAPP] ?: 0) > 0 || MediaSource.WHATSAPP !in shown
+internal fun explainsWhatsApp(shown: ShownSources, here: Map<MediaSource, Int>) =
+    (here[MediaSource.WHATSAPP] ?: 0) > 0 || !shown.isShown(MediaSource.WHATSAPP)
 
-/** The "Showing" sheet of the Moments filter bar's "+N" and of Explore: a pill per source in [sources], in that order. */
+/**
+ * The "Showing" sheet of the Moments filter bar's "+N" and of Explore: Show in the app's pills over [counts] (photos per
+ * source where it was opened), changed through [LocalShownSources]. With [whatsAppNote] (Explore), the line on
+ * WhatsApp and the map.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ShowingPillsSheet(
-    sources: List<MediaSource>,
-    counts: Map<MediaSource, Int>,
-    isOn: (MediaSource) -> Boolean,
-    onToggle: (MediaSource) -> Unit,
-    onDismiss: () -> Unit,
-    whatsAppNote: Boolean = false,
-) {
+internal fun ShowingSheet(counts: Map<MediaSource, Int>, onDismiss: () -> Unit, whatsAppNote: Boolean = false) {
+    val choice = LocalShownSources.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = LibraryColors.Background,
     ) {
-        ShowingSheetContent(sources, counts, isOn, onToggle, whatsAppNote)
+        ShowingSheetContent(rememberShownPills(counts), choice.actions, whatsAppNote && explainsWhatsApp(choice.shown, counts))
     }
 }
 
 /** What the "Showing" sheet holds; drawn by itself in previews, where a sheet doesn't open. */
 @Composable
-internal fun ShowingSheetContent(
-    sources: List<MediaSource>,
-    counts: Map<MediaSource, Int>,
-    isOn: (MediaSource) -> Boolean,
-    onToggle: (MediaSource) -> Unit,
-    whatsAppNote: Boolean = false,
-) {
+internal fun ShowingSheetContent(pills: ShownSourcesPills, actions: ShownSourcesActions, whatsAppNote: Boolean = false) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = 16.dp)) {
         Text(
             stringResource(R.string.explore_sheet_title),
@@ -131,7 +118,7 @@ internal fun ShowingSheetContent(
             fontSize = 13.sp,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 12.dp),
         )
-        SourcePills(sources, counts, isOn, onToggle)
+        ShownSourcesPillsSection(pills, actions)
         if (whatsAppNote) {
             Text(
                 stringResource(R.string.explore_sheet_whatsapp),
@@ -139,21 +126,6 @@ internal fun ShowingSheetContent(
                 fontSize = 13.sp,
                 modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
             )
-        }
-    }
-}
-
-/** A pill per source, "Petcube · 5" (its photos in [counts]), filled when [isOn]: Settings › Show in the app and Backup. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun SourcePills(sources: List<MediaSource>, counts: Map<MediaSource, Int>, isOn: (MediaSource) -> Boolean, onToggle: (MediaSource) -> Unit) {
-    FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        sources.forEach { source ->
-            val count = counts[source] ?: 0
-            Chip(
-                if (count > 0) "${sourceName(source)} · ${NumberFormat.getIntegerInstance().format(count)}" else sourceName(source),
-                isOn(source),
-            ) { onToggle(source) }
         }
     }
 }

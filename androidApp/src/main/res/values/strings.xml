@@ -737,6 +737,12 @@
     <!-- "Showing Camera, Other" -->
     <string name="settings_shown_summary">Showing %s</string>
     <string name="settings_shown_none">Nothing shown</string>
+    <string name="sources_imported">Imported</string>
+    <string name="sources_of_imported">Of what was imported</string>
+    <string name="sources_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
+    <string name="sources_more">%1$s more</string>
+    <string name="sources_private_about">Private settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren\'t counted here.</string>
+    <string name="sources_other_about">%1$s: files whose name and folder say nothing: downloads, saved images, files from a computer.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">New row after %d hour</item>
         <item quantity="other">New row after %d hours</item>
@@ -747,7 +753,7 @@
     <string name="settings_storage_originals">Originals</string>
     <string name="settings_storage_used">Used</string>
     <string name="settings_image_quality_title">Image quality</string>
-    <string name="settings_all_devices_title">On all your devices</string>
+
     <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
     <string name="hidden_apps_title">Apps</string>
     <string name="hidden_apps_count">%1$s of %2$s shown</string>

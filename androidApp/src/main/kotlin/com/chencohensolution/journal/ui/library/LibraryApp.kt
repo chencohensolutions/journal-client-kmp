@@ -137,6 +137,7 @@ private fun LibraryScreens(
     val backupState by backup.state.collectAsStateWithLifecycle()
     val serverUsage by server.library.usage.collectAsStateWithLifecycle()
     val syncProgress by server.library.syncProgress.collectAsStateWithLifecycle()
+    val hiddenEverywhere by server.library.hiddenEverywhere.collectAsStateWithLifecycle()
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
@@ -204,7 +205,16 @@ private fun LibraryScreens(
     SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop || it is Route.Audio } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
-        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge) {
+        CompositionLocalProvider(
+            LocalSharedTransitionScope provides this,
+            LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge,
+            // Show in the app's pills in the "Showing" sheets of Moments and Explore.
+            LocalShownSources provides ShownSourcesChoice(
+                storiesState.shownSources,
+                remember(settings) { ShownSourcesActions(settings::toggleFeedSource, settings::toggleImported, { push(Route.Hidden) }) },
+                hiddenEverywhere,
+            ),
+        ) {
             NavDisplay(
                 backStack = stack.mapIndexed(::StackEntry),
                 onBack = pop,
@@ -365,6 +375,7 @@ private fun LibraryScreens(
                                         sourceCounts = storiesState.feed.counts,
                                         actions = SettingsActions(
                                             toggleSource = settings::toggleFeedSource,
+                                            toggleImported = settings::toggleImported,
                                             setSayWhatsHidden = settings::setSayWhatsHidden,
                                             setShowFilterBar = settings::setShowFilterBar,
                                             setGroupingMode = settings::setGroupingMode,
@@ -388,6 +399,7 @@ private fun LibraryScreens(
                                         storage = storageUi(),
                                         storageActions = actions.storage,
                                         syncProgress = syncProgress,
+                                        hiddenEverywhere = hiddenEverywhere,
                                     )
                                 }
                                 Route.BackupSettings -> {

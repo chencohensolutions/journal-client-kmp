@@ -61,11 +61,13 @@ import java.text.NumberFormat
 
 /**
  * The filter bar (option h2 of the UI lab, Oct 24, 2026): one row that scrolls sideways, "+N" first (the sources hidden;
- * a plus alone while none is), then a chip per source shown, the most photos first. Tapping a chip hides it and it
- * leaves the row; "+N" opens the "Showing" sheet with every source as a pill.
+ * a plus alone while none is), then a chip per source shown, the most photos first, and one "Imported" chip for what
+ * was imported (option b2, Oct 27, 2026). Tapping a chip hides it and it leaves the row; "+N" opens the "Showing"
+ * sheet with every source as a pill. What Private settings hides on every device never has a chip: none of it is here.
  */
 @Composable
 internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, modifier: Modifier = Modifier) {
+    val choice = LocalShownSources.current
     var open by rememberSaveable { mutableStateOf(false) }
     val hidden = feed.hiddenCount
     val more = pluralStringResource(R.plurals.feed_more_sources, hidden, hidden)
@@ -84,24 +86,42 @@ internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, m
                 onToggle(source)
             }
         }
+        if (feed.importedCount > 0) {
+            FilterBarChip(
+                stringResource(R.string.sources_imported),
+                FeedIcons.Imported,
+                NumberFormat.getIntegerInstance().format(feed.importedCount),
+                on = true,
+                keepIcon = true,
+                onClick = choice.actions.toggleImported,
+            )
+        }
     }
-    if (open) ShowingPillsSheet(feed.sheet, feed.counts, { it in feed.shown }, onToggle, onDismiss = { open = false })
+    if (open) ShowingSheet(feed.counts, onDismiss = { open = false })
 }
 
-/** A chip of the filter bar: on (filled, with a ✓ in place of its icon) or off (outlined); "+N" is one with a title alone. */
+/**
+ * A chip of the filter bar, and a pill of Show in the app: on (filled, with a ✓ in place of its icon, or its icon with
+ * [keepIcon]) or off (outlined); "+N" is one with a title alone. [small] for Imported's kinds; [locked] adds a lock
+ * after the count, for a source Private settings hides in part.
+ */
 @Composable
-private fun FilterBarChip(
+internal fun FilterBarChip(
     title: String?,
     icon: ImageVector?,
     count: String? = null,
     on: Boolean,
     modifier: Modifier = Modifier,
+    keepIcon: Boolean = false,
+    small: Boolean = false,
+    locked: Boolean = false,
     onClick: () -> Unit,
 ) {
     val content = if (on) LibraryColors.OnInverse else LibraryColors.Muted
+    val quiet = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted.copy(alpha = 0.7f)
     Row(
         modifier
-            .height(34.dp)
+            .height(if (small) 28.dp else 34.dp)
             .then(
                 if (on) {
                     Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50))
@@ -114,15 +134,15 @@ private fun FilterBarChip(
                 role = Role.Button
                 selected = on
             }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = if (small) 10.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) Icon(if (on) LibraryIcons.Check else icon, null, tint = content, modifier = Modifier.size(15.dp))
-        if (title != null) Text(title, color = content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        if (count != null) {
-            Text(count, color = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted.copy(alpha = 0.7f), fontSize = 13.sp)
-        }
+        val size = if (small) 12.sp else 13.sp
+        if (icon != null) Icon(if (on && !keepIcon) LibraryIcons.Check else icon, null, tint = content, modifier = Modifier.size(if (small) 13.dp else 15.dp))
+        if (title != null) Text(title, color = content, fontSize = size, fontWeight = FontWeight.SemiBold)
+        if (count != null) Text(count, color = quiet, fontSize = size)
+        if (locked) Icon(LibraryIcons.Lock, null, tint = quiet, modifier = Modifier.size(if (small) 11.dp else 12.dp))
     }
 }
 
@@ -307,4 +327,7 @@ internal object FeedIcons {
     val Download = icon("Download", "M12 4v11", "M7 10l5 5 5-5", "M5 20h14")
     val Inbox = icon("Inbox", "M4 13l2.5-8h11l2.5 8v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z", "M4 13h4.5l1.5 2.5h4l1.5-2.5H20")
     val Folder = icon("Folder", "M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z")
+
+    /** An archive box: what was imported. */
+    val Imported = icon("Imported", "M3 4h18v4H3z", "M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8", "M10 12h4")
 }

@@ -175,7 +175,7 @@ internal fun ExploreContent(
         ExploreView.YEARS -> YearsList(loaded.years, shown, actions, contentPadding, line)
         ExploreView.PEOPLE -> Unit
     }
-    if (sheetOpen) ShowingSheet(shown, loaded.counts, actions.toggleSource, onDismiss = { sheetOpen = false })
+    if (sheetOpen) ShowingSheet(loaded.counts, onDismiss = { sheetOpen = false }, whatsAppNote = true)
 }
 
 /**
@@ -668,7 +668,7 @@ private fun <T> ExplorePageLayout(
         }
         PageBack(onBack)
     }
-    if (sheetOpen && counts != null) ShowingSheet(shown, counts, onToggleSource, onDismiss = { sheetOpen = false })
+    if (sheetOpen && counts != null) ShowingSheet(counts, onDismiss = { sheetOpen = false }, whatsAppNote = true)
 }
 
 /** Across the top of a page, under the status bar: its photo with the title and [subtitle] written over it. */

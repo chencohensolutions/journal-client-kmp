@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="sources_b2_imported">מיובא</string>
-    <string name="sources_b2_of_imported">מתוך מה שיובא</string>
-    <string name="sources_b2_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
-    <string name="sources_b2_more">עוד %1$s</string>
-    <string name="sources_b2_private">הגדרות פרטיות</string>
-</resources>
