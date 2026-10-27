@@ -243,10 +243,11 @@ internal fun isSourceApp(ownerPackage: String?): Boolean = ownerPackage != null 
  * server labels with (its media.SourceOf), so the two agree; the first that fits:
  * 1. a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots, wherever it is;
  * 2. WhatsApp's names ("IMG-20260101-WA0002.jpg") and folders are WhatsApp;
- * 3. a screenshots or screen recordings folder is Screenshots;
+ * 3. a screenshots or screen recordings folder ("Screenshots", "צילומי מסך", "הקלטות מסך") is Screenshots;
  * 4. a messaging app's names ("photo_2023-01-15_10-00-00.jpg" is Telegram's) and folders are that app's folder;
- * 5. DCIM/Camera, files right in DCIM, and the names cameras give ("DSC_000385.JPG", "20250928_211937_016.jpg") are
- *    Camera;
+ * 5. DCIM/Camera and the other folders a camera makes, at any level (100ANDRO, 100CANON, SLOW_VIDEO, EDITED_VIDEO,
+ *    Videocaptures, a burst's DSC_20190928033805229), files right in DCIM, and the names cameras give
+ *    ("DSC_000385.JPG", "20250928_211937_016.jpg") are Camera;
  * 6. a folder inside DCIM, Pictures, Movies, Download and the other shared folders is a source by its name (so
  *    Pictures/Telegram and Download/Telegram are one, "Telegram"), as is a folder of its own at the top;
  * 7. else (right in a shared folder, or in an app's own folder under Android/) the source of [appName], the app that

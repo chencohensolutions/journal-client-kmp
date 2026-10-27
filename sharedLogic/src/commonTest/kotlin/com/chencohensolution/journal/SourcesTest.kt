@@ -20,6 +20,16 @@ internal val SOURCE_FIXTURES: List<Pair<String, String>> = listOf(
     "Download/VID_20240101_120000.mp4" to "camera",
     "DCIM/Camera/x.jpg" to "camera",
     "DCIM/x.jpg" to "camera",
+    // Folders a camera makes, at any level, before a folder by its name (the server's rule only: sound recordings,
+    // a phone's folder over camera tags, and the import's minimum, have no case here).
+    "DCIM/100ANDRO/x.mp4" to "camera",
+    "DCIM/100MEDIA/x.jpg" to "camera",
+    "DCIM/101MSDCF/Sub/x.jpg" to "camera",
+    "DCIM/SLOW_VIDEO/x.mp4" to "camera",
+    "DCIM/EDITED_VIDEO/x.mp4" to "camera",
+    "Pictures/Videocaptures/x.jpg" to "camera",
+    "DCIM/DSC_20190928033805229/x.jpg" to "camera",
+    "Pictures/2019trip/x.jpg" to "folder:2019trip",
     // WhatsApp's names and folders.
     "Pictures/IMG-20260101-WA0002.jpg" to "folder:WhatsApp",
     "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/x.jpg" to "folder:WhatsApp",
@@ -28,6 +38,10 @@ internal val SOURCE_FIXTURES: List<Pair<String, String>> = listOf(
     "Pictures/WhatsApp/Screenshot_20240301_030715_Bumble.jpg" to "screenshots",
     "DCIM/Screenshots/x.png" to "screenshots",
     "Movies/Screen recordings/x.mp4" to "screenshots",
+    // Hebrew screenshot folders: צילומי מסך (screenshots), הקלטות מסך (screen recordings).
+    "Pictures/צילומי מסך/x.png" to "screenshots",
+    "Pictures/צילומי_מסך/x.png" to "screenshots",
+    "Movies/הקלטות מסך/x.mp4" to "screenshots",
     // The messaging apps, by their names and their folders.
     "Download/photo_2023-01-15_10-00-00.jpg" to "folder:Telegram",
     "Pictures/Telegram/x.jpg" to "folder:Telegram",
