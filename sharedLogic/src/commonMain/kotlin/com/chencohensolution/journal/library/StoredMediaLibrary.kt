@@ -106,7 +106,10 @@ internal class StoredMediaLibrary(
 
     /** Asks the platform what changed and writes it to the table. */
     private suspend fun write() {
-        val changes = (platform as? ChangingLibrary)?.changesSince(withContext(io) { state.stateValue(MARK).executeAsOneOrNull() })
+        // Rows labelled by older rules (SourceNames.RULES) are read again whole once, so their sources follow the new ones.
+        val rulesChanged = withContext(io) { state.stateValue(RULES).executeAsOneOrNull() != SourceNames.RULES.toString() }
+        val mark = if (rulesChanged) null else withContext(io) { state.stateValue(MARK).executeAsOneOrNull() }
+        val changes = (platform as? ChangingLibrary)?.changesSince(mark)
         val all = if (changes == null) platform.loadItems() else null
         withContext(io) {
             Measure.time({ "Phone's library: ${changes?.let { if (it.full) "read whole, ${it.changed.size}" else "${it.changed.size} changed" } ?: "read whole"}" }) {
@@ -121,6 +124,7 @@ internal class StoredMediaLibrary(
                         madeUp.forEach { queries.upsertDeviceItem(it.toRow()) }
                         state.setState(MADE_UP, madeUp.size.toString())
                     }
+                    if (rulesChanged) state.setState(RULES, SourceNames.RULES.toString())
                 }
             }
         }
@@ -189,6 +193,7 @@ internal class StoredMediaLibrary(
     private companion object {
         const val MARK = "device_mark"
         const val MADE_UP = "device_made_up"
+        const val RULES = "device_source_rules"
     }
 }
 
@@ -203,11 +208,12 @@ private fun MediaItem.toRow() = Device_item(
     size = sizeBytes,
     file_name = fileName,
     burst_id = burstId,
-    source = source.id,
+    source = source.spelledId,
     latitude = location?.latitude,
     longitude = location?.longitude,
     modified_millis = modifiedMillis,
     mime_type = mimeType,
+    folder = folder,
 )
 
 private fun Device_item.toMediaItem() = MediaItem(
@@ -221,8 +227,9 @@ private fun Device_item.toMediaItem() = MediaItem(
     sizeBytes = size,
     fileName = file_name,
     burstId = burst_id,
-    source = MediaSource.parse(source) ?: MediaSource.OTHER,
+    source = MediaSource.of(source),
     location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
     modifiedMillis = modified_millis,
     mimeType = mime_type,
+    folder = folder,
 )

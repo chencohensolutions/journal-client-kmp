@@ -72,16 +72,25 @@ internal class JournalSettings(private val store: KeyValueStore) {
     var shownSources: ShownSources
         get() {
             val hidden = store.getString(KEY_HIDDEN_SOURCES)?.let(::sourcesOf)
-                ?: store.getString(KEY_SHOWN_SOURCES)?.let { old -> MediaSource.FIXED.toSet() - sourcesOf(old) }
+                ?: store.getString(KEY_SHOWN_SOURCES)?.let { old -> OLD_FIXED - sourcesOf(old) }
                 ?: store.getString(KEY_FEED_SOURCES)?.let { old ->
-                    MediaSource.FIXED.toSet() - sourcesOf(old) + ShownSources.DEFAULT_HIDDEN
+                    OLD_FIXED - sourcesOf(old) + ShownSources.DEFAULT_HIDDEN
                 }
                 ?: ShownSources.DEFAULT_HIDDEN
+            // Kept before Imported was a choice (Oct 27, 2026): its WhatsApp and screenshots start off, as for everyone.
+            val imported = store.getString(KEY_SHOW_IMPORTED)
+            val hiddenNow = if (imported == null) hidden + ShownSources.DEFAULT_HIDDEN_IMPORTED else hidden
             val alwaysShown = store.getString(KEY_ALWAYS_SHOWN_DAYS)?.split(",")?.mapNotNull { entry ->
                 val day = LocalDay.parse(entry.substringBefore(":")) ?: return@mapNotNull null
                 DaySource(day, MediaSource.parse(unescape(entry.substringAfter(":", ""))) ?: return@mapNotNull null)
             }?.toSet().orEmpty()
-            return ShownSources(hidden, store.getString(KEY_SAY_WHATS_HIDDEN) != "false", alwaysShown, store.getString(KEY_SHOW_FILTER_BAR) != "false")
+            return ShownSources(
+                hiddenNow,
+                store.getString(KEY_SAY_WHATS_HIDDEN) != "false",
+                alwaysShown,
+                store.getString(KEY_SHOW_FILTER_BAR) != "false",
+                importedShown = imported != "false",
+            )
         }
         set(value) {
             store.putString(KEY_HIDDEN_SOURCES, idsOf(value.hidden))
@@ -89,12 +98,15 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_FEED_SOURCES, null)
             store.putString(KEY_SAY_WHATS_HIDDEN, value.sayWhatsHidden.toString())
             store.putString(KEY_SHOW_FILTER_BAR, value.showFilterBar.toString())
+            store.putString(KEY_SHOW_IMPORTED, value.importedShown.toString())
             store.putString(KEY_ALWAYS_SHOWN_DAYS, value.alwaysShown.joinToString(",") { "${it.day}:${escape(it.source.id)}" }.ifEmpty { null })
         }
 
     /**
      * Sources kept as their ids with commas between ([MediaSource.id]; a folder's name may have a comma, kept as
-     * "%2C"). Ids of the sources before folders ("CAMERA") are read too; an unknown one is skipped.
+     * "%2C"). Ids of the sources before folders ("CAMERA") are read too, and "whatsapp" as the folder WhatsApp it is
+     * since Oct 27, 2026, and folders in any case ("folder:WhatsApp", "folder:Petcube"), all written back in lower case
+     * ("folder:whatsapp"); an unknown one is skipped.
      */
     private fun sourcesOf(stored: String): Set<MediaSource> =
         stored.split(",").filter { it.isNotEmpty() }.mapNotNull { MediaSource.parse(unescape(it)) }.toSet()
@@ -171,7 +183,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
 
     var freeUpKept: Set<MediaSource>
         get() = store.getString(KEY_FREE_UP_KEPT)?.let(::sourcesOf)
-            ?: store.getString(KEY_FREE_UP_SOURCES)?.let(::sourcesOf)?.takeIf { it.isNotEmpty() }?.let { MediaSource.FIXED.toSet() - it }
+            ?: store.getString(KEY_FREE_UP_SOURCES)?.let(::sourcesOf)?.takeIf { it.isNotEmpty() }?.let { OLD_FIXED - it }
             ?: emptySet()
         set(value) {
             store.putString(KEY_FREE_UP_KEPT, idsOf(value))
@@ -264,6 +276,13 @@ internal class JournalSettings(private val store: KeyValueStore) {
         const val DEFAULT_SEARCH_PAGE_SIZE = 200
         val DEFAULT_PHONE_INDEXES = setOf("aesthetic")
         private val featuresJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+        /**
+         * The fixed sources when settings were kept as those shown (before Oct 24, 2026), WhatsApp among them: what an
+         * old `shown_sources`, `feed_sources` or `free_up_sources` leaves out is read against these.
+         */
+        private val OLD_FIXED: Set<MediaSource> =
+            setOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, MediaSource.OTHER)
         private const val KEY_SERVER_FEATURES = "server_features"
         private const val KEY_PHONE_INDEXES = "phone_indexes"
         private const val KEY_PHONE_INDEXES_WIFI_ONLY = "phone_indexes_wifi_only"
@@ -281,6 +300,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SHOWN_SOURCES = "shown_sources"
         private const val KEY_HIDDEN_SOURCES = "hidden_sources"
         private const val KEY_SHOW_FILTER_BAR = "show_filter_bar"
+        private const val KEY_SHOW_IMPORTED = "show_imported"
         private const val KEY_SAY_WHATS_HIDDEN = "say_whats_hidden"
         private const val KEY_ALWAYS_SHOWN_DAYS = "always_shown_days"
         private const val KEY_BACKUP_ENABLED = "backup_enabled"

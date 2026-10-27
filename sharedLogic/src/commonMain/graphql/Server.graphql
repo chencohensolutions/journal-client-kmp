@@ -13,6 +13,8 @@ query ServerInfo {
     localIndexes
     indexing
     audio
+    cameras
+    soundFolders
   }
 }
 

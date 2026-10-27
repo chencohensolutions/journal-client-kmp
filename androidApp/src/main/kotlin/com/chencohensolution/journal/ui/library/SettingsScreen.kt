@@ -46,14 +46,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.chencohensolution.journal.R
-import com.chencohensolution.journal.library.MediaSource
-import com.chencohensolution.journal.settings.ShownSources
+import com.chencohensolution.journal.settings.KindsStatus
 import com.chencohensolution.journal.settings.GroupingMode
 import com.chencohensolution.journal.settings.PrivateMedia
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 import androidx.compose.material3.LinearProgressIndicator
+import com.chencohensolution.journal.server.CamerasState
+import com.chencohensolution.journal.server.SoundFolderMark
+import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.server.ServerIndexingState
 import com.chencohensolution.journal.server.SyncProgress
 import java.text.NumberFormat
@@ -65,6 +67,10 @@ internal class SettingsActions(
     val resetSimilarity: () -> Unit = {},
     /** Opens Hidden collections (behind the phone's lock). */
     val openHidden: () -> Unit = {},
+    /** Opens Settings › Your cameras. */
+    val openCameras: () -> Unit = {},
+    /** Opens Settings › Sound folders. */
+    val openSoundFolders: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
@@ -72,8 +78,7 @@ internal class SettingsActions(
     val openPage: (SettingsPage) -> Unit = {},
     /** Opens Settings › Backup. */
     val openBackup: () -> Unit = {},
-    /** Show in the app: a source on or off everywhere (the same as the Moments filter bar), and "Say what's hidden". */
-    val toggleSource: (MediaSource) -> Unit = {},
+    /** Settings › Moments: "Say what's hidden". */
     val setSayWhatsHidden: (Boolean) -> Unit = {},
     /** "Filter bar in Moments". */
     val setShowFilterBar: (Boolean) -> Unit = {},
@@ -97,8 +102,8 @@ internal fun SettingsScreen(
     settings: SettingsState,
     actions: SettingsActions,
     page: SettingsPage = SettingsPage.MAIN,
-    /** The library's photos per source, shown or not, for Show in the app. */
-    sourceCounts: Map<MediaSource, Int> = emptyMap(),
+    /** Show in the app's kinds with their totals and what isn't backed up, for its page and its row. */
+    kinds: KindsStatus = KindsStatus(emptyList(), emptyList(), null),
     backup: BackupUi? = null,
     backupActions: BackupActions = BackupActions(),
     storage: StorageUi? = null,
@@ -109,6 +114,10 @@ internal fun SettingsScreen(
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState? = null,
     /** Search › On your server, when the server offers it; null: none. For Search's row. */
     indexing: ServerIndexingState? = null,
+    /** Your cameras' last list, for its row; null when the server doesn't keep cameras (no row). */
+    cameras: CamerasState? = null,
+    /** Sound folders' last list, for its row; null when the server doesn't keep sound folders (no row). */
+    soundFolders: SoundFoldersState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val title = when (page) {
@@ -126,12 +135,8 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             when (page) {
-                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing)
-                SettingsPage.SHOWN -> {
-                    ShownSourcesSection(settings.shownSources, sourceCounts, actions)
-                    SectionTitle(stringResource(R.string.settings_all_devices_title))
-                    Card { HiddenRow(syncProgress, actions.openHidden) }
-                }
+                SettingsPage.MAIN -> MainPage(settings, actions, kinds, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders)
+                SettingsPage.SHOWN -> ShowInAppPage(kinds, actions.openBackup, actions.openHidden)
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
                 SettingsPage.LOADING_MOMENTS -> LoadingMomentsPage(settings.momentsPaging, actions)
@@ -146,18 +151,28 @@ internal fun SettingsScreen(
 private fun MainPage(
     settings: SettingsState,
     actions: SettingsActions,
-    sourceCounts: Map<MediaSource, Int>,
+    kinds: KindsStatus,
     backup: BackupUi?,
     storage: StorageUi?,
     storageActions: StorageActions,
     syncProgress: SyncProgress?,
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState?,
     indexing: ServerIndexingState?,
+    cameras: CamerasState?,
+    soundFolders: SoundFoldersState?,
 ) {
     SectionTitle(stringResource(R.string.settings_library_title))
     Card {
-        PageRow(stringResource(R.string.settings_shown_title), shownSummary(settings.shownSources, sourceCounts)) { actions.openPage(SettingsPage.SHOWN) }
+        PageRow(stringResource(R.string.settings_shown_title), showInAppSummary(kinds)) { actions.openPage(SettingsPage.SHOWN) }
         RowDivider()
+        if (cameras != null) {
+            PageRow(stringResource(R.string.cameras_title), camerasSummary(cameras), actions.openCameras)
+            RowDivider()
+        }
+        if (soundFolders != null) {
+            PageRow(stringResource(R.string.sound_folders_title), soundFoldersSummary(soundFolders), actions.openSoundFolders)
+            RowDivider()
+        }
         PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
         RowDivider()
         SwitchRow(
@@ -222,6 +237,24 @@ private fun MomentsPage(settings: SettingsState, actions: SettingsActions) {
     }
     SectionTitle(stringResource(R.string.settings_similarity_title))
     SimilarityCard(settings.similarity, actions)
+    // Moved here from Show in the app when it became a status page (Oct 27, 2026). On this phone only.
+    SectionTitle(stringResource(R.string.settings_moments_filter_title))
+    Card {
+        SwitchRow(
+            title = stringResource(R.string.settings_filter_bar),
+            body = stringResource(R.string.settings_filter_bar_body),
+            checked = settings.shownSources.showFilterBar,
+            onChange = actions.setShowFilterBar,
+        )
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        SwitchRow(
+            title = stringResource(R.string.settings_say_hidden),
+            body = stringResource(R.string.settings_say_hidden_body),
+            checked = settings.shownSources.sayWhatsHidden,
+            onChange = actions.setSayWhatsHidden,
+        )
+    }
+    Text(stringResource(R.string.settings_shown_stories), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp))
 }
 
 /** A row that opens a page: its title, how it stands, and a chevron. */
@@ -239,13 +272,38 @@ internal fun PageRow(title: String, body: String, onClick: () -> Unit) {
     }
 }
 
-/** Show in the app's row: "Showing Camera, Other, Petcube +2", the most photos first. */
+/**
+ * Your cameras' row: "4 cameras · 1 not yours", "4 cameras" when all are, "Moving 312 photos…" while the server moves
+ * some, and "Which cameras were yours" before the list came.
+ */
 @Composable
-private fun shownSummary(shown: ShownSources, counts: Map<MediaSource, Int>): String {
-    val names = shown.choices(counts).filter { shown.isShown(it) }.map { sourceName(it) }
-    if (names.isEmpty()) return stringResource(R.string.settings_shown_none)
-    val first = names.take(3).joinToString(", ")
-    return stringResource(R.string.settings_shown_summary, if (names.size > 3) "$first +${names.size - 3}" else first)
+private fun camerasSummary(cameras: CamerasState): String {
+    val ready = cameras as? CamerasState.Ready ?: return stringResource(R.string.settings_cameras_unknown)
+    val format = NumberFormat.getIntegerInstance()
+    if (ready.pending > 0) return pluralStringResource(R.plurals.cameras_moving, ready.pending, format.format(ready.pending))
+    val count = pluralStringResource(R.plurals.settings_cameras_count, ready.cameras.size, format.format(ready.cameras.size))
+    val notYours = ready.cameras.count { !it.mine }
+    if (notYours == 0) return count
+    return stringResource(R.string.feed_place_time, count, pluralStringResource(R.plurals.settings_cameras_not_yours, notYours, format.format(notYours)))
+}
+
+/**
+ * Sound folders' row: "3 folders · 2 as Calls", "4 folders · 2 as Calls · 1 as Voice recordings", "3 folders" when none
+ * is merged, "Moving 953 files…" while the server moves some, and "Which folders are calls or voice recordings" before
+ * the list came.
+ */
+@Composable
+private fun soundFoldersSummary(folders: SoundFoldersState): String {
+    val ready = folders as? SoundFoldersState.Ready ?: return stringResource(R.string.settings_sound_folders_unknown)
+    val format = NumberFormat.getIntegerInstance()
+    if (ready.pending > 0) return pluralStringResource(R.plurals.settings_sound_folders_moving, ready.pending, format.format(ready.pending))
+    val calls = ready.folders.count { it.mark == SoundFolderMark.CALL }
+    val recordings = ready.folders.count { it.mark == SoundFolderMark.RECORDING }
+    return listOfNotNull(
+        pluralStringResource(R.plurals.settings_sound_folders_count, ready.folders.size, format.format(ready.folders.size)),
+        if (calls > 0) pluralStringResource(R.plurals.settings_sound_folders_as_calls, calls, format.format(calls)) else null,
+        if (recordings > 0) pluralStringResource(R.plurals.settings_sound_folders_as_recordings, recordings, format.format(recordings)) else null,
+    ).joinToString(" · ")
 }
 
 /** Moments' row: "By day · similar at 60%", "New row after 12 hours · similar at 85%". */
@@ -310,36 +368,6 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
                 uncheckedBorderColor = LibraryColors.Muted,
             ),
         )
-    }
-}
-
-/**
- * Show in the app: a pill per source with its count, the most photos first (asked Oct 24, 2026, when each folder
- * became a source), then "Say what's hidden" and "Filter bar in Moments", then where it applies and that hiding never deletes or changes backup.
- */
-@Composable
-private fun ShownSourcesSection(shown: ShownSources, counts: Map<MediaSource, Int>, actions: SettingsActions) {
-    SectionTitle(stringResource(R.string.settings_shown_title))
-    SourcePills(shown.choices(counts), counts, shown::isShown, actions.toggleSource)
-    Column(Modifier.padding(top = 12.dp)) {
-        Card {
-            SwitchRow(
-                title = stringResource(R.string.settings_say_hidden),
-                body = stringResource(R.string.settings_say_hidden_body),
-                checked = shown.sayWhatsHidden,
-                onChange = actions.setSayWhatsHidden,
-            )
-            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-            SwitchRow(
-                title = stringResource(R.string.settings_filter_bar),
-                body = stringResource(R.string.settings_filter_bar_body),
-                checked = shown.showFilterBar,
-                onChange = actions.setShowFilterBar,
-            )
-        }
-    }
-    listOf(R.string.settings_shown_where, R.string.settings_shown_stories).forEach { note ->
-        Text(stringResource(note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp))
     }
 }
 

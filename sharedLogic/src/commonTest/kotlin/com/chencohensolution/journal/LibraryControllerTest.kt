@@ -95,7 +95,8 @@ class LibraryControllerTest {
         controller.refresh()
         advanceUntilIdle()
 
-        assertEquals(3, controller.currentState.notBackedUpCount)
+        // "b" has no size (an empty file, or one Android hasn't measured): backup leaves it out, so it doesn't wait.
+        assertEquals(2, controller.currentState.notBackedUpCount)
         assertEquals(320, controller.currentState.notBackedUpBytes)
     }
 

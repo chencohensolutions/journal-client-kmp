@@ -23,7 +23,13 @@ CREATE TABLE server_media (
     aesthetic REAL,
     is_call INTEGER AS kotlin.Boolean NOT NULL,
     call_contact TEXT,
-    call_number TEXT
+    call_number TEXT,
+    -- The device that uploaded it, or "import" for what the server's import placed (since version 9).
+    uploaded_by TEXT,
+    -- The app on screen in a screenshot, and the camera its tags name (since version 9).
+    screenshot_app TEXT,
+    camera_make TEXT,
+    camera_model TEXT
 );
 
 -- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.
@@ -105,3 +111,19 @@ DELETE FROM server_hidden;
 -- The made-up library's files (debug builds, MadeUpLibrary): their sha256s start with this prefix.
 deleteMadeUpMedia:
 DELETE FROM server_media WHERE substr(sha256, 1, 8) = '0000made';
+
+-- How the server names each folder source ("folder:calls" is "Calls"), from its folderNames once per sync (since
+-- version 9): the app shows folders by it (FolderNames), also before the server answers.
+CREATE TABLE server_folder_name (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+allFolderNames:
+SELECT id, name FROM server_folder_name;
+
+clearFolderNames:
+DELETE FROM server_folder_name;
+
+addFolderName:
+INSERT OR REPLACE INTO server_folder_name VALUES (?, ?);

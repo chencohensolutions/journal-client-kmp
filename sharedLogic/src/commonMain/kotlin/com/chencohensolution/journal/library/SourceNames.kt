@@ -1,0 +1,126 @@
+package com.chencohensolution.journal.library
+
+/**
+ * The names and folders that tell where a file came from: the table [sourceOfFolder] and [sourceOfAsset] read, a copy
+ * of the server's (media.SourceOf in journal-server-go), so a phone and the server label a file alike before it is
+ * uploaded. Both are tested over the same cases (SourceNamesTest here, the rule's table test there); a change to one is
+ * made to the other. Three parts of the server's rule are its own and not here (Oct 27, 2026): a sound recording never
+ * takes a recorder's folder as its source (only WhatsApp's), a folder source the phone sent is kept over camera tags
+ * and camera names, and a folder only the server's import found becomes a source only with 20 of the user's files
+ * (folder sources differing only by case being one). A phone's folder is the app's evidence, so none of them changes
+ * what the phone tells.
+ */
+internal object SourceNames {
+    /**
+     * Bumped when these rules change, so the phone reads its library again whole once and its files are labelled by the
+     * new rules (StoredMediaLibrary). 2: IMG_/VID_ names need the time and no long app-made number (Oct 27, 2026).
+     */
+    const val RULES = 2
+
+    /**
+     * How Android names screenshots, without the extension: Screenshot_2015-07-18-03-54-57, Screenshot_20220917_160207,
+     * and since Samsung's One UI with the app on screen after the time: Screenshot_20240301_030715_Bumble,
+     * Screenshot_20220603-144846_Bumble(1), Screenshot_20221115-220726_Bumble~20221117-191459 (the ~ and (1) are copies
+     * the gallery made).
+     */
+    private val SCREENSHOT = Regex(
+        """^screenshot_(?:\d{8}[-_]\d{6}\d*|\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})(?:_(.*?))?(?:~[\d-]+)?\s*(?:\(\d+\))?$""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** How Android names screen recordings: Screen_Recording_20240301-030715_Bumble.mp4, Screen_recording_20240301_030715.mp4. */
+    private val SCREEN_RECORDING = Regex("""^screen[_ ]?recording_\d{8}[-_]\d{6}""", RegexOption.IGNORE_CASE)
+
+    /**
+     * Words in a folder's name, lower case without spaces, underscores or dashes, that make it a screenshots folder
+     * ("Screenshots", "Screen recordings", "ScreenRecorder", and in Hebrew "צילומי מסך", screenshots, and "הקלטות מסך",
+     * screen recordings).
+     */
+    private val SCREENSHOT_FOLDERS = listOf("screenshot", "screenrecord", "צילומימסך", "הקלטותמסך")
+
+    /** Spaces, underscores and dashes, left out of a folder's name before [SCREENSHOT_FOLDERS] are looked for in it. */
+    private val SEPARATORS = Regex("""[\s_-]""")
+
+    /**
+     * How WhatsApp names the files it saves: IMG-20230115-WA0012.jpg, VID-20230115-WA0003.mp4, and AUD-, PTT-, STK- and
+     * DOC- for voice notes, stickers and documents. Copies keep the name after they leave its folders.
+     */
+    private val WHATSAPP = Regex("""^(img|vid|aud|ptt|stk|doc)-\d{8}-wa\d+""", RegexOption.IGNORE_CASE)
+
+    /** A messaging app as its folder is named ([app], also how it is spelled), and the names it gives what it saves. */
+    class App(val app: String, val names: Regex)
+
+    /** The messaging apps whose names and folders say so, besides WhatsApp; each is a folder source by its name. */
+    val MESSAGING: List<App> = listOf(
+        App("Telegram", Regex("""^(photo|video)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}""", RegexOption.IGNORE_CASE)),
+        App("Signal", Regex("""^signal-\d{4}-\d{2}-\d{2}""", RegexOption.IGNORE_CASE)),
+        App("Facebook", Regex("""^FB_IMG_\d+""", RegexOption.IGNORE_CASE)),
+        App("Messenger", Regex("""^received_\d+""", RegexOption.IGNORE_CASE)),
+        App("Snapchat", Regex("""^Snapchat-\d+""", RegexOption.IGNORE_CASE)),
+    )
+
+    /**
+     * The names cameras give: DSC_000385.JPG (Nikon, DSC0… Sony, DSCF… Fujifilm), Samsung's 20250928_211937_016.jpg,
+     * IMG_20240101_120000.jpg, Pixel's PXL_20240101_120000000.jpg, VID_20240101_120000.mp4, MOV_0012.mp4, CAM00012.jpg.
+     */
+    val CAMERA_NAMES: List<Regex> = listOf(
+        Regex("""^DSC[F_]?\d{3,}""", RegexOption.IGNORE_CASE),
+        Regex("""^\d{8}_\d{6}"""),
+        // IMG_ and VID_ need the time and no long app-made number after it: WorkersNet saves empty
+        // img_20260927_115615_2430005126935688329.jpg files in Pictures, which aren't camera photos (the server's cameraName).
+        Regex("""^(IMG|VID)_\d{8}_\d{6}(?!_\d{5})""", RegexOption.IGNORE_CASE),
+        Regex("""^PXL_\d{8}""", RegexOption.IGNORE_CASE),
+        Regex("""^MOV_\d+""", RegexOption.IGNORE_CASE),
+        Regex("""^CAM_?\d+""", RegexOption.IGNORE_CASE),
+    )
+
+    /** The folder cameras save into ("DCIM/Camera"). */
+    private const val CAMERA_FOLDER = "camera"
+
+    /**
+     * The folder a camera makes in DCIM by the DCF standard: a number from 100 to 999 and five capital letters, digits
+     * or underscores, the first not a digit (100CANON, 101MSDCF, 100_FUJI, and Android's 100ANDRO and 100MEDIA).
+     * Cameras write it in capitals, so "100years" or "2019trip" isn't one.
+     */
+    private val DCF_FOLDER = Regex("""^[1-9]\d{2}[A-Z_][A-Z0-9_]{4}$""")
+
+    /** The other folders phones' camera apps make, lower case: slow motion, the gallery's edits of videos, frames captured from a video. */
+    private val CAMERA_APP_FOLDERS = setOf("slow_video", "edited_video", "videocaptures")
+
+    /** The apps the table knows, as they are spelled: a folder of one of them is named so whatever its case. */
+    private val APPS: List<String> = listOf("WhatsApp") + MESSAGING.map { it.app }
+
+    fun isScreenshotName(fileName: String): Boolean =
+        SCREENSHOT.matches(fileName.substringBeforeLast('.')) || SCREEN_RECORDING.containsMatchIn(fileName)
+
+    fun isScreenshotFolder(folder: String): Boolean =
+        folder.lowercase().replace(SEPARATORS, "").let { name -> SCREENSHOT_FOLDERS.any { it in name } }
+
+    fun isWhatsAppName(fileName: String): Boolean = WHATSAPP.containsMatchIn(fileName)
+
+    /** Any folder with WhatsApp in its name ("WhatsApp Images", "com.whatsapp"). */
+    fun isWhatsAppFolder(folder: String): Boolean = "whatsapp" in folder.lowercase()
+
+    /**
+     * The messaging app [fileName] or one of [folders] names: by the name first, then a folder named as the app is, or
+     * starting with its name and a space ("Telegram Images").
+     */
+    fun messagingApp(fileName: String, folders: List<String>): String? =
+        MESSAGING.firstOrNull { it.names.containsMatchIn(fileName) }?.app
+            ?: MESSAGING.firstOrNull { app ->
+                folders.any { it.trim().equals(app.app, ignoreCase = true) || it.trim().startsWith(app.app + " ", ignoreCase = true) }
+            }?.app
+
+    /**
+     * A folder a camera or a phone's camera app makes: Camera, a DCF folder (100ANDRO, 100CANON), SLOW_VIDEO,
+     * EDITED_VIDEO, Videocaptures, or a burst's folder named as a camera names its files (DSC_20190928033805229).
+     */
+    fun isCameraFolder(folder: String): Boolean = folder.trim().let { name ->
+        name.equals(CAMERA_FOLDER, ignoreCase = true) || name.lowercase() in CAMERA_APP_FOLDERS || DCF_FOLDER.matches(name) || isCameraName(name)
+    }
+
+    fun isCameraName(fileName: String): Boolean = CAMERA_NAMES.any { it.containsMatchIn(fileName) }
+
+    /** How the table spells the app [name] is, ignoring case ("whatsapp" is "WhatsApp"); null for an app it doesn't know. */
+    fun appSpelling(name: String): String? = APPS.firstOrNull { it.equals(name, ignoreCase = true) }
+}

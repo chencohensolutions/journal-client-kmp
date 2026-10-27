@@ -57,7 +57,13 @@ query Changes($since: String, $limit: Int) {
           lon
         }
         source
+        screenshotApp
+        camera {
+          make
+          model
+        }
         uploadedAt
+        uploadedBy
         nudity
         aesthetic
         private

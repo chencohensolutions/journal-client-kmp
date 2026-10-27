@@ -128,7 +128,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
     val counts = overview?.counts.orEmpty()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     val shownSources = stories.shownSources.shownAmong(counts)
-    if (sheetOpen) ShowingSheet(shownSources, counts, actions.toggleSource, onDismiss = { sheetOpen = false })
+    if (sheetOpen) ShowingSheet(counts, onDismiss = { sheetOpen = false }, whatsAppNote = true)
     val years = overview?.years
     // The years shown and where the map looks, kept while the viewer is open above it.
     var fromYear by rememberSaveable { mutableStateOf<Int?>(null) }

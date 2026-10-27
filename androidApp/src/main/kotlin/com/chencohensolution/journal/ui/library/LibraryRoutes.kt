@@ -32,6 +32,12 @@ internal sealed interface Route {
     data object FreeUp : Route
     data object Hidden : Route
 
+    /** Settings › Your cameras. */
+    data object Cameras : Route
+
+    /** Settings › Sound folders. */
+    data object SoundFolders : Route
+
     /** Settings › Search. */
     data object SearchSettings : Route
 
@@ -86,6 +92,8 @@ internal sealed interface Route {
         is SettingsPageRoute -> "settings-page|${page.name}"
         FreeUp -> "free-up"
         Hidden -> "hidden"
+        Cameras -> "cameras"
+        SoundFolders -> "sound-folders"
         SearchSettings -> "search-settings"
         BackupSettings -> "backup-settings"
         is Person -> "person|$id"
@@ -113,6 +121,8 @@ internal sealed interface Route {
                 "settings-page" -> SettingsPageRoute(SettingsPage.valueOf(parts[1]))
                 "free-up" -> FreeUp
                 "hidden" -> Hidden
+                "cameras" -> Cameras
+                "sound-folders" -> SoundFolders
                 "search-settings" -> SearchSettings
                 "backup-settings" -> BackupSettings
                 "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026

@@ -11,9 +11,13 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   a chip per source ran far off the screen): one row that scrolls sideways. First **+N**, the sources hidden ("+2"; a
   plus alone while none is), then a filled chip with a ✓ and its count for each source **shown** that has photos, the
   most photos first ("✓ Camera 1,240", "✓ Petcube 5"; a folder or app by its name with a folder icon). Tapping a chip
-  hides its source and it leaves the row. **+N** opens the **Showing** sheet: every source as a pill with its count,
-  the most photos first, filled when shown, tapped to show or hide (also a hidden folder with no photos left). Shared:
-  `MomentsFeed.bar`, `hiddenCount`, `sheet`. Everything but WhatsApp and Screenshots is shown at first (those two off
+  hides its source and it leaves the row. After the phones' chips, one **Imported** chip with a box icon and the count
+  of what was imported and shows (Android Oct 27, 2026, option b2 of the UI lab; `MomentsFeed.importedCount`, none
+  while Imported is off or nothing imported shows; tapping it turns Imported off, which "+N" then counts as one). What
+  Private settings hides on every device never has a chip and isn't in "+N": none of it reaches the phone. **+N**
+  opens the **Showing** sheet: Show in the app's pills, Imported's kinds and its Private settings line, as in
+  [Settings › Show in the app](settings.md) (also a hidden folder with no photos left). Shared:
+  `MomentsFeed.bar`, `hiddenCount`, `sheet`, `importedCount`, `hasImported`, `ShownSourcesPills`. Everything but WhatsApp and Screenshots is shown at first (those two off
   for everyone since Oct 21, 2026), and a folder seen for the first time is shown. Settings › Show in the app › **Filter bar in
   Moments** turns the bar off (Oct 24, 2026). It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
   everywhere (`ShownSources`, kept as `hidden_sources`; an older `shown_sources` or `feed_sources` keeps its choice).
@@ -181,17 +185,36 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/MomentsFeed.kt)
 (`buildFeed`, tested in `FeedTest`):
 
-- **Source** (`MediaSource`: Camera, WhatsApp, Screenshots, a folder by its name, or Other; asked for Oct 24, 2026,
-  when every DCIM folder was Camera and Other was too broad). On Android it comes from the folder
-  (`sourceOfFolder`): a path containing "screenshot" or "screen record" is Screenshots; one containing "WhatsApp" is
-  WhatsApp; DCIM/Camera and files right in DCIM are Camera; any other folder inside DCIM, Pictures, Movies, Download
+- **Source** (`MediaSource`: Camera, Screenshots, Sent to you, a folder by its name, or Other; asked for Oct 24, 2026,
+  when every DCIM folder was Camera and Other was too broad). WhatsApp is a folder like any app's since Oct 27, 2026
+  (`folder:whatsapp`; the old ids `whatsapp` and `folder:WhatsApp`, in settings or from the server, are read as it),
+  and stays hidden at first with Screenshots. **Folder ids are in lower case** since Oct 27, 2026, as the server's
+  (`folder:petcube`), so folders that differ only by case are one; a folder is shown by `MediaSource.folderName`
+  (`FolderNames`): an app the name table knows as it spells it (WhatsApp, Telegram, Signal, Facebook, Messenger,
+  Snapchat), else the server's name (its `folderNames`, the spelling most files have, asked once per sync and kept in
+  the database), else the phone's own spelling of its folder, else the name with a capital ("Petcube"). Sound
+  recordings have two sources of their own, `call` and `recording` (never offered as photo pills), and their kind in
+  Moments is read from the source first (call, recording, `folder:whatsapp` a voice message), then from the server's
+  call facts. **Sent to you** (`received`) is what the server labels photos of a camera the user marked as not
+  theirs; a phone never gives its own files that source; it shows at first. What the server's import placed is
+  `import:` and its kind (`import:camera`, `import:folder:telegram`), under Imported. On Android the source comes
+  from the file's name and folder (`sourceOfFolder`, reading the table in `SourceNames.kt`, a copy of the server's
+  rule so both label a file alike; the cases both are tested over are `SOURCE_FIXTURES` in `SourcesTest`), the first
+  that fits: a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots wherever it is; WhatsApp's
+  names ("IMG-20260101-WA0002.jpg") and any folder with "WhatsApp" in its name are WhatsApp; a folder with
+  "screenshot" or "screen record" in its name is Screenshots; the messaging apps' names and folders (Telegram's
+  "photo_2023-01-15_10-00-00.jpg", Signal's "signal-…", Facebook's "FB_IMG_…", Messenger's "received_…", Snapchat's
+  "Snapchat-…") are that app's folder; DCIM/Camera, files right in DCIM and the names cameras give ("DSC_000385.JPG",
+  Samsung's "20250928_211937_016.jpg", "IMG_20240101_…", "PXL_…", "VID_…", "MOV_…", "CAM…") are Camera; any other
+  folder inside DCIM, Pictures, Movies, Download
   (and Android's other shared folders) is a source by its name, so DCIM/Flowers is "Flowers" and Movies/Petcube is
   "Petcube", and the same name in two places (Pictures/Telegram, Download/Telegram) is one source. A file loose in
   Pictures or Download, or in an app's folder under Android/, is the source of the app that saved it (MediaStore's
   `OWNER_PACKAGE_NAME`, shown by the name under its icon: "ChatGPT", "Chrome"; the manifest's `<queries>` lets the app
   see apps with an icon), unless that app only copied it (Smart Switch from an old phone, the files app): then it is
   Other. iOS has no folders (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album
-  "WhatsApp" (WhatsApp saves there) are WhatsApp; files the camera can write (HEIC, JPEG, DNG, MOV) in the user's
+  "WhatsApp" (WhatsApp saves there) are WhatsApp, and the file's name is read with the same table for screenshots,
+  WhatsApp and the messaging apps; files the camera can write (HEIC, JPEG, DNG, MOV) in the user's
   library are Camera, so a JPEG saved from Safari counts as Camera, whatever albums they are filed in. The rest
   (synced from a computer, in shared albums, PNG, GIF, WebP, MP4 saved from apps) is the source of its album when it
   is in exactly one (often one an app made, like "Petcube"), else Other. Photos only on the server keep the source

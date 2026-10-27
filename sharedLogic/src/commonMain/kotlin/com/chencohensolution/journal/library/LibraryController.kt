@@ -40,7 +40,14 @@ data class LibraryTotals(
     /** The items backup takes that aren't backed up (see BackupState.status), and their bytes (where known). */
     val notBackedUp: Int,
     val notBackedUpBytes: Long,
+    /** [items] and [notBackedUp] per source as the database spells it in ids (imported ones apart), for Show in the app. */
+    val bySource: Map<MediaSource, SourceTotal> = emptyMap(),
 )
+
+/** One source's items, and of them the phone's that backup takes and aren't backed up, as [LibraryTotals] counts them. */
+data class SourceTotal(val items: Int, val notBackedUp: Int) {
+    operator fun plus(other: SourceTotal) = SourceTotal(items + other.items, notBackedUp + other.notBackedUp)
+}
 
 data class LibraryState(
     val access: PhotoAccess = PhotoAccess.NOT_DETERMINED,
@@ -78,14 +85,28 @@ data class LibraryState(
     /** Every item of the library. */
     val itemCount: Int = totals?.items ?: days.sumOf { it.items.size }
 
+    // An empty file (an app's 0-byte placeholder) never waits: backup leaves it out (BackupEngine's queue).
     private fun waitsForBackup(item: MediaItem) =
-        item.backup != BackupStatus.BackedUp && (backupSources == null || item.source in backupSources)
+        item.backup != BackupStatus.BackedUp && (item.sizeBytes ?: 0) > 0 && (backupSources == null || item.source in backupSources)
 
-    /** Items not on the server yet (anything but [BackupStatus.BackedUp]) that backup takes. */
+    /** Items not on the server yet (anything but [BackupStatus.BackedUp]) that backup takes; empty files aren't. */
     val notBackedUpCount: Int = totals?.notBackedUp ?: days.sumOf { day -> day.items.count(::waitsForBackup) }
 
     /** Size of [notBackedUpCount]'s items; counts only items whose size is known. */
     val notBackedUpBytes: Long = totals?.notBackedUpBytes ?: days.sumOf { day -> day.items.filter(::waitsForBackup).sumOf { it.sizeBytes ?: 0L } }
+
+    /**
+     * Items per source and those of them not backed up, the same counts as [itemCount] and [notBackedUpCount] split by
+     * source (imported ones apart): Show in the app's lines.
+     */
+    fun sourceTotals(): Map<MediaSource, SourceTotal> = totals?.bySource ?: buildMap {
+        days.forEach { day ->
+            day.items.forEach { item ->
+                val total = SourceTotal(1, if (waitsForBackup(item)) 1 else 0)
+                put(item.source, get(item.source)?.plus(total) ?: total)
+            }
+        }
+    }
 
     /** Whether the library has nothing to show (yet). */
     val isEmpty: Boolean get() = itemCount == 0

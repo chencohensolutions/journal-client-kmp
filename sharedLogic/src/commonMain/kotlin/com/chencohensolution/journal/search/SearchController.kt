@@ -124,6 +124,14 @@ data class SearchState(
     val onPhone: Boolean = false,
     /** People chosen (chips in the field): only photos with every one of them, best match of the words, if any. */
     val people: List<Person> = emptyList(),
+    /**
+     * How many of the matches found so far (of the pages shown, in the chosen year and town) are in sources Show in the
+     * app hides: hidden sources, what was imported while Imported is off, but not a day shown anyway ("Always show
+     * this day"). Left out of [items] unless [showingHidden]; "12 more in sources you hide · Show".
+     */
+    val hiddenBySources: Int = 0,
+    /** This search shows the matches in hidden sources too ([SearchController.showHiddenSources]). */
+    val showingHidden: Boolean = false,
 ) {
     /** The server hasn't read every file yet, so some can't be found. */
     val stillReading: Boolean get() = status == SearchStatus.DONE && indexed < total
@@ -236,6 +244,8 @@ internal class ApolloSearchWarmUp(private val http: ServerHttp) : SearchWarmUp {
  * [chooseTown] ask the server again for the best of that year or town, a page at a time (a town is sent as the box
  * around this device's photos of it, since the server has no place names). When the library or the places change (a
  * photo made private, a town named) the same answers are shown again through them. A new request replaces one running.
+ * Search follows Show in the app (the owner, Oct 27, 2026): what its sources hide, as [stories]' shownSources say, is
+ * left out and counted ([SearchState.hiddenBySources]) until [showHiddenSources] shows it for this search.
  */
 class SearchController internal constructor(
     private val library: StateFlow<LibraryState>,
@@ -245,7 +255,10 @@ class SearchController internal constructor(
      * list without [bySha] (tests); the app passes none (with [bySha], the database finds them).
      */
     private val server: StateFlow<List<ServerMedia>>? = null,
-    /** The stories' places (where photos were taken and the towns' names), for the town chips. */
+    /**
+     * The stories' places (where photos were taken and the towns' names), for the town chips, and the sources Show in
+     * the app shows; null (tests): every source is shown.
+     */
     private val stories: StateFlow<StoriesState>? = null,
     /** Photos per page (Settings › Search); read for each page. */
     private val pageSize: () -> Int = { JournalSettings.DEFAULT_SEARCH_PAGE_SIZE },
@@ -286,6 +299,9 @@ class SearchController internal constructor(
     private var years: List<Int>? = null
     private var area: GeoArea? = null
 
+    /** This search shows what Show in the app hides too ([showHiddenSources]); a new search hides it again. */
+    private var showHidden = false
+
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
 
@@ -295,6 +311,7 @@ class SearchController internal constructor(
     init {
         scope.launch { library.collect { refresh() } }
         stories?.let { flow -> scope.launch { flow.map { it.places }.distinctUntilChanged().collect { refresh() } } }
+        stories?.let { flow -> scope.launch { flow.map { it.shownSources }.distinctUntilChanged().collect { refresh() } } }
     }
 
     /** Searches for [text], with no year or town; blank clears instead. */
@@ -305,6 +322,7 @@ class SearchController internal constructor(
         _state.update { SearchState(query = query, status = SearchStatus.SEARCHING, people = people) }
         years = null
         area = null
+        showHidden = false
         fetch(limit = CANDIDATES) { answer ->
             firstAnswer = answer
             show(answer, full = answer.size == CANDIDATES)
@@ -400,6 +418,17 @@ class SearchController internal constructor(
         }
     }
 
+    /**
+     * Shows ([show]) the matches in sources Show in the app hides, for this search only ("12 more in sources you hide ·
+     * Show"), or hides them again. Show in the app itself doesn't change.
+     */
+    fun showHiddenSources(show: Boolean) {
+        if (showHidden == show) return
+        showHidden = show
+        _state.update { it.copy(showingHidden = show) }
+        refresh()
+    }
+
     /** Back to nothing searched (and no people chosen). */
     fun clear() {
         searchJob?.cancel()
@@ -408,6 +437,7 @@ class SearchController internal constructor(
         loaded = NOTHING
         pageEnds = emptyList()
         serverHasMore = false
+        showHidden = false
         _state.value = SearchState()
     }
 
@@ -514,9 +544,11 @@ class SearchController internal constructor(
         val hiding = madePrivate.isNotEmpty() && !showsPrivate()
         val resolve = if (hiding) { shas: List<String> -> resolveAll(shas).filter { it.id !in madePrivate } } else resolveAll
         val town = current.town
+        val sources = stories?.value?.shownSources
+        val hides: (MediaItem) -> Boolean = { sources != null && !sources.shows(it) }
         // A town is asked for as a box, which can reach into the next town.
-        val sets = grouped(resolve) { town == null || townOf(it) == town }
-        val matches = resolve(firstAnswer.sha256s)
+        val (sets, hiddenBySources) = grouped(resolve, hides) { town == null || townOf(it) == town }
+        val matches = resolve(firstAnswer.sha256s).filter { showHidden || !hides(it) }
         val yearChips = matches.filter { town == null || townOf(it) == town }
             .groupingBy { it.day.year }.eachCount()
             .entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) }
@@ -525,25 +557,39 @@ class SearchController internal constructor(
             .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .map { SearchChip(it.key, it.value) }
         val canLoadMore = (pageEnds.lastOrNull() ?: 0) < loaded.size || (serverHasMore && loaded.size < MAX_DEPTH)
-        _state.update { it.copy(items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips, canLoadMore = canLoadMore) }
+        _state.update {
+            it.copy(
+                items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips, canLoadMore = canLoadMore,
+                hiddenBySources = hiddenBySources, showingHidden = showHidden,
+            )
+        }
     }
 
     /**
      * The pages shown of [loaded], as the library has them ([keep] ones only), in sets: in each page the moments in the
      * order of their best photo, each moment's sets in the order of theirs, each set best first. A page never moves
      * what the pages before it showed: its photos of a set shown already join that set (more dots), and its other
-     * photos come after.
+     * photos come after. Those the sources hide ([hides]) are counted, and left out unless [showHidden].
      */
-    private fun grouped(resolve: (List<String>) -> List<MediaItem>, keep: (MediaItem) -> Boolean): List<List<MediaItem>> {
+    private fun grouped(
+        resolve: (List<String>) -> List<MediaItem>,
+        hides: (MediaItem) -> Boolean,
+        keep: (MediaItem) -> Boolean,
+    ): Pair<List<List<MediaItem>>, Int> {
         val rows = mutableListOf<MutableList<MediaItem>>()
         val rowOfSet = HashMap<Int, MutableList<MediaItem>>()
         val seen = HashSet<String>()
+        var hidden = 0
         var start = 0
         for (end in pageEnds) {
             val moments = LinkedHashMap<Int, LinkedHashMap<Int, MutableList<MediaItem>>>()
             for (i in start until minOf(end, loaded.size)) {
                 val item = resolve(listOf(loaded.sha256s[i])).firstOrNull()?.takeIf(keep) ?: continue
                 if (!seen.add(item.id)) continue
+                if (hides(item)) {
+                    hidden++
+                    if (!showHidden) continue
+                }
                 // Without the server's numbers (an older server) each photo is its own.
                 val set = loaded.sets.getOrNull(i) ?: (-1 - i)
                 val moment = loaded.moments.getOrNull(i) ?: (-1 - i)
@@ -558,7 +604,7 @@ class SearchController internal constructor(
             }
             start = end
         }
-        return rows
+        return rows to hidden
     }
 
     private fun townOf(item: MediaItem): String? {

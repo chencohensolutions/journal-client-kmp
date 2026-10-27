@@ -60,7 +60,8 @@ internal data class PickedFolder(val folder: SoundFolder, val look: FolderLook)
 /**
  * The pills: a tap turns one on or off ([toggle]; a folder the app can no longer read is picked again instead); a long
  * press on a folder asks to stop backing it up ([remove], when given). [pickFolder], when given, ends the list with
- * "+ Add a folder". [showBytes] adds each pill's bytes (Free up space).
+ * "+ Add a folder". [showCounts] adds each pill's files (Free up space; Settings › Backup shows names only, asked
+ * Oct 27, 2026), [showBytes] their bytes (Free up space).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -69,6 +70,7 @@ internal fun BackupPills(
     toggle: (BackupPill) -> Unit,
     pickFolder: (() -> Unit)? = null,
     remove: ((SoundFolder) -> Unit)? = null,
+    showCounts: Boolean = true,
     showBytes: Boolean = false,
 ) {
     val format = NumberFormat.getIntegerInstance()
@@ -83,7 +85,7 @@ internal fun BackupPills(
             val bytes = (pill as? BackupPill.Source)?.bytes ?: (pill as? BackupPill.Folder)?.bytes
             val label = buildString {
                 append(name)
-                if (pill.count > 0) append(" · ").append(format.format(pill.count))
+                if (showCounts && pill.count > 0) append(" · ").append(format.format(pill.count))
                 if (showBytes && bytes != null && bytes > 0) append(" · ").append(Formatter.formatShortFileSize(context, bytes))
             }
             val folder = pill as? BackupPill.Folder

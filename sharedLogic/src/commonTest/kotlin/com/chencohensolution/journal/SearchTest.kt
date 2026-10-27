@@ -4,7 +4,10 @@ import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.MediaType
+import com.chencohensolution.journal.settings.DaySource
+import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.places.PlaceName
@@ -284,4 +287,40 @@ class SearchTest {
     }
 
     private fun Double.round() = kotlin.math.round(this * 100) / 100
+
+    @Test
+    fun searchFollowsShowInTheAppAndSaysWhatItLeftOut() = runTest {
+        val whatsApp = item("w", sha('w')).copy(source = MediaSource.WHATSAPP)
+        val imported = item("i", sha('i')).copy(source = MediaSource.imported(MediaSource.CAMERA), isOnDevice = false)
+        val library = MutableStateFlow(library(item("1", sha('a')), whatsApp, imported))
+        val stories = MutableStateFlow(StoriesState(shownSources = ShownSources()))
+        val search = SearchController(
+            library, { _, _, _, _, _ -> SearchAnswer(listOf(sha('w'), sha('a'), sha('i')), 3, 3) },
+            stories = stories, dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        search.search("dog")
+        advanceUntilIdle()
+        // WhatsApp is hidden at first; imported Camera shows while Imported does.
+        assertEquals(listOf("1", "i"), search.currentState.items.map { it.id })
+        assertEquals(1, search.currentState.hiddenBySources)
+        assertEquals(listOf(SearchChip("2026", 2)), search.currentState.yearChips)
+
+        // "1 more in sources you hide · Show": for this search only.
+        search.showHiddenSources(true)
+        advanceUntilIdle()
+        assertEquals(listOf("w", "1", "i"), search.currentState.items.map { it.id })
+        assertTrue(search.currentState.showingHidden)
+        search.search("cat")
+        advanceUntilIdle()
+        assertEquals(listOf("1", "i"), search.currentState.items.map { it.id })
+
+        // Imported off hides what was imported; "Always show this day" shows WhatsApp's photos of that day.
+        stories.value = StoriesState(
+            shownSources = ShownSources(importedShown = false, alwaysShown = setOf(DaySource(LocalDay(2026, 10, 8), MediaSource.WHATSAPP))),
+        )
+        advanceUntilIdle()
+        assertEquals(listOf("w", "1"), search.currentState.items.map { it.id })
+        assertEquals(1, search.currentState.hiddenBySources)
+        search.close()
+    }
 }

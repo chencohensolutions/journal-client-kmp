@@ -75,6 +75,15 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
 
     fun hidden(): Set<String> = queries.allHidden().executeAsList().toSet()
 
+    /** The server's names of the folder sources, by id ("folder:calls" to "Calls"), as last kept. */
+    fun folderNames(): Map<String, String> = queries.allFolderNames().executeAsList().associate { it.id to it.name }
+
+    /** Keeps [names] in place of the names kept before. */
+    fun keepFolderNames(names: Map<String, String>) = database.transaction {
+        queries.clearFolderNames()
+        names.forEach { (id, name) -> queries.addFolderName(id, name) }
+    }
+
     fun privateFiles(): List<PrivateFile> = queries.allPrivate().executeAsList().map { PrivateFile(it.sha256, it.file_name, it.size) }
 
     fun cursor(): String? = state.stateValue(CURSOR).executeAsOneOrNull()
@@ -185,6 +194,10 @@ private fun ServerMedia.toRow() = Server_media(
     is_call = isCall,
     call_contact = callContact,
     call_number = callNumber,
+    uploaded_by = uploadedBy,
+    screenshot_app = screenshotApp,
+    camera_make = cameraMake,
+    camera_model = cameraModel,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -208,4 +221,8 @@ private fun Server_media.toServerMedia() = ServerMedia(
     isCall = is_call,
     callContact = call_contact,
     callNumber = call_number,
+    uploadedBy = uploaded_by,
+    screenshotApp = screenshot_app,
+    cameraMake = camera_make,
+    cameraModel = camera_model,
 )

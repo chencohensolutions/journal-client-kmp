@@ -34,8 +34,16 @@ data class SoundFolder(
     val kind: AudioKind,
     val enabled: Boolean = true,
 ) {
-    /** The source its files are uploaded with: WhatsApp for voice messages, else the folder. */
-    val source: MediaSource get() = if (kind == AudioKind.VOICE_MESSAGE) MediaSource.WHATSAPP else MediaSource.folder(name)
+    /**
+     * The source its files are uploaded with, as the user chose the folder's kind: WhatsApp for voice messages, call
+     * for calls and recording for recordings (until Oct 27, 2026 the folder, "folder:Call"). The server keeps what the
+     * phone sent for a sound recording unless the user merged its folder otherwise (Settings › Sound folders).
+     */
+    val source: MediaSource get() = when (kind) {
+        AudioKind.VOICE_MESSAGE -> MediaSource.WHATSAPP
+        AudioKind.CALL -> MediaSource.CALL
+        AudioKind.RECORDING -> MediaSource.RECORDING
+    }
 }
 
 /** The Backup part of Settings: what uploads to the server, and when. */

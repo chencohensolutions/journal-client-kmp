@@ -203,7 +203,10 @@
     <string name="feed_source_camera">Camera</string>
     <string name="feed_source_whatsapp">WhatsApp</string>
     <string name="feed_source_screenshots">Screenshots</string>
+    <string name="feed_source_received">Sent to you</string>
     <string name="feed_source_other">Other</string>
+    <string name="feed_source_call">Calls</string>
+    <string name="feed_source_recording">Voice recordings</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
     <plurals name="feed_more_sources">
@@ -313,6 +316,8 @@
     <string name="library_private_unreachable">Not changed: can’t reach your server. Try again when connected to it.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>
+    <string name="library_info_saved_in">Saved in</string>
+    <string name="library_info_camera">Camera</string>
     <string name="library_info_preview">Preview on this phone</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">None yet</string>
@@ -461,7 +466,6 @@
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
     <string name="settings_filter_bar">Filter bar in Moments</string>
     <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
-    <string name="settings_shown_where">On this phone only. Applies to Moments, Explore and Tags.</string>
     <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
@@ -495,6 +499,14 @@
         <item quantity="other">%d photos, best first</item>
     </plurals>
     <string name="search_still_reading">Still reading your photos: %1$s of %2$s</string>
+    <plurals name="search_hidden_more">
+        <item quantity="one">%d more in sources you hide · Show</item>
+        <item quantity="other">%d more in sources you hide · Show</item>
+    </plurals>
+    <plurals name="search_hidden_shown">
+        <item quantity="one">Including %d from sources you hide · Hide</item>
+        <item quantity="other">Including %d from sources you hide · Hide</item>
+    </plurals>
     <string name="search_nothing">Nothing found. Try other words.</string>
     <string name="search_preparing">Getting search ready…</string>
     <string name="search_by_person">Search by person</string>
@@ -515,11 +527,7 @@
     </plurals>
     <string name="settings_hidden_title">Private settings</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
-    <string name="settings_hidden_row_body">Private media, nudity, sound recordings, WhatsApp and screenshots by app</string>
-    <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
-    <string name="hidden_whatsapp_title">WhatsApp</string>
-    <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
-    <string name="hidden_screenshots_title">Screenshots</string>
+    <string name="settings_hidden_row_body">Private media, nudity, sound recordings, apps and screenshots by app</string>
     <string name="hidden_nudity_title">Nudity</string>
     <string name="hidden_nudity">Show photos and videos with nudity</string>
     <string name="hidden_nudity_from">Hide from</string>
@@ -528,9 +536,6 @@
         <item quantity="one">%s not scanned yet</item>
         <item quantity="other">%s not scanned yet</item>
     </plurals>
-    <string name="hidden_without_app">Without an app name</string>
-    <string name="hidden_find_app">Find an app</string>
-    <string name="hidden_no_apps">No screenshot on your server names its app yet.</string>
     <string name="hidden_loading">Loading…</string>
     <string name="hidden_unreachable">Can’t reach your server right now.</string>
     <string name="hidden_retry">Try again</string>
@@ -538,10 +543,6 @@
     <plurals name="hidden_files">
         <item quantity="one">%s photo or video</item>
         <item quantity="other">%s photos and videos</item>
-    </plurals>
-    <plurals name="hidden_screenshots">
-        <item quantity="one">%s screenshot</item>
-        <item quantity="other">%s screenshots</item>
     </plurals>
     <string name="phone_lock_locked">Locked. Unlock with your phone’s lock to see what is hidden.</string>
     <string name="phone_lock_unlock">Unlock</string>
@@ -699,37 +700,22 @@
     <string name="audio_speed">%s×</string>
     <string name="audio_dial">Call</string>
     <string name="audio_edit_contact">Edit contact</string>
-    <string name="hidden_audio_title">Sound recordings</string>
-    <string name="hidden_audio_recordings">Show recordings</string>
-    <string name="hidden_audio_calls">Show phone calls</string>
-    <string name="hidden_audio_voice">Show WhatsApp voice messages</string>
-    <string name="hidden_audio_body">Off at first: sound recordings stay hidden on all your devices until you show them here. Shown ones appear in Moments.</string>
-    <plurals name="hidden_audio_recordings_count">
-        <item quantity="one">%s recording</item>
-        <item quantity="other">%s recordings</item>
-    </plurals>
-    <plurals name="hidden_audio_calls_count">
-        <item quantity="one">%s call</item>
-        <item quantity="other">%s calls</item>
-    </plurals>
-    <plurals name="hidden_audio_voice_count">
-        <item quantity="one">%s voice message</item>
-        <item quantity="other">%s voice messages</item>
-    </plurals>
     <string name="audio_failed">The recording couldn’t be played</string>
     <string name="audio_contact">Contact</string>
     <string name="audio_number">Phone number</string>
     <string name="audio_save">Save</string>
     <string name="audio_cancel">Cancel</string>
-    <string name="hidden_apps_pills">Tap an app to show or hide its screenshots; filled ones are shown.</string>
     <!-- Settings' first page: its groups, and each row's line (Oct 24, 2026) -->
     <string name="settings_library_title">Library</string>
     <string name="settings_privacy_title">Privacy</string>
     <string name="settings_backup_storage_title">Backup and storage</string>
     <string name="settings_moments_title">Moments</string>
-    <!-- "Showing Camera, Other" -->
-    <string name="settings_shown_summary">Showing %s</string>
-    <string name="settings_shown_none">Nothing shown</string>
+    <string name="sources_imported">Imported</string>
+    <string name="sources_of_imported">Of what was imported</string>
+    <string name="sources_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
+    <string name="sources_more">%1$s more</string>
+    <string name="sources_private_about">Private settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren\'t counted here.</string>
+    <string name="sources_other_about">%1$s: files whose name and folder say nothing: downloads, saved images, files from a computer.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">New row after %d hour</item>
         <item quantity="other">New row after %d hours</item>
@@ -740,13 +726,8 @@
     <string name="settings_storage_originals">Originals</string>
     <string name="settings_storage_used">Used</string>
     <string name="settings_image_quality_title">Image quality</string>
-    <string name="settings_all_devices_title">On all your devices</string>
+
     <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
-    <string name="hidden_apps_title">Apps</string>
-    <string name="hidden_apps_count">%1$s of %2$s shown</string>
-    <string name="hidden_apps_none_shown">No app’s screenshots are shown. Open the list to show some.</string>
-    <string name="hidden_apps_open">Show all apps</string>
-    <string name="hidden_apps_fold">Show only the apps shown</string>
 
     <!-- Settings › Backup: folders of calls and recordings (promoted from UI lab round ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">Add a folder</string>
@@ -796,4 +777,104 @@
     <string name="settings_loading_default_chip">%d (default)</string>
     <string name="settings_loading_note">Only on this phone. Applies as Moments loads its next rows.</string>
     <string name="settings_loading_reset">Reset to %1$d and %2$d</string>
+    <string name="settings_cameras_unknown">Which cameras were yours</string>
+    <plurals name="settings_cameras_count">
+        <item quantity="one">%1$s camera</item>
+        <item quantity="other">%1$s cameras</item>
+    </plurals>
+    <plurals name="settings_cameras_not_yours">
+        <item quantity="one">%1$s not yours</item>
+        <item quantity="other">%1$s not yours</item>
+    </plurals>
+    <string name="cameras_title">Your cameras</string>
+    <string name="cameras_intro">Every camera that took your photos and videos, as their tags say. Turn off one that isn’t yours: its photos move to Sent to you, on all your devices.</string>
+    <string name="cameras_unmarked">A camera you haven’t marked counts as yours, so nothing moves until you choose.</string>
+    <string name="cameras_mine">Mine</string>
+    <string name="cameras_sent_to_you">Its photos are in Sent to you</string>
+    <string name="cameras_move">Move</string>
+    <string name="cameras_confirm_body">They stay on your server and in the app, under Sent to you instead of Camera. Mark the %1$s yours again to bring them back.</string>
+    <plurals name="cameras_confirm_title">
+        <item quantity="one">%1$s photo will move to Sent to you</item>
+        <item quantity="other">%1$s photos will move to Sent to you</item>
+    </plurals>
+    <plurals name="cameras_moving">
+        <item quantity="one">Moving %1$s photo…</item>
+        <item quantity="other">Moving %1$s photos…</item>
+    </plurals>
+    <string name="settings_sound_folders_unknown">Which folders are calls or voice recordings</string>
+    <plurals name="settings_sound_folders_count">
+        <item quantity="one">%1$s folder</item>
+        <item quantity="other">%1$s folders</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_calls">
+        <item quantity="one">%1$s as Calls</item>
+        <item quantity="other">%1$s as Calls</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_recordings">
+        <item quantity="one">%1$s as Voice recordings</item>
+        <item quantity="other">%1$s as Voice recordings</item>
+    </plurals>
+    <plurals name="settings_sound_folders_moving">
+        <item quantity="one">Moving %1$s file…</item>
+        <item quantity="other">Moving %1$s files…</item>
+    </plurals>
+    <string name="sound_folders_title">Sound folders</string>
+    <string name="sound_folders_calls">Calls</string>
+    <string name="sound_folders_calls_about">Their recordings are phone calls, in Calls on all your devices.</string>
+    <string name="sound_folders_recordings">Voice recordings</string>
+    <string name="sound_folders_recordings_about">Their recordings are in Voice recordings on all your devices.</string>
+    <string name="sound_folders_kept">Kept as folders</string>
+    <string name="sound_folders_kept_about">Each stays a folder of its own, until you move it.</string>
+    <string name="sound_folders_none">No folder yet</string>
+    <string name="sound_folders_move_to">Move to…</string>
+    <string name="sound_folders_move">Move</string>
+    <string name="sound_folders_confirm_body">Only how they are labelled changes, on your server: the recordings themselves stay as they are.</string>
+    <string name="sound_folders_moving_body">On your server. You can leave this page; Moments follows in a moment.</string>
+    <string name="sound_folders_footer">WhatsApp voice messages always stay voice messages.</string>
+    <string name="sound_folders_from_phones">from your phones</string>
+    <string name="sound_folders_all_imported">imported</string>
+    <string name="sound_folders_imported">%1$s imported</string>
+    <plurals name="sound_folders_files">
+        <item quantity="one">%1$s file</item>
+        <item quantity="other">%1$s files</item>
+    </plurals>
+    <plurals name="sound_folders_to_calls">
+        <item quantity="one">%1$s file will become Calls</item>
+        <item quantity="other">%1$s files will become Calls</item>
+    </plurals>
+    <plurals name="sound_folders_to_recordings">
+        <item quantity="one">%1$s file will become Voice recordings</item>
+        <item quantity="other">%1$s files will become Voice recordings</item>
+    </plurals>
+    <plurals name="sound_folders_to_folder">
+        <item quantity="one">%1$s file will go back to %2$s</item>
+        <item quantity="other">%1$s files will go back to %2$s</item>
+    </plurals>
+    <plurals name="sound_folders_moving">
+        <item quantity="one">Moving %1$s file to %2$s…</item>
+        <item quantity="other">Moving %1$s files to %2$s…</item>
+    </plurals>
+    <plurals name="sound_folders_row_moving">
+        <item quantity="one">%1$s left to move</item>
+        <item quantity="other">%1$s left to move</item>
+    </plurals>
+    <!-- Settings › Show in the app, a status page by kind (kinds c3 of the UI lab, Oct 27, 2026). -->
+    <string name="kinds_photos">Photos and videos</string>
+    <string name="kinds_sound">Sound</string>
+    <string name="kinds_voice_messages">Voice messages</string>
+    <string name="kinds_files">%1$s files</string>
+    <string name="kinds_not_backed_up">%1$s not backed up</string>
+    <string name="kinds_all_backed_up">All backed up</string>
+    <string name="kinds_how_to_hide">To hide a kind on this phone, or show it again, use the filter bar in Moments. This phone remembers it.</string>
+    <plurals name="kinds_hidden_everywhere">
+        <item quantity="one">%1$s kind hidden on all your devices</item>
+        <item quantity="other">%1$s kinds hidden on all your devices</item>
+    </plurals>
+    <string name="settings_moments_filter_title">What Moments shows</string>
+    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">Show on all your devices</string>
+    <string name="private_intro">Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone\'s lock.</string>
+    <string name="private_hidden">%1$s · Hidden on all your devices</string>
+    <string name="private_screenshots_body">%1$s · by the app they were taken in</string>
+    <string name="private_no_app">No app name</string>
 </resources>

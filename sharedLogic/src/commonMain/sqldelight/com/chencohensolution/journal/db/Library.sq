@@ -177,7 +177,10 @@ SELECT coalesce(
     ),
     s.sha256, s.sha256, 0, s.is_video, s.taken_millis,
     CAST(coalesce(julianday(substr(coalesce(s.taken_at, s.uploaded_at), 1, 10)) - 2440587.5, 0) AS INTEGER),
-    s.duration_millis, coalesce(s.width, 0), coalesce(s.height, 0), s.size, s.file_name, NULL, coalesce(s.source, 'other'),
+    s.duration_millis, coalesce(s.width, 0), coalesce(s.height, 0), s.size, s.file_name, NULL,
+    -- What the server's import placed is its own source, "import:" and the server's ("import:folder:whatsapp",
+    -- "import:camera"; an old "import:whatsapp" is read as the folder too): MediaSource.imported and MediaSource.parse.
+    CASE WHEN s.uploaded_by = 'import' THEN 'import:' || coalesce(s.source, 'other') ELSE coalesce(s.source, 'other') END,
     s.latitude, s.longitude, NULL, s.mime_type, s.is_private, s.aesthetic
 FROM server_media s
 WHERE s.is_audio = 0
@@ -409,14 +412,16 @@ WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :fir
 
 -- Per source: the items, the phone's items and their bytes, and those of them the ledger doesn't hold as uploaded as
 -- they are now (the same size and modified time, as BackupState.status checks): the counts backup shows (step 6d).
+-- Empty files (an app's placeholders, 0 bytes) never wait: backup leaves them out (BackupEngine's queue).
 backupCounts:
 SELECT i.source, count(*) AS items,
   coalesce(sum(CASE WHEN i.is_on_device = 1 THEN 1 ELSE 0 END), 0) AS on_device,
   coalesce(sum(CASE WHEN i.is_on_device = 1 THEN coalesce(i.size, 0) ELSE 0 END), 0) AS on_device_bytes,
-  coalesce(sum(CASE WHEN i.is_on_device = 1 AND NOT EXISTS (
+  coalesce(sum(CASE WHEN i.is_on_device = 1 AND coalesce(i.size, 0) > 0 THEN 1 ELSE 0 END), 0) AS on_device_files,
+  coalesce(sum(CASE WHEN i.is_on_device = 1 AND coalesce(i.size, 0) > 0 AND NOT EXISTS (
       SELECT 1 FROM ledger l WHERE l.id = i.id AND l.uploaded = 1 AND l.size = i.size AND l.modified_millis IS i.modified_millis
     ) THEN 1 ELSE 0 END), 0) AS waiting,
-  coalesce(sum(CASE WHEN i.is_on_device = 1 AND NOT EXISTS (
+  coalesce(sum(CASE WHEN i.is_on_device = 1 AND coalesce(i.size, 0) > 0 AND NOT EXISTS (
       SELECT 1 FROM ledger l WHERE l.id = i.id AND l.uploaded = 1 AND l.size = i.size AND l.modified_millis IS i.modified_millis
     ) THEN coalesce(i.size, 0) ELSE 0 END), 0) AS waiting_bytes
 FROM library_item i

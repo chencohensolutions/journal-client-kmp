@@ -1,0 +1,23 @@
+-- Version 8 to 9 (Oct 27, 2026): who uploaded each of the server's files, so what the server's import placed is a
+-- source of its own ("import:folder:WhatsApp"), apart from the phones' folders (asked Oct 27, 2026).
+ALTER TABLE server_media ADD COLUMN uploaded_by TEXT;
+
+-- The app on screen in a screenshot, and the camera that took each file as its tags say, for a photo's info.
+ALTER TABLE server_media ADD COLUMN screenshot_app TEXT;
+ALTER TABLE server_media ADD COLUMN camera_make TEXT;
+ALTER TABLE server_media ADD COLUMN camera_model TEXT;
+
+-- And where each of the phone's own files is, sent with its upload so the server keeps what its source was told from.
+ALTER TABLE device_item ADD COLUMN folder TEXT;
+
+-- The rows kept have neither: the change feed and the phone's library are read again from the start once, and the
+-- library is made again.
+DELETE FROM sync_state WHERE name IN ('server_cursor', 'device_mark');
+INSERT OR IGNORE INTO library_dirty VALUES ('*', '');
+
+-- How the server names each folder source ("folder:calls" is "Calls"), from its folderNames: folder ids are in lower
+-- case since Oct 27, 2026.
+CREATE TABLE server_folder_name (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);

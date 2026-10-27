@@ -933,9 +933,9 @@ extension MediaSource {
     static let screenshots = MediaSource.companion.SCREENSHOTS
     static let other = MediaSource.companion.OTHER
 
-    /// A folder's own name ("Petcube", an album an app made), else the fixed source's.
+    /// A folder's name as shown ("Petcube", an album an app made: `folderName`, as ids are in lower case), else the fixed source's.
     var title: String {
-        if let folder { return folder }
+        if let folderName { return folderName }
         switch self {
         case .whatsapp: return String(localized: "WhatsApp")
         case .screenshots: return String(localized: "Screenshots")

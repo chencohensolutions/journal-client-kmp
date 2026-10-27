@@ -486,7 +486,17 @@ internal class BackupEngine(
         return Outcome.FAILED
     }
 
-    private suspend fun request(item: MediaItem, entry: LedgerEntry, payload: Payload, settings: BackupSettings) = UploadRequest(
+    private suspend fun request(item: MediaItem, entry: LedgerEntry, payload: Payload, settings: BackupSettings): UploadRequest {
+        val soundFolder = settings.soundFolders.firstOrNull { it.treeUri == SoundIds.treeOf(item.id) }
+        return request(item, entry, payload, soundFolder)
+    }
+
+    /**
+     * A sound folder's file ([soundFolder]) is sent with the folder's name as the phone shows it ("Call", as in Backup ›
+     * sound folders) as its folder, so the server's Settings › Sound folders lists the phone's folders beside the
+     * imported ones, and with its kind as the source (call, recording) until the user merges the folder otherwise.
+     */
+    private suspend fun request(item: MediaItem, entry: LedgerEntry, payload: Payload, soundFolder: SoundFolder?) = UploadRequest(
         sha256 = payload.sha256,
         size = payload.size,
         fileName = payload.fileName,
@@ -498,9 +508,10 @@ internal class BackupEngine(
         durationMillis = item.durationMillis,
         location = item.location ?: runCatching { locate(item) }.getOrNull(),
         source = item.source.serverName,
+        folder = soundFolder?.name?.takeIf { it.isNotBlank() } ?: item.folder,
         // A sound file changed in place is a new recording, not an edit.
         versionOf = entry.versionOf.takeIf { item.type != MediaType.AUDIO },
-        isCall = settings.soundFolders.firstOrNull { it.treeUri == SoundIds.treeOf(item.id) }?.kind == AudioKind.CALL,
+        isCall = soundFolder?.kind == AudioKind.CALL,
         encodedFrom = payload.encodedFrom,
     )
 
@@ -531,5 +542,8 @@ internal suspend fun MediaFiles.sha256(item: MediaItem, io: CoroutineDispatcher 
 
 private const val READ_SIZE = 1L shl 20
 
-/** How the server's sidecars name a source. */
-internal val MediaSource.serverName: String get() = id
+/**
+ * How the server is told a source: a folder spelled as the phone saw it ("folder:Petcube"), which the server reads in
+ * lower case and counts towards the name it shows the folder by.
+ */
+internal val MediaSource.serverName: String get() = spelledId

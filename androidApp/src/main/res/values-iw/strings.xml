@@ -207,7 +207,10 @@
     <string name="feed_source_camera">מצלמה</string>
     <string name="feed_source_whatsapp">וואטסאפ</string>
     <string name="feed_source_screenshots">צילומי מסך</string>
+    <string name="feed_source_received">נשלח אליך</string>
     <string name="feed_source_other">אחר</string>
+    <string name="feed_source_call">שיחות</string>
+    <string name="feed_source_recording">הקלטות קול</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
     <plurals name="feed_more_sources">
@@ -311,6 +314,8 @@
     <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>
+    <string name="library_info_saved_in">נשמר ב</string>
+    <string name="library_info_camera">מצלמה</string>
     <string name="library_info_preview">תצוגה מקדימה בטלפון</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">עדיין אין</string>
@@ -481,7 +486,6 @@
     <string name="settings_say_hidden_body">„+6 וואטסאפ” ליד יום, ולחיצה מציגה אותן</string>
     <string name="settings_filter_bar">סרגל הסינון ברגעים</string>
     <string name="settings_filter_bar_body">שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן.</string>
-    <string name="settings_shown_where">בטלפון הזה בלבד. חל על רגעים, גילוי ותגיות.</string>
     <string name="settings_shown_stories">תמונות שכתבת עליהן תמיד מוצגות בסיפור. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">הסתרת %1$s</string>
@@ -516,6 +520,16 @@
         <item quantity="other">%d תמונות, הטובות ביותר ראשונות</item>
     </plurals>
     <string name="search_still_reading">עדיין קורא את התמונות שלך: %1$s מתוך %2$s</string>
+    <plurals name="search_hidden_more">
+        <item quantity="one">עוד אחת במקורות שהסתרת · הצג</item>
+        <item quantity="two">עוד %d במקורות שהסתרת · הצג</item>
+        <item quantity="other">עוד %d במקורות שהסתרת · הצג</item>
+    </plurals>
+    <plurals name="search_hidden_shown">
+        <item quantity="one">כולל אחת ממקורות שהסתרת · הסתר</item>
+        <item quantity="two">כולל %d ממקורות שהסתרת · הסתר</item>
+        <item quantity="other">כולל %d ממקורות שהסתרת · הסתר</item>
+    </plurals>
     <string name="search_nothing">לא נמצא כלום. נסו מילים אחרות.</string>
     <string name="search_offline">אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת.</string>
     <string name="search_server_error">השרת לא הצליח לחפש: %1$s</string>
@@ -533,11 +547,7 @@
     </plurals>
     <string name="settings_hidden_title">הגדרות פרטיות</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
-    <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, וואטסאפ וצילומי מסך לפי אפליקציה</string>
-    <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
-    <string name="hidden_whatsapp_title">וואטסאפ</string>
-    <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
-    <string name="hidden_screenshots_title">צילומי מסך</string>
+    <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה</string>
     <string name="hidden_nudity_title">עירום</string>
     <string name="hidden_nudity">הצגת תמונות וסרטונים עם עירום</string>
     <string name="hidden_nudity_from">הסתרה החל מ־</string>
@@ -547,9 +557,6 @@
         <item quantity="two">%s עוד לא נסרקו</item>
         <item quantity="other">%s עוד לא נסרקו</item>
     </plurals>
-    <string name="hidden_without_app">בלי שם אפליקציה</string>
-    <string name="hidden_find_app">חיפוש אפליקציה</string>
-    <string name="hidden_no_apps">עדיין אין בשרת צילום מסך ששמו מציין אפליקציה.</string>
     <string name="hidden_loading">טוען…</string>
     <string name="hidden_unreachable">אין גישה לשרת כרגע.</string>
     <string name="hidden_retry">לנסות שוב</string>
@@ -558,11 +565,6 @@
         <item quantity="one">תמונה או סרטון אחד</item>
         <item quantity="two">%s תמונות וסרטונים</item>
         <item quantity="other">%s תמונות וסרטונים</item>
-    </plurals>
-    <plurals name="hidden_screenshots">
-        <item quantity="one">צילום מסך אחד</item>
-        <item quantity="two">%s צילומי מסך</item>
-        <item quantity="other">%s צילומי מסך</item>
     </plurals>
     <string name="phone_lock_locked">נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר.</string>
     <string name="phone_lock_unlock">פתיחה</string>
@@ -727,38 +729,21 @@
     <string name="audio_speed">%s×</string>
     <string name="audio_dial">חייג</string>
     <string name="audio_edit_contact">ערוך איש קשר</string>
-    <string name="hidden_audio_title">הקלטות קול</string>
-    <string name="hidden_audio_recordings">הצגת הקלטות</string>
-    <string name="hidden_audio_calls">הצגת שיחות טלפון</string>
-    <string name="hidden_audio_voice">הצגת הודעות קוליות מוואטסאפ</string>
-    <string name="hidden_audio_body">כבוי בהתחלה: הקלטות הקול מוסתרות בכל המכשירים שלך עד שתציג אותן כאן. מה שמוצג מופיע ברגעים.</string>
-    <plurals name="hidden_audio_recordings_count">
-        <item quantity="one">הקלטה אחת</item>
-        <item quantity="two">%s הקלטות</item>
-        <item quantity="other">%s הקלטות</item>
-    </plurals>
-    <plurals name="hidden_audio_calls_count">
-        <item quantity="one">שיחה אחת</item>
-        <item quantity="two">%s שיחות</item>
-        <item quantity="other">%s שיחות</item>
-    </plurals>
-    <plurals name="hidden_audio_voice_count">
-        <item quantity="one">הודעה קולית אחת</item>
-        <item quantity="two">%s הודעות קוליות</item>
-        <item quantity="other">%s הודעות קוליות</item>
-    </plurals>
     <string name="audio_failed">לא ניתן לנגן את ההקלטה</string>
     <string name="audio_contact">איש קשר</string>
     <string name="audio_number">מספר טלפון</string>
     <string name="audio_save">שמור</string>
     <string name="audio_cancel">ביטול</string>
-    <string name="hidden_apps_pills">הקש על אפליקציה כדי להציג או להסתיר את צילומי המסך שלה; המלאות מוצגות.</string>
     <string name="settings_library_title">ספרייה</string>
     <string name="settings_privacy_title">פרטיות</string>
     <string name="settings_backup_storage_title">גיבוי ואחסון</string>
     <string name="settings_moments_title">רגעים</string>
-    <string name="settings_shown_summary">מוצגים: %s</string>
-    <string name="settings_shown_none">לא מוצג דבר</string>
+    <string name="sources_imported">מיובא</string>
+    <string name="sources_of_imported">מתוך מה שיובא</string>
+    <string name="sources_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
+    <string name="sources_more">עוד %1$s</string>
+    <string name="sources_private_about">הגדרות פרטיות יכולות להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן.</string>
+    <string name="sources_other_about">%1$s: קבצים שהשם והתיקייה שלהם לא מספרים דבר: הורדות, תמונות שנשמרו, קבצים ממחשב.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">שורה חדשה אחרי שעה</item>
         <item quantity="two">שורה חדשה אחרי שעתיים</item>
@@ -769,13 +754,8 @@
     <string name="settings_storage_originals">מקוריים</string>
     <string name="settings_storage_used">בשימוש</string>
     <string name="settings_image_quality_title">איכות תמונה</string>
-    <string name="settings_all_devices_title">בכל המכשירים שלך</string>
+
     <string name="settings_backup_charging_only_body">חוסך בסוללה; ההעלאות ממתינות למטען.</string>
-    <string name="hidden_apps_title">אפליקציות</string>
-    <string name="hidden_apps_count">%1$s מתוך %2$s מוצגות</string>
-    <string name="hidden_apps_none_shown">צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג.</string>
-    <string name="hidden_apps_open">הצגת כל האפליקציות</string>
-    <string name="hidden_apps_fold">הצגת המוצגות בלבד</string>
 
     <!-- הגדרות › גיבוי: תיקיות של שיחות והקלטות (מסבב מעבדת הממשק ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">הוספת תיקייה</string>
@@ -827,4 +807,119 @@
     <string name="settings_loading_default_chip">%d (ברירת מחדל)</string>
     <string name="settings_loading_note">רק בטלפון הזה. חל כש״רגעים״ טוען את השורות הבאות.</string>
     <string name="settings_loading_reset">איפוס ל־%1$d ו־%2$d</string>
+    <string name="settings_cameras_unknown">אילו מצלמות היו שלך</string>
+    <plurals name="settings_cameras_count">
+        <item quantity="one">%1$s מצלמה</item>
+        <item quantity="two">%1$s מצלמות</item>
+        <item quantity="other">%1$s מצלמות</item>
+    </plurals>
+    <plurals name="settings_cameras_not_yours">
+        <item quantity="one">%1$s לא שלך</item>
+        <item quantity="two">%1$s לא שלך</item>
+        <item quantity="other">%1$s לא שלך</item>
+    </plurals>
+    <string name="cameras_title">המצלמות שלך</string>
+    <string name="cameras_intro">כל מצלמה שצילמה את התמונות והסרטונים שלך, לפי התגים שלהם. כבה מצלמה שאינה שלך: התמונות שלה יעברו אל נשלח אליך, בכל המכשירים שלך.</string>
+    <string name="cameras_unmarked">מצלמה שלא סימנת נחשבת שלך, כך ששום דבר לא זז עד שתבחר.</string>
+    <string name="cameras_mine">שלי</string>
+    <string name="cameras_sent_to_you">התמונות שלה בנשלח אליך</string>
+    <string name="cameras_move">העבר</string>
+    <string name="cameras_confirm_body">הן נשארות בשרת שלך ובאפליקציה, תחת נשלח אליך במקום מצלמה. סמן את %1$s כשלך שוב כדי להחזיר אותן.</string>
+    <plurals name="cameras_confirm_title">
+        <item quantity="one">%1$s תמונה תעבור אל נשלח אליך</item>
+        <item quantity="two">%1$s תמונות יעברו אל נשלח אליך</item>
+        <item quantity="other">%1$s תמונות יעברו אל נשלח אליך</item>
+    </plurals>
+    <plurals name="cameras_moving">
+        <item quantity="one">מעביר %1$s תמונה…</item>
+        <item quantity="two">מעביר %1$s תמונות…</item>
+        <item quantity="other">מעביר %1$s תמונות…</item>
+    </plurals>
+    <string name="settings_sound_folders_unknown">אילו תיקיות הן שיחות או הקלטות קול</string>
+    <plurals name="settings_sound_folders_count">
+        <item quantity="one">%1$s תיקייה</item>
+        <item quantity="two">%1$s תיקיות</item>
+        <item quantity="other">%1$s תיקיות</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_calls">
+        <item quantity="one">%1$s כשיחות</item>
+        <item quantity="two">%1$s כשיחות</item>
+        <item quantity="other">%1$s כשיחות</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_recordings">
+        <item quantity="one">%1$s כהקלטות קול</item>
+        <item quantity="two">%1$s כהקלטות קול</item>
+        <item quantity="other">%1$s כהקלטות קול</item>
+    </plurals>
+    <plurals name="settings_sound_folders_moving">
+        <item quantity="one">מעביר קובץ %1$s…</item>
+        <item quantity="two">מעביר %1$s קבצים…</item>
+        <item quantity="other">מעביר %1$s קבצים…</item>
+    </plurals>
+    <string name="sound_folders_title">תיקיות קול</string>
+    <string name="sound_folders_calls">שיחות</string>
+    <string name="sound_folders_calls_about">ההקלטות שלהן הן שיחות טלפון, תחת שיחות בכל המכשירים שלך.</string>
+    <string name="sound_folders_recordings">הקלטות קול</string>
+    <string name="sound_folders_recordings_about">ההקלטות שלהן תחת הקלטות קול בכל המכשירים שלך.</string>
+    <string name="sound_folders_kept">תיקיות נפרדות</string>
+    <string name="sound_folders_kept_about">כל אחת נשארת תיקייה בפני עצמה, עד שתעביר אותה.</string>
+    <string name="sound_folders_none">עדיין אין תיקייה</string>
+    <string name="sound_folders_move_to">העבר אל…</string>
+    <string name="sound_folders_move">העבר</string>
+    <string name="sound_folders_confirm_body">רק התווית שלהם משתנה, בשרת שלך: ההקלטות עצמן נשארות כמו שהן.</string>
+    <string name="sound_folders_moving_body">בשרת שלך. אפשר לצאת מהעמוד; רגעים יתעדכנו בקרוב.</string>
+    <string name="sound_folders_footer">הודעות קוליות מוואטסאפ נשארות תמיד הודעות קוליות.</string>
+    <string name="sound_folders_from_phones">מהטלפונים שלך</string>
+    <string name="sound_folders_all_imported">מיובאים</string>
+    <string name="sound_folders_imported">%1$s מיובאים</string>
+    <plurals name="sound_folders_files">
+        <item quantity="one">קובץ %1$s</item>
+        <item quantity="two">%1$s קבצים</item>
+        <item quantity="other">%1$s קבצים</item>
+    </plurals>
+    <plurals name="sound_folders_to_calls">
+        <item quantity="one">קובץ %1$s יעבור לשיחות</item>
+        <item quantity="two">%1$s קבצים יעברו לשיחות</item>
+        <item quantity="other">%1$s קבצים יעברו לשיחות</item>
+    </plurals>
+    <plurals name="sound_folders_to_recordings">
+        <item quantity="one">קובץ %1$s יעבור להקלטות קול</item>
+        <item quantity="two">%1$s קבצים יעברו להקלטות קול</item>
+        <item quantity="other">%1$s קבצים יעברו להקלטות קול</item>
+    </plurals>
+    <plurals name="sound_folders_to_folder">
+        <item quantity="one">קובץ %1$s יחזור אל %2$s</item>
+        <item quantity="two">%1$s קבצים יחזרו אל %2$s</item>
+        <item quantity="other">%1$s קבצים יחזרו אל %2$s</item>
+    </plurals>
+    <plurals name="sound_folders_moving">
+        <item quantity="one">מעביר קובץ %1$s אל %2$s…</item>
+        <item quantity="two">מעביר %1$s קבצים אל %2$s…</item>
+        <item quantity="other">מעביר %1$s קבצים אל %2$s…</item>
+    </plurals>
+    <plurals name="sound_folders_row_moving">
+        <item quantity="one">נשאר %1$s להעביר</item>
+        <item quantity="two">נשארו %1$s להעביר</item>
+        <item quantity="other">נשארו %1$s להעביר</item>
+    </plurals>
+    <!-- Settings › Show in the app, a status page by kind (kinds c3 of the UI lab, Oct 27, 2026). -->
+    <string name="kinds_photos">תמונות וסרטונים</string>
+    <string name="kinds_sound">שמע</string>
+    <string name="kinds_voice_messages">הודעות קוליות</string>
+    <string name="kinds_files">%1$s קבצים</string>
+    <string name="kinds_not_backed_up">%1$s לא מגובים</string>
+    <string name="kinds_all_backed_up">הכול מגובה</string>
+    <string name="kinds_how_to_hide">כדי להסתיר סוג בטלפון הזה, או להציג אותו שוב, השתמשו בסרגל הסינון ברגעים. הטלפון הזה זוכר את הבחירה.</string>
+    <plurals name="kinds_hidden_everywhere">
+        <item quantity="one">סוג אחד מוסתר בכל המכשירים שלך</item>
+        <item quantity="two">שני סוגים מוסתרים בכל המכשירים שלך</item>
+        <item quantity="other">%1$s סוגים מוסתרים בכל המכשירים שלך</item>
+    </plurals>
+    <string name="settings_moments_filter_title">מה מוצג ברגעים</string>
+    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">להציג בכל המכשירים שלך</string>
+    <string name="private_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק. העמוד נפתח רק עם נעילת הטלפון.</string>
+    <string name="private_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
+    <string name="private_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
+    <string name="private_no_app">בלי שם אפליקציה</string>
 </resources>

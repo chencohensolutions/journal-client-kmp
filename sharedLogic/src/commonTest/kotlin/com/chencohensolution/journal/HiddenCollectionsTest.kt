@@ -42,16 +42,17 @@ class HiddenCollectionsTest {
     private val photo = "c".repeat(64)
 
     private fun media(sha: String) = """{"sha256":"$sha","kind":"PHOTO","fileName":"x.jpg","mimeType":"image/jpeg","size":10,""" +
-        """"takenAt":null,"width":null,"height":null,"durationMs":null,"location":null,"source":"screenshots","uploadedAt":"2026-10-22T10:00:00Z",""" +
+        """"takenAt":null,"width":null,"height":null,"durationMs":null,"location":null,"source":"screenshots","uploadedAt":"2026-10-22T10:00:00Z","uploadedBy":"Galaxy S25",""" +
         """"nudity":null,"private":false}"""
 
-    private val collections = """{"__typename":"HiddenCollections","whatsapp":{"__typename":"Collection","name":"WhatsApp","files":0,"hidden":false},""" +
-        """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"hidden":false},""" +
-        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"hidden":false}],""" +
+    private val collections = """{"__typename":"HiddenCollections","apps":[{"__typename":"Collection","name":"WhatsApp","files":7,"imported":2,"hidden":false}],""" +
+        """"screenshotsWithoutApp":{"__typename":"Collection","name":"","files":0,"imported":0,"hidden":false},""" +
+        """"screenshotApps":[{"__typename":"Collection","name":"Bumble","files":1,"imported":0,"hidden":false}],""" +
         """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3},""" +
-        """"recordings":{"__typename":"Collection","name":"recordings","files":4,"hidden":true},""" +
-        """"calls":{"__typename":"Collection","name":"calls","files":5,"hidden":true},""" +
-        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"hidden":true}}"""
+        """"recordings":{"__typename":"Collection","name":"recordings","files":4,"imported":0,"hidden":true},""" +
+        """"calls":{"__typename":"Collection","name":"calls","files":5,"imported":0,"hidden":true},""" +
+        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"imported":0,"hidden":true},""" +
+        """"sentToYou":{"__typename":"Collection","name":"sentToYou","files":8,"imported":0,"hidden":false}}"""
 
     @Test
     fun aFileTheServerHidesIsDroppedWithWhatThisPhoneKeepsOfIt() = runTest {
@@ -64,7 +65,7 @@ class HiddenCollectionsTest {
                 val json = when {
                     "SetHiddenCollections" in body -> {
                         hidden = true
-                        """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
+                        """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"imported":0,"hidden":false""", """"files":1,"imported":0,"hidden":true""")}}}"""
                     }
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
                     hidden -> """{"data":{"changes":{"cursor":"c2","hasMore":false,"remaining":0,"changes":[{"kind":"MEDIA","path":"media/$bumble","deleted":true,"hidden":true,"media":null}]}}}"""
@@ -89,11 +90,14 @@ class HiddenCollectionsTest {
         val saved = library.setHiddenCollections(shown.with(shown.screenshotApps[0], hidden = true))!!
         assertEquals(true, saved.screenshotApps[0].hidden)
         assertTrue(
-            sent.any { """"screenshotApps":["Bumble"]""" in it && """"whatsapp":false""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it },
+            sent.any { """"apps":[]""" in it && """"screenshotApps":["Bumble"]""" in it && """"nudity":{"hidden":true,"from":0.5}""" in it && "whatsapp" !in it },
             sent.joinToString("\n"),
         )
         // The sound recordings stay as they were: all three hidden.
         assertTrue(sent.any { """"audio":{"recordings":true,"calls":true,"voiceMessages":true}""" in it }, sent.joinToString("\n"))
+        // Sent to you as it was: shown.
+        assertTrue(sent.any { """"sentToYou":false""" in it }, sent.joinToString("\n"))
+        assertEquals(HiddenCollections.Collection("sentToYou", 8, false), shown.sentToYou)
         assertEquals(HiddenCollections.Collection("calls", 5, true), shown.calls)
         // Showing calls sends only that change.
         val calls = shown.with(shown.calls!!, hidden = false)
@@ -114,10 +118,39 @@ class HiddenCollectionsTest {
     fun withChangesOnlyTheCollectionGiven() {
         val whatsapp = HiddenCollections.Collection("WhatsApp", 3, false)
         val app = HiddenCollections.Collection("WhatsApp", 3, false)
-        val choice = HiddenCollections(whatsapp, HiddenCollections.Collection("", 0, false), listOf(app), HiddenCollections.Nudity(true, 50, 0, 0))
+        val choice = HiddenCollections(listOf(whatsapp), HiddenCollections.Collection("", 0, false), listOf(app), HiddenCollections.Nudity(true, 50, 0, 0))
         val changed = choice.with(choice.screenshotApps[0], hidden = true)
         assertEquals(false, changed.whatsapp.hidden)
         assertEquals(true, changed.screenshotApps[0].hidden)
+        val apps = choice.with(choice.whatsapp, hidden = true)
+        assertEquals(true, apps.whatsapp.hidden)
+        assertEquals(false, apps.screenshotApps[0].hidden)
+    }
+
+    @Test
+    fun anAppNotListedIsAddedWhenHidden() {
+        val choice = HiddenCollections(emptyList(), HiddenCollections.Collection("", 0, false), emptyList(), HiddenCollections.Nudity(true, 50, 0, 0))
+        val hidden = choice.with(choice.whatsapp, hidden = true)
+        assertEquals(listOf(HiddenCollections.Collection("WhatsApp", 0, true)), hidden.apps)
+    }
+
+    @Test
+    fun whatItHidesOfEachSource() {
+        val choice = HiddenCollections(
+            apps = listOf(HiddenCollections.Collection("WhatsApp", 10, true, imported = 4), HiddenCollections.Collection("Telegram", 5, false)),
+            screenshotsWithoutApp = HiddenCollections.Collection("", 3, true, imported = 1),
+            screenshotApps = listOf(HiddenCollections.Collection("Bumble", 6, true, imported = 2), HiddenCollections.Collection("Maps", 9, false)),
+            nudity = HiddenCollections.Nudity(true, 50, 0, 0),
+        )
+        assertEquals(HiddenCollections.OfSource(true, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.WHATSAPP))
+        assertEquals(HiddenCollections.OfSource(true, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.parse("import:folder:whatsapp")!!))
+        assertEquals(HiddenCollections.OfSource(false, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.folder("Telegram")))
+        // Screenshots: of the hidden apps and those without one, the phones' (6 + 3 - 2 - 1) or the imported (2 + 1).
+        assertEquals(HiddenCollections.OfSource(false, 6), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS))
+        assertEquals(HiddenCollections.OfSource(false, 3), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS)))
+        assertEquals(HiddenCollections.OfSource(false, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.CAMERA))
+        assertEquals(listOf("folder:whatsapp"), choice.hiddenApps(imported = false).map { it.id })
+        assertEquals(listOf("import:folder:whatsapp"), choice.hiddenApps(imported = true).map { it.id })
     }
 
     @Test
@@ -135,7 +168,7 @@ class HiddenCollectionsTest {
                 if (!up()) return@MockEngine respond("", HttpStatusCode.ServiceUnavailable)
                 val body = (request.body as io.ktor.http.content.TextContent).text
                 val json = when {
-                    "SetHiddenCollections" in body -> """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"hidden":false""", """"files":1,"hidden":true""")}}}"""
+                    "SetHiddenCollections" in body -> """{"data":{"setHiddenCollections":${collections.replace(""""files":1,"imported":0,"hidden":false""", """"files":1,"imported":0,"hidden":true""")}}}"""
                     "HiddenCollections" in body -> """{"data":{"hiddenCollections":$collections}}"""
                     else -> """{"data":{"changes":{"cursor":"c1","hasMore":false,"remaining":0,"changes":[""" +
                         """{"kind":"MEDIA","path":"media/$photo","deleted":false,"hidden":false,"media":${media(photo)}}]}}}"""

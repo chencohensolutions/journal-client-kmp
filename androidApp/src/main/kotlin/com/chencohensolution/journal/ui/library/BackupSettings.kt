@@ -147,6 +147,7 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
         },
         pickFolder = actions.pickFolder,
         remove = actions.removeFolder,
+        showCounts = false,
     )
     if (settings.soundFolders.isNotEmpty()) {
         Text(stringResource(R.string.backup_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))

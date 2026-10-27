@@ -1,0 +1,20 @@
+query FolderNames {
+  folderNames { id name }
+}
+
+fragment SoundFolderFields on SoundFolder {
+  id
+  name
+  files
+  imported
+  as
+  pending
+}
+
+query SoundFolders {
+  soundFolders { ...SoundFolderFields }
+}
+
+mutation SetSoundFolder($id: String!, $as: SoundFolderMark!) {
+  setSoundFolder(id: $id, as: $as) { ...SoundFolderFields }
+}

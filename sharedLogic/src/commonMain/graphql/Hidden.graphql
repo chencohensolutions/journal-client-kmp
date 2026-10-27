@@ -1,17 +1,19 @@
 fragment CollectionFields on Collection {
   name
   files
+  imported
   hidden
 }
 
 fragment HiddenCollectionsFields on HiddenCollections {
-  whatsapp { ...CollectionFields }
+  apps { ...CollectionFields }
   screenshotsWithoutApp { ...CollectionFields }
   screenshotApps { ...CollectionFields }
   nudity { hidden from files notScanned }
   recordings { ...CollectionFields }
   calls { ...CollectionFields }
   voiceMessages { ...CollectionFields }
+  sentToYou { ...CollectionFields }
 }
 
 query HiddenCollections {

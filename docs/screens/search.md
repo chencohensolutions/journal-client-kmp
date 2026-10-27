@@ -76,14 +76,25 @@ again without asking. The server answers with sha256s. They are shown as the lib
 library hides stays hidden: private files while "Show private media" is off, and files
 the server's list hasn't synced yet. A photo on this phone that backup hasn't read is matched by the server file's
 name and size, as the library matches them. When the library changes after an answer (a photo made private), the
-results follow without searching again. All sources are searched, whatever Moments shows.
+results follow without searching again.
+
+**Search follows Show in the app** (the owner, Oct 27, 2026; before, every source was searched whatever Moments
+showed): a match in a source Settings › Show in the app hides is left out, as Moments leaves it out: a hidden source
+(WhatsApp and Screenshots at first), what was imported while Imported is off, but not the photos of a day shown
+anyway ("Always show this day"). The filter's years and towns count only what shows. Under the count a line says how
+many were left out of the pages shown so far, "**12 more in sources you hide · Show**"; a tap shows them for this
+search only ("Including 12 from sources you hide · Hide" takes them out again), and the next search hides them again.
+Show in the app itself doesn't change. A change to Show in the app while results are up shows them again through it.
+What Private settings hides on all devices never reaches the phone: the server leaves it out. Android only; on iOS
+the line is still to do.
 
 ## Code
 
 - Shared: `SearchController`, `SearchState` in
   [search/SearchController.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/search/SearchController.kt)
-  (`search(text)`, `chooseYear`, `chooseTown`, `loadMore()`, `clear()`; `status` IDLE / SEARCHING / DONE / FAILED, `error` OFFLINE
-  or SERVER, `yearChips` / `townChips`, the filter sheet's counts), the query in
+  (`search(text)`, `chooseYear`, `chooseTown`, `loadMore()`, `clear()`, `showHiddenSources(show)`; `status` IDLE /
+  SEARCHING / DONE / FAILED, `error` OFFLINE or SERVER, `yearChips` / `townChips`, the filter sheet's counts,
+  `hiddenBySources` / `showingHidden`; the sources shown come from `StoriesState.shownSources`), the query in
   `graphql/Search.graphql`, the schema copied to `graphql/search.graphqls`. Made by `createSearchController` (Android)
   and `IosJournal.createSearchController`. Tests: `SearchTest`.
 - Android: [SearchViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SearchViews.kt)

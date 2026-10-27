@@ -129,9 +129,11 @@ internal class FeedPager(
         return MomentsFeed(
             entries = withRevealed.map(FeedEntry::Section),
             counts = counts,
-            shown = context.shown.shownOf(MediaSource.choices(counts.keys)),
+            shown = context.shown.shownAmong(counts),
             sheet = context.shown.choices(counts),
             givenTimeline = timeline,
+            importedShown = context.shown.importedShown,
+            importedSheet = context.shown.importedChoices(counts),
         )
     }
 

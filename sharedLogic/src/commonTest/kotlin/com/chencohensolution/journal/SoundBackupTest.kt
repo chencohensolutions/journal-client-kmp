@@ -89,6 +89,7 @@ class SoundBackupTest {
         assertEquals("audio/flac", request.mimeType)
         assertEquals(MediaType.AUDIO, request.kind)
         assertTrue(request.isCall, "a file of a calls folder is sent as a call")
+        assertEquals("call", request.source, "with the source call, the folder kind the user chose (Settings › Backup)")
         assertEquals(wavSha, request.encodedFrom?.sha256)
         assertEquals(listOf("Call recording 0501234567_251025_101500.flac"), files.discarded)
         assertTrue(files.replaced.isEmpty(), "the WAV stays: keep WAV is the default")
@@ -139,9 +140,21 @@ class SoundBackupTest {
         val result = engine(files).run(listOf(note, recording), BackupSettings(enabled = true, soundFolders = listOf(voice, recorder))) {}
         assertEquals(2, result.uploaded)
         val bySource = server.requests.values.associate { it.fileName to it.source }
-        assertEquals("whatsapp", bySource["PTT-20251025-WA0001.opus"])
-        assertEquals("folder:Voice Recorder", bySource["20251025_101500.m4a"])
+        assertEquals("folder:WhatsApp", bySource["PTT-20251025-WA0001.opus"])
+        assertEquals("recording", bySource["20251025_101500.m4a"])
         assertEquals("audio/ogg", server.requests.values.first { it.fileName.endsWith(".opus") }.mimeType)
+    }
+
+    @Test
+    fun soundFilesSendTheirFolderAsThePhoneShowsIt() = runTest {
+        val files = SoundFiles()
+        val call = sound(files, calls, "Call recording 0501234567_251025_101500.m4a", seed = 1)
+        val recording = sound(files, recorder, "20251025_101500.m4a", seed = 2)
+        engine(files).run(listOf(call, recording), BackupSettings(enabled = true, soundFolders = listOf(calls, recorder))) {}
+        val byName = server.requests.values.associate { it.fileName to it.folder }
+        // The server lists them in Settings › Sound folders by these names (folder:call, folder:voice recorder).
+        assertEquals("Call", byName["Call recording 0501234567_251025_101500.m4a"])
+        assertEquals("Voice Recorder", byName["20251025_101500.m4a"])
     }
 
     @Test
@@ -178,7 +191,7 @@ class SoundBackupTest {
         assertEquals(listOf(calls, recorder.copy(enabled = false)), read.soundFolders)
         assertEquals(KeepOnPhone.FLAC, read.keepOnPhone)
         assertTrue(store.values.getValue("backup_sound_folders").startsWith("{\"v\":1"))
-        assertEquals(MediaSource.folder("Call"), calls.source)
+        assertEquals(MediaSource.CALL, calls.source)
         assertNotNull(SoundIds.treeOf(SoundIds.of(calls, "doc")))
         assertEquals(calls.treeUri, SoundIds.treeOf(SoundIds.of(calls, "content://doc/a%7Cb")))
     }

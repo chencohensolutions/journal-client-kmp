@@ -32,6 +32,8 @@ sealed interface HiddenCollectionsState {
         val saving: Boolean,
         /** The last change didn't reach the server, and the switch went back. */
         val notChanged: Boolean,
+        /** Private settings' list of kinds, each with its Show switch: [collections] as one list. */
+        val kinds: PrivateKinds = PrivateKinds.of(collections),
     ) : HiddenCollectionsState
 }
 
@@ -77,6 +79,12 @@ class HiddenCollectionsController internal constructor(
      * once; if the server doesn't take it, it goes back and the state says "not changed". Ignored while saving.
      */
     fun set(collection: HiddenCollections.Collection, hidden: Boolean) = save { it.with(collection, hidden) }
+
+    /** Private settings' Show switch of [kind] (one of the current state's [PrivateKinds]); like [set]. */
+    fun show(kind: PrivateKinds.Kind, shown: Boolean) {
+        val collection = kind.collection ?: return
+        set(collection, hidden = !shown)
+    }
 
     /** Hides nudity, or shows it; like [set]. */
     fun setNudityHidden(hidden: Boolean) = save { it.withNudity(hidden) }

@@ -41,7 +41,7 @@ class SoundLibraryTest {
     private fun media(sha: String, kind: String, source: String, call: String = "null") =
         """{"sha256":"$sha","kind":"$kind","fileName":"x","mimeType":"audio/mp4","size":10,"takenAt":"2025-03-17T12:15:19+02:00",""" +
             """"endedAt":"2025-03-17T12:19:11+02:00","width":null,"height":null,"durationMs":232000,"call":$call,"location":null,""" +
-            """"source":"$source","uploadedAt":"2026-10-22T10:00:00Z","nudity":null,"aesthetic":null,"private":false}"""
+            """"source":"$source","uploadedAt":"2026-10-22T10:00:00Z","uploadedBy":"Galaxy S25","nudity":null,"aesthetic":null,"private":false}"""
 
     private fun change(json: String, sha: String) = """{"kind":"MEDIA","path":"media/$sha","deleted":false,"hidden":false,"media":$json}"""
 

@@ -42,6 +42,8 @@ internal data class UploadRequest(
     val durationMillis: Long?,
     val location: GeoPoint?,
     val source: String?,
+    /** Where it is on the phone ([com.chencohensolution.journal.library.MediaItem.folder]), kept by the server. */
+    val folder: String? = null,
     val versionOf: String?,
     /** A sound file from a folder of calls: a call, with whoever its name says (the server reads the name). */
     val isCall: Boolean = false,
@@ -193,6 +195,7 @@ internal class ServerBackupApi(
             durationMs = Optional.presentIfNotNull(request.durationMillis),
             location = Optional.presentIfNotNull(request.location?.let { GeoPointInput(lat = it.latitude, lon = it.longitude) }),
             source = Optional.presentIfNotNull(request.source),
+            folder = Optional.presentIfNotNull(request.folder?.take(500)),
             versionOf = Optional.presentIfNotNull(request.versionOf),
             call = if (request.isCall) Optional.present(CallInput()) else Optional.absent(),
             encodedFrom = Optional.presentIfNotNull(request.encodedFrom?.let { EncodedFromInput(sha256 = it.sha256, mimeType = it.mimeType, size = it.size) }),

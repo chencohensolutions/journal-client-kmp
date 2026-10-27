@@ -3,8 +3,8 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.runtime.Composable
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
-import com.chencohensolution.journal.server.HiddenCollectionsState
-import com.chencohensolution.journal.server.HiddenCollections
+import com.chencohensolution.journal.server.CamerasState
+import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
 
@@ -27,25 +27,11 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    // Made-up data (KindsLab): unlocked, as the emulator has no screen lock; the switches work while it is open.
     LabScreen("private", "Private settings", listOf(
-        current {
-            val apps = listOf("Bumble" to 1458, "Chrome" to 310, "WhatsApp" to 96, "Instagram" to 88, "Maps" to 41, "Google Pay" to 12)
-                .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) }
-            val collections = HiddenCollections(
-                whatsapp = HiddenCollections.Collection("WhatsApp", 3412, false),
-                screenshotsWithoutApp = HiddenCollections.Collection("", 128, false),
-                screenshotApps = apps,
-                nudity = HiddenCollections.Nudity(true, 50, 61, 0),
-                recordings = HiddenCollections.Collection("recordings", 1204, true),
-                calls = HiddenCollections.Collection("calls", 6196, true),
-                voiceMessages = HiddenCollections.Collection("voiceMessages", 14, true),
-            )
-            HiddenContent(
-                androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title),
-                HiddenCollectionsState.Ready(collections, "", apps, saving = false, notChanged = false),
-                HiddenActions(retry = {}, set = { _, _ -> }, setQuery = {}),
-                back = {},
-            )
+        current { PrivateSettingsLab() },
+        LabOption("locked", "Behind the phone's lock", "As the app opens it: the phone's lock first") {
+            PhoneLocked(androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title), back = {}) { PrivateSettingsLab() }
         },
     )),
     LabScreen("recording", "A sound recording's page", listOf(
@@ -176,10 +162,34 @@ internal val labScreens: List<LabScreen> = listOf(
         },
     )),
     LabScreen("settings", "Settings", listOf(
-        current { SettingsScreen(SettingsState(), SettingsActions()) },
+        current {
+            SettingsScreen(
+                SettingsState(),
+                SettingsActions(),
+                kinds = labKinds,
+                cameras = CamerasState.Ready(labCameras),
+                soundFolders = SoundFoldersState.Ready(labSoundFolders),
+            )
+        },
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
+    )),
+    // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
+    LabScreen("kinds", "Settings › Show in the app", listOf(
+        current { SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, kinds = labKinds) },
+    )),
+    // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
+    LabScreen("cameras", "Settings › Your cameras", listOf(
+        current { CamerasLab(labCameras) },
+        LabOption("confirm", "Asking before moving", "\"463 photos will move to Sent to you\" (the LG's two tags)") { CamerasLabConfirm() },
+        LabOption("moving", "Moving", "\"Moving 463 photos…\" on the row") { CamerasLabMoving() },
+    )),
+    // Made-up folders (SoundFoldersLab): the server isn't asked, and the move is timed.
+    LabScreen("sound-folders", "Settings › Sound folders", listOf(
+        current { SoundFoldersLab(labSoundFolders) },
+        LabOption("confirm", "Asking in the row", "\"1,520 files will become Calls\"") { SoundFoldersLabConfirm() },
+        LabOption("moving", "Moving", "\"Moving 1,140 files to Calls…\" in a band at the top") { SoundFoldersLabMoving() },
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },

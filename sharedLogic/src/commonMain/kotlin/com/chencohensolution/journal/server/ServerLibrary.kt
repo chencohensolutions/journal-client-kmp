@@ -1,7 +1,12 @@
 package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.api.Optional
+import com.chencohensolution.journal.graphql.CamerasQuery
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.FolderNamesQuery
+import com.chencohensolution.journal.graphql.SetSoundFolderMutation
+import com.chencohensolution.journal.graphql.SoundFoldersQuery
+import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
 import com.chencohensolution.journal.graphql.SetCallMutation
@@ -13,6 +18,7 @@ import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
+import com.chencohensolution.journal.library.FolderNames
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -56,7 +62,7 @@ data class ServerMedia(
     val durationMillis: Long? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    /** camera, whatsapp, screenshots, other. */
+    /** camera, screenshots, received, other, call, recording, or a folder ("folder:whatsapp"): see [MediaSource]. */
     val source: String? = null,
     val uploadedAt: String,
     /** The server's nudity scan, 0 to 1; null until scanned. The server hides what scores high (see HiddenCollections). */
@@ -71,18 +77,33 @@ data class ServerMedia(
     val isCall: Boolean = false,
     val callContact: String? = null,
     val callNumber: String? = null,
+    /** The device that uploaded it, or "import" for what the server's import placed ([isImported]). */
+    val uploadedBy: String? = null,
+    /** The app on screen in a screenshot, as its file name says ("Bumble"); null for anything else. */
+    val screenshotApp: String? = null,
+    /** The camera that took it, as its tags say ("Canon", "Canon EOS 80D"); null without tags or from an older server. */
+    val cameraMake: String? = null,
+    val cameraModel: String? = null,
 ) {
+    /** "Canon EOS 80D", "samsung SM-S931B": the camera as a photo's info names it; null when its tags name none. */
+    val camera: String? get() = cameraName(cameraMake, cameraModel)
+
+    /** The server's import placed it: its source is "import:" and its kind ([MediaSource.imported]). */
+    val isImported: Boolean get() = uploadedBy == IMPORTED_BY
+
+    /** Where it came from as the library shows it: the phone's folder, or what was imported of which kind. */
+    val mediaSource: MediaSource get() {
+        val plain = MediaSource.of(source)
+        return if (isImported) MediaSource.imported(plain) else plain
+    }
+
     /** A sound recording as Moments and its page show it; only for [isAudio]. */
     fun toSoundRecording(): SoundRecording {
         val taken = takenAt?.let(::parseTimestamp) ?: parseTimestamp(uploadedAt)
-        val mediaSource = source?.let(MediaSource::parse) ?: MediaSource.OTHER
+        val mediaSource = MediaSource.of(source)
         return SoundRecording(
             sha256 = sha256,
-            kind = when {
-                isCall -> AudioKind.CALL
-                mediaSource == MediaSource.WHATSAPP -> AudioKind.VOICE_MESSAGE
-                else -> AudioKind.RECORDING
-            },
+            kind = AudioKind.of(mediaSource, isCall),
             startMillis = taken?.millis ?: 0,
             day = taken?.day ?: LocalDay(1970, 1, 1),
             durationMillis = durationMillis ?: 0,
@@ -112,7 +133,7 @@ data class ServerMedia(
             sizeBytes = size,
             fileName = fileName,
             backup = BackupStatus.BackedUp,
-            source = source?.let(MediaSource::parse) ?: MediaSource.OTHER,
+            source = mediaSource,
             location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
             mimeType = mimeType,
             sha256 = sha256,
@@ -126,6 +147,9 @@ data class ServerMedia(
     companion object {
         /** Ids of server-only items, so they never look like a device id (MediaStore ids are numbers). */
         const val SERVER_ID_PREFIX = "server:"
+
+        /** [uploadedBy] of what the server's import placed (scripts/import). */
+        const val IMPORTED_BY = "import"
     }
 }
 
@@ -250,6 +274,15 @@ class ServerLibrary internal constructor(
      * The server sends nothing more of them; the library leaves out this phone's own copies of them too.
      */
     val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
+
+    private val _hiddenEverywhere = MutableStateFlow<HiddenCollections?>(null)
+
+    /**
+     * What Private settings hides on every device, as it last read or saved it: null until it is opened, behind the
+     * phone's lock, while the app runs (asked Oct 27, 2026). Show in the app says from it what is hidden of each
+     * source; it is never kept on the device.
+     */
+    val hiddenEverywhere: StateFlow<HiddenCollections?> = _hiddenEverywhere.asStateFlow()
 
     private val _syncProgress = MutableStateFlow<SyncProgress?>(null)
 
@@ -419,7 +452,7 @@ class ServerLibrary internal constructor(
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                 response.data?.hiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
-            }
+            }?.also { _hiddenEverywhere.value = it }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -439,12 +472,78 @@ class ServerLibrary internal constructor(
                 response.exception?.let { throw it }
                 response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
                 response.data?.setHiddenCollections?.hiddenCollectionsFields?.toHiddenCollections()
-            }
+            }?.also { _hiddenEverywhere.value = it }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             null
         }
+    }
+
+    /** Every camera model the user's files name, most files first; null when the server couldn't be reached or refused. */
+    suspend fun cameras(): List<CameraModel>? = serverCall { apollo ->
+        val response = apollo.query(CamerasQuery()).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.cameras?.map { it.cameraModelFields.toCameraModel() }
+    }
+
+    /**
+     * Marks [camera] as the user's ([mine]) or not, and answers with every model, or null when the server couldn't be
+     * reached or refused. The model's files then move on the server in the background ([CameraModel.pending]).
+     */
+    suspend fun setCamera(camera: CameraModel, mine: Boolean): List<CameraModel>? = serverCall { apollo ->
+        val response = apollo.mutation(SetCameraMutation(camera.make, camera.model, mine)).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.setCamera?.map { it.cameraModelFields.toCameraModel() }
+    }
+
+    /**
+     * Every folder the user's sound recordings came from, most files first, with the user's mark on each; null when the
+     * server couldn't be reached or refused.
+     */
+    suspend fun soundFolders(): List<ServerSoundFolder>? = serverCall { apollo ->
+        val response = apollo.query(SoundFoldersQuery()).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.soundFolders?.map { it.soundFolderFields.toSoundFolder() }
+    }
+
+    /**
+     * Merges the sound folder [id] into calls or recordings ([mark]), or takes the mark back ([SoundFolderMark.NONE]),
+     * and answers with every sound folder, or null when the server couldn't be reached or refused. The folder's files
+     * then move on the server in the background ([ServerSoundFolder.pending]).
+     */
+    suspend fun setSoundFolder(id: String, mark: SoundFolderMark): List<ServerSoundFolder>? = serverCall { apollo ->
+        val response = apollo.mutation(SetSoundFolderMutation(id, mark.toInput())).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.setSoundFolder?.map { it.soundFolderFields.toSoundFolder() }
+    }
+
+    private suspend fun <T> serverCall(call: suspend (com.apollographql.apollo.ApolloClient) -> T?): T? = try {
+        http.graphql(call)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    /**
+     * Asks the server how it names each folder source ([FolderNames]), from a server that names them
+     * ([ServerFeatures.soundFolders]), and keeps the answer in the database; offline, the names kept stay.
+     */
+    private suspend fun refreshFolderNames() {
+        if (_features.value?.soundFolders != true) return
+        val names = serverCall { apollo ->
+            val response = apollo.query(FolderNamesQuery()).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            response.data?.folderNames?.associate { it.id to it.name }
+        } ?: return
+        withContext(io) { store.keepFolderNames(names) }
+        FolderNames.setServer(names)
     }
 
     /**
@@ -483,6 +582,7 @@ class ServerLibrary internal constructor(
                     if (page.hasMore || _syncProgress.value != null) _syncProgress.value = SyncProgress(done, done + page.remaining)
                 } while (page.hasMore)
             }
+            refreshFolderNames()
         } finally {
             _syncProgress.value = null
             if (changed || hiddenChanged) withContext(NonCancellable) { publish(media = changed, hidden = hiddenChanged) }
@@ -533,6 +633,7 @@ class ServerLibrary internal constructor(
             cursor = store.cursor()
             holdsPrivate = store.holdsPrivate() ?: showPrivateAtStart().also { store.holdPrivate(it) }
             store.keepMadeUp(madeUp)
+            FolderNames.setServer(store.folderNames())
         }
         publish(media = true, hidden = true)
         _loaded.value = true
@@ -565,4 +666,8 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     nudity = nudity,
     isPrivate = private,
     aesthetic = aesthetic,
+    uploadedBy = uploadedBy,
+    screenshotApp = screenshotApp,
+    cameraMake = camera?.make,
+    cameraModel = camera?.model,
 )

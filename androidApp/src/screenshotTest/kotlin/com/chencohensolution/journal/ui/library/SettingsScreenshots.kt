@@ -6,7 +6,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.BackupState
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.settings.KindsStatus
 import com.chencohensolution.journal.server.StorageUsage
 import com.chencohensolution.journal.server.SyncProgress
 import com.chencohensolution.journal.settings.GroupingMode
@@ -37,21 +39,21 @@ fun Settings() = Screen {
     SettingsScreen(
         settings = SettingsState(similarity = SimilarityThreshold(percent = 72, defaultPercent = 85)),
         actions = SettingsActions(),
-        sourceCounts = sourceCounts,
+        kinds = kinds,
         backup = BackupUi(BackupState(BackupSettings(enabled = true)), waitingCount = 79, canCheckNetworkInBackground = true, serverUsage = serverUsage),
         storage = storage,
         syncProgress = SyncProgress(done = 38_000, total = 95_412),
     )
 }
 
-// Settings › Show in the app: a switch per source, and Hidden collections for all devices.
+// Settings › Show in the app: each kind with its total and what isn't backed up, WhatsApp hidden on all devices.
 
 @PreviewTest
 @Preview(name = "light", device = "spec:width=390dp,height=1000dp,dpi=420", showBackground = true)
 @Preview(name = "dark", device = "spec:width=390dp,height=1000dp,dpi=420", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
 fun SettingsShown() = Screen {
-    SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = sourceCounts)
+    SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, kinds = kinds)
 }
 
 // Settings › Moments: rows by breaks, with the break's length under it, and "How alike" changed from its default.
@@ -77,7 +79,7 @@ fun SettingsMoments() = Screen {
 fun SettingsBackup() = Screen {
     val backup = BackupSettings(enabled = true, sources = setOf(MediaSource.CAMERA, MediaSource.WHATSAPP), wifiNetworks = setOf("Home"))
     BackupSettingsScreen(
-        BackupUi(BackupState(backup), waitingCount = 79, canCheckNetworkInBackground = false, serverUsage = serverUsage, counts = sourceCounts),
+        BackupUi(BackupState(backup), waitingCount = 79, canCheckNetworkInBackground = false, serverUsage = serverUsage, counts = kinds.kinds.associate { it.source to it.files } + (MediaSource.WHATSAPP to 18_458)),
         BackupActions(),
         back = {},
     )
@@ -93,7 +95,15 @@ fun SettingsStorage() = Screen {
     SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.STORAGE, storage = storage)
 }
 
-private val sourceCounts = mapOf(MediaSource.CAMERA to 48_210, MediaSource.WHATSAPP to 18_458, MediaSource.SCREENSHOTS to 2_388, MediaSource.OTHER to 3_104)
+private val kinds = KindsStatus(
+    listOf(
+        KindsStatus.Kind(MediaSource.CAMERA, 48_210, 79),
+        KindsStatus.Kind(MediaSource.SCREENSHOTS, 2_388, 0),
+        KindsStatus.Kind(MediaSource.OTHER, 3_104, 0),
+    ),
+    listOf(KindsStatus.SoundKind(AudioKind.CALL, 6_196, 0)),
+    hiddenEverywhere = 1,
+)
 
 private val serverUsage = StorageUsage(photos = 48_210, videos = 1_204, bytes = 214_300_000_000)
 
