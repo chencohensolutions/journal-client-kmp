@@ -109,6 +109,8 @@ internal class SearchActions(
     val removePerson: (String) -> Unit = {},
     /** The picked photos' Mark private; false when the server couldn't be reached. */
     val markPrivate: suspend (List<MediaItem>) -> Boolean = { true },
+    /** "N more in sources you hide · Show" (true) and its "Hide" (false), for this search only. */
+    val showHiddenSources: (Boolean) -> Unit = {},
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
@@ -166,6 +168,21 @@ internal fun SearchContent(
             Text(stringResource(R.string.search_on_phone), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
         if (search.status == SearchStatus.DONE) item(key = "found") { FoundNote(search) }
+        if (search.status == SearchStatus.DONE && search.hiddenBySources > 0) item(key = "hidden-sources") {
+            val count = search.hiddenBySources
+            Text(
+                if (search.showingHidden) {
+                    pluralStringResource(R.plurals.search_hidden_shown, count, count)
+                } else {
+                    pluralStringResource(R.plurals.search_hidden_more, count, count)
+                },
+                color = LibraryColors.Muted,
+                fontSize = 13.sp,
+                modifier = Modifier.fillMaxWidth()
+                    .clickable { actions.showHiddenSources(!search.showingHidden) }
+                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            )
+        }
         // Last, so landing from the viewer can count them from the end. Kept while a new search runs; the field shows its
         // spinner.
         if (search.status == SearchStatus.DONE || search.status == SearchStatus.SEARCHING) {
