@@ -465,4 +465,4 @@ indexes on the phone, to search without the server, offline too (journal-server-
 - [Settings — Loading Moments](../ux-history/settings/2026-10-26-loading-moments.md) (Oct 26, 2026): an Advanced section with a page of chips (a) picked.
 - [Show in the app — imported files](../ux-history/sources/2026-10-27-imported.md) (Oct 27, 2026): "Imported" as one source with its kinds, saying what Private settings hides on all devices (b2) picked.
 - [Your cameras](../ux-history/cameras/2026-10-27-your-cameras.md) (Oct 27, 2026): one list with a "Mine" switch per camera (a) picked, promoted in c6e46cd.
-- [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked.
+- [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked, promoted in a2f654b.

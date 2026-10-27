@@ -14,12 +14,12 @@ page, a `-confirm` page and a `-moving` page.
   "Moving…" with a bar on the row. *Turned down* for b.
 - **b — Grouped by what they are**: folders grouped under Calls, Voice recordings and Kept as folders, each with a
   "Move to…" menu; the question opens inside the row, and a band at the top says what is moving ("Moving 1,140 files
-  to Calls…"). *Picked*; not promoted yet.
+  to Calls…"). *Picked*, promoted in a2f654b.
 
 ## What they faked
 - Both: the list `soundFolders` gives is made up (Call 1,623 from the phone; Calls and calls as one "Calls" 1,520;
   Voice Recorder 168; super_recorder 7; imported counts made up), `setSoundFolder` isn't called, the move is timed in
-  the lab, and Settings had no row for the page.
+  the lab, and Settings had no row for the page (it has since a2f654b).
 - b: Voice Recorder starts already merged into Voice recordings.
 - Screenshots were taken on the emulator (the phone refused adb that time).
 
