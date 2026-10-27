@@ -10,7 +10,10 @@ saying how it stands and opening a page of its own; the switches used most stay 
 - **Top bar:** back and "Settings" (on a page: its name).
 - **Library:** **Show in the app ›** ("Showing Camera, Other, Petcube +2", the most photos first), **Your cameras ›**
   (when the server keeps cameras, `ServerFeatures.cameras`: "4 cameras · 1 not yours", "4 cameras" when all are,
-  "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Moments ›** ("By
+  "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Sound folders ›**
+  (when the server keeps them, `ServerFeatures.soundFolders`: "4 folders · 1 as Calls · 1 as Voice recordings", "3
+  folders" when none is merged, "Moving 953 files…" while the server moves some, "Which folders are calls or voice
+  recordings" until the list came; both lists are asked when Settings opens and kept up by their pages), **Moments ›** ("By
   day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
 - **Privacy:** the **Show private media** switch and **Hidden collections 🔒 ›** (below).
 - **Backup and storage** (when the app has them): **Backup ›** (its status line; a screen of its own, below),
@@ -70,23 +73,23 @@ The pages, and what each holds:
   marked counts as yours, so nothing moves until you choose." Loading, "Can't reach your server" with Try again, and
   "Not changed" (the switch goes back) as in Private settings. In the UI lab: `./scripts/ui-lab.sh cameras
   current|confirm|moving` (the owner's camera tags with made-up years, so the merging shows; the move timed).
-- **Sound folders** (proposed, Oct 27, 2026: a page under Library beside Your cameras, in the UI lab only, not in the
-  app yet; Android): every folder the user's sound recordings came from (`soundFolders`: a phone's Call, an import's
-  Calls, Voice Recorder, super_recorder), the most files first, each with its files and how many were imported
-  ("1,520 files · imported", "168 files · 61 imported"), and a choice for where its recordings go: **Calls**, **Voice
-  recordings** or **Keep as folder** (its own kind, `folder:calls`), saved on the server for every device. Folders
-  that differ only by case are one (ids are in lower case: the import's "Calls" 953 and "calls" 567 are one "Calls",
-  1,520, named by the spelling most files have). Changing a choice asks first ("1,520 files will become Calls": only
-  their labels change on the server), then the folder says "Moving 1,520…" while the server moves them
-  (`SoundFolderMark`, `setSoundFolder`, `pending`); the page asks again every 3 seconds until none is left, then the
-  library syncs. WhatsApp voice messages always stay voice messages. Two options for the owner to pick:
-  `./scripts/ui-lab.sh sound-folders a|a-confirm|a-moving` (one card, three choice pills under each folder, the question
-  in a dialog, "Moving…" and a bar on the row) and `b|b-confirm|b-moving` (the folders grouped under Calls, Voice
-  recordings and Kept as folders, a **Move to…** menu on each, the question in the row, a band at the top "Moving
-  1,140 files to Calls…"). Shared logic built: `SoundFoldersController` (`load`, `setMark`, `retry`, `close`,
-  `observe`) with `SoundFoldersState` and `ServerSoundFolder` in
-  [SoundFolders.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/SoundFolders.kt);
-  the row in Settings and the route wait for the owner's pick (`ServerFeatures.soundFolders` says the server has it).
+- **Sound folders** (a page under Library after Your cameras, Oct 27, 2026, option b of the UI lab; Android only, iOS
+  not built yet): every folder the user's sound recordings came from (`soundFolders`: a phone's Call, an import's
+  Calls, Voice Recorder, super_recorder), grouped by where their recordings go: **Calls** ("Their recordings are phone
+  calls, in Calls on all your devices."), **Voice recordings**, then **Kept as folders** ("Each stays a folder of its
+  own, until you move it."; its own kind, `folder:calls`), each group's folders in a card, the most files first, or "No
+  folder yet". Each folder shows its files and how many were imported ("1,623 files · from your phones", "1,520
+  files · imported", "168 files · 61 imported") and a **Move to…** menu offering the other two groups; the mark is
+  saved on the server for every device. Folders that differ only by case are one (ids are in lower case: the import's
+  "Calls" 953 and "calls" 567 are one "Calls", 1,520, named by the spelling most files have). Picking a group asks
+  first, inside the folder's row ("1,520 files will become Calls" / "… will become Voice recordings" / "… will go back
+  to Calls": only how they are labelled changes on the server; **Move** or Cancel; the folder waiting for its answer is
+  kept by id across rotation). While the server moves them a band at the top says "Moving 1,140 files to Calls…" with
+  a bar, the folder sits in its new group already with "1,045 left to move", and the page asks again every 3 seconds
+  until none is left; the library then syncs (`SoundFolderMark`, `setSoundFolder`, `pending`). Under the groups:
+  "WhatsApp voice messages always stay voice messages." Loading, "Can't reach your server" with Try again, and "Not
+  changed" as in Private settings. In the UI lab: `./scripts/ui-lab.sh sound-folders current|confirm|moving` (made-up
+  folders close to the owner's, Voice Recorder already merged into Voice recordings; the move timed).
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
@@ -117,7 +120,9 @@ The pages, and what each holds:
     voice messages), and **Back it up**. The choice is the kind each of its files is uploaded with (since Oct 27,
     2026; before, the folder, `folder:Call`): Phone calls as `call`, Recordings as `recording`, Voice messages as
     `folder:whatsapp`; the server keeps what the phone sent for a sound recording unless the user merged its folder
-    otherwise in **Sound folders** (below). The folders are found only this way: the owner keeps a `.nomedia` file in them,
+    otherwise in **Sound folders** (below). Each file also goes with its folder's name as the phone shows it ("Call",
+    as the pill says) as the upload's `folder`, so Sound folders lists the phone's folders beside the imported ones
+    (`BackupEngine.request`, since Oct 27, 2026). The folders are found only this way: the owner keeps a `.nomedia` file in them,
     so Android's media index never lists them. The app keeps read and write access to the folder (write for Free up
     space and for keeping FLAC). A tap turns a folder on or off; a long press asks **Stop backing up Call?** (what it
     sent stays on the server); a folder the app can no longer read says "Call · pick again", and a tap opens the picker.
@@ -429,7 +434,13 @@ indexes on the phone, to search without the server, offline too (journal-server-
   `CamerasController`, `CamerasState`, `CameraModel`, `CameraGroup` and `cameraName` in
   [Cameras.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/Cameras.kt), the names
   in [CameraNames.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/CameraNames.kt), over
-  `ServerLibrary.cameras` / `setCamera`;
+  `ServerLibrary.cameras` / `setCamera`; Sound folders (`Route.SoundFolders`) in
+  [SoundFoldersScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SoundFoldersScreen.kt)
+  (`SoundFoldersRoute`: a `SoundFoldersController` per opening and the move waiting for its answer; `SoundFoldersScreen`
+  drawn from `SoundFoldersState`), its row's line the same way. Shared: `SoundFoldersController`, `SoundFoldersState`,
+  `ServerSoundFolder` and `SoundFolderMark` in
+  [SoundFolders.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/SoundFolders.kt), over
+  `ServerLibrary.soundFolders` / `setSoundFolder`;
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`). Shared: `HiddenCollectionsController` (`HiddenCollectionsState`: loading, unreachable, ready with

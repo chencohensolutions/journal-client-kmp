@@ -841,4 +841,61 @@
         <item quantity="one">Moving %1$s photo…</item>
         <item quantity="other">Moving %1$s photos…</item>
     </plurals>
+    <string name="settings_sound_folders_unknown">Which folders are calls or voice recordings</string>
+    <plurals name="settings_sound_folders_count">
+        <item quantity="one">%1$s folder</item>
+        <item quantity="other">%1$s folders</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_calls">
+        <item quantity="one">%1$s as Calls</item>
+        <item quantity="other">%1$s as Calls</item>
+    </plurals>
+    <plurals name="settings_sound_folders_as_recordings">
+        <item quantity="one">%1$s as Voice recordings</item>
+        <item quantity="other">%1$s as Voice recordings</item>
+    </plurals>
+    <plurals name="settings_sound_folders_moving">
+        <item quantity="one">Moving %1$s file…</item>
+        <item quantity="other">Moving %1$s files…</item>
+    </plurals>
+    <string name="sound_folders_title">Sound folders</string>
+    <string name="sound_folders_calls">Calls</string>
+    <string name="sound_folders_calls_about">Their recordings are phone calls, in Calls on all your devices.</string>
+    <string name="sound_folders_recordings">Voice recordings</string>
+    <string name="sound_folders_recordings_about">Their recordings are in Voice recordings on all your devices.</string>
+    <string name="sound_folders_kept">Kept as folders</string>
+    <string name="sound_folders_kept_about">Each stays a folder of its own, until you move it.</string>
+    <string name="sound_folders_none">No folder yet</string>
+    <string name="sound_folders_move_to">Move to…</string>
+    <string name="sound_folders_move">Move</string>
+    <string name="sound_folders_confirm_body">Only how they are labelled changes, on your server: the recordings themselves stay as they are.</string>
+    <string name="sound_folders_moving_body">On your server. You can leave this page; Moments follows in a moment.</string>
+    <string name="sound_folders_footer">WhatsApp voice messages always stay voice messages.</string>
+    <string name="sound_folders_from_phones">from your phones</string>
+    <string name="sound_folders_all_imported">imported</string>
+    <string name="sound_folders_imported">%1$s imported</string>
+    <plurals name="sound_folders_files">
+        <item quantity="one">%1$s file</item>
+        <item quantity="other">%1$s files</item>
+    </plurals>
+    <plurals name="sound_folders_to_calls">
+        <item quantity="one">%1$s file will become Calls</item>
+        <item quantity="other">%1$s files will become Calls</item>
+    </plurals>
+    <plurals name="sound_folders_to_recordings">
+        <item quantity="one">%1$s file will become Voice recordings</item>
+        <item quantity="other">%1$s files will become Voice recordings</item>
+    </plurals>
+    <plurals name="sound_folders_to_folder">
+        <item quantity="one">%1$s file will go back to %2$s</item>
+        <item quantity="other">%1$s files will go back to %2$s</item>
+    </plurals>
+    <plurals name="sound_folders_moving">
+        <item quantity="one">Moving %1$s file to %2$s…</item>
+        <item quantity="other">Moving %1$s files to %2$s…</item>
+    </plurals>
+    <plurals name="sound_folders_row_moving">
+        <item quantity="one">%1$s left to move</item>
+        <item quantity="other">%1$s left to move</item>
+    </plurals>
 </resources>

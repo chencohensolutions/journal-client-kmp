@@ -56,6 +56,7 @@ import com.chencohensolution.journal.createPersonController
 import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.CamerasState
+import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
@@ -141,6 +142,8 @@ private fun LibraryScreens(
     val hiddenEverywhere by server.library.hiddenEverywhere.collectAsStateWithLifecycle()
     // Your cameras' last list, for Settings' row: asked when Settings opens, and kept up by the page while it is open.
     var camerasState by remember { mutableStateOf<CamerasState>(CamerasState.Loading) }
+    // Sound folders' last list, for its row, the same way.
+    var soundFoldersState by remember { mutableStateOf<SoundFoldersState>(SoundFoldersState.Loading) }
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
@@ -367,6 +370,10 @@ private fun LibraryScreens(
                                     LaunchedEffect(features?.cameras) {
                                         if (features?.cameras == true) server.library.cameras()?.let { camerasState = CamerasState.Ready(it) }
                                     }
+                                    // Sound folders' row says how many folders there are and how many are merged.
+                                    LaunchedEffect(features?.soundFolders) {
+                                        if (features?.soundFolders == true) server.library.soundFolders()?.let { soundFoldersState = SoundFoldersState.Ready(it) }
+                                    }
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
@@ -391,6 +398,7 @@ private fun LibraryScreens(
                                             resetSimilarity = settings::resetSimilarity,
                                             openHidden = { push(Route.Hidden) },
                                             openCameras = { push(Route.Cameras) },
+                                            openSoundFolders = { push(Route.SoundFolders) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
                                             openPage = { push(Route.SettingsPageRoute(it)) },
@@ -409,6 +417,7 @@ private fun LibraryScreens(
                                         syncProgress = syncProgress,
                                         hiddenEverywhere = hiddenEverywhere,
                                         cameras = camerasState.takeIf { features?.cameras == true },
+                                        soundFolders = soundFoldersState.takeIf { features?.soundFolders == true },
                                     )
                                 }
                                 Route.BackupSettings -> {
@@ -430,6 +439,11 @@ private fun LibraryScreens(
                                     server.library,
                                     // Loading and Unreachable keep the row's last count.
                                     onState = { if (it is CamerasState.Ready) camerasState = it },
+                                    back = pop,
+                                )
+                                Route.SoundFolders -> SoundFoldersRoute(
+                                    server.library,
+                                    onState = { if (it is SoundFoldersState.Ready) soundFoldersState = it },
                                     back = pop,
                                 )
                                 is Route.Audio -> RecordingScreen(route.sha256, storiesState, server.library, back = pop)

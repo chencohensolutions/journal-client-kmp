@@ -146,6 +146,18 @@ class SoundBackupTest {
     }
 
     @Test
+    fun soundFilesSendTheirFolderAsThePhoneShowsIt() = runTest {
+        val files = SoundFiles()
+        val call = sound(files, calls, "Call recording 0501234567_251025_101500.m4a", seed = 1)
+        val recording = sound(files, recorder, "20251025_101500.m4a", seed = 2)
+        engine(files).run(listOf(call, recording), BackupSettings(enabled = true, soundFolders = listOf(calls, recorder))) {}
+        val byName = server.requests.values.associate { it.fileName to it.folder }
+        // The server lists them in Settings › Sound folders by these names (folder:call, folder:voice recorder).
+        assertEquals("Call", byName["Call recording 0501234567_251025_101500.m4a"])
+        assertEquals("Voice Recorder", byName["20251025_101500.m4a"])
+    }
+
+    @Test
     fun aFileStillBeingWrittenWaits() {
         val now = 10L * 60 * 1000
         val item = { id: String, modified: Long ->

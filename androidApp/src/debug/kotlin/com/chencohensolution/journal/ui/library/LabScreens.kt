@@ -6,6 +6,7 @@ import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.HiddenCollectionsState
 import com.chencohensolution.journal.server.HiddenCollections
+import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
 
@@ -178,7 +179,14 @@ internal val labScreens: List<LabScreen> = listOf(
         },
     )),
     LabScreen("settings", "Settings", listOf(
-        current { SettingsScreen(SettingsState(), SettingsActions(), cameras = CamerasState.Ready(labCameras)) },
+        current {
+            SettingsScreen(
+                SettingsState(),
+                SettingsActions(),
+                cameras = CamerasState.Ready(labCameras),
+                soundFolders = SoundFoldersState.Ready(labSoundFolders),
+            )
+        },
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
@@ -204,11 +212,11 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("confirm", "Asking before moving", "\"463 photos will move to Sent to you\" (the LG's two tags)") { CamerasLabConfirm() },
         LabOption("moving", "Moving", "\"Moving 463 photos…\" on the row") { CamerasLabMoving() },
     )),
-    // Not in the app yet: only the suggestions (lab/sound-folders/), with made-up folders.
+    // Made-up folders (SoundFoldersLab): the server isn't asked, and the move is timed.
     LabScreen("sound-folders", "Settings › Sound folders", listOf(
-        soundFoldersOptionB,
-        soundFoldersOptionBConfirm,
-        soundFoldersOptionBMoving,
+        current { SoundFoldersLab(labSoundFolders) },
+        LabOption("confirm", "Asking in the row", "\"1,520 files will become Calls\"") { SoundFoldersLabConfirm() },
+        LabOption("moving", "Moving", "\"Moving 1,140 files to Calls…\" in a band at the top") { SoundFoldersLabMoving() },
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },

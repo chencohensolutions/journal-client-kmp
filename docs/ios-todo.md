@@ -14,7 +14,7 @@ their page), and backup of calls and recordings from folders with Free up space 
 Still missing on iOS:
 
 - **Lowercase folder ids, sound kinds, Sound folders** (Android Oct 27, 2026; shared logic done). See
-  [screens/settings.md](screens/settings.md) (Sound folders, proposed) and [moments.md](screens/moments.md).
+  [screens/settings.md](screens/settings.md) (Sound folders) and [moments.md](screens/moments.md).
   - **Names:** folder ids are in lower case (`folder:petcube`); show a folder by `MediaSource.folderName` (the app
     table, the server's `folderNames`, the phone's spelling, else a capital), never by `folder`. Only
     `MomentsFeedViews.swift`'s `title` named folders, and it uses `folderName` now (build to check).
@@ -22,13 +22,17 @@ Still missing on iOS:
     recordings" / "הקלטות קול" where a source is named (Android: `FeedChrome.kt` `sourceName`, strings
     `feed_source_call`, `feed_source_recording`). They are never photo pills (`MediaSource.choices` leaves them out).
   - **Backup:** nothing to do: a sound folder's `source` (shared) now uploads calls as `call` and recordings as
-    `recording`.
-  - **Sound folders page:** waits for the owner to pick an option of the UI lab round (`sound-folders` a or b, on
-    Android); then a page under Settings › Library beside Your cameras, shown when `features.soundFolders`, built on
-    `SoundFoldersController(library:)` (`load()`, `setMark(folder:mark:)`, `retry()`, `close()`, `observe`,
-    `currentState`: `SoundFoldersStateLoading`, `SoundFoldersStateUnreachable`, `SoundFoldersStateReady` with
-    `folders: [ServerSoundFolder]` (`shownName`, `files`, `imported`, `mark`, `pending`), `saving`, `notChanged`,
-    `pending`), as `CamerasController` is.
+    `recording`, and its files go with the folder's name as their `folder` (shared `BackupEngine`).
+  - **Sound folders page** (Android: option b, promoted Oct 27, 2026; `SoundFoldersScreen.kt`): a **Sound folders**
+    row in `SettingsSections.swift` under Library after Your cameras, shown when `features.soundFolders`, its line
+    ("4 folders · 1 as Calls · 1 as Voice recordings", "Moving 953 files…", "Which folders are calls or voice
+    recordings" before the list; ask `library.soundFolders()` when Settings opens), and a SwiftUI page: groups Calls,
+    Voice recordings, Kept as folders, a "Move to…" menu per folder, the question inside the row (Move / Cancel), a
+    band at the top while moving. Built on `SoundFoldersController(library:)` (`load()`, `setMark(folder:mark:)`,
+    `retry()`, `close()`, `observe`, `currentState`: `SoundFoldersStateLoading`, `SoundFoldersStateUnreachable`,
+    `SoundFoldersStateReady` with `folders: [ServerSoundFolder]` (`shownName`, `files`, `imported`, `mark`,
+    `pending`), `saving`, `notChanged`, `pending`), as `CamerasController` is. Strings: Android's `sound_folders_*` and
+    `settings_sound_folders_*`.
 
 - **Sources: WhatsApp as a folder, Sent to you, Imported, search, Private settings' apps, a photo's camera**
   (Android Oct 27, 2026; shared logic done, iOS won't compile until the first step). See

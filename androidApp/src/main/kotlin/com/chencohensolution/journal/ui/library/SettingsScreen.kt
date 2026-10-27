@@ -57,6 +57,8 @@ import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 import androidx.compose.material3.LinearProgressIndicator
 import com.chencohensolution.journal.server.CamerasState
+import com.chencohensolution.journal.server.SoundFolderMark
+import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.server.ServerIndexingState
 import com.chencohensolution.journal.server.SyncProgress
 import java.text.NumberFormat
@@ -70,6 +72,8 @@ internal class SettingsActions(
     val openHidden: () -> Unit = {},
     /** Opens Settings › Your cameras. */
     val openCameras: () -> Unit = {},
+    /** Opens Settings › Sound folders. */
+    val openSoundFolders: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
@@ -120,6 +124,8 @@ internal fun SettingsScreen(
     hiddenEverywhere: HiddenCollections? = null,
     /** Your cameras' last list, for its row; null when the server doesn't keep cameras (no row). */
     cameras: CamerasState? = null,
+    /** Sound folders' last list, for its row; null when the server doesn't keep sound folders (no row). */
+    soundFolders: SoundFoldersState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val title = when (page) {
@@ -137,7 +143,7 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             when (page) {
-                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras)
+                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders)
                 SettingsPage.SHOWN -> ShownSourcesSection(settings.shownSources, sourceCounts, hiddenEverywhere, actions)
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
@@ -161,6 +167,7 @@ private fun MainPage(
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState?,
     indexing: ServerIndexingState?,
     cameras: CamerasState?,
+    soundFolders: SoundFoldersState?,
 ) {
     SectionTitle(stringResource(R.string.settings_library_title))
     Card {
@@ -168,6 +175,10 @@ private fun MainPage(
         RowDivider()
         if (cameras != null) {
             PageRow(stringResource(R.string.cameras_title), camerasSummary(cameras), actions.openCameras)
+            RowDivider()
+        }
+        if (soundFolders != null) {
+            PageRow(stringResource(R.string.sound_folders_title), soundFoldersSummary(soundFolders), actions.openSoundFolders)
             RowDivider()
         }
         PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
@@ -275,6 +286,25 @@ private fun camerasSummary(cameras: CamerasState): String {
     val notYours = ready.cameras.count { !it.mine }
     if (notYours == 0) return count
     return stringResource(R.string.feed_place_time, count, pluralStringResource(R.plurals.settings_cameras_not_yours, notYours, format.format(notYours)))
+}
+
+/**
+ * Sound folders' row: "3 folders · 2 as Calls", "4 folders · 2 as Calls · 1 as Voice recordings", "3 folders" when none
+ * is merged, "Moving 953 files…" while the server moves some, and "Which folders are calls or voice recordings" before
+ * the list came.
+ */
+@Composable
+private fun soundFoldersSummary(folders: SoundFoldersState): String {
+    val ready = folders as? SoundFoldersState.Ready ?: return stringResource(R.string.settings_sound_folders_unknown)
+    val format = NumberFormat.getIntegerInstance()
+    if (ready.pending > 0) return pluralStringResource(R.plurals.settings_sound_folders_moving, ready.pending, format.format(ready.pending))
+    val calls = ready.folders.count { it.mark == SoundFolderMark.CALL }
+    val recordings = ready.folders.count { it.mark == SoundFolderMark.RECORDING }
+    return listOfNotNull(
+        pluralStringResource(R.plurals.settings_sound_folders_count, ready.folders.size, format.format(ready.folders.size)),
+        if (calls > 0) pluralStringResource(R.plurals.settings_sound_folders_as_calls, calls, format.format(calls)) else null,
+        if (recordings > 0) pluralStringResource(R.plurals.settings_sound_folders_as_recordings, recordings, format.format(recordings)) else null,
+    ).joinToString(" · ")
 }
 
 /** Moments' row: "By day · similar at 60%", "New row after 12 hours · similar at 85%". */
