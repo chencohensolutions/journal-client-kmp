@@ -187,10 +187,17 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
 
 - **Source** (`MediaSource`: Camera, Screenshots, Sent to you, a folder by its name, or Other; asked for Oct 24, 2026,
   when every DCIM folder was Camera and Other was too broad). WhatsApp is a folder like any app's since Oct 27, 2026
-  (`folder:WhatsApp`; the old id `whatsapp`, in settings or from the server, is read as it), and stays hidden at first
-  with Screenshots. **Sent to you** (`received`) is what the server labels photos of a camera the user marked as not
+  (`folder:whatsapp`; the old ids `whatsapp` and `folder:WhatsApp`, in settings or from the server, are read as it),
+  and stays hidden at first with Screenshots. **Folder ids are in lower case** since Oct 27, 2026, as the server's
+  (`folder:petcube`), so folders that differ only by case are one; a folder is shown by `MediaSource.folderName`
+  (`FolderNames`): an app the name table knows as it spells it (WhatsApp, Telegram, Signal, Facebook, Messenger,
+  Snapchat), else the server's name (its `folderNames`, the spelling most files have, asked once per sync and kept in
+  the database), else the phone's own spelling of its folder, else the name with a capital ("Petcube"). Sound
+  recordings have two sources of their own, `call` and `recording` (never offered as photo pills), and their kind in
+  Moments is read from the source first (call, recording, `folder:whatsapp` a voice message), then from the server's
+  call facts. **Sent to you** (`received`) is what the server labels photos of a camera the user marked as not
   theirs; a phone never gives its own files that source; it shows at first. What the server's import placed is
-  `import:` and its kind (`import:camera`, `import:folder:Telegram`), under Imported. On Android the source comes
+  `import:` and its kind (`import:camera`, `import:folder:telegram`), under Imported. On Android the source comes
   from the file's name and folder (`sourceOfFolder`, reading the table in `SourceNames.kt`, a copy of the server's
   rule so both label a file alike; the cases both are tested over are `SOURCE_FIXTURES` in `SourcesTest`), the first
   that fits: a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots wherever it is; WhatsApp's

@@ -13,14 +13,33 @@ their page), and backup of calls and recordings from folders with Free up space 
 
 Still missing on iOS:
 
+- **Lowercase folder ids, sound kinds, Sound folders** (Android Oct 27, 2026; shared logic done). See
+  [screens/settings.md](screens/settings.md) (Sound folders, proposed) and [moments.md](screens/moments.md).
+  - **Names:** folder ids are in lower case (`folder:petcube`); show a folder by `MediaSource.folderName` (the app
+    table, the server's `folderNames`, the phone's spelling, else a capital), never by `folder`. Only
+    `MomentsFeedViews.swift`'s `title` named folders, and it uses `folderName` now (build to check).
+  - **Sound kinds:** `MediaSource.companion.CALL` and `RECORDING` exist; name them "Calls" / "שיחות" and "Voice
+    recordings" / "הקלטות קול" where a source is named (Android: `FeedChrome.kt` `sourceName`, strings
+    `feed_source_call`, `feed_source_recording`). They are never photo pills (`MediaSource.choices` leaves them out).
+  - **Backup:** nothing to do: a sound folder's `source` (shared) now uploads calls as `call` and recordings as
+    `recording`.
+  - **Sound folders page:** waits for the owner to pick an option of the UI lab round (`sound-folders` a or b, on
+    Android); then a page under Settings › Library beside Your cameras, shown when `features.soundFolders`, built on
+    `SoundFoldersController(library:)` (`load()`, `setMark(folder:mark:)`, `retry()`, `close()`, `observe`,
+    `currentState`: `SoundFoldersStateLoading`, `SoundFoldersStateUnreachable`, `SoundFoldersStateReady` with
+    `folders: [ServerSoundFolder]` (`shownName`, `files`, `imported`, `mark`, `pending`), `saving`, `notChanged`,
+    `pending`), as `CamerasController` is.
+
 - **Sources: WhatsApp as a folder, Sent to you, Imported, search, Private settings' apps, a photo's camera**
   (Android Oct 27, 2026; shared logic done, iOS won't compile until the first step). See
   [screens/settings.md](screens/settings.md), [moments.md](screens/moments.md), [search.md](screens/search.md),
   [viewer.md](screens/viewer.md).
   - **`MediaSource` is a class now, not an enum with `.whatsapp`:** the fixed ones are `MediaSource.companion.CAMERA`,
     `SCREENSHOTS`, `RECEIVED` (new: "Sent to you" / "נשלח אליך", Android's icon is an inbox tray, `FeedIcons.Inbox`)
-    and `OTHER`; WhatsApp is the folder `MediaSource.companion.WHATSAPP` (`folder:WhatsApp`); an imported one has
-    `isImported` and `kind` (Camera for `import:camera`). Switch on `kind`, and name a folder by `kind.folder`:
+    and `OTHER`; WhatsApp is the folder `MediaSource.companion.WHATSAPP` (`folder:whatsapp`); an imported one has
+    `isImported` and `kind` (Camera for `import:camera`). Switch on `kind`, and name a folder by `kind.folderName`
+    (`kind.folder` is the id's name, in lower case since Oct 27, 2026; `MomentsFeedViews.swift`'s `title` already
+    uses `folderName`, written on Windows and not compiled):
     `MomentsFeedViews.swift` ~927–945 (`sourceName` and the icon), `MediaViewerView.swift` ~720,
     `ShownSourcesViews.swift:65` (`counts[.whatsapp]` becomes `counts[MediaSource.companion.WHATSAPP]`).
   - **Show in the app (option b2 of the UI lab):** draw `ShownSourcesPills.companion.of(shownSources, counts,

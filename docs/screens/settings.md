@@ -33,8 +33,9 @@ The pages, and what each holds:
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
   (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
   `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`; the old id `whatsapp` there, and in
-  `backup_sources` and `free_up_kept`, is read as the folder `folder:WhatsApp` it is since Oct 27, 2026, and written
-  so). **Imported** (Android Oct 27, 2026, option b2 of the UI lab; iOS not built yet): after the phones' pills, one
+  `backup_sources` and `free_up_kept`, is read as the folder `folder:whatsapp` it is since Oct 27, 2026, as is any
+  folder kept with capitals (`folder:WhatsApp`, `folder:Petcube`: folder ids are in lower case since Oct 27, 2026),
+  and written so). **Imported** (Android Oct 27, 2026, option b2 of the UI lab; iOS not built yet): after the phones' pills, one
   **Imported · 42,867** pill (a box icon) for everything the server's import placed (`ShownSources.importedShown`,
   kept as `show_imported`); while on, a tinted box under the pills, "Of what was imported", holds its kinds as smaller
   pills (Camera, WhatsApp, Screenshots, Other, an imported folder), each switched on its own. Every count is only what
@@ -69,6 +70,23 @@ The pages, and what each holds:
   marked counts as yours, so nothing moves until you choose." Loading, "Can't reach your server" with Try again, and
   "Not changed" (the switch goes back) as in Private settings. In the UI lab: `./scripts/ui-lab.sh cameras
   current|confirm|moving` (the owner's camera tags with made-up years, so the merging shows; the move timed).
+- **Sound folders** (proposed, Oct 27, 2026: a page under Library beside Your cameras, in the UI lab only, not in the
+  app yet; Android): every folder the user's sound recordings came from (`soundFolders`: a phone's Call, an import's
+  Calls, Voice Recorder, super_recorder), the most files first, each with its files and how many were imported
+  ("1,520 files · imported", "168 files · 61 imported"), and a choice for where its recordings go: **Calls**, **Voice
+  recordings** or **Keep as folder** (its own kind, `folder:calls`), saved on the server for every device. Folders
+  that differ only by case are one (ids are in lower case: the import's "Calls" 953 and "calls" 567 are one "Calls",
+  1,520, named by the spelling most files have). Changing a choice asks first ("1,520 files will become Calls": only
+  their labels change on the server), then the folder says "Moving 1,520…" while the server moves them
+  (`SoundFolderMark`, `setSoundFolder`, `pending`); the page asks again every 3 seconds until none is left, then the
+  library syncs. WhatsApp voice messages always stay voice messages. Two options for the owner to pick:
+  `./scripts/ui-lab.sh sound-folders a|a-confirm|a-moving` (one card, three choice pills under each folder, the question
+  in a dialog, "Moving…" and a bar on the row) and `b|b-confirm|b-moving` (the folders grouped under Calls, Voice
+  recordings and Kept as folders, a **Move to…** menu on each, the question in the row, a band at the top "Moving
+  1,140 files to Calls…"). Shared logic built: `SoundFoldersController` (`load`, `setMark`, `retry`, `close`,
+  `observe`) with `SoundFoldersState` and `ServerSoundFolder` in
+  [SoundFolders.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/SoundFolders.kt);
+  the row in Settings and the route wait for the owner's pick (`ServerFeatures.soundFolders` says the server has it).
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
@@ -87,7 +105,8 @@ The pages, and what each holds:
     and those chosen; **Camera** on by default). A new folder is off
     until turned on. Camera is DCIM/Camera only since Oct 24, 2026: other DCIM folders (which Camera took before) are
     choices of their own, off, as the owner chose; what they uploaded stays on the server. The server is told each
-    file's source (`camera`, `folder:Petcube`, …), so a photo only on the server keeps its folder.
+    file's source (`camera`, `folder:Petcube`, …: a folder spelled as the phone saw it, which the server reads in
+    lower case and counts towards the name it shows the folder by), so a photo only on the server keeps its folder.
     **Folders of calls and recordings** share that list (Android since Oct 25, 2026, iOS since Oct 26, 2026; UX round
     `ux/backup/2026-10-25`, b2): one list of pills (`BackupPills`, `BackupState.pills`), photo sources and sound folders
     side by side, not grouped, the ones backed up first, each the most files first, a folder with the icon of what it
@@ -95,7 +114,10 @@ The pages, and what each holds:
     Samsung keeps calls); after **Use this folder** and **Allow**, a dialog shows the folder's name and place, what was
     found ("6,196 sound files · 3.2 GB"), **What are they?** (Phone calls, Recordings or Voice messages, the app's guess
     from the names chosen: Samsung's "Call recording …"/"הקלטת שיחה …"/"שיחה …" are calls, WhatsApp's `PTT-`/`AUD-`
-    voice messages), and **Back it up**. The folders are found only this way: the owner keeps a `.nomedia` file in them,
+    voice messages), and **Back it up**. The choice is the kind each of its files is uploaded with (since Oct 27,
+    2026; before, the folder, `folder:Call`): Phone calls as `call`, Recordings as `recording`, Voice messages as
+    `folder:whatsapp`; the server keeps what the phone sent for a sound recording unless the user merged its folder
+    otherwise in **Sound folders** (below). The folders are found only this way: the owner keeps a `.nomedia` file in them,
     so Android's media index never lists them. The app keeps read and write access to the folder (write for Free up
     space and for keeping FLAC). A tap turns a folder on or off; a long press asks **Stop backing up Call?** (what it
     sent stays on the server); a folder the app can no longer read says "Call · pick again", and a tap opens the picker.

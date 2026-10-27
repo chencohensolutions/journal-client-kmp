@@ -204,6 +204,15 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("confirm", "Asking before moving", "\"463 photos will move to Sent to you\" (the LG's two tags)") { CamerasLabConfirm() },
         LabOption("moving", "Moving", "\"Moving 463 photos…\" on the row") { CamerasLabMoving() },
     )),
+    // Not in the app yet: only the suggestions (lab/sound-folders/), with made-up folders.
+    LabScreen("sound-folders", "Settings › Sound folders", listOf(
+        soundFoldersOptionA,
+        soundFoldersOptionAConfirm,
+        soundFoldersOptionAMoving,
+        soundFoldersOptionB,
+        soundFoldersOptionBConfirm,
+        soundFoldersOptionBMoving,
+    )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
         LabOption("nightly", "Nightly run", "The nightly run reading this user's photos") {
