@@ -19,6 +19,11 @@ internal val SOURCE_FIXTURES: List<Pair<String, String>> = listOf(
     // A camera's names, wherever the file is.
     "Pictures/DSC_000385.JPG" to "camera",
     "Pictures/20250928_211937_016.jpg" to "camera",
+    "Pictures/IMG_20171012_213615.jpg" to "camera",
+    "Pictures/IMG_20171012_213615_123.jpg" to "camera",
+    "Pictures/IMG_20160516_081202_HDR.jpg" to "camera",
+    // An app's name with a long number after the time (WorkersNet's empty files) isn't a camera's.
+    "Pictures/img_20260927_115615_2430005126935688329.jpg" to "other",
     "Pictures/PXL_20240101_120000000.jpg" to "camera",
     "Download/VID_20240101_120000.mp4" to "camera",
     "DCIM/Camera/x.jpg" to "camera",

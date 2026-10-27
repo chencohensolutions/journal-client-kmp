@@ -85,10 +85,11 @@ data class LibraryState(
     /** Every item of the library. */
     val itemCount: Int = totals?.items ?: days.sumOf { it.items.size }
 
+    // An empty file (an app's 0-byte placeholder) never waits: backup leaves it out (BackupEngine's queue).
     private fun waitsForBackup(item: MediaItem) =
-        item.backup != BackupStatus.BackedUp && (backupSources == null || item.source in backupSources)
+        item.backup != BackupStatus.BackedUp && (item.sizeBytes ?: 0) > 0 && (backupSources == null || item.source in backupSources)
 
-    /** Items not on the server yet (anything but [BackupStatus.BackedUp]) that backup takes. */
+    /** Items not on the server yet (anything but [BackupStatus.BackedUp]) that backup takes; empty files aren't. */
     val notBackedUpCount: Int = totals?.notBackedUp ?: days.sumOf { day -> day.items.count(::waitsForBackup) }
 
     /** Size of [notBackedUpCount]'s items; counts only items whose size is known. */

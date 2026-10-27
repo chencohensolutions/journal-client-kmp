@@ -12,6 +12,12 @@ package com.chencohensolution.journal.library
  */
 internal object SourceNames {
     /**
+     * Bumped when these rules change, so the phone reads its library again whole once and its files are labelled by the
+     * new rules (StoredMediaLibrary). 2: IMG_/VID_ names need the time and no long app-made number (Oct 27, 2026).
+     */
+    const val RULES = 2
+
+    /**
      * How Android names screenshots, without the extension: Screenshot_2015-07-18-03-54-57, Screenshot_20220917_160207,
      * and since Samsung's One UI with the app on screen after the time: Screenshot_20240301_030715_Bumble,
      * Screenshot_20220603-144846_Bumble(1), Screenshot_20221115-220726_Bumble~20221117-191459 (the ~ and (1) are copies
@@ -60,9 +66,10 @@ internal object SourceNames {
     val CAMERA_NAMES: List<Regex> = listOf(
         Regex("""^DSC[F_]?\d{3,}""", RegexOption.IGNORE_CASE),
         Regex("""^\d{8}_\d{6}"""),
-        Regex("""^IMG_\d{8}""", RegexOption.IGNORE_CASE),
+        // IMG_ and VID_ need the time and no long app-made number after it: WorkersNet saves empty
+        // img_20260927_115615_2430005126935688329.jpg files in Pictures, which aren't camera photos (the server's cameraName).
+        Regex("""^(IMG|VID)_\d{8}_\d{6}(?!_\d{5})""", RegexOption.IGNORE_CASE),
         Regex("""^PXL_\d{8}""", RegexOption.IGNORE_CASE),
-        Regex("""^VID_\d{8}""", RegexOption.IGNORE_CASE),
         Regex("""^MOV_\d+""", RegexOption.IGNORE_CASE),
         Regex("""^CAM_?\d+""", RegexOption.IGNORE_CASE),
     )

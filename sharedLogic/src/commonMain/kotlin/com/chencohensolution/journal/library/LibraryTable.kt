@@ -73,6 +73,8 @@ internal class SourceCounts(
     val onDeviceBytes: Long,
     val waiting: Int,
     val waitingBytes: Long,
+    /** The phone's items that have bytes: what waits without backup (an empty file never does). */
+    val onDeviceFiles: Int = onDevice,
 )
 
 /**
@@ -86,15 +88,15 @@ internal fun libraryTotals(counts: List<SourceCounts>, uploadingBackedUp: List<P
     val sources = backup?.countedSources
     fun counted(source: MediaSource) = sources == null || source in sources
     val taken = counts.filter { counted(it.source) }
-    val again = uploadingBackedUp.filter { counted(it.first) }
+    val again = uploadingBackedUp.filter { counted(it.first) && (it.second ?: 0L) > 0 }
     val bySource = HashMap<MediaSource, SourceTotal>()
     fun add(source: MediaSource, total: SourceTotal) {
         bySource[source] = bySource[source]?.plus(total) ?: total
     }
-    counts.forEach { add(it.source, SourceTotal(it.items, if (!counted(it.source)) 0 else if (backup == null) it.onDevice else it.waiting)) }
+    counts.forEach { add(it.source, SourceTotal(it.items, if (!counted(it.source)) 0 else if (backup == null) it.onDeviceFiles else it.waiting)) }
     if (backup != null) again.forEach { add(it.first, SourceTotal(0, 1)) }
     return if (backup == null) {
-        LibraryTotals(counts.sumOf { it.items }, taken.sumOf { it.onDevice }, taken.sumOf { it.onDeviceBytes }, bySource)
+        LibraryTotals(counts.sumOf { it.items }, taken.sumOf { it.onDeviceFiles }, taken.sumOf { it.onDeviceBytes }, bySource)
     } else {
         LibraryTotals(
             counts.sumOf { it.items },
@@ -155,8 +157,8 @@ internal class LibraryTable(private val database: LibraryDatabase) {
      * Per source as the database spells it: the items, the phone's items and their bytes, and those the ledger doesn't
      * hold as uploaded as they are now (step 6d). [libraryTotals] makes backup's counts from them.
      */
-    fun backupCounts(): List<SourceCounts> = queries.backupCounts { source, items, onDevice, onDeviceBytes, waiting, waitingBytes ->
-        SourceCounts(MediaSource.of(source), items.toInt(), onDevice.toInt(), onDeviceBytes, waiting.toInt(), waitingBytes)
+    fun backupCounts(): List<SourceCounts> = queries.backupCounts { source, items, onDevice, onDeviceBytes, onDeviceFiles, waiting, waitingBytes ->
+        SourceCounts(MediaSource.of(source), items.toInt(), onDevice.toInt(), onDeviceBytes, waiting.toInt(), waitingBytes, onDeviceFiles.toInt())
     }.executeAsList()
 
     /** Those of [ids] that are phone items the ledger holds as uploaded as they are now, with their source and size. */
