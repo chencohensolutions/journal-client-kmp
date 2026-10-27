@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
-import com.chencohensolution.journal.server.CameraModel
+import com.chencohensolution.journal.server.CameraGroup
 import com.chencohensolution.journal.server.CamerasController
 import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.ServerLibrary
@@ -47,7 +47,7 @@ import java.text.NumberFormat
 
 internal class CamerasActions(
     /** The switch turned on (marks it the user's at once) or off (asks first). */
-    val setMine: (CameraModel, Boolean) -> Unit = { _, _ -> },
+    val setMine: (CameraGroup, Boolean) -> Unit = { _, _ -> },
     /** "Move": marks the camera being asked about not the user's. */
     val confirm: () -> Unit = {},
     val cancel: () -> Unit = {},
@@ -57,8 +57,8 @@ internal class CamerasActions(
 
 /**
  * Settings › Your cameras, opened: a [CamerasController] for this opening, and the camera whose "Mine" switch was
- * turned off and waits for its confirmation (kept by make and model across rotation). [onState] gets each state, for
- * Settings' row.
+ * turned off and waits for its confirmation (kept by name across rotation). [onState] gets each state, for Settings'
+ * row.
  */
 @Composable
 internal fun CamerasRoute(library: ServerLibrary, onState: (CamerasState) -> Unit, back: () -> Unit) {
@@ -67,15 +67,13 @@ internal fun CamerasRoute(library: ServerLibrary, onState: (CamerasState) -> Uni
     LaunchedEffect(controller) { controller.load() }
     val state by controller.state.collectAsStateWithLifecycle()
     LaunchedEffect(state) { onState(state) }
-    var asking by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
-    val confirming = asking?.let { (make, model) ->
-        (state as? CamerasState.Ready)?.cameras?.firstOrNull { it.make == make && it.model == model }
-    }
+    var asking by rememberSaveable { mutableStateOf<String?>(null) }
+    val confirming = asking?.let { name -> (state as? CamerasState.Ready)?.cameras?.firstOrNull { it.name == name } }
     CamerasScreen(
         state,
         confirming,
         CamerasActions(
-            setMine = { camera, mine -> if (mine) controller.setMine(camera, true) else asking = camera.make to camera.model },
+            setMine = { camera, mine -> if (mine) controller.setMine(camera, true) else asking = camera.name },
             confirm = {
                 confirming?.let { controller.setMine(it, false) }
                 asking = null
@@ -88,13 +86,13 @@ internal fun CamerasRoute(library: ServerLibrary, onState: (CamerasState) -> Uni
 }
 
 /**
- * Settings › Library › Your cameras: one card of every camera model, the most photos first, each with its photos and
- * years ("Samsung SM-S931B · 1,240 · 2025–2026") and a "Mine" switch. Turning one off asks first ([confirming]: "312
- * photos will move to Sent to you"); while the server moves them the row says "Moving 312 photos…" with a bar. See
- * docs/screens/settings.md.
+ * Settings › Library › Your cameras: one card of every camera, the most photos first (the models the app gives one name
+ * merged into one row), each with its photos and years ("Samsung Galaxy S25 · 8,542 · 2025–2026") and a "Mine" switch.
+ * Turning one off asks first ([confirming]: "312 photos will move to Sent to you"); while the server moves them the row
+ * says "Moving 312 photos…" with a bar. See docs/screens/settings.md.
  */
 @Composable
-internal fun CamerasScreen(state: CamerasState, confirming: CameraModel?, actions: CamerasActions) {
+internal fun CamerasScreen(state: CamerasState, confirming: CameraGroup?, actions: CamerasActions) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
@@ -159,7 +157,7 @@ internal fun CamerasScreen(state: CamerasState, confirming: CameraModel?, action
 
 /** A camera: its name, "1,240 · 2025–2026", whether it is sent to you, and "Mine"; while moving, how many are left. */
 @Composable
-private fun CameraRow(camera: CameraModel, saving: Boolean, actions: CamerasActions) {
+private fun CameraRow(camera: CameraGroup, saving: Boolean, actions: CamerasActions) {
     val format = NumberFormat.getIntegerInstance()
     Column(
         Modifier
@@ -206,7 +204,7 @@ private fun CameraRow(camera: CameraModel, saving: Boolean, actions: CamerasActi
 }
 
 /** "2025–2026", "2014"; null without years. */
-private fun years(camera: CameraModel): String? {
+private fun years(camera: CameraGroup): String? {
     val first = camera.firstYear ?: return null
     val last = camera.lastYear ?: first
     // Isolated left to right, so Hebrew doesn't turn "2021–2025" around.

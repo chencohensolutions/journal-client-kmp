@@ -40,7 +40,7 @@ data class CameraModel(
     /** Its files still being moved after the mark changed (to Sent to you, or back); 0 once all have. */
     val pending: Int,
 ) {
-    /** "Canon EOS 80D", "Samsung SM-S931B": what the screens call it. */
+    /** "Canon EOS 80D", "Samsung Galaxy S25": what the screens call it ([cameraName]). */
     val name: String get() = cameraName(make, model) ?: model
 
     /** The first and last year, or null without any. */
@@ -49,17 +49,69 @@ data class CameraModel(
 }
 
 /**
- * A camera's name from its tags: the model alone when it names the make already ("Canon" "Canon EOS 80D"), else the
- * make, with a capital, and the model ("samsung" "SM-S931B": "Samsung SM-S931B"). Null when both are empty.
+ * A camera's name from its tags, as the app shows it (the server keeps the tags as they are). A model the app knows
+ * ([CameraNames.models], matched ignoring case) has its whole name ("SM-S931B" and "Galaxy S25": "Samsung Galaxy S25";
+ * "Galaxy S25+" stays another camera). Else the make, spelled as the app spells it ("samsung" "Samsung", "LGE" "LG",
+ * "NIKON CORPORATION" "Nikon"), and the model, without the make it repeats ("NIKON D800": "Nikon D800"); a model with
+ * no make is shown alone ("iPhone 15 Pro"). Null when both are empty.
  */
 fun cameraName(make: String?, model: String?): String? {
     val m = make?.trim().orEmpty()
     val name = model?.trim().orEmpty()
-    return when {
-        name.isEmpty() && m.isEmpty() -> null
-        name.isEmpty() -> m.replaceFirstChar { it.uppercaseChar() }
-        m.isEmpty() || name.startsWith(m, ignoreCase = true) -> name
-        else -> m.replaceFirstChar { it.uppercaseChar() } + " " + name
+    CameraNames.models[name.lowercase()]?.let { return it }
+    if (m.isEmpty()) return name.ifEmpty { null }
+    val maker = CameraNames.make(m)
+    if (name.isEmpty()) return maker
+    for (repeated in listOf(m, maker)) {
+        if (!name.startsWith(repeated, ignoreCase = true)) continue
+        val rest = name.substring(repeated.length)
+        // "Canon EOS 80D": the make, then the rest; "LG-K420" names its make already, joined, and stays as tagged.
+        return when {
+            rest.isEmpty() -> maker
+            rest.startsWith(" ") -> maker + rest
+            else -> name
+        }
+    }
+    return "$maker $name"
+}
+
+/**
+ * One row of Settings › Your cameras: every model the app gives the same [name] ("Galaxy S25", "SM-S931B" and a
+ * "Galaxy S25" without a make are all "Samsung Galaxy S25"), as one camera. The server knows only the [members].
+ */
+data class CameraGroup(
+    /** "Samsung Galaxy S25". */
+    val name: String,
+    /** Its models as the server listed them, most files first; marking the camera marks each. */
+    val members: List<CameraModel>,
+) {
+    /** Its files, of every member. */
+    val files: Int get() = members.sumOf { it.files }
+
+    /** Of [files], those the server's import placed. */
+    val imported: Int get() = members.sumOf { it.imported }
+
+    /** The years any member's files were taken in, oldest first. */
+    val years: List<Int> get() = members.flatMap { it.years }.distinct().sorted()
+
+    /** The user's when every member is. */
+    val mine: Boolean get() = members.all { it.mine }
+
+    /** Every member was marked by the user. */
+    val marked: Boolean get() = members.all { it.marked }
+
+    /** Files still being moved, of every member. */
+    val pending: Int get() = members.sumOf { it.pending }
+
+    val firstYear: Int? get() = years.minOrNull()
+    val lastYear: Int? get() = years.maxOrNull()
+
+    companion object {
+        /** One group per name, the most files first. */
+        fun of(models: List<CameraModel>): List<CameraGroup> =
+            models.groupBy { it.name }
+                .map { (name, members) -> CameraGroup(name, members.sortedByDescending { it.files }) }
+                .sortedByDescending { it.files }
     }
 }
 
@@ -74,15 +126,18 @@ sealed interface CamerasState {
     data object Unreachable : CamerasState
 
     data class Ready(
-        /** Every model, most files first. */
-        val cameras: List<CameraModel>,
+        /** Every model as the server listed it (make and model exactly as tagged). */
+        val models: List<CameraModel>,
         /** A mark is on its way to the server; switches are ignored until it is back. */
         val saving: Boolean = false,
         /** The last mark didn't reach the server, and the switch went back. */
         val notChanged: Boolean = false,
     ) : CamerasState {
+        /** The rows: one per camera name, merging the models that share it, most files first. */
+        val cameras: List<CameraGroup> = CameraGroup.of(models)
+
         /** Files still being moved, of every model: "Moving 312 photos…". */
-        val pending: Int get() = cameras.sumOf { it.pending }
+        val pending: Int get() = models.sumOf { it.pending }
     }
 }
 
@@ -124,22 +179,30 @@ class CamerasController internal constructor(
     fun retry() = load()
 
     /**
-     * Marks [camera] (matched by make and model) as the user's or not. The switch moves at once; if the server doesn't
-     * take it, it goes back and the state says "not changed". Ignored while saving, and when it is marked so already.
+     * Marks [camera] (matched by name) as the user's or not: one setCamera per member, with its make and model exactly
+     * as the server gave them. The switch moves at once; if the server doesn't take every member, the state says "not
+     * changed" and shows what the server last answered. Ignored while saving, and when it is marked so already.
      */
-    fun setMine(camera: CameraModel, mine: Boolean) {
+    fun setMine(camera: CameraGroup, mine: Boolean) {
         val before = _state.value as? CamerasState.Ready ?: return
         if (before.saving) return
-        val current = before.cameras.firstOrNull { it.same(camera) } ?: return
+        val current = before.cameras.firstOrNull { it.name == camera.name } ?: return
         if (current.mine == mine && current.marked) return
         _state.value = before.copy(
-            cameras = before.cameras.map { if (it.same(camera)) it.copy(mine = mine, marked = true) else it },
+            models = before.models.map { if (it in current.members) it.copy(mine = mine, marked = true) else it },
             saving = true,
             notChanged = false,
         )
         saving = scope.launch {
-            val saved = withContext(NonCancellable) { library.setCamera(current, mine) }
-            _state.value = CamerasState.Ready(saved ?: before.cameras, notChanged = saved == null)
+            var latest: List<CameraModel>? = null
+            var failed = false
+            withContext(NonCancellable) {
+                for (member in current.members) {
+                    val saved = library.setCamera(member, mine)
+                    if (saved == null) failed = true else latest = saved
+                }
+            }
+            _state.value = CamerasState.Ready(latest ?: before.models, notChanged = failed)
             followPending()
         }
     }
@@ -154,7 +217,7 @@ class CamerasController internal constructor(
                 val cameras = library.cameras() ?: continue
                 val now = _state.value as? CamerasState.Ready ?: return@launch
                 // A mark on its way keeps its switch; the next answer has it.
-                if (!now.saving) _state.value = now.copy(cameras = cameras)
+                if (!now.saving) _state.value = now.copy(models = cameras)
                 if (cameras.sumOf { it.pending } == 0) {
                     library.syncAgain()
                     return@launch
@@ -171,9 +234,6 @@ class CamerasController internal constructor(
 
     /** The screen is gone: stops asking. Files the server moves meanwhile come with the library's next sync. */
     fun close() = scope.cancel()
-
-    private fun CameraModel.same(other: CameraModel) =
-        make.equals(other.make, ignoreCase = true) && model.equals(other.model, ignoreCase = true)
 
     private companion object {
         const val POLL_MILLIS = 3_000L

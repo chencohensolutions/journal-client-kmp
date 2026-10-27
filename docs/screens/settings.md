@@ -49,16 +49,26 @@ The pages, and what each holds:
   `HiddenCollections.hiddenOf` and `hiddenApps`). The same pills, box and line are the **Showing** sheets of Moments
   and Explore (`ShownSourcesPills.kt`, `ShowingSheet`). The row on the first page adds "Imported" while it shows.
 - **Your cameras** (a page under Library, Oct 27, 2026; Android only, iOS not built yet): a line on what it does,
-  then one card of every camera model the user's files name, the most photos first, each with its photos and years
-  ("Samsung SM-S931B · 1,240 · 2025–2026") and a **Mine** switch; a model marked not the user's also says "Its photos
-  are in Sent to you". Phones are named as their tags name them (`cameraName`). Turning a switch on marks the model
-  the user's at once; turning it off asks first in a dialog ("312 photos will move to Sent to you": they stay on the
-  server and in the app, under Sent to you instead of Camera; **Move** or Cancel). While the server moves a model's
+  then one card of every camera the user's files name, the most photos first, each with its photos and years
+  ("Samsung Galaxy S25 · 8,542 · 2025–2026") and a **Mine** switch; a camera marked not the user's also says "Its
+  photos are in Sent to you". **Names and merging are the phone's** (Oct 27, 2026, the owner's choice): the server
+  keeps each file's make and model exactly as its tags give them, and the app names them with its own table
+  (`CameraNames` in `CameraNames.kt`, easy to extend): a known model, matched ignoring case, has its whole name
+  ("SM-S931B" and "Galaxy S25" are "Samsung Galaxy S25", "SM-G781B" "Samsung Galaxy S20 FE 5G", "H8324" "Sony
+  Xperia XZ2 Compact", "LG-E450" "LG Optimus L5 II"); any other is its make, spelled as the app spells it ("samsung"
+  Samsung, "LGE" and "LG Electronics" LG, "NIKON CORPORATION" Nikon), and its model without the make it repeats
+  ("NIKON D800": "Nikon D800"). "Galaxy S25" and "Galaxy S25+" stay two cameras (the whole model must match, "+"
+  included). The models that get one name are one row (`CameraGroup`: "Galaxy S25", "SM-S931B" and a make-less
+  "Galaxy S25" together): its photos, imported photos and photos still moving summed, its years merged; **Mine** is on
+  only when every one of them is the user's. Turning a switch on marks the camera the user's at once, which sends one
+  `setCamera` per model with its make and model exactly as the server listed them; turning it off asks first in a
+  dialog with the whole camera's count ("312 photos will move to Sent to you": they stay on the server and in the
+  app, under Sent to you instead of Camera; **Move** or Cancel). While the server moves a model's
   files the row says "Moving 312 photos…" with a bar, and the page asks again every 3 seconds until none is left; the
   library then syncs, since each moved file comes again in the change feed. Under the card: "A camera you haven't
   marked counts as yours, so nothing moves until you choose." Loading, "Can't reach your server" with Try again, and
   "Not changed" (the switch goes back) as in Private settings. In the UI lab: `./scripts/ui-lab.sh cameras
-  current|confirm|moving` (made-up cameras, the move timed).
+  current|confirm|moving` (the owner's camera tags with made-up years, so the merging shows; the move timed).
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
@@ -394,8 +404,9 @@ indexes on the phone, to search without the server, offline too (journal-server-
   [CamerasScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/CamerasScreen.kt)
   (`CamerasRoute`: a `CamerasController` per opening and the camera waiting for its confirmation; `CamerasScreen`
   drawn from `CamerasState`), its row's line from the last list (asked when Settings opens; `LibraryApp.kt`). Shared:
-  `CamerasController`, `CamerasState`, `CameraModel` and `cameraName` in
-  [Cameras.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/Cameras.kt), over
+  `CamerasController`, `CamerasState`, `CameraModel`, `CameraGroup` and `cameraName` in
+  [Cameras.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/Cameras.kt), the names
+  in [CameraNames.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/CameraNames.kt), over
   `ServerLibrary.cameras` / `setCamera`;
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)

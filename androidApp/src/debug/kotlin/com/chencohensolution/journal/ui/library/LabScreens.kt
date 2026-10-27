@@ -201,8 +201,8 @@ internal val labScreens: List<LabScreen> = listOf(
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(
         current { CamerasLab(labCameras) },
-        LabOption("confirm", "Asking before moving", "\"312 photos will move to Sent to you\"") { CamerasLabConfirm() },
-        LabOption("moving", "Moving", "\"Moving 312 photos…\" on the row") { CamerasLabMoving() },
+        LabOption("confirm", "Asking before moving", "\"463 photos will move to Sent to you\" (the LG's two tags)") { CamerasLabConfirm() },
+        LabOption("moving", "Moving", "\"Moving 463 photos…\" on the row") { CamerasLabMoving() },
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
