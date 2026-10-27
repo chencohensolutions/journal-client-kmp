@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="private_b_everywhere">בכל המכשירים שלך</string>
+    <string name="private_b_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק.</string>
+    <string name="private_b_apps">אפליקציות ותיקיות</string>
+    <string name="private_b_sound">שמע</string>
+    <string name="private_b_screenshots_body">לפי האפליקציה שבה צולמו. מלא: מוצג.</string>
+    <string name="private_b_sent_body">תמונות ממצלמות שסימנת שאינן שלך, ב״המצלמות שלך״.</string>
+    <string name="private_b_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
+    <string name="private_b_all_shown">הכול מוצג</string>
+    <string name="private_b_hidden_all">מוסתר</string>
+    <string name="private_b_some_hidden">%1$s מתוך %2$s מוסתרים</string>
+    <string name="private_b_nudity_hidden">מוסתר מ־%1$d%%</string>
+    <string name="private_b_no_app">בלי שם אפליקציה</string>
+    <string name="private_b_voice_messages">הודעות קוליות</string>
+</resources>

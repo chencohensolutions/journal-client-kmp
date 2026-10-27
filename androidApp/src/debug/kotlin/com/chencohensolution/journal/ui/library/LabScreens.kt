@@ -50,6 +50,8 @@ internal val labScreens: List<LabScreen> = listOf(
                 back = {},
             )
         },
+        privateOptionA,
+        privateOptionB,
     )),
     LabScreen("recording", "A sound recording's page", listOf(
         current {
@@ -205,6 +207,28 @@ internal val labScreens: List<LabScreen> = listOf(
             )
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
+    )),
+    // Show in the app by kind (Oct 27, 2026): `current` with the owner's numbers as the app splits them today.
+    LabScreen("kinds", "Settings › Show in the app: kinds", listOf(
+        current {
+            val counts = mapOf(
+                com.chencohensolution.journal.library.MediaSource.CAMERA to 40_590,
+                com.chencohensolution.journal.library.MediaSource.WHATSAPP to 9_322,
+                com.chencohensolution.journal.library.MediaSource.SCREENSHOTS to 1_730,
+                com.chencohensolution.journal.library.MediaSource.OTHER to 480,
+                com.chencohensolution.journal.library.MediaSource.RECEIVED to 312,
+                com.chencohensolution.journal.library.MediaSource.folder("Dine-Out") to 49,
+                com.chencohensolution.journal.library.MediaSource.folder("Telegram") to 16,
+                com.chencohensolution.journal.library.MediaSource.folder("Petcube") to 13,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.CAMERA) to 38_410,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.WHATSAPP) to 10_378,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS) to 540,
+                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.folder("סרט צילום")) to 84,
+            )
+            SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
+        },
+        kindsOptionA,
+        kindsOptionB,
     )),
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(

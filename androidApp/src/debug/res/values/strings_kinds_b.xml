@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="kinds_b_intro">What this phone shows, by kind. Where some files of a kind are not on your server yet, it says how many.</string>
+    <string name="kinds_b_photos">Photos and videos</string>
+    <string name="kinds_b_sound">Sound</string>
+    <string name="kinds_b_voice_messages">Voice messages</string>
+    <string name="kinds_b_not_backed_up">%1$s not backed up</string>
+    <string name="kinds_b_hidden_everywhere">Some kinds are hidden on all your devices</string>
+</resources>
