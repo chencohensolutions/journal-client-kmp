@@ -32,8 +32,25 @@ The pages, and what each holds:
   (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
   `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`; the old id `whatsapp` there, and in
   `backup_sources` and `free_up_kept`, is read as the folder `folder:WhatsApp` it is since Oct 27, 2026, and written
-  so). Then **On all your devices**: the Hidden
-  collections row, for hiding on every device rather than this phone.
+  so). **Imported** (Android Oct 27, 2026, option b2 of the UI lab; iOS not built yet): after the phones' pills, one
+  **Imported · 42,867** pill (a box icon) for everything the server's import placed (`ShownSources.importedShown`,
+  kept as `show_imported`); while on, a tinted box under the pills, "Of what was imported", holds its kinds as smaller
+  pills (Camera, WhatsApp, Screenshots, Other, an imported folder), each switched on its own. Every count is only what
+  reaches this phone. While Other is among the pills, a line says what it is: "Other: files whose name and folder
+  say nothing: downloads, saved images, files from a computer." Then a line on **Private settings** with "Private
+  settings ›" (opens it, behind the lock). Until Private settings was opened in this run of the app it says "Private
+  settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this
+  phone and aren't counted here."; once it was (`ServerLibrary.hiddenEverywhere`, never asked for by this page),
+  a source it hides whole (an app such as WhatsApp) is a dimmed pill with a lock that opens Private settings, one it
+  hides in part (screenshots of hidden apps) has a lock after its count, and the line reads "🔒 Hidden on all your
+  devices: WhatsApp, 1,640 more Screenshots. Not counted here." (`ShownSourcesPills`, shared, from
+  `HiddenCollections.hiddenOf` and `hiddenApps`). The same pills, box and line are the **Showing** sheets of Moments
+  and Explore (`ShownSourcesPills.kt`, `ShowingSheet`). The row on the first page adds "Imported" while it shows.
+- **Your cameras** (not built; UI lab round open, Oct 27, 2026: `./scripts/ui-lab.sh cameras a|b|c`, each with
+  `-confirm` and `-moving`): a page under Library listing every camera model with its photos and years ("Galaxy S25 ·
+  1,240 · 2025–2026") and a way to mark it not the user's ("312 photos will move to Sent to you", then "Moving 312
+  photos…" while the server moves them). The shared part is built: `CamerasController` (`cameras`, `setCamera`,
+  asking again while `pending`, then a library sync), `CameraModel`, `ServerFeatures.cameras`.
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
@@ -132,7 +149,7 @@ The pages, and what each holds:
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
 - **Privacy** (on the first page; both platforms; iOS since Oct 21, 2026): one row with a lock, **Private settings**
-  (called Hidden collections until Oct 25, 2026), "Private media, nudity, sound recordings, WhatsApp and screenshots by
+  (called Hidden collections until Oct 25, 2026), "Private media, nudity, sound recordings, apps and screenshots by
   app", see below. **Show private media** moved into that screen (Android Oct 25, 2026; iOS Oct 26, 2026). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
 - **Hidden collections** (its own screen, asked for Oct 22, 2026; both platforms): opens only after the phone's lock
@@ -149,11 +166,18 @@ The pages, and what each holds:
   **Sound recordings** (Android Oct 25, 2026, iOS Oct 26, 2026; on a server that has them): **Show recordings**, **Show phone calls**
   and **Show WhatsApp voice messages**, each with how many there are, all **off** at first (here on means shown,
   unlike the other switches). Shown ones appear in [Moments](moments.md).
-  **WhatsApp**: "All WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
-  N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Bumble 1,458"; on Android
+  **Apps** (Android Oct 27, 2026; iOS still has the WhatsApp switch, see [ios-todo](../ios-todo.md)): every app and
+  folder the server lists (`HiddenCollections.apps`: WhatsApp, Telegram, Signal, Petcube…; WhatsApp became a folder
+  like the others that day), most files first, a switch each ("WhatsApp · 3,412 photos and videos"; on means hidden),
+  five until **Show all N** (a hidden one stays in view), and a line: everything an app saved, and each folder on
+  the phones; their screenshots are under Screenshots. Sent as `apps` in `setHiddenCollections` (`whatsapp` is left
+  out; an older app's `whatsapp` still works on the server). Before Oct 27 it was one **WhatsApp** switch, "All
+  WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
+  N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Screenshots in Bumble
+  1,458" since Oct 27, 2026, so a screenshot's pill is never just an app's name, which reads as all its files; on Android
   since Oct 25, 2026 and iOS since Oct 26, 2026, a switch per app before that). A pill is filled with a check while its app's
   screenshots are **shown**, outlined while hidden; tapping it switches. The list is folded at first: **Apps** "5 of 6
-  shown" with only the shown apps' pills; tapping the row opens it with every app, **Find an app** and a hint. On means hidden. The list and the choice live on the server (`hiddenCollections`,
+  shown" (since Oct 27, 2026 **Screenshots taken in…**) with only the shown apps' pills; tapping the row opens it with every app, **Find an app** and a hint. On means hidden. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if
   the server can't be reached the switch goes back with "Not changed: can't reach your server". The library syncs
   once, when the screen is left (`HiddenCollectionsController.close` → `ServerLibrary.syncAgain`), not after each

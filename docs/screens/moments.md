@@ -11,9 +11,13 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   a chip per source ran far off the screen): one row that scrolls sideways. First **+N**, the sources hidden ("+2"; a
   plus alone while none is), then a filled chip with a ✓ and its count for each source **shown** that has photos, the
   most photos first ("✓ Camera 1,240", "✓ Petcube 5"; a folder or app by its name with a folder icon). Tapping a chip
-  hides its source and it leaves the row. **+N** opens the **Showing** sheet: every source as a pill with its count,
-  the most photos first, filled when shown, tapped to show or hide (also a hidden folder with no photos left). Shared:
-  `MomentsFeed.bar`, `hiddenCount`, `sheet`. Everything but WhatsApp and Screenshots is shown at first (those two off
+  hides its source and it leaves the row. After the phones' chips, one **Imported** chip with a box icon and the count
+  of what was imported and shows (Android Oct 27, 2026, option b2 of the UI lab; `MomentsFeed.importedCount`, none
+  while Imported is off or nothing imported shows; tapping it turns Imported off, which "+N" then counts as one). What
+  Private settings hides on every device never has a chip and isn't in "+N": none of it reaches the phone. **+N**
+  opens the **Showing** sheet: Show in the app's pills, Imported's kinds and its Private settings line, as in
+  [Settings › Show in the app](settings.md) (also a hidden folder with no photos left). Shared:
+  `MomentsFeed.bar`, `hiddenCount`, `sheet`, `importedCount`, `hasImported`, `ShownSourcesPills`. Everything but WhatsApp and Screenshots is shown at first (those two off
   for everyone since Oct 21, 2026), and a folder seen for the first time is shown. Settings › Show in the app › **Filter bar in
   Moments** turns the bar off (Oct 24, 2026). It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
   everywhere (`ShownSources`, kept as `hidden_sources`; an older `shown_sources` or `feed_sources` keeps its choice).
