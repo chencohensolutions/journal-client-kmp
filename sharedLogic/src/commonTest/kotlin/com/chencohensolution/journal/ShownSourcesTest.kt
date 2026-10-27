@@ -132,8 +132,34 @@ class ShownSourcesTest {
     }
 
     @Test
+    fun foldersKeptWithCapitalsAreReadAndWrittenInLowerCase() {
+        // Until Oct 27, 2026 folder ids kept their folder's case ("folder:WhatsApp", "folder:Petcube").
+        val store = ShownTestStore().apply {
+            values["hidden_sources"] = "folder:WhatsApp,folder:Petcube"
+            values["show_imported"] = "true"
+            values["backup_sources"] = "camera,folder:Petcube,folder:PETCUBE"
+            values["free_up_kept"] = "folder:Telegram"
+            values["always_shown_days"] = "2026-10-04:folder:Petcube"
+        }
+        val settings = JournalSettings(store)
+        val petcube = MediaSource.folder("petcube")
+        assertEquals(setOf(MediaSource.WHATSAPP, petcube), settings.shownSources.hidden)
+        assertTrue(settings.shownSources.shows(OCT_4, petcube))
+        assertEquals(setOf(MediaSource.CAMERA, petcube), settings.backup.sources)
+        assertEquals(setOf(MediaSource.folder("telegram")), settings.freeUpKept)
+
+        settings.shownSources = settings.shownSources
+        settings.backup = settings.backup
+        settings.freeUpKept = settings.freeUpKept
+        assertEquals("folder:petcube,folder:whatsapp", store.values["hidden_sources"])
+        assertEquals("camera,folder:petcube", store.values["backup_sources"])
+        assertEquals("folder:telegram", store.values["free_up_kept"])
+        assertEquals("2026-10-04:folder:petcube", store.values["always_shown_days"])
+    }
+
+    @Test
     fun whatsAppKeptByItsOldIdIsTheWhatsAppFolderAndIsWrittenTheNewWay() {
-        // Until Oct 27, 2026 WhatsApp was the fixed source "whatsapp"; now it is the folder "folder:WhatsApp".
+        // Until Oct 27, 2026 WhatsApp was the fixed source "whatsapp"; now it is the folder "folder:whatsapp" (until the same day "folder:WhatsApp"), and folders are kept in lower case.
         val store = ShownTestStore().apply {
             values["hidden_sources"] = "whatsapp,screenshots"
             values["show_imported"] = "true"
@@ -152,10 +178,10 @@ class ShownSourcesTest {
         settings.shownSources = shown
         settings.backup = settings.backup
         settings.freeUpKept = settings.freeUpKept
-        assertEquals("screenshots,folder:WhatsApp", store.values["hidden_sources"])
-        assertEquals("camera,folder:WhatsApp", store.values["backup_sources"])
-        assertEquals("folder:WhatsApp", store.values["free_up_kept"])
-        assertEquals("2026-10-04:folder:WhatsApp", store.values["always_shown_days"])
+        assertEquals("screenshots,folder:whatsapp", store.values["hidden_sources"])
+        assertEquals("camera,folder:whatsapp", store.values["backup_sources"])
+        assertEquals("folder:whatsapp", store.values["free_up_kept"])
+        assertEquals("2026-10-04:folder:whatsapp", store.values["always_shown_days"])
         assertEquals(shown, JournalSettings(store).shownSources)
 
         // Sent to you shows at first; WhatsApp and screenshots don't.

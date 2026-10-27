@@ -97,7 +97,8 @@ class FeedTest {
         assertEquals(MediaSource.CAMERA, sourceOfFolder("DCIM/"))
         assertEquals(MediaSource.CAMERA, sourceOfFolder("DCIM/camera/"))
         assertEquals(MediaSource.folder("Flowers"), sourceOfFolder("DCIM/Flowers/"))
-        assertEquals("Flowers", sourceOfFolder("DCIM/Flowers/2024/").folder)
+        assertEquals("flowers", sourceOfFolder("DCIM/Flowers/2024/").folder)
+        assertEquals("Flowers", sourceOfFolder("DCIM/Flowers/2024/").folderName)
         assertEquals(MediaSource.folder("ספירלה יום"), sourceOfFolder("DCIM/ספירלה יום/"))
         // So is a folder an app saves into, wherever it is; the same name is one source.
         assertEquals(MediaSource.folder("Petcube"), sourceOfFolder("Movies/Petcube/"))
@@ -136,7 +137,7 @@ class FeedTest {
             listOf(MediaSource.CAMERA, MediaSource.SCREENSHOTS, flowers, petcube, MediaSource.OTHER),
             MediaSource.choices(setOf(petcube, MediaSource.OTHER), setOf(flowers)),
         )
-        assertEquals("folder:Flowers", flowers.id)
+        assertEquals("folder:flowers", flowers.id)
         assertEquals(flowers, MediaSource.parse("folder:Flowers"))
         assertEquals(MediaSource.CAMERA, MediaSource.parse("camera"))
         // What Settings and the server kept before folders.

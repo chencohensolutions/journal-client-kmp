@@ -209,6 +209,8 @@
     <string name="feed_source_screenshots">צילומי מסך</string>
     <string name="feed_source_received">נשלח אליך</string>
     <string name="feed_source_other">אחר</string>
+    <string name="feed_source_call">שיחות</string>
+    <string name="feed_source_recording">הקלטות קול</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
     <plurals name="feed_more_sources">

@@ -89,6 +89,7 @@ class SoundBackupTest {
         assertEquals("audio/flac", request.mimeType)
         assertEquals(MediaType.AUDIO, request.kind)
         assertTrue(request.isCall, "a file of a calls folder is sent as a call")
+        assertEquals("call", request.source, "with the source call, the folder kind the user chose (Settings › Backup)")
         assertEquals(wavSha, request.encodedFrom?.sha256)
         assertEquals(listOf("Call recording 0501234567_251025_101500.flac"), files.discarded)
         assertTrue(files.replaced.isEmpty(), "the WAV stays: keep WAV is the default")
@@ -140,7 +141,7 @@ class SoundBackupTest {
         assertEquals(2, result.uploaded)
         val bySource = server.requests.values.associate { it.fileName to it.source }
         assertEquals("folder:WhatsApp", bySource["PTT-20251025-WA0001.opus"])
-        assertEquals("folder:Voice Recorder", bySource["20251025_101500.m4a"])
+        assertEquals("recording", bySource["20251025_101500.m4a"])
         assertEquals("audio/ogg", server.requests.values.first { it.fileName.endsWith(".opus") }.mimeType)
     }
 
@@ -178,7 +179,7 @@ class SoundBackupTest {
         assertEquals(listOf(calls, recorder.copy(enabled = false)), read.soundFolders)
         assertEquals(KeepOnPhone.FLAC, read.keepOnPhone)
         assertTrue(store.values.getValue("backup_sound_folders").startsWith("{\"v\":1"))
-        assertEquals(MediaSource.folder("Call"), calls.source)
+        assertEquals(MediaSource.CALL, calls.source)
         assertNotNull(SoundIds.treeOf(SoundIds.of(calls, "doc")))
         assertEquals(calls.treeUri, SoundIds.treeOf(SoundIds.of(calls, "content://doc/a%7Cb")))
     }

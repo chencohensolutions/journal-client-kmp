@@ -145,8 +145,8 @@ class HiddenCollectionsTest {
         assertEquals(HiddenCollections.OfSource(false, 6), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS))
         assertEquals(HiddenCollections.OfSource(false, 3), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS)))
         assertEquals(HiddenCollections.OfSource(false, 0), choice.hiddenOf(com.chencohensolution.journal.library.MediaSource.CAMERA))
-        assertEquals(listOf("folder:WhatsApp"), choice.hiddenApps(imported = false).map { it.id })
-        assertEquals(listOf("import:folder:WhatsApp"), choice.hiddenApps(imported = true).map { it.id })
+        assertEquals(listOf("folder:whatsapp"), choice.hiddenApps(imported = false).map { it.id })
+        assertEquals(listOf("import:folder:whatsapp"), choice.hiddenApps(imported = true).map { it.id })
     }
 
     @Test

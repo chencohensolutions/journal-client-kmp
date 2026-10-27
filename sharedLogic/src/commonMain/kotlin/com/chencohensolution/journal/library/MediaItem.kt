@@ -71,23 +71,36 @@ sealed interface BackupStatus {
  */
 class MediaSource private constructor(
     /**
-     * "camera", "screenshots", "received", "other", or a folder ("folder:WhatsApp", "folder:Petcube"); what the server's
-     * import placed is "import:" and one of those ("import:camera", "import:folder:Telegram"). What Settings keeps and
-     * the server is told.
+     * "camera", "screenshots", "received", "other", "call" and "recording" (sound recordings), or a folder, "folder:"
+     * and its name in lower case ("folder:whatsapp", "folder:petcube"); what the server's import placed is "import:"
+     * and one of those ("import:camera", "import:folder:telegram"). What Settings keeps and the server is told. Folder
+     * ids are in lower case since Oct 27, 2026, as the server's, so folders that differ only by case are one.
      */
     val id: String,
 ) : Comparable<MediaSource> {
-    /** The folder's name for a folder ("Flowers", "Petcube", "WhatsApp"); null for the fixed and the imported sources. */
+    /** The folder's name for a folder, in lower case ("flowers", "petcube", "whatsapp"); null for the others. */
     val folder: String? get() = if (id.startsWith(FOLDER)) id.removePrefix(FOLDER) else null
 
+    /** How a folder is shown ("Flowers", "Petcube", "WhatsApp": see [FolderNames]); null for the others. */
+    val folderName: String? get() = folder?.let(FolderNames::nameOf)
+
     /**
-     * Whether the server's import placed it ("import:folder:WhatsApp"), rather than a phone uploading it: kept apart
+     * The id with the folder spelled as the phone saw it ("folder:Petcube"), for what the phone keeps of its own files,
+     * so the spelling outlives a restart ([FolderNames.saw]); [parse] reads it as [id].
+     */
+    internal val spelledId: String get() = folder?.let { FOLDER + FolderNames.spelling(it) } ?: id
+
+    /** A sound recording's own kind: [CALL] or [RECORDING]. Never offered with the photos' sources. */
+    val isSound: Boolean get() = this == CALL || this == RECORDING
+
+    /**
+     * Whether the server's import placed it ("import:folder:whatsapp"), rather than a phone uploading it: kept apart
      * from the phones' folders, under "Imported" in Show in the app (asked Oct 27, 2026).
      */
     val isImported: Boolean get() = id.startsWith(IMPORT)
 
     /**
-     * What it is of: Camera for "import:camera", the folder Telegram for "import:folder:Telegram", the source itself for
+     * What it is of: Camera for "import:camera", the folder Telegram for "import:folder:telegram", the source itself for
      * one that isn't imported.
      */
     val kind: MediaSource get() = if (isImported) parse(id.removePrefix(IMPORT))?.takeUnless { it.isImported } ?: OTHER else this
@@ -101,13 +114,15 @@ class MediaSource private constructor(
      * after them in the same order: the order every screen lists them in.
      */
     override fun compareTo(other: MediaSource): Int =
-        compareValuesBy(this, other, { it.rank }, { it.kind.folder?.lowercase() }, { it.kind.folder })
+        compareValuesBy(this, other, { it.rank }, { it.kind.folder })
 
-    private val rank: Int get() = if (isImported) 5 + kind.rank else when (this) {
+    private val rank: Int get() = if (isImported) 10 + kind.rank else when (this) {
         CAMERA -> 0
         SCREENSHOTS -> 1
         RECEIVED -> 2
         OTHER -> 4
+        CALL -> 5
+        RECORDING -> 6
         else -> 3
     }
 
@@ -120,10 +135,10 @@ class MediaSource private constructor(
 
         /**
          * Received in WhatsApp, in any of its folders or named as WhatsApp names what it saves. A folder like any other
-         * app's since Oct 27, 2026 (the owner's choice); before, it was the fixed source "whatsapp", which [parse] still
-         * reads as this.
+         * app's since Oct 27, 2026 (the owner's choice); before, it was the fixed source "whatsapp", and then
+         * "folder:WhatsApp", which [parse] still reads as this. A sound recording of it is a voice message.
          */
-        val WHATSAPP = MediaSource(FOLDER + "WhatsApp")
+        val WHATSAPP = MediaSource(FOLDER + "whatsapp")
 
         /** Screenshots and screen recordings, wherever they are kept. */
         val SCREENSHOTS = MediaSource("screenshots")
@@ -137,8 +152,20 @@ class MediaSource private constructor(
         /** Files whose folder and app say nothing: loose in Pictures or Download by an unknown app, synced from a computer. */
         val OTHER = MediaSource("other")
 
+        /**
+         * A recorded phone call: a sound recording from a folder the user merged into calls (Settings › Sound folders),
+         * or from a folder of calls this phone backs up (Settings › Backup). Only sound recordings have it.
+         */
+        val CALL = MediaSource("call")
+
+        /** A voice recording: as [CALL], from a folder merged into recordings, or a folder of recordings this phone backs up. */
+        val RECORDING = MediaSource("recording")
+
         /** The fixed sources, in their order. */
         val FIXED: List<MediaSource> = listOf(CAMERA, SCREENSHOTS, RECEIVED, OTHER)
+
+        /** The sound recordings' own sources; never offered with the photos'. */
+        val SOUND: List<MediaSource> = listOf(CALL, RECORDING)
 
         /** The fixed sources every screen offers even without photos; Sent to you only once it has some. */
         private val OFFERED: List<MediaSource> = listOf(CAMERA, SCREENSHOTS, OTHER)
@@ -153,27 +180,30 @@ class MediaSource private constructor(
         val IMPORTED: List<MediaSource> = FIXED.map(::imported)
 
         /**
-         * A folder by its name; one named like a fixed source ("Camera", "Screenshots") is that source, and an app the
-         * name table knows is spelled as it spells it ("whatsapp" is "WhatsApp", see [SourceNames]).
+         * A folder by its name, its id in lower case ("Petcube" is "folder:petcube"); one named like a fixed source
+         * ("Camera", "Screenshots") is that source. The name as given is kept to show it by ([FolderNames.saw]), after
+         * the name table's spelling of an app and the server's name.
          */
         fun folder(name: String): MediaSource {
             val trimmed = name.trim()
             if (trimmed.isEmpty()) return OTHER
             NAMED.firstOrNull { it.id.equals(trimmed, ignoreCase = true) }?.let { return it }
-            return MediaSource(FOLDER + (SourceNames.appSpelling(trimmed) ?: trimmed))
+            FolderNames.saw(trimmed)
+            return MediaSource(FOLDER + trimmed.lowercase())
         }
 
         /**
-         * The source an [id] names, or null if it names none. Also takes the names the sources had before folders
-         * ("CAMERA", "WHATSAPP"), which Settings kept until Oct 24, 2026, and "whatsapp" as it was until Oct 27, 2026
-         * (now the folder WhatsApp), so settings kept the old way keep their meaning and are written the new way.
+         * The source an [id] names, in any case, or null if it names none. Also takes the names the sources had before
+         * folders ("CAMERA", "WHATSAPP"), which Settings kept until Oct 24, 2026, "whatsapp" as it was until Oct 27, 2026
+         * (now the folder WhatsApp), and folders in any case ("folder:WhatsApp", as ids were until Oct 27, 2026), so
+         * settings kept the old way keep their meaning and are written the new way.
          */
         fun parse(id: String): MediaSource? = when {
             id.startsWith(IMPORT, ignoreCase = true) ->
                 parse(id.substring(IMPORT.length))?.takeUnless { it.isImported }?.let(::imported)
             id.startsWith(FOLDER, ignoreCase = true) -> folder(id.substring(FOLDER.length))
             id.equals(OLD_WHATSAPP, ignoreCase = true) -> WHATSAPP
-            else -> FIXED.firstOrNull { it.id.equals(id, ignoreCase = true) }
+            else -> (FIXED + SOUND).firstOrNull { it.id.equals(id, ignoreCase = true) }
         }
 
         /**
@@ -189,14 +219,15 @@ class MediaSource private constructor(
 
         /**
          * What a screen offers: Camera, Screenshots and Other, then [present] (those with photos) and [chosen] ones, in
-         * order. The imported ones are offered apart, under Imported ([importedChoices]).
+         * order. The imported ones are offered apart, under Imported ([importedChoices]); the sound recordings' own
+         * ([SOUND]) never.
          */
         fun choices(present: Set<MediaSource>, chosen: Set<MediaSource> = emptySet()): List<MediaSource> =
-            (OFFERED + present + chosen).filterNot { it.isImported }.distinct().sorted()
+            (OFFERED + present + chosen).filterNot { it.isImported || it.kind.isSound }.distinct().sorted()
 
         /**
          * The kinds Imported offers, the most photos in [counts] first (ties in order): Camera, Screenshots and Other and
-         * every imported kind with photos ("import:folder:WhatsApp"), once anything imported has photos, else none (a
+         * every imported kind with photos ("import:folder:whatsapp"), once anything imported has photos, else none (a
          * server without imports shows no Imported).
          */
         fun importedChoices(counts: Map<MediaSource, Int>): List<MediaSource> {

@@ -105,7 +105,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
     /**
      * Sources kept as their ids with commas between ([MediaSource.id]; a folder's name may have a comma, kept as
      * "%2C"). Ids of the sources before folders ("CAMERA") are read too, and "whatsapp" as the folder WhatsApp it is
-     * since Oct 27, 2026 (written back as "folder:WhatsApp"); an unknown one is skipped.
+     * since Oct 27, 2026, and folders in any case ("folder:WhatsApp", "folder:Petcube"), all written back in lower case
+     * ("folder:whatsapp"); an unknown one is skipped.
      */
     private fun sourcesOf(stored: String): Set<MediaSource> =
         stored.split(",").filter { it.isNotEmpty() }.mapNotNull { MediaSource.parse(unescape(it)) }.toSet()

@@ -229,7 +229,7 @@ class CamerasTest {
         // Before Private settings is opened, nothing is known of it.
         val before = ShownSourcesPills.of(shown, counts, hidden = null)
         assertEquals(false, before.privateKnown)
-        assertEquals(listOf("camera", "screenshots", "folder:Petcube", "folder:WhatsApp", "other"), before.fromPhones.map { it.source.id })
+        assertEquals(listOf("camera", "screenshots", "folder:petcube", "folder:whatsapp", "other"), before.fromPhones.map { it.source.id })
         assertTrue(before.fromPhones.none { it.allHiddenEverywhere || it.hiddenEverywhere > 0 })
 
         val hidden = HiddenCollections(

@@ -371,7 +371,7 @@ private fun OriginalCard(
 private fun sourceFacts(item: MediaItem, camera: String?): List<Pair<String, String>> {
     val kind = item.source.kind
     val imported = stringResource(R.string.sources_imported).takeIf { item.source.isImported }
-    val from = kind.folder?.let { folder -> stringResource(R.string.library_info_saved_in) to listOfNotNull(folder, imported).joinToString(" · ") }
+    val from = kind.folderName?.let { folder -> stringResource(R.string.library_info_saved_in) to listOfNotNull(folder, imported).joinToString(" · ") }
         ?: (stringResource(R.string.library_info_source) to listOfNotNull(sourceName(kind), imported).joinToString(" · "))
     return listOfNotNull(from, camera?.let { stringResource(R.string.library_info_camera) to it })
 }

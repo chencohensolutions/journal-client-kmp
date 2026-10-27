@@ -9,7 +9,21 @@ enum class AudioKind {
     CALL,
 
     /** A WhatsApp voice message. */
-    VOICE_MESSAGE,
+    VOICE_MESSAGE;
+
+    companion object {
+        /**
+         * The kind of a sound recording with [source], as the server's collections have it: by the source first (call is
+         * a call, recording a recording, WhatsApp a voice message: the server's sound kinds and the folders the user
+         * merged into them, since Oct 27, 2026), then a call by what the server read of it ([isCall]), else a recording.
+         */
+        fun of(source: MediaSource, isCall: Boolean): AudioKind = when (source.kind) {
+            MediaSource.CALL -> CALL
+            MediaSource.RECORDING -> RECORDING
+            MediaSource.WHATSAPP -> VOICE_MESSAGE
+            else -> if (isCall) CALL else RECORDING
+        }
+    }
 }
 
 /**

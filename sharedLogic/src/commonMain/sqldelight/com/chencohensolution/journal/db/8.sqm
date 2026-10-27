@@ -14,3 +14,10 @@ ALTER TABLE device_item ADD COLUMN folder TEXT;
 -- library is made again.
 DELETE FROM sync_state WHERE name IN ('server_cursor', 'device_mark');
 INSERT OR IGNORE INTO library_dirty VALUES ('*', '');
+
+-- How the server names each folder source ("folder:calls" is "Calls"), from its folderNames: folder ids are in lower
+-- case since Oct 27, 2026.
+CREATE TABLE server_folder_name (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);

@@ -3,6 +3,9 @@ package com.chencohensolution.journal.server
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.CamerasQuery
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.FolderNamesQuery
+import com.chencohensolution.journal.graphql.SetSoundFolderMutation
+import com.chencohensolution.journal.graphql.SoundFoldersQuery
 import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
@@ -15,6 +18,7 @@ import com.chencohensolution.journal.graphql.type.MediaKind
 import com.chencohensolution.journal.db.LibraryDatabase
 import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
+import com.chencohensolution.journal.library.FolderNames
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -58,7 +62,7 @@ data class ServerMedia(
     val durationMillis: Long? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    /** camera, screenshots, received, other, or a folder ("folder:WhatsApp"): see [MediaSource]. */
+    /** camera, screenshots, received, other, call, recording, or a folder ("folder:whatsapp"): see [MediaSource]. */
     val source: String? = null,
     val uploadedAt: String,
     /** The server's nudity scan, 0 to 1; null until scanned. The server hides what scores high (see HiddenCollections). */
@@ -99,11 +103,7 @@ data class ServerMedia(
         val mediaSource = MediaSource.of(source)
         return SoundRecording(
             sha256 = sha256,
-            kind = when {
-                isCall -> AudioKind.CALL
-                mediaSource == MediaSource.WHATSAPP -> AudioKind.VOICE_MESSAGE
-                else -> AudioKind.RECORDING
-            },
+            kind = AudioKind.of(mediaSource, isCall),
             startMillis = taken?.millis ?: 0,
             day = taken?.day ?: LocalDay(1970, 1, 1),
             durationMillis = durationMillis ?: 0,
@@ -479,7 +479,7 @@ class ServerLibrary internal constructor(
     }
 
     /** Every camera model the user's files name, most files first; null when the server couldn't be reached or refused. */
-    suspend fun cameras(): List<CameraModel>? = cameraCall { apollo ->
+    suspend fun cameras(): List<CameraModel>? = serverCall { apollo ->
         val response = apollo.query(CamerasQuery()).execute()
         response.exception?.let { throw it }
         response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
@@ -490,19 +490,58 @@ class ServerLibrary internal constructor(
      * Marks [camera] as the user's ([mine]) or not, and answers with every model, or null when the server couldn't be
      * reached or refused. The model's files then move on the server in the background ([CameraModel.pending]).
      */
-    suspend fun setCamera(camera: CameraModel, mine: Boolean): List<CameraModel>? = cameraCall { apollo ->
+    suspend fun setCamera(camera: CameraModel, mine: Boolean): List<CameraModel>? = serverCall { apollo ->
         val response = apollo.mutation(SetCameraMutation(camera.make, camera.model, mine)).execute()
         response.exception?.let { throw it }
         response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
         response.data?.setCamera?.map { it.cameraModelFields.toCameraModel() }
     }
 
-    private suspend fun cameraCall(call: suspend (com.apollographql.apollo.ApolloClient) -> List<CameraModel>?): List<CameraModel>? = try {
+    /**
+     * Every folder the user's sound recordings came from, most files first, with the user's mark on each; null when the
+     * server couldn't be reached or refused.
+     */
+    suspend fun soundFolders(): List<ServerSoundFolder>? = serverCall { apollo ->
+        val response = apollo.query(SoundFoldersQuery()).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.soundFolders?.map { it.soundFolderFields.toSoundFolder() }
+    }
+
+    /**
+     * Merges the sound folder [id] into calls or recordings ([mark]), or takes the mark back ([SoundFolderMark.NONE]),
+     * and answers with every sound folder, or null when the server couldn't be reached or refused. The folder's files
+     * then move on the server in the background ([ServerSoundFolder.pending]).
+     */
+    suspend fun setSoundFolder(id: String, mark: SoundFolderMark): List<ServerSoundFolder>? = serverCall { apollo ->
+        val response = apollo.mutation(SetSoundFolderMutation(id, mark.toInput())).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        response.data?.setSoundFolder?.map { it.soundFolderFields.toSoundFolder() }
+    }
+
+    private suspend fun <T> serverCall(call: suspend (com.apollographql.apollo.ApolloClient) -> T?): T? = try {
         http.graphql(call)
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
         null
+    }
+
+    /**
+     * Asks the server how it names each folder source ([FolderNames]), from a server that names them
+     * ([ServerFeatures.soundFolders]), and keeps the answer in the database; offline, the names kept stay.
+     */
+    private suspend fun refreshFolderNames() {
+        if (_features.value?.soundFolders != true) return
+        val names = serverCall { apollo ->
+            val response = apollo.query(FolderNamesQuery()).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            response.data?.folderNames?.associate { it.id to it.name }
+        } ?: return
+        withContext(io) { store.keepFolderNames(names) }
+        FolderNames.setServer(names)
     }
 
     /**
@@ -541,6 +580,7 @@ class ServerLibrary internal constructor(
                     if (page.hasMore || _syncProgress.value != null) _syncProgress.value = SyncProgress(done, done + page.remaining)
                 } while (page.hasMore)
             }
+            refreshFolderNames()
         } finally {
             _syncProgress.value = null
             if (changed || hiddenChanged) withContext(NonCancellable) { publish(media = changed, hidden = hiddenChanged) }
@@ -591,6 +631,7 @@ class ServerLibrary internal constructor(
             cursor = store.cursor()
             holdsPrivate = store.holdsPrivate() ?: showPrivateAtStart().also { store.holdPrivate(it) }
             store.keepMadeUp(madeUp)
+            FolderNames.setServer(store.folderNames())
         }
         publish(media = true, hidden = true)
         _loaded.value = true

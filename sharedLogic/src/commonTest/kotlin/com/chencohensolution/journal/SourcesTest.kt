@@ -1,5 +1,7 @@
 package com.chencohensolution.journal
 
+import com.chencohensolution.journal.library.AudioKind
+import com.chencohensolution.journal.library.FolderNames
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.sourceOfAsset
 import com.chencohensolution.journal.library.sourceOfFolder
@@ -7,6 +9,7 @@ import com.chencohensolution.journal.server.ServerMedia
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The cases the server's rule is tested over too (media.SourceOf's table test in journal-server-go): each a file's path
@@ -31,9 +34,9 @@ internal val SOURCE_FIXTURES: List<Pair<String, String>> = listOf(
     "DCIM/DSC_20190928033805229/x.jpg" to "camera",
     "Pictures/2019trip/x.jpg" to "folder:2019trip",
     // WhatsApp's names and folders.
-    "Pictures/IMG-20260101-WA0002.jpg" to "folder:WhatsApp",
-    "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/x.jpg" to "folder:WhatsApp",
-    "Pictures/WhatsApp/x.jpg" to "folder:WhatsApp",
+    "Pictures/IMG-20260101-WA0002.jpg" to "folder:whatsapp",
+    "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/x.jpg" to "folder:whatsapp",
+    "Pictures/WhatsApp/x.jpg" to "folder:whatsapp",
     // A screenshot's name wins over its folder, so a screenshot received in WhatsApp stays a screenshot.
     "Pictures/WhatsApp/Screenshot_20240301_030715_Bumble.jpg" to "screenshots",
     "DCIM/Screenshots/x.png" to "screenshots",
@@ -43,15 +46,15 @@ internal val SOURCE_FIXTURES: List<Pair<String, String>> = listOf(
     "Pictures/צילומי_מסך/x.png" to "screenshots",
     "Movies/הקלטות מסך/x.mp4" to "screenshots",
     // The messaging apps, by their names and their folders.
-    "Download/photo_2023-01-15_10-00-00.jpg" to "folder:Telegram",
-    "Pictures/Telegram/x.jpg" to "folder:Telegram",
-    "Pictures/signal-2024-02-03-101112.jpg" to "folder:Signal",
-    "Pictures/FB_IMG_1700000000000.jpg" to "folder:Facebook",
-    "Pictures/received_1234567890.jpeg" to "folder:Messenger",
-    "Pictures/Snapchat-123456789.jpg" to "folder:Snapchat",
-    "Pictures/Snapchat/x.jpg" to "folder:Snapchat",
+    "Download/photo_2023-01-15_10-00-00.jpg" to "folder:telegram",
+    "Pictures/Telegram/x.jpg" to "folder:telegram",
+    "Pictures/signal-2024-02-03-101112.jpg" to "folder:signal",
+    "Pictures/FB_IMG_1700000000000.jpg" to "folder:facebook",
+    "Pictures/received_1234567890.jpeg" to "folder:messenger",
+    "Pictures/Snapchat-123456789.jpg" to "folder:snapchat",
+    "Pictures/Snapchat/x.jpg" to "folder:snapchat",
     // Any other folder by its name; loose in a shared folder with nothing to say, Other.
-    "Movies/Petcube/x.mp4" to "folder:Petcube",
+    "Movies/Petcube/x.mp4" to "folder:petcube",
     "Pictures/1740850503547.png" to "other",
 )
 
@@ -84,14 +87,16 @@ class SourcesTest {
 
     @Test
     fun whatsAppIsAFolderAndItsOldIdIsReadAsIt() {
-        assertEquals("folder:WhatsApp", MediaSource.WHATSAPP.id)
-        assertEquals("WhatsApp", MediaSource.WHATSAPP.folder)
+        assertEquals("folder:whatsapp", MediaSource.WHATSAPP.id)
+        assertEquals("whatsapp", MediaSource.WHATSAPP.folder)
+        assertEquals("WhatsApp", MediaSource.WHATSAPP.folderName)
+        assertEquals(MediaSource.WHATSAPP, MediaSource.parse("folder:WhatsApp"))
         assertEquals(MediaSource.WHATSAPP, MediaSource.parse("whatsapp"))
         assertEquals(MediaSource.WHATSAPP, MediaSource.parse("WHATSAPP"))
         assertEquals(MediaSource.WHATSAPP, MediaSource.parse("folder:whatsapp"))
         assertEquals(MediaSource.WHATSAPP, MediaSource.folder("Whatsapp"))
         assertEquals(MediaSource.imported(MediaSource.WHATSAPP), MediaSource.parse("import:whatsapp"))
-        assertEquals("import:folder:WhatsApp", MediaSource.parse("import:whatsapp")?.id)
+        assertEquals("import:folder:whatsapp", MediaSource.parse("import:whatsapp")?.id)
         assertEquals(false, MediaSource.WHATSAPP in MediaSource.FIXED)
     }
 
@@ -111,7 +116,7 @@ class SourcesTest {
             listOf(MediaSource.OTHER, telegram, MediaSource.RECEIVED, MediaSource.SCREENSHOTS, MediaSource.CAMERA).sorted(),
         )
         // A folder named Received is a folder; Sent to you comes from the server only.
-        assertEquals("folder:Received", MediaSource.folder("Received").id)
+        assertEquals("folder:received", MediaSource.folder("Received").id)
         // Offered only once it has photos.
         assertEquals(false, MediaSource.RECEIVED in MediaSource.choices(emptySet()))
         assertEquals(true, MediaSource.RECEIVED in MediaSource.choices(setOf(MediaSource.RECEIVED)))
@@ -149,5 +154,80 @@ class SourcesTest {
         assertEquals(com.chencohensolution.journal.library.AudioKind.VOICE_MESSAGE, audio.copy(source = "whatsapp").toSoundRecording().kind)
         assertEquals(com.chencohensolution.journal.library.AudioKind.VOICE_MESSAGE, audio.copy(source = "folder:WhatsApp").toSoundRecording().kind)
         assertEquals(com.chencohensolution.journal.library.AudioKind.RECORDING, audio.copy(source = "folder:Voice Recorder").toSoundRecording().kind)
+    }
+
+    @Test
+    fun folderIdsAreInLowerCaseAndFoldersDifferingByCaseAreOne() {
+        assertEquals("folder:calls", MediaSource.folder("Calls").id)
+        assertEquals(MediaSource.folder("Calls"), MediaSource.folder("calls"))
+        assertEquals(MediaSource.folder("Calls"), MediaSource.parse("folder:CALLS"))
+        assertEquals(MediaSource.folder("Calls"), MediaSource.of("FOLDER:Calls"))
+        assertEquals("import:folder:calls", MediaSource.parse("import:folder:Calls")?.id)
+        assertEquals(1, listOf("folder:Calls", "folder:calls", "folder:CALLS").map(MediaSource::of).distinct().size)
+        // Fixed ids are read in any case too, and a folder named like one is it.
+        assertEquals(MediaSource.CAMERA, MediaSource.folder("camera"))
+    }
+
+    @Test
+    fun aFolderIsShownByTheAppTableThenTheServerThenThePhone() {
+        FolderNames.clear()
+        try {
+            // Known apps as the table spells them, whatever the id or the server say.
+            FolderNames.setServer(mapOf("folder:whatsapp" to "Whatsapp", "folder:telegram" to "TELEGRAM"))
+            assertEquals("WhatsApp", MediaSource.parse("folder:whatsapp")?.folderName)
+            assertEquals("Telegram", MediaSource.parse("folder:telegram")?.folderName)
+            assertEquals("Snapchat", MediaSource.parse("folder:snapchat")?.folderName)
+            // With nothing known, the id's name with a capital: never "petcube".
+            assertEquals("Petcube", MediaSource.parse("folder:petcube")?.folderName)
+            assertEquals("ספירלה יום", MediaSource.parse("folder:ספירלה יום")?.folderName)
+            // The phone's own spelling, from its folder or a kept id with capitals.
+            val recorder = sourceOfFolder("Recordings/Voice Recorder/", "x.m4a")
+            assertEquals("folder:voice recorder", recorder.id)
+            assertEquals("Voice Recorder", recorder.folderName)
+            assertEquals("folder:Voice Recorder", recorder.spelledId)
+            MediaSource.of("folder:DineOut")
+            assertEquals("DineOut", MediaSource.of("folder:dineout").folderName)
+            // A later lower-case spelling doesn't replace it.
+            MediaSource.folder("dineout")
+            assertEquals("DineOut", MediaSource.of("folder:dineout").folderName)
+            // The server's most common spelling wins over the phone's.
+            MediaSource.folder("calls")
+            MediaSource.folder("CALLS")
+            assertEquals("CALLS", MediaSource.folder("calls").folderName)
+            FolderNames.setServer(mapOf("folder:calls" to "Calls", "camera" to "Camera"))
+            assertEquals("Calls", MediaSource.folder("CALLS").folderName)
+            assertEquals(null, MediaSource.CAMERA.folderName)
+        } finally {
+            FolderNames.clear()
+        }
+    }
+
+    @Test
+    fun callsAndRecordingsAreSoundKindsNeverOfferedForPhotos() {
+        assertEquals(MediaSource.CALL, MediaSource.parse("call"))
+        assertEquals(MediaSource.RECORDING, MediaSource.parse("Recording"))
+        assertEquals(MediaSource.imported(MediaSource.CALL), MediaSource.of("import:call"))
+        assertTrue(MediaSource.CALL.isSound)
+        assertEquals(false, MediaSource.folder("Call").isSound)
+        assertEquals("folder:call", MediaSource.folder("Call").id)
+        val counts = mapOf(MediaSource.CAMERA to 10, MediaSource.CALL to 1_623, MediaSource.RECORDING to 168, MediaSource.folder("Calls") to 3)
+        val offered = MediaSource.byCount(counts, chosen = setOf(MediaSource.RECORDING))
+        assertEquals(listOf(MediaSource.CAMERA, MediaSource.folder("Calls"), MediaSource.SCREENSHOTS, MediaSource.OTHER), offered)
+        assertEquals(false, MediaSource.CALL in com.chencohensolution.journal.backup.BackupSettings().choices(counts))
+    }
+
+    @Test
+    fun aSoundRecordingsKindIsItsSourceFirst() {
+        val audio = ServerMedia(sha256 = "c".repeat(64), isVideo = false, fileName = "Call 054.m4a", mimeType = "audio/mp4", size = 1, uploadedAt = "2026-10-19T22:05:21Z", isAudio = true)
+        assertEquals(AudioKind.CALL, audio.copy(source = "call").toSoundRecording().kind)
+        assertEquals(AudioKind.RECORDING, audio.copy(source = "recording").toSoundRecording().kind)
+        // The source wins over what the server read of a call; a WhatsApp voice message stays one.
+        assertEquals(AudioKind.RECORDING, audio.copy(source = "recording", isCall = true).toSoundRecording().kind)
+        assertEquals(AudioKind.VOICE_MESSAGE, audio.copy(source = "folder:whatsapp", isCall = true).toSoundRecording().kind)
+        // Then today's rules: a call by what the server read, else a recording.
+        assertEquals(AudioKind.CALL, audio.copy(source = "folder:calls", isCall = true).toSoundRecording().kind)
+        assertEquals(AudioKind.RECORDING, audio.copy(source = "folder:calls").toSoundRecording().kind)
+        assertEquals(AudioKind.CALL, AudioKind.of(MediaSource.imported(MediaSource.CALL), isCall = false))
+        assertEquals(MediaSource.CALL, audio.copy(source = "call").toSoundRecording().source)
     }
 }

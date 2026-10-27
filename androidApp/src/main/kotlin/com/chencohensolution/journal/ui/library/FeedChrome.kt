@@ -280,8 +280,8 @@ internal fun FeedItemMenu(
 internal const val MAX_TOWNS = 3
 
 /**
- * The source's name: WhatsApp's in the app's language, a folder's own ("Petcube"), else the fixed source's; an imported
- * one is named by its kind.
+ * The source's name: WhatsApp's in the app's language, a folder's as shown ("Petcube": [MediaSource.folderName], since
+ * ids are in lower case), else the fixed source's; an imported one is named by its kind.
  */
 @Composable
 internal fun sourceName(source: MediaSource): String {
@@ -291,7 +291,9 @@ internal fun sourceName(source: MediaSource): String {
         MediaSource.WHATSAPP -> stringResource(R.string.feed_source_whatsapp)
         MediaSource.SCREENSHOTS -> stringResource(R.string.feed_source_screenshots)
         MediaSource.RECEIVED -> stringResource(R.string.feed_source_received)
-        else -> kind.folder ?: stringResource(R.string.feed_source_other)
+        MediaSource.CALL -> stringResource(R.string.feed_source_call)
+        MediaSource.RECORDING -> stringResource(R.string.feed_source_recording)
+        else -> kind.folderName ?: stringResource(R.string.feed_source_other)
     }
 }
 

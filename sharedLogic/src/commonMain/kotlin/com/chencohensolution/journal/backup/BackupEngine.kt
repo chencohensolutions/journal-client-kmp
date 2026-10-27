@@ -532,5 +532,8 @@ internal suspend fun MediaFiles.sha256(item: MediaItem, io: CoroutineDispatcher 
 
 private const val READ_SIZE = 1L shl 20
 
-/** How the server's sidecars name a source. */
-internal val MediaSource.serverName: String get() = id
+/**
+ * How the server is told a source: a folder spelled as the phone saw it ("folder:Petcube"), which the server reads in
+ * lower case and counts towards the name it shows the folder by.
+ */
+internal val MediaSource.serverName: String get() = spelledId
