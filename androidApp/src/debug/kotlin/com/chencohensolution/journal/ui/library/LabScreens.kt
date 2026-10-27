@@ -50,11 +50,6 @@ internal val labScreens: List<LabScreen> = listOf(
                 back = {},
             )
         },
-        privateOptionA,
-        privateOptionB,
-        privateOptionC,
-        privateOptionCUnlocked,
-        privateOptionCConfirm,
         privateOptionC2,
         privateOptionC2Open,
     )),
@@ -232,10 +227,6 @@ internal val labScreens: List<LabScreen> = listOf(
             )
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
-        kindsOptionA,
-        kindsOptionB,
-        kindsOptionC,
-        kindsOptionC2,
         kindsOptionC3,
     )),
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.

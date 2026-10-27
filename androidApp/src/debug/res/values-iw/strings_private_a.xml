@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="private_a_everywhere">בכל המכשירים שלך</string>
-    <string name="private_a_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק.</string>
-    <string name="private_a_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
-    <string name="private_a_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
-    <string name="private_a_no_app">בלי שם אפליקציה</string>
-    <string name="private_a_voice_messages">הודעות קוליות</string>
-</resources>

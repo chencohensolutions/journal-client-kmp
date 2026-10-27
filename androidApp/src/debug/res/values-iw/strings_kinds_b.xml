@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="kinds_b_intro">מה הטלפון הזה מציג, לפי סוג. כשחלק מהקבצים של סוג עוד לא בשרת שלך, כתוב כמה.</string>
-    <string name="kinds_b_photos">תמונות וסרטונים</string>
-    <string name="kinds_b_sound">שמע</string>
-    <string name="kinds_b_voice_messages">הודעות קוליות</string>
-    <string name="kinds_b_not_backed_up">%1$s לא מגובים</string>
-    <string name="kinds_b_hidden_everywhere">חלק מהסוגים מוסתרים בכל המכשירים שלך</string>
-</resources>
