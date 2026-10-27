@@ -300,6 +300,8 @@
     <string name="library_original_server_only">Only on your server</string>
     <string name="library_private_mark">Mark private</string>
     <string name="library_private_unmark">Unmark private</string>
+    <string name="library_private_marking">Marking private…</string>
+    <string name="library_private_unmarking">Unmarking private…</string>
     <string name="library_private_mark_title">Mark private?</string>
     <string name="library_private_mark_body">It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
     <string name="library_private_mark_confirm">Mark private</string>

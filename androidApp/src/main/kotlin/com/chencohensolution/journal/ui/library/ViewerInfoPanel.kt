@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -284,12 +285,13 @@ private fun OriginalCard(
     val scope = rememberCoroutineScope()
     val status = item.backup
     var confirmingPrivate by remember(item.id) { mutableStateOf(false) }
-    var markingPrivate by remember(item.id) { mutableStateOf(false) }
+    // What is being asked of the server (private or not) until it answers; null when nothing is.
+    var markingPrivate by remember(item.id) { mutableStateOf<Boolean?>(null) }
     fun markPrivate(isPrivate: Boolean) {
-        markingPrivate = true
+        markingPrivate = isPrivate
         scope.launch {
             if (!setPrivate(item, isPrivate)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
-            markingPrivate = false
+            markingPrivate = null
         }
     }
     Column(
@@ -334,7 +336,17 @@ private fun OriginalCard(
         if (!item.hasOriginalHere) ShownHereFacts(item)
 
         // Only a photo the server has can be marked: the mark is kept there, for every device.
-        if (item.sha256 != null && status == BackupStatus.BackedUp && !markingPrivate) {
+        val marking = markingPrivate
+        if (marking != null) {
+            Row(Modifier.height(40.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(18.dp), color = LibraryColors.Accent, strokeWidth = 2.dp)
+                Text(
+                    stringResource(if (marking) R.string.library_private_marking else R.string.library_private_unmarking),
+                    color = LibraryColors.OnInverseMuted,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        } else if (item.sha256 != null && status == BackupStatus.BackedUp) {
             if (item.isPrivate) {
                 OriginalButton(LibraryIcons.Eye, stringResource(R.string.library_private_unmark)) { markPrivate(false) }
             } else {

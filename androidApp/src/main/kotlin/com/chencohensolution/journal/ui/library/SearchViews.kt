@@ -422,6 +422,7 @@ internal fun SearchPickingBar(search: SearchState, selection: FeedSelection, act
         onMerge = { if (!marking) confirming = true },
         action = stringResource(R.string.library_private_mark),
         minimum = 1,
+        busy = marking,
     )
     if (confirming) {
         AlertDialog(

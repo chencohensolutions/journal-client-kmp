@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -144,7 +145,8 @@ internal fun SelectMark(selected: Boolean, modifier: Modifier = Modifier) {
 
 /**
  * While picking, in place of the tabs: Cancel, "2 selected", and Merge once two or more are picked (or search's Mark
- * private, [action], once [minimum] are).
+ * private, [action], once [minimum] are). While [busy] (the server hasn't answered yet) the button spins and can't be
+ * pressed again.
  */
 @Composable
 internal fun FeedSelectionBar(
@@ -154,6 +156,7 @@ internal fun FeedSelectionBar(
     modifier: Modifier = Modifier,
     action: String = stringResource(R.string.feed_merge),
     minimum: Int = 2,
+    busy: Boolean = false,
 ) {
     Row(
         modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(6.dp),
@@ -172,11 +175,14 @@ internal fun FeedSelectionBar(
             Modifier
                 .height(40.dp)
                 .background(if (canMerge) LibraryColors.Accent else LibraryColors.OnInverseMuted.copy(alpha = 0.3f), RoundedCornerShape(50))
-                .clickable(enabled = canMerge, onClick = onMerge)
+                .clickable(enabled = canMerge && !busy, onClick = onMerge)
                 .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(action, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (busy) CircularProgressIndicator(Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                Text(action, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }

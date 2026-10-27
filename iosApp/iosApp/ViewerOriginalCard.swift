@@ -13,7 +13,8 @@ struct OriginalCard: View {
     let setPrivate: (MediaItem, Bool) async -> Bool
 
     @State private var confirmingPrivate = false
-    @State private var markingPrivate = false
+    /// What is being asked of the server (private or not) until it answers; nil when nothing is.
+    @State private var markingPrivate: Bool?
     @State private var message: String?
 
     var body: some View {
@@ -50,7 +51,14 @@ struct OriginalCard: View {
             if !item.hasOriginalHere { ShownHereFacts(item: item) }
 
             // Only a photo the server has can be marked: the mark is kept there, for every device.
-            if item.sha256 != nil && item.backup.isBackedUp && !markingPrivate {
+            if let marking = markingPrivate {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small).tint(LibraryColors.accent)
+                    Text(marking ? "Marking private…" : "Unmarking private…").foregroundStyle(LibraryColors.onInverseMuted)
+                }
+                .frame(height: 40)
+                .padding(.horizontal, 12)
+            } else if item.sha256 != nil && item.backup.isBackedUp {
                 if item.isPrivate {
                     OriginalButton(icon: "eye", label: "Unmark private") { markPrivate(false) }
                 } else {
@@ -74,12 +82,12 @@ struct OriginalCard: View {
     }
 
     private func markPrivate(_ isPrivate: Bool) {
-        markingPrivate = true
+        markingPrivate = isPrivate
         Task {
             if !(await setPrivate(item, isPrivate)) {
                 message = String(localized: "Not changed: can’t reach your server. Try again when connected to it.")
             }
-            markingPrivate = false
+            markingPrivate = nil
         }
     }
 }

@@ -278,7 +278,7 @@ private fun LibraryScreens(
                                             prepare = search::prepare,
                                             addPerson = search::addPerson,
                                             removePerson = search::removePerson,
-                                            markPrivate = actions.markPrivate,
+                                            markPrivate = { items -> actions.markPrivate(items).also { if (it) search.madePrivate(items) } },
                                         ),
                                     ),
                                     landing = landingHere,

@@ -45,4 +45,5 @@ final class SearchViewModel: ObservableObject {
     /// A person as a chip in the field, or taken out of it.
     func addPerson(_ person: Person) { controller.addPerson(person: person) }
     func removePerson(_ id: String) { controller.removePerson(id: id) }
+    func madePrivate(_ items: [MediaItem]) { controller.madePrivate(items: items) }
 }

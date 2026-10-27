@@ -297,6 +297,8 @@
     <string name="library_original_server_only">רק בשרת שלך</string>
     <string name="library_private_mark">סימון כפרטי</string>
     <string name="library_private_unmark">ביטול סימון כפרטי</string>
+    <string name="library_private_marking">מסמן כפרטי…</string>
+    <string name="library_private_unmarking">מבטל סימון כפרטי…</string>
     <string name="library_private_mark_title">לסמן כפרטי?</string>
     <string name="library_private_mark_body">הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_mark_confirm">סימון כפרטי</string>

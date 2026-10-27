@@ -261,6 +261,8 @@ class SearchController internal constructor(
      * (tests): worked out from [library]'s whole list.
      */
     private val townArea: (suspend (town: String, places: Places) -> GeoArea?)? = null,
+    /** "Show private media": while off, what [madePrivate] names leaves the results at once. */
+    private val showsPrivate: () -> Boolean = { true },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
@@ -276,6 +278,9 @@ class SearchController internal constructor(
 
     /** Whether the server may have more after [loaded]: its last answer was a full one. */
     private var serverHasMore = false
+
+    /** The ids of what was made private here ([madePrivate]), left out while private media isn't shown. */
+    private val madePrivate = HashSet<String>()
 
     /** The filter of [loaded], sent with each next page. */
     private var years: List<Int>? = null
@@ -321,6 +326,15 @@ class SearchController internal constructor(
     fun removePerson(id: String) {
         _state.update { it.copy(people = it.people.filter { p -> p.id != id }) }
         search(_state.value.query)
+    }
+
+    /**
+     * The server took [items] as private: while private media isn't shown they leave the results now, not once the
+     * library has synced and read itself again, which can take a while (asked Oct 26, 2026).
+     */
+    fun madePrivate(items: List<MediaItem>) {
+        madePrivate += items.map { it.id }
+        refresh()
     }
 
     /** The best matches of [year] (null: any year), in the chosen town if one is. */
@@ -494,9 +508,11 @@ class SearchController internal constructor(
     }
 
     /** [refresh] through [resolve]. */
-    private fun present(resolve: (List<String>) -> List<MediaItem>) {
+    private fun present(resolveAll: (List<String>) -> List<MediaItem>) {
         val current = _state.value
         if (current.status != SearchStatus.DONE && current.status != SearchStatus.SEARCHING) return
+        val hiding = madePrivate.isNotEmpty() && !showsPrivate()
+        val resolve = if (hiding) { shas: List<String> -> resolveAll(shas).filter { it.id !in madePrivate } } else resolveAll
         val town = current.town
         // A town is asked for as a box, which can reach into the next town.
         val sets = grouped(resolve) { town == null || townOf(it) == town }

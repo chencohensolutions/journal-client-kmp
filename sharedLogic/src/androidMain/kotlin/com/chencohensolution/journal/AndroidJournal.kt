@@ -197,6 +197,7 @@ fun createSearchController(
         peopleSearch = ApiPeopleSearch(peopleApi(context)) { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
         bySha = library::itemsOfShas,
         townArea = library::townArea,
+        showsPrivate = { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
     )
 
 private var peopleController: PeopleController? = null

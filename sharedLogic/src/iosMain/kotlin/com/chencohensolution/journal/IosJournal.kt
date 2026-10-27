@@ -212,6 +212,7 @@ object IosJournal {
             peopleSearch = ApiPeopleSearch(peopleApi()) { JournalSettings(UserDefaultsStore()).privateMedia.show },
             bySha = library::itemsOfShas,
             townArea = library::townArea,
+            showsPrivate = { JournalSettings(UserDefaultsStore()).privateMedia.show },
         )
 
     private var peopleController: PeopleController? = null

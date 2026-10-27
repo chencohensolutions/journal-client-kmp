@@ -8376,6 +8376,26 @@
         }
       }
     },
+    "Marking private…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסמן כפרטי…"
+          }
+        }
+      }
+    },
+    "Unmarking private…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מבטל סימון כפרטי…"
+          }
+        }
+      }
+    },
     "Mark private?" : {
       "localizations" : {
         "he" : {

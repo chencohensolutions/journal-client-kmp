@@ -448,7 +448,8 @@ struct SearchPickingBar: View {
             onCancel: { selection = [] },
             onMerge: { if !marking { confirming = true } },
             action: "Mark private",
-            minimum: 1
+            minimum: 1,
+            busy: marking
         )
         .alert("Mark \(picked.count) \(picked.count == 1 ? "photo" : "photos") private?", isPresented: $confirming) {
             Button("Mark private") {

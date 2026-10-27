@@ -889,13 +889,15 @@ struct FilterBarChip: View {
 }
 
 /// While picking, in place of the tabs: Cancel, "2 selected", and Merge once two or more are picked (or search's Mark
-/// private, `action`, once `minimum` are).
+/// private, `action`, once `minimum` are). While `busy` (the server hasn't answered yet) the button spins and can't be
+/// pressed again.
 struct FeedSelectionBar: View {
     let count: Int
     let onCancel: () -> Void
     let onMerge: () -> Void
     var action: LocalizedStringKey = "Merge"
     var minimum = 2
+    var busy = false
 
     var body: some View {
         let canMerge = count >= minimum
@@ -906,13 +908,16 @@ struct FeedSelectionBar: View {
             .foregroundStyle(LibraryColors.onInverse)
             Text("\(count) selected").foregroundStyle(LibraryColors.onInverseMuted).padding(.horizontal, 6)
             Button(action: onMerge) {
-                Text(action)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .frame(height: 40)
-                    .background(canMerge ? LibraryColors.accent : LibraryColors.onInverseMuted.opacity(0.3), in: Capsule())
+                HStack(spacing: 8) {
+                    if busy { ProgressView().controlSize(.small).tint(.white) }
+                    Text(action)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .frame(height: 40)
+                .background(canMerge ? LibraryColors.accent : LibraryColors.onInverseMuted.opacity(0.3), in: Capsule())
             }
-            .disabled(!canMerge)
+            .disabled(!canMerge || busy)
         }
         .font(.subheadline.weight(.semibold))
         .padding(6)

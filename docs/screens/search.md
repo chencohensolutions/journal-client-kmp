@@ -60,7 +60,9 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   Select does (a check at its corner, the photo outlined); a set is picked whole. While picking, a tap picks or
   unpicks instead of opening, and the field gives way to **Cancel · N selected · Mark private** (N counts photos, a
   set each of its own). Mark private asks first ("Mark 12 photos private?", as the viewer's does), then sends them all
-  (`setPrivate`, 1000 at a time); picking stops, and with Show private media off they leave the results. Offline it
+  (`setPrivate`, 1000 at a time), the button spinning until the server answers (the viewer's shows "Marking private…"
+  meanwhile, asked Oct 26, 2026); picking stops, and with Show private media off they leave the results at once
+  (`SearchController.madePrivate`), not after the sync that brings the change to the library. Offline it
   says so and keeps the picks. Back, Cancel or ✕ stop picking.
 
 ## What is shown

@@ -181,7 +181,11 @@ struct LibraryRootView: View {
                                 prepare: search.prepare,
                                 addPerson: search.addPerson,
                                 removePerson: search.removePerson,
-                                markPrivate: { items in await ServerImages.shared.markPrivate(items) }
+                                markPrivate: { items in
+                                    let done = await ServerImages.shared.markPrivate(items)
+                                    if done { await MainActor.run { search.madePrivate(items) } }
+                                    return done
+                                }
                             ),
                             loadMoreMoments: stories.controller.loadMoreMoments,
                             loadMomentsTo: { day, done in stories.controller.loadMomentsTo(day: day, onLoaded: done) },

@@ -79,6 +79,30 @@ class SearchTest {
     }
 
     @Test
+    fun whatIsMadePrivateLeavesBeforeTheLibraryFollows() = runTest {
+        val library = MutableStateFlow(library(item("1", sha('a')), item("2", sha('b'))))
+        var showsPrivate = false
+        val search = SearchController(
+            library, { _, _, _, _, _ -> SearchAnswer(listOf(sha('a'), sha('b')), 2, 2) },
+            dispatcher = StandardTestDispatcher(testScheduler), showsPrivate = { showsPrivate },
+        )
+        search.search("snow")
+        advanceUntilIdle()
+
+        // The library still has photo 1 (its sync hasn't come), but search leaves it out at once.
+        search.madePrivate(listOf(item("1", sha('a'))))
+        advanceUntilIdle()
+        assertEquals(listOf("2"), search.currentState.items.map { it.id })
+
+        // With private media shown (the library reads itself again), it is shown again.
+        showsPrivate = true
+        library.value = library(item("1", sha('a')), item("2", sha('b')), item("3", sha('c')))
+        advanceUntilIdle()
+        assertEquals(listOf("1", "2"), search.currentState.items.map { it.id })
+        search.close()
+    }
+
+    @Test
     fun findsADevicePhotoBackupHasntReadByNameAndSize() = runTest {
         val library = MutableStateFlow(library(item("7", sha256 = null, name = "20261008_190157.heic", size = 541_212)))
         val server = MutableStateFlow(listOf(serverFile('a', "20261008_190157.HEIC", 541_212)))

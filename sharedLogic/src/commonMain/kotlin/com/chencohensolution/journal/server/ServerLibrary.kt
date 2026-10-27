@@ -373,7 +373,9 @@ class ServerLibrary internal constructor(
     /**
      * Marks [sha256s] private ([isPrivate]), or no longer private, on the server (with their edits and paired files), then syncs so
      * the library follows. Many are sent [SET_PRIVATE_BATCH] at a time, the most the server takes in one call. False when
-     * the server couldn't be reached or refused (the batches sent before that stay marked).
+     * the server couldn't be reached or refused (the batches sent before that stay marked). Answers once the server has:
+     * the sync runs after, since it waits for one already running and the library then reads itself again (until
+     * Oct 26, 2026 the button spun through all of that).
      */
     suspend fun setPrivate(sha256s: List<String>, isPrivate: Boolean): Boolean {
         try {
@@ -390,7 +392,7 @@ class ServerLibrary internal constructor(
         } catch (_: Exception) {
             return false
         }
-        follow()
+        scope.launch { follow() }
         return true
     }
 
