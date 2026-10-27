@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="private_c2_everywhere">להציג בכל המכשירים שלך</string>
+    <string name="private_c2_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק. העמוד נפתח רק עם נעילת הטלפון.</string>
+    <string name="private_c2_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
+    <string name="private_c2_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
+    <string name="private_c2_no_app">בלי שם אפליקציה</string>
+    <string name="private_c2_voice_messages">הודעות קוליות</string>
+    <string name="private_c2_unlock">פתחו את הנעילה כדי לראות ולהציג אותם</string>
+    <plurals name="private_c2_locked">
+        <item quantity="one">אחד מוסתר</item>
+        <item quantity="two">שניים מוסתרים</item>
+        <item quantity="other">%1$s מוסתרים</item>
+    </plurals>
+    <string name="private_c2_confirm_title">פתחו את הנעילה כדי להציג את %1$s בכל המכשירים שלך</string>
+    <string name="private_c2_confirm_body">נעילת המסך של הטלפון תופיע כאן.</string>
+    <string name="private_c2_confirm_unlock">פתיחה</string>
+</resources>

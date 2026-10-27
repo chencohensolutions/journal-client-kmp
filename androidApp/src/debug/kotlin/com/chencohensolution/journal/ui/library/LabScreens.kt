@@ -55,6 +55,8 @@ internal val labScreens: List<LabScreen> = listOf(
         privateOptionC,
         privateOptionCUnlocked,
         privateOptionCConfirm,
+        privateOptionC2,
+        privateOptionC2Open,
     )),
     LabScreen("recording", "A sound recording's page", listOf(
         current {
