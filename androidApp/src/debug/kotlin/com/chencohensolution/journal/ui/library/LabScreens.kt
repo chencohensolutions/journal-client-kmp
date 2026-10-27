@@ -206,9 +206,6 @@ internal val labScreens: List<LabScreen> = listOf(
     )),
     // Not in the app yet: only the suggestions (lab/sound-folders/), with made-up folders.
     LabScreen("sound-folders", "Settings › Sound folders", listOf(
-        soundFoldersOptionA,
-        soundFoldersOptionAConfirm,
-        soundFoldersOptionAMoving,
         soundFoldersOptionB,
         soundFoldersOptionBConfirm,
         soundFoldersOptionBMoving,
