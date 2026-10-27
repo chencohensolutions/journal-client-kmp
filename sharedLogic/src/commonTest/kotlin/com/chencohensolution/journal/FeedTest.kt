@@ -133,7 +133,7 @@ class FeedTest {
         val flowers = MediaSource.folder("Flowers")
         val petcube = MediaSource.folder("petcube")
         assertEquals(
-            listOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, flowers, petcube, MediaSource.OTHER),
+            listOf(MediaSource.CAMERA, MediaSource.SCREENSHOTS, flowers, petcube, MediaSource.OTHER),
             MediaSource.choices(setOf(petcube, MediaSource.OTHER), setOf(flowers)),
         )
         assertEquals("folder:Flowers", flowers.id)
@@ -193,7 +193,7 @@ class FeedTest {
         val items = arrayOf(pic("cam", 0), pic("pet", 60, source = petcube), pic("w", 120, source = MediaSource.WHATSAPP))
         val feed = buildFeed(newestFirst(*items), ShownSources(), TimelineGrouping())
         assertEquals(listOf(listOf("pet"), listOf("cam")), feed.moments())
-        assertEquals(listOf(MediaSource.CAMERA, MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, petcube, MediaSource.OTHER), feed.choices)
+        assertEquals(listOf(MediaSource.CAMERA, MediaSource.SCREENSHOTS, petcube, MediaSource.WHATSAPP, MediaSource.OTHER), feed.choices)
         assertEquals(setOf(MediaSource.CAMERA, petcube, MediaSource.OTHER), feed.shown)
 
         val noPets = buildFeed(newestFirst(*items), ShownSources(hidden = ShownSources.DEFAULT_HIDDEN + petcube), TimelineGrouping())

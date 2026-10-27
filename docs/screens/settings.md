@@ -30,7 +30,9 @@ The pages, and what each holds:
   you wrote about always show on the storyline; hiding never deletes anything and doesn't change
   what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
   (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
-  `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`). Then **On all your devices**: the Hidden
+  `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`; the old id `whatsapp` there, and in
+  `backup_sources` and `free_up_kept`, is read as the folder `folder:WhatsApp` it is since Oct 27, 2026, and written
+  so). Then **On all your devices**: the Hidden
   collections row, for hiding on every device rather than this phone.
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the

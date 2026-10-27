@@ -287,7 +287,7 @@ internal class SectionData(
             span = Moment(spanItems, if (byGap) GroupingMode.BY_GAP else GroupingMode.BY_DAY),
             moments = moments.map { moment ->
                 FeedMoment(
-                    source = MediaSource.parse(moment.source) ?: MediaSource.OTHER,
+                    source = MediaSource.of(moment.source),
                     blocks = moment.blocks.map { block ->
                         val blockItems = block.map { items[it] ?: return null }
                         if (blockItems.size == 1) FeedBlock.Single(blockItems.first()) else FeedBlock.Similar(blockItems)
@@ -297,7 +297,7 @@ internal class SectionData(
                 )
             },
             places = places,
-            hidden = hidden.entries.associate { (MediaSource.parse(it.key) ?: MediaSource.OTHER) to it.value },
+            hidden = hidden.entries.associate { MediaSource.of(it.key) to it.value },
             sounds = this.sounds.map { sound ->
                 if (sound.voice != null) FeedSound.Voice(sounds[sound.voice] ?: return null)
                 else FeedSound.Calls(sound.calls.map { sounds[it] ?: return null })

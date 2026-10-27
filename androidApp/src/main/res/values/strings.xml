@@ -203,6 +203,7 @@
     <string name="feed_source_camera">Camera</string>
     <string name="feed_source_whatsapp">WhatsApp</string>
     <string name="feed_source_screenshots">Screenshots</string>
+    <string name="feed_source_received">Sent to you</string>
     <string name="feed_source_other">Other</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
@@ -493,6 +494,14 @@
         <item quantity="other">%d photos, best first</item>
     </plurals>
     <string name="search_still_reading">Still reading your photos: %1$s of %2$s</string>
+    <plurals name="search_hidden_more">
+        <item quantity="one">%d more in sources you hide · Show</item>
+        <item quantity="other">%d more in sources you hide · Show</item>
+    </plurals>
+    <plurals name="search_hidden_shown">
+        <item quantity="one">Including %d from sources you hide · Hide</item>
+        <item quantity="other">Including %d from sources you hide · Hide</item>
+    </plurals>
     <string name="search_nothing">Nothing found. Try other words.</string>
     <string name="search_preparing">Getting search ready…</string>
     <string name="search_by_person">Search by person</string>

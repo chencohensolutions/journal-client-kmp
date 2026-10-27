@@ -138,7 +138,7 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     fun sourceCounts(): Map<MediaSource, Int> {
         val counts = HashMap<MediaSource, Int>()
         queries.sourceCounts().executeAsList().forEach { row ->
-            val source = MediaSource.parse(row.source) ?: MediaSource.OTHER
+            val source = MediaSource.of(row.source)
             counts[source] = (counts[source] ?: 0) + row.count.toInt()
         }
         return counts.keys.sorted().associateWith { counts.getValue(it) }
@@ -149,13 +149,13 @@ internal class LibraryTable(private val database: LibraryDatabase) {
      * hold as uploaded as they are now (step 6d). [libraryTotals] makes backup's counts from them.
      */
     fun backupCounts(): List<SourceCounts> = queries.backupCounts { source, items, onDevice, onDeviceBytes, waiting, waitingBytes ->
-        SourceCounts(MediaSource.parse(source) ?: MediaSource.OTHER, items.toInt(), onDevice.toInt(), onDeviceBytes, waiting.toInt(), waitingBytes)
+        SourceCounts(MediaSource.of(source), items.toInt(), onDevice.toInt(), onDeviceBytes, waiting.toInt(), waitingBytes)
     }.executeAsList()
 
     /** Those of [ids] that are phone items the ledger holds as uploaded as they are now, with their source and size. */
     fun backedUpAmong(ids: Collection<String>): List<Pair<MediaSource, Long?>> = database.transactionWithResult {
         ids.distinct().chunked(CHUNK).flatMap { chunk ->
-            queries.backedUpAmong(chunk) { _, source, size -> (MediaSource.parse(source) ?: MediaSource.OTHER) to size }.executeAsList()
+            queries.backedUpAmong(chunk) { _, source, size -> MediaSource.of(source) to size }.executeAsList()
         }
     }
 
@@ -237,20 +237,20 @@ internal class LibraryTable(private val database: LibraryDatabase) {
     fun squareCounts(days: Collection<LocalDay>): List<SquareCount> =
         queries.homeSquares(days.map { it.toEpochDay() }.distinct()) { source, lat10, lon10, onDay, anyDay, photos ->
             // Never null: only rows with a location are counted.
-            SquareCount(MediaSource.parse(source) ?: MediaSource.OTHER, lat10!! to lon10!!, if (onDay) LocalDay.fromEpochDay(anyDay) else null, photos.toInt())
+            SquareCount(MediaSource.of(source), lat10!! to lon10!!, if (onDay) LocalDay.fromEpochDay(anyDay) else null, photos.toInt())
         }.executeAsList()
 
     /** The items with a location of their own in the 0.1° [square], in the screens' order. */
     fun inSquare(square: Pair<Long, Long>): List<LocatedRow> =
         queries.homeSquareRows(lat10 = square.first, lon10 = square.second) { id, epochDay, takenMillis, source, latitude, longitude ->
-            LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.parse(source) ?: MediaSource.OTHER, GeoPoint(latitude, longitude))
+            LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.of(source), GeoPoint(latitude, longitude))
         }.executeAsList()
 
     /** Those of [ids] without a location of their own (where a place found for them counts), with no point. */
     fun unlocated(ids: Collection<String>): List<LocatedRow> = database.transactionWithResult {
         ids.distinct().chunked(CHUNK).flatMap { chunk ->
             queries.unlocatedLibraryRows(chunk) { id, epochDay, takenMillis, source ->
-                LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.parse(source) ?: MediaSource.OTHER, null)
+                LocatedRow(LibraryKey(epochDay, takenMillis, id), MediaSource.of(source), null)
             }.executeAsList()
         }
     }
@@ -260,7 +260,7 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         queries.exploreRowsAfter(day = key.epochDay, taken = key.takenMillis, id = key.id, limit = limit.toLong()) {
                 id, epochDay, takenMillis, isVideo, source, latitude, longitude, serverSha, aesthetic ->
             ExploreRow(
-                LibraryKey(epochDay, takenMillis, id), isVideo, MediaSource.parse(source) ?: MediaSource.OTHER,
+                LibraryKey(epochDay, takenMillis, id), isVideo, MediaSource.of(source),
                 if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null, serverSha, aesthetic?.toFloat(),
             )
         }.executeAsList()
@@ -268,13 +268,13 @@ internal class LibraryTable(private val database: LibraryDatabase) {
 
     /** Photos and videos per day, source and type, of the whole library. */
     fun dayCounts(): List<DayCount> = queries.dayCounts { epochDay, source, isVideo, items ->
-        DayCount(LocalDay.fromEpochDay(epochDay), MediaSource.parse(source) ?: MediaSource.OTHER, isVideo, items.toInt())
+        DayCount(LocalDay.fromEpochDay(epochDay), MediaSource.of(source), isVideo, items.toInt())
     }.executeAsList()
 
     /** The box around the items with a location of their own, per day and source. */
     fun locatedDays(): List<DayBox> = queries.locatedDays { epochDay, source, south, west, north, east ->
         // Never null: only rows with a location are grouped.
-        DayBox(LocalDay.fromEpochDay(epochDay), MediaSource.parse(source) ?: MediaSource.OTHER, GeoArea(south!!, west!!, north!!, east!!))
+        DayBox(LocalDay.fromEpochDay(epochDay), MediaSource.of(source), GeoArea(south!!, west!!, north!!, east!!))
     }.executeAsList()
 
     /** The rows from [first] to [last] (days), in the screens' order. */
@@ -319,7 +319,7 @@ internal class LibraryTable(private val database: LibraryDatabase) {
      * and the days some of them show on anyway, as "epoch day:source".
      */
     private fun sourcesFilter(shown: ShownSources): Pair<List<String>, List<String>> {
-        val spellings = queries.sourceCounts().executeAsList().map { it.source }.groupBy { MediaSource.parse(it) ?: MediaSource.OTHER }
+        val spellings = queries.sourceCounts().executeAsList().map { it.source }.groupBy { MediaSource.of(it) }
         val hidden = spellings.filterKeys { !shown.isShown(it) }.values.flatten()
         val always = shown.alwaysShown.flatMap { daySource ->
             spellings[daySource.source].orEmpty().map { "${daySource.day.toEpochDay()}:$it" }
@@ -391,7 +391,7 @@ internal fun libraryRow(
         fileName = fileName,
         backup = if (isOnDevice) BackupStatus.NotBackedUp else BackupStatus.BackedUp,
         burstId = burstId,
-        source = MediaSource.parse(source) ?: MediaSource.OTHER,
+        source = MediaSource.of(source),
         location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
         modifiedMillis = modifiedMillis,
         mimeType = mimeType,

@@ -207,6 +207,7 @@
     <string name="feed_source_camera">מצלמה</string>
     <string name="feed_source_whatsapp">וואטסאפ</string>
     <string name="feed_source_screenshots">צילומי מסך</string>
+    <string name="feed_source_received">נשלח אליך</string>
     <string name="feed_source_other">אחר</string>
     <string name="feed_place_time">%1$s · %2$s</string>
     <string name="feed_time_range">%1$s – %2$s</string>
@@ -514,6 +515,16 @@
         <item quantity="other">%d תמונות, הטובות ביותר ראשונות</item>
     </plurals>
     <string name="search_still_reading">עדיין קורא את התמונות שלך: %1$s מתוך %2$s</string>
+    <plurals name="search_hidden_more">
+        <item quantity="one">עוד אחת במקורות שהסתרת · הצג</item>
+        <item quantity="two">עוד %d במקורות שהסתרת · הצג</item>
+        <item quantity="other">עוד %d במקורות שהסתרת · הצג</item>
+    </plurals>
+    <plurals name="search_hidden_shown">
+        <item quantity="one">כולל אחת ממקורות שהסתרת · הסתר</item>
+        <item quantity="two">כולל %d ממקורות שהסתרת · הסתר</item>
+        <item quantity="other">כולל %d ממקורות שהסתרת · הסתר</item>
+    </plurals>
     <string name="search_nothing">לא נמצא כלום. נסו מילים אחרות.</string>
     <string name="search_offline">אין חיבור לשרת. החיפוש עובד כשיש חיבור לשרת.</string>
     <string name="search_server_error">השרת לא הצליח לחפש: %1$s</string>

@@ -132,6 +132,39 @@ class ShownSourcesTest {
     }
 
     @Test
+    fun whatsAppKeptByItsOldIdIsTheWhatsAppFolderAndIsWrittenTheNewWay() {
+        // Until Oct 27, 2026 WhatsApp was the fixed source "whatsapp"; now it is the folder "folder:WhatsApp".
+        val store = ShownTestStore().apply {
+            values["hidden_sources"] = "whatsapp,screenshots"
+            values["show_imported"] = "true"
+            values["backup_sources"] = "camera,whatsapp"
+            values["free_up_kept"] = "whatsapp"
+            values["always_shown_days"] = "2026-10-04:whatsapp"
+        }
+        val settings = JournalSettings(store)
+        val shown = settings.shownSources
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS), shown.hidden)
+        assertTrue(shown.shows(OCT_4, MediaSource.WHATSAPP))
+        assertTrue(!shown.shows(OCT_4.plusDays(1), MediaSource.WHATSAPP))
+        assertEquals(setOf(MediaSource.CAMERA, MediaSource.WHATSAPP), settings.backup.sources)
+        assertEquals(setOf(MediaSource.WHATSAPP), settings.freeUpKept)
+
+        settings.shownSources = shown
+        settings.backup = settings.backup
+        settings.freeUpKept = settings.freeUpKept
+        assertEquals("screenshots,folder:WhatsApp", store.values["hidden_sources"])
+        assertEquals("camera,folder:WhatsApp", store.values["backup_sources"])
+        assertEquals("folder:WhatsApp", store.values["free_up_kept"])
+        assertEquals("2026-10-04:folder:WhatsApp", store.values["always_shown_days"])
+        assertEquals(shown, JournalSettings(store).shownSources)
+
+        // Sent to you shows at first; WhatsApp and screenshots don't.
+        assertTrue(ShownSources().isShown(MediaSource.RECEIVED))
+        assertTrue(!ShownSources().isShown(MediaSource.WHATSAPP))
+        assertTrue(!ShownSources().isShown(MediaSource.imported(MediaSource.WHATSAPP)))
+    }
+
+    @Test
     fun cameraBackupKeepsTheCameraFolderAndFreeUpKeepsWhatItKept() {
         // Backup chose the fixed sources by their old names until Oct 24, 2026.
         val store = ShownTestStore().apply {
@@ -169,7 +202,7 @@ class ShownSourcesTest {
         val row = buildFeed(items, shown, TimelineGrouping()).sections().single()
         assertEquals(listOf("c2", "c1"), row.items.map { it.id })
         assertEquals(mapOf(MediaSource.WHATSAPP to 2, MediaSource.SCREENSHOTS to 1), row.hidden)
-        assertEquals(listOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS), row.hidden.keys.toList())
+        assertEquals(listOf(MediaSource.SCREENSHOTS, MediaSource.WHATSAPP), row.hidden.keys.toList())
 
         // Tapping "+2 WhatsApp": a band of them on this row, newest first; the chip for the rest stays.
         val revealed = buildFeed(items, shown, TimelineGrouping(), revealed = setOf(FeedReveal(row.key, MediaSource.WHATSAPP))).sections().single()

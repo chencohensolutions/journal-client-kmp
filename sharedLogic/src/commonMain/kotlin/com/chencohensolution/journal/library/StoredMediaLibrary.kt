@@ -222,7 +222,7 @@ private fun Device_item.toMediaItem() = MediaItem(
     sizeBytes = size,
     fileName = file_name,
     burstId = burst_id,
-    source = MediaSource.parse(source) ?: MediaSource.OTHER,
+    source = MediaSource.of(source),
     location = if (latitude != null && longitude != null) GeoPoint(latitude, longitude) else null,
     modifiedMillis = modified_millis,
     mimeType = mime_type,

@@ -120,6 +120,7 @@ internal class AndroidMediaLibrary(context: Context) : ChangingLibrary {
                     burstId = cursor.getString(name)?.let(::samsungBurstId),
                     source = sourceOfFolder(
                         cursor.getString(folder),
+                        cursor.getString(name),
                         cursor.getString(owner)?.takeIf(::isSourceApp)?.let { appNames.getOrPut(it) { appName(it) } },
                     ),
                     modifiedMillis = cursor.getLong(dateModified).takeIf { it > 0 }?.let { it * 1000 },

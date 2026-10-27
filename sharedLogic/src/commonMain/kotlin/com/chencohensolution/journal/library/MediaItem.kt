@@ -63,39 +63,50 @@ sealed interface BackupStatus {
 }
 
 /**
- * Where a photo came from: the camera, WhatsApp, screenshots, a folder an app saves into ([folder]), or anything else
- * ([OTHER]). On Android a folder is told from the file's path and the app that saved it ([sourceOfFolder]), on iOS
- * from the album an app saved it into ([sourceOfAsset]). Each is its own choice in Settings › Backup, Settings › Show
- * in the app and the Moments filter bar (asked Oct 24, 2026; before, every DCIM folder was Camera).
+ * Where a photo came from: the camera, screenshots, photos sent to you, a folder an app saves into ([folder]: WhatsApp,
+ * Telegram, Petcube), or anything else ([OTHER]). On Android it is told from the file's name, its path and the app that
+ * saved it ([sourceOfFolder]), on iOS from the album an app saved it into ([sourceOfAsset]). Each is its own choice in
+ * Settings › Backup, Settings › Show in the app and the Moments filter bar (asked Oct 24, 2026; before, every DCIM folder
+ * was Camera).
  */
 class MediaSource private constructor(
-    /** "camera", "whatsapp", "screenshots", "other", or "folder:Petcube": what Settings keeps and the server is told. */
+    /**
+     * "camera", "screenshots", "received", "other", or a folder ("folder:WhatsApp", "folder:Petcube"); what the server's
+     * import placed is "import:" and one of those ("import:camera", "import:folder:Telegram"). What Settings keeps and
+     * the server is told.
+     */
     val id: String,
 ) : Comparable<MediaSource> {
-    /** The folder's name for a folder ("Flowers", "Petcube", "Telegram"); null for the fixed sources. */
+    /** The folder's name for a folder ("Flowers", "Petcube", "WhatsApp"); null for the fixed and the imported sources. */
     val folder: String? get() = if (id.startsWith(FOLDER)) id.removePrefix(FOLDER) else null
 
     /**
-     * Whether the server's import placed it ("import:whatsapp"), rather than a phone uploading it: kept apart from the
-     * phones' folders, under "Imported" in Show in the app (asked Oct 27, 2026).
+     * Whether the server's import placed it ("import:folder:WhatsApp"), rather than a phone uploading it: kept apart
+     * from the phones' folders, under "Imported" in Show in the app (asked Oct 27, 2026).
      */
     val isImported: Boolean get() = id.startsWith(IMPORT)
 
-    /** What it is of: Camera for "import:camera", the source itself for one that isn't imported. */
-    val kind: MediaSource get() = if (isImported) FIXED.firstOrNull { it.id == id.removePrefix(IMPORT) } ?: OTHER else this
+    /**
+     * What it is of: Camera for "import:camera", the folder Telegram for "import:folder:Telegram", the source itself for
+     * one that isn't imported.
+     */
+    val kind: MediaSource get() = if (isImported) parse(id.removePrefix(IMPORT))?.takeUnless { it.isImported } ?: OTHER else this
 
     override fun equals(other: Any?): Boolean = other is MediaSource && other.id == id
     override fun hashCode(): Int = id.hashCode()
     override fun toString(): String = id
 
-    /** Camera, WhatsApp, Screenshots, the folders by name, then Other: the order every screen lists them in. */
+    /**
+     * Camera, Screenshots, Sent to you, the folders by name (WhatsApp among them), then Other, and the imported ones
+     * after them in the same order: the order every screen lists them in.
+     */
     override fun compareTo(other: MediaSource): Int =
-        compareValuesBy(this, other, { it.rank }, { it.folder?.lowercase() }, { it.folder })
+        compareValuesBy(this, other, { it.rank }, { it.kind.folder?.lowercase() }, { it.kind.folder })
 
     private val rank: Int get() = if (isImported) 5 + kind.rank else when (this) {
         CAMERA -> 0
-        WHATSAPP -> 1
-        SCREENSHOTS -> 2
+        SCREENSHOTS -> 1
+        RECEIVED -> 2
         OTHER -> 4
         else -> 3
     }
@@ -107,56 +118,92 @@ class MediaSource private constructor(
         /** Taken with the phone's camera: DCIM/Camera and files right in DCIM (Android), the iPhone's own photos. */
         val CAMERA = MediaSource("camera")
 
-        /** Received in WhatsApp, in any of its folders. */
-        val WHATSAPP = MediaSource("whatsapp")
+        /**
+         * Received in WhatsApp, in any of its folders or named as WhatsApp names what it saves. A folder like any other
+         * app's since Oct 27, 2026 (the owner's choice); before, it was the fixed source "whatsapp", which [parse] still
+         * reads as this.
+         */
+        val WHATSAPP = MediaSource(FOLDER + "WhatsApp")
 
         /** Screenshots and screen recordings, wherever they are kept. */
         val SCREENSHOTS = MediaSource("screenshots")
 
+        /**
+         * "Sent to you": photos taken with a camera the user marked as not theirs (Settings › Your cameras). Only the
+         * server tells them; a phone never gives its own files this source.
+         */
+        val RECEIVED = MediaSource("received")
+
         /** Files whose folder and app say nothing: loose in Pictures or Download by an unknown app, synced from a computer. */
         val OTHER = MediaSource("other")
 
-        /** The sources every phone has, in their order. */
-        val FIXED: List<MediaSource> = listOf(CAMERA, WHATSAPP, SCREENSHOTS, OTHER)
+        /** The fixed sources, in their order. */
+        val FIXED: List<MediaSource> = listOf(CAMERA, SCREENSHOTS, RECEIVED, OTHER)
 
-        /** What the server's import placed, of [kind] (one of [FIXED]; anything else is Other). */
-        fun imported(kind: MediaSource): MediaSource = MediaSource(IMPORT + (kind.kind.takeIf { it in FIXED } ?: OTHER).id)
+        /** The fixed sources every screen offers even without photos; Sent to you only once it has some. */
+        private val OFFERED: List<MediaSource> = listOf(CAMERA, SCREENSHOTS, OTHER)
+
+        /** The fixed sources a folder's name can be ("DCIM/Camera" is Camera); a folder named "Received" is a folder. */
+        private val NAMED: List<MediaSource> = listOf(CAMERA, SCREENSHOTS, OTHER)
+
+        /** What the server's import placed, of [kind] (any source that isn't imported itself). */
+        fun imported(kind: MediaSource): MediaSource = MediaSource(IMPORT + kind.kind.id)
 
         /** The imported sources, one per fixed source, in order. */
         val IMPORTED: List<MediaSource> = FIXED.map(::imported)
 
-        /** A folder by its name; one named like a fixed source ("Camera", "WhatsApp", "Screenshots") is that source. */
+        /**
+         * A folder by its name; one named like a fixed source ("Camera", "Screenshots") is that source, and an app the
+         * name table knows is spelled as it spells it ("whatsapp" is "WhatsApp", see [SourceNames]).
+         */
         fun folder(name: String): MediaSource {
             val trimmed = name.trim()
-            return when {
-                trimmed.isEmpty() -> OTHER
-                else -> FIXED.firstOrNull { it.id.equals(trimmed, ignoreCase = true) } ?: MediaSource(FOLDER + trimmed)
-            }
+            if (trimmed.isEmpty()) return OTHER
+            NAMED.firstOrNull { it.id.equals(trimmed, ignoreCase = true) }?.let { return it }
+            return MediaSource(FOLDER + (SourceNames.appSpelling(trimmed) ?: trimmed))
         }
 
         /**
          * The source an [id] names, or null if it names none. Also takes the names the sources had before folders
-         * ("CAMERA", "WHATSAPP"), which Settings kept until Oct 24, 2026.
+         * ("CAMERA", "WHATSAPP"), which Settings kept until Oct 24, 2026, and "whatsapp" as it was until Oct 27, 2026
+         * (now the folder WhatsApp), so settings kept the old way keep their meaning and are written the new way.
          */
         fun parse(id: String): MediaSource? = when {
-            id.startsWith(FOLDER) -> folder(id.removePrefix(FOLDER))
-            id.startsWith(IMPORT) -> FIXED.firstOrNull { it.id.equals(id.removePrefix(IMPORT), ignoreCase = true) }?.let(::imported)
+            id.startsWith(IMPORT, ignoreCase = true) ->
+                parse(id.substring(IMPORT.length))?.takeUnless { it.isImported }?.let(::imported)
+            id.startsWith(FOLDER, ignoreCase = true) -> folder(id.substring(FOLDER.length))
+            id.equals(OLD_WHATSAPP, ignoreCase = true) -> WHATSAPP
             else -> FIXED.firstOrNull { it.id.equals(id, ignoreCase = true) }
         }
 
         /**
-         * What a screen offers: the fixed sources, then [present] (those with photos) and [chosen] ones, in order. The
-         * imported ones are offered apart, under Imported ([importedChoices]).
+         * The source [id] names, for what the library, the server and the feed keep: one this app doesn't know (a newer
+         * server's) is Other, of the imported ones when it starts "import:", so what was imported never shows as the
+         * phones'.
          */
-        fun choices(present: Set<MediaSource>, chosen: Set<MediaSource> = emptySet()): List<MediaSource> =
-            (FIXED + present + chosen).filterNot { it.isImported }.distinct().sorted()
+        fun of(id: String?): MediaSource = id?.let(::parse)
+            ?: if (id != null && id.startsWith(IMPORT, ignoreCase = true)) imported(OTHER) else OTHER
+
+        /** The fixed source WhatsApp was until Oct 27, 2026. */
+        private const val OLD_WHATSAPP = "whatsapp"
 
         /**
-         * The kinds Imported offers, the most photos in [counts] first: all four once anything imported has photos,
-         * else none (a server without imports shows no Imported).
+         * What a screen offers: Camera, Screenshots and Other, then [present] (those with photos) and [chosen] ones, in
+         * order. The imported ones are offered apart, under Imported ([importedChoices]).
          */
-        fun importedChoices(counts: Map<MediaSource, Int>): List<MediaSource> =
-            if (IMPORTED.none { (counts[it] ?: 0) > 0 }) emptyList() else IMPORTED.sortedByDescending { counts[it] ?: 0 }
+        fun choices(present: Set<MediaSource>, chosen: Set<MediaSource> = emptySet()): List<MediaSource> =
+            (OFFERED + present + chosen).filterNot { it.isImported }.distinct().sorted()
+
+        /**
+         * The kinds Imported offers, the most photos in [counts] first (ties in order): Camera, Screenshots and Other and
+         * every imported kind with photos ("import:folder:WhatsApp"), once anything imported has photos, else none (a
+         * server without imports shows no Imported).
+         */
+        fun importedChoices(counts: Map<MediaSource, Int>): List<MediaSource> {
+            val present = counts.filter { (source, count) -> source.isImported && count > 0 }.keys
+            if (present.isEmpty()) return emptyList()
+            return (OFFERED.map(::imported) + present).distinct().sorted().sortedByDescending { counts[it] ?: 0 }
+        }
 
         /**
          * The same as [choices], with photos per source in [counts], the most photos first (ties in order): the pills
@@ -191,24 +238,37 @@ private val MOVER_APPS = setOf(
 internal fun isSourceApp(ownerPackage: String?): Boolean = ownerPackage != null && ownerPackage.lowercase() !in MOVER_APPS
 
 /**
- * The source of a file in [relativePath], Android's folder of it inside shared storage ("DCIM/Camera/",
- * "Movies/Petcube/", "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/"). A folder inside DCIM, Pictures,
- * Movies, Download and the other shared folders is a source by its name (so Pictures/Telegram and Download/Telegram
- * are one, "Telegram"); DCIM/Camera and files right in DCIM are Camera. A file right in a shared folder, or in an
- * app's own folder under Android/, is the source of [appName], the app that saved it (its label, when it
- * [isSourceApp]), else Other. Screenshots and WhatsApp are told anywhere in the path, as the server does.
+ * The source of a file named [fileName] in [relativePath], Android's folder of it inside shared storage
+ * ("DCIM/Camera/", "Movies/Petcube/", "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/"), by the rule the
+ * server labels with (its media.SourceOf), so the two agree; the first that fits:
+ * 1. a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots, wherever it is;
+ * 2. WhatsApp's names ("IMG-20260101-WA0002.jpg") and folders are WhatsApp;
+ * 3. a screenshots or screen recordings folder is Screenshots;
+ * 4. a messaging app's names ("photo_2023-01-15_10-00-00.jpg" is Telegram's) and folders are that app's folder;
+ * 5. DCIM/Camera, files right in DCIM, and the names cameras give ("DSC_000385.JPG", "20250928_211937_016.jpg") are
+ *    Camera;
+ * 6. a folder inside DCIM, Pictures, Movies, Download and the other shared folders is a source by its name (so
+ *    Pictures/Telegram and Download/Telegram are one, "Telegram"), as is a folder of its own at the top;
+ * 7. else (right in a shared folder, or in an app's own folder under Android/) the source of [appName], the app that
+ *    saved it (its label, when it [isSourceApp]), else Other.
+ * The names and folders are [SourceNames]' table.
  */
-internal fun sourceOfFolder(relativePath: String?, appName: String? = null): MediaSource {
+internal fun sourceOfFolder(relativePath: String?, fileName: String? = null, appName: String? = null): MediaSource {
     val byApp = appName?.let(MediaSource::folder) ?: MediaSource.OTHER
-    val path = relativePath ?: return byApp
-    val lower = path.lowercase()
-    if ("screenshot" in lower || "screenrecord" in lower || "screen record" in lower) return MediaSource.SCREENSHOTS
-    if ("whatsapp" in lower) return MediaSource.WHATSAPP
-    val parts = path.split("/").filter { it.isNotBlank() }
-    val top = parts.firstOrNull()?.lowercase() ?: return byApp
+    val name = fileName.orEmpty()
+    val parts = relativePath.orEmpty().split("/", "\\").filter { it.isNotBlank() }
+    if (SourceNames.isScreenshotName(name)) return MediaSource.SCREENSHOTS
+    if (SourceNames.isWhatsAppName(name) || parts.any(SourceNames::isWhatsAppFolder)) return MediaSource.WHATSAPP
+    if (parts.any(SourceNames::isScreenshotFolder)) return MediaSource.SCREENSHOTS
+    SourceNames.messagingApp(name, parts)?.let { return MediaSource.folder(it) }
+    val top = parts.firstOrNull()?.lowercase()
+    val inDcim = top == "dcim"
+    if ((inDcim && parts.size == 1) || parts.any(SourceNames::isCameraFolder) || SourceNames.isCameraName(name)) {
+        return MediaSource.CAMERA
+    }
     return when {
-        top == "dcim" -> parts.getOrNull(1)?.let(MediaSource::folder) ?: MediaSource.CAMERA
-        top in SHARED_FOLDERS -> parts.getOrNull(1)?.let(MediaSource::folder) ?: byApp
+        top == null -> byApp
+        inDcim || top in SHARED_FOLDERS -> parts.getOrNull(1)?.let(MediaSource::folder) ?: byApp
         top == "android" -> byApp
         else -> MediaSource.folder(parts[0])
     }
@@ -224,15 +284,28 @@ private val CAMERA_TYPES = setOf("image/heic", "image/heif", "image/jpeg", "imag
  * have written (a PNG, GIF, WebP or MP4 saved from an app) is Other; a JPEG saved from Safari can't be told apart and
  * counts as Camera. Unknown [originalMimeType] (not read yet) counts as Camera too, as before it was read. What would
  * be Other but is in exactly one album (often one an app made, like "Petcube") is that album's folder; Camera photos
- * stay Camera whatever albums they are filed in.
+ * stay Camera whatever albums they are filed in. The file's [fileName] is read with [SourceNames]' table as Android
+ * reads it: a screenshot's, WhatsApp's or a messaging app's name says so wherever the photo is filed.
  */
-internal fun sourceOfAsset(isScreenshot: Boolean, albums: List<String>, inUserLibrary: Boolean, originalMimeType: String?): MediaSource =
-    when {
-        isScreenshot -> MediaSource.SCREENSHOTS
-        albums.any { it.equals(WHATSAPP_ALBUM, ignoreCase = true) } -> MediaSource.WHATSAPP
-        inUserLibrary && (originalMimeType == null || originalMimeType.lowercase() in CAMERA_TYPES) -> MediaSource.CAMERA
-        else -> albums.singleOrNull()?.let(MediaSource::folder) ?: MediaSource.OTHER
+internal fun sourceOfAsset(
+    isScreenshot: Boolean,
+    albums: List<String>,
+    inUserLibrary: Boolean,
+    originalMimeType: String?,
+    fileName: String? = null,
+): MediaSource {
+    val name = fileName.orEmpty()
+    return when {
+        isScreenshot || SourceNames.isScreenshotName(name) -> MediaSource.SCREENSHOTS
+        albums.any { it.equals(WHATSAPP_ALBUM, ignoreCase = true) } || SourceNames.isWhatsAppName(name) -> MediaSource.WHATSAPP
+        else -> SourceNames.messagingApp(name, albums)?.let(MediaSource::folder)
+            ?: if (inUserLibrary && (originalMimeType == null || originalMimeType.lowercase() in CAMERA_TYPES)) {
+                MediaSource.CAMERA
+            } else {
+                albums.singleOrNull()?.let(MediaSource::folder) ?: MediaSource.OTHER
+            }
     }
+}
 
 /** The album WhatsApp saves into on iOS. */
 internal const val WHATSAPP_ALBUM = "WhatsApp"

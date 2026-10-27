@@ -1,5 +1,5 @@
 -- Version 8 to 9 (Oct 27, 2026): who uploaded each of the server's files, so what the server's import placed is a
--- source of its own ("import:whatsapp"), apart from the phones' folders (asked Oct 27, 2026).
+-- source of its own ("import:folder:WhatsApp"), apart from the phones' folders (asked Oct 27, 2026).
 ALTER TABLE server_media ADD COLUMN uploaded_by TEXT;
 
 -- And where each of the phone's own files is, sent with its upload so the server keeps what its source was told from.

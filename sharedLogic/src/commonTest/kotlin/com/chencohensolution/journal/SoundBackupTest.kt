@@ -139,7 +139,7 @@ class SoundBackupTest {
         val result = engine(files).run(listOf(note, recording), BackupSettings(enabled = true, soundFolders = listOf(voice, recorder))) {}
         assertEquals(2, result.uploaded)
         val bySource = server.requests.values.associate { it.fileName to it.source }
-        assertEquals("whatsapp", bySource["PTT-20251025-WA0001.opus"])
+        assertEquals("folder:WhatsApp", bySource["PTT-20251025-WA0001.opus"])
         assertEquals("folder:Voice Recorder", bySource["20251025_101500.m4a"])
         assertEquals("audio/ogg", server.requests.values.first { it.fileName.endsWith(".opus") }.mimeType)
     }

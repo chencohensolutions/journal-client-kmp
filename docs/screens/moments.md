@@ -181,17 +181,29 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
 Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/stories/MomentsFeed.kt)
 (`buildFeed`, tested in `FeedTest`):
 
-- **Source** (`MediaSource`: Camera, WhatsApp, Screenshots, a folder by its name, or Other; asked for Oct 24, 2026,
-  when every DCIM folder was Camera and Other was too broad). On Android it comes from the folder
-  (`sourceOfFolder`): a path containing "screenshot" or "screen record" is Screenshots; one containing "WhatsApp" is
-  WhatsApp; DCIM/Camera and files right in DCIM are Camera; any other folder inside DCIM, Pictures, Movies, Download
+- **Source** (`MediaSource`: Camera, Screenshots, Sent to you, a folder by its name, or Other; asked for Oct 24, 2026,
+  when every DCIM folder was Camera and Other was too broad). WhatsApp is a folder like any app's since Oct 27, 2026
+  (`folder:WhatsApp`; the old id `whatsapp`, in settings or from the server, is read as it), and stays hidden at first
+  with Screenshots. **Sent to you** (`received`) is what the server labels photos of a camera the user marked as not
+  theirs; a phone never gives its own files that source; it shows at first. What the server's import placed is
+  `import:` and its kind (`import:camera`, `import:folder:Telegram`), under Imported. On Android the source comes
+  from the file's name and folder (`sourceOfFolder`, reading the table in `SourceNames.kt`, a copy of the server's
+  rule so both label a file alike; the cases both are tested over are `SOURCE_FIXTURES` in `SourcesTest`), the first
+  that fits: a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots wherever it is; WhatsApp's
+  names ("IMG-20260101-WA0002.jpg") and any folder with "WhatsApp" in its name are WhatsApp; a folder with
+  "screenshot" or "screen record" in its name is Screenshots; the messaging apps' names and folders (Telegram's
+  "photo_2023-01-15_10-00-00.jpg", Signal's "signal-…", Facebook's "FB_IMG_…", Messenger's "received_…", Snapchat's
+  "Snapchat-…") are that app's folder; DCIM/Camera, files right in DCIM and the names cameras give ("DSC_000385.JPG",
+  Samsung's "20250928_211937_016.jpg", "IMG_20240101_…", "PXL_…", "VID_…", "MOV_…", "CAM…") are Camera; any other
+  folder inside DCIM, Pictures, Movies, Download
   (and Android's other shared folders) is a source by its name, so DCIM/Flowers is "Flowers" and Movies/Petcube is
   "Petcube", and the same name in two places (Pictures/Telegram, Download/Telegram) is one source. A file loose in
   Pictures or Download, or in an app's folder under Android/, is the source of the app that saved it (MediaStore's
   `OWNER_PACKAGE_NAME`, shown by the name under its icon: "ChatGPT", "Chrome"; the manifest's `<queries>` lets the app
   see apps with an icon), unless that app only copied it (Smart Switch from an old phone, the files app): then it is
   Other. iOS has no folders (`sourceOfAsset`): PhotoKit marks screenshots and screen recordings; photos in the album
-  "WhatsApp" (WhatsApp saves there) are WhatsApp; files the camera can write (HEIC, JPEG, DNG, MOV) in the user's
+  "WhatsApp" (WhatsApp saves there) are WhatsApp, and the file's name is read with the same table for screenshots,
+  WhatsApp and the messaging apps; files the camera can write (HEIC, JPEG, DNG, MOV) in the user's
   library are Camera, so a JPEG saved from Safari counts as Camera, whatever albums they are filed in. The rest
   (synced from a computer, in shared albums, PNG, GIF, WebP, MP4 saved from apps) is the source of its album when it
   is in exactly one (often one an app made, like "Petcube"), else Other. Photos only on the server keep the source

@@ -79,14 +79,14 @@ data class ServerMedia(
 
     /** Where it came from as the library shows it: the phone's folder, or what was imported of which kind. */
     val mediaSource: MediaSource get() {
-        val plain = source?.let(MediaSource::parse) ?: MediaSource.OTHER
+        val plain = MediaSource.of(source)
         return if (isImported) MediaSource.imported(plain) else plain
     }
 
     /** A sound recording as Moments and its page show it; only for [isAudio]. */
     fun toSoundRecording(): SoundRecording {
         val taken = takenAt?.let(::parseTimestamp) ?: parseTimestamp(uploadedAt)
-        val mediaSource = source?.let(MediaSource::parse) ?: MediaSource.OTHER
+        val mediaSource = MediaSource.of(source)
         return SoundRecording(
             sha256 = sha256,
             kind = when {

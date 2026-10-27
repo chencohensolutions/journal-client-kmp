@@ -30,8 +30,10 @@ private fun photo(id: String, minute: Int, source: MediaSource = MediaSource.CAM
 private fun sound(sha: String, kind: AudioKind, minute: Int, minutes: Int, source: MediaSource = MediaSource.OTHER) =
     SoundRecording(sha, kind, at(minute), DAY, minutes * MINUTE, source = source)
 
-private fun feed(items: List<MediaItem>, sounds: List<SoundRecording>, shown: Set<MediaSource> = MediaSource.FIXED.toSet(), grouping: TimelineGrouping = TimelineGrouping()) =
-    buildFeed(items.sortedByDescending { it.takenAtMillis }, ShownSources(hidden = MediaSource.FIXED.toSet() - shown), grouping, sounds = sounds)
+private val ALL = MediaSource.FIXED.toSet() + MediaSource.WHATSAPP
+
+private fun feed(items: List<MediaItem>, sounds: List<SoundRecording>, shown: Set<MediaSource> = ALL, grouping: TimelineGrouping = TimelineGrouping()) =
+    buildFeed(items.sortedByDescending { it.takenAtMillis }, ShownSources(hidden = ALL - shown), grouping, sounds = sounds)
 
 private fun MomentsFeed.sections() = entries.filterIsInstance<FeedEntry.Section>().map { it.section }
 

@@ -259,22 +259,28 @@ internal fun FeedItemMenu(
 /** Towns shown in a row's heading; a long day shows where it started. */
 internal const val MAX_TOWNS = 3
 
-/** The source's name: a folder's own ("Petcube"), else the fixed source's. */
+/**
+ * The source's name: WhatsApp's in the app's language, a folder's own ("Petcube"), else the fixed source's; an imported
+ * one is named by its kind.
+ */
 @Composable
-internal fun sourceName(source: MediaSource): String = source.folder ?: stringResource(
-    when (source) {
-        MediaSource.CAMERA -> R.string.feed_source_camera
-        MediaSource.WHATSAPP -> R.string.feed_source_whatsapp
-        MediaSource.SCREENSHOTS -> R.string.feed_source_screenshots
-        else -> R.string.feed_source_other
-    },
-)
+internal fun sourceName(source: MediaSource): String {
+    val kind = source.kind
+    return when (kind) {
+        MediaSource.CAMERA -> stringResource(R.string.feed_source_camera)
+        MediaSource.WHATSAPP -> stringResource(R.string.feed_source_whatsapp)
+        MediaSource.SCREENSHOTS -> stringResource(R.string.feed_source_screenshots)
+        MediaSource.RECEIVED -> stringResource(R.string.feed_source_received)
+        else -> kind.folder ?: stringResource(R.string.feed_source_other)
+    }
+}
 
 internal val MediaSource.icon: ImageVector
-    get() = when (this) {
+    get() = when (kind) {
         MediaSource.CAMERA -> FeedIcons.Camera
         MediaSource.WHATSAPP -> FeedIcons.Chat
         MediaSource.SCREENSHOTS -> FeedIcons.Phone
+        MediaSource.RECEIVED -> FeedIcons.Inbox
         MediaSource.OTHER -> FeedIcons.Download
         else -> FeedIcons.Folder
     }
@@ -299,5 +305,6 @@ internal object FeedIcons {
     val Phone = icon("Phone", "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M11 18h2")
     val Chat = icon("Chat", "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z")
     val Download = icon("Download", "M12 4v11", "M7 10l5 5 5-5", "M5 20h14")
+    val Inbox = icon("Inbox", "M4 13l2.5-8h11l2.5 8v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z", "M4 13h4.5l1.5 2.5h4l1.5-2.5H20")
     val Folder = icon("Folder", "M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z")
 }
