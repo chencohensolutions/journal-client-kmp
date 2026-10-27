@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cameras_b_title">Your cameras</string>
+    <string name="cameras_b_yours">Yours</string>
+    <string name="cameras_b_yours_body">Their photos show under Camera. A camera you haven’t marked is here, so nothing moves until you choose.</string>
+    <string name="cameras_b_yours_none">None of your cameras is marked yours.</string>
+    <string name="cameras_b_others_body">Cameras that aren’t yours: their photos show under Sent to you, on all your devices.</string>
+    <string name="cameras_b_others_none">No camera yet. Tap Not mine on one that isn’t yours.</string>
+    <string name="cameras_b_not_mine">Not mine</string>
+    <string name="cameras_b_mine">Mine</string>
+    <string name="cameras_b_move">Move</string>
+    <string name="cameras_b_confirm_body">They stay on your server and in the app. Tap Mine to bring them back.</string>
+    <string name="cameras_b_moving_body">On your server. You can leave this page; the photos follow in Moments.</string>
+    <plurals name="cameras_b_photos">
+        <item quantity="one">%1$s photo</item>
+        <item quantity="other">%1$s photos</item>
+    </plurals>
+    <plurals name="cameras_b_confirm">
+        <item quantity="one">%1$s photo will move to Sent to you</item>
+        <item quantity="other">%1$s photos will move to Sent to you</item>
+    </plurals>
+    <plurals name="cameras_b_moving">
+        <item quantity="one">Moving %1$s photo…</item>
+        <item quantity="other">Moving %1$s photos…</item>
+    </plurals>
+</resources>

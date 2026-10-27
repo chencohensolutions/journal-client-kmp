@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cameras_a_title">המצלמות שלך</string>
+    <string name="cameras_a_intro">כל מצלמה שצילמה את התמונות והסרטונים שלך, לפי התגים שלהם. כבה מצלמה שאינה שלך: התמונות שלה יעברו אל נשלח אליך, בכל המכשירים שלך.</string>
+    <string name="cameras_a_unmarked">מצלמה שלא סימנת נחשבת שלך, כך ששום דבר לא זז עד שתבחר.</string>
+    <string name="cameras_a_mine">שלי</string>
+    <string name="cameras_a_sent_to_you">התמונות שלה בנשלח אליך</string>
+    <string name="cameras_a_move">העבר</string>
+    <string name="cameras_a_confirm_body">הן נשארות בשרת שלך ובאפליקציה, תחת נשלח אליך במקום מצלמה. סמן את %1$s כשלך שוב כדי להחזיר אותן.</string>
+    <plurals name="cameras_a_confirm_title">
+        <item quantity="one">%1$s תמונה תעבור אל נשלח אליך</item>
+        <item quantity="two">%1$s תמונות יעברו אל נשלח אליך</item>
+        <item quantity="other">%1$s תמונות יעברו אל נשלח אליך</item>
+    </plurals>
+    <plurals name="cameras_a_moving">
+        <item quantity="one">מעביר %1$s תמונה…</item>
+        <item quantity="two">מעביר %1$s תמונות…</item>
+        <item quantity="other">מעביר %1$s תמונות…</item>
+    </plurals>
+</resources>

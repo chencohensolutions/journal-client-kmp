@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cameras_b_title">המצלמות שלך</string>
+    <string name="cameras_b_yours">שלך</string>
+    <string name="cameras_b_yours_body">התמונות שלהן מופיעות תחת מצלמה. מצלמה שלא סימנת נמצאת כאן, כך ששום דבר לא זז עד שתבחר.</string>
+    <string name="cameras_b_yours_none">אף מצלמה לא מסומנת כשלך.</string>
+    <string name="cameras_b_others_body">מצלמות שאינן שלך: התמונות שלהן מופיעות תחת נשלח אליך, בכל המכשירים שלך.</string>
+    <string name="cameras_b_others_none">עדיין אין מצלמה. הקש לא שלי על מצלמה שאינה שלך.</string>
+    <string name="cameras_b_not_mine">לא שלי</string>
+    <string name="cameras_b_mine">שלי</string>
+    <string name="cameras_b_move">העבר</string>
+    <string name="cameras_b_confirm_body">הן נשארות בשרת שלך ובאפליקציה. הקש שלי כדי להחזיר אותן.</string>
+    <string name="cameras_b_moving_body">בשרת שלך. אפשר לצאת מהעמוד; התמונות יתעדכנו ברגעים.</string>
+    <plurals name="cameras_b_photos">
+        <item quantity="one">%1$s תמונה</item>
+        <item quantity="two">%1$s תמונות</item>
+        <item quantity="other">%1$s תמונות</item>
+    </plurals>
+    <plurals name="cameras_b_confirm">
+        <item quantity="one">%1$s תמונה תעבור אל נשלח אליך</item>
+        <item quantity="two">%1$s תמונות יעברו אל נשלח אליך</item>
+        <item quantity="other">%1$s תמונות יעברו אל נשלח אליך</item>
+    </plurals>
+    <plurals name="cameras_b_moving">
+        <item quantity="one">מעביר %1$s תמונה…</item>
+        <item quantity="two">מעביר %1$s תמונות…</item>
+        <item quantity="other">מעביר %1$s תמונות…</item>
+    </plurals>
+</resources>

@@ -197,6 +197,18 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
     )),
+    // A page the app doesn't have yet (Settings › Library › Your cameras): its suggestions only.
+    LabScreen("cameras", "Settings › Your cameras", listOf(
+        camerasOptionA,
+        camerasOptionAConfirm,
+        camerasOptionAMoving,
+        camerasOptionB,
+        camerasOptionBConfirm,
+        camerasOptionBMoving,
+        camerasOptionC,
+        camerasOptionCConfirm,
+        camerasOptionCMoving,
+    )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
         LabOption("nightly", "Nightly run", "The nightly run reading this user's photos") {

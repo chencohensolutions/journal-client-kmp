@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cameras_c_title">Your cameras</string>
+    <string name="cameras_c_intro">The cameras that took your photos, the newest first, with the years they were used. Choose Sent to you for one that was never yours.</string>
+    <string name="cameras_c_mine">Mine</string>
+    <string name="cameras_c_move">Move</string>
+    <string name="cameras_c_confirm_body">On all your devices they leave Camera for Sent to you. Nothing is deleted; choose Mine to bring them back.</string>
+    <plurals name="cameras_c_confirm">
+        <item quantity="one">%1$s photo will move to Sent to you</item>
+        <item quantity="other">%1$s photos will move to Sent to you</item>
+    </plurals>
+    <plurals name="cameras_c_moving">
+        <item quantity="one">Moving %1$s photo…</item>
+        <item quantity="other">Moving %1$s photos…</item>
+    </plurals>
+</resources>
