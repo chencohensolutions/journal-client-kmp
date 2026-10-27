@@ -202,12 +202,6 @@ internal val labScreens: List<LabScreen> = listOf(
         camerasOptionA,
         camerasOptionAConfirm,
         camerasOptionAMoving,
-        camerasOptionB,
-        camerasOptionBConfirm,
-        camerasOptionBMoving,
-        camerasOptionC,
-        camerasOptionCConfirm,
-        camerasOptionCMoving,
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },
