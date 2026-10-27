@@ -542,10 +542,13 @@
     </plurals>
     <string name="settings_hidden_title">הגדרות פרטיות</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
-    <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, וואטסאפ וצילומי מסך לפי אפליקציה</string>
+    <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה</string>
     <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
-    <string name="hidden_whatsapp_title">וואטסאפ</string>
-    <string name="hidden_whatsapp">כל התמונות והסרטונים מוואטסאפ</string>
+    <string name="hidden_apps_section_title">אפליקציות</string>
+    <string name="hidden_apps_section_body">כל מה שאפליקציה שמרה, כמו וואטסאפ או טלגרם, וכל תיקייה בטלפונים שלך. צילומי המסך שלהן נמצאים תחת צילומי מסך.</string>
+    <string name="hidden_apps_section_all">הצג את כל %1$s</string>
+    <string name="hidden_apps_section_fewer">הצג פחות</string>
+    <string name="hidden_apps_section_none">עדיין אין בשרת שלך אפליקציה או תיקייה.</string>
     <string name="hidden_screenshots_title">צילומי מסך</string>
     <string name="hidden_nudity_title">עירום</string>
     <string name="hidden_nudity">הצגת תמונות וסרטונים עם עירום</string>
@@ -786,7 +789,8 @@
     <string name="settings_image_quality_title">איכות תמונה</string>
 
     <string name="settings_backup_charging_only_body">חוסך בסוללה; ההעלאות ממתינות למטען.</string>
-    <string name="hidden_apps_title">אפליקציות</string>
+    <string name="hidden_apps_title">צילומי מסך שצולמו ב…</string>
+    <string name="hidden_screenshots_in">צילומי מסך ב־%1$s</string>
     <string name="hidden_apps_count">%1$s מתוך %2$s מוצגות</string>
     <string name="hidden_apps_none_shown">צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג.</string>
     <string name="hidden_apps_open">הצגת כל האפליקציות</string>

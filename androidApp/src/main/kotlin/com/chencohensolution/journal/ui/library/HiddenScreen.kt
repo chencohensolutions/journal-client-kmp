@@ -62,7 +62,7 @@ import com.chencohensolution.journal.server.ServerLibrary
 import java.text.NumberFormat
 
 /**
- * Settings → Private media → Private settings: "Show private media" (this phone's), then what is hidden on every device: all of WhatsApp, screenshots by app, nudity and sound recordings, hidden on every device by the
+ * Settings → Private media → Private settings: "Show private media" (this phone's), then what is hidden on every device: apps and folders (WhatsApp, Telegram), screenshots by app, nudity and sound recordings, hidden on every device by the
  * server (see [HiddenCollections]). Behind the phone's lock. Each switch is saved on the server at once; nothing is kept
  * on this phone. The logic is [HiddenCollectionsController]. See docs/screens/settings.md.
  */
@@ -161,10 +161,7 @@ internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions
                             modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
                         )
                     }
-                    SectionTitle(stringResource(R.string.hidden_whatsapp_title))
-                    SettingsCard {
-                        CollectionRow(stringResource(R.string.hidden_whatsapp), shown.whatsapp, R.plurals.hidden_files, state.saving, set)
-                    }
+                    AppsSection(shown.apps, state.saving, set)
                     SectionTitle(stringResource(R.string.hidden_screenshots_title))
                     SettingsCard {
                         CollectionRow(stringResource(R.string.hidden_without_app), shown.screenshotsWithoutApp, R.plurals.hidden_screenshots, state.saving, set)
@@ -307,8 +304,49 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
 }
 
 /**
- * A screenshot app as a pill you tap: filled, with a check, while its screenshots are shown; outlined while hidden.
- * The count is how many screenshots it has.
+ * Apps and folders (WhatsApp, Telegram, Petcube: [HiddenCollections.apps]), each with a switch that hides all its files
+ * on every device, most files first; the first [APPS_FOLDED] until "Show all". Under it, a line on what they are.
+ */
+@Composable
+private fun AppsSection(apps: List<HiddenCollections.Collection>, saving: Boolean, set: (HiddenCollections.Collection, Boolean) -> Unit) {
+    SectionTitle(stringResource(R.string.hidden_apps_section_title))
+    var open by rememberSaveable { mutableStateOf(false) }
+    SettingsCard {
+        if (apps.isEmpty()) {
+            Text(stringResource(R.string.hidden_apps_section_none), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(16.dp))
+        }
+        // A hidden one stays in view even when folded, so it can be shown again.
+        val listed = if (open) apps else apps.filterIndexed { i, app -> i < APPS_FOLDED || app.hidden }
+        listed.forEachIndexed { i, app ->
+            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            CollectionRow(app.name, app, R.plurals.hidden_files, saving, set)
+        }
+        if (listed.size < apps.size || open && apps.size > APPS_FOLDED) {
+            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            TextButton(onClick = { open = !open }, modifier = Modifier.padding(horizontal = 4.dp)) {
+                Text(
+                    if (open) stringResource(R.string.hidden_apps_section_fewer)
+                    else stringResource(R.string.hidden_apps_section_all, NumberFormat.getIntegerInstance().format(apps.size)),
+                    color = LibraryColors.OnBackground,
+                )
+            }
+        }
+    }
+    Text(
+        stringResource(R.string.hidden_apps_section_body),
+        color = LibraryColors.Muted,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
+    )
+}
+
+/** Apps and folders listed before "Show all". */
+private const val APPS_FOLDED = 5
+
+/**
+ * A screenshot app as a pill you tap, "Screenshots in Bumble" (never just the app's name, which reads as all of its
+ * files): filled, with a check, while its screenshots are shown; outlined while hidden. The count is how many
+ * screenshots it has.
  */
 @Composable
 private fun AppPill(app: HiddenCollections.Collection, onClick: () -> Unit) {
@@ -335,7 +373,7 @@ private fun AppPill(app: HiddenCollections.Collection, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (on) Icon(LibraryIcons.Check, null, tint = content, modifier = Modifier.size(15.dp))
-        Text(app.name, color = content, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.hidden_screenshots_in, app.name), color = content, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Text(
             NumberFormat.getIntegerInstance().format(app.files),
             color = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted,

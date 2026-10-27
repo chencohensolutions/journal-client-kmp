@@ -522,10 +522,13 @@
     </plurals>
     <string name="settings_hidden_title">Private settings</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
-    <string name="settings_hidden_row_body">Private media, nudity, sound recordings, WhatsApp and screenshots by app</string>
+    <string name="settings_hidden_row_body">Private media, nudity, sound recordings, apps and screenshots by app</string>
     <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
-    <string name="hidden_whatsapp_title">WhatsApp</string>
-    <string name="hidden_whatsapp">All WhatsApp photos and videos</string>
+    <string name="hidden_apps_section_title">Apps</string>
+    <string name="hidden_apps_section_body">Everything an app saved, such as WhatsApp or Telegram, and each folder on your phones. Their screenshots are under Screenshots.</string>
+    <string name="hidden_apps_section_all">Show all %1$s</string>
+    <string name="hidden_apps_section_fewer">Show fewer</string>
+    <string name="hidden_apps_section_none">No app or folder on your server yet.</string>
     <string name="hidden_screenshots_title">Screenshots</string>
     <string name="hidden_nudity_title">Nudity</string>
     <string name="hidden_nudity">Show photos and videos with nudity</string>
@@ -755,7 +758,8 @@
     <string name="settings_image_quality_title">Image quality</string>
 
     <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
-    <string name="hidden_apps_title">Apps</string>
+    <string name="hidden_apps_title">Screenshots taken in…</string>
+    <string name="hidden_screenshots_in">Screenshots in %1$s</string>
     <string name="hidden_apps_count">%1$s of %2$s shown</string>
     <string name="hidden_apps_none_shown">No app’s screenshots are shown. Open the list to show some.</string>
     <string name="hidden_apps_open">Show all apps</string>
