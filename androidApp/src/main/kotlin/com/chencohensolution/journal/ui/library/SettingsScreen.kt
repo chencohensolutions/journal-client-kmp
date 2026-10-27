@@ -56,6 +56,7 @@ import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.SimilarityThreshold
 import com.chencohensolution.journal.settings.TimelineGrouping
 import androidx.compose.material3.LinearProgressIndicator
+import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.ServerIndexingState
 import com.chencohensolution.journal.server.SyncProgress
 import java.text.NumberFormat
@@ -67,6 +68,8 @@ internal class SettingsActions(
     val resetSimilarity: () -> Unit = {},
     /** Opens Hidden collections (behind the phone's lock). */
     val openHidden: () -> Unit = {},
+    /** Opens Settings › Your cameras. */
+    val openCameras: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
@@ -115,6 +118,8 @@ internal fun SettingsScreen(
     indexing: ServerIndexingState? = null,
     /** What Private settings hides on every device, for Show in the app; null until it was opened in this run. */
     hiddenEverywhere: HiddenCollections? = null,
+    /** Your cameras' last list, for its row; null when the server doesn't keep cameras (no row). */
+    cameras: CamerasState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val title = when (page) {
@@ -132,7 +137,7 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             when (page) {
-                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing)
+                SettingsPage.MAIN -> MainPage(settings, actions, sourceCounts, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras)
                 SettingsPage.SHOWN -> ShownSourcesSection(settings.shownSources, sourceCounts, hiddenEverywhere, actions)
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
@@ -155,11 +160,16 @@ private fun MainPage(
     syncProgress: SyncProgress?,
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState?,
     indexing: ServerIndexingState?,
+    cameras: CamerasState?,
 ) {
     SectionTitle(stringResource(R.string.settings_library_title))
     Card {
         PageRow(stringResource(R.string.settings_shown_title), shownSummary(settings.shownSources, sourceCounts)) { actions.openPage(SettingsPage.SHOWN) }
         RowDivider()
+        if (cameras != null) {
+            PageRow(stringResource(R.string.cameras_title), camerasSummary(cameras), actions.openCameras)
+            RowDivider()
+        }
         PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
         RowDivider()
         SwitchRow(
@@ -250,6 +260,21 @@ private fun shownSummary(shown: ShownSources, counts: Map<MediaSource, Int>): St
     if (names.isEmpty()) return stringResource(R.string.settings_shown_none)
     val first = names.take(3).joinToString(", ")
     return stringResource(R.string.settings_shown_summary, if (names.size > 3) "$first +${names.size - 3}" else first)
+}
+
+/**
+ * Your cameras' row: "4 cameras · 1 not yours", "4 cameras" when all are, "Moving 312 photos…" while the server moves
+ * some, and "Which cameras were yours" before the list came.
+ */
+@Composable
+private fun camerasSummary(cameras: CamerasState): String {
+    val ready = cameras as? CamerasState.Ready ?: return stringResource(R.string.settings_cameras_unknown)
+    val format = NumberFormat.getIntegerInstance()
+    if (ready.pending > 0) return pluralStringResource(R.plurals.cameras_moving, ready.pending, format.format(ready.pending))
+    val count = pluralStringResource(R.plurals.settings_cameras_count, ready.cameras.size, format.format(ready.cameras.size))
+    val notYours = ready.cameras.count { !it.mine }
+    if (notYours == 0) return count
+    return stringResource(R.string.feed_place_time, count, pluralStringResource(R.plurals.settings_cameras_not_yours, notYours, format.format(notYours)))
 }
 
 /** Moments' row: "By day · similar at 60%", "New row after 12 hours · similar at 85%". */

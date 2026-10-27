@@ -3,6 +3,7 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.runtime.Composable
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
+import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.HiddenCollectionsState
 import com.chencohensolution.journal.server.HiddenCollections
 import com.chencohensolution.journal.stories.CropKind
@@ -177,7 +178,7 @@ internal val labScreens: List<LabScreen> = listOf(
         },
     )),
     LabScreen("settings", "Settings", listOf(
-        current { SettingsScreen(SettingsState(), SettingsActions()) },
+        current { SettingsScreen(SettingsState(), SettingsActions(), cameras = CamerasState.Ready(labCameras)) },
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
@@ -197,11 +198,11 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
         },
     )),
-    // A page the app doesn't have yet (Settings › Library › Your cameras): its suggestions only.
+    // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(
-        camerasOptionA,
-        camerasOptionAConfirm,
-        camerasOptionAMoving,
+        current { CamerasLab(labCameras) },
+        LabOption("confirm", "Asking before moving", "\"312 photos will move to Sent to you\"") { CamerasLabConfirm() },
+        LabOption("moving", "Moving", "\"Moving 312 photos…\" on the row") { CamerasLabMoving() },
     )),
     LabScreen("search-settings", "Settings › Search", listOf(
         current { SearchSettingsScreen(100, PeopleLabData.indexingRunning, PeopleLabData.phoneSearch, SearchSettingsActions()) },

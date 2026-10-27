@@ -815,4 +815,28 @@
     <string name="settings_loading_default_chip">%d (default)</string>
     <string name="settings_loading_note">Only on this phone. Applies as Moments loads its next rows.</string>
     <string name="settings_loading_reset">Reset to %1$d and %2$d</string>
+    <string name="settings_cameras_unknown">Which cameras were yours</string>
+    <plurals name="settings_cameras_count">
+        <item quantity="one">%1$s camera</item>
+        <item quantity="other">%1$s cameras</item>
+    </plurals>
+    <plurals name="settings_cameras_not_yours">
+        <item quantity="one">%1$s not yours</item>
+        <item quantity="other">%1$s not yours</item>
+    </plurals>
+    <string name="cameras_title">Your cameras</string>
+    <string name="cameras_intro">Every camera that took your photos and videos, as their tags say. Turn off one that isn’t yours: its photos move to Sent to you, on all your devices.</string>
+    <string name="cameras_unmarked">A camera you haven’t marked counts as yours, so nothing moves until you choose.</string>
+    <string name="cameras_mine">Mine</string>
+    <string name="cameras_sent_to_you">Its photos are in Sent to you</string>
+    <string name="cameras_move">Move</string>
+    <string name="cameras_confirm_body">They stay on your server and in the app, under Sent to you instead of Camera. Mark the %1$s yours again to bring them back.</string>
+    <plurals name="cameras_confirm_title">
+        <item quantity="one">%1$s photo will move to Sent to you</item>
+        <item quantity="other">%1$s photos will move to Sent to you</item>
+    </plurals>
+    <plurals name="cameras_moving">
+        <item quantity="one">Moving %1$s photo…</item>
+        <item quantity="other">Moving %1$s photos…</item>
+    </plurals>
 </resources>

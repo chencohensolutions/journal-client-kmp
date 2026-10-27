@@ -8,7 +8,9 @@ Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is 
 saying how it stands and opening a page of its own; the switches used most stay on the first page:
 
 - **Top bar:** back and "Settings" (on a page: its name).
-- **Library:** **Show in the app ›** ("Showing Camera, Other, Petcube +2", the most photos first), **Moments ›** ("By
+- **Library:** **Show in the app ›** ("Showing Camera, Other, Petcube +2", the most photos first), **Your cameras ›**
+  (when the server keeps cameras, `ServerFeatures.cameras`: "4 cameras · 1 not yours", "4 cameras" when all are,
+  "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Moments ›** ("By
   day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
 - **Privacy:** the **Show private media** switch and **Hidden collections 🔒 ›** (below).
 - **Backup and storage** (when the app has them): **Backup ›** (its status line; a screen of its own, below),
@@ -46,11 +48,17 @@ The pages, and what each holds:
   devices: WhatsApp, 1,640 more Screenshots. Not counted here." (`ShownSourcesPills`, shared, from
   `HiddenCollections.hiddenOf` and `hiddenApps`). The same pills, box and line are the **Showing** sheets of Moments
   and Explore (`ShownSourcesPills.kt`, `ShowingSheet`). The row on the first page adds "Imported" while it shows.
-- **Your cameras** (not built; UI lab round open, Oct 27, 2026: `./scripts/ui-lab.sh cameras a|b|c`, each with
-  `-confirm` and `-moving`): a page under Library listing every camera model with its photos and years ("Galaxy S25 ·
-  1,240 · 2025–2026") and a way to mark it not the user's ("312 photos will move to Sent to you", then "Moving 312
-  photos…" while the server moves them). The shared part is built: `CamerasController` (`cameras`, `setCamera`,
-  asking again while `pending`, then a library sync), `CameraModel`, `ServerFeatures.cameras`.
+- **Your cameras** (a page under Library, Oct 27, 2026; Android only, iOS not built yet): a line on what it does,
+  then one card of every camera model the user's files name, the most photos first, each with its photos and years
+  ("Samsung SM-S931B · 1,240 · 2025–2026") and a **Mine** switch; a model marked not the user's also says "Its photos
+  are in Sent to you". Phones are named as their tags name them (`cameraName`). Turning a switch on marks the model
+  the user's at once; turning it off asks first in a dialog ("312 photos will move to Sent to you": they stay on the
+  server and in the app, under Sent to you instead of Camera; **Move** or Cancel). While the server moves a model's
+  files the row says "Moving 312 photos…" with a bar, and the page asks again every 3 seconds until none is left; the
+  library then syncs, since each moved file comes again in the change feed. Under the card: "A camera you haven't
+  marked counts as yours, so nothing moves until you choose." Loading, "Can't reach your server" with Try again, and
+  "Not changed" (the switch goes back) as in Private settings. In the UI lab: `./scripts/ui-lab.sh cameras
+  current|confirm|moving` (made-up cameras, the move timed).
 - **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
@@ -382,7 +390,13 @@ indexes on the phone, to search without the server, offline too (journal-server-
 - Android: [SettingsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SettingsScreen.kt)
   (the first page and the Show in the app, Moments and Storage on this phone pages, by `SettingsPage`; one route,
   `Route.SettingsPageRoute`, per page; Storage's content in `StorageSettings.kt`), the Backup screen
-  (`Route.BackupSettings`) in `BackupSettings.kt`;
+  (`Route.BackupSettings`) in `BackupSettings.kt`; Your cameras (`Route.Cameras`) in
+  [CamerasScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/CamerasScreen.kt)
+  (`CamerasRoute`: a `CamerasController` per opening and the camera waiting for its confirmation; `CamerasScreen`
+  drawn from `CamerasState`), its row's line from the last list (asked when Settings opens; `LibraryApp.kt`). Shared:
+  `CamerasController`, `CamerasState`, `CameraModel` and `cameraName` in
+  [Cameras.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/Cameras.kt), over
+  `ServerLibrary.cameras` / `setCamera`;
   Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`). Shared: `HiddenCollectionsController` (`HiddenCollectionsState`: loading, unreachable, ready with

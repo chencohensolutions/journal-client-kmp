@@ -55,6 +55,7 @@ import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.createPersonController
 import androidx.compose.ui.platform.LocalContext
 import com.chencohensolution.journal.search.SearchController
+import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
@@ -138,6 +139,8 @@ private fun LibraryScreens(
     val serverUsage by server.library.usage.collectAsStateWithLifecycle()
     val syncProgress by server.library.syncProgress.collectAsStateWithLifecycle()
     val hiddenEverywhere by server.library.hiddenEverywhere.collectAsStateWithLifecycle()
+    // Your cameras' last list, for Settings' row: asked when Settings opens, and kept up by the page while it is open.
+    var camerasState by remember { mutableStateOf<CamerasState>(CamerasState.Loading) }
     val backupRunning = (backupState.activity as? BackupActivity.Running)?.progress
     val settingsState by settings.state.collectAsStateWithLifecycle()
     val libraryState by library.state.collectAsStateWithLifecycle()
@@ -360,6 +363,10 @@ private fun LibraryScreens(
                                 Route.Settings, is Route.SettingsPageRoute -> {
                                     // Search's row says how the server's reading of this user's photos is going.
                                     LaunchedEffect(features?.indexing) { if (features?.indexing == true) serverIndexing.refresh() }
+                                    // Your cameras' row says how many cameras there are and how many aren't the user's.
+                                    LaunchedEffect(features?.cameras) {
+                                        if (features?.cameras == true) server.library.cameras()?.let { camerasState = CamerasState.Ready(it) }
+                                    }
                                     // Asked on open, and again when a backup run ends, so it follows the uploads.
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
@@ -383,6 +390,7 @@ private fun LibraryScreens(
                                             setSimilarityPercent = settings::setSimilarityPercent,
                                             resetSimilarity = settings::resetSimilarity,
                                             openHidden = { push(Route.Hidden) },
+                                            openCameras = { push(Route.Cameras) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             openSearch = { push(Route.SearchSettings) },
                                             openPage = { push(Route.SettingsPageRoute(it)) },
@@ -400,6 +408,7 @@ private fun LibraryScreens(
                                         storageActions = actions.storage,
                                         syncProgress = syncProgress,
                                         hiddenEverywhere = hiddenEverywhere,
+                                        cameras = camerasState.takeIf { features?.cameras == true },
                                     )
                                 }
                                 Route.BackupSettings -> {
@@ -417,6 +426,12 @@ private fun LibraryScreens(
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)
                                 }
                                 Route.Hidden -> HiddenScreen(server.library, settingsState.privateMedia.show, settings::setShowPrivateMedia, back = pop)
+                                Route.Cameras -> CamerasRoute(
+                                    server.library,
+                                    // Loading and Unreachable keep the row's last count.
+                                    onState = { if (it is CamerasState.Ready) camerasState = it },
+                                    back = pop,
+                                )
                                 is Route.Audio -> RecordingScreen(route.sha256, storiesState, server.library, back = pop)
                                 Route.SearchSettings -> {
                                     LaunchedEffect(Unit) { localIndexes.refresh() }

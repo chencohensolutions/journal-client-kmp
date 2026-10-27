@@ -49,8 +49,23 @@ Still missing on iOS:
     `feed_source_received`, `hidden_apps_section_*`, `hidden_apps_title` (now "Screenshots taken in…"),
     `hidden_screenshots_in`, `library_info_saved_in`, `library_info_camera`, `search_hidden_more`,
     `search_hidden_shown`.
-  - **Your cameras** is still a UI lab round on Android (`cameras a|b|c`); build it on iOS once the owner picks one.
-    Its shared part: `CamerasController(serverLibrary)` (`load`, `setMine`, `observe`, `close`), `CamerasState`.
+  - **Your cameras** (Android Oct 27, 2026; shared parts done; see [screens/settings.md](screens/settings.md)). Left
+    in Swift: (1) a **Your cameras ›** row in `SettingsSections.swift`'s Library section, after Show in the app, shown
+    only when `serverLibrary.features.value?.cameras == true`; its line from `serverLibrary.cameras()` asked when
+    Settings opens (and the page's last `CamerasStateReady`): "4 cameras · 1 not yours" (`settings_cameras_count`,
+    `settings_cameras_not_yours`, joined by " · "), "4 cameras" when all are, "Moving 312 photos…" (`cameras_moving`)
+    while `pending > 0`, "Which cameras were yours" (`settings_cameras_unknown`) before the list came. (2) A SwiftUI
+    page: a `CamerasController(library: serverLibrary)` per opening (`load()` on appear, `close()` on disappear,
+    `observe` / `currentState`); `CamerasStateLoading` / `Unreachable` (`retry()`) / `Ready` (`cameras`, `saving`,
+    `notChanged`); a card of rows `camera.name`, "1,240 · 2025–2026" (`files`, `firstYear`–`lastYear`, the years kept
+    left to right in Hebrew), "Its photos are in Sent to you" when `!mine && pending == 0`, a **Mine** toggle (disabled
+    while `saving`); on → `setMine(camera, mine: true)`, off → an alert ("312 photos will move to Sent to you",
+    `cameras_confirm_title` / `cameras_confirm_body`, **Move** → `setMine(camera, mine: false)`), the camera asked
+    about kept in `@State` by make and model; while `pending > 0` "Moving 312 photos…" and a bar of
+    `1 - pending / files`. Android: `CamerasScreen.kt`, `SettingsScreen.kt` (`camerasSummary`), `LibraryApp.kt`
+    (`Route.Cameras`). Strings: `cameras_title`, `cameras_intro`, `cameras_unmarked`, `cameras_mine`,
+    `cameras_sent_to_you`, `cameras_move`, `cameras_confirm_body`, `cameras_confirm_title`, `cameras_moving`,
+    `settings_cameras_*`.
 
 - **Settings › Advanced › Loading Moments** (Android since Oct 26, 2026; see [screens/settings.md](screens/settings.md)):
   an Advanced section after Search with a Loading Moments row ("30 rows at a time · 40 ahead") opening a page with
