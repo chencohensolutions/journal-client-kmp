@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.screenshot.PreviewTest
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.library.SourceTotal
+import com.chencohensolution.journal.settings.KindsStatus
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.settings.ShownSources
 import com.chencohensolution.journal.settings.ShownSourcesPills
@@ -55,7 +57,7 @@ fun SettingsShownSources() = Screen {
     SettingsScreen(
         SettingsState(shownSources = ShownSources()),
         SettingsActions(),
-        sourceCounts = PreviewData.hiddenFeed.counts,
+        kinds = KindsStatus.of(PreviewData.hiddenFeed.counts.mapValues { SourceTotal(it.value, 0) }, emptyList(), emptyMap(), null),
     )
 }
 

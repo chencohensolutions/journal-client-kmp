@@ -51,7 +51,8 @@ class HiddenCollectionsTest {
         """"nudity":{"hidden":true,"from":0.5,"files":2,"notScanned":3},""" +
         """"recordings":{"__typename":"Collection","name":"recordings","files":4,"imported":0,"hidden":true},""" +
         """"calls":{"__typename":"Collection","name":"calls","files":5,"imported":0,"hidden":true},""" +
-        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"imported":0,"hidden":true}}"""
+        """"voiceMessages":{"__typename":"Collection","name":"voiceMessages","files":6,"imported":0,"hidden":true},""" +
+        """"sentToYou":{"__typename":"Collection","name":"sentToYou","files":8,"imported":0,"hidden":false}}"""
 
     @Test
     fun aFileTheServerHidesIsDroppedWithWhatThisPhoneKeepsOfIt() = runTest {
@@ -94,6 +95,9 @@ class HiddenCollectionsTest {
         )
         // The sound recordings stay as they were: all three hidden.
         assertTrue(sent.any { """"audio":{"recordings":true,"calls":true,"voiceMessages":true}""" in it }, sent.joinToString("\n"))
+        // Sent to you as it was: shown.
+        assertTrue(sent.any { """"sentToYou":false""" in it }, sent.joinToString("\n"))
+        assertEquals(HiddenCollections.Collection("sentToYou", 8, false), shown.sentToYou)
         assertEquals(HiddenCollections.Collection("calls", 5, true), shown.calls)
         // Showing calls sends only that change.
         val calls = shown.with(shown.calls!!, hidden = false)

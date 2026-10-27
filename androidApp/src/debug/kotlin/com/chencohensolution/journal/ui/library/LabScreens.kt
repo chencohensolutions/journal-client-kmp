@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.server.CamerasState
-import com.chencohensolution.journal.server.HiddenCollectionsState
-import com.chencohensolution.journal.server.HiddenCollections
 import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
@@ -29,29 +27,12 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    // Made-up data (KindsLab): unlocked, as the emulator has no screen lock; the switches work while it is open.
     LabScreen("private", "Private settings", listOf(
-        current {
-            val shots = listOf("Bumble" to 1458, "Chrome" to 310, "WhatsApp" to 96, "Instagram" to 88, "Maps" to 41, "Google Pay" to 12)
-                .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) }
-            val collections = HiddenCollections(
-                apps = listOf("WhatsApp" to 3412, "Telegram" to 640, "Signal" to 210, "Petcube" to 5)
-                    .mapIndexed { i, (name, n) -> HiddenCollections.Collection(name, n, hidden = i == 0) },
-                screenshotsWithoutApp = HiddenCollections.Collection("", 128, false),
-                screenshotApps = shots,
-                nudity = HiddenCollections.Nudity(true, 50, 61, 0),
-                recordings = HiddenCollections.Collection("recordings", 1204, true),
-                calls = HiddenCollections.Collection("calls", 6196, true),
-                voiceMessages = HiddenCollections.Collection("voiceMessages", 14, true),
-            )
-            HiddenContent(
-                androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title),
-                HiddenCollectionsState.Ready(collections, "", shots, saving = false, notChanged = false),
-                HiddenActions(retry = {}, set = { _, _ -> }, setQuery = {}),
-                back = {},
-            )
+        current { PrivateSettingsLab() },
+        LabOption("locked", "Behind the phone's lock", "As the app opens it: the phone's lock first") {
+            PhoneLocked(androidx.compose.ui.res.stringResource(com.chencohensolution.journal.R.string.settings_hidden_title), back = {}) { PrivateSettingsLab() }
         },
-        privateOptionC2,
-        privateOptionC2Open,
     )),
     LabScreen("recording", "A sound recording's page", listOf(
         current {
@@ -185,6 +166,7 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(
                 SettingsState(),
                 SettingsActions(),
+                kinds = labKinds,
                 cameras = CamerasState.Ready(labCameras),
                 soundFolders = SoundFoldersState.Ready(labSoundFolders),
             )
@@ -193,41 +175,9 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
     )),
-    LabScreen("sources", "Settings › Show in the app: imported", listOf(
-        current {
-            val counts = mapOf(
-                com.chencohensolution.journal.library.MediaSource.CAMERA to 39650,
-                com.chencohensolution.journal.library.MediaSource.WHATSAPP to 10378,
-                com.chencohensolution.journal.library.MediaSource.OTHER to 3948,
-                com.chencohensolution.journal.library.MediaSource.SCREENSHOTS to 2268,
-                com.chencohensolution.journal.library.MediaSource.folder("Petcube") to 5,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.CAMERA) to 38410,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.OTHER) to 3917,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS) to 540,
-            )
-            SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
-        },
-    )),
-    // Show in the app by kind (Oct 27, 2026): `current` with the owner's numbers as the app splits them today.
-    LabScreen("kinds", "Settings › Show in the app: kinds", listOf(
-        current {
-            val counts = mapOf(
-                com.chencohensolution.journal.library.MediaSource.CAMERA to 40_590,
-                com.chencohensolution.journal.library.MediaSource.WHATSAPP to 9_322,
-                com.chencohensolution.journal.library.MediaSource.SCREENSHOTS to 1_730,
-                com.chencohensolution.journal.library.MediaSource.OTHER to 480,
-                com.chencohensolution.journal.library.MediaSource.RECEIVED to 312,
-                com.chencohensolution.journal.library.MediaSource.folder("Dine-Out") to 49,
-                com.chencohensolution.journal.library.MediaSource.folder("Telegram") to 16,
-                com.chencohensolution.journal.library.MediaSource.folder("Petcube") to 13,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.CAMERA) to 38_410,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.WHATSAPP) to 10_378,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.SCREENSHOTS) to 540,
-                com.chencohensolution.journal.library.MediaSource.imported(com.chencohensolution.journal.library.MediaSource.folder("סרט צילום")) to 84,
-            )
-            SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, sourceCounts = counts)
-        },
-        kindsOptionC3,
+    // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
+    LabScreen("kinds", "Settings › Show in the app", listOf(
+        current { SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, kinds = labKinds) },
     )),
     // Made-up cameras (CamerasLab): the server isn't asked, and the move is timed.
     LabScreen("cameras", "Settings › Your cameras", listOf(

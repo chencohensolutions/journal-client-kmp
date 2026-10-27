@@ -8,14 +8,14 @@ Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is 
 saying how it stands and opening a page of its own; the switches used most stay on the first page:
 
 - **Top bar:** back and "Settings" (on a page: its name).
-- **Library:** **Show in the app ›** ("Showing Camera, Other, Petcube +2", the most photos first), **Your cameras ›**
+- **Library:** **Show in the app ›** ("87,343 files · 15 not backed up"; until Oct 27, 2026 "Showing Camera, Other, Petcube +2"), **Your cameras ›**
   (when the server keeps cameras, `ServerFeatures.cameras`: "4 cameras · 1 not yours", "4 cameras" when all are,
   "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Sound folders ›**
   (when the server keeps them, `ServerFeatures.soundFolders`: "4 folders · 1 as Calls · 1 as Voice recordings", "3
   folders" when none is merged, "Moving 953 files…" while the server moves some, "Which folders are calls or voice
   recordings" until the list came; both lists are asked when Settings opens and kept up by their pages), **Moments ›** ("By
   day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
-- **Privacy:** the **Show private media** switch and **Hidden collections 🔒 ›** (below).
+- **Privacy:** **Private settings 🔒 ›** (below; Show private media is inside it since Oct 25, 2026).
 - **Backup and storage** (when the app has them): **Backup ›** (its status line; a screen of its own, below),
   **Storage on this phone ›** ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›**
   (its line, below).
@@ -24,34 +24,37 @@ saying how it stands and opening a page of its own; the switches used most stay 
 
 The pages, and what each holds:
 
-- **Show in the app** (a page; first; Oct 21, 2026): a pill per source with its count ("WhatsApp · 10,282", "Petcube · 5"),
-  filled with a ✓ when shown, the most photos first (`ShownSources.choices`; pills since Oct 24, 2026, when each folder
-  and app became a source, see [Moments](moments.md) for how a photo's source is told, and a switch per source grew too
-  long). Everything but WhatsApp and Screenshots is shown at first, a folder seen for the first time too; a hidden
-  source stays listed so it can be shown again. Then **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on), which turns the
-  [Moments](moments.md) chips on or off, and **Filter bar in Moments** ("The row of sources above the feed. When off,
-  choose them here."; on; asked Oct 24, 2026; `ShownSources.showFilterBar`, kept as `show_filter_bar`), which hides
-  the Moments filter bar. Under them: on this phone only; it applies to Moments, Explore and Tags; photos
-  you wrote about always show on the storyline; hiding never deletes anything and doesn't change
-  what is backed up. The Moments filter bar and Explore's **Showing** sheet change the same setting
-  (`ShownSources`, kept as the sources hidden: `hidden_sources` (until Oct 24, 2026 the fixed sources shown,
-  `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`; the old id `whatsapp` there, and in
-  `backup_sources` and `free_up_kept`, is read as the folder `folder:whatsapp` it is since Oct 27, 2026, as is any
-  folder kept with capitals (`folder:WhatsApp`, `folder:Petcube`: folder ids are in lower case since Oct 27, 2026),
-  and written so). **Imported** (Android Oct 27, 2026, option b2 of the UI lab; iOS not built yet): after the phones' pills, one
-  **Imported · 42,867** pill (a box icon) for everything the server's import placed (`ShownSources.importedShown`,
-  kept as `show_imported`); while on, a tinted box under the pills, "Of what was imported", holds its kinds as smaller
-  pills (Camera, WhatsApp, Screenshots, Other, an imported folder), each switched on its own. Every count is only what
-  reaches this phone. While Other is among the pills, a line says what it is: "Other: files whose name and folder
-  say nothing: downloads, saved images, files from a computer." Then a line on **Private settings** with "Private
-  settings ›" (opens it, behind the lock). Until Private settings was opened in this run of the app it says "Private
-  settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this
-  phone and aren't counted here."; once it was (`ServerLibrary.hiddenEverywhere`, never asked for by this page),
-  a source it hides whole (an app such as WhatsApp) is a dimmed pill with a lock that opens Private settings, one it
-  hides in part (screenshots of hidden apps) has a lock after its count, and the line reads "🔒 Hidden on all your
-  devices: WhatsApp, 1,640 more Screenshots. Not counted here." (`ShownSourcesPills`, shared, from
-  `HiddenCollections.hiddenOf` and `hiddenApps`). The same pills, box and line are the **Showing** sheets of Moments
-  and Explore (`ShownSourcesPills.kt`, `ShowingSheet`). The row on the first page adds "Imported" while it shows.
+- **Show in the app** (a page; first; since Oct 27, 2026 a status page, kinds c3 of the UI lab, Android; iOS not built
+  yet): nothing here changes; it says what the user has and what isn't backed up. At the top "87,343 files" and, in
+  orange, "☁ 15 not backed up ›" (or "All backed up"). Then **Photos and videos**, a card with a line per kind:
+  Camera, Screenshots, Sent to you, each folder (WhatsApp, Telegram, Petcube…), Other last, the most files first, each
+  with its icon, its total in a column at the end, and "12 not backed up ›" in orange under its name where some of
+  this phone's files of that kind aren't on the server yet. What the server's import placed counts in its kind
+  (`import:camera` is Camera; there is no Imported section any more). Then **Sound**: Calls, Voice recordings, Voice
+  messages (those with files), the same way. Kinds Private settings hides on every device aren't named: once Private
+  settings was opened in this run of the app (`ServerLibrary.hiddenEverywhere`, never asked for by this page), one line
+  counts them, "🔒 2 kinds hidden on all your devices · **Private settings ›**" (apps and folders, screenshot apps,
+  Sent to you and sound kinds that have files; nudity isn't a kind); before that the line is left out. Last, a note:
+  "To hide a kind on this phone, or show it again, use the filter bar in Moments. This phone remembers it." Every
+  "not backed up ›" opens Settings › Backup; "Private settings ›" opens Private settings (behind the lock). The row on
+  the first page reads "87,343 files · 15 not backed up" (or "· All backed up").
+  **How it counts** (`KindsStatus.of`, shared): the library database's counts per source (`LibraryTable.backupCounts`,
+  split by source in `LibraryTotals.bySource`, read as `LibraryState.sourceTotals()`), imported sources folded into
+  their kind. "Not backed up" is what Backup counts: with backup on, the phone's files of the sources backup takes
+  that the ledger doesn't hold as uploaded as they are now (plus those on their way again); with backup off, every
+  file of this phone; sources backup doesn't take count 0. The sum equals Backup's "N waiting". Sound: the server's
+  recordings the library shows, by kind, plus the files of the backed-up sound folders not uploaded yet
+  (`BackupState.soundsNotBackedUp`: each folder's files at its last run less its uploaded ledger entries), which are
+  also its "not backed up". A kind Private settings hides whole is left out with its counts.
+  Until Oct 27, 2026 this page was pills to show or hide each source on this phone (since Oct 24; a switch per source
+  before), with an Imported pill and its kinds (option b2 of `ux/sources/2026-10-27`), Say what's hidden and Filter
+  bar in Moments (now on the Moments page), and a line on what Private settings hides. Hiding on this phone is still
+  the Moments filter bar's and Explore's Showing sheet's (`ShownSources`, kept as the sources hidden: `hidden_sources`
+  (until Oct 24, 2026 the fixed sources shown, `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`,
+  `show_imported`; the old id `whatsapp` there, and in `backup_sources` and `free_up_kept`, is read as the folder
+  `folder:whatsapp` it is since Oct 27, 2026, as is any folder kept with capitals: folder ids are in lower case since
+  Oct 27, 2026, and written so). The Showing sheets keep b2's pills, Imported box and Private settings line
+  (`ShownSourcesPills.kt`, `ShowingSheet`).
 - **Your cameras** (a page under Library, Oct 27, 2026; Android only, iOS not built yet): a line on what it does,
   then one card of every camera the user's files name, the most photos first, each with its photos and years
   ("Samsung Galaxy S25 · 8,542 · 2025–2026") and a **Mine** switch; a camera marked not the user's also says "Its
@@ -192,43 +195,47 @@ The pages, and what each holds:
   similarity two photos' image embeddings need to be one near-duplicate set in [Moments](moments.md#how-it-is-grouped)
   (since Oct 21, 2026 only there; it also drove story suggestions until stories were removed). Higher sets only
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
-  own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed.
+  own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed. Then (Android since Oct 27, 2026, moved
+  from Show in the app when it became a status page; iOS still has them there) **What Moments shows**: **Filter bar in
+  Moments** ("The row of sources above the feed. When off, choose them here."; on; `ShownSources.showFilterBar`, kept
+  as `show_filter_bar`) and **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on; the
+  [Moments](moments.md) chips), with "Photos you wrote about always show in the storyline. Hiding never deletes
+  anything and doesn't change what is backed up."
 - **Privacy** (on the first page; both platforms; iOS since Oct 21, 2026): one row with a lock, **Private settings**
   (called Hidden collections until Oct 25, 2026), "Private media, nudity, sound recordings, apps and screenshots by
   app", see below. **Show private media** moved into that screen (Android Oct 25, 2026; iOS Oct 26, 2026). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
-- **Hidden collections** (its own screen, asked for Oct 22, 2026; both platforms): opens only after the phone's lock
+- **Private settings** (its own screen, asked for Oct 22, 2026 as Hidden collections; both platforms; since Oct 27,
+  2026 on Android one list by kind, private c2 of the UI lab; iOS not built yet): opens only after the phone's lock
   (Android: fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential; iOS:
   Face ID, Touch ID or the passcode, `LAContext` `.deviceOwnerAuthentication`), every time it opens and again after
-  the app was in the background; a phone without a screen lock (or passcode) can't open it. An intro says
-  hidden means hidden on all devices (not in the library, its counts or search), nothing is deleted, and switching
-  off shows them again. Above that (Android Oct 25, 2026; iOS Oct 26, 2026), **Private media** with **Show private media**, a
-  switch, **off** by default, for the photos the user marked private; it is this phone's choice, not the server's.
-  **Nudity** (Oct 23, 2026): "Show photos and videos with nudity · N photos and videos · M
-  not scanned yet" (a Show switch since Oct 25, 2026 on Android and Oct 26 on iOS: **off**, so hidden, by default; it read "Photos and
-  videos with nudity", on meaning hidden, before), and while off **Hide from**, a slider from 10% to 95% in steps of 5 (default
-  **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when let go.
-  **Sound recordings** (Android Oct 25, 2026, iOS Oct 26, 2026; on a server that has them): **Show recordings**, **Show phone calls**
-  and **Show WhatsApp voice messages**, each with how many there are, all **off** at first (here on means shown,
-  unlike the other switches). Shown ones appear in [Moments](moments.md).
-  **Apps** (Android Oct 27, 2026; iOS still has the WhatsApp switch, see [ios-todo](../ios-todo.md)): every app and
-  folder the server lists (`HiddenCollections.apps`: WhatsApp, Telegram, Signal, Petcube…; WhatsApp became a folder
-  like the others that day), most files first, a switch each ("WhatsApp · 3,412 photos and videos"; on means hidden),
-  five until **Show all N** (a hidden one stays in view), and a line: everything an app saved, and each folder on
-  the phones; their screenshots are under Screenshots. Sent as `apps` in `setHiddenCollections` (`whatsapp` is left
-  out; an older app's `whatsapp` still works on the server). Before Oct 27 it was one **WhatsApp** switch, "All
-  WhatsApp photos and videos · N". **Screenshots**: "Without an app name ·
-  N", **Find an app** (filters the list), then the apps as pills, most screenshots first ("Screenshots in Bumble
-  1,458" since Oct 27, 2026, so a screenshot's pill is never just an app's name, which reads as all its files; on Android
-  since Oct 25, 2026 and iOS since Oct 26, 2026, a switch per app before that). A pill is filled with a check while its app's
-  screenshots are **shown**, outlined while hidden; tapping it switches. The list is folded at first: **Apps** "5 of 6
-  shown" (since Oct 27, 2026 **Screenshots taken in…**) with only the shown apps' pills; tapping the row opens it with every app, **Find an app** and a hint. On means hidden. The list and the choice live on the server (`hiddenCollections`,
+  the app was in the background; a phone without a screen lock (or passcode) can't open it. First **Private media**
+  with **Show private media** (Android Oct 25, 2026; iOS Oct 26, 2026), a switch, **off** by default, for the photos the
+  user marked private; it is this phone's choice, not the server's. Then **Show on all your devices**: "Turn a kind
+  off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens
+  only with the phone's lock.", and one card with every kind the server can hide, once, the hidden ones included, the
+  most files first, each with its icon, its files and a **Show** switch (on = shown; off reads "19,700 · Hidden on all
+  your devices" in orange): each app and folder (`HiddenCollections.apps`: WhatsApp, Telegram, Petcube…; a hidden one
+  with no files left is listed too, so it can be shown again), **Calls**, **Voice recordings** and **Voice messages**
+  (those with files; hidden until shown), **Sent to you** (with files, or while hidden), and **Screenshots**, which
+  has no switch of its own but a chip per app it was taken in, just the app's name and its count ("Bumble 1,458",
+  "No app name 128" for screenshots whose name says no app), filled with a ✓ while shown, outlined while hidden; tap
+  to switch. Then **Nudity** (Oct 23, 2026): "Show photos and videos with nudity · N photos and videos · M not scanned
+  yet" (a Show switch, **off**, so hidden, by default), and while off **Hide from**, a slider from 10% to 95% in steps
+  of 5 (default **50%**): the nudity score the server's scan must reach for a photo or video to be hidden, saved when
+  let go. The list is `PrivateKinds` (shared, `HiddenCollectionsState.Ready.kinds`); each switch goes back to the
+  server as `setHiddenCollections`' `apps`, `screenshotApps`, `screenshotsWithoutApp`, `audio` (recordings, calls,
+  voice messages) or `sentToYou` (source `received`; the server took it on Oct 27, 2026), through
+  `HiddenCollectionsController.show`. Before Oct 27, 2026 the page had sections (Nudity, Sound recordings, Apps with
+  "Show all", Screenshots with "Find an app" and "Screenshots in Bumble" pills, on meaning hidden for apps and
+  screenshots), and couldn't hide Sent to you. The list and the choice live on the server (`hiddenCollections`,
   `setHiddenCollections`); each switch is saved at once (the others wait only for that, well under a second), and if
   the server can't be reached the switch goes back with "Not changed: can't reach your server". The library syncs
   once, when the screen is left (`HiddenCollectionsController.close` → `ServerLibrary.syncAgain`), not after each
   switch, because every change makes the whole change feed come again. While that sync reads more than one page, the
-  Hidden collections row in Settings shows "Updating your library: 38,000 of 95,412" with a bar
-  (`ServerLibrary.syncProgress`, from the feed's `remaining`).
+  Private settings row in Settings shows "Updating your library: 38,000 of 95,412" with a bar
+  (`ServerLibrary.syncProgress`, from the feed's `remaining`). In the UI lab: `./scripts/ui-lab.sh private current`
+  (unlocked, made-up counts, switches working while open) or `locked`.
 - **Search** (both platforms; its own screen since Oct 24, 2026, see "Search" below): one row, "Server: reading 40 of
   200", "Server: paused at 40 of 200", "Server: waiting to read your photos", or "200 per page · 3 kept on this
   phone".
@@ -441,10 +448,12 @@ indexes on the phone, to search without the server, offline too (journal-server-
   `ServerSoundFolder` and `SoundFolderMark` in
   [SoundFolders.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/server/SoundFolders.kt), over
   `ServerLibrary.soundFolders` / `setSoundFolder`;
-  Hidden collections in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
+  Show in the app in [ShowInAppPage.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ShowInAppPage.kt)
+  from the shared `KindsStatus` ([KindsStatus.kt](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/settings/KindsStatus.kt));
+  Private settings in [HiddenScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/HiddenScreen.kt)
   behind [PhoneLock.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PhoneLock.kt)
   (`PhoneLocked`). Shared: `HiddenCollectionsController` (`HiddenCollectionsState`: loading, unreachable, ready with
-  the filter, saving and "not changed") over `ServerLibrary.hiddenCollections` / `setHiddenCollections`, the
+  the filter, saving, "not changed" and the list `PrivateKinds`) over `ServerLibrary.hiddenCollections` / `setHiddenCollections`, the
   `HiddenCollections` model, and `ScreenLock` (unlocked or not; the prompt is each platform's). iOS:
   [HiddenView.swift](../../iosApp/iosApp/HiddenView.swift) (`HiddenScreen` drawn from state, also in the UI lab as
   "hidden"; `PhoneLocked` with `LAContext`), and `ServerVideoCache.remove` for a dropped file's video.

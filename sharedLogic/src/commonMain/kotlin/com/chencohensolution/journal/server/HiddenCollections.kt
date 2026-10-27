@@ -34,6 +34,11 @@ data class HiddenCollections(
     val recordings: Collection? = null,
     val calls: Collection? = null,
     val voiceMessages: Collection? = null,
+    /**
+     * Sent to you (source received): photos taken with a camera the user marked as not theirs. Null from a server that
+     * can't hide it.
+     */
+    val sentToYou: Collection? = null,
 ) {
     /**
      * One group of files: how many it has, hidden or not, and whether it is hidden. [imported] of [files] the server's
@@ -62,6 +67,7 @@ data class HiddenCollections(
         val folder = kind.folder
         return when {
             folder != null -> OfSource(app(folder)?.hidden == true, 0)
+            kind == MediaSource.RECEIVED -> OfSource(sentToYou?.hidden == true, 0)
             kind == MediaSource.SCREENSHOTS -> OfSource(
                 whole = false,
                 files = (screenshotApps + screenshotsWithoutApp).filter { it.hidden }
@@ -99,6 +105,7 @@ data class HiddenCollections(
         collection === recordings -> copy(recordings = collection.copy(hidden = hidden))
         collection === calls -> copy(calls = collection.copy(hidden = hidden))
         collection === voiceMessages -> copy(voiceMessages = collection.copy(hidden = hidden))
+        collection === sentToYou -> copy(sentToYou = collection.copy(hidden = hidden))
         apps.any { it === collection } -> copy(apps = apps.map { if (it === collection) it.copy(hidden = hidden) else it })
         screenshotApps.any { it === collection } ->
             copy(screenshotApps = screenshotApps.map { if (it === collection) it.copy(hidden = hidden) else it })
@@ -122,6 +129,7 @@ data class HiddenCollections(
         } else {
             Optional.absent()
         },
+        sentToYou = sentToYou?.let { Optional.present(it.hidden) } ?: Optional.absent(),
     )
 
     companion object {
@@ -138,6 +146,7 @@ internal fun HiddenCollectionsFields.toHiddenCollections() = HiddenCollections(
     recordings = recordings.collectionFields.toCollection(),
     calls = calls.collectionFields.toCollection(),
     voiceMessages = voiceMessages.collectionFields.toCollection(),
+    sentToYou = sentToYou.collectionFields.toCollection(),
 )
 
 private fun CollectionFields.toCollection() = HiddenCollections.Collection(name, files, hidden, imported)

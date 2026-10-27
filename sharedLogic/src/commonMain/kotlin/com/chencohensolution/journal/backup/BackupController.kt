@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.backup
 
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.chencohensolution.journal.library.AudioKind
 import com.chencohensolution.journal.library.BackupStatus
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
@@ -85,6 +86,19 @@ data class BackupState(
 
     /** The sources whose photos count as "not backed up"; everything when backup is off. */
     val countedSources: Set<MediaSource>? get() = settings.sources.takeIf { settings.enabled }
+
+    /**
+     * Per kind of sound, the files of the sound folders backup takes that aren't on the server yet: each folder's files
+     * as of its last run ([soundCounts]) less those the ledger holds as uploaded. For Show in the app's Sound lines.
+     */
+    fun soundsNotBackedUp(): Map<AudioKind, Int> {
+        val folders = settings.soundFolders.filter { it.enabled }
+        if (folders.isEmpty()) return emptyMap()
+        val uploaded = entries.values.filter { it.uploaded }.groupingBy { SoundIds.treeOf(it.id) }.eachCount()
+        return folders.groupBy { it.kind }
+            .mapValues { (_, inKind) -> inKind.sumOf { ((soundCounts[it.treeUri] ?: 0) - (uploaded[it.treeUri] ?: 0)).coerceAtLeast(0) } }
+            .filterValues { it > 0 }
+    }
 }
 
 /** How often progress reaches the screens while bytes move. */

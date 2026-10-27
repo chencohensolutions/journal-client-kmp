@@ -464,7 +464,6 @@
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
     <string name="settings_filter_bar">Filter bar in Moments</string>
     <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
-    <string name="settings_shown_where">On this phone only. Applies to Moments, Explore and Tags.</string>
     <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn\'t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
@@ -527,13 +526,6 @@
     <string name="settings_hidden_title">Private settings</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
     <string name="settings_hidden_row_body">Private media, nudity, sound recordings, apps and screenshots by app</string>
-    <string name="hidden_intro">Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.</string>
-    <string name="hidden_apps_section_title">Apps</string>
-    <string name="hidden_apps_section_body">Everything an app saved, such as WhatsApp or Telegram, and each folder on your phones. Their screenshots are under Screenshots.</string>
-    <string name="hidden_apps_section_all">Show all %1$s</string>
-    <string name="hidden_apps_section_fewer">Show fewer</string>
-    <string name="hidden_apps_section_none">No app or folder on your server yet.</string>
-    <string name="hidden_screenshots_title">Screenshots</string>
     <string name="hidden_nudity_title">Nudity</string>
     <string name="hidden_nudity">Show photos and videos with nudity</string>
     <string name="hidden_nudity_from">Hide from</string>
@@ -542,9 +534,6 @@
         <item quantity="one">%s not scanned yet</item>
         <item quantity="other">%s not scanned yet</item>
     </plurals>
-    <string name="hidden_without_app">Without an app name</string>
-    <string name="hidden_find_app">Find an app</string>
-    <string name="hidden_no_apps">No screenshot on your server names its app yet.</string>
     <string name="hidden_loading">Loading…</string>
     <string name="hidden_unreachable">Can’t reach your server right now.</string>
     <string name="hidden_retry">Try again</string>
@@ -552,10 +541,6 @@
     <plurals name="hidden_files">
         <item quantity="one">%s photo or video</item>
         <item quantity="other">%s photos and videos</item>
-    </plurals>
-    <plurals name="hidden_screenshots">
-        <item quantity="one">%s screenshot</item>
-        <item quantity="other">%s screenshots</item>
     </plurals>
     <string name="phone_lock_locked">Locked. Unlock with your phone’s lock to see what is hidden.</string>
     <string name="phone_lock_unlock">Unlock</string>
@@ -713,37 +698,16 @@
     <string name="audio_speed">%s×</string>
     <string name="audio_dial">Call</string>
     <string name="audio_edit_contact">Edit contact</string>
-    <string name="hidden_audio_title">Sound recordings</string>
-    <string name="hidden_audio_recordings">Show recordings</string>
-    <string name="hidden_audio_calls">Show phone calls</string>
-    <string name="hidden_audio_voice">Show WhatsApp voice messages</string>
-    <string name="hidden_audio_body">Off at first: sound recordings stay hidden on all your devices until you show them here. Shown ones appear in Moments.</string>
-    <plurals name="hidden_audio_recordings_count">
-        <item quantity="one">%s recording</item>
-        <item quantity="other">%s recordings</item>
-    </plurals>
-    <plurals name="hidden_audio_calls_count">
-        <item quantity="one">%s call</item>
-        <item quantity="other">%s calls</item>
-    </plurals>
-    <plurals name="hidden_audio_voice_count">
-        <item quantity="one">%s voice message</item>
-        <item quantity="other">%s voice messages</item>
-    </plurals>
     <string name="audio_failed">The recording couldn’t be played</string>
     <string name="audio_contact">Contact</string>
     <string name="audio_number">Phone number</string>
     <string name="audio_save">Save</string>
     <string name="audio_cancel">Cancel</string>
-    <string name="hidden_apps_pills">Tap an app to show or hide its screenshots; filled ones are shown.</string>
     <!-- Settings' first page: its groups, and each row's line (Oct 24, 2026) -->
     <string name="settings_library_title">Library</string>
     <string name="settings_privacy_title">Privacy</string>
     <string name="settings_backup_storage_title">Backup and storage</string>
     <string name="settings_moments_title">Moments</string>
-    <!-- "Showing Camera, Other" -->
-    <string name="settings_shown_summary">Showing %s</string>
-    <string name="settings_shown_none">Nothing shown</string>
     <string name="sources_imported">Imported</string>
     <string name="sources_of_imported">Of what was imported</string>
     <string name="sources_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
@@ -762,12 +726,6 @@
     <string name="settings_image_quality_title">Image quality</string>
 
     <string name="settings_backup_charging_only_body">Saves the battery; uploads wait for the charger.</string>
-    <string name="hidden_apps_title">Screenshots taken in…</string>
-    <string name="hidden_screenshots_in">Screenshots in %1$s</string>
-    <string name="hidden_apps_count">%1$s of %2$s shown</string>
-    <string name="hidden_apps_none_shown">No app’s screenshots are shown. Open the list to show some.</string>
-    <string name="hidden_apps_open">Show all apps</string>
-    <string name="hidden_apps_fold">Show only the apps shown</string>
 
     <!-- Settings › Backup: folders of calls and recordings (promoted from UI lab round ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">Add a folder</string>
@@ -898,4 +856,23 @@
         <item quantity="one">%1$s left to move</item>
         <item quantity="other">%1$s left to move</item>
     </plurals>
+    <!-- Settings › Show in the app, a status page by kind (kinds c3 of the UI lab, Oct 27, 2026). -->
+    <string name="kinds_photos">Photos and videos</string>
+    <string name="kinds_sound">Sound</string>
+    <string name="kinds_voice_messages">Voice messages</string>
+    <string name="kinds_files">%1$s files</string>
+    <string name="kinds_not_backed_up">%1$s not backed up</string>
+    <string name="kinds_all_backed_up">All backed up</string>
+    <string name="kinds_how_to_hide">To hide a kind on this phone, or show it again, use the filter bar in Moments. This phone remembers it.</string>
+    <plurals name="kinds_hidden_everywhere">
+        <item quantity="one">%1$s kind hidden on all your devices</item>
+        <item quantity="other">%1$s kinds hidden on all your devices</item>
+    </plurals>
+    <string name="settings_moments_filter_title">What Moments shows</string>
+    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">Show on all your devices</string>
+    <string name="private_intro">Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone\'s lock.</string>
+    <string name="private_hidden">%1$s · Hidden on all your devices</string>
+    <string name="private_screenshots_body">%1$s · by the app they were taken in</string>
+    <string name="private_no_app">No app name</string>
 </resources>

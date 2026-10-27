@@ -61,6 +61,7 @@ import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
+import com.chencohensolution.journal.settings.KindsStatus
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.PhotoCrops
@@ -386,10 +387,13 @@ private fun LibraryScreens(
                                     SettingsScreen(
                                         settings = settingsState,
                                         page = (route as? Route.SettingsPageRoute)?.page ?: SettingsPage.MAIN,
-                                        sourceCounts = storiesState.feed.counts,
+                                        kinds = KindsStatus.of(
+                                            libraryState.sourceTotals(),
+                                            libraryState.sounds,
+                                            backupState.soundsNotBackedUp(),
+                                            hiddenEverywhere,
+                                        ),
                                         actions = SettingsActions(
-                                            toggleSource = settings::toggleFeedSource,
-                                            toggleImported = settings::toggleImported,
                                             setSayWhatsHidden = settings::setSayWhatsHidden,
                                             setShowFilterBar = settings::setShowFilterBar,
                                             setGroupingMode = settings::setGroupingMode,
@@ -415,7 +419,6 @@ private fun LibraryScreens(
                                         storage = storageUi(),
                                         storageActions = actions.storage,
                                         syncProgress = syncProgress,
-                                        hiddenEverywhere = hiddenEverywhere,
                                         cameras = camerasState.takeIf { features?.cameras == true },
                                         soundFolders = soundFoldersState.takeIf { features?.soundFolders == true },
                                     )

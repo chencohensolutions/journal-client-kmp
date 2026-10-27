@@ -46,32 +46,50 @@ Still missing on iOS:
     uses `folderName`, written on Windows and not compiled):
     `MomentsFeedViews.swift` ~927–945 (`sourceName` and the icon), `MediaViewerView.swift` ~720,
     `ShownSourcesViews.swift:65` (`counts[.whatsapp]` becomes `counts[MediaSource.companion.WHATSAPP]`).
-  - **Show in the app (option b2 of the UI lab):** draw `ShownSourcesPills.companion.of(shownSources, counts,
-    serverLibrary.hiddenEverywhere.value)`: `fromPhones` pills (dimmed with a lock and opening Private settings when
-    `allHiddenEverywhere`, a lock after the count when `hiddenEverywhere > 0`), then an **Imported** pill
-    (`hasImported`, `importedCount`, on = `importedShown`, `settings.toggleImported()`), and while on a tinted box
-    "Of what was imported" with `importedKinds` as smaller pills (`settings.toggleFeedSource`). Under them the Other
-    line while Other is listed, and the Private settings line: `privateKnown` false (or `hiddenWhole` and
-    `hiddenInPart` empty) says what it can hide, else "🔒 Hidden on all your devices: WhatsApp, 1,640 more
-    Screenshots. Not counted here."; either way "Private settings ›". The same in Explore's and Moments' Showing
-    sheets (`ShownSourcesViews.swift`); the separate "On all your devices" row of the Show in the app page goes.
-    Android: `ShownSourcesPills.kt`, `ShownSourcesViews.kt`, `SettingsScreen.kt` (`ShownSourcesSection`).
+  - **Showing sheets (option b2 of the UI lab):** Explore's and Moments' Showing sheets draw
+    `ShownSourcesPills.companion.of(shownSources, counts, serverLibrary.hiddenEverywhere.value)`: `fromPhones` pills
+    (dimmed with a lock and opening Private settings when `allHiddenEverywhere`, a lock after the count when
+    `hiddenEverywhere > 0`), then an **Imported** pill (`hasImported`, `importedCount`, on = `importedShown`,
+    `settings.toggleImported()`), and while on a tinted box "Of what was imported" with `importedKinds` as smaller
+    pills (`settings.toggleFeedSource`); the Other line and the Private settings line under them
+    (`ShownSourcesViews.swift`). Android: `ShownSourcesPills.kt`, `ShownSourcesViews.kt`. Settings › Show in the app
+    no longer draws them: see "Show in the app as a status page" below.
   - **Moments' bar:** an **Imported** chip after the sources' chips while `feed.importedCount > 0` (box icon kept
     when on, `FeedIcons.Imported`); tap: `toggleImported`. Android: `FeedChrome.kt` `FeedSourceBar`.
   - **Search:** "12 more in sources you hide · Show" under the count from `SearchState.hiddenBySources`, Show calling
     `showHiddenSources()`, in `SearchViews.swift` and `SearchViewModel.swift` (Android: `SearchViews.kt`).
-  - **Private settings:** the WhatsApp switch becomes an **Apps** section over `collections.apps` (five until "Show
-    all N", a hidden one always listed, `controller.set(app, hidden)`); `collections.whatsapp` is now WhatsApp's
-    entry of apps. Under Screenshots, the row "Screenshots taken in…" and each pill "Screenshots in Bumble".
-    Android: `HiddenScreen.kt` `AppsSection`, `AppPill`. Swift: `HiddenView.swift:154`.
+  - **Private settings:** replaced by "Private settings by kind" below (the Apps section and "Screenshots in Bumble"
+    pills Android had for a few hours are gone).
   - **A photo's info:** "Saved in: Telegram" for a folder's kind (else "From"), "· Imported" for imported ones, and
     "Camera: Canon EOS 80D" from `serverLibrary.file(sha256).camera` (find the sha with `sha256Of(item)`). Android:
     `ViewerInfoPanel.kt` `sourceFacts`. Swift: `ViewerOriginalCard.swift`.
   - **Strings** (`Localizable.xcstrings`, English and Hebrew as Android's `values` / `values-iw`): `sources_imported`,
     `sources_of_imported`, `sources_everywhere`, `sources_more`, `sources_private_about`, `sources_other_about`,
-    `feed_source_received`, `hidden_apps_section_*`, `hidden_apps_title` (now "Screenshots taken in…"),
-    `hidden_screenshots_in`, `library_info_saved_in`, `library_info_camera`, `search_hidden_more`,
+    `feed_source_received`, `library_info_saved_in`, `library_info_camera`, `search_hidden_more`,
     `search_hidden_shown`.
+  - **Show in the app as a status page** (Android Oct 27, 2026, kinds c3 of the UI lab; shared logic done; see
+    [screens/settings.md](screens/settings.md)): the page has no switches. Build `KindsStatus.companion.of(
+    libraryState.sourceTotals(), libraryState.sounds, backupState.soundsNotBackedUp(),
+    serverLibrary.hiddenEverywhere.value)` and draw: "87,343 files" (`files`) with "15 not backed up ›" in orange
+    (`notBackedUp`, opens Backup) or "All backed up"; **Photos and videos**, a card of `kinds` (icon, `sourceName`,
+    the total right-aligned in a column, "12 not backed up ›" under the name when `notBackedUp > 0`, opening Backup);
+    **Sound**, a card of `sounds` (Calls, Voice recordings, Voice messages by `AudioKind`); when `hiddenEverywhere`
+    is above 0, "🔒 2 kinds hidden on all your devices · **Private settings ›**" (opens it); then the note on the
+    Moments filter bar. Settings' row line: "87,343 files · 15 not backed up" (or "· All backed up"). **Say what's
+    hidden** and **Filter bar in Moments** move to Settings › Moments, under "What Moments shows", with the storyline
+    note. Android: `ShowInAppPage.kt`, `SettingsScreen.kt` (`MomentsPage`), `LibraryApp.kt`. Strings: `kinds_*`,
+    `settings_moments_filter_title`.
+  - **Private settings by kind** (Android Oct 27, 2026, private c2 of the UI lab; shared logic done): still behind
+    the lock, Show private media first; then **Show on all your devices** with `private_intro`, and one card from
+    `HiddenCollectionsStateReady.kinds` (`PrivateKinds`): each kind a Show toggle (on = shown; off says "19,700 ·
+    Hidden on all your devices" in orange), the most files first; the `SCREENSHOTS` kind has no toggle but a row of
+    chips from `kinds.screenshotApps`, each just the app's name ("No app name" for the empty one) and its count,
+    filled with a ✓ while shown. Every switch and chip calls `controller.show(kind:shown:)` (ignored while `saving`).
+    Nudity's card stays as it is, after the list; Loading, Unreachable and "Not changed" as before. The old Apps,
+    Sound recordings and Screenshots sections, Find an app and the folded app list go (`query`/`shownApps` stay in
+    the state for now). Android: `HiddenScreen.kt`. Strings: `private_everywhere`, `private_intro`,
+    `private_hidden`, `private_screenshots_body`, `private_no_app`, `kinds_voice_messages`. **The query asks
+    `sentToYou`**, so iOS needs a server with it (journal-server-go, Oct 27, 2026).
   - **Your cameras** (Android Oct 27, 2026; shared parts done; see [screens/settings.md](screens/settings.md)). Left
     in Swift: (1) a **Your cameras ›** row in `SettingsSections.swift`'s Library section, after Show in the app, shown
     only when `serverLibrary.features.value?.cameras == true`; its line from `serverLibrary.cameras()` asked when

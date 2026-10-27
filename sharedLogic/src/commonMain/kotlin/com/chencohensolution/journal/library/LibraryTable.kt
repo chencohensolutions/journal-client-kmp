@@ -87,13 +87,20 @@ internal fun libraryTotals(counts: List<SourceCounts>, uploadingBackedUp: List<P
     fun counted(source: MediaSource) = sources == null || source in sources
     val taken = counts.filter { counted(it.source) }
     val again = uploadingBackedUp.filter { counted(it.first) }
+    val bySource = HashMap<MediaSource, SourceTotal>()
+    fun add(source: MediaSource, total: SourceTotal) {
+        bySource[source] = bySource[source]?.plus(total) ?: total
+    }
+    counts.forEach { add(it.source, SourceTotal(it.items, if (!counted(it.source)) 0 else if (backup == null) it.onDevice else it.waiting)) }
+    if (backup != null) again.forEach { add(it.first, SourceTotal(0, 1)) }
     return if (backup == null) {
-        LibraryTotals(counts.sumOf { it.items }, taken.sumOf { it.onDevice }, taken.sumOf { it.onDeviceBytes })
+        LibraryTotals(counts.sumOf { it.items }, taken.sumOf { it.onDevice }, taken.sumOf { it.onDeviceBytes }, bySource)
     } else {
         LibraryTotals(
             counts.sumOf { it.items },
             taken.sumOf { it.waiting } + again.size,
             taken.sumOf { it.waitingBytes } + again.sumOf { it.second ?: 0L },
+            bySource,
         )
     }
 }

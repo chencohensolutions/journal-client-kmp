@@ -484,7 +484,6 @@
     <string name="settings_say_hidden_body">„+6 וואטסאפ” ליד יום, ולחיצה מציגה אותן</string>
     <string name="settings_filter_bar">סרגל הסינון ברגעים</string>
     <string name="settings_filter_bar_body">שורת המקורות מעל הפיד. כשהוא כבוי, בוחרים אותם כאן.</string>
-    <string name="settings_shown_where">בטלפון הזה בלבד. חל על רגעים, גילוי ותגיות.</string>
     <string name="settings_shown_stories">תמונות שכתבת עליהן תמיד מוצגות בסיפור. הסתרה אף פעם לא מוחקת דבר ולא משנה מה מגובה.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">הסתרת %1$s</string>
@@ -547,13 +546,6 @@
     <string name="settings_hidden_title">הגדרות פרטיות</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
     <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה</string>
-    <string name="hidden_intro">מה שמוסתר כאן מוסתר בכל המכשירים שלך: לא בספרייה, לא בספירות ולא בחיפוש. שום דבר לא נמחק; כבו את המתג כדי לראות אותם שוב. תצוגות מקדימות של מה שהסתרתם שנשמרו בטלפון הזה נמחקות.</string>
-    <string name="hidden_apps_section_title">אפליקציות</string>
-    <string name="hidden_apps_section_body">כל מה שאפליקציה שמרה, כמו וואטסאפ או טלגרם, וכל תיקייה בטלפונים שלך. צילומי המסך שלהן נמצאים תחת צילומי מסך.</string>
-    <string name="hidden_apps_section_all">הצג את כל %1$s</string>
-    <string name="hidden_apps_section_fewer">הצג פחות</string>
-    <string name="hidden_apps_section_none">עדיין אין בשרת שלך אפליקציה או תיקייה.</string>
-    <string name="hidden_screenshots_title">צילומי מסך</string>
     <string name="hidden_nudity_title">עירום</string>
     <string name="hidden_nudity">הצגת תמונות וסרטונים עם עירום</string>
     <string name="hidden_nudity_from">הסתרה החל מ־</string>
@@ -563,9 +555,6 @@
         <item quantity="two">%s עוד לא נסרקו</item>
         <item quantity="other">%s עוד לא נסרקו</item>
     </plurals>
-    <string name="hidden_without_app">בלי שם אפליקציה</string>
-    <string name="hidden_find_app">חיפוש אפליקציה</string>
-    <string name="hidden_no_apps">עדיין אין בשרת צילום מסך ששמו מציין אפליקציה.</string>
     <string name="hidden_loading">טוען…</string>
     <string name="hidden_unreachable">אין גישה לשרת כרגע.</string>
     <string name="hidden_retry">לנסות שוב</string>
@@ -574,11 +563,6 @@
         <item quantity="one">תמונה או סרטון אחד</item>
         <item quantity="two">%s תמונות וסרטונים</item>
         <item quantity="other">%s תמונות וסרטונים</item>
-    </plurals>
-    <plurals name="hidden_screenshots">
-        <item quantity="one">צילום מסך אחד</item>
-        <item quantity="two">%s צילומי מסך</item>
-        <item quantity="other">%s צילומי מסך</item>
     </plurals>
     <string name="phone_lock_locked">נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר.</string>
     <string name="phone_lock_unlock">פתיחה</string>
@@ -743,38 +727,15 @@
     <string name="audio_speed">%s×</string>
     <string name="audio_dial">חייג</string>
     <string name="audio_edit_contact">ערוך איש קשר</string>
-    <string name="hidden_audio_title">הקלטות קול</string>
-    <string name="hidden_audio_recordings">הצגת הקלטות</string>
-    <string name="hidden_audio_calls">הצגת שיחות טלפון</string>
-    <string name="hidden_audio_voice">הצגת הודעות קוליות מוואטסאפ</string>
-    <string name="hidden_audio_body">כבוי בהתחלה: הקלטות הקול מוסתרות בכל המכשירים שלך עד שתציג אותן כאן. מה שמוצג מופיע ברגעים.</string>
-    <plurals name="hidden_audio_recordings_count">
-        <item quantity="one">הקלטה אחת</item>
-        <item quantity="two">%s הקלטות</item>
-        <item quantity="other">%s הקלטות</item>
-    </plurals>
-    <plurals name="hidden_audio_calls_count">
-        <item quantity="one">שיחה אחת</item>
-        <item quantity="two">%s שיחות</item>
-        <item quantity="other">%s שיחות</item>
-    </plurals>
-    <plurals name="hidden_audio_voice_count">
-        <item quantity="one">הודעה קולית אחת</item>
-        <item quantity="two">%s הודעות קוליות</item>
-        <item quantity="other">%s הודעות קוליות</item>
-    </plurals>
     <string name="audio_failed">לא ניתן לנגן את ההקלטה</string>
     <string name="audio_contact">איש קשר</string>
     <string name="audio_number">מספר טלפון</string>
     <string name="audio_save">שמור</string>
     <string name="audio_cancel">ביטול</string>
-    <string name="hidden_apps_pills">הקש על אפליקציה כדי להציג או להסתיר את צילומי המסך שלה; המלאות מוצגות.</string>
     <string name="settings_library_title">ספרייה</string>
     <string name="settings_privacy_title">פרטיות</string>
     <string name="settings_backup_storage_title">גיבוי ואחסון</string>
     <string name="settings_moments_title">רגעים</string>
-    <string name="settings_shown_summary">מוצגים: %s</string>
-    <string name="settings_shown_none">לא מוצג דבר</string>
     <string name="sources_imported">מיובא</string>
     <string name="sources_of_imported">מתוך מה שיובא</string>
     <string name="sources_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
@@ -793,12 +754,6 @@
     <string name="settings_image_quality_title">איכות תמונה</string>
 
     <string name="settings_backup_charging_only_body">חוסך בסוללה; ההעלאות ממתינות למטען.</string>
-    <string name="hidden_apps_title">צילומי מסך שצולמו ב…</string>
-    <string name="hidden_screenshots_in">צילומי מסך ב־%1$s</string>
-    <string name="hidden_apps_count">%1$s מתוך %2$s מוצגות</string>
-    <string name="hidden_apps_none_shown">צילומי המסך של אף אפליקציה לא מוצגים. פתח את הרשימה כדי להציג.</string>
-    <string name="hidden_apps_open">הצגת כל האפליקציות</string>
-    <string name="hidden_apps_fold">הצגת המוצגות בלבד</string>
 
     <!-- הגדרות › גיבוי: תיקיות של שיחות והקלטות (מסבב מעבדת הממשק ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">הוספת תיקייה</string>
@@ -945,4 +900,24 @@
         <item quantity="two">נשארו %1$s להעביר</item>
         <item quantity="other">נשארו %1$s להעביר</item>
     </plurals>
+    <!-- Settings › Show in the app, a status page by kind (kinds c3 of the UI lab, Oct 27, 2026). -->
+    <string name="kinds_photos">תמונות וסרטונים</string>
+    <string name="kinds_sound">שמע</string>
+    <string name="kinds_voice_messages">הודעות קוליות</string>
+    <string name="kinds_files">%1$s קבצים</string>
+    <string name="kinds_not_backed_up">%1$s לא מגובים</string>
+    <string name="kinds_all_backed_up">הכול מגובה</string>
+    <string name="kinds_how_to_hide">כדי להסתיר סוג בטלפון הזה, או להציג אותו שוב, השתמשו בסרגל הסינון ברגעים. הטלפון הזה זוכר את הבחירה.</string>
+    <plurals name="kinds_hidden_everywhere">
+        <item quantity="one">סוג אחד מוסתר בכל המכשירים שלך</item>
+        <item quantity="two">שני סוגים מוסתרים בכל המכשירים שלך</item>
+        <item quantity="other">%1$s סוגים מוסתרים בכל המכשירים שלך</item>
+    </plurals>
+    <string name="settings_moments_filter_title">מה מוצג ברגעים</string>
+    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">להציג בכל המכשירים שלך</string>
+    <string name="private_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק. העמוד נפתח רק עם נעילת הטלפון.</string>
+    <string name="private_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
+    <string name="private_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
+    <string name="private_no_app">בלי שם אפליקציה</string>
 </resources>
