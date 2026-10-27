@@ -310,6 +310,8 @@
     <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך. אפשר לנסות שוב כשיש חיבור.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>
+    <string name="library_info_saved_in">נשמר ב</string>
+    <string name="library_info_camera">מצלמה</string>
     <string name="library_info_preview">תצוגה מקדימה בטלפון</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">עדיין אין</string>

@@ -283,6 +283,11 @@ private fun OriginalCard(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val status = item.backup
+    // The camera its tags name, as the server read them (imported files too); null without tags or a server copy.
+    val server = LocalServerLibrary.current
+    val camera by produceState<String?>(null, item.id, item.sha256) {
+        value = server?.let { library -> library.sha256Of(item)?.let { library.file(it) }?.camera }
+    }
     var confirmingPrivate by remember(item.id) { mutableStateOf(false) }
     var markingPrivate by remember(item.id) { mutableStateOf(false) }
     fun markPrivate(isPrivate: Boolean) {
@@ -328,7 +333,7 @@ private fun OriginalCard(
             if (item.width > 0 && item.height > 0) add(stringResource(R.string.library_info_dimensions) to pixelsText(item.width, item.height))
             item.durationMillis?.let { add(stringResource(R.string.library_info_length) to formatDuration(it)) }
             item.mimeType?.let { add(stringResource(R.string.library_info_type) to typeName(it)) }
-            add(stringResource(R.string.library_info_source) to sourceName(item.source))
+            addAll(sourceFacts(item, camera))
         }
         FactGrid(details)
         if (!item.hasOriginalHere) ShownHereFacts(item)
@@ -356,6 +361,19 @@ private fun OriginalCard(
             dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
         )
     }
+}
+
+/**
+ * Where it came from: "Saved in: Telegram" for an app's or a folder's file, else "From: Camera" (with "Imported" for
+ * what the server's import placed), and "Camera: Canon EOS 80D" when its tags name one.
+ */
+@Composable
+private fun sourceFacts(item: MediaItem, camera: String?): List<Pair<String, String>> {
+    val kind = item.source.kind
+    val imported = stringResource(R.string.sources_imported).takeIf { item.source.isImported }
+    val from = kind.folder?.let { folder -> stringResource(R.string.library_info_saved_in) to listOfNotNull(folder, imported).joinToString(" · ") }
+        ?: (stringResource(R.string.library_info_source) to listOfNotNull(sourceName(kind), imported).joinToString(" · "))
+    return listOfNotNull(from, camera?.let { stringResource(R.string.library_info_camera) to it })
 }
 
 @Composable

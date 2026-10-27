@@ -312,6 +312,8 @@
     <string name="library_private_unreachable">Not changed: can’t reach your server. Try again when connected to it.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>
+    <string name="library_info_saved_in">Saved in</string>
+    <string name="library_info_camera">Camera</string>
     <string name="library_info_preview">Preview on this phone</string>
     <string name="library_info_preview_value">%1$s · %2$s</string>
     <string name="library_info_preview_none">None yet</string>
