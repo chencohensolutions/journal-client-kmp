@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_b_percent">%1$d%%</string>
+    <string name="backup_b_size_of">%1$s מתוך %2$s</string>
+    <string name="backup_b_files_of">%1$s מתוך %2$s קבצים</string>
+    <string name="backup_b_eta_soon">פחות מדקה</string>
+    <plurals name="backup_b_eta_minutes">
+        <item quantity="one">עוד כדקה</item>
+        <item quantity="two">עוד כ-%1$d דקות</item>
+        <item quantity="other">עוד כ-%1$d דקות</item>
+    </plurals>
+    <string name="backup_b_eta_hours">עוד כ-%1$d שע׳ ו-%2$d דק׳</string>
+</resources>
