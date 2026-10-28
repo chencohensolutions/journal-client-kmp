@@ -91,7 +91,7 @@ private fun scenario(seed: Int): Scenario {
     )
     device.forEach { item ->
         val n = item.id.toInt()
-        when (random.nextInt(6)) {
+        when (random.nextInt(7)) {
             // Backed up: the ledger has it, the server too (sometimes private).
             0, 1 -> {
                 entries += LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(n), uploaded = true)
@@ -104,6 +104,11 @@ private fun scenario(seed: Int): Scenario {
             }
             // Not read by backup: on the server by name and size (another case), or not at all.
             3 -> server += serverMedia(sha(n + 500), item.fileName!!.uppercase(), item.sizeBytes!!, n)
+            // Backed up as a JPEG the server keeps as JPEG XL: the server file has its own sha256, the JPEG's in encodedSha256.
+            4 -> {
+                entries += LedgerEntry(item.id, item.sizeBytes!!, item.modifiedMillis, sha(n), uploaded = true)
+                server += serverMedia(sha(n + 900), "IMG_$n.jxl", item.sizeBytes!! - 200, n, private = random.nextInt(4) == 0).copy(encodedSha256 = sha(n))
+            }
             else -> Unit
         }
     }
@@ -111,13 +116,20 @@ private fun scenario(seed: Int): Scenario {
     (100..125).forEach { n ->
         server += serverMedia(sha(n), "only_$n.jpg", 5_000L + n, n, private = random.nextInt(5) == 0, audio = n % 9 == 0)
         if (n % 4 == 0) entries += LedgerEntry("old$n", 5_000L + n, null, sha(n), uploaded = true)
+        // A JPEG deleted from this phone that the server keeps as JPEG XL: it keeps the id the phone gave it.
+        if (n % 6 == 1) {
+            server += serverMedia(sha(n + 3_000), "only_$n.jxl", 4_000L + n, n, private = random.nextInt(5) == 0).copy(encodedSha256 = sha(n + 4_000))
+            entries += LedgerEntry("oldjxl$n", 6_000L + n, null, sha(n + 4_000), uploaded = true)
+        }
     }
     val hidden = server.filter { random.nextInt(8) == 0 }.map { it.sha256 }.toSet() + sha(2) + sha(3)
+    // The server sends a hidden JPEG XL's JPEG as hidden too.
+    val hiddenJpegs = server.filter { it.sha256 in hidden }.mapNotNull { it.encodedSha256 }
     return Scenario(
         device = device,
         entries = entries,
         server = server.filterNot { it.sha256 in hidden },
-        hiddenOnServer = hidden,
+        hiddenOnServer = hidden + hiddenJpegs,
         showPrivate = random.nextBoolean(),
         kept = server.filter { random.nextInt(6) == 0 }.associate { it.sha256 to "/originals/${it.sha256}" },
         scores = server.filter { random.nextInt(4) == 0 }.associate { it.sha256 to 7.25f },
@@ -162,10 +174,58 @@ class LibraryTableTest {
             saw("kept original", items) { it.keptOriginal != null }
             saw("scored", items) { it.aesthetic != null }
             saw("read by backup", items) { it.isOnDevice && it.sha256 != null }
+            val jpegs = s.server.mapNotNullTo(HashSet()) { it.encodedSha256 }
+            saw("a JPEG kept as JPEG XL on the phone", items) { it.isOnDevice && it.sha256 in jpegs }
+            saw("a JPEG kept as JPEG XL, deleted from the phone", items) { !it.isOnDevice && it.id.startsWith("oldjxl") }
             // Fewer items than the phone and the server have between them: some matched, hidden or left out.
             if (s.device.size + s.server.count { !it.isAudio } > items.size) seen["matched or left out"] = (seen["matched or left out"] ?: 0) + 1
         }
         seen.forEach { (case, count) -> assertTrue(count > 0, "no case of: $case") }
+    }
+
+    /**
+     * A JPEG the server keeps as JPEG XL (Oct 28, 2026) is the phone's photo once, private as the server says, found by
+     * the JPEG XL's sha256 (the server's answers), and hidden with it; one deleted from the phone keeps its old id.
+     */
+    @Test
+    fun aJpegKeptAsJxlIsThePhonesPhoto() = runTest {
+        val base = LocalDay(2026, 10, 1).toEpochDay() * 86_400_000
+        val photo = MediaItem(
+            id = "1", type = MediaType.IMAGE, takenAtMillis = base, day = LocalDay.fromEpochDay(base / 86_400_000), durationMillis = null, width = 4000,
+            height = 3000, sizeBytes = 3_000_000, fileName = "IMG_1.jpg", source = MediaSource.CAMERA, modifiedMillis = 5, mimeType = "image/jpeg",
+        )
+        fun jxl(sha: String, jpeg: String, private: Boolean = false) = ServerMedia(
+            sha256 = sha, isVideo = false, fileName = "IMG_1.jxl", mimeType = "image/jxl", size = 2_400_000,
+            uploadedAt = "2026-10-20T10:00:00Z", isPrivate = private, encodedSha256 = jpeg,
+        )
+        for (showPrivate in listOf(true, false)) {
+            val database = testLibraryDatabase()
+            StoredMediaLibrary(TableTestLibrary(listOf(photo)), database, Dispatchers.Unconfined).loadItems()
+            val ledger = UploadLedger(FakeFileSystem(), "/backup".toPath(), database, Dispatchers.Unconfined)
+            ledger.record(LedgerEntry("1", 3_000_000, 5, sha(1), uploaded = true))
+            ledger.record(LedgerEntry("gone", 2_000_000, 4, sha(5), uploaded = true))
+            val store = ServerMediaStore(database)
+            store.replaceAll(listOf(jxl(sha(901), sha(1), private = true), jxl(sha(905), sha(5))), emptySet(), cursor = null, showPrivate = showPrivate)
+            val table = LibraryTable(database)
+            table.refresh()
+
+            val rows = table.all().associateBy { it.item.id }
+            if (showPrivate) {
+                assertEquals(setOf("1", "gone"), rows.keys, "the phone's JPEG shows once, as its JPEG XL")
+                val mine = rows.getValue("1")
+                assertTrue(mine.item.isOnDevice && mine.item.isPrivate, "the phone's copy of a private JPEG XL is private")
+                assertEquals(sha(901), mine.serverSha)
+                assertEquals("1", table.bySha(listOf(sha(901)))[sha(901)]?.item?.id, "the server's answer finds the phone's photo")
+            } else {
+                assertEquals(setOf("gone"), rows.keys, "the phone's copy of a private JPEG XL is left out with it")
+            }
+            assertEquals(sha(905), rows.getValue("gone").serverSha, "a JPEG deleted from the phone keeps its id as JPEG XL")
+
+            // The user hides it: the server sends the JPEG XL and its JPEG as hidden.
+            store.apply(com.chencohensolution.journal.server.FeedPage(emptyList(), listOf(sha(901), sha(1)), listOf(sha(901), sha(1)), emptyList(), "c"), showPrivate)
+            table.refresh()
+            assertEquals(setOf("gone"), table.all().map { it.item.id }.toSet(), "the phone's copy of a hidden JPEG XL is hidden")
+        }
     }
 
     @Test

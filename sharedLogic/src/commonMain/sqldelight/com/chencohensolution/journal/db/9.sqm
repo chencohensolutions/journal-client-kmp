@@ -1,0 +1,23 @@
+-- Version 9 to 10 (Oct 28, 2026): the server keeps JPEG photos as JPEG XL, losslessly, under the JPEG XL's own sha256;
+-- its encodedFrom names the JPEG. The phone's copy of that JPEG is the JPEG XL (Library.sq matches either sha256).
+ALTER TABLE server_media ADD COLUMN encoded_sha256 TEXT;
+ALTER TABLE server_private ADD COLUMN encoded_sha256 TEXT;
+CREATE INDEX server_media_encoded ON server_media(encoded_sha256);
+
+-- A server file changed or gone also notes the phone's copy of the JPEG it was kept from (as Library.sq has them).
+DROP TRIGGER server_media_changed;
+CREATE TRIGGER server_media_changed AFTER UPDATE ON server_media BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256);
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256 OR l.sha256 = old.encoded_sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
+END;
+DROP TRIGGER server_media_gone;
+CREATE TRIGGER server_media_gone AFTER DELETE ON server_media BEGIN
+    INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256);
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256 OR l.sha256 = old.encoded_sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
+END;
+
+-- The rows kept have none: the change feed is read again from the start once, and the library is made again.
+DELETE FROM sync_state WHERE name = 'server_cursor';
+INSERT OR IGNORE INTO library_dirty VALUES ('*', '');

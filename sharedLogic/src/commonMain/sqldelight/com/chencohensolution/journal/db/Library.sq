@@ -58,6 +58,8 @@ CREATE TABLE library_fresh (
 -- Photos backup hasn't read are matched by name (ignoring case) and size.
 CREATE INDEX device_item_name ON device_item(lower(file_name), size);
 CREATE INDEX server_media_name ON server_media(lower(file_name), size);
+-- A JPEG kept as JPEG XL on the server: the phone's copy of the JPEG (by the sha256 backup read) is the JPEG XL.
+CREATE INDEX server_media_encoded ON server_media(encoded_sha256);
 CREATE INDEX server_private_name ON server_private(lower(file_name), size);
 CREATE INDEX ledger_sha ON ledger(sha256);
 
@@ -92,12 +94,12 @@ END;
 CREATE TRIGGER server_media_added AFTER INSERT ON server_media BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256); END;
 CREATE TRIGGER server_media_changed AFTER UPDATE ON server_media BEGIN
     INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256);
-    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256 OR l.sha256 = old.encoded_sha256;
     INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
 END;
 CREATE TRIGGER server_media_gone AFTER DELETE ON server_media BEGIN
     INSERT OR IGNORE INTO library_dirty VALUES ('s', old.sha256);
-    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256;
+    INSERT OR IGNORE INTO library_dirty SELECT 'd', l.id FROM ledger l WHERE l.sha256 = old.sha256 OR l.sha256 = old.encoded_sha256;
     INSERT OR IGNORE INTO library_dirty SELECT 'd', d.id FROM device_item d WHERE lower(d.file_name) = lower(old.file_name) AND d.size = old.size;
 END;
 CREATE TRIGGER server_hidden_added AFTER INSERT ON server_hidden BEGIN INSERT OR IGNORE INTO library_dirty VALUES ('s', new.sha256); END;
@@ -145,20 +147,24 @@ clearFresh:
 DELETE FROM library_fresh;
 
 -- The phone's items, but for its copies of what the server hides and of the private files left out, each with the
--- server file it is (by sha256, else by name and size), whether that is private, and its score.
+-- server file it is (by sha256, the server's own or the JPEG's it kept as JPEG XL, else by name and size), whether
+-- that is private, and its score.
 freshFromDevice:
 INSERT OR REPLACE INTO library_fresh
 SELECT v.id, v.sha,
-    CASE WHEN v.sha IS NOT NULL THEN (SELECT s.sha256 FROM server_media s WHERE s.sha256 = v.sha AND s.is_audio = 0)
+    CASE WHEN v.sha IS NOT NULL THEN coalesce(
+            (SELECT s.sha256 FROM server_media s WHERE s.sha256 = v.sha AND s.is_audio = 0),
+            (SELECT s.sha256 FROM server_media s WHERE s.encoded_sha256 = v.sha AND s.is_audio = 0 ORDER BY s.sha256 LIMIT 1))
         ELSE (SELECT s.sha256 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_audio = 0 ORDER BY s.sha256 LIMIT 1) END,
     1, v.is_video, v.taken_millis, v.epoch_day, v.duration_millis, v.width, v.height, v.size, v.file_name, v.burst_id, v.source,
     v.latitude, v.longitude, v.modified_millis, v.mime_type,
-    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE s.sha256 = v.sha AND s.is_private AND s.is_audio = 0)
+    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE (s.sha256 = v.sha OR s.encoded_sha256 = v.sha) AND s.is_private AND s.is_audio = 0)
         ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_private AND s.is_audio = 0) END,
     NULL
 FROM device_with_sha v
 WHERE (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
     AND (CASE WHEN v.sha IS NOT NULL THEN v.sha NOT IN (SELECT sha256 FROM server_private)
+            AND v.sha NOT IN (SELECT encoded_sha256 FROM server_private WHERE encoded_sha256 IS NOT NULL)
         ELSE NOT EXISTS (SELECT 1 FROM server_private p WHERE lower(p.file_name) = lower(v.file_name) AND p.size = v.size) END)
     AND (:everything = 1 OR v.id IN (SELECT key FROM library_keys WHERE kind = 'd'));
 
@@ -167,12 +173,14 @@ freshScores:
 UPDATE library_fresh SET aesthetic = (SELECT s.aesthetic FROM server_media s WHERE s.sha256 = library_fresh.server_sha256)
 WHERE is_on_device = 1 AND server_sha256 IS NOT NULL;
 
--- The server's photos and videos not on the phone (by sha256, or by name and size), with the id the phone gave one it
--- had before it was deleted from it (its stories and notes use that id), else "server:" and its sha256.
+-- The server's photos and videos not on the phone (by sha256, the server's own or the JPEG's it kept as JPEG XL, or by
+-- name and size), with the id the phone gave one it had before it was deleted from it (its stories and notes use that
+-- id), else "server:" and its sha256.
 freshFromServer:
 INSERT OR REPLACE INTO library_fresh
 SELECT coalesce(
-        (SELECT l.id FROM ledger l WHERE l.sha256 = s.sha256 AND l.uploaded AND l.id NOT IN (SELECT id FROM device_item) ORDER BY l.id LIMIT 1),
+        (SELECT l.id FROM ledger l WHERE (l.sha256 = s.sha256 OR l.sha256 = s.encoded_sha256) AND l.uploaded
+            AND l.id NOT IN (SELECT id FROM device_item) ORDER BY l.id LIMIT 1),
         'server:' || s.sha256
     ),
     s.sha256, s.sha256, 0, s.is_video, s.taken_millis,
@@ -187,7 +195,7 @@ WHERE s.is_audio = 0
     AND (:everything = 1 OR s.sha256 IN (SELECT key FROM library_keys WHERE kind = 's'))
     AND NOT EXISTS (
         SELECT 1 FROM ledger l JOIN device_item d ON d.id = l.id AND d.size = l.size AND d.modified_millis IS l.modified_millis
-        WHERE l.sha256 = s.sha256 AND l.sha256 NOT IN (SELECT sha256 FROM server_hidden)
+        WHERE (l.sha256 = s.sha256 OR l.sha256 = s.encoded_sha256) AND l.sha256 NOT IN (SELECT sha256 FROM server_hidden)
     )
     AND NOT EXISTS (
         SELECT 1 FROM device_with_sha v
@@ -247,13 +255,19 @@ everythingDirty:
 SELECT count(*) FROM library_dirty WHERE kind = '*';
 
 -- The noted keys, and every item they can change, now or as the library was made last time: a phone item's server
--- file (by its sha256, or by name and size) and a server file's phone items. The notes are cleared.
+-- file (by its sha256, or by name and size) and a server file's phone items. A JPEG kept as JPEG XL is keyed by both
+-- sha256s. The notes are cleared.
 takeKeys {
     DELETE FROM library_keys;
     INSERT INTO library_keys SELECT kind, key FROM library_dirty WHERE kind != '*';
     DELETE FROM library_dirty;
     INSERT OR IGNORE INTO library_keys
         SELECT 's', v.sha FROM device_with_sha v WHERE v.sha IS NOT NULL AND v.id IN (SELECT key FROM library_keys WHERE kind = 'd');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 's', s.sha256 FROM server_media s WHERE s.encoded_sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
+    INSERT OR IGNORE INTO library_keys
+        SELECT 's', s.encoded_sha256 FROM server_media s
+        WHERE s.encoded_sha256 IS NOT NULL AND s.sha256 IN (SELECT key FROM library_keys WHERE kind = 's');
     INSERT OR IGNORE INTO library_keys
         SELECT 's', s.sha256 FROM device_item d JOIN server_media s ON lower(s.file_name) = lower(d.file_name) AND s.size = d.size
         WHERE d.id IN (SELECT key FROM library_keys WHERE kind = 'd');
@@ -280,6 +294,11 @@ SELECT * FROM library_item WHERE id IN ?;
 -- Items with one of these sha256s: the server's answers (a search, a person's photos, similar photos).
 libraryItemsWithShas:
 SELECT * FROM library_item WHERE sha256 IN ?;
+
+-- The phone's items that are one of these server files under another sha256: its copy of a JPEG the server keeps as
+-- JPEG XL (the server's answers name the JPEG XL).
+libraryItemsOfServerFiles:
+SELECT * FROM library_item WHERE server_sha256 IN ? AND is_on_device = 1 AND sha256 IS NOT NULL AND sha256 != server_sha256;
 
 -- The phone's items backup hasn't read that have the name (ignoring case) and size of one of these server files: the
 -- server's answers for photos not read yet, found as the library matches them (through the phone's name index).

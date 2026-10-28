@@ -29,7 +29,10 @@ CREATE TABLE server_media (
     -- The app on screen in a screenshot, and the camera its tags name (since version 9).
     screenshot_app TEXT,
     camera_make TEXT,
-    camera_model TEXT
+    camera_model TEXT,
+    -- The JPEG a JPEG XL was kept from, or the WAV a FLAC was, which the server answers as this file (encodedFrom;
+    -- since version 10): the phone's copy of that JPEG is this file.
+    encoded_sha256 TEXT
 );
 
 -- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.
@@ -44,6 +47,10 @@ SELECT * FROM server_media ORDER BY rowid;
 -- One file by its sha256.
 mediaWithSha:
 SELECT * FROM server_media WHERE sha256 = ?;
+
+-- The file the server kept from the file with this sha256 (encodedFrom): a JPEG XL of the phone's JPEG.
+shaKeptFrom:
+SELECT sha256 FROM server_media WHERE encoded_sha256 = ? ORDER BY rowid LIMIT 1;
 
 -- The first file written with this name and size, its case aside as library_item matches them: the server's copy of a
 -- phone photo backup hasn't read.
@@ -81,20 +88,22 @@ DELETE FROM server_hidden WHERE sha256 = ?;
 CREATE TABLE server_private (
     sha256 TEXT NOT NULL PRIMARY KEY,
     file_name TEXT NOT NULL,
-    size INTEGER NOT NULL
+    size INTEGER NOT NULL,
+    -- The JPEG it was kept from, when it is a JPEG XL (since version 10): the phone's copy of that JPEG is hidden too.
+    encoded_sha256 TEXT
 );
 
 allPrivate:
 SELECT * FROM server_private;
 
 addPrivate:
-INSERT OR REPLACE INTO server_private VALUES (?, ?, ?);
+INSERT OR REPLACE INTO server_private VALUES (?, ?, ?, ?);
 
 removePrivate:
 DELETE FROM server_private WHERE sha256 = ?;
 
 privateMediaToKeys:
-INSERT OR REPLACE INTO server_private SELECT sha256, file_name, size FROM server_media WHERE is_private;
+INSERT OR REPLACE INTO server_private SELECT sha256, file_name, size, encoded_sha256 FROM server_media WHERE is_private;
 
 deletePrivateMedia:
 DELETE FROM server_media WHERE is_private;

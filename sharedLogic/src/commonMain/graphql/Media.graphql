@@ -67,6 +67,9 @@ query Changes($since: String, $limit: Int) {
         nudity
         aesthetic
         private
+        encodedFrom {
+          sha256
+        }
       }
     }
   }

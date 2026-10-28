@@ -84,6 +84,11 @@ data class ServerMedia(
     /** The camera that took it, as its tags say ("Canon", "Canon EOS 80D"); null without tags or from an older server. */
     val cameraMake: String? = null,
     val cameraModel: String? = null,
+    /**
+     * The file the server kept this one from (its encodedFrom): the JPEG of a JPEG XL kept losslessly since Oct 28, 2026,
+     * or the WAV of a FLAC. The phone's copy of that JPEG, by the sha256 backup read, is this file.
+     */
+    val encodedSha256: String? = null,
 ) {
     /** "Canon EOS 80D", "samsung SM-S931B": the camera as a photo's info names it; null when its tags name none. */
     val camera: String? get() = cameraName(cameraMake, cameraModel)
@@ -369,13 +374,15 @@ class ServerLibrary internal constructor(
     }
 
     /**
-     * [item]'s sha256 on the server: its own once this device's backup read it, otherwise the server file with its name
+     * [item]'s sha256 on the server: its own once this device's backup read it (or that of the JPEG XL the server kept
+     * of it, when it is a JPEG: [ServerMedia.encodedSha256]), otherwise the server file with its name
      * and size, as the library and search match them (a photo that reached the server another way: an import, an
      * earlier install). Null when the server has no such file. Read from the database, the first file written with that
      * name and size, as [com.chencohensolution.journal.search.serverSha] finds it in the whole list.
      */
     suspend fun sha256Of(item: MediaItem): String? {
-        item.sha256?.let { return it }
+        // The phone's copy of a JPEG the server keeps as JPEG XL is known there by the JPEG XL's.
+        item.sha256?.let { sha -> return withContext(io) { store.shaKeptFrom(sha) } ?: sha }
         val name = item.fileName ?: return null
         val size = item.sizeBytes ?: return null
         return withContext(io) { store.shaNamedAs(name, size) }
@@ -670,4 +677,5 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     screenshotApp = screenshotApp,
     cameraMake = camera?.make,
     cameraModel = camera?.model,
+    encodedSha256 = encodedFrom?.sha256,
 )

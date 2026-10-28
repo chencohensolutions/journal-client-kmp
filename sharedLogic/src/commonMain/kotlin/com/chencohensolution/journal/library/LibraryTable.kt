@@ -180,9 +180,10 @@ internal class LibraryTable(private val database: LibraryDatabase) {
 
     /**
      * The row each of [sha256s] is, as [com.chencohensolution.journal.search.libraryResolver] finds it in the whole list:
-     * the row with that sha256, else a phone item backup hasn't read with the server file's name (ignoring case) and size.
-     * Where several rows qualify, the one that comes last in the screens' order (newest day first, newest first, then by
-     * id), as the in-memory lookup keeps the last. sha256s nothing is found for are left out.
+     * the row with that sha256, else the phone's copy of the JPEG a server JPEG XL was kept from (its server file), else
+     * a phone item backup hasn't read with the server file's name (ignoring case) and size. Where several rows qualify,
+     * the one that comes last in the screens' order (newest day first, newest first, then by id), as the in-memory
+     * lookup keeps the last. sha256s nothing is found for are left out.
      */
     fun bySha(sha256s: Collection<String>): Map<String, LibraryRow> {
         val wanted = sha256s.distinct()
@@ -191,19 +192,22 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         database.transaction {
             wanted.chunked(CHUNK).forEach { chunk ->
                 queries.libraryItemsWithShas(chunk, ::libraryRow).executeAsList().forEach { candidates[it.item.id] = it }
+                queries.libraryItemsOfServerFiles(chunk, ::libraryRow).executeAsList().forEach { candidates[it.item.id] = it }
                 queries.libraryItemsNamedAs(chunk, ::libraryRow).executeAsList().forEach { candidates[it.item.id] = it }
                 queries.serverFilesWithShas(chunk).executeAsList().forEach { files[it.sha256] = it.file_name.lowercase() to it.size }
             }
         }
         val withSha = HashMap<String, LibraryRow>()
+        val withServerSha = HashMap<String, LibraryRow>()
         val byNameAndSize = HashMap<Pair<String, Long?>, LibraryRow>()
         candidates.values.sortedWith(SHOWN_ORDER).forEach { row ->
             val item = row.item
             val sha = item.sha256
             if (sha != null) withSha[sha] = row else item.fileName?.let { byNameAndSize[it.lowercase() to item.sizeBytes] = row }
+            row.serverSha?.takeIf { sha != null && it != sha }?.let { withServerSha[it] = row }
         }
         val found = LinkedHashMap<String, LibraryRow>()
-        wanted.forEach { sha -> (withSha[sha] ?: files[sha]?.let(byNameAndSize::get))?.let { found[sha] = it } }
+        wanted.forEach { sha -> (withSha[sha] ?: withServerSha[sha] ?: files[sha]?.let(byNameAndSize::get))?.let { found[sha] = it } }
         return found
     }
 

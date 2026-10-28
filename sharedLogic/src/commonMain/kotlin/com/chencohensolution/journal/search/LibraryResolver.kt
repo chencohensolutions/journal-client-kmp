@@ -16,7 +16,8 @@ internal fun libraryResolver(library: LibraryState, server: List<ServerMedia>): 
     val byNameAndSize by lazy { items.filter { it.sha256 == null && it.fileName != null }.associateBy { it.fileName!!.lowercase() to it.sizeBytes } }
     return { sha256s ->
         sha256s.mapNotNull { sha ->
-            bySha[sha] ?: serverFiles[sha]?.let { byNameAndSize[it.fileName.lowercase() to it.size] }
+            // A server JPEG XL kept from a JPEG is the phone's copy of that JPEG.
+            bySha[sha] ?: serverFiles[sha]?.let { file -> file.encodedSha256?.let(bySha::get) ?: byNameAndSize[file.fileName.lowercase() to file.size] }
         }.distinctBy { it.id }
     }
 }

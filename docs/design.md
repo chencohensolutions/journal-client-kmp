@@ -192,6 +192,18 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   2026: recordings, phone calls, WhatsApp voice messages, brought in by the server's import) are files of kind
   `audio` like any other, a call's sidecar naming who it was with (`call`); a WAV is kept as FLAC. The user shows each
   kind in Hidden collections; the apps keep them apart from photos (Moments and their page only).
+- **JPEG photos are kept as JPEG XL** (the owner's choice, Oct 28, 2026), losslessly: the very same JPEG comes back
+  from it byte for byte, checked before each JPEG is replaced. The JPEG XL has its own sha256 (the server's and the
+  apps' id from then on); its sidecar's `encodedFrom` keeps the JPEG's sha256, size, type and name, for comparing
+  duplicates later. The server keeps uploads so as they arrive and the files already there with `scripts/jxl`
+  overnight; the JPEG's sha256 still finds the file (`missingMedia`, `startUpload`, `/media`, verify), and the feed
+  sends the JPEG as deleted right before its JPEG XL. The apps (Oct 28, 2026) keep each server file's
+  `encodedFrom.sha256` (`server_media.encoded_sha256`, database version 10, whose migration reads the feed again), and
+  the library matches a gallery photo to a server file by either sha256 (`Library.sq`): the phone's JPEG shows once,
+  private and hidden as its JPEG XL, a JPEG deleted from the phone keeps its id, search answers (the JPEG XL's sha256)
+  find the gallery photo, and `ServerLibrary.sha256Of` names it to the server by the JPEG XL's. **Not built yet:**
+  packing JPEGs as JPEG XL on the phone before upload (agreed as a later step: the server already takes the JPEG XL
+  with `encodedFrom` and checks it). See the server's docs/media.md, "JPEG XL".
 
 **Uploading** (built on the server)
 - `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;

@@ -749,11 +749,14 @@ internal fun mergeWithServer(
     val formerIds = entries.values.filter { it.uploaded && it.id !in deviceIds }.associate { it.sha256 to it.id }
     val hidden = server.filter { privateMedia.hides(it.isPrivate) }
     val leftOut = if (privateMedia.hides(true)) privateFiles else emptyList()
-    val hiddenShas = hidden.mapTo(HashSet()) { it.sha256 }.apply { leftOut.mapTo(this) { it.sha256 } }
+    // A JPEG the server keeps as JPEG XL is the phone's copy of the JPEG XL: both sha256s name it.
+    val hiddenShas = hidden.flatMapTo(HashSet()) { listOfNotNull(it.sha256, it.encodedSha256) }
+        .apply { leftOut.flatMapTo(this) { listOfNotNull(it.sha256, it.encodedSha256) } }
     val hiddenNamesAndSizes = hidden.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
         .apply { leftOut.mapTo(this) { it.fileName.lowercase() to it.size } }
     val marked = server.filter { it.isPrivate }
-    val markedShas = marked.mapTo(HashSet()) { it.sha256 }.apply { privateFiles.mapTo(this) { it.sha256 } }
+    val markedShas = marked.flatMapTo(HashSet()) { listOfNotNull(it.sha256, it.encodedSha256) }
+        .apply { privateFiles.flatMapTo(this) { listOfNotNull(it.sha256, it.encodedSha256) } }
     val markedNamesAndSizes = marked.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
         .apply { privateFiles.mapTo(this) { it.fileName.lowercase() to it.size } }
     fun MediaItem.matches(shas: Set<String>, namesAndSizes: Set<Pair<String?, Long?>>): Boolean {
@@ -763,7 +766,8 @@ internal fun mergeWithServer(
     // The server's aesthetic scores, for the device's own copies too.
     fun scoreOf(media: ServerMedia): Float? = scores[media.sha256] ?: media.aesthetic?.toFloat()
     val scored = server.filter { scoreOf(it) != null }
-    val scoreBySha = scored.associate { it.sha256 to scoreOf(it)!! }
+    val scoreBySha = scored.associate { it.sha256 to scoreOf(it)!! } +
+        scored.mapNotNull { media -> media.encodedSha256?.let { it to scoreOf(media)!! } }
     val scoreByNameAndSize = scored.associate { (it.fileName.lowercase() to it.size) to scoreOf(it)!! }
     fun MediaItem.scored(): MediaItem {
         val score = sha256?.let(scoreBySha::get) ?: if (sha256 == null) scoreByNameAndSize[fileName?.lowercase() to sizeBytes] else null
@@ -777,10 +781,11 @@ internal fun mergeWithServer(
         }
     }
     val serverOnly = server.filter {
-        it.sha256 !in shas && (it.fileName.lowercase() to it.size) !in namesAndSizes && it.sha256 !in hiddenShas
+        it.sha256 !in shas && it.encodedSha256 !in shas && (it.fileName.lowercase() to it.size) !in namesAndSizes && it.sha256 !in hiddenShas
     }
     return shown + serverOnly.map { media ->
-        media.toMediaItem(id = formerIds[media.sha256] ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
+        val formerId = formerIds[media.sha256] ?: media.encodedSha256?.let(formerIds::get)
+        media.toMediaItem(id = formerId ?: (ServerMedia.SERVER_ID_PREFIX + media.sha256), keptOriginal = kept[media.sha256])
             .let { item -> scores[media.sha256]?.let { item.copy(aesthetic = it) } ?: item }
     }
 }

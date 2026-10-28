@@ -21,7 +21,13 @@ internal class FileFacts(
  * A file marked private, while "Show private media" is off: only what hides this phone's own copy of it (its sha256,
  * else its name and size, as the library matches them).
  */
-data class PrivateFile(val sha256: String, val fileName: String, val size: Long)
+data class PrivateFile(
+    val sha256: String,
+    val fileName: String,
+    val size: Long,
+    /** The JPEG it was kept from, when it is a JPEG XL ([ServerMedia.encodedSha256]): the phone's copy of that JPEG is hidden too. */
+    val encodedSha256: String? = null,
+)
 
 /** One page of the server's change feed, as [ServerMediaStore.apply] writes it. */
 internal class FeedPage(
@@ -52,6 +58,9 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
 
     /** The file [sha256]; null when the list has none. */
     fun file(sha256: String): ServerMedia? = queries.mediaWithSha(sha256).executeAsOneOrNull()?.toServerMedia()
+
+    /** The file the server kept from the file [sha256] (a JPEG XL of a JPEG); null when there is none. */
+    fun shaKeptFrom(sha256: String): String? = queries.shaKeptFrom(sha256).executeAsOneOrNull()
 
     /** The first file written with [fileName] and [size], its case aside; null when there is none. */
     fun shaNamedAs(fileName: String, size: Long): String? = queries.shaNamedAs(name = fileName, size = size).executeAsOneOrNull()
@@ -84,7 +93,7 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         names.forEach { (id, name) -> queries.addFolderName(id, name) }
     }
 
-    fun privateFiles(): List<PrivateFile> = queries.allPrivate().executeAsList().map { PrivateFile(it.sha256, it.file_name, it.size) }
+    fun privateFiles(): List<PrivateFile> = queries.allPrivate().executeAsList().map { PrivateFile(it.sha256, it.file_name, it.size, it.encoded_sha256) }
 
     fun cursor(): String? = state.stateValue(CURSOR).executeAsOneOrNull()
 
@@ -101,7 +110,7 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         val removed = mutableListOf<String>()
         page.media.forEach { media ->
             if (media.isPrivate && !showPrivate) {
-                queries.addPrivate(media.sha256, media.fileName, media.size)
+                queries.addPrivate(media.sha256, media.fileName, media.size, media.encodedSha256)
                 if (queries.deleteMedia(media.sha256).value > 0) mediaChanged = true
             } else {
                 queries.removePrivate(media.sha256)
@@ -143,7 +152,7 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         queries.clearHidden()
         queries.clearPrivate()
         media.forEach { item ->
-            if (item.isPrivate && !showPrivate) queries.addPrivate(item.sha256, item.fileName, item.size) else queries.upsertMedia(item.toRow())
+            if (item.isPrivate && !showPrivate) queries.addPrivate(item.sha256, item.fileName, item.size, item.encodedSha256) else queries.upsertMedia(item.toRow())
         }
         hidden.forEach { queries.addHidden(it) }
         setCursor(cursor)
@@ -198,6 +207,7 @@ private fun ServerMedia.toRow() = Server_media(
     screenshot_app = screenshotApp,
     camera_make = cameraMake,
     camera_model = cameraModel,
+    encoded_sha256 = encodedSha256,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -225,4 +235,5 @@ private fun Server_media.toServerMedia() = ServerMedia(
     screenshotApp = screenshot_app,
     cameraMake = camera_make,
     cameraModel = camera_model,
+    encodedSha256 = encoded_sha256,
 )
