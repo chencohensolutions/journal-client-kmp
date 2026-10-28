@@ -5,6 +5,7 @@ import com.apollographql.apollo.api.Error
 import com.chencohensolution.journal.connection.ObservationHandle
 import com.chencohensolution.journal.graphql.ServerCopiesQuery
 import com.chencohensolution.journal.graphql.StartCopyMutation
+import com.chencohensolution.journal.graphql.StopCopyMutation
 import com.chencohensolution.journal.graphql.fragment.DataCopyFields
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -51,11 +52,24 @@ enum class CopyHealth {
     ERROR,
 }
 
-/** A pass going now: files (sidecars too) copied so far. */
-data class CopyRunning(val startedAtMillis: Long, val files: Int, val bytes: Long)
+/**
+ * A pass going now. It first finds what it will copy ([counting]); then it copies [totalFiles] originals of
+ * [totalBytes], [doneFiles] in place and [doneBytes] written so far, the file in hand included.
+ */
+data class CopyRunning(
+    val startedAtMillis: Long,
+    val counting: Boolean = false,
+    val totalFiles: Int = 0,
+    val totalBytes: Long = 0,
+    val doneFiles: Int = 0,
+    val doneBytes: Long = 0,
+) {
+    /** How far the pass is in bytes, 0 to 1; 0 while counting. */
+    val fraction: Float get() = if (totalBytes > 0) (doneBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
+}
 
-/** How the copy's last full pass ended. */
-data class CopyPass(val finishedAtMillis: Long, val files: Int, val bytes: Long, val failed: Int)
+/** How the copy's last full pass ended; [stopped] when Stop ended it before it copied everything. */
+data class CopyPass(val finishedAtMillis: Long, val files: Int, val bytes: Long, val failed: Int, val stopped: Boolean = false)
 
 /** One copy folder: how many of the user's files it holds, and how its passes go. */
 data class DataCopy(
@@ -87,6 +101,17 @@ data class DataCopy(
     /** Since when [problem] holds. */
     val problemSinceMillis: Long?,
 ) {
+    /**
+     * How many of the user's files the copy holds now: while a pass copies, all but what it still has to copy;
+     * otherwise what the last compare found.
+     */
+    val heldFiles: Int
+        get() {
+            val running = running ?: return copiedFiles
+            if (running.counting) return copiedFiles
+            return (originals - (running.totalFiles - running.doneFiles)).coerceIn(0, originals)
+        }
+
     /** Files the last pass couldn't copy; the next one tries them again. */
     val failedFiles: Int get() = lastPass?.failed ?: 0
 
@@ -156,6 +181,7 @@ data class ServerCopiesState(
 internal interface CopiesApi {
     suspend fun copies(): List<DataCopy>
     suspend fun start(folder: String): DataCopy
+    suspend fun stop(folder: String): DataCopy
 }
 
 internal class HttpCopiesApi(private val http: ServerHttp) : CopiesApi {
@@ -167,6 +193,11 @@ internal class HttpCopiesApi(private val http: ServerHttp) : CopiesApi {
     override suspend fun start(folder: String) = call {
         val response = it.mutation(StartCopyMutation(folder)).execute()
         answer(response.exception, response.errors, response.data?.startCopy?.dataCopyFields?.toCopy())
+    }
+
+    override suspend fun stop(folder: String) = call {
+        val response = it.mutation(StopCopyMutation(folder)).execute()
+        answer(response.exception, response.errors, response.data?.stopCopy?.dataCopyFields?.toCopy())
     }
 
     private suspend fun <T> call(block: suspend (ApolloClient) -> T): T =
@@ -195,8 +226,10 @@ internal fun DataCopyFields.toCopy() = DataCopy(
     freeBytes = freeBytes,
     checkedAtMillis = millis(checkedAt),
     checking = checking,
-    running = running?.let { CopyRunning(millis(it.startedAt) ?: 0, it.files, it.bytes) },
-    lastPass = lastPass?.let { CopyPass(millis(it.finishedAt) ?: 0, it.files, it.bytes, it.failed) },
+    running = running?.let {
+        CopyRunning(millis(it.startedAt) ?: 0, it.counting, it.totalFiles, it.totalBytes, it.doneFiles, it.doneBytes)
+    },
+    lastPass = lastPass?.let { CopyPass(millis(it.finishedAt) ?: 0, it.files, it.bytes, it.failed, it.stopped) },
     problem = when (problem) {
         ServerCopyProblem.FOLDER_MISSING -> CopyProblem.FOLDER_MISSING
         ServerCopyProblem.DISK_FULL -> CopyProblem.DISK_FULL
@@ -233,11 +266,16 @@ class ServerCopies internal constructor(
     }
 
     /** Starts a full pass of the copy in [folder] now. */
-    fun copyNow(folder: String) {
+    fun copyNow(folder: String) = act(folder, api::start)
+
+    /** Stops the pass of the copy in [folder] going now; what it copied stays. */
+    fun stop(folder: String) = act(folder, api::stop)
+
+    private fun act(folder: String, call: suspend (String) -> DataCopy) {
         _state.update { it.copy(acting = true) }
         scope.launch {
             try {
-                val copy = api.start(folder)
+                val copy = call(folder)
                 _state.update { state ->
                     state.copy(copies = state.copies.map { if (it.folder == folder) copy else it }, error = null, acting = false)
                 }

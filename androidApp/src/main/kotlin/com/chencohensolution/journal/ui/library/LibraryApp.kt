@@ -449,7 +449,7 @@ private fun LibraryScreens(
                                         val watch = if (features?.copies == true) serverCopies.watch() else null
                                         onDispose { watch?.cancel() }
                                     }
-                                    CopiesScreen(copiesState, CopiesActions(copyNow = { serverCopies.copyNow(it.folder) }), back = pop)
+                                    CopiesScreen(copiesState, CopiesActions(copyNow = { serverCopies.copyNow(it.folder) }, stop = { serverCopies.stop(it.folder) }), back = pop)
                                 }
                                 Route.FreeUp -> {
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }

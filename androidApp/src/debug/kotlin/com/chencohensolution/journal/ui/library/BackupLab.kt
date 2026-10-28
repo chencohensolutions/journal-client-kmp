@@ -63,7 +63,7 @@ internal val labCopiesWithProblems = ServerCopiesState(
     copies = listOf(
         labCopy("E:\\Journal copy\\hen", realtime = true, dailyAt = "03:30").copy(
             copiedFiles = 49_377, missingFiles = 37, missingBytes = 412_000_000, inCopyOnly = 2,
-            running = CopyRunning(System.currentTimeMillis() - 30_000, 12, 140_000_000),
+            running = CopyRunning(System.currentTimeMillis() - 30_000, totalFiles = 37, totalBytes = 412_000_000, doneFiles = 12, doneBytes = 140_000_000),
             lastPass = CopyPass(todayAt(3, 31), 120, 1_400_000_000, 2),
         ),
         labCopy("F:\\hen", realtime = false, dailyAt = "04:00").copy(

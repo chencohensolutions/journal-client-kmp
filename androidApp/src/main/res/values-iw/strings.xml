@@ -939,7 +939,10 @@
         <item quantity="two">%1$s קבצים להעתקה (%2$s)</item>
         <item quantity="other">%1$s קבצים להעתקה (%2$s)</item>
     </plurals>
-    <string name="copies_copying">מעתיק: %1$s קבצים עד עכשיו…</string>
+    <string name="copies_copying">מעתיק %1$s מתוך %2$s · %3$s מתוך %4$s קבצים</string>
+    <string name="copies_counting">בודק מה להעתיק…</string>
+    <string name="copies_stop">עצור</string>
+    <string name="copies_last_pass_stopped">מעבר אחרון %1$s, נעצר · %2$s קבצים, %3$s</string>
     <string name="copies_missing">התיקייה לא נמצאת מאז %1$s. האם הדיסק מחובר?</string>
     <string name="copies_full">הדיסק מלא: ההעתקה נעצרה.</string>
     <string name="copies_same_disk">על אותו דיסק כמו קבצי השרת: דיסק שנכשל ייקח את שניהם.</string>

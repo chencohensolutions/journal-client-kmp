@@ -13,8 +13,8 @@ fragment DataCopyFields on DataCopy {
   freeBytes
   checkedAt
   checking
-  running { startedAt files bytes }
-  lastPass { startedAt finishedAt files bytes failed }
+  running { startedAt files bytes counting totalFiles totalBytes doneFiles doneBytes }
+  lastPass { startedAt finishedAt files bytes failed stopped }
   problem
   problemSince
 }
@@ -25,4 +25,8 @@ query ServerCopies {
 
 mutation StartCopy($folder: String!) {
   startCopy(folder: $folder) { ...DataCopyFields }
+}
+
+mutation StopCopy($folder: String!) {
+  stopCopy(folder: $folder) { ...DataCopyFields }
 }

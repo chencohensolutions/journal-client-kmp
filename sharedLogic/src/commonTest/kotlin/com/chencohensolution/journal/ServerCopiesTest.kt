@@ -43,9 +43,19 @@ private class FakeCopiesApi : CopiesApi {
 
     override suspend fun start(folder: String): DataCopy {
         started += folder
-        now = now.map { if (it.folder == folder) it.copy(running = CopyRunning(2_000, 0, 0)) else it }
+        now = now.map { if (it.folder == folder) it.copy(running = CopyRunning(2_000, counting = true)) else it }
         return now.first { it.folder == folder }
     }
+
+    override suspend fun stop(folder: String): DataCopy {
+        stopped += folder
+        now = now.map {
+            if (it.folder == folder) it.copy(running = null, lastPass = CopyPass(3_000, 4, 400, 0, stopped = true)) else it
+        }
+        return now.first { it.folder == folder }
+    }
+
+    var stopped = mutableListOf<String>()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -54,7 +64,7 @@ class ServerCopiesTest {
     fun healthIsTheWorstOfACopysState() {
         assertEquals(CopyHealth.OK, copy().health)
         assertEquals(CopyHealth.BUSY, copy().copy(copiedFiles = 90, missingFiles = 10).health)
-        assertEquals(CopyHealth.BUSY, copy().copy(running = CopyRunning(0, 3, 10)).health)
+        assertEquals(CopyHealth.BUSY, copy().copy(running = CopyRunning(0)).health)
         assertEquals(CopyHealth.WARN, copy().copy(sameDisk = true).health)
         assertEquals(CopyHealth.WARN, copy().copy(lastPass = CopyPass(900, 10, 5_000, 2)).health)
         assertEquals(CopyHealth.ERROR, copy().copy(problem = CopyProblem.FOLDER_MISSING, sameDisk = true).health)
@@ -68,13 +78,40 @@ class ServerCopiesTest {
         assertNull(ServerCopiesState().summary)
         assertEquals(CopiesSummary.AllUpToDate(2), ServerCopiesState(listOf(e, f)).summary)
         assertEquals(CopiesSummary.SomeUpToDate(1, 2), ServerCopiesState(listOf(e, f.copy(missingFiles = 3))).summary)
-        assertEquals(CopiesSummary.Copying("F:\\hen"), ServerCopiesState(listOf(e, f.copy(running = CopyRunning(0, 1, 1)))).summary)
+        assertEquals(CopiesSummary.Copying("F:\\hen"), ServerCopiesState(listOf(e, f.copy(running = CopyRunning(0)))).summary)
         assertEquals(
             CopiesSummary.NeedsALook("F:\\hen"),
-            ServerCopiesState(listOf(e.copy(running = CopyRunning(0, 1, 1)), f.copy(problem = CopyProblem.FOLDER_MISSING))).summary,
+            ServerCopiesState(listOf(e.copy(running = CopyRunning(0)), f.copy(problem = CopyProblem.FOLDER_MISSING))).summary,
         )
         assertEquals(CopiesSummary.NeedsALook("E:\\copy"), ServerCopiesState(listOf(e.copy(sameDisk = true), f)).summary)
         assertEquals(CopiesSummary.Checking, ServerCopiesState(listOf(e.copy(checkedAtMillis = null, checking = true))).summary)
+    }
+
+    @Test
+    fun whileAPassCopiesTheCopyHoldsAllButWhatIsLeft() {
+        // The compare found 0 (a new copy); the pass counted 100 to copy and has 40 in place, 4 of 10 GB written.
+        val c = copy().copy(copiedFiles = 0, missingFiles = 100)
+        assertEquals(0, c.copy(running = CopyRunning(0, counting = true)).heldFiles)
+        val copying = c.copy(running = CopyRunning(0, totalFiles = 100, totalBytes = 10_000, doneFiles = 40, doneBytes = 4_000))
+        assertEquals(40, copying.heldFiles)
+        assertEquals(0.4f, copying.running!!.fraction)
+        assertEquals(0, c.heldFiles, "without a pass: the compare's count")
+    }
+
+    @Test
+    fun stopEndsThePassAndSaysSo() = runTest {
+        val api = FakeCopiesApi()
+        api.now = listOf(copy().copy(running = CopyRunning(0, totalFiles = 10, totalBytes = 1_000)))
+        val copies = ServerCopies(api, StandardTestDispatcher(testScheduler))
+        copies.refresh()
+        runCurrent()
+        copies.stop("E:\\Journal copy\\hen")
+        runCurrent()
+        assertEquals(listOf("E:\\Journal copy\\hen"), api.stopped)
+        val copy = copies.currentState.copies.single()
+        assertNull(copy.running)
+        assertTrue(copy.lastPass!!.stopped)
+        copies.close()
     }
 
     @Test

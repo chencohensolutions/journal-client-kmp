@@ -893,7 +893,10 @@
         <item quantity="one">1 file to copy (%2$s)</item>
         <item quantity="other">%1$s files to copy (%2$s)</item>
     </plurals>
-    <string name="copies_copying">Copying: %1$s files so far…</string>
+    <string name="copies_copying">Copying %1$s of %2$s · %3$s of %4$s files</string>
+    <string name="copies_counting">Finding what to copy…</string>
+    <string name="copies_stop">Stop</string>
+    <string name="copies_last_pass_stopped">Last pass %1$s, stopped · %2$s files, %3$s</string>
     <string name="copies_missing">Can’t find this folder since %1$s. Is the disk plugged in?</string>
     <string name="copies_full">The disk is full: copying stopped.</string>
     <string name="copies_same_disk">On the same disk as your server’s files: a failing disk would take both.</string>

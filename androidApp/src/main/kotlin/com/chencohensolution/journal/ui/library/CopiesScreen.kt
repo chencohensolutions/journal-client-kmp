@@ -53,6 +53,8 @@ import java.time.ZoneId
 internal class CopiesActions(
     /** Starts a full pass of one copy now. */
     val copyNow: (DataCopy) -> Unit = {},
+    /** Stops the pass of one copy going now; what it copied stays. */
+    val stop: (DataCopy) -> Unit = {},
 )
 
 /** Copies on other disks, a row at the end of Backup's top card: how they all are in a line, opening their page. */
@@ -121,7 +123,7 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
             CopyMark(copy)
         }
         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
-            Text(format.format(copy.copiedFiles), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text(format.format(copy.heldFiles), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 stringResource(R.string.copies_of_files, format.format(copy.originals)),
                 color = LibraryColors.Muted,
@@ -129,8 +131,10 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
                 modifier = Modifier.padding(start = 6.dp, bottom = 5.dp),
             )
         }
+        // While a pass copies, the bar is that pass, in bytes; otherwise how much of the user's files the copy holds.
+        val running = copy.running?.takeIf { !it.counting }
         LinearProgressIndicator(
-            progress = { copy.copiedFiles.toFloat() / copy.originals.coerceAtLeast(1) },
+            progress = { running?.fraction ?: (copy.heldFiles.toFloat() / copy.originals.coerceAtLeast(1)) },
             color = if (error) copy.health.color() else LibraryColors.OnBackground,
             trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
             drawStopIndicator = {},
@@ -140,12 +144,14 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
         CopyWarnings(copy)
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 10.dp))
         CopyDetails(copy)
-        if (copy.running == null && copy.problem != CopyProblem.FOLDER_MISSING) {
-            TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting, modifier = Modifier.padding(top = 2.dp)) {
+        when {
+            copy.running != null -> TextButton(onClick = { actions.stop(copy) }, enabled = !acting, modifier = Modifier.padding(top = 2.dp)) {
+                Text(stringResource(R.string.copies_stop), color = LibraryColors.OnBackground)
+            }
+            copy.problem != CopyProblem.FOLDER_MISSING -> TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting, modifier = Modifier.padding(top = 2.dp)) {
                 Text(stringResource(R.string.copies_copy_now), color = LibraryColors.OnBackground)
             }
-        } else {
-            Spacer(Modifier.height(10.dp))
+            else -> Spacer(Modifier.height(10.dp))
         }
     }
 }
@@ -166,7 +172,14 @@ private fun copyStatus(copy: DataCopy): String {
     return when {
         copy.problem == CopyProblem.FOLDER_MISSING -> stringResource(R.string.copies_missing, whenText(copy.problemSinceMillis ?: 0))
         copy.problem == CopyProblem.DISK_FULL -> stringResource(R.string.copies_full)
-        running != null -> stringResource(R.string.copies_copying, format.format(running.files))
+        running != null && running.counting -> stringResource(R.string.copies_counting)
+        running != null -> stringResource(
+            R.string.copies_copying,
+            sizeText(running.doneBytes),
+            sizeText(running.totalBytes),
+            format.format(running.doneFiles),
+            format.format(running.totalFiles),
+        )
         copy.checkedAtMillis == null -> stringResource(R.string.copies_checking)
         copy.missingFiles == 0 -> stringResource(R.string.copies_up_to_date)
         else -> pluralStringResource(R.plurals.copies_to_copy, copy.missingFiles, format.format(copy.missingFiles), sizeText(copy.missingBytes))
@@ -196,7 +209,14 @@ private fun CopyDetails(copy: DataCopy) {
     val lines = buildList {
         add(stringResource(if (copy.realtime) R.string.copies_realtime else R.string.copies_daily, copy.dailyAt))
         add(
-            copy.lastPass?.let { stringResource(R.string.copies_last_pass, whenText(it.finishedAtMillis), format.format(it.files), sizeText(it.bytes)) }
+            copy.lastPass?.let {
+                stringResource(
+                    if (it.stopped) R.string.copies_last_pass_stopped else R.string.copies_last_pass,
+                    whenText(it.finishedAtMillis),
+                    format.format(it.files),
+                    sizeText(it.bytes),
+                )
+            }
                 ?: stringResource(R.string.copies_never),
         )
         copy.freeBytes?.let { add(stringResource(R.string.copies_free, sizeText(it))) }
