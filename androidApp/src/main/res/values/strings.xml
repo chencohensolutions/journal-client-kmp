@@ -893,7 +893,15 @@
         <item quantity="one">1 file to copy (%2$s)</item>
         <item quantity="other">%1$s files to copy (%2$s)</item>
     </plurals>
-    <string name="copies_copying">Copying %1$s of %2$s · %3$s of %4$s files</string>
+    <string name="copies_of_size">of %1$s</string>
+    <string name="copies_percent">%1$d%%</string>
+    <string name="copies_pass_files">%1$s of %2$s files</string>
+    <string name="copies_eta_soon">Less than a minute left</string>
+    <plurals name="copies_eta_minutes">
+        <item quantity="one">About 1 min left</item>
+        <item quantity="other">About %1$d min left</item>
+    </plurals>
+    <string name="copies_eta_hours">About %1$d h %2$d min left</string>
     <string name="copies_counting">Finding what to copy…</string>
     <string name="copies_stop">Stop</string>
     <string name="copies_last_pass_stopped">Last pass %1$s, stopped · %2$s files, %3$s</string>

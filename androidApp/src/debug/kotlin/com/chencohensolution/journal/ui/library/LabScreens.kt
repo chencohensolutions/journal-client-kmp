@@ -183,7 +183,6 @@ internal val labScreens: List<LabScreen> = listOf(
             BackupLab(labCopiesWithProblems)
         },
         LabOption("copies", "The copies' page", "As the Copies row opens it, with the problems") { BackupLab(labCopiesWithProblems, onPage = true) },
-        *backupOptionC,
     )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(

@@ -99,6 +99,15 @@ class ServerCopiesTest {
     }
 
     @Test
+    fun timeLeftIsThePassRateSoFar() {
+        // 140 of 412 GB in 25 minutes: the 272 GB left take about 48.6 minutes more.
+        val running = CopyRunning(0, totalBytes = 412_000_000_000, doneBytes = 140_000_000_000)
+        assertEquals(2_914, running.remainingMillis(25 * 60_000)!! / 1_000)
+        assertNull(running.copy(doneBytes = 0).remainingMillis(1_000))
+        assertNull(CopyRunning(0, counting = true).remainingMillis(1_000))
+    }
+
+    @Test
     fun stopEndsThePassAndSaysSo() = runTest {
         val api = FakeCopiesApi()
         api.now = listOf(copy().copy(running = CopyRunning(0, totalFiles = 10, totalBytes = 1_000)))

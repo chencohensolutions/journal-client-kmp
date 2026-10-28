@@ -115,11 +115,15 @@ The pages, and what each holds:
     **Copies on other disks** (`CopiesScreen`, route `copies`): "Your server also keeps your files in these
     folders, so a failing disk doesn't take them.", then a card per copy (the server's copies of this user's data
     folder, journal-server-go docs/copies.md): its folder, the files it holds in large type ("49,377 of 49,414
-    files") with a bar (red when it isn't kept up), its state ("Up to date", "112 files to copy (1.9 GB)",
-    "Copying: 12 files so far…", "Can't find this folder since Oct 25. Is the disk plugged in?", "The disk is full:
-    copying stopped."), warnings in orange (files the last pass couldn't copy; a copy on the server's own disk), then
-    when it runs, its last pass, the disk's free space and files only in the copy, and **Copy now** (`startCopy`;
-    not while a pass goes or the folder is gone). Under the cards "Checked 12:08" (the oldest compare), or "Can't
+    files") with a bar (red when it isn't kept up), its state ("Up to date", "112 files to copy (1.9 GB)", "Finding
+    what to copy…", "Can't find this folder since Oct 25. Is the disk plugged in?", "The disk is full: copying
+    stopped.") with **Copy now** at the end of that line (`startCopy`; not while the folder is gone). While a pass
+    copies (option c of [the progress round](../ux-history/backup/2026-10-28-copy-progress.md)) the card shows the
+    pass instead: "141 GB" in large type, "of 412 GB" and "34%" at the line's end, the bar in bytes, then "About 48
+    min left" (the pass's rate so far, `CopyRunning.remainingMillis`; in the text color) "· 39,285 of 114,718 files"
+    (muted) with **Stop** at the end (`stopCopy`: the pass ends mid-file, what it copied stays). Then warnings in
+    orange (files the last pass couldn't copy; a copy on the server's own disk), when it runs, its last pass
+    ("stopped" when Stop ended it), the disk's free space and files only in the copy. Under the cards "Checked 12:08" (the oldest compare), or "Can't
     reach the server right now". The counts are the server's last compare of each copy with the user's files, made
     after each pass and again when asked once 10 minutes old; the page asks every 3 s while a pass or a compare
     goes, every 30 s otherwise (`ServerCopies.watch`). A mark beside each folder: none while copying, a red dot

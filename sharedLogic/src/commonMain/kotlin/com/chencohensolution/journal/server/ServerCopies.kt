@@ -66,6 +66,16 @@ data class CopyRunning(
 ) {
     /** How far the pass is in bytes, 0 to 1; 0 while counting. */
     val fraction: Float get() = if (totalBytes > 0) (doneBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
+
+    /**
+     * Milliseconds left at the pass's rate so far (its bytes since it started, the counting included, so a little long
+     * at first); null while counting or before a byte was written.
+     */
+    fun remainingMillis(nowMillis: Long): Long? {
+        if (counting || doneBytes <= 0 || totalBytes <= 0) return null
+        val elapsed = (nowMillis - startedAtMillis).coerceAtLeast(1)
+        return (elapsed.toDouble() * (totalBytes - doneBytes).coerceAtLeast(0) / doneBytes).toLong()
+    }
 }
 
 /** How the copy's last full pass ended; [stopped] when Stop ended it before it copied everything. */

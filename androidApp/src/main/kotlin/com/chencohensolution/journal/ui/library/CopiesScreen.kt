@@ -31,13 +31,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.server.CopiesSummary
 import com.chencohensolution.journal.server.CopyHealth
 import com.chencohensolution.journal.server.CopyProblem
+import com.chencohensolution.journal.server.CopyRunning
 import com.chencohensolution.journal.server.DataCopy
 import com.chencohensolution.journal.server.ServerCopiesState
 import java.text.NumberFormat
@@ -112,46 +117,113 @@ internal fun CopiesScreen(copies: ServerCopiesState, actions: CopiesActions, bac
     }
 }
 
+/**
+ * A copy's card. While a pass copies (option c of docs/ux-history/backup/2026-10-28-copy-progress.md): "141 GB of
+ * 412 GB" with "34%" at the line's end, the bar in bytes, then the time left and the files with Stop at the end.
+ * Otherwise: the files the copy holds, the bar, its state with Copy now at the end.
+ */
 @Composable
 private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
-    val format = NumberFormat.getIntegerInstance()
     val error = copy.health == CopyHealth.ERROR
-    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 14.dp, bottom = 8.dp)) {
+        Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(copy.folder, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(end = 8.dp))
             CopyMark(copy)
         }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
-            Text(format.format(copy.heldFiles), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-            Text(
-                stringResource(R.string.copies_of_files, format.format(copy.originals)),
-                color = LibraryColors.Muted,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 6.dp, bottom = 5.dp),
-            )
+        val running = copy.running
+        if (running != null && !running.counting) {
+            PassProgress(copy, running, acting, actions)
+        } else {
+            val format = NumberFormat.getIntegerInstance()
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
+                Text(format.format(copy.heldFiles), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(R.string.copies_of_files, format.format(copy.originals)),
+                    color = LibraryColors.Muted,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(start = 6.dp, bottom = 5.dp),
+                )
+            }
+            Bar({ copy.heldFiles.toFloat() / copy.originals.coerceAtLeast(1) }, if (error) copy.health.color() else LibraryColors.OnBackground)
+            val color = if (error) copy.health.color() else LibraryColors.OnBackground
+            ButtonLine(AnnotatedString(copyStatus(copy)), color, 14, copy, acting, actions)
         }
-        // While a pass copies, the bar is that pass, in bytes; otherwise how much of the user's files the copy holds.
-        val running = copy.running?.takeIf { !it.counting }
-        LinearProgressIndicator(
-            progress = { running?.fraction ?: (copy.heldFiles.toFloat() / copy.originals.coerceAtLeast(1)) },
-            color = if (error) copy.health.color() else LibraryColors.OnBackground,
-            trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
-            drawStopIndicator = {},
-            modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
+        Column(Modifier.padding(end = 12.dp)) {
+            CopyWarnings(copy)
+            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 10.dp))
+            CopyDetails(copy)
+        }
+    }
+}
+
+/** A pass copying: its size and percentage on one line, the bar in bytes, the time left (in the text color) and files. */
+@Composable
+private fun PassProgress(copy: DataCopy, running: CopyRunning, acting: Boolean, actions: CopiesActions) {
+    val format = NumberFormat.getIntegerInstance()
+    Row(Modifier.padding(top = 4.dp, end = 12.dp), verticalAlignment = Alignment.Bottom) {
+        Text(sizeText(running.doneBytes), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            stringResource(R.string.copies_of_size, sizeText(running.totalBytes)),
+            color = LibraryColors.Muted,
+            fontSize = 14.sp,
+            modifier = Modifier.weight(1f).padding(start = 6.dp, bottom = 5.dp),
         )
-        Text(copyStatus(copy), color = if (error) copy.health.color() else LibraryColors.OnBackground, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
-        CopyWarnings(copy)
-        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 10.dp))
-        CopyDetails(copy)
+        Text(
+            stringResource(R.string.copies_percent, (running.fraction * 100).toInt()),
+            color = LibraryColors.OnBackground,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 2.dp),
+        )
+    }
+    Bar({ running.fraction }, LibraryColors.OnBackground)
+    val files = stringResource(R.string.copies_pass_files, format.format(running.doneFiles), format.format(running.totalFiles))
+    val line = buildAnnotatedString {
+        etaText(running)?.let {
+            withStyle(SpanStyle(color = LibraryColors.OnBackground)) { append(it) }
+            append(" · ")
+        }
+        append(files)
+    }
+    ButtonLine(line, LibraryColors.Muted, 13, copy, acting, actions)
+}
+
+@Composable
+private fun Bar(fraction: () -> Float, color: Color) {
+    LinearProgressIndicator(
+        progress = fraction,
+        color = color,
+        trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
+        drawStopIndicator = {},
+        modifier = Modifier.padding(top = 6.dp, end = 12.dp).fillMaxWidth(),
+    )
+}
+
+/** A line with the card's button at its end: Stop while a pass goes, else Copy now (not while the folder is gone). */
+@Composable
+private fun ButtonLine(text: AnnotatedString, color: Color, size: Int, copy: DataCopy, acting: Boolean, actions: CopiesActions) {
+    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = color, fontSize = size.sp, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
         when {
-            copy.running != null -> TextButton(onClick = { actions.stop(copy) }, enabled = !acting, modifier = Modifier.padding(top = 2.dp)) {
+            copy.running != null -> TextButton(onClick = { actions.stop(copy) }, enabled = !acting) {
                 Text(stringResource(R.string.copies_stop), color = LibraryColors.OnBackground)
             }
-            copy.problem != CopyProblem.FOLDER_MISSING -> TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting, modifier = Modifier.padding(top = 2.dp)) {
+            copy.problem != CopyProblem.FOLDER_MISSING -> TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting) {
                 Text(stringResource(R.string.copies_copy_now), color = LibraryColors.OnBackground)
             }
-            else -> Spacer(Modifier.height(10.dp))
+            else -> Spacer(Modifier.padding(end = 12.dp))
         }
+    }
+}
+
+/** "About 48 min left", "About 2 h 10 min left", "Less than a minute left"; null until the pass's rate is known. */
+@Composable
+private fun etaText(running: CopyRunning): String? {
+    val minutes = ((running.remainingMillis(System.currentTimeMillis()) ?: return null) / 60_000).toInt()
+    return when {
+        minutes < 1 -> stringResource(R.string.copies_eta_soon)
+        minutes < 60 -> pluralStringResource(R.plurals.copies_eta_minutes, minutes, minutes)
+        else -> stringResource(R.string.copies_eta_hours, minutes / 60, minutes % 60)
     }
 }
 
@@ -171,14 +243,7 @@ private fun copyStatus(copy: DataCopy): String {
     return when {
         copy.problem == CopyProblem.FOLDER_MISSING -> stringResource(R.string.copies_missing, whenText(copy.problemSinceMillis ?: 0))
         copy.problem == CopyProblem.DISK_FULL -> stringResource(R.string.copies_full)
-        running != null && running.counting -> stringResource(R.string.copies_counting)
-        running != null -> stringResource(
-            R.string.copies_copying,
-            sizeText(running.doneBytes),
-            sizeText(running.totalBytes),
-            format.format(running.doneFiles),
-            format.format(running.totalFiles),
-        )
+        running != null -> stringResource(R.string.copies_counting) // a pass copying shows PassProgress instead
         copy.checkedAtMillis == null -> stringResource(R.string.copies_checking)
         copy.missingFiles == 0 -> stringResource(R.string.copies_up_to_date)
         else -> pluralStringResource(R.plurals.copies_to_copy, copy.missingFiles, format.format(copy.missingFiles), sizeText(copy.missingBytes))

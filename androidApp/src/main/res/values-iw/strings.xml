@@ -939,7 +939,16 @@
         <item quantity="two">%1$s קבצים להעתקה (%2$s)</item>
         <item quantity="other">%1$s קבצים להעתקה (%2$s)</item>
     </plurals>
-    <string name="copies_copying">מעתיק %1$s מתוך %2$s · %3$s מתוך %4$s קבצים</string>
+    <string name="copies_of_size">מתוך %1$s</string>
+    <string name="copies_percent">%1$d%%</string>
+    <string name="copies_pass_files">%1$s מתוך %2$s קבצים</string>
+    <string name="copies_eta_soon">פחות מדקה</string>
+    <plurals name="copies_eta_minutes">
+        <item quantity="one">עוד כדקה</item>
+        <item quantity="two">עוד כ-%1$d דקות</item>
+        <item quantity="other">עוד כ-%1$d דקות</item>
+    </plurals>
+    <string name="copies_eta_hours">עוד כ-%1$d שע׳ ו-%2$d דק׳</string>
     <string name="copies_counting">בודק מה להעתיק…</string>
     <string name="copies_stop">עצור</string>
     <string name="copies_last_pass_stopped">מעבר אחרון %1$s, נעצר · %2$s קבצים, %3$s</string>
