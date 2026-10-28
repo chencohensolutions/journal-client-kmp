@@ -13,7 +13,7 @@ to look alike, and for new suggestions.
   chips beside each name and what the choice does under it. *Turned down*: the owner wanted switches, not chips.
 - **b2 — One card, switches** (from b): the same card with a switch per kind, "Recordings as FLAC" and "Photos as JPEG
   XL", both off by default, each saying what it does; a row asking for "Media management" access while JPEG XL is on
-  without it. *Picked*, promoted in PROMOTED.
+  without it. *Picked*, promoted in ecb5d00.
 - **c — Originals or smaller copies**: one choice like Upload order (Originals, Smaller copies with the space given
   back, Choose for each with chips per kind). *Turned down* for b2.
 
