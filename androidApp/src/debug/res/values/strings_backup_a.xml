@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI lab, Settings › Backup option A: copies of the server's data on other disks. -->
+<resources>
+    <string name="backup_a_copies_title">Copies on other disks</string>
+    <string name="backup_a_copies_body">Your server also keeps your files in these folders, so a failing disk doesn’t take them.</string>
+    <string name="backup_a_copies_none">No copies yet. They are set up on the server, in config.json.</string>
+    <string name="backup_a_files_of">%1$s of %2$s files</string>
+    <string name="backup_a_up_to_date">Up to date</string>
+    <plurals name="backup_a_to_copy">
+        <item quantity="one">1 file to copy (%2$s)</item>
+        <item quantity="other">%1$s files to copy (%2$s)</item>
+    </plurals>
+    <string name="backup_a_copying">Copying %1$s of %2$s…</string>
+    <string name="backup_a_missing">Can’t find this folder since %1$s. Is the disk plugged in?</string>
+    <string name="backup_a_full">The disk is full: copying stopped.</string>
+    <string name="backup_a_same_disk">On the same disk as your server’s files: a failing disk would take both.</string>
+    <plurals name="backup_a_failed">
+        <item quantity="one">1 file couldn’t be copied. It’s tried again at the next pass.</item>
+        <item quantity="other">%1$s files couldn’t be copied. They’re tried again at the next pass.</item>
+    </plurals>
+    <string name="backup_a_realtime">As files arrive, and daily at %1$s</string>
+    <string name="backup_a_daily">Daily at %1$s</string>
+    <string name="backup_a_last_pass">Last pass %1$s · %2$s files, %3$s</string>
+    <string name="backup_a_never">No pass since the server started</string>
+    <string name="backup_a_free">%1$s free on the disk</string>
+    <plurals name="backup_a_in_copy_only">
+        <item quantity="one">1 file is only in the copy (gone from the server; kept)</item>
+        <item quantity="other">%1$s files are only in the copy (gone from the server; kept)</item>
+    </plurals>
+    <string name="backup_a_copy_now">Copy now</string>
+    <string name="backup_a_checked">Checked %1$s</string>
+    <string name="backup_a_of_files">of %1$s files</string>
+    <plurals name="backup_a_summary_all">
+        <item quantity="one">Your copy is up to date</item>
+        <item quantity="other">All %1$d copies up to date</item>
+    </plurals>
+    <string name="backup_a_summary_some">%1$d of %2$d copies up to date</string>
+    <string name="backup_a_summary_problem">Needs a look: %1$s</string>
+    <string name="backup_a_summary_copying">Copying to %1$s…</string>
+</resources>

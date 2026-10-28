@@ -179,6 +179,9 @@ internal val labScreens: List<LabScreen> = listOf(
     // the round of Oct 28, 2026 (docs/ux-history/backup/2026-10-28-keep-on-phone.md).
     LabScreen("backup", "Settings › Backup", listOf(
         current { BackupSettingsScreen(labBackupUi(), BackupActions(), back = {}) },
+        *backupOptionA,
+        *backupOptionB,
+        *backupOptionC,
     )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(

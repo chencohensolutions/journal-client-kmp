@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_a_copies_title">עותקים בדיסקים אחרים</string>
+    <string name="backup_a_copies_body">השרת שומר את הקבצים שלך גם בתיקיות האלה, כך שדיסק שנכשל לא ייקח אותם.</string>
+    <string name="backup_a_copies_none">אין עותקים עדיין. מגדירים אותם בשרת, ב-config.json.</string>
+    <string name="backup_a_files_of">%1$s מתוך %2$s קבצים</string>
+    <string name="backup_a_up_to_date">מעודכן</string>
+    <plurals name="backup_a_to_copy">
+        <item quantity="one">קובץ אחד להעתקה (%2$s)</item>
+        <item quantity="two">%1$s קבצים להעתקה (%2$s)</item>
+        <item quantity="other">%1$s קבצים להעתקה (%2$s)</item>
+    </plurals>
+    <string name="backup_a_copying">מעתיק %1$s מתוך %2$s…</string>
+    <string name="backup_a_missing">התיקייה לא נמצאת מאז %1$s. האם הדיסק מחובר?</string>
+    <string name="backup_a_full">הדיסק מלא: ההעתקה נעצרה.</string>
+    <string name="backup_a_same_disk">על אותו דיסק כמו קבצי השרת: דיסק שנכשל ייקח את שניהם.</string>
+    <plurals name="backup_a_failed">
+        <item quantity="one">קובץ אחד לא הועתק. ננסה שוב במעבר הבא.</item>
+        <item quantity="two">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+        <item quantity="other">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+    </plurals>
+    <string name="backup_a_realtime">כשקבצים מגיעים, וכל יום ב-%1$s</string>
+    <string name="backup_a_daily">כל יום ב-%1$s</string>
+    <string name="backup_a_last_pass">מעבר אחרון %1$s · %2$s קבצים, %3$s</string>
+    <string name="backup_a_never">לא היה מעבר מאז שהשרת עלה</string>
+    <string name="backup_a_free">%1$s פנויים בדיסק</string>
+    <plurals name="backup_a_in_copy_only">
+        <item quantity="one">קובץ אחד נמצא רק בעותק (נמחק מהשרת; נשמר)</item>
+        <item quantity="two">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+        <item quantity="other">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+    </plurals>
+    <string name="backup_a_copy_now">העתק עכשיו</string>
+    <string name="backup_a_checked">נבדק %1$s</string>
+    <string name="backup_a_of_files">מתוך %1$s קבצים</string>
+    <plurals name="backup_a_summary_all">
+        <item quantity="one">העותק שלך מעודכן</item>
+        <item quantity="two">שני העותקים מעודכנים</item>
+        <item quantity="other">כל %1$d העותקים מעודכנים</item>
+    </plurals>
+    <string name="backup_a_summary_some">%1$d מתוך %2$d עותקים מעודכנים</string>
+    <string name="backup_a_summary_problem">דורש בדיקה: %1$s</string>
+    <string name="backup_a_summary_copying">מעתיק אל %1$s…</string>
+</resources>

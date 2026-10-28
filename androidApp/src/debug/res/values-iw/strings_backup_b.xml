@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_b_copies_title">עותקים בדיסקים אחרים</string>
+    <string name="backup_b_copies_body">השרת שומר את הקבצים שלך גם בתיקיות האלה, כך שדיסק שנכשל לא ייקח אותם.</string>
+    <string name="backup_b_copies_none">אין עותקים עדיין. מגדירים אותם בשרת, ב-config.json.</string>
+    <string name="backup_b_files_of">%1$s מתוך %2$s קבצים</string>
+    <string name="backup_b_up_to_date">מעודכן</string>
+    <plurals name="backup_b_to_copy">
+        <item quantity="one">קובץ אחד להעתקה (%2$s)</item>
+        <item quantity="two">%1$s קבצים להעתקה (%2$s)</item>
+        <item quantity="other">%1$s קבצים להעתקה (%2$s)</item>
+    </plurals>
+    <string name="backup_b_copying">מעתיק %1$s מתוך %2$s…</string>
+    <string name="backup_b_missing">התיקייה לא נמצאת מאז %1$s. האם הדיסק מחובר?</string>
+    <string name="backup_b_full">הדיסק מלא: ההעתקה נעצרה.</string>
+    <string name="backup_b_same_disk">על אותו דיסק כמו קבצי השרת: דיסק שנכשל ייקח את שניהם.</string>
+    <plurals name="backup_b_failed">
+        <item quantity="one">קובץ אחד לא הועתק. ננסה שוב במעבר הבא.</item>
+        <item quantity="two">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+        <item quantity="other">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+    </plurals>
+    <string name="backup_b_realtime">כשקבצים מגיעים, וכל יום ב-%1$s</string>
+    <string name="backup_b_daily">כל יום ב-%1$s</string>
+    <string name="backup_b_last_pass">מעבר אחרון %1$s · %2$s קבצים, %3$s</string>
+    <string name="backup_b_never">לא היה מעבר מאז שהשרת עלה</string>
+    <string name="backup_b_free">%1$s פנויים בדיסק</string>
+    <plurals name="backup_b_in_copy_only">
+        <item quantity="one">קובץ אחד נמצא רק בעותק (נמחק מהשרת; נשמר)</item>
+        <item quantity="two">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+        <item quantity="other">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+    </plurals>
+    <string name="backup_b_copy_now">העתק עכשיו</string>
+    <string name="backup_b_checked">נבדק %1$s</string>
+</resources>
