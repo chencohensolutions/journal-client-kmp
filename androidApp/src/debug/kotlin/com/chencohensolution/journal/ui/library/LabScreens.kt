@@ -180,8 +180,6 @@ internal val labScreens: List<LabScreen> = listOf(
     LabScreen("backup", "Settings › Backup", listOf(
         current { BackupSettingsScreen(labBackupUi(), BackupActions(), back = {}) },
         *backupOptionA,
-        *backupOptionB,
-        *backupOptionC,
     )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(
