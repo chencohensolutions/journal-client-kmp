@@ -175,6 +175,14 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
     )),
+    // Made-up settings (BackupLab): backup on, Camera and a Voice Recorder folder. Options: what stays on the phone of
+    // WAVs and JPEGs sent as FLAC and JPEG XL (Oct 28, 2026).
+    LabScreen("backup", "Settings › Backup", listOf(
+        current { BackupSettingsScreen(labBackupUi(), BackupActions(), back = {}) },
+        backupOptionA,
+        backupOptionB,
+        backupOptionC,
+    )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(
         current { SettingsScreen(SettingsState(), SettingsActions(), page = SettingsPage.SHOWN, kinds = labKinds) },

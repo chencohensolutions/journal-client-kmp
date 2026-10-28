@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_a_jpeg_note">JPEG photos are sent as JPEG XL: the same photo in about a fifth less space.</string>
+    <string name="backup_a_keep_jpeg">JPEG</string>
+    <string name="backup_a_keep_jxl">JPEG XL</string>
+    <string name="backup_a_keep_jpeg_body">The JPEG stays as it is: every app can show it.</string>
+    <string name="backup_a_keep_jxl_body">The JPEG XL replaces the JPEG once the server has it, and the JPEG goes to the gallery\'s trash. Only this app can show JPEG XL.</string>
+    <string name="backup_a_needs_access">Needs \"Media management\" access, so each JPEG goes to the trash without asking.</string>
+    <string name="backup_a_allow_access">Allow Media management</string>
+</resources>
