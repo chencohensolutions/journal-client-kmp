@@ -224,6 +224,7 @@ class BackupController internal constructor(
     }
 
     fun setKeepOnPhone(keep: KeepOnPhone) = changeSettings { it.copy(keepOnPhone = keep) }
+    fun setKeepJpegXlOnPhone(keep: Boolean) = changeSettings { it.copy(keepJpegXlOnPhone = keep) }
 
     /** What [folder] holds, for the add dialog; null when it can't be read. */
     suspend fun look(folder: SoundFolder): FolderLook? = soundFolders?.look(folder)
@@ -294,7 +295,8 @@ class BackupController internal constructor(
             var shownFile: String? = null
             var shownAt: TimeMark? = null
             val result = createApolloClient(http, url).useClient { apollo ->
-                BackupEngine(files, ledger, ServerBackupApi(apollo, url, pieceSender ?: KtorPieceSender(http)), locate, check).run(items, current) { counted ->
+                val packJpegs = settings.serverFeatures?.keepsJpegAsJxl == true
+                BackupEngine(files, ledger, ServerBackupApi(apollo, url, pieceSender ?: KtorPieceSender(http)), locate, check, packJpegs).run(items, current) { counted ->
                     // Bytes are reported many times a second; the screens redraw from this state, so it changes at
                     // most every PROGRESS_EVERY, except when a file starts or finishes.
                     val newFile = counted.currentId != shownFile || counted.done != done

@@ -14,7 +14,7 @@ saying how it stands and opening a page of its own; the switches used most stay 
   (when the server keeps them, `ServerFeatures.soundFolders`: "4 folders · 1 as Calls · 1 as Voice recordings", "3
   folders" when none is merged, "Moving 953 files…" while the server moves some, "Which folders are calls or voice
   recordings" until the list came; both lists are asked when Settings opens and kept up by their pages), **Moments ›** ("By
-  day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** switch (below).
+  day · similar at 60%", "New row after 12 hours · similar at 85%"), and the **Show the phone badge** and **Share JPEG XL as JPEG** switches (below).
 - **Privacy:** **Private settings 🔒 ›** (below; Show private media is inside it since Oct 25, 2026).
 - **Backup and storage** (when the app has them): **Backup ›** (its status line; a screen of its own, below),
   **Storage on this phone ›** ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›**
@@ -132,7 +132,11 @@ The pages, and what each holds:
     Under the pills, once a folder is added: "Folders of calls and recordings are backed up even while they are hidden
     in Private settings." Then, always (as the owner asked): "WAV recordings are sent as FLAC: the same sound in about half the
     space", with **Keep on this phone**: **WAV** (default; the WAV stays as it is) or **FLAC** (the FLAC replaces the WAV
-    once the server confirmed it). On iOS (`SoundFolderViews.swift`, `IosSoundFolders.kt`) **+ Add a folder** opens the
+    once the server confirmed it). Below it (Android, Oct 28, 2026), the **Keep JPEG XL on this phone** switch, **off**
+    by default: JPEG photos are backed up as JPEG XL; on, the JPEG XL replaces the JPEG on the phone once the server
+    confirmed it, and the JPEG goes to the gallery's trash. Its text says the gallery and Google Photos can't show JPEG
+    XL, and that it needs "Media management" access, whose system page opens when it is turned on without it
+    (`backup_keep_jxl`; see design.md, "JPEG photos are kept as JPEG XL"). On iOS (`SoundFolderViews.swift`, `IosSoundFolders.kt`) **+ Add a folder** opens the
     Files folder picker; the folder is kept by a security-scoped bookmark (Application Support, `soundFolders/`), and the
     add dialog is a sheet. An iPhone keeps call recordings in Notes, and Voice Memos and WhatsApp's voice notes inside
     their apps, out of the picker's reach: only recordings saved into Files (On My iPhone, iCloud Drive, another app's
@@ -147,6 +151,9 @@ The pages, and what each holds:
   green phone on grid tiles and Moments photos that are on this phone and backed up (see
   [README.md](README.md#backup-badges)). Off, a photo just taken and uploaded has no badge; waiting, uploading and
   failed photos always have one, and the viewer's details always say where the original is (`show_on_phone_badge`).
+- **Share JPEG XL as JPEG** (on the first page, under Library, below the badge; Android, asked for Oct 28, 2026), a
+  switch, **on** by default: the viewer's Share sends a JPEG XL photo as the JPEG it was packed from, byte for byte, as
+  few apps open JPEG XL; one not packed from a JPEG goes as it is. Off, it goes as JPEG XL (`share_jxl_as_jpeg`).
 - **Storage on this phone** (a page: **Kept on this phone** first, then **Image quality**; Android, asked for Oct 20, 2026; iOS since Oct 21, 2026. iOS
   writes it as a list: Format and the limit (**Up to**) are menus, Quality a segmented control, and ImageIO decodes
   every format itself, JPEG XL from iOS 17):

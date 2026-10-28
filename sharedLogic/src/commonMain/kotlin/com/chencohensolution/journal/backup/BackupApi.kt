@@ -47,12 +47,15 @@ internal data class UploadRequest(
     val versionOf: String?,
     /** A sound file from a folder of calls: a call, with whoever its name says (the server reads the name). */
     val isCall: Boolean = false,
-    /** For a FLAC made on the phone from a WAV: the WAV, which the server then answers as this file. */
+    /**
+     * For a file made on the phone from another (a WAV's FLAC, a JPEG's JPEG XL): that file, which the server then
+     * answers as this one.
+     */
     val encodedFrom: EncodedFrom? = null,
 )
 
-/** The WAV a FLAC was made from. */
-internal data class EncodedFrom(val sha256: String, val mimeType: String, val size: Long)
+/** The file another was made from on the phone: a FLAC's WAV, or a JPEG XL's JPEG (which the server rebuilds and checks). */
+internal data class EncodedFrom(val sha256: String, val mimeType: String, val size: Long, val fileName: String? = null)
 
 internal sealed interface StartResult {
     data class Ready(val url: String, val offset: Long, val chunkSize: Long) : StartResult
@@ -198,7 +201,7 @@ internal class ServerBackupApi(
             folder = Optional.presentIfNotNull(request.folder?.take(500)),
             versionOf = Optional.presentIfNotNull(request.versionOf),
             call = if (request.isCall) Optional.present(CallInput()) else Optional.absent(),
-            encodedFrom = Optional.presentIfNotNull(request.encodedFrom?.let { EncodedFromInput(sha256 = it.sha256, mimeType = it.mimeType, size = it.size) }),
+            encodedFrom = Optional.presentIfNotNull(request.encodedFrom?.let { EncodedFromInput(sha256 = it.sha256, mimeType = it.mimeType, size = it.size, fileName = Optional.presentIfNotNull(it.fileName)) }),
         )
         val response = apollo.mutation(StartUploadMutation(input)).execute()
         response.exception?.let { throw it.asServerException() }

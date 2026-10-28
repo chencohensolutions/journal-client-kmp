@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.library
 
 import android.Manifest
+import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
@@ -103,7 +104,10 @@ internal class AndroidMediaLibrary(context: Context) : ChangingLibrary {
             while (cursor.moveToNext()) {
                 val isVideo = cursor.getInt(mediaType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                 // DATE_TAKEN is missing for files without EXIF; DATE_MODIFIED is in seconds.
-                val takenAt = cursor.getLong(dateTaken).takeIf { it > 0 } ?: (cursor.getLong(dateModified) * 1000)
+                // A JPEG XL has none: its date is the JPEG's, recorded when it was written (JxlDates).
+                val takenAt = cursor.getLong(dateTaken).takeIf { it > 0 }
+                    ?: jxlTakenAt(cursor.getLong(id), cursor.getString(mime))
+                    ?: (cursor.getLong(dateModified) * 1000)
                 val date = Instant.ofEpochMilli(takenAt).atZone(zone).toLocalDate()
                 // WIDTH and HEIGHT are the stored pixels; a photo turned a quarter is shown the other way round.
                 val turned = cursor.getInt(orientation) % 180 == 90
@@ -130,6 +134,13 @@ internal class AndroidMediaLibrary(context: Context) : ChangingLibrary {
             }
         }
         return items
+    }
+
+    /** When the JPEG XL photo [id] was taken (see [JxlDates]); null for any other type, or when not known. */
+    private fun jxlTakenAt(id: Long, mimeType: String?): Long? {
+        if (!mimeType.equals("image/jxl", ignoreCase = true)) return null
+        val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+        return JxlDates.of(context).takenAt(id.toString()) { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }
     }
 
     override fun watch(onChange: () -> Unit): () -> Unit {

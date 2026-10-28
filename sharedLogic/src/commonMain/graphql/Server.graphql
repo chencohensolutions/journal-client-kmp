@@ -15,6 +15,7 @@ query ServerInfo {
     audio
     cameras
     soundFolders
+    keepsJpegAsJxl
   }
 }
 

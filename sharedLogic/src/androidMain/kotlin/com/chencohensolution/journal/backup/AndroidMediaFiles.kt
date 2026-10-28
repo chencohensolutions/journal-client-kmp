@@ -9,6 +9,7 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.HashingSink
+import okio.ByteString.Companion.toByteString
 import okio.Source
 import okio.blackholeSink
 import okio.buffer
@@ -49,7 +50,7 @@ internal class AndroidMediaFiles(context: Context) : MediaFiles {
     override fun takenAt(item: MediaItem): String = rfc3339(item.takenAtMillis, ZoneId.systemDefault())
 
     /** Made in the app's cache (`cache/flac/`), from the WAV in its sound folder. */
-    override suspend fun encodeFlac(item: MediaItem): EncodedFlac? = withContext(Dispatchers.IO) {
+    override suspend fun encodeFlac(item: MediaItem): EncodedFile? = withContext(Dispatchers.IO) {
         val uri = SoundIds.documentOf(item.id)?.let(Uri::parse) ?: return@withContext null
         val name = (item.fileName ?: "recording.wav").substringBeforeLast('.') + ".flac"
         val dir = File(app.cacheDir, "flac").apply { mkdirs() }
@@ -60,7 +61,7 @@ internal class AndroidMediaFiles(context: Context) : MediaFiles {
             file.source().buffer().use { it.readAll(hashing) }
             hashing.hash.hex()
         }
-        EncodedFlac(
+        EncodedFile(
             fileName = name,
             size = file.length(),
             sha256 = sha,
@@ -70,14 +71,41 @@ internal class AndroidMediaFiles(context: Context) : MediaFiles {
         )
     }
 
-    override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFlac): Boolean {
+    override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFile): Boolean {
         val file = flac.localPath?.let(::File)?.takeIf { it.exists() } ?: return false
         return AndroidSoundRemoval(app).replace(item, file, flac.fileName)
     }
 
-    /** FLACs a stopped run left in the cache. */
+    /**
+     * Made in the app's cache (`cache/jxl/`) with libjxl (the app's JPEG XL library): the JPEG read as it is, packed,
+     * and unpacked again to check it is the very same JPEG, byte for byte, as the server checks it too.
+     */
+    override suspend fun encodeJxl(item: MediaItem): EncodedFile? = withContext(Dispatchers.IO) {
+        val jpeg = open(item, 0).buffer().use { it.readByteArray() }
+        val jxl = JpegXl.pack(jpeg) ?: return@withContext null
+        val name = (item.fileName ?: "photo.jpg").substringBeforeLast('.') + ".jxl"
+        val dir = File(app.cacheDir, "jxl").apply { mkdirs() }
+        val file = File(dir, "${System.nanoTime()}.jxl")
+        file.writeBytes(jxl)
+        EncodedFile(
+            fileName = name,
+            size = file.length(),
+            sha256 = jxl.toByteString().sha256().hex(),
+            open = { offset -> file.inputStream().also { it.skip(offset) }.source() },
+            discard = { file.delete() },
+            localPath = file.path,
+        )
+    }
+
+    override suspend fun replaceWithJxl(item: MediaItem, jxl: EncodedFile): Boolean {
+        val file = jxl.localPath?.let(::File)?.takeIf { it.exists() } ?: return false
+        return PhotoReplacement(app).replaceWithJxl(item, file, jxl.fileName)
+    }
+
+    /** FLACs and JPEG XLs a stopped run left in the cache. */
     override fun runEnded() {
         File(app.cacheDir, "flac").listFiles()?.forEach { it.delete() }
+        File(app.cacheDir, "jxl").listFiles()?.forEach { it.delete() }
     }
 }
 

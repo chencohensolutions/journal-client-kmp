@@ -32,6 +32,7 @@ import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.settings.SettingsController
+import com.chencohensolution.journal.storage.AndroidPhotoTrash
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.FreeUpState
 import com.chencohensolution.journal.work.FreeUpWorker
@@ -161,6 +162,8 @@ internal fun libraryActions(
             if (look == null) Toast.makeText(context, R.string.backup_folder_unreadable, Toast.LENGTH_SHORT).show() else picked.value = PickedFolder(folder, look)
         }
     }
+    // "Keep JPEG XL on this phone" moves each JPEG to the trash without a prompt: only with "Media management" access.
+    val keepJxlAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
     val backupActions = BackupActions(
         setEnabled = { on ->
             if (on && !granted(Manifest.permission.POST_NOTIFICATIONS)) notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -197,6 +200,10 @@ internal fun libraryActions(
             }
         },
         setKeepOnPhone = backup::setKeepOnPhone,
+        setKeepJpegXl = { keep ->
+            backup.setKeepJpegXlOnPhone(keep)
+            if (keep && !AndroidPhotoTrash(context).canTrashWithoutAsking()) keepJxlAccessLauncher.launch(manageMediaSettingsIntent(context))
+        },
         picked = picked,
     )
 
@@ -254,7 +261,7 @@ internal fun libraryActions(
         backup = backupActions,
         setPrivate = setPrivate,
         markPrivate = markPrivate,
-        share = { item -> shareOriginal(context, server.previews, item) },
+        share = { item -> shareOriginal(context, server.previews, item, jpegXlAsJpeg = settings.currentState.shareJpegXlAsJpeg) },
         backgroundLocation = backgroundLocationState,
         canTrashWithoutAsking = canTrashWithoutAskingState,
         previewBytes = previewBytes,

@@ -404,6 +404,7 @@ private fun LibraryScreens(
                                             openCameras = { push(Route.Cameras) },
                                             openSoundFolders = { push(Route.SoundFolders) },
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
+                                            setShareJpegXlAsJpeg = settings::setShareJpegXlAsJpeg,
                                             openSearch = { push(Route.SearchSettings) },
                                             openPage = { push(Route.SettingsPageRoute(it)) },
                                             openBackup = { push(Route.BackupSettings) },

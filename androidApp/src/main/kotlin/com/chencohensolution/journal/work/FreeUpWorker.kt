@@ -28,7 +28,7 @@ import com.chencohensolution.journal.backupController
 import com.chencohensolution.journal.freeUpController
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.FreeUpProgress
-import com.chencohensolution.journal.ui.library.AndroidPhotoTrash
+import com.chencohensolution.journal.storage.AndroidPhotoTrash
 
 /**
  * One "Free up space" run in the background (Settings → Storage on this phone), also with the app closed, with its

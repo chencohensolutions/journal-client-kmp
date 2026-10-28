@@ -128,6 +128,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 ?.let { runCatching { featuresJson.decodeFromString(StoredSoundFolders.serializer(), it).folders }.getOrNull() }
                 .orEmpty(),
             keepOnPhone = if (store.getString(KEY_BACKUP_KEEP_ON_PHONE) == KeepOnPhone.FLAC.name) KeepOnPhone.FLAC else KeepOnPhone.WAV,
+            keepJpegXlOnPhone = store.getString(KEY_BACKUP_KEEP_JXL) == "true",
             wifiOnly = store.getString(KEY_BACKUP_WIFI_ONLY) != "false",
             // One per line: network names may contain commas.
             wifiNetworks = store.getString(KEY_BACKUP_WIFI_NETWORKS)?.split("\n")?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
@@ -143,6 +144,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 value.soundFolders.takeIf { it.isNotEmpty() }?.let { featuresJson.encodeToString(StoredSoundFolders.serializer(), StoredSoundFolders(v = 1, folders = it)) },
             )
             store.putString(KEY_BACKUP_KEEP_ON_PHONE, value.keepOnPhone.name)
+            store.putString(KEY_BACKUP_KEEP_JXL, value.keepJpegXlOnPhone.toString())
             store.putString(KEY_BACKUP_WIFI_ONLY, value.wifiOnly.toString())
             store.putString(KEY_BACKUP_WIFI_NETWORKS, value.wifiNetworks.joinToString("\n").ifEmpty { null })
             store.putString(KEY_BACKUP_CHARGING_ONLY, value.chargingOnly.toString())
@@ -249,6 +251,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
         set(value) = store.putString(KEY_SHOW_ON_PHONE_BADGE, value.toString())
 
+    /** Whether a JPEG XL photo is shared as the JPEG it was packed from (on until turned off). */
+    var shareJpegXlAsJpeg: Boolean
+        get() = store.getString(KEY_SHARE_JXL_AS_JPEG) != "false"
+        set(value) = store.putString(KEY_SHARE_JXL_AS_JPEG, value.toString())
+
     /** The rule "Free up space" used last ("all", "days:365" or "keep:10"). */
     var freeUpRule: FreeUpRule
         get() {
@@ -307,6 +314,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_SOURCES = "backup_sources"
         private const val KEY_BACKUP_SOUND_FOLDERS = "backup_sound_folders"
         private const val KEY_BACKUP_KEEP_ON_PHONE = "backup_keep_on_phone"
+        private const val KEY_BACKUP_KEEP_JXL = "backup_keep_jxl"
         private const val KEY_BACKUP_WIFI_ONLY = "backup_wifi_only"
         private const val KEY_BACKUP_WIFI_NETWORKS = "backup_wifi_networks"
         private const val KEY_BACKUP_CHARGING_ONLY = "backup_charging_only"
@@ -328,6 +336,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
+        private const val KEY_SHARE_JXL_AS_JPEG = "share_jxl_as_jpeg"
     }
 }
 

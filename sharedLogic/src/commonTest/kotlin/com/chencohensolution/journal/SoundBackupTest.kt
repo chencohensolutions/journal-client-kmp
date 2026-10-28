@@ -2,7 +2,7 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.backup.BackupEngine
 import com.chencohensolution.journal.backup.BackupSettings
-import com.chencohensolution.journal.backup.EncodedFlac
+import com.chencohensolution.journal.backup.EncodedFile
 import com.chencohensolution.journal.backup.KeepOnPhone
 import com.chencohensolution.journal.backup.SoundFolder
 import com.chencohensolution.journal.backup.SoundIds
@@ -44,14 +44,14 @@ class SoundBackupTest {
         val discarded = mutableListOf<String>()
         val replaced = mutableListOf<String>()
 
-        override suspend fun encodeFlac(item: MediaItem): EncodedFlac? {
+        override suspend fun encodeFlac(item: MediaItem): EncodedFile? {
             if (!canEncode) return null
             val flac = bytes.getValue(item.id).reversedArray()
             val name = item.fileName!!.substringBeforeLast('.') + ".flac"
-            return EncodedFlac(name, flac.size.toLong(), flac.toByteString().sha256().hex(), { Buffer().write(flac.copyOfRange(it.toInt(), flac.size)) }, { discarded += name })
+            return EncodedFile(name, flac.size.toLong(), flac.toByteString().sha256().hex(), { Buffer().write(flac.copyOfRange(it.toInt(), flac.size)) }, { discarded += name })
         }
 
-        override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFlac): Boolean {
+        override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFile): Boolean {
             replaced += item.id
             return true
         }

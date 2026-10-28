@@ -104,7 +104,10 @@ internal class FakeServer : BackupApi {
     /** Whether two pieces of one file were ever on their way at once. */
     var overlapped = false
 
-    /** WAVs kept as FLAC: the WAV's sha256 to the FLAC's (journal-server-go Store.Find). */
+    /** Refuses every JPEG XL a phone made, as the server does one that doesn't make its JPEG again. */
+    var refusesJpegXl = false
+
+    /** WAVs kept as FLAC, JPEGs as JPEG XL: the original's sha256 to the kept file's (journal-server-go Store.Find). */
     val encoded = mutableMapOf<String, String>()
 
     override suspend fun missing(hashes: List<String>) = hashes.filterNot { it in stored || it in encoded }.toSet()
@@ -144,6 +147,8 @@ internal class FakeServer : BackupApi {
         val content = received.readByteArray()
         partial.remove(sha)
         if (content.toByteString().sha256().hex() != sha) return PieceResult.HashMismatch
+        // A JPEG XL that doesn't make its JPEG again: refused with 409 once all of it arrived (ErrNotTheJPEG).
+        if (refusesJpegXl && requests[sha]?.mimeType == "image/jxl") return PieceResult.HashMismatch
         stored[sha] = content
         requests[sha]?.encodedFrom?.let { encoded[it.sha256] = sha }
         return PieceResult.Accepted(total, complete = true)

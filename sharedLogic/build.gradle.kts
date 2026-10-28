@@ -33,6 +33,10 @@ kotlin {
        withHostTest {
            isIncludeAndroidResources = true
        }
+       // On an emulator or phone: what needs the app's native libraries (JPEG XL packing, JpegXlDeviceTest).
+       withDeviceTest {
+           instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+       }
     }
     
     sourceSets {
@@ -53,6 +57,8 @@ kotlin {
             implementation(libs.okhttp.tls)
             implementation(libs.mediapipe.tasks.vision)
             implementation(libs.onnxruntime.android)
+            // JPEG photos packed as JPEG XL for backup, and unpacked to share as JPEG (JpegXl.kt).
+            implementation(libs.jxl.coder)
             implementation(libs.sqldelight.android.driver)
         }
         iosMain.dependencies {
@@ -67,6 +73,11 @@ kotlin {
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.sqldelight.sqlite.driver)
+        }
+        getByName("androidDeviceTest").dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.junit)
+            implementation("androidx.test:runner:1.5.2")
         }
     }
 }

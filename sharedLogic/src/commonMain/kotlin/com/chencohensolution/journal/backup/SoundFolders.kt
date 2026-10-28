@@ -93,14 +93,14 @@ internal fun audioMimeType(fileName: String?): String = when (fileName?.substrin
     else -> "application/octet-stream"
 }
 
-/** A WAV's FLAC, made on the phone to be sent in its place. */
-internal class EncodedFlac(
+/** A file the phone made to send in place of the original: a WAV's FLAC, or a JPEG's JPEG XL. */
+internal class EncodedFile(
     val fileName: String,
     val size: Long,
     val sha256: String,
     /** Its bytes from an offset. */
     val open: (offset: Long) -> Source,
-    /** Deletes the FLAC made to send it (the phone keeps the WAV, or the FLAC was written into the folder). */
+    /** Deletes the file made to send it (the phone keeps the original, or the file was written in its place). */
     val discard: () -> Unit,
     /** Where the platform made it, for [MediaFiles.replaceWithFlac]. */
     val localPath: String? = null,

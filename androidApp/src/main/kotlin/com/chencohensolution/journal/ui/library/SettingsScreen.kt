@@ -72,6 +72,8 @@ internal class SettingsActions(
     /** Opens Settings › Sound folders. */
     val openSoundFolders: () -> Unit = {},
     val setShowOnPhoneBadge: (Boolean) -> Unit = {},
+    /** "Share JPEG XL as JPEG". */
+    val setShareJpegXlAsJpeg: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
     /** Opens one of Settings' pages (Show in the app, Moments, Storage on this phone). */
@@ -180,6 +182,13 @@ private fun MainPage(
             body = stringResource(R.string.settings_on_phone_badge_body),
             checked = settings.showOnPhoneBadge,
             onChange = actions.setShowOnPhoneBadge,
+        )
+        RowDivider()
+        SwitchRow(
+            title = stringResource(R.string.settings_share_jxl_as_jpeg),
+            body = stringResource(R.string.settings_share_jxl_as_jpeg_body),
+            checked = settings.shareJpegXlAsJpeg,
+            onChange = actions.setShareJpegXlAsJpeg,
         )
     }
     SectionTitle(stringResource(R.string.settings_privacy_title))

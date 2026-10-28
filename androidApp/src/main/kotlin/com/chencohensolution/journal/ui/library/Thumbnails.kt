@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
+import com.chencohensolution.journal.backup.JpegXl
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.people.Face
 import com.chencohensolution.journal.people.faceCrop
@@ -306,6 +307,8 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
             val kept = item.keptOriginal
             if (kept != null) {
                 withContext(fullDecodes) { decodeKept(kept, item) { w, h -> coverDimensions(w, h, width, height) } }
+            } else if (item.isOnDevice && item.isJxl) {
+                withContext(fullDecodes) { decodeJxl(readDevice(resolver, item)) { w, h -> coverDimensions(w, h, width, height) } }
             } else if (!item.isOnDevice) {
                 // The server's preview at the size that covers the box, so the caller crops and zooms it as a local one.
                 val (w, h) = coverSize(item, width, height)
@@ -485,6 +488,8 @@ internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
                 decodeKept(kept, item) { w, h -> fitInside(w, h, sizePx) }
             } else if (!item.isOnDevice) {
                 serverBitmap(previews, item, sizePx, sizePx) { w, h -> fitInside(w, h, sizePx) }
+            } else if (item.isJxl) {
+                withContext(fullDecodes) { decodeJxl(readDevice(resolver, item)) { w, h -> fitInside(w, h, sizePx) } }
             } else {
                 runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
             }
@@ -509,6 +514,8 @@ private fun decodeKept(path: String, item: MediaItem, target: (Int, Int) -> Pair
     if (item.type == MediaType.VIDEO) {
         val size = target(item.width.coerceAtLeast(1), item.height.coerceAtLeast(1)) ?: (item.width to item.height)
         ThumbnailUtils.createVideoThumbnail(file, Size(size.first.coerceAtLeast(1), size.second.coerceAtLeast(1)), null)
+    } else if (item.isJxl || file.extension.equals("jxl", ignoreCase = true)) {
+        decodeJxl(file.readBytes(), target)
     } else {
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
             target(info.size.width, info.size.height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
@@ -534,7 +541,28 @@ internal fun MediaItem.playableUri(): Uri? {
     }
 }
 
-private fun loadImage(resolver: ContentResolver, item: MediaItem, maxSide: Int): Bitmap? = runCatching {
+/** A JPEG XL photo, by its type or name: Android has no decoder or thumbnails for it, so [decodeJxl] reads it. */
+private val MediaItem.isJxl: Boolean
+    get() = type == MediaType.IMAGE && (mimeType.equals("image/jxl", ignoreCase = true) || fileName?.endsWith(".jxl", ignoreCase = true) == true)
+
+private fun readDevice(resolver: ContentResolver, item: MediaItem): ByteArray? =
+    runCatching { resolver.openInputStream(item.contentUri())?.use { it.readBytes() } }.getOrNull()
+
+/**
+ * A JPEG XL photo at the size [target] picks (null: as it is). One packed from a JPEG gives that JPEG back, which
+ * ImageDecoder reads (turned as its EXIF says, and fast); any other goes through the app's JPEG XL decoder.
+ */
+private fun decodeJxl(bytes: ByteArray?, target: (Int, Int) -> Pair<Int, Int>?): Bitmap? = runCatching {
+    if (bytes == null) return null
+    val jpeg = JpegXl.unpack(bytes) ?: return decodePreview(bytes)
+    ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(jpeg))) { decoder, info, _ ->
+        target(info.size.width, info.size.height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
+    }
+}.getOrNull()
+
+private fun loadImage(resolver: ContentResolver, item: MediaItem, maxSide: Int): Bitmap? = if (item.isJxl) {
+    decodeJxl(readDevice(resolver, item)) { w, h -> fitInside(w, h, maxSide) }
+} else runCatching {
     ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
         val longer = maxOf(info.size.width, info.size.height)
         if (longer > maxSide) {

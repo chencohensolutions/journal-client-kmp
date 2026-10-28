@@ -54,13 +54,26 @@ internal interface MediaFiles {
      * A FLAC of the WAV [item], finished being written, made to be sent in its place; null when the phone can't encode
      * it (the WAV is then sent as it is, and the server keeps it as FLAC).
      */
-    suspend fun encodeFlac(item: MediaItem): EncodedFlac? = null
+    suspend fun encodeFlac(item: MediaItem): EncodedFile? = null
 
     /**
      * Writes [flac] beside the WAV [item] in its folder and deletes the WAV, once the server confirmed the FLAC
      * ([KeepOnPhone.FLAC]); false when it couldn't (the WAV stays).
      */
-    suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFlac): Boolean = false
+    suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFile): Boolean = false
+
+    /**
+     * A JPEG XL of the JPEG photo [item], packed losslessly and checked to make the very same JPEG again, made to be
+     * sent in its place; null when the phone can't pack it, or packing saves nothing (the JPEG is then sent as it is,
+     * and the server packs it).
+     */
+    suspend fun encodeJxl(item: MediaItem): EncodedFile? = null
+
+    /**
+     * Writes [jxl] into the JPEG [item]'s folder and moves the JPEG to the gallery's trash, once the server confirmed it
+     * holds that very JPEG XL ([BackupSettings.keepJpegXlOnPhone]); false when it couldn't (the JPEG stays).
+     */
+    suspend fun replaceWithJxl(item: MediaItem, jxl: EncodedFile): Boolean = false
 }
 
 /**
@@ -91,6 +104,13 @@ data class BackupProgress(
 
 data class BackupRunResult(val uploaded: Int, val alreadyOnServer: Int, val failed: Int)
 
+/** A JPEG photo, which backup sends as JPEG XL (see [MediaFiles.encodeJxl]). */
+internal val MediaItem.isJpegPhoto: Boolean
+    get() = type == MediaType.IMAGE && when (val mime = mimeType?.lowercase()) {
+        null -> fileName?.substringAfterLast('.', "")?.lowercase() in setOf("jpg", "jpeg")
+        else -> mime == "image/jpeg" || mime == "image/jpg"
+    }
+
 /**
  * The files backup takes, in the order it takes them: the chosen sources' photos and the sound folders' files (listed
  * only for the folders backed up), oldest or newest first.
@@ -119,6 +139,11 @@ internal class BackupEngine(
     private val locate: suspend (MediaItem) -> GeoPoint? = { null },
     /** The server's check of a file it has, before a WAV kept as FLAC is deleted ([KeepOnPhone.FLAC]). */
     private val check: ServerCheck? = null,
+    /**
+     * JPEG photos go as the JPEG XL the phone packs of them ([MediaFiles.encodeJxl]): only to a server that checks such
+     * a file makes the JPEG again ([com.chencohensolution.journal.server.ServerFeatures.keepsJpegAsJxl]).
+     */
+    private val packJpegs: Boolean = false,
     /** Where files are read. */
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -375,6 +400,7 @@ internal class BackupEngine(
      * once the server confirms it.
      */
     private suspend fun upload(item: MediaItem, entry: LedgerEntry, settings: BackupSettings, onSent: (Long) -> Unit): Outcome {
+        if (packJpegs && item.isJpegPhoto) return uploadJpeg(item, entry, settings, onSent)
         if (!item.isWav) return send(item, entry, asItIs(item, entry), settings, onSent)
         val flac = try {
             withContext(io) { files.encodeFlac(item) }
@@ -404,6 +430,47 @@ internal class BackupEngine(
         } finally {
             flac.discard()
         }
+    }
+
+    /**
+     * Sends the JPEG photo [item] as the JPEG XL the phone packs of it, with the JPEG's sha256, type, size and name as
+     * `encodedFrom`: the server rebuilds the JPEG from it and takes it only when that is the very same JPEG, and keeps
+     * the JPEG's sha256 so the phone's JPEG and the server's JPEG XL are known as one photo. The ledger keeps the JPEG's
+     * sha256, as for any file. When the phone can't pack it, or the server refuses the JPEG XL, the JPEG goes as it is
+     * (the server packs it itself).
+     */
+    private suspend fun uploadJpeg(item: MediaItem, entry: LedgerEntry, settings: BackupSettings, onSent: (Long) -> Unit): Outcome {
+        val jpeg = asItIs(item, entry)
+        val jxl = try {
+            withContext(io) { files.encodeJxl(item) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        } ?: return send(item, entry, jpeg, settings, onSent)
+        try {
+            val payload = Payload(
+                sha256 = jxl.sha256,
+                size = jxl.size,
+                fileName = jxl.fileName,
+                mimeType = "image/jxl",
+                open = jxl.open,
+                encodedFrom = EncodedFrom(sha256 = entry.sha256, mimeType = jpeg.mimeType, size = entry.size, fileName = jpeg.fileName),
+            )
+            // A JPEG XL the server refused (its start, or 409 at the end when it doesn't make the JPEG) goes again as
+            // the JPEG, now: it was hashed this run, and only the JPEG XL was read since.
+            val outcome = send(item, entry, payload, settings, onSent)
+            // Kept on the phone only when the server took these very bytes (one it packed itself may differ), and
+            // confirms it holds them: a check that can't be made leaves the JPEG.
+            if (outcome == Outcome.UPLOADED && settings.keepJpegXlOnPhone) {
+                val verdict = runCatching { check?.verify(jxl.sha256) }.getOrNull()
+                if (verdict == ServerVerdict.OK) files.replaceWithJxl(item, jxl)
+            }
+            if (outcome != Outcome.FAILED) return outcome
+        } finally {
+            jxl.discard()
+        }
+        return send(item, entry, jpeg, settings, onSent)
     }
 
     private suspend fun send(item: MediaItem, entry: LedgerEntry, payload: Payload, settings: BackupSettings, onSent: (Long) -> Unit): Outcome {

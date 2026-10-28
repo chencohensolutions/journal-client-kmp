@@ -30,3 +30,17 @@ class PhoneBadgeTest {
         assertTrue(SettingsController(JournalSettings(store), dispatcher).currentState.showOnPhoneBadge)
     }
 }
+
+class ShareJpegXlTest {
+    @Test
+    fun jpegXlIsSharedAsJpegUntilTurnedOff() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val store = BadgeTestStore()
+        val settings = SettingsController(JournalSettings(store), dispatcher)
+        assertTrue(settings.currentState.shareJpegXlAsJpeg)
+
+        settings.setShareJpegXlAsJpeg(false)
+        assertFalse(settings.currentState.shareJpegXlAsJpeg)
+        assertFalse(SettingsController(JournalSettings(store), dispatcher).currentState.shareJpegXlAsJpeg)
+    }
+}

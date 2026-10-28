@@ -106,6 +106,11 @@ data class SettingsState(
      * photos still to upload, uploading or failed have a badge).
      */
     val showOnPhoneBadge: Boolean = false,
+    /**
+     * Whether a JPEG XL photo is shared as the JPEG it was packed from, which every app opens (on by default); off, it
+     * is shared as it is.
+     */
+    val shareJpegXlAsJpeg: Boolean = true,
     /** Photos per page of search results; scrolling near the end shows the next page. */
     val searchPageSize: Int = JournalSettings.DEFAULT_SEARCH_PAGE_SIZE,
     /** How Moments is read a page at a time. */
@@ -138,6 +143,7 @@ class SettingsController internal constructor(
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
+            shareJpegXlAsJpeg = settings.shareJpegXlAsJpeg,
             searchPageSize = settings.searchPageSize,
             momentsPaging = settings.momentsPaging,
         ),
@@ -258,6 +264,11 @@ class SettingsController internal constructor(
     fun setShowOnPhoneBadge(show: Boolean) {
         settings.showOnPhoneBadge = show
         _state.update { it.copy(showOnPhoneBadge = show) }
+    }
+
+    fun setShareJpegXlAsJpeg(asJpeg: Boolean) {
+        settings.shareJpegXlAsJpeg = asJpeg
+        _state.update { it.copy(shareJpegXlAsJpeg = asJpeg) }
     }
 
     /** Back to the platform's own threshold. */

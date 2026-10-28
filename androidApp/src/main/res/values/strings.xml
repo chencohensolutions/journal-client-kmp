@@ -187,6 +187,8 @@
     <string name="settings_similarity_reset">Reset to %d%%</string>
     <string name="settings_on_phone_badge">Show the phone badge</string>
     <string name="settings_on_phone_badge_body">Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge.</string>
+    <string name="settings_share_jxl_as_jpeg">Share JPEG XL as JPEG</string>
+    <string name="settings_share_jxl_as_jpeg_body">Photos kept as JPEG XL are shared as the JPEG they were made from, exactly as it was, so every app can open them. Off, they are shared as JPEG XL.</string>
     <string name="settings_private_title">Private media</string>
     <string name="settings_private_switch">Show private media</string>
     <string name="settings_private_switch_body">Photos and videos you marked private. Off: hidden on this phone, and not downloaded.</string>
@@ -753,6 +755,8 @@
     <string name="backup_keep_flac">FLAC</string>
     <string name="backup_keep_wav_body">The WAV stays as it is.</string>
     <string name="backup_keep_flac_body">The FLAC replaces the WAV once the server has it.</string>
+    <string name="backup_keep_jxl">Keep JPEG XL on this phone</string>
+    <string name="backup_keep_jxl_body">JPEG photos are backed up as JPEG XL, about a fifth smaller, from which the very same JPEG comes back. On, the JPEG XL replaces the JPEG on this phone once the server has it, and the JPEG goes to the gallery\'s trash. The phone\'s gallery and Google Photos can\'t show JPEG XL: only this app can. Needs \"Media management\" access.</string>
     <string name="backup_remove_title">Stop backing up %s?</string>
     <string name="backup_remove_body">What it sent stays on the server.</string>
     <string name="backup_remove_confirm">Stop</string>

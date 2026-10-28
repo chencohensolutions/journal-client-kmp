@@ -86,6 +86,8 @@ internal class BackupActions(
     /** Stops backing up a folder (the server keeps what it sent). */
     val removeFolder: (SoundFolder) -> Unit = {},
     val setKeepOnPhone: (KeepOnPhone) -> Unit = {},
+    /** "Keep JPEG XL on this phone"; turned on without "Media management" access, its system page opens. */
+    val setKeepJpegXl: (Boolean) -> Unit = {},
     /** A folder just picked: the add dialog is open on it. */
     val picked: State<PickedFolder?> = mutableStateOf(null),
 )
@@ -154,6 +156,14 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
     }
     // Always shown, as the owner asked (Oct 25, 2026), also before a sound folder is added.
     KeepOnPhoneChoice(settings.keepOnPhone, actions.setKeepOnPhone)
+    SettingsCard {
+        SwitchRow(
+            title = stringResource(R.string.backup_keep_jxl),
+            body = stringResource(R.string.backup_keep_jxl_body),
+            checked = settings.keepJpegXlOnPhone,
+            onChange = actions.setKeepJpegXl,
+        )
+    }
 
     SectionTitle(stringResource(R.string.settings_backup_when_title))
     SettingsCard {

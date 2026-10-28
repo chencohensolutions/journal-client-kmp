@@ -18,7 +18,9 @@ class PhotoSafetyTest {
         // Android: MediaStore and file writes outside the app's own storage.
         "createDeleteRequest", "createTrashRequest", "createWriteRequest", "createFavoriteRequest",
         "openOutputStream", "openFileDescriptor", "contentResolver.delete", "contentResolver.update",
-        "contentResolver.insert", ".applyBatch(", "MediaStore.setRequireOriginal", "Environment.getExternalStorage",
+        "contentResolver.insert", ".applyBatch(",
+        // The same through a shorter name ("val resolver = context.contentResolver").
+        " resolver.delete", " resolver.update", " resolver.insert", " resolver.openOutputStream", "MediaStore.setRequireOriginal", "Environment.getExternalStorage",
         "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "MANAGE_MEDIA", "ACCESS_MEDIA_LOCATION",
         // Android: writes in folders picked with the system's folder picker (the Storage Access Framework).
         "deleteDocument", "createDocument", "renameDocument", "moveDocument", "copyDocument", "FLAG_GRANT_WRITE_URI_PERMISSION",
@@ -40,14 +42,24 @@ class PhotoSafetyTest {
         // owner on Oct 20, 2026) ask Android to move photos to the gallery's trash, only after the server confirmed it
         // holds them ("Free up space" also hashes both copies again). Android confirms with its own prompt, unless the
         // user gave the app "Media management" access (MANAGE_MEDIA) in system settings. Only in PhotoRemoval.kt.
-        "createTrashRequest" to setOf("PhotoRemoval.kt"),
+        // Free up space in the background, and a JPEG replaced by its JPEG XL (below), trash through AndroidPhotoTrash.kt,
+        // only with "Media management" access.
+        "createTrashRequest" to setOf("PhotoRemoval.kt", "AndroidPhotoTrash.kt"),
+        // Not read-only, and the only place the app writes into the photo library: backup's "Keep JPEG XL on this phone"
+        // (asked for by the owner on Oct 28, 2026, off by default) writes the JPEG XL the server confirmed it holds into
+        // the JPEG's folder, as the app's own new photo, and then moves the JPEG to the trash; when that fails, it
+        // deletes only the JPEG XL it wrote. Only in PhotoReplacement.kt.
+        // Its emulator test makes a JPEG of its own to replace, and deletes only what it made.
+        "contentResolver.insert" to setOf("PhotoReplacement.kt", "PhotoReplacementDeviceTest.kt"),
+        "contentResolver.update" to setOf("PhotoReplacement.kt"),
+        "contentResolver.delete" to setOf("PhotoReplacement.kt", "PhotoReplacementDeviceTest.kt"),
         // The same on iOS (approved by the owner for "Delete from this phone" and "Free up space"): PhotoKit deletes
         // photos the server confirmed it holds, to Recently Deleted, always behind iOS's own prompt. Only in
         // PhotoRemoval.swift.
         "performChanges" to setOf("PhotoRemoval.swift"),
         "PHAssetChangeRequest" to setOf("PhotoRemoval.swift"),
         "deleteAssets" to setOf("PhotoRemoval.swift"),
-        "MANAGE_MEDIA" to setOf("PhotoRemoval.kt", "AndroidManifest.xml"),
+        "MANAGE_MEDIA" to setOf("PhotoRemoval.kt", "AndroidManifest.xml", "PhotoReplacementDeviceTest.kt"),
         "MediaStore.setRequireOriginal" to setOf("AndroidPlaceReader.kt", "AndroidMediaFiles.kt"),
         // Not read-only, and never the photo library: backup of calls and recordings (asked for by the owner on Oct 25,
         // 2026) keeps write access to the folders the user picks with the system's folder picker (LibraryActions.kt
@@ -55,7 +67,8 @@ class PhotoSafetyTest {
         // own dialog, and a WAV can be replaced by its FLAC once the server confirmed the FLAC (writing the FLAC into
         // the folder). These folders have no trash: deleted is gone for good, which the owner accepted. Only in
         // AndroidSoundRemoval.kt.
-        "openOutputStream" to setOf("AndroidSoundRemoval.kt"),
+        "openOutputStream" to setOf("AndroidSoundRemoval.kt", "PhotoReplacement.kt", "PhotoReplacementDeviceTest.kt"),
+        " resolver.openOutputStream" to setOf("AndroidSoundRemoval.kt"),
         "deleteDocument" to setOf("AndroidSoundRemoval.kt"),
         "createDocument" to setOf("AndroidSoundRemoval.kt"),
         "FLAG_GRANT_WRITE_URI_PERMISSION" to setOf("LibraryActions.kt"),

@@ -201,9 +201,26 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   `encodedFrom.sha256` (`server_media.encoded_sha256`, database version 10, whose migration reads the feed again), and
   the library matches a gallery photo to a server file by either sha256 (`Library.sq`): the phone's JPEG shows once,
   private and hidden as its JPEG XL, a JPEG deleted from the phone keeps its id, search answers (the JPEG XL's sha256)
-  find the gallery photo, and `ServerLibrary.sha256Of` names it to the server by the JPEG XL's. **Not built yet:**
-  packing JPEGs as JPEG XL on the phone before upload (agreed as a later step: the server already takes the JPEG XL
-  with `encodedFrom` and checks it). See the server's docs/media.md, "JPEG XL".
+  find the gallery photo, and `ServerLibrary.sha256Of` names it to the server by the JPEG XL's. Android backup (Oct 28,
+  2026, asked by the owner) always sends a JPEG photo as the JPEG XL it packs (`JpegXl.kt`, libjxl through jxl-coder;
+  `MediaFiles.encodeJxl`), once unpacking it gave the very same JPEG, with the JPEG's sha256, type, size and name as
+  `encodedFrom`, and only to a server whose `serverInfo.keepsJpegAsJxl` says it checks such a file; the ledger keeps
+  the JPEG's sha256, so the phone's JPEG and the server's JPEG XL stay one photo. A JPEG the phone can't pack, or whose
+  JPEG XL the server refuses, goes as it is (the server packs it). The phone keeps its JPEG unless Backup's **Keep JPEG
+  XL on this phone** is on (off by default, approved by the owner Oct 28, 2026, as the first write into the photo
+  library): once the server took the phone's very bytes and verify confirms them, `PhotoReplacement.kt` writes the
+  JPEG XL into the JPEG's folder and moves the JPEG to the gallery's trash (`AndroidPhotoTrash`, "Media management"
+  access; when it can't, the JPEG XL it wrote is deleted and the JPEG stays). The gallery and Google Photos can't show
+  JPEG XL (checked on the owner's Galaxy S25, Android 17); the app shows it by unpacking the JPEG (`Thumbnails.kt`
+  `decodeJxl`, also for JPEG XL originals downloaded from the server). Android keeps no date taken for a JPEG XL and
+  takes none set after, so the app keeps the JPEG's date in `files/jxl-dates.json` (`JxlDates`; one not recorded is
+  dated from its JPEG's EXIF, once). The JPEG XL is a new photo on the phone with its own id; what the server keeps
+  (private, hidden, notes) is by sha256 and stays. Share sends a JPEG XL as the JPEG it was packed from (Settings ›
+  "Share JPEG XL as JPEG", on by default). `JpegXlDeviceTest` and `PhotoReplacementDeviceTest` check this on an
+  emulator (`ANDROID_SERIAL=emulator-5554`; the second needs `appops set … MANAGE_MEDIA allow` and READ_MEDIA_IMAGES
+  granted to `com.chencohensolution.journal.sharedLogic.test`). **Not built yet:** packing on iOS (it sends the JPEG;
+  the server packs it); keeping JPEG XL for JPEGs the server packed itself (only the phone's own bytes replace a JPEG);
+  EXIF details (place, camera) read on the phone from a JPEG XL kept there. See the server's docs/media.md, "JPEG XL".
 
 **Uploading** (built on the server)
 - `missingMedia(hashes)` → `startUpload(input)` → `PUT /upload/{sha256}` in 16 MB pieces with `Content-Range`;

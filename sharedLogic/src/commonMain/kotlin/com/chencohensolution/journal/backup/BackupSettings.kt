@@ -54,6 +54,12 @@ data class BackupSettings(
     /** Folders of sound files the user picked, in the order they were added. */
     val soundFolders: List<SoundFolder> = emptyList(),
     val keepOnPhone: KeepOnPhone = KeepOnPhone.WAV,
+    /**
+     * A JPEG photo backup sent as JPEG XL is replaced on the phone by that JPEG XL once the server confirms it, and the
+     * JPEG goes to the gallery's trash (Android, with "Media management" access). Off by default: the gallery can't show
+     * JPEG XL.
+     */
+    val keepJpegXlOnPhone: Boolean = false,
     /** Only over Wi-Fi (or Ethernet), never on mobile data. */
     val wifiOnly: Boolean = true,
     /** When not empty, only on these Wi-Fi networks (by name); reading the name needs location permission. */

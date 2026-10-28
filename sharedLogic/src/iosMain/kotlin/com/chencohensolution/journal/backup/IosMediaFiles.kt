@@ -84,7 +84,7 @@ internal class IosMediaFiles(
     }
 
     /** Made in [directory] from the WAV copied there, with the FLAC encoder iOS has (AVAudioFile). */
-    override suspend fun encodeFlac(item: MediaItem): EncodedFlac? = withContext(Dispatchers.IO) {
+    override suspend fun encodeFlac(item: MediaItem): EncodedFile? = withContext(Dispatchers.IO) {
         if (sounds == null || !SoundIds.isSound(item.id)) return@withContext null
         val wav = runCatching { copy(item) }.getOrNull() ?: return@withContext null
         val flac = directory / "${name(item)}.flac"
@@ -96,7 +96,7 @@ internal class IosMediaFiles(
             fileSystem.source(flac).buffer().use { it.readAll(hashing) }
             hashing.hash.hex()
         }
-        EncodedFlac(
+        EncodedFile(
             fileName = (item.fileName ?: "recording.wav").substringBeforeLast('.') + ".flac",
             size = fileSystem.metadata(flac).size ?: 0,
             sha256 = sha,
@@ -106,7 +106,7 @@ internal class IosMediaFiles(
         )
     }
 
-    override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFlac): Boolean {
+    override suspend fun replaceWithFlac(item: MediaItem, flac: EncodedFile): Boolean {
         val path = flac.localPath?.takeIf { fileSystem.exists(it.toPath()) } ?: return false
         return sounds?.replace(item, path, flac.fileName) ?: false
     }

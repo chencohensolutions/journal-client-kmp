@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- PhotoReplacementDeviceTest: the trash without a prompt, given with appops before the run. Test app only. -->
+    <uses-permission android:name="android.permission.MANAGE_MEDIA" />
+    <!-- As the app has it: Android trashes without a prompt only for an app that may read the photos. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+</manifest>

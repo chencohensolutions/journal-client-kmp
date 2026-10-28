@@ -42,6 +42,11 @@ data class ServerFeatures(
      * can merge sound folders into them (Settings › Sound folders).
      */
     val soundFolders: Boolean = false,
+    /**
+     * JPEG photos are kept as JPEG XL, losslessly, and a JPEG XL the phone made of a JPEG is checked to make that JPEG
+     * again before the server takes it: backup then sends JPEGs as JPEG XL.
+     */
+    val keepsJpegAsJxl: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */
@@ -65,6 +70,7 @@ internal fun ServerInfoQuery.ServerInfo.toFeatures() = ServerFeatures(
     audio = audio,
     cameras = cameras,
     soundFolders = soundFolders,
+    keepsJpegAsJxl = keepsJpegAsJxl,
 )
 
 /**

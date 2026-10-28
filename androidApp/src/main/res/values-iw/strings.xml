@@ -191,6 +191,8 @@
     <string name="settings_similarity_reset">איפוס ל־%d%%</string>
     <string name="settings_on_phone_badge">הצגת תגית הטלפון</string>
     <string name="settings_on_phone_badge_body">מסמנת תמונות שנמצאות בטלפון הזה וגם מגובות. לתמונות שממתינות להעלאה, בהעלאה או שההעלאה שלהן נכשלה תמיד יש תגית.</string>
+    <string name="settings_share_jxl_as_jpeg">שיתוף JPEG XL כ-JPEG</string>
+    <string name="settings_share_jxl_as_jpeg_body">תמונות שנשמרו כ-JPEG XL משותפות כקובץ ה-JPEG שממנו נוצרו, בדיוק כפי שהיה, כדי שכל אפליקציה תוכל לפתוח אותן. כשההגדרה כבויה, הן משותפות כ-JPEG XL.</string>
     <string name="settings_private_title">מדיה פרטית</string>
     <string name="settings_private_switch">הצגת מדיה פרטית</string>
     <string name="settings_private_switch_body">תמונות וסרטונים שסימנת כפרטיים. כשכבוי: מוסתרים בטלפון הזה ולא יורדים.</string>
@@ -782,6 +784,8 @@
     <string name="backup_keep_flac">FLAC</string>
     <string name="backup_keep_wav_body">קובץ ה-WAV נשאר כמו שהוא.</string>
     <string name="backup_keep_flac_body">קובץ ה-FLAC מחליף את ה-WAV כשהשרת מחזיק אותו.</string>
+    <string name="backup_keep_jxl">שמירת JPEG XL בטלפון</string>
+    <string name="backup_keep_jxl_body">תמונות JPEG מגובות כ-JPEG XL, קטנות בכחמישית, ומהן חוזר בדיוק אותו JPEG. כשההגדרה פועלת, ה-JPEG XL מחליף את ה-JPEG בטלפון כשהשרת מחזיק אותו, וה-JPEG עובר לסל המחזור של הגלריה. הגלריה של הטלפון ו-Google Photos לא יכולות להציג JPEG XL: רק האפליקציה הזאת. נדרשת הרשאת \"ניהול מדיה\".</string>
     <string name="backup_remove_title">להפסיק לגבות את %s?</string>
     <string name="backup_remove_body">מה שנשלח נשאר בשרת.</string>
     <string name="backup_remove_confirm">להפסיק</string>
