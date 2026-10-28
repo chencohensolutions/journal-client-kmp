@@ -179,10 +179,7 @@ internal val labScreens: List<LabScreen> = listOf(
     // WAVs and JPEGs sent as FLAC and JPEG XL (Oct 28, 2026).
     LabScreen("backup", "Settings › Backup", listOf(
         current { BackupSettingsScreen(labBackupUi(), BackupActions(), back = {}) },
-        backupOptionA,
-        backupOptionB,
         backupOptionB2,
-        backupOptionC,
     )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(
