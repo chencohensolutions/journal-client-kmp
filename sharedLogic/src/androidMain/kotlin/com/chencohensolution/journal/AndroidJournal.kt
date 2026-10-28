@@ -33,6 +33,8 @@ import com.chencohensolution.journal.server.HttpIndexingApi
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerIndexing
+import com.chencohensolution.journal.server.HttpCopiesApi
+import com.chencohensolution.journal.server.ServerCopies
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.places.PhotoPlaces
@@ -171,6 +173,13 @@ private var serverIndexing: ServerIndexing? = null
 @Synchronized
 fun serverIndexing(context: Context): ServerIndexing =
     serverIndexing ?: ServerIndexing(HttpIndexingApi(serverHttp(context.applicationContext))).also { serverIndexing = it }
+
+private var serverCopies: ServerCopies? = null
+
+/** Settings › Backup › Copies on other disks: this user's copies on the server. One per process. */
+@Synchronized
+fun serverCopies(context: Context): ServerCopies =
+    serverCopies ?: ServerCopies(HttpCopiesApi(serverHttp(context.applicationContext))).also { serverCopies = it }
 
 private fun localSearchApi(context: Context): LocalSearchApi {
     val settings = JournalSettings(SharedPreferencesStore(context))

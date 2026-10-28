@@ -49,6 +49,7 @@ import com.chencohensolution.journal.backup.BackupState
 import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.library.MediaSource
+import com.chencohensolution.journal.server.ServerCopiesState
 import com.chencohensolution.journal.server.StorageUsage
 
 // Settings › Backup, a screen of its own since Oct 24, 2026 (its row in Settings says how it goes): what it shows
@@ -67,6 +68,8 @@ internal data class BackupUi(
     val counts: Map<MediaSource, Int> = emptyMap(),
     /** "Media management" access, which keeping JPEG XL on the phone needs to move each JPEG to the trash. */
     val canTrashWithoutAsking: Boolean = false,
+    /** The server's copies of the user's files on other disks; null on a server that can't tell (no Copies row). */
+    val copies: ServerCopiesState? = null,
 )
 
 internal class BackupActions(
@@ -101,7 +104,7 @@ internal class BackupActions(
  * recordings, "+ Add a folder" last), when, and in which order.
  */
 @Composable
-internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: () -> Unit) {
+internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: () -> Unit, openCopies: () -> Unit = {}) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
@@ -109,7 +112,7 @@ internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: ()
                 .verticalScroll(rememberScrollState())
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
-            BackupSection(ui, actions)
+            BackupSection(ui, actions, openCopies)
         }
         TitleBar(stringResource(R.string.settings_backup_title), back, Modifier.align(Alignment.TopCenter))
     }
@@ -118,7 +121,7 @@ internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: ()
 
 /** Backup: on or off with its status, then what uploads, when, and in which order. */
 @Composable
-private fun BackupSection(ui: BackupUi, actions: BackupActions) {
+private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -> Unit) {
     val settings = ui.state.settings
     SettingsCard {
         SwitchRow(
@@ -139,6 +142,8 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
             Text(stringResource(R.string.settings_backup_server_usage), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(serverUsageText(ui.serverUsage), color = LibraryColors.Muted, fontSize = 13.sp)
         }
+        // Since Oct 28, 2026 (docs/ux-history/backup/2026-10-28-copies.md): shown with backup off too.
+        ui.copies?.let { CopiesRow(it, openCopies) }
     }
     if (!settings.enabled) return
 

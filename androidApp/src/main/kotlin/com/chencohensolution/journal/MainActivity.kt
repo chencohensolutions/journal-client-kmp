@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
                         findings = viewModel.findings,
                         localIndexes = viewModel.localIndexes,
                         serverIndexing = viewModel.serverIndexing,
+                        serverCopies = viewModel.serverCopies,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true

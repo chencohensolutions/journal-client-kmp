@@ -44,6 +44,9 @@ internal sealed interface Route {
     /** Settings › Backup. */
     data object BackupSettings : Route
 
+    /** Settings › Backup › Copies on other disks. */
+    data object Copies : Route
+
     /** A person's page, or a group's ("Who's this?"). */
     data class Person(val id: String) : Route
 
@@ -96,6 +99,7 @@ internal sealed interface Route {
         SoundFolders -> "sound-folders"
         SearchSettings -> "search-settings"
         BackupSettings -> "backup-settings"
+        Copies -> "copies"
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
@@ -125,6 +129,7 @@ internal sealed interface Route {
                 "sound-folders" -> SoundFolders
                 "search-settings" -> SearchSettings
                 "backup-settings" -> BackupSettings
+                "copies" -> Copies
                 "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))

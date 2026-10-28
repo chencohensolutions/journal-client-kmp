@@ -58,6 +58,7 @@ import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.server.KeptOriginals
+import com.chencohensolution.journal.server.ServerCopies
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
@@ -90,6 +91,7 @@ fun LibraryApp(
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
     serverIndexing: ServerIndexing,
+    serverCopies: ServerCopies,
     onRegisterAgain: () -> Unit,
 ) {
     // Sound recordings play while the app is in front: leaving it pauses them (no background playing).
@@ -105,7 +107,7 @@ fun LibraryApp(
         LocalAudioPlayer provides audioPlayer,
         LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {
-        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, onRegisterAgain)
+        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, serverCopies, onRegisterAgain)
     }
 }
 
@@ -124,10 +126,12 @@ private fun LibraryScreens(
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
     serverIndexing: ServerIndexing,
+    serverCopies: ServerCopies,
     onRegisterAgain: () -> Unit,
 ) {
     val phoneSearchState by localIndexes.state.collectAsStateWithLifecycle()
     val indexingState by serverIndexing.state.collectAsStateWithLifecycle()
+    val copiesState by serverCopies.state.collectAsStateWithLifecycle()
     val journalState by journal.state.collectAsStateWithLifecycle()
     val features by server.library.features.collectAsStateWithLifecycle()
     val peopleState by people.state.collectAsStateWithLifecycle()
@@ -428,11 +432,24 @@ private fun LibraryScreens(
                                     LaunchedEffect(backupState.activity is BackupActivity.Running) {
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
                                     }
+                                    LaunchedEffect(features?.copies) { if (features?.copies == true) serverCopies.refresh() }
                                     BackupSettingsScreen(
-                                        BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts, actions.canTrashWithoutAsking),
+                                        BackupUi(
+                                            backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts,
+                                            actions.canTrashWithoutAsking, copies = copiesState.takeIf { features?.copies == true && it.loaded },
+                                        ),
                                         actions.backup,
                                         back = pop,
+                                        openCopies = { push(Route.Copies) },
                                     )
+                                }
+                                Route.Copies -> {
+                                    // Asked every 3 s while a pass or a compare goes, every 30 s otherwise, while the page shows.
+                                    DisposableEffect(features?.copies) {
+                                        val watch = if (features?.copies == true) serverCopies.watch() else null
+                                        onDispose { watch?.cancel() }
+                                    }
+                                    CopiesScreen(copiesState, CopiesActions(copyNow = { serverCopies.copyNow(it.folder) }), back = pop)
                                 }
                                 Route.FreeUp -> {
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }

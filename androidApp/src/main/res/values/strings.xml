@@ -883,4 +883,44 @@
     <string name="private_hidden">%1$s · Hidden on all your devices</string>
     <string name="private_screenshots_body">%1$s · by the app they were taken in</string>
     <string name="private_no_app">No app name</string>
+    <!-- Settings › Backup › Copies on other disks -->
+    <string name="copies_title">Copies on other disks</string>
+    <string name="copies_body">Your server also keeps your files in these folders, so a failing disk doesn’t take them.</string>
+    <string name="copies_none">No copies yet. They are set up on the server, in config.json.</string>
+    <string name="copies_files_of">%1$s of %2$s files</string>
+    <string name="copies_up_to_date">Up to date</string>
+    <plurals name="copies_to_copy">
+        <item quantity="one">1 file to copy (%2$s)</item>
+        <item quantity="other">%1$s files to copy (%2$s)</item>
+    </plurals>
+    <string name="copies_copying">Copying: %1$s files so far…</string>
+    <string name="copies_missing">Can’t find this folder since %1$s. Is the disk plugged in?</string>
+    <string name="copies_full">The disk is full: copying stopped.</string>
+    <string name="copies_same_disk">On the same disk as your server’s files: a failing disk would take both.</string>
+    <plurals name="copies_failed">
+        <item quantity="one">1 file couldn’t be copied. It’s tried again at the next pass.</item>
+        <item quantity="other">%1$s files couldn’t be copied. They’re tried again at the next pass.</item>
+    </plurals>
+    <string name="copies_realtime">As files arrive, and daily at %1$s</string>
+    <string name="copies_daily">Daily at %1$s</string>
+    <string name="copies_last_pass">Last pass %1$s · %2$s files, %3$s</string>
+    <string name="copies_never">No pass since the server started</string>
+    <string name="copies_free">%1$s free on the disk</string>
+    <plurals name="copies_in_copy_only">
+        <item quantity="one">1 file is only in the copy (gone from the server; kept)</item>
+        <item quantity="other">%1$s files are only in the copy (gone from the server; kept)</item>
+    </plurals>
+    <string name="copies_copy_now">Copy now</string>
+    <string name="copies_checked">Checked %1$s</string>
+    <string name="copies_of_files">of %1$s files</string>
+    <plurals name="copies_summary_all">
+        <item quantity="one">Your copy is up to date</item>
+        <item quantity="other">All %1$d copies up to date</item>
+    </plurals>
+    <string name="copies_summary_some">%1$d of %2$d copies up to date</string>
+    <string name="copies_summary_problem">Needs a look: %1$s</string>
+    <string name="copies_summary_copying">Copying to %1$s…</string>
+    <string name="copies_summary_checking">Comparing with your files…</string>
+    <string name="copies_checking">Comparing with your files…</string>
+    <string name="copies_offline">Can’t reach the server right now</string>
 </resources>

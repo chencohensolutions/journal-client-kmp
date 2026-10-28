@@ -175,11 +175,14 @@ internal val labScreens: List<LabScreen> = listOf(
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
         },
     )),
-    // Made-up settings (BackupLab): backup on, Camera and a Voice Recorder folder. The keep-on-phone card was promoted from
-    // the round of Oct 28, 2026 (docs/ux-history/backup/2026-10-28-keep-on-phone.md).
+    // Made-up settings and copies (BackupLab): backup on, Camera and a Voice Recorder folder, two copies. The keep-on-phone
+    // card and the copies were promoted from the rounds of Oct 28, 2026 (docs/ux-history/backup/).
     LabScreen("backup", "Settings › Backup", listOf(
-        current { BackupSettingsScreen(labBackupUi(), BackupActions(), back = {}) },
-        *backupOptionA,
+        current { BackupLab(labCopies) },
+        LabOption("problems", "Copies with problems", "Copying with 2 failed, a disk unplugged, one on the server's disk") {
+            BackupLab(labCopiesWithProblems)
+        },
+        LabOption("copies", "The copies' page", "As the Copies row opens it, with the problems") { BackupLab(labCopiesWithProblems, onPage = true) },
     )),
     // Show in the app by kind (Oct 27, 2026), with made-up totals (KindsLab).
     LabScreen("kinds", "Settings › Show in the app", listOf(

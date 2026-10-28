@@ -1,0 +1,28 @@
+# Settings › Backup › Copies on other disks: the server's copies of this user's files.
+
+fragment DataCopyFields on DataCopy {
+  folder
+  realtime
+  dailyAt
+  sameDisk
+  originals
+  copied
+  missing
+  missingBytes
+  inCopyOnly
+  freeBytes
+  checkedAt
+  checking
+  running { startedAt files bytes }
+  lastPass { startedAt finishedAt files bytes failed }
+  problem
+  problemSince
+}
+
+query ServerCopies {
+  copies { ...DataCopyFields }
+}
+
+mutation StartCopy($folder: String!) {
+  startCopy(folder: $folder) { ...DataCopyFields }
+}

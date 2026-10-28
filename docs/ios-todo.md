@@ -13,6 +13,17 @@ their page), and backup of calls and recordings from folders with Free up space 
 
 Still missing on iOS:
 
+- **Backup › Copies on other disks** (Android Oct 28, 2026; [screens/settings.md](screens/settings.md), Backup).
+  Shared logic is done: `ServerCopies` (`server/ServerCopies.kt`) with `currentState: ServerCopiesState`, `refresh()`
+  (when Backup opens), `watch()` (while the page shows; cancel the handle on leave), `copyNow(folder)`, `observe`;
+  `ServerFeatures.copies`. Each `DataCopy` has its counts, `health` (`CopyHealth` OK/BUSY/WARN/ERROR, for colors and
+  marks), `upToDate`, `failedFiles`, `sameDisk`, `problem` (`CopyProblem`); the row's line is
+  `ServerCopiesState.summary` (`CopiesSummary` NeedsALook/Copying/Checking/AllUpToDate/SomeUpToDate, checked with `is`).
+  iOS needs: an `IosJournal` factory like `serverIndexing`'s; the row at the end of Backup's top card when
+  `features.copies` and the state is loaded with copies; a Copies page mirroring `androidApp/.../CopiesScreen.kt`
+  (`CopiesRow`, `CopiesScreen`, `CopyCard`, `copyStatus`, `CopyDetails`, `CopyMark`). Strings: the `copies_*` ones in
+  `androidApp/src/main/res/values{,-iw}/strings.xml`.
+
 - **JPEG photos as JPEG XL** (Android Oct 28, 2026; see [design.md](design.md), "JPEG photos are kept as JPEG XL").
   Shared logic is done (`BackupEngine` sends a JPEG as its JPEG XL when `MediaFiles.encodeJxl` gives one; matching by
   `encoded_sha256`). iOS needs: libjxl (an xcframework) for `IosMediaFiles.encodeJxl`, so iPhones pack JPEGs too

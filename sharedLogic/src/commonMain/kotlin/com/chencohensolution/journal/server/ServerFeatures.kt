@@ -47,6 +47,8 @@ data class ServerFeatures(
      * again before the server takes it: backup then sends JPEGs as JPEG XL.
      */
     val keepsJpegAsJxl: Boolean = false,
+    /** A phone can see how its user's copies on other disks are doing and start a pass (Settings › Backup). */
+    val copies: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */
@@ -71,6 +73,7 @@ internal fun ServerInfoQuery.ServerInfo.toFeatures() = ServerFeatures(
     cameras = cameras,
     soundFolders = soundFolders,
     keepsJpegAsJxl = keepsJpegAsJxl,
+    copies = copies,
 )
 
 /**

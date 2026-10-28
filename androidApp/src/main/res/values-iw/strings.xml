@@ -928,4 +928,48 @@
     <string name="private_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
     <string name="private_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
     <string name="private_no_app">בלי שם אפליקציה</string>
+    <!-- Settings › Backup › Copies on other disks -->
+    <string name="copies_title">עותקים בדיסקים אחרים</string>
+    <string name="copies_body">השרת שומר את הקבצים שלך גם בתיקיות האלה, כך שדיסק שנכשל לא ייקח אותם.</string>
+    <string name="copies_none">אין עותקים עדיין. מגדירים אותם בשרת, ב-config.json.</string>
+    <string name="copies_files_of">%1$s מתוך %2$s קבצים</string>
+    <string name="copies_up_to_date">מעודכן</string>
+    <plurals name="copies_to_copy">
+        <item quantity="one">קובץ אחד להעתקה (%2$s)</item>
+        <item quantity="two">%1$s קבצים להעתקה (%2$s)</item>
+        <item quantity="other">%1$s קבצים להעתקה (%2$s)</item>
+    </plurals>
+    <string name="copies_copying">מעתיק: %1$s קבצים עד עכשיו…</string>
+    <string name="copies_missing">התיקייה לא נמצאת מאז %1$s. האם הדיסק מחובר?</string>
+    <string name="copies_full">הדיסק מלא: ההעתקה נעצרה.</string>
+    <string name="copies_same_disk">על אותו דיסק כמו קבצי השרת: דיסק שנכשל ייקח את שניהם.</string>
+    <plurals name="copies_failed">
+        <item quantity="one">קובץ אחד לא הועתק. ננסה שוב במעבר הבא.</item>
+        <item quantity="two">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+        <item quantity="other">%1$s קבצים לא הועתקו. ננסה שוב במעבר הבא.</item>
+    </plurals>
+    <string name="copies_realtime">כשקבצים מגיעים, וכל יום ב-%1$s</string>
+    <string name="copies_daily">כל יום ב-%1$s</string>
+    <string name="copies_last_pass">מעבר אחרון %1$s · %2$s קבצים, %3$s</string>
+    <string name="copies_never">לא היה מעבר מאז שהשרת עלה</string>
+    <string name="copies_free">%1$s פנויים בדיסק</string>
+    <plurals name="copies_in_copy_only">
+        <item quantity="one">קובץ אחד נמצא רק בעותק (נמחק מהשרת; נשמר)</item>
+        <item quantity="two">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+        <item quantity="other">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>
+    </plurals>
+    <string name="copies_copy_now">העתק עכשיו</string>
+    <string name="copies_checked">נבדק %1$s</string>
+    <string name="copies_of_files">מתוך %1$s קבצים</string>
+    <plurals name="copies_summary_all">
+        <item quantity="one">העותק שלך מעודכן</item>
+        <item quantity="two">שני העותקים מעודכנים</item>
+        <item quantity="other">כל %1$d העותקים מעודכנים</item>
+    </plurals>
+    <string name="copies_summary_some">%1$d מתוך %2$d עותקים מעודכנים</string>
+    <string name="copies_summary_problem">דורש בדיקה: %1$s</string>
+    <string name="copies_summary_copying">מעתיק אל %1$s…</string>
+    <string name="copies_summary_checking">משווה עם הקבצים שלך…</string>
+    <string name="copies_checking">משווה עם הקבצים שלך…</string>
+    <string name="copies_offline">אין כרגע חיבור לשרת</string>
 </resources>
