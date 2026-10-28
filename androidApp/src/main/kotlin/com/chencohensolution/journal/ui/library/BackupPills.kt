@@ -146,31 +146,6 @@ private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: 
     }
 }
 
-/** Under Backup's pills, once a sound folder is added: WAVs go as FLAC, and which of the two stays on the phone. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun KeepOnPhoneChoice(keep: KeepOnPhone, setKeep: (KeepOnPhone) -> Unit) {
-    Column(Modifier.padding(horizontal = 32.dp, vertical = 8.dp)) {
-        Text(stringResource(R.string.backup_wav_note), color = LibraryColors.Muted, fontSize = 13.sp)
-        Text(
-            stringResource(R.string.backup_keep_title),
-            color = LibraryColors.OnBackground,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip(stringResource(R.string.backup_keep_wav), keep == KeepOnPhone.WAV) { setKeep(KeepOnPhone.WAV) }
-            Chip(stringResource(R.string.backup_keep_flac), keep == KeepOnPhone.FLAC) { setKeep(KeepOnPhone.FLAC) }
-        }
-        Text(
-            stringResource(if (keep == KeepOnPhone.WAV) R.string.backup_keep_wav_body else R.string.backup_keep_flac_body),
-            color = LibraryColors.Muted,
-            fontSize = 13.sp,
-        )
-    }
-}
-
 /**
  * After the system's picker: the folder's name and place, what was found in it, what its files are (the app's guess
  * chosen), and Back it up.

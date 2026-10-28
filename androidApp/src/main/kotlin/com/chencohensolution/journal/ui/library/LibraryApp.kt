@@ -415,7 +415,7 @@ private fun LibraryScreens(
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
                                         indexing = indexingState.takeIf { features?.indexing == true && it.loaded },
-                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
+                                        backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts, actions.canTrashWithoutAsking),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
                                         storageActions = actions.storage,
@@ -429,7 +429,7 @@ private fun LibraryScreens(
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
                                     }
                                     BackupSettingsScreen(
-                                        BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts),
+                                        BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts, actions.canTrashWithoutAsking),
                                         actions.backup,
                                         back = pop,
                                     )

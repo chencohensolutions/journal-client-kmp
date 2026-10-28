@@ -206,8 +206,8 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   `MediaFiles.encodeJxl`), once unpacking it gave the very same JPEG, with the JPEG's sha256, type, size and name as
   `encodedFrom`, and only to a server whose `serverInfo.keepsJpegAsJxl` says it checks such a file; the ledger keeps
   the JPEG's sha256, so the phone's JPEG and the server's JPEG XL stay one photo. A JPEG the phone can't pack, or whose
-  JPEG XL the server refuses, goes as it is (the server packs it). The phone keeps its JPEG unless Backup's **Keep JPEG
-  XL on this phone** is on (off by default, approved by the owner Oct 28, 2026, as the first write into the photo
+  JPEG XL the server refuses, goes as it is (the server packs it). The phone keeps its JPEG unless **Photos as JPEG XL**
+  in Backup's Keep on this phone card is on (off by default, approved by the owner Oct 28, 2026, as the first write into the photo
   library): once the server took the phone's very bytes and verify confirms them, `PhotoReplacement.kt` writes the
   JPEG XL into the JPEG's folder and moves the JPEG to the gallery's trash (`AndroidPhotoTrash`, "Media management"
   access; when it can't, the JPEG XL it wrote is deleted and the JPEG stays). The gallery and Google Photos can't show

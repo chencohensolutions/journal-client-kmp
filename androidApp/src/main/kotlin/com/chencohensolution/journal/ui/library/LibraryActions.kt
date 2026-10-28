@@ -162,7 +162,8 @@ internal fun libraryActions(
             if (look == null) Toast.makeText(context, R.string.backup_folder_unreadable, Toast.LENGTH_SHORT).show() else picked.value = PickedFolder(folder, look)
         }
     }
-    // "Keep JPEG XL on this phone" moves each JPEG to the trash without a prompt: only with "Media management" access.
+    // Keep on this phone's Allow: "Photos as JPEG XL" moves each JPEG to the trash without a prompt, only with "Media
+    // management" access; back from the system page, the check on resume (below) shows whether it was given.
     val keepJxlAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
     val backupActions = BackupActions(
         setEnabled = { on ->
@@ -200,10 +201,8 @@ internal fun libraryActions(
             }
         },
         setKeepOnPhone = backup::setKeepOnPhone,
-        setKeepJpegXl = { keep ->
-            backup.setKeepJpegXlOnPhone(keep)
-            if (keep && !AndroidPhotoTrash(context).canTrashWithoutAsking()) keepJxlAccessLauncher.launch(manageMediaSettingsIntent(context))
-        },
+        setKeepJpegXl = backup::setKeepJpegXlOnPhone,
+        allowMediaManagement = { keepJxlAccessLauncher.launch(manageMediaSettingsIntent(context)) },
         picked = picked,
     )
 

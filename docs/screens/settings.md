@@ -130,13 +130,15 @@ The pages, and what each holds:
     space and for keeping FLAC). A tap turns a folder on or off; a long press asks **Stop backing up Call?** (what it
     sent stays on the server); a folder the app can no longer read says "Call · pick again", and a tap opens the picker.
     Under the pills, once a folder is added: "Folders of calls and recordings are backed up even while they are hidden
-    in Private settings." Then, always (as the owner asked): "WAV recordings are sent as FLAC: the same sound in about half the
-    space", with **Keep on this phone**: **WAV** (default; the WAV stays as it is) or **FLAC** (the FLAC replaces the WAV
-    once the server confirmed it). Below it (Android, Oct 28, 2026), the **Keep JPEG XL on this phone** switch, **off**
-    by default: JPEG photos are backed up as JPEG XL; on, the JPEG XL replaces the JPEG on the phone once the server
-    confirmed it, and the JPEG goes to the gallery's trash. Its text says the gallery and Google Photos can't show JPEG
-    XL, and that it needs "Media management" access, whose system page opens when it is turned on without it
-    (`backup_keep_jxl`; see design.md, "JPEG photos are kept as JPEG XL"). On iOS (`SoundFolderViews.swift`, `IosSoundFolders.kt`) **+ Add a folder** opens the
+    in Private settings." Then, always (as the owner asked), the **Keep on this phone** card (Android since Oct 28, 2026,
+    picked as b2 in [that round](../ux-history/backup/2026-10-28-keep-on-phone.md); until then WAV / FLAC chips): a
+    switch per kind backup sends smaller, both **off** by default, each saying what it does:
+    - **Recordings as FLAC**: off, "WAVs stay as they are"; on, the FLAC replaces each WAV once the server confirmed it.
+    - **Photos as JPEG XL**: off, the JPEGs stay ("every app can show them"); on, the JPEG XL replaces each JPEG once the
+      server confirmed it and the JPEG goes to the gallery's trash; only the app can show JPEG XL. While it is on
+      without "Media management" access, a row in the card says so, and **Allow** opens the system page.
+    Under the card: the server keeps recordings as FLAC and photos as JPEG XL, from which the very same WAV or JPEG
+    comes back (`backup_keep_*`; see design.md, "JPEG photos are kept as JPEG XL"). On iOS (`SoundFolderViews.swift`, `IosSoundFolders.kt`) **+ Add a folder** opens the
     Files folder picker; the folder is kept by a security-scoped bookmark (Application Support, `soundFolders/`), and the
     add dialog is a sheet. An iPhone keeps call recordings in Notes, and Voice Memos and WhatsApp's voice notes inside
     their apps, out of the picker's reach: only recordings saved into Files (On My iPhone, iCloud Drive, another app's

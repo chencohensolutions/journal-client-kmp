@@ -65,6 +65,8 @@ internal data class BackupUi(
     val serverUsage: StorageUsage? = null,
     /** The library's photos per source: What to back up has a pill for each, the most photos first. */
     val counts: Map<MediaSource, Int> = emptyMap(),
+    /** "Media management" access, which keeping JPEG XL on the phone needs to move each JPEG to the trash. */
+    val canTrashWithoutAsking: Boolean = false,
 )
 
 internal class BackupActions(
@@ -86,8 +88,10 @@ internal class BackupActions(
     /** Stops backing up a folder (the server keeps what it sent). */
     val removeFolder: (SoundFolder) -> Unit = {},
     val setKeepOnPhone: (KeepOnPhone) -> Unit = {},
-    /** "Keep JPEG XL on this phone"; turned on without "Media management" access, its system page opens. */
+    /** Keep on this phone's "Photos as JPEG XL". */
     val setKeepJpegXl: (Boolean) -> Unit = {},
+    /** Opens the system page where the user gives the app "Media management" access. */
+    val allowMediaManagement: () -> Unit = {},
     /** A folder just picked: the add dialog is open on it. */
     val picked: State<PickedFolder?> = mutableStateOf(null),
 )
@@ -154,16 +158,9 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
     if (settings.soundFolders.isNotEmpty()) {
         Text(stringResource(R.string.backup_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
     }
-    // Always shown, as the owner asked (Oct 25, 2026), also before a sound folder is added.
-    KeepOnPhoneChoice(settings.keepOnPhone, actions.setKeepOnPhone)
-    SettingsCard {
-        SwitchRow(
-            title = stringResource(R.string.backup_keep_jxl),
-            body = stringResource(R.string.backup_keep_jxl_body),
-            checked = settings.keepJpegXlOnPhone,
-            onChange = actions.setKeepJpegXl,
-        )
-    }
+    // Always shown, as the owner asked (Oct 25, 2026), also before a sound folder is added; one card with a switch per
+    // kind since Oct 28, 2026 (docs/ux-history/backup/2026-10-28-keep-on-phone.md).
+    KeepOnPhoneCard(ui, actions)
 
     SectionTitle(stringResource(R.string.settings_backup_when_title))
     SettingsCard {
@@ -224,6 +221,41 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions) {
             onSelect = { actions.setOrder(UploadOrder.NEWEST_FIRST) },
         )
     }
+}
+
+/**
+ * Keep on this phone, under Backup's pills: a switch for each kind backup sends smaller, recordings kept as FLAC in
+ * place of the WAV and photos as JPEG XL in place of the JPEG, both off by default, each saying what it does. While
+ * JPEG XL is kept without "Media management" access, a row asks for it. The server always keeps FLAC and JPEG XL.
+ */
+@Composable
+private fun KeepOnPhoneCard(ui: BackupUi, actions: BackupActions) {
+    val settings = ui.state.settings
+    SectionTitle(stringResource(R.string.backup_keep_title))
+    SettingsCard {
+        val flac = settings.keepOnPhone == KeepOnPhone.FLAC
+        SwitchRow(
+            title = stringResource(R.string.backup_keep_flac),
+            body = stringResource(if (flac) R.string.backup_keep_flac_on else R.string.backup_keep_flac_off),
+            checked = flac,
+            onChange = { actions.setKeepOnPhone(if (it) KeepOnPhone.FLAC else KeepOnPhone.WAV) },
+        )
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        SwitchRow(
+            title = stringResource(R.string.backup_keep_jxl),
+            body = stringResource(if (settings.keepJpegXlOnPhone) R.string.backup_keep_jxl_on else R.string.backup_keep_jxl_off),
+            checked = settings.keepJpegXlOnPhone,
+            onChange = actions.setKeepJpegXl,
+        )
+        if (settings.keepJpegXlOnPhone && !ui.canTrashWithoutAsking) {
+            HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.backup_keep_needs_access), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                TextButton(onClick = actions.allowMediaManagement) { Text(stringResource(R.string.backup_keep_allow), color = LibraryColors.OnBackground) }
+            }
+        }
+    }
+    Text(stringResource(R.string.backup_keep_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
 }
 
 /** "4.2 GB · 1,234 photos, 56 videos". */

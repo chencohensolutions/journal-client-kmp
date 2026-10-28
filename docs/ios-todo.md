@@ -13,6 +13,15 @@ their page), and backup of calls and recordings from folders with Free up space 
 
 Still missing on iOS:
 
+- **JPEG photos as JPEG XL** (Android Oct 28, 2026; see [design.md](design.md), "JPEG photos are kept as JPEG XL").
+  Shared logic is done (`BackupEngine` sends a JPEG as its JPEG XL when `MediaFiles.encodeJxl` gives one; matching by
+  `encoded_sha256`). iOS needs: libjxl (an xcframework) for `IosMediaFiles.encodeJxl`, so iPhones pack JPEGs too
+  (until then they send the JPEG and the server packs it); **Share JPEG XL as JPEG** in Settings › Library (iOS 17
+  decodes JPEG XL, but sharing as JPEG needs libjxl or the JPEG fetched from the server by its sha256); and Backup's
+  **Keep on this phone** card ([screens/settings.md](screens/settings.md)): `KeepOnPhoneSection` becomes a card with a
+  switch per kind, "Recordings as FLAC" and "Photos as JPEG XL" (the latter only once PhotoKit can take the JPEG XL in
+  place of the JPEG, which needs the owner's approval as a PhotoKit write, PhotoSafetyTest).
+
 - **Lowercase folder ids, sound kinds, Sound folders** (Android Oct 27, 2026; shared logic done). See
   [screens/settings.md](screens/settings.md) (Sound folders) and [moments.md](screens/moments.md).
   - **Names:** folder ids are in lower case (`folder:petcube`); show a folder by `MediaSource.folderName` (the app
