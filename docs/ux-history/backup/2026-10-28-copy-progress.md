@@ -13,7 +13,7 @@ card. The options change only the copy's card while a pass copies; Copy now move
   the files with Stop. *Turned down* for c: the size, which the owner asked for on top, is secondary.
 - **c — Size and percentage on one line**: "141 GB" in large type, "of 412 GB" after it and "34%" at the line's end,
   the bar, then "About 48 min left · 39,285 of 114,718 files" in small type with Stop. *Picked*, with the time left
-  in the text color and the files muted (the owner took the suggestion), promoted in (below).
+  in the text color and the files muted (the owner took the suggestion), promoted in d050669.
 
 ## What they faked
 - All: the copy and its pass (made up, moving on their own), Stop and Copy now doing nothing. The time left was the
