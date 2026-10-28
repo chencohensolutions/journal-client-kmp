@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -225,13 +224,12 @@ private fun CopyDetails(copy: DataCopy) {
     lines.forEach { Text(it, color = LibraryColors.Muted, fontSize = 13.sp) }
 }
 
-/** The copy's mark beside its name: a spinner while copying, a dot for what needs a look, a check when up to date. */
+/** The copy's mark beside its name: a dot for what needs a look, a check when up to date; none while copying. */
 @Composable
 private fun CopyMark(copy: DataCopy) {
     val health = copy.health
     when {
-        copy.running != null && health != CopyHealth.ERROR ->
-            CircularProgressIndicator(color = LibraryColors.Muted, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+        copy.running != null && health != CopyHealth.ERROR -> Unit
         health == CopyHealth.ERROR -> Box(Modifier.size(10.dp).background(health.color(), CircleShape))
         copy.upToDate -> Icon(LibraryIcons.Check, contentDescription = null, tint = LibraryColors.OnBackground, modifier = Modifier.size(18.dp))
         health == CopyHealth.WARN -> Box(Modifier.size(10.dp).background(health.color(), CircleShape))

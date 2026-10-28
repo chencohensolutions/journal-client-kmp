@@ -122,7 +122,7 @@ The pages, and what each holds:
     not while a pass goes or the folder is gone). Under the cards "Checked 12:08" (the oldest compare), or "Can't
     reach the server right now". The counts are the server's last compare of each copy with the user's files, made
     after each pass and again when asked once 10 minutes old; the page asks every 3 s while a pass or a compare
-    goes, every 30 s otherwise (`ServerCopies.watch`). A mark beside each folder: a spinner while copying, a red dot
+    goes, every 30 s otherwise (`ServerCopies.watch`). A mark beside each folder: none while copying, a red dot
     when it isn't kept up, a check when it holds every file, an orange dot for a warning.
   - With backup on: **What to back up**, a pill per source, just its name ("Petcube"; no counts since Oct 27, 2026), filled with a ✓ when on,
     the most photos first (`BackupSettings.choices`: the fixed sources, each folder or app the phone has photos of,
