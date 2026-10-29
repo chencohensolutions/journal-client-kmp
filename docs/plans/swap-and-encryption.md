@@ -1,7 +1,7 @@
 # Plan: swap between servers, encrypted copies, restore, encrypted accounts
 
 **Parts 1a, 1, 2 and 3 built** (Oct 29, 2026: journal-server-go branch `copies-target`, docs/peers.md; the app's
-Copies page on Android, with the lock for an encrypted copy). Parts 4–6 not built yet. Restore needs --to (never the data folder by default). Built differently from below:
+Copies page on Android, with the lock for an encrypted copy). Parts 4–6 not built yet. Restore needs --to (never the data folder by default). Added on Oct 29 at the owner's ask: copy keys from a passphrase (Argon2id; `copy-key new --from-passphrase`, `restore --passphrase`) and previous versions of replaced sidecars in every copy (`history/`, `restore --as-of`). Built differently from below:
 the manifest at the peer is sealed with a key from the naming key (so this server can read it back), not with age;
 a server set up again is re-invited under its old name instead of `peer adopt`. Agreed with the owner on Oct 28–29, 2026 on Windows. It covers the server (journal-server-go) and
 the apps. Today a user's data folder can be copied only to other folders ([../../../journal-server-go/docs/copies.md](../../../journal-server-go/docs/copies.md)):
