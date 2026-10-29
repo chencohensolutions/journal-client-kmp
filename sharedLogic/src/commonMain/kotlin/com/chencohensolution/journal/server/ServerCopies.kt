@@ -22,10 +22,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import com.chencohensolution.journal.graphql.type.CopyKind
 import com.chencohensolution.journal.graphql.type.CopyProblem as ServerCopyProblem
 
 // Settings › Backup › Copies on other disks: the server keeps plain copies of this user's files in other folders
-// (journal-server-go docs/copies.md), daily and as files arrive. A phone sees how each is doing, from the server's
+// (journal-server-go docs/copies.md) and on friends' journal servers (peers, docs/peers.md), daily and as files arrive. A phone sees how each is doing, from the server's
 // last compare of the copy with the user's files, and can start a pass now; it sees only its own user's copies.
 
 /** Why a copy isn't kept up now. */
@@ -35,6 +36,12 @@ enum class CopyProblem {
 
     /** The last pass stopped: the copy's disk is full. */
     DISK_FULL,
+
+    /** The friend's server can't be reached, or refused this server. Passes stop until it answers again. */
+    PEER_UNREACHABLE,
+
+    /** The last pass stopped: the friend's server has no room left of what it keeps for this server. */
+    QUOTA_FULL,
 }
 
 /** How much a copy's state matters, worst last: it picks the color of its line, bar and mark. */
@@ -48,7 +55,7 @@ enum class CopyHealth {
     /** Kept up, but files failed or it sits on the server's own disk. */
     WARN,
 
-    /** Not kept up: its folder is gone or its disk is full. */
+    /** Not kept up: its folder or friend's server is out of reach, or it has no room left. */
     ERROR,
 }
 
@@ -81,9 +88,12 @@ data class CopyRunning(
 /** How the copy's last full pass ended; [stopped] when Stop ended it before it copied everything. */
 data class CopyPass(val finishedAtMillis: Long, val files: Int, val bytes: Long, val failed: Int, val stopped: Boolean = false)
 
-/** One copy folder: how many of the user's files it holds, and how its passes go. */
+/** One copy, in a folder or on a friend's server: how many of the user's files it holds, and how its passes go. */
 data class DataCopy(
-    /** The folder as the server's config.json names it, "E:\Journal copy\hen". */
+    /**
+     * The folder as the server's config.json names it, "E:\Journal copy\hen"; for a copy on a friend's server, the
+     * name the server gave it ("dana"). It names the copy to the server in Copy now and Stop.
+     */
     val folder: String,
     /** Copies each file a few seconds after it arrives, besides the daily pass. */
     val realtime: Boolean,
@@ -99,7 +109,7 @@ data class DataCopy(
     val missingBytes: Long,
     /** Files still in the copy that are gone from the server (kept: nothing is deleted from a copy). */
     val inCopyOnly: Int,
-    /** Free space on the copy's disk; null while its folder can't be reached. */
+    /** Free space on the copy's disk, or left of what a friend's server keeps for it; null while it can't be reached. */
     val freeBytes: Long?,
     /** When the counts were found; null before the first compare. */
     val checkedAtMillis: Long?,
@@ -110,7 +120,14 @@ data class DataCopy(
     val problem: CopyProblem?,
     /** Since when [problem] holds. */
     val problemSinceMillis: Long?,
+    /** On a friend's journal server rather than in a folder. */
+    val onPeer: Boolean = false,
+    /** Encrypted: the friend can't read it. */
+    val encrypted: Boolean = false,
 ) {
+    /** Copy now can run: not while the copy's folder can't be found (a friend's server may be back by then). */
+    val canCopyNow: Boolean get() = running == null && problem != CopyProblem.FOLDER_MISSING
+
     /**
      * How many of the user's files the copy holds now: while a pass copies, all but what it still has to copy;
      * otherwise what the last compare found.
@@ -243,9 +260,13 @@ internal fun DataCopyFields.toCopy() = DataCopy(
     problem = when (problem) {
         ServerCopyProblem.FOLDER_MISSING -> CopyProblem.FOLDER_MISSING
         ServerCopyProblem.DISK_FULL -> CopyProblem.DISK_FULL
+        ServerCopyProblem.PEER_UNREACHABLE -> CopyProblem.PEER_UNREACHABLE
+        ServerCopyProblem.QUOTA_FULL -> CopyProblem.QUOTA_FULL
         else -> null
     },
     problemSinceMillis = millis(problemSince),
+    onPeer = kind == CopyKind.PEER,
+    encrypted = encrypted,
 )
 
 /**

@@ -965,6 +965,11 @@
     <string name="copies_last_pass">מעבר אחרון %1$s · %2$s קבצים, %3$s</string>
     <string name="copies_never">לא היה מעבר מאז שהשרת עלה</string>
     <string name="copies_free">%1$s פנויים בדיסק</string>
+    <string name="copies_on_peer">%1$s · שרת של חבר</string>
+    <string name="copies_encrypted">מוצפן: החבר לא יכול לראות את הקבצים שלך</string>
+    <string name="copies_peer_unreachable">אין חיבור לשרת הזה מאז %1$s.</string>
+    <string name="copies_quota_full">אין עוד מקום בשרת של החבר: ההעתקה נעצרה.</string>
+    <string name="copies_quota_left">נשארו %1$s בשרת של החבר</string>
     <plurals name="copies_in_copy_only">
         <item quantity="one">קובץ אחד נמצא רק בעותק (נמחק מהשרת; נשמר)</item>
         <item quantity="two">%1$s קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)</item>

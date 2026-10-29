@@ -46,7 +46,7 @@ private fun labCopy(folder: String, realtime: Boolean, dailyAt: String) = DataCo
     lastPass = CopyPass(todayAt(3, 31), 120, 1_400_000_000, 0), problem = null, problemSinceMillis = null,
 )
 
-/** E: copies as files arrive and is up to date; F: copies at 04:00 and lacks what arrived since. */
+/** E: copies as files arrive and is up to date; F: copies at 04:00 and lacks what arrived since; dana: a friend's server. */
 internal val labCopies = ServerCopiesState(
     copies = listOf(
         labCopy("E:\\Journal copy\\hen", realtime = true, dailyAt = "03:30").copy(inCopyOnly = 2),
@@ -54,11 +54,12 @@ internal val labCopies = ServerCopiesState(
             copiedFiles = 49_302, missingFiles = 112, missingBytes = 1_900_000_000, freeBytes = 640_000_000_000,
             lastPass = CopyPass(todayAt(4, 2), 486, 3_100_000_000, 0),
         ),
+        labCopy("dana", realtime = false, dailyAt = "02:00").copy(onPeer = true, freeBytes = 1_200_000_000_000),
     ),
     loaded = true,
 )
 
-/** E: copying with 2 files failed; F: unplugged for three days; D: on the server's own disk. */
+/** E: copying with 2 files failed; F: unplugged for three days; D: on the server's own disk; dana: not answering. */
 internal val labCopiesWithProblems = ServerCopiesState(
     copies = listOf(
         labCopy("E:\\Journal copy\\hen", realtime = true, dailyAt = "03:30").copy(
@@ -72,6 +73,11 @@ internal val labCopiesWithProblems = ServerCopiesState(
             problem = CopyProblem.FOLDER_MISSING, problemSinceMillis = daysAgoAt(3, 4, 0),
         ),
         labCopy("D:\\Journal backup\\hen", realtime = true, dailyAt = "03:30").copy(sameDisk = true, freeBytes = 92_000_000_000),
+        labCopy("dana", realtime = false, dailyAt = "02:00").copy(
+            onPeer = true, copiedFiles = 49_120, missingFiles = 294, missingBytes = 2_300_000_000, freeBytes = null,
+            lastPass = CopyPass(daysAgoAt(2, 2, 40), 301, 2_600_000_000, 0),
+            problem = CopyProblem.PEER_UNREACHABLE, problemSinceMillis = daysAgoAt(1, 2, 0),
+        ),
     ),
     loaded = true,
 )

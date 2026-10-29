@@ -1,6 +1,7 @@
 # Plan: swap between servers, encrypted copies, restore, encrypted accounts
 
-**Not built yet.** Agreed with the owner on Oct 28–29, 2026 on Windows. It covers the server (journal-server-go) and
+**Parts 1a and 1 built** (Oct 29, 2026: journal-server-go branch `copies-target`, docs/peers.md; the app's Copies
+page on Android). Parts 2–6 not built yet. Agreed with the owner on Oct 28–29, 2026 on Windows. It covers the server (journal-server-go) and
 the apps. Today a user's data folder can be copied only to other folders ([../../../journal-server-go/docs/copies.md](../../../journal-server-go/docs/copies.md)):
 another disk, a USB disk or a network share. This plan adds copies on a friend's server over the internet, optionally
 encrypted, a way to restore from them, and accounts the server itself can't read.

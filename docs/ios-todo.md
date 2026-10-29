@@ -26,6 +26,10 @@ Still missing on iOS:
   (`CopiesRow`, `CopiesScreen`, `CopyCard`, `PassProgress`, `ButtonLine`, `etaText`, `copyStatus`, `CopyDetails`,
   `CopyMark`). Strings: the `copies_*` ones in
   `androidApp/src/main/res/values{,-iw}/strings.xml`.
+  Since Oct 29, 2026 a copy can be on a friend's server: `DataCopy.onPeer` (name the card with `copies_on_peer`),
+  `encrypted` (a lock, `copies_encrypted` for VoiceOver), `CopyProblem.PEER_UNREACHABLE` / `QUOTA_FULL`
+  (`copies_peer_unreachable`, `copies_quota_full`), `freeBytes` read with `copies_quota_left` when `onPeer`, and
+  `DataCopy.canCopyNow` for whether Copy now shows.
 
 - **JPEG photos as JPEG XL** (Android Oct 28, 2026; see [design.md](design.md), "JPEG photos are kept as JPEG XL").
   Shared logic is done (`BackupEngine` sends a JPEG as its JPEG XL when `MediaFiles.encodeJxl` gives one; matching by

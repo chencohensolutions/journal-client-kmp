@@ -917,6 +917,11 @@
     <string name="copies_last_pass">Last pass %1$s · %2$s files, %3$s</string>
     <string name="copies_never">No pass since the server started</string>
     <string name="copies_free">%1$s free on the disk</string>
+    <string name="copies_on_peer">%1$s · a friend’s server</string>
+    <string name="copies_encrypted">Encrypted: your friend can’t see your files</string>
+    <string name="copies_peer_unreachable">Can’t reach this server since %1$s.</string>
+    <string name="copies_quota_full">No room left on the friend’s server: copying stopped.</string>
+    <string name="copies_quota_left">%1$s left on the friend’s server</string>
     <plurals name="copies_in_copy_only">
         <item quantity="one">1 file is only in the copy (gone from the server; kept)</item>
         <item quantity="other">%1$s files are only in the copy (gone from the server; kept)</item>

@@ -52,7 +52,8 @@ import java.time.ZoneId
 
 // Settings › Backup › Copies on other disks (Oct 28, 2026, option a of docs/ux-history/backup/2026-10-28-copies.md):
 // Backup's row, and the page it opens. The server keeps plain copies of the user's files on other disks
-// (journal-server-go docs/copies.md); the counts come from its last compare of each copy with the user's files.
+// (journal-server-go docs/copies.md) and on friends' servers (docs/peers.md); the counts come from its last compare of
+// each copy with the user's files.
 
 internal class CopiesActions(
     /** Starts a full pass of one copy now. */
@@ -127,7 +128,16 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
     val error = copy.health == CopyHealth.ERROR
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 14.dp, bottom = 8.dp)) {
         Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(copy.folder, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(end = 8.dp))
+            val name = if (copy.onPeer) stringResource(R.string.copies_on_peer, copy.folder) else copy.folder
+            Text(name, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(end = 8.dp))
+            if (copy.encrypted) {
+                Icon(
+                    LibraryIcons.Lock,
+                    contentDescription = stringResource(R.string.copies_encrypted),
+                    tint = LibraryColors.Muted,
+                    modifier = Modifier.padding(end = 8.dp).size(14.dp),
+                )
+            }
             CopyMark(copy)
         }
         val running = copy.running
@@ -208,7 +218,7 @@ private fun ButtonLine(text: AnnotatedString, color: Color, size: Int, copy: Dat
             copy.running != null -> TextButton(onClick = { actions.stop(copy) }, enabled = !acting) {
                 Text(stringResource(R.string.copies_stop), color = LibraryColors.OnBackground)
             }
-            copy.problem != CopyProblem.FOLDER_MISSING -> TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting) {
+            copy.canCopyNow -> TextButton(onClick = { actions.copyNow(copy) }, enabled = !acting) {
                 Text(stringResource(R.string.copies_copy_now), color = LibraryColors.OnBackground)
             }
             else -> Spacer(Modifier.padding(end = 12.dp))
@@ -235,7 +245,7 @@ private fun CopyHealth.color(): Color = when (this) {
     CopyHealth.ERROR -> LibraryColors.Error
 }
 
-/** The copy's state in a line: can't be found, full, copying, comparing, up to date, or what it lacks. */
+/** The copy's state in a line: can't be found or reached, full, copying, comparing, up to date, or what it lacks. */
 @Composable
 private fun copyStatus(copy: DataCopy): String {
     val format = NumberFormat.getIntegerInstance()
@@ -243,6 +253,8 @@ private fun copyStatus(copy: DataCopy): String {
     return when {
         copy.problem == CopyProblem.FOLDER_MISSING -> stringResource(R.string.copies_missing, whenText(copy.problemSinceMillis ?: 0))
         copy.problem == CopyProblem.DISK_FULL -> stringResource(R.string.copies_full)
+        copy.problem == CopyProblem.PEER_UNREACHABLE -> stringResource(R.string.copies_peer_unreachable, whenText(copy.problemSinceMillis ?: 0))
+        copy.problem == CopyProblem.QUOTA_FULL -> stringResource(R.string.copies_quota_full)
         running != null -> stringResource(R.string.copies_counting) // a pass copying shows PassProgress instead
         copy.checkedAtMillis == null -> stringResource(R.string.copies_checking)
         copy.missingFiles == 0 -> stringResource(R.string.copies_up_to_date)
@@ -283,7 +295,7 @@ private fun CopyDetails(copy: DataCopy) {
             }
                 ?: stringResource(R.string.copies_never),
         )
-        copy.freeBytes?.let { add(stringResource(R.string.copies_free, sizeText(it))) }
+        copy.freeBytes?.let { add(stringResource(if (copy.onPeer) R.string.copies_quota_left else R.string.copies_free, sizeText(it))) }
         if (copy.inCopyOnly > 0) add(pluralStringResource(R.plurals.copies_in_copy_only, copy.inCopyOnly, format.format(copy.inCopyOnly)))
     }
     lines.forEach { Text(it, color = LibraryColors.Muted, fontSize = 13.sp) }

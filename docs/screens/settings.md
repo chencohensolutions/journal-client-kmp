@@ -127,7 +127,12 @@ The pages, and what each holds:
     reach the server right now". The counts are the server's last compare of each copy with the user's files, made
     after each pass and again when asked once 10 minutes old; the page asks every 3 s while a pass or a compare
     goes, every 30 s otherwise (`ServerCopies.watch`). A mark beside each folder: none while copying, a red dot
-    when it isn't kept up, a check when it holds every file, an orange dot for a warning.
+    when it isn't kept up, a check when it holds every file, an orange dot for a warning. A copy on a friend's
+    server (Oct 29, 2026; journal-server-go docs/peers.md; `DataCopy.onPeer`) has the same card, named "dana · a
+    friend's server", with a lock when it is encrypted (`DataCopy.encrypted`), "Can't reach this server since
+    Oct 28." or "No room left on the friend's server: copying stopped." as its state (red; Copy now stays, since the
+    server may be back), and "1.2 TB left on the friend's server" in place of the disk's free space. Android only;
+    iOS not built yet.
   - With backup on: **What to back up**, a pill per source, just its name ("Petcube"; no counts since Oct 27, 2026), filled with a ✓ when on,
     the most photos first (`BackupSettings.choices`: the fixed sources, each folder or app the phone has photos of,
     and those chosen; **Camera** on by default). A new folder is off

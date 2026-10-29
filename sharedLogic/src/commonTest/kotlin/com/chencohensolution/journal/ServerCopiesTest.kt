@@ -88,6 +88,20 @@ class ServerCopiesTest {
     }
 
     @Test
+    fun aCopyOnAFriendsServerNeedsALookWhenOutOfReachOrFull() {
+        val dana = copy("dana").copy(onPeer = true)
+        assertEquals(CopyHealth.OK, dana.health)
+        val unreachable = dana.copy(problem = CopyProblem.PEER_UNREACHABLE, problemSinceMillis = 500, freeBytes = null)
+        assertEquals(CopyHealth.ERROR, unreachable.health)
+        assertEquals(CopyHealth.ERROR, dana.copy(problem = CopyProblem.QUOTA_FULL).health)
+        assertEquals(CopiesSummary.NeedsALook("dana"), ServerCopiesState(listOf(copy(), unreachable)).summary)
+        // Copy now tries a friend's server again (it may be back), but not a folder that can't be found.
+        assertTrue(unreachable.canCopyNow)
+        assertFalse(copy().copy(problem = CopyProblem.FOLDER_MISSING).canCopyNow)
+        assertFalse(dana.copy(running = CopyRunning(0)).canCopyNow)
+    }
+
+    @Test
     fun whileAPassCopiesTheCopyHoldsAllButWhatIsLeft() {
         // The compare found 0 (a new copy); the pass counted 100 to copy and has 40 in place, 4 of 10 GB written.
         val c = copy().copy(copiedFiles = 0, missingFiles = 100)

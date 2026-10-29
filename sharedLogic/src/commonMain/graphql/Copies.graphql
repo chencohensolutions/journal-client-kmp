@@ -1,7 +1,10 @@
-# Settings › Backup › Copies on other disks: the server's copies of this user's files.
+# Settings › Backup › Copies on other disks: the server's copies of this user's files, on its disks and on friends'
+# servers (peers).
 
 fragment DataCopyFields on DataCopy {
   folder
+  kind
+  encrypted
   realtime
   dailyAt
   sameDisk
