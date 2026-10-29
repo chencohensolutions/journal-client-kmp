@@ -12,6 +12,7 @@ final class SettingsViewModel: ObservableObject {
     init() {
         controller = IosJournal.shared.createSettingsController()
         state = controller.currentState
+        _ = hiddenObservation
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in
             self?.state = newState
@@ -22,6 +23,7 @@ final class SettingsViewModel: ObservableObject {
         observation?.cancel()
         usageObservation?.cancel()
         syncObservation?.cancel()
+        hiddenObservation?.cancel()
         controller.close()
     }
 
@@ -49,10 +51,13 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var serverUsage: StorageUsage?
     /// How far the library's sync is (after a change in Hidden collections); nil when not syncing.
     @Published private(set) var syncProgress: SyncProgress?
+    /// What Private settings hides on every device, once read in this run; nil before.
+    @Published private(set) var hiddenEverywhere: HiddenCollections?
 
     private let serverFiles = ServerImages.shared.files
     private var usageObservation: ObservationHandle?
     private var syncObservation: ObservationHandle?
+    private lazy var hiddenObservation: ObservationHandle? = serverFiles.observeHiddenEverywhere { [weak self] in self?.hiddenEverywhere = $0 }
 
     /// Settings opened: asks the server for its usage, and counts (after trimming to the limit) what is kept here.
     func refreshStorage() {
@@ -86,6 +91,16 @@ final class SettingsViewModel: ObservableObject {
 
     func setShowPrivateMedia(_ show: Bool) { controller.setShowPrivateMedia(show: show) }
     func setShowOnPhoneBadge(_ show: Bool) { controller.setShowOnPhoneBadge(show: show) }
+    func setShareJpegXlAsJpeg(_ asJpeg: Bool) { controller.setShareJpegXlAsJpeg(asJpeg: asJpeg) }
+
+    // MARK: Loading Moments
+
+    func setMomentsRowsPerPage(_ rows: Int) { controller.setMomentsRowsPerPage(rows: Int32(rows)) }
+    func setMomentsLoadAhead(_ rows: Int) { controller.setMomentsLoadAhead(rows: Int32(rows)) }
+    func resetMomentsPaging() { controller.resetMomentsPaging() }
+
+    /// "Imported" in the Showing sheets and the Moments filter bar: what the server's import placed, shown or not.
+    func toggleImported() { controller.toggleImported() }
 
     /// What the limit offers, in GB.
     static var previewLimitOptions: [Int] { SettingsState.Companion.shared.PREVIEW_CACHE_GB_OPTIONS.map { $0.intValue } }

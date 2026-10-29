@@ -133,6 +133,9 @@ class IosServerFiles internal constructor(
     /** What the server can do ([ServerFeatures.NONE] before it answered once). */
     fun observeFeatures(onChange: (ServerFeatures) -> Unit): ObservationHandle = observe(library.features) { onChange(it ?: ServerFeatures.NONE) }
 
+    /** What Private settings hides on every device, once it was read in this run; null before. */
+    fun observeHiddenEverywhere(onChange: (HiddenCollections?) -> Unit): ObservationHandle = observe(library.hiddenEverywhere, onChange)
+
     /** The sha256 of each original kept here. */
     fun observeKept(onChange: (Set<String>) -> Unit): ObservationHandle = observe(originals.kept) { onChange(it.keys) }
 

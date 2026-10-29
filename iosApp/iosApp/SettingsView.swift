@@ -16,26 +16,39 @@ struct SettingsView: View {
     var phoneSearch: PhoneSearchViewModel?
     /// Search › On your server, when the server offers it; nil: none.
     var indexing: ServerIndexingViewModel?
+    /// The library's counts per source and its sound recordings, for Show in the app.
+    var library: LibraryState?
+    /// What the server offers: Your cameras' and Sound folders' rows show only when it keeps them.
+    var features: ServerFeatures = ServerFeatures.companion.NONE
     @StateObject private var freeUp = FreeUpViewModel()
+    /// Your cameras' and Sound folders' last lists, for their rows; their pages keep them current.
+    @State private var cameras: CamerasState = CamerasStateLoading.shared
+    @State private var soundFolders: SoundFoldersState = SoundFoldersStateLoading.shared
 
     var body: some View {
         SettingsScreen(
             content: SettingsContent(
                 settings: settings.state, backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts,
                 previewBytes: settings.previewBytes, serverUsage: settings.serverUsage, freeUp: freeUp.state, actions: actions,
-                syncProgress: settings.syncProgress, phoneSearch: phoneSearch?.state, indexing: indexing?.state
+                syncProgress: settings.syncProgress, phoneSearch: phoneSearch?.state, indexing: indexing?.state,
+                kinds: kinds, cameras: features.cameras ? cameras : nil, soundFolders: features.soundFolders ? soundFolders : nil
             ),
             searchScreen: { [settings, indexing, phoneSearch] in
                 AnyView(SearchSettingsView(settings: settings, indexing: indexing, phoneSearch: phoneSearch))
             },
-            backupScreen: { [settings, backup, notBackedUp, sourceCounts, actions] in
-                AnyView(BackupSettingsView(backup: backup, settings: settings, notBackedUp: notBackedUp, sourceCounts: sourceCounts, actions: actions))
+            backupScreen: { [settings, backup, notBackedUp, sourceCounts, actions, features] in
+                AnyView(BackupSettingsView(
+                    backup: backup, settings: settings, notBackedUp: notBackedUp, sourceCounts: sourceCounts, actions: actions,
+                    copiesOffered: features.copies
+                ))
             }
         ) {
             FreeUpView(freeUp: freeUp, refreshLibrary: refreshLibrary)
         } hiddenScreen: {
             HiddenView(settings: settings)
         }
+        .camerasScreen { AnyView(CamerasView { if $0 is CamerasStateReady { cameras = $0 } }) }
+        .soundFoldersScreen { AnyView(SoundFoldersView { if $0 is SoundFoldersStateReady { soundFolders = $0 } }) }
         // Counted on open (and again when the limit changes or Clear is tapped).
         .task {
             settings.refreshStorage()
@@ -43,6 +56,25 @@ struct SettingsView: View {
             // Search's row says how the server's reading of this user's photos is going.
             indexing?.refresh()
         }
+        // Your cameras' and Sound folders' rows say how many there are and how many are marked.
+        .task(id: features.cameras) {
+            guard features.cameras, let models = try? await IosJournal.shared.serverLibrary().cameras() else { return }
+            cameras = CamerasStateReady(models: models, saving: false, notChanged: false)
+        }
+        .task(id: features.soundFolders) {
+            guard features.soundFolders, let folders = try? await IosJournal.shared.serverLibrary().soundFolders() else { return }
+            soundFolders = SoundFoldersStateReady(folders: folders, saving: false, notChanged: false)
+        }
+    }
+
+    /// Show in the app: every kind with its files and what isn't on the server yet; kinds Private settings hides on
+    /// every device only counted.
+    private var kinds: KindsStatus {
+        guard let library else { return .empty }
+        return KindsStatus.companion.of(
+            sources: library.sourceTotals(), sounds: library.sounds, soundsNotBackedUp: backup.state.soundsNotBackedUp(),
+            hidden: settings.hiddenEverywhere
+        )
     }
 
     private var actions: SettingsActions {
@@ -55,7 +87,9 @@ struct SettingsView: View {
             setShowPrivateMedia: settings.setShowPrivateMedia,
             setShowOnPhoneBadge: settings.setShowOnPhoneBadge, setSearchPageSize: settings.setSearchPageSize,
             setBackupEnabled: backup.setEnabled, toggleBackupSource: backup.toggleSource, setWifiOnly: backup.setWifiOnly,
-            setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow
+            setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow,
+            setMomentsRowsPerPage: settings.setMomentsRowsPerPage, setMomentsLoadAhead: settings.setMomentsLoadAhead,
+            resetMomentsPaging: settings.resetMomentsPaging, setShareJpegXlAsJpeg: settings.setShareJpegXlAsJpeg
         )
     }
 }
@@ -86,6 +120,12 @@ struct SettingsActions {
     var setChargingOnly: (Bool) -> Void
     var setOrder: (UploadOrder) -> Void
     var backUpNow: () -> Void
+    /// Settings › Loading Moments: rows read at a time, how near the end the next are read, and both back to the defaults.
+    var setMomentsRowsPerPage: (Int) -> Void = { _ in }
+    var setMomentsLoadAhead: (Int) -> Void = { _ in }
+    var resetMomentsPaging: () -> Void = {}
+    /// "Share JPEG XL as JPEG".
+    var setShareJpegXlAsJpeg: (Bool) -> Void = { _ in }
 }
 
 /// The user's choices, kept on this device: a short page of groups (Library, Privacy, Backup and storage, Search),
@@ -102,24 +142,30 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
     /// Private settings, opened from Privacy and from Show in the app.
     @ViewBuilder let hiddenScreen: () -> Hidden
 
+    /// Settings › Your cameras and Sound folders on the live view models, opened from their rows.
+    var camerasScreen: () -> AnyView = { AnyView(EmptyView()) }
+    var soundFoldersScreen: () -> AnyView = { AnyView(EmptyView()) }
+
     var body: some View {
         SettingsPage(title: "Settings") {
             Section {
-                PageRow("Show in the app", detail: content.shownSummary) {
-                    SettingsPage(title: "Show in the app") {
-                        ShownSourcesSection(content: content)
-                        Section {
-                            NavigationLink { hiddenScreen() } label: { HiddenCollectionsLabel(syncProgress: content.syncProgress) }
-                        } header: {
-                            Text("On all your devices")
-                        }
-                        .listRowBackground(LibraryColors.raised)
-                    }
+                PageRow("Show in the app", detail: content.kinds.rowText) {
+                    ShowInAppPage(status: content.kinds, backupScreen: backupDestination, privateScreen: hiddenScreen)
+                }
+                if let cameras = content.cameras {
+                    PageRow("Your cameras", detail: cameras.rowText, destination: camerasScreen)
+                }
+                if let soundFolders = content.soundFolders {
+                    PageRow("Sound folders", detail: soundFolders.rowText, destination: soundFoldersScreen)
                 }
                 PageRow("Moments", detail: content.momentsSummary) {
-                    SettingsPage(title: "Moments") { MomentsSections(content: content) }
+                    SettingsPage(title: "Moments") {
+                        MomentsSections(content: content)
+                        MomentsFilterSection(content: content)
+                    }
                 }
                 PhoneBadgeToggle(content: content)
+                ShareJpegXlToggle(content: content)
             } header: {
                 Text("Library")
             }
@@ -133,16 +179,7 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
             .listRowBackground(LibraryColors.raised)
 
             Section {
-                PageRow("Backup", detail: content.backupSummary) {
-                    if let backupScreen {
-                        backupScreen()
-                    } else {
-                        BackupSettingsScreen(
-                            backup: content.backup, notBackedUp: content.notBackedUp, sourceCounts: content.sourceCounts,
-                            serverUsage: content.serverUsage, actions: content.actions
-                        )
-                    }
-                }
+                PageRow("Backup", detail: content.backupSummary, destination: backupDestination)
                 PageRow("Storage on this phone", detail: content.storageSummary) {
                     SettingsPage(title: "Storage on this phone") { StorageSections(content: content) }
                 }
@@ -156,7 +193,42 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
                 PageRow("Search", detail: content.searchSummary) { searchScreen() }
             }
             .listRowBackground(LibraryColors.raised)
+
+            Section {
+                PageRow("Loading Moments", detail: content.settings.momentsPaging.rowText) {
+                    LoadingMomentsPage(paging: content.settings.momentsPaging, actions: content.actions)
+                }
+            } header: {
+                Text("Advanced")
+            }
+            .listRowBackground(LibraryColors.raised)
         }
+    }
+
+    /// Settings › Backup: on the live view models, or drawn from the content's states (the UI lab).
+    @ViewBuilder private func backupDestination() -> some View {
+        if let backupScreen {
+            backupScreen()
+        } else {
+            BackupSettingsScreen(
+                backup: content.backup, notBackedUp: content.notBackedUp, sourceCounts: content.sourceCounts,
+                serverUsage: content.serverUsage, actions: content.actions
+            )
+        }
+    }
+}
+
+extension SettingsScreen {
+    func camerasScreen(_ screen: @escaping () -> AnyView) -> Self {
+        var copy = self
+        copy.camerasScreen = screen
+        return copy
+    }
+
+    func soundFoldersScreen(_ screen: @escaping () -> AnyView) -> Self {
+        var copy = self
+        copy.soundFoldersScreen = screen
+        return copy
     }
 }
 

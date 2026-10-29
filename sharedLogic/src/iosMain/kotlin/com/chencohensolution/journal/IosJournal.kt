@@ -38,6 +38,8 @@ import com.chencohensolution.journal.similarity.PhotoSimilarity
 import com.chencohensolution.journal.tls.IdentityImportResult
 import com.chencohensolution.journal.tls.KeychainIdentities
 import com.chencohensolution.journal.server.HttpIndexingApi
+import com.chencohensolution.journal.server.HttpCopiesApi
+import com.chencohensolution.journal.server.ServerCopies
 import com.chencohensolution.journal.server.IosServerFiles
 import com.chencohensolution.journal.server.IosServerStream
 import com.chencohensolution.journal.server.KeptOriginals
@@ -160,6 +162,12 @@ object IosJournal {
     /** Settings › Search › On your server: the reading of this user's photos for the server's indexes. One per process. */
     fun serverIndexing(): ServerIndexing =
         serverIndexing ?: ServerIndexing(HttpIndexingApi(serverHttp())).also { serverIndexing = it }
+
+    private var serverCopies: ServerCopies? = null
+
+    /** Settings › Backup › Copies on other disks: this user's copies on the server. One per process. */
+    fun serverCopies(): ServerCopies =
+        serverCopies ?: ServerCopies(HttpCopiesApi(serverHttp())).also { serverCopies = it }
 
     /**
      * Settings › Search › On this phone: the server's indexes kept in Application Support (`local`), out of the

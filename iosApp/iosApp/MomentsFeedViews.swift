@@ -931,26 +931,37 @@ extension MediaSource {
     static let camera = MediaSource.companion.CAMERA
     static let whatsapp = MediaSource.companion.WHATSAPP
     static let screenshots = MediaSource.companion.SCREENSHOTS
+    static let received = MediaSource.companion.RECEIVED
     static let other = MediaSource.companion.OTHER
+    static let call = MediaSource.companion.CALL
+    static let recording = MediaSource.companion.RECORDING
 
-    /// A folder's name as shown ("Petcube", an album an app made: `folderName`, as ids are in lower case), else the fixed source's.
+    /// A folder's name as shown ("Petcube", an album an app made: `folderName`, as ids are in lower case), else the
+    /// fixed source's. An imported one is named by its kind ("Camera" for `import:camera`).
     var title: String {
-        if let folderName { return folderName }
-        switch self {
+        let kind = self.kind
+        if let folderName = kind.folderName { return folderName }
+        switch kind {
         case .whatsapp: return String(localized: "WhatsApp")
         case .screenshots: return String(localized: "Screenshots")
+        case .received: return String(localized: "Sent to you")
         case .other: return String(localized: "Other")
+        case .call: return String(localized: "Calls")
+        case .recording: return String(localized: "Voice recordings")
         default: return String(localized: "Camera")
         }
     }
 
     var symbol: String {
-        if folder != nil { return "folder" }
-        switch self {
+        let kind = self.kind
+        switch kind {
         case .whatsapp: return "bubble.left"
         case .screenshots: return "iphone"
+        case .received: return "tray.and.arrow.down"
         case .other: return "arrow.down.to.line"
-        default: return "camera"
+        case .call: return "phone"
+        case .recording: return "mic"
+        default: return kind.folder != nil ? "folder" : "camera"
         }
     }
 }

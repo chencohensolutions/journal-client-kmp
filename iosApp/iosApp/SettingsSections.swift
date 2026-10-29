@@ -20,20 +20,17 @@ struct SettingsContent {
     var syncProgress: SyncProgress? = nil
     var phoneSearch: PhoneSearchState? = nil
     var indexing: ServerIndexingState? = nil
+    /// Show in the app's kinds with their totals and what isn't backed up, for its page and its row.
+    var kinds: KindsStatus = .empty
+    /// Your cameras' last list, for its row; nil when the server doesn't keep cameras (no row).
+    var cameras: CamerasState? = nil
+    /// Sound folders' last list, for its row; nil when the server doesn't keep sound folders (no row).
+    var soundFolders: SoundFoldersState? = nil
 }
 
 // MARK: - Row summaries
 
 extension SettingsContent {
-    /// "Showing Camera, Other, Petcube +2", the most photos first.
-    var shownSummary: String {
-        let shownSources = settings.shownSources
-        let shown = shownSources.choices(counts: sourceCounts).filter { shownSources.isShown(source: $0) }.map(\.title)
-        if shown.isEmpty { return String(localized: "Nothing shown") }
-        let first = shown.prefix(3).joined(separator: ", ")
-        return String(localized: "Showing \(shown.count > 3 ? "\(first) +\(shown.count - 3)" : first)")
-    }
-
     /// "By day · similar at 60%", "New row after 12 hours · similar at 80%".
     var momentsSummary: String {
         let grouping = settings.grouping
@@ -64,43 +61,6 @@ extension SettingsContent {
 
 // MARK: - Library
 
-/// Show in the app: a pill per source with its count, the most photos first (the same as the Moments filter bar and
-/// Explore's "Showing" sheet), "Say what's hidden" (the "+6 WhatsApp" chips in Moments) and "Filter bar in Moments".
-/// For this phone only; Hidden collections hides on all devices.
-struct ShownSourcesSection: View {
-    let content: SettingsContent
-
-    var body: some View {
-        let shown = content.settings.shownSources
-        let actions = content.actions
-        Section {
-            SourcePills(
-                sources: shown.choices(counts: content.sourceCounts), counts: content.sourceCounts, isOn: { shown.isShown(source: $0) },
-                toggle: actions.toggleFeedSource
-            )
-        } header: {
-            Text("Show in the app")
-        }
-        .listRowBackground(LibraryColors.background)
-        Section {
-            Toggle(isOn: Binding(get: { shown.sayWhatsHidden }, set: actions.setSayWhatsHidden)) {
-                SettingsLabel("Say what's hidden", detail: "“+6 WhatsApp” on a day, tap to see them")
-            }
-            .tint(LibraryColors.accent)
-            Toggle(isOn: Binding(get: { shown.showFilterBar }, set: actions.setShowFilterBar)) {
-                SettingsLabel("Filter bar in Moments", detail: "The row of sources above the feed. When off, choose them here.")
-            }
-            .tint(LibraryColors.accent)
-        } footer: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("On this phone only. Applies to Moments, Explore and Tags.")
-                Text("Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn't change what is backed up.")
-            }
-        }
-        .listRowBackground(LibraryColors.raised)
-    }
-}
-
 /// "Show the phone badge" (off by default), a row for a group to place.
 struct PhoneBadgeToggle: View {
     let content: SettingsContent
@@ -110,6 +70,21 @@ struct PhoneBadgeToggle: View {
             SettingsLabel(
                 "Show the phone badge",
                 detail: "Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge."
+            )
+        }
+        .tint(LibraryColors.accent)
+    }
+}
+
+/// "Share JPEG XL as JPEG" (on by default): photos kept as JPEG XL are shared as the JPEG they were made from.
+struct ShareJpegXlToggle: View {
+    let content: SettingsContent
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { content.settings.shareJpegXlAsJpeg }, set: content.actions.setShareJpegXlAsJpeg)) {
+            SettingsLabel(
+                "Share JPEG XL as JPEG",
+                detail: "Photos kept as JPEG XL are shared as the JPEG they were made from, exactly as it was, so every app can open them. Off, they are shared as JPEG XL."
             )
         }
         .tint(LibraryColors.accent)

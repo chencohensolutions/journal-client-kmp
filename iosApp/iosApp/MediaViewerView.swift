@@ -714,15 +714,7 @@ func typeName(_ mimeType: String) -> String {
 }
 
 extension MediaSource {
-    var label: String {
-        if let folder { return folder }
-        switch self {
-        case .whatsapp: return String(localized: "WhatsApp")
-        case .screenshots: return String(localized: "Screenshots")
-        case .other: return String(localized: "Other")
-        default: return String(localized: "Camera")
-        }
-    }
+    var label: String { title }
 }
 
 struct Detail: View {

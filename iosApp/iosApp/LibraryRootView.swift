@@ -192,7 +192,8 @@ struct LibraryRootView: View {
                             loadMomentsToItem: { stories.controller.loadMomentsToItem(itemId: $0) }
                         ),
                         search: search.state,
-                        people: journal.features.faces ? people.state : nil
+                        people: journal.features.faces ? people.state : nil,
+                        loadAheadRows: Int(settings.state.momentsPaging.loadAhead)
                     )
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: Route.self) { route in
@@ -202,7 +203,8 @@ struct LibraryRootView: View {
                                 settings: settings, backup: backup, notBackedUp: Int(library.state.notBackedUpCount),
                                 sourceCounts: stories.state.feed.counts, refreshLibrary: library.refresh,
                                 phoneSearch: journal.features.localIndexes ? phoneSearch : nil,
-                                indexing: journal.features.indexing ? serverIndexing : nil
+                                indexing: journal.features.indexing ? serverIndexing : nil,
+                                library: library.state, features: journal.features
                             )
                         case .place(let town):
                             PlacePageView(

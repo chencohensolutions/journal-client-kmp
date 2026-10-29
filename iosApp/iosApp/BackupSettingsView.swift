@@ -11,12 +11,18 @@ struct BackupSettingsView: View {
     /// Photos per source on this device and the server: a pill each, the most first.
     let sourceCounts: [MediaSource: KotlinInt]
     let actions: SettingsActions
+    /// Whether the server keeps copies on other disks: Backup's Copies row.
+    var copiesOffered = false
+    @ObservedObject private var copies = CopiesViewModel.shared
 
     var body: some View {
         BackupSettingsScreen(
             backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts, serverUsage: settings.serverUsage,
-            actions: actions, folders: backup.folderActions
+            actions: actions, folders: backup.folderActions,
+            copies: copiesOffered && copies.state.loaded ? copies.state : nil,
+            copiesScreen: { [copies] in AnyView(CopiesView(copies: copies)) }
         )
+        .task(id: copiesOffered) { if copiesOffered { copies.refresh() } }
     }
 }
 
@@ -32,6 +38,9 @@ struct BackupSettingsScreen: View {
     let actions: SettingsActions
     /// The sound folders' actions; none in the UI lab.
     var folders = SoundFolderActions()
+    /// Copies on other disks, once the server answered; nil: no row.
+    var copies: ServerCopiesState? = nil
+    var copiesScreen: () -> AnyView = { AnyView(EmptyView()) }
     @StateObject private var picking = FolderPicking()
 
     var body: some View {
@@ -61,6 +70,7 @@ struct BackupSettingsScreen: View {
                         .monospacedDigit()
                         .foregroundStyle(LibraryColors.muted)
                 }
+                if let copies { CopiesRow(copies: copies, destination: copiesScreen) }
             }
             .listRowBackground(LibraryColors.raised)
             if state.enabled {

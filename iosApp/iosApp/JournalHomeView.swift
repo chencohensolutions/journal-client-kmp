@@ -45,9 +45,6 @@ struct HomeActions {
     var loadMomentsToItem: (_ itemId: String) -> Void = { _ in }
 }
 
-/// How many rows before the end of what is read Moments reads the next page (as Android's `LOAD_AHEAD_ROWS`).
-private let loadAheadRows = 40
-
 enum HomeTab { case storyline, moments, explore }
 
 /// The home screen: in the Storyline tab every photo the user wrote about, newest first, and in the Moments tab every
@@ -69,6 +66,8 @@ struct JournalHomeView: View {
     var search: SearchState? = nil
     /// Explore's People, when the server has face search; nil: no People pill.
     var people: PeopleState? = nil
+    /// How many rows before the end of what is read Moments reads the next page (Settings › Loading Moments).
+    var loadAheadRows = Int(MomentsPaging.companion.DEFAULT_LOAD_AHEAD)
 
     /// The tab and Explore view it opens on (the UI lab opens others).
     /// Moments on start (asked Oct 24, 2026).
