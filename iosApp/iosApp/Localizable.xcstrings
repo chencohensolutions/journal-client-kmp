@@ -11563,6 +11563,46 @@
           }
         }
       }
+    },
+    "Only on these Wi-Fi networks" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק ברשתות ה-Wi-Fi האלה"
+          }
+        }
+      }
+    },
+    "With none listed, any Wi-Fi network." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשהרשימה ריקה, כל רשת Wi-Fi."
+          }
+        }
+      }
+    },
+    "Add this network" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת הרשת הזו"
+          }
+        }
+      }
+    },
+    "Can’t read this Wi-Fi network’s name. Connect to Wi-Fi and allow location while using the app." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אי אפשר לקרוא את שם רשת ה-Wi-Fi. יש להתחבר ל-Wi-Fi ולאפשר מיקום בזמן השימוש באפליקציה."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

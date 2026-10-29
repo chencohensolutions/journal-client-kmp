@@ -9,6 +9,12 @@ MARKETING_VERSION=1.0
 // SharedLogic is a static framework, and its SQLDelight driver (the library database) needs SQLite.
 OTHER_LDFLAGS=$(inherited) -lsqlite3
 
+// Settings › Backup › "Only on these Wi-Fi networks" needs the Access WiFi Information entitlement, which the team
+// must have: opt in with WIFI_ENTITLEMENTS=iosApp/WifiInfo.entitlements in Local.xcconfig. Without it the app says it
+// can't read the network's name.
+WIFI_ENTITLEMENTS=
+CODE_SIGN_ENTITLEMENTS=$(WIFI_ENTITLEMENTS)
+
 // Machine-specific settings (gitignored), e.g. JAVA_HOME for the Gradle build phase when no system JDK
 // is installed. Xcode exports these settings as environment variables to build scripts.
 #include? "Local.xcconfig"

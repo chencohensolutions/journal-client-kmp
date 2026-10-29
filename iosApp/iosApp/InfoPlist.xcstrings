@@ -67,6 +67,24 @@
         }
       }
     },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location When In Use Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Journal reads the Wi-Fi network's name, so backup runs only on the networks you chose. It doesn't keep or send your location."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Journal קורא את שם רשת ה-Wi-Fi, כדי שהגיבוי ירוץ רק ברשתות שבחרת. הוא לא שומר ולא שולח את המיקום שלך."
+          }
+        }
+      }
+    },
     "NSPhotoLibraryUsageDescription" : {
       "comment" : "Privacy - Photo Library Usage Description",
       "extractionState" : "extracted_with_value",

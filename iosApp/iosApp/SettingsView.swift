@@ -90,6 +90,7 @@ struct SettingsView: View {
             setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow,
             setMomentsRowsPerPage: settings.setMomentsRowsPerPage, setMomentsLoadAhead: settings.setMomentsLoadAhead,
             resetMomentsPaging: settings.resetMomentsPaging, setShareJpegXlAsJpeg: settings.setShareJpegXlAsJpeg,
+            addCurrentNetwork: backup.addCurrentNetwork, removeNetwork: backup.removeNetwork,
             setFirstImageWidth: settings.setFirstImageWidth, setFirstImageFormat: settings.setFirstImageFormat
         )
     }
@@ -127,6 +128,9 @@ struct SettingsActions {
     var resetMomentsPaging: () -> Void = {}
     /// "Share JPEG XL as JPEG".
     var setShareJpegXlAsJpeg: (Bool) -> Void = { _ in }
+    /// Backup › Only on these Wi-Fi networks: the current one added (false when its name can't be read), one removed.
+    var addCurrentNetwork: () async -> Bool = { false }
+    var removeNetwork: (String) -> Void = { _ in }
     /// Quick image while scrolling: its width, a part of the screen's (0: off), and its format.
     var setFirstImageWidth: (Int) -> Void = { _ in }
     var setFirstImageFormat: (PreviewFormat) -> Void = { _ in }

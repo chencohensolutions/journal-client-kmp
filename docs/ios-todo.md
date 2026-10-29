@@ -15,7 +15,11 @@ this phone as a card of switches, the sound kinds' names and Settings › Sound 
 you, Imported in the Showing sheets and the Moments bar, the locks of what Private settings hides, search's "12 more
 in sources you hide", a photo's "Saved in" and Camera), Show in the app as a status page, Private settings by kind,
 Your cameras, Settings › Advanced › Loading Moments, Quick image while scrolling, the note in the feed's long-press
-menu, and PhotoKit read by its persistent changes (`IosMediaLibrary` is a `ChangingLibrary`).
+menu, and PhotoKit read by its persistent changes (`IosMediaLibrary` is a `ChangingLibrary`). Later that day: Ogg Opus
+recordings decoded on the phone (`OggOpus.swift`: the Ogg pages read here, the Opus packets decoded by AudioToolbox,
+checked against ffmpeg's decode on the Mac) and Backup's "Only on these Wi-Fi networks" (`WifiNetworks.swift`; the Access
+WiFi Information entitlement is opt-in, `WIFI_ENTITLEMENTS=iosApp/WifiInfo.entitlements` in Local.xcconfig, as the
+owner's team must have it).
 
 Still missing on iOS:
 
@@ -38,20 +42,13 @@ Still missing on iOS:
   packs it. **Photos as JPEG XL** in Backup's Keep on this phone card isn't offered: it would put the JPEG XL in the
   photo library in place of the JPEG, a PhotoKit write (PhotoSafetyTest), which needs the owner's approval first.
 
-- **Backup → "Only on these Wi-Fi networks"** — Android lists the networks backup may run on. iOS reads the
-  network's name only with the Access WiFi Information entitlement plus location permission
-  (`NEHotspotNetwork.fetchCurrent`), which needs the owner's Apple developer team and a real iPhone to check; the row
-  is hidden on iOS until then. See [screens/settings.md](screens/settings.md).
-
-- **Sound recordings in Ogg or Opus** (some WhatsApp voice messages and recorders): AVPlayer can't play them, so iOS
-  says "The recording couldn’t be played" (sound recordings were built on iOS on Oct 26, 2026). They need another
-  decoder or a stream the server converts.
-
 - **Quick image while scrolling, while the list moves fast**: Android shows only the quick image while a list moves
   fast (`Thumbnails.kt`); iOS shows it first and asks for the sharp one once a tile has stayed 0.3 s, so a fling still
   asks the server for the sharp tiles it settles on.
 
-- **Not checked on iOS yet** (no server with these on the simulator on Oct 29, 2026): Copies on other disks, Your
+- **Not checked on iOS yet** (no server with these on the simulator on Oct 29, 2026): an Ogg Opus voice message played
+  in the app (the decoder was checked on the Mac only); "Only on these Wi-Fi networks" on a real iPhone (the simulator
+  has no Wi-Fi name to read); Copies on other disks, Your
   cameras, Sound folders and Private settings by kind against a server that has them; Share JPEG XL as JPEG with a JPEG
   XL photo; and, from the library database (Oct 26, 2026), that `server/media.json` is read in once and deleted, that
   face avatars still get their photo's size, and that marking a photo private still finds its sha256.

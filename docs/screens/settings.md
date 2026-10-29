@@ -91,7 +91,7 @@ The pages, and what each holds:
   "WhatsApp voice messages always stay voice messages." Loading, "Can't reach your server" with Try again, and "Not
   changed" as in Private settings. In the UI lab: `./scripts/ui-lab.sh sound-folders current|confirm|moving` (made-up
   folders close to the owner's, Voice Recorder already merged into Voice recordings; the move timed).
-- **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, without "Only on these Wi-Fi networks": iOS reads the network's name only with the Access WiFi Information
+- **Backup** (a screen of its own since Oct 24, 2026; Android; iOS since Oct 21, 2026, and "Only on these Wi-Fi networks" since Oct 29, 2026: iOS reads the network's name only with the Access WiFi Information
   entitlement and location permission, which couldn't be checked on the simulator (it has no Wi-Fi name) or with the
   owner's signing team; the switch's line on iOS says that swiping the app away stops uploads until it is opened).
   A screen of its own since Oct 24, 2026 (asked when What to back up got a choice per folder and grew too long):

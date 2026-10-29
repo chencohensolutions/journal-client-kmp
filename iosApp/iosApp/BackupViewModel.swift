@@ -28,6 +28,16 @@ final class BackupViewModel: ObservableObject {
     func setEnabled(_ enabled: Bool) { controller.setEnabled(enabled: enabled) }
     func toggleSource(_ source: MediaSource) { controller.toggleSource(source: source) }
     func setWifiOnly(_ wifiOnly: Bool) { controller.setWifiOnly(wifiOnly: wifiOnly) }
+    /// "Add this network": the phone's current Wi-Fi network, after asking for the location if need be; false when its
+    /// name can't be read (off Wi-Fi, location refused, or a build without the Wi-Fi entitlement).
+    @MainActor
+    func addCurrentNetwork() async -> Bool {
+        await WifiNetworks.askForLocation()
+        guard let name = await WifiNetworks.current() else { return false }
+        controller.addWifiNetwork(name: name)
+        return true
+    }
+    func removeNetwork(_ name: String) { controller.removeWifiNetwork(name: name) }
     func setChargingOnly(_ chargingOnly: Bool) { controller.setChargingOnly(chargingOnly: chargingOnly) }
     func setOrder(_ order: UploadOrder) { controller.setOrder(order: order) }
     func backUpNow() { controller.backUpNow() }

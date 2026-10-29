@@ -27,8 +27,8 @@ struct BackupSettingsView: View {
 }
 
 /// Backup: on or off with its status, then what uploads (a pill per source and per folder of calls and recordings, the
-/// ones on first, "+ Add a folder" last), which of a WAV and its FLAC the phone keeps, when, and in which order. "Only on
-/// these Wi-Fi networks" is Android only for now. Drawn from the states alone.
+/// ones on first, "+ Add a folder" last), which of a WAV and its FLAC the phone keeps, when (with "Only on these Wi-Fi
+/// networks" under Only on Wi-Fi), and in which order. Drawn from the states alone.
 struct BackupSettingsScreen: View {
     let backup: BackupState
     let notBackedUp: Int
@@ -42,6 +42,8 @@ struct BackupSettingsScreen: View {
     var copies: ServerCopiesState? = nil
     var copiesScreen: () -> AnyView = { AnyView(EmptyView()) }
     @StateObject private var picking = FolderPicking()
+    /// "Add this network" couldn't read the network's name.
+    @State private var noNetworkName = false
 
     var body: some View {
         let state = backup.settings
@@ -97,6 +99,31 @@ struct BackupSettingsScreen: View {
                         SettingsLabel("Only while charging", detail: "Saves the battery; uploads wait for the charger.")
                     }
                     .tint(LibraryColors.accent)
+                    if state.wifiOnly {
+                        VStack(alignment: .leading, spacing: 6) {
+                            SettingsLabel("Only on these Wi-Fi networks", detail: "With none listed, any Wi-Fi network.")
+                            ForEach(state.wifiNetworks.sorted(), id: \.self) { network in
+                                HStack {
+                                    Text(verbatim: network).foregroundStyle(LibraryColors.onBackground)
+                                    Spacer()
+                                    Button { actions.removeNetwork(network) } label: {
+                                        Image(systemName: "xmark").font(.footnote.weight(.semibold)).foregroundStyle(LibraryColors.muted)
+                                    }
+                                    .accessibilityLabel(Text("Remove \(network)"))
+                                }
+                            }
+                            Button("Add this network") {
+                                Task { noNetworkName = !(await actions.addCurrentNetwork()) }
+                            }
+                            .foregroundStyle(LibraryColors.onBackground)
+                            if noNetworkName {
+                                Text("Can’t read this Wi-Fi network’s name. Connect to Wi-Fi and allow location while using the app.")
+                                    .font(.footnote)
+                                    .foregroundStyle(LibraryColors.warning)
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                    }
                 } header: {
                     Text("When")
                 }

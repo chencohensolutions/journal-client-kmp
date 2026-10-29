@@ -7,7 +7,8 @@ import UIKit
 /// URLSession, which carries it on while the app is suspended and relaunches the app when it is answered, so the run
 /// goes on from the server's offset. Runs start when the app comes to the foreground, on "Back up now", 10 s after
 /// photos are added, when iOS wakes the app for an answered piece, and in background tasks iOS schedules
-/// (BGProcessingTask, BGAppRefreshTask). Each waits for the settings' conditions (Wi-Fi, charging).
+/// (BGProcessingTask, BGAppRefreshTask). Each waits for the settings' conditions (Wi-Fi, charging, and with networks
+/// listed, one of them: `WifiNetworks`).
 final class BackupService: NSObject, BackupScheduler {
     static let shared = BackupService()
 
@@ -85,6 +86,20 @@ final class BackupService: NSObject, BackupScheduler {
             then?()
             return
         }
+        guard settings.wifiOnly, !settings.wifiNetworks.isEmpty, run == nil else { return launch(then: then) }
+        // Only on the networks listed: the network's name first, as Android's BackupWorker does.
+        Task { @MainActor in
+            let network = await WifiNetworks.current()
+            guard let network, settings.wifiNetworks.contains(network) else {
+                controller.reportWaiting(reason: network == nil ? .needsLocation : .wifiNetworkNotAllowed)
+                then?()
+                return
+            }
+            launch(then: then)
+        }
+    }
+
+    private func launch(then: (() -> Void)?) {
         if let then { whenRunEnds.append(then) }
         guard run == nil else { return }
         run = controller.launchRun { [weak self] _ in

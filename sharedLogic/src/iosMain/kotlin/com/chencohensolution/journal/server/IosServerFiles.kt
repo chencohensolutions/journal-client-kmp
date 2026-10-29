@@ -185,6 +185,14 @@ class IosServerFiles internal constructor(
     }
 
     /**
+     * The server's file [sha256] (a sound recording to decode here), downloaded into the originals' cache now when it
+     * isn't there yet, checked against its sha256; null offline, or when the server doesn't have it.
+     */
+    fun fetchFile(sha256: String, fileName: String, onResult: (String?) -> Unit): ObservationHandle = run(onResult) {
+        previews.original(sha256, fileName)
+    }
+
+    /**
      * For Share with "Share JPEG XL as JPEG": the JPEG a JPEG XL on the server was packed from, byte for byte, as the
      * server makes it again when asked by the JPEG's sha256 (its encodedFrom), downloaded and checked against it. Null
      * for a JPEG XL that wasn't packed from a JPEG, for any other file, and offline.
