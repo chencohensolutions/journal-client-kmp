@@ -1,8 +1,15 @@
 package com.chencohensolution.journal.library
 
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
 import kotlinx.cinterop.autoreleasepool
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.pointed
+import kotlinx.cinterop.ptr
 import kotlinx.cinterop.useContents
+import kotlinx.cinterop.value
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,8 +21,16 @@ import platform.Foundation.NSCalendar
 import platform.Foundation.NSCalendarUnitDay
 import platform.Foundation.NSCalendarUnitMonth
 import platform.Foundation.NSCalendarUnitYear
+import platform.Foundation.NSData
 import platform.Foundation.NSDate
+import platform.Foundation.NSError
+import platform.Foundation.NSKeyedArchiver
+import platform.Foundation.NSKeyedUnarchiver
 import platform.Foundation.NSNumber
+import platform.Foundation.NSTimeZone
+import platform.Foundation.base64EncodedStringWithOptions
+import platform.Foundation.create
+import platform.Foundation.localTimeZone
 import platform.Foundation.NSSelectorFromString
 import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.valueForKey
@@ -38,6 +53,11 @@ import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusLimited
 import platform.Photos.PHAuthorizationStatusNotDetermined
 import platform.Photos.PHChange
+import platform.Photos.PHFetchOptions
+import platform.Photos.PHObjectTypeAsset
+import platform.Photos.PHObjectTypeAssetCollection
+import platform.Photos.PHPersistentChange
+import platform.Photos.PHPersistentChangeToken
 import platform.Photos.PHPhotoLibrary
 import platform.Photos.PHPhotoLibraryChangeObserverProtocol
 import platform.UniformTypeIdentifiers.UTType
@@ -49,9 +69,10 @@ import kotlin.concurrent.AtomicReference
  * Reads photos and videos from PhotoKit. Ids are PHAsset local identifiers. File name, size and type come from each
  * asset's files (PHAssetResource), which is slow on a big library: they are kept in [cache], and when many photos
  * are new (the first start) the library is returned without them and they are read in the background, telling
- * [watch] as they arrive.
+ * [watch] as they arrive. [changesSince] reads only what changed since a mark, by PhotoKit's persistent changes
+ * (`fetchPersistentChangesSinceToken`, the token kept as the mark; docs/plans/library-on-disk.md, phase 2).
  */
-internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : MediaLibrary {
+internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : ChangingLibrary {
     private val factsLock = Mutex()
 
     /** Local identifier → facts, loaded from [cache] on the first read. Guarded by [factsLock]. */
@@ -70,47 +91,130 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
         else -> PhotoAccess.DENIED
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     override suspend fun loadItems(): List<MediaItem> = withContext(Dispatchers.Default) {
         observe()
+        val assets = allAssets()
+        val known = knownFacts(assets, whole = true)
+        val albums = albumsOf()
+        assets.map { asset -> itemOf(asset, known[asset.localIdentifier], albums[asset.localIdentifier].orEmpty()) }
+    }
+
+    /**
+     * What changed since [mark]: the assets PhotoKit's persistent changes name as inserted or updated, and those of the
+     * albums they name (an app saving into its album changes its photos' source). Everything is read again when there is
+     * no mark, when it was made by another [READER_VERSION], in another time zone (days depend on it) or with another
+     * access (picking more photos with limited access changes nothing PhotoKit records), when an album was deleted, and
+     * when PhotoKit can't tell (its history was trimmed). An ids-only pass finds what was deleted.
+     */
+    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+    override suspend fun changesSince(mark: String?): LibraryChanges = withContext(Dispatchers.Default) {
+        observe()
+        val access = access()
+        val head = "$READER_VERSION|${NSTimeZone.localTimeZone.name}|$access"
+        // The token is taken before the assets are read: what changes meanwhile is read again next time, never missed.
+        val token = encode(PHPhotoLibrary.sharedPhotoLibrary().currentChangeToken) ?: ""
+        // Items still without their file's facts (read in the background on a first start, or a photo the camera is
+        // still processing) get them only by a whole read: PhotoKit won't name them as changed. Until all have them,
+        // the mark keeps no token.
+        fun markFor(items: List<MediaItem>) = head + "|" + (if (items.any { it.fileName == null }) "" else token)
+        val since = mark?.takeIf { access == PhotoAccess.FULL && it.substringBeforeLast("|") == head }
+            ?.substringAfterLast("|")?.let(::decode)
+        val changed = since?.let(::changedIds)
+        if (changed == null) {
+            val all = loadItems()
+            return@withContext LibraryChanges(markFor(all), full = true, changed = all, present = all.mapTo(HashSet()) { it.id })
+        }
+        val present = allAssets().mapTo(HashSet()) { it.localIdentifier }
+        val items = items(changed.filter { it in present })
+        LibraryChanges(markFor(items), full = false, changed = items, present = present)
+    }
+
+    override suspend fun items(ids: Collection<String>): List<MediaItem> = withContext(Dispatchers.Default) {
+        if (ids.isEmpty()) return@withContext emptyList()
+        val assets = ids.chunked(500).flatMap { chunk ->
+            val result = PHAsset.fetchAssetsWithLocalIdentifiers(chunk, null)
+            (0uL until result.count).map { result.objectAtIndex(it) as PHAsset }
+        }.filter { it.mediaType == PHAssetMediaTypeImage || it.mediaType == PHAssetMediaTypeVideo }
+        val known = knownFacts(assets, whole = false)
+        assets.map { asset -> itemOf(asset, known[asset.localIdentifier], albumsOf(asset)) }
+    }
+
+    /**
+     * The ids PhotoKit says were inserted or updated since [token], with every asset of the albums it says were inserted
+     * or updated; null when it can't tell, or an album was deleted (its photos' sources may have changed).
+     */
+    @OptIn(ExperimentalForeignApi::class)
+    private fun changedIds(token: PHPersistentChangeToken): Set<String>? = memScoped {
+        val error = alloc<ObjCObjectVar<NSError?>>()
+        val result = PHPhotoLibrary.sharedPhotoLibrary().fetchPersistentChangesSinceToken(token, error.ptr) ?: return null
+        val ids = HashSet<String>()
+        val albums = HashSet<String>()
+        var unknown = false
+        result.enumerateChangesWithBlock { change, stop ->
+            change as PHPersistentChange
+            val assets = change.changeDetailsForObjectType(PHObjectTypeAsset, null)
+            val collections = change.changeDetailsForObjectType(PHObjectTypeAssetCollection, null)
+            if (assets == null || collections == null) {
+                unknown = true
+            } else {
+                assets.insertedLocalIdentifiers.forEach { ids += it as String }
+                assets.updatedLocalIdentifiers.forEach { ids += it as String }
+                collections.insertedLocalIdentifiers.forEach { albums += it as String }
+                collections.updatedLocalIdentifiers.forEach { albums += it as String }
+                if (collections.deletedLocalIdentifiers.isNotEmpty()) unknown = true
+            }
+            if (unknown) stop?.pointed?.value = true
+        }
+        if (unknown) return null
+        if (albums.isNotEmpty()) {
+            val found = PHAssetCollection.fetchAssetCollectionsWithLocalIdentifiers(albums.toList(), null)
+            for (i in 0uL until found.count) {
+                val assets = PHAsset.fetchAssetsInAssetCollection(found.objectAtIndex(i) as PHAssetCollection, null)
+                for (j in 0uL until assets.count) ids += (assets.objectAtIndex(j) as PHAsset).localIdentifier
+            }
+        }
+        ids
+    }
+
+    /** Every photo and video, as PHAssets. */
+    private fun allAssets(): List<PHAsset> {
         val assets = mutableListOf<PHAsset>()
         for (mediaType in listOf(PHAssetMediaTypeImage, PHAssetMediaTypeVideo)) {
             val result = PHAsset.fetchAssetsWithMediaType(mediaType, null)
             for (i in 0uL until result.count) assets += result.objectAtIndex(i) as PHAsset
         }
-        val known = knownFacts(assets)
-        val albums = albumsOf()
-        val calendar = NSCalendar.currentCalendar
-        assets.map { asset ->
-            val date = asset.creationDate ?: asset.modificationDate ?: NSDate()
-            val parts = calendar.components(NSCalendarUnitYear or NSCalendarUnitMonth or NSCalendarUnitDay, date)
-            val isVideo = asset.mediaType == PHAssetMediaTypeVideo
-            val file = known[asset.localIdentifier]
-            val screen = PHAssetMediaSubtypePhotoScreenshot or PHAssetMediaSubtypeVideoScreenRecording
-            MediaItem(
-                id = asset.localIdentifier,
-                type = if (isVideo) MediaType.VIDEO else MediaType.IMAGE,
-                takenAtMillis = date.millis,
-                day = LocalDay(parts.year.toInt(), parts.month.toInt(), parts.day.toInt()),
-                durationMillis = if (isVideo) (asset.duration * 1000).toLong().takeIf { it > 0 } else null,
-                width = asset.pixelWidth.toInt(),
-                height = asset.pixelHeight.toInt(),
-                sizeBytes = file?.sizeBytes,
+        return assets
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun itemOf(asset: PHAsset, file: FileFacts?, albums: List<String>): MediaItem {
+        val date = asset.creationDate ?: asset.modificationDate ?: NSDate()
+        val parts = NSCalendar.currentCalendar.components(NSCalendarUnitYear or NSCalendarUnitMonth or NSCalendarUnitDay, date)
+        val isVideo = asset.mediaType == PHAssetMediaTypeVideo
+        val screen = PHAssetMediaSubtypePhotoScreenshot or PHAssetMediaSubtypeVideoScreenRecording
+        return MediaItem(
+            id = asset.localIdentifier,
+            type = if (isVideo) MediaType.VIDEO else MediaType.IMAGE,
+            takenAtMillis = date.millis,
+            day = LocalDay(parts.year.toInt(), parts.month.toInt(), parts.day.toInt()),
+            durationMillis = if (isVideo) (asset.duration * 1000).toLong().takeIf { it > 0 } else null,
+            width = asset.pixelWidth.toInt(),
+            height = asset.pixelHeight.toInt(),
+            sizeBytes = file?.sizeBytes,
+            fileName = file?.fileName,
+            burstId = asset.burstIdentifier,
+            source = sourceOfAsset(
+                isScreenshot = asset.mediaSubtypes and screen != 0uL,
+                albums = albums,
+                inUserLibrary = asset.sourceType == PHAssetSourceTypeUserLibrary,
+                originalMimeType = file?.originalMimeType,
                 fileName = file?.fileName,
-                burstId = asset.burstIdentifier,
-                source = sourceOfAsset(
-                    isScreenshot = asset.mediaSubtypes and screen != 0uL,
-                    albums = albums[asset.localIdentifier].orEmpty(),
-                    inUserLibrary = asset.sourceType == PHAssetSourceTypeUserLibrary,
-                    originalMimeType = file?.originalMimeType,
-                    fileName = file?.fileName,
-                ),
-                location = asset.location?.coordinate?.useContents { GeoPoint(latitude, longitude) },
-                modifiedMillis = file?.modifiedMillis,
-                mimeType = file?.mimeType,
-                folder = albums[asset.localIdentifier].orEmpty().joinToString(", ").ifEmpty { null },
-            )
-        }
+            ),
+            location = asset.location?.coordinate?.useContents { GeoPoint(latitude, longitude) },
+            modifiedMillis = file?.modifiedMillis,
+            mimeType = file?.mimeType,
+            folder = albums.joinToString(", ").ifEmpty { null },
+        )
     }
 
     override fun watch(onChange: () -> Unit): () -> Unit {
@@ -126,13 +230,14 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
 
     /**
      * The facts of [assets] that are known and current. The rest are read now when they are few (photos taken or
-     * changed since the last read), else in the background ([readInBackground]).
+     * changed since the last read), else in the background ([readInBackground]). With [whole] (every asset), the
+     * facts of those gone are dropped.
      */
-    private suspend fun knownFacts(assets: List<PHAsset>): Map<String, FileFacts> {
+    private suspend fun knownFacts(assets: List<PHAsset>, whole: Boolean): Map<String, FileFacts> {
         val (known, stale) = factsLock.withLock {
             val all = facts ?: (cache?.load() ?: mutableMapOf()).also { facts = it }
             val ids = assets.mapTo(HashSet()) { it.localIdentifier }
-            val removed = all.keys.retainAll(ids)
+            val removed = whole && all.keys.retainAll(ids)
             val stale = assets.filter { asset ->
                 val fact = all[asset.localIdentifier]
                 fact == null || fact.assetModifiedMillis != asset.modificationDate?.millis
@@ -202,6 +307,28 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
         return albumsOf
     }
 
+    /** The titles of the regular albums [asset] is in, as [albumsOf] gives them for every photo. */
+    private fun albumsOf(asset: PHAsset): List<String> {
+        val albums = PHAssetCollection.fetchAssetCollectionsContainingAsset(asset, PHAssetCollectionTypeAlbum, null)
+        return (0uL until albums.count).mapNotNull { i ->
+            val album = albums.objectAtIndex(i) as PHAssetCollection
+            album.localizedTitle?.takeIf { album.assetCollectionSubtype == PHAssetCollectionSubtypeAlbumRegular && it.isNotBlank() }
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun encode(token: PHPersistentChangeToken?): String? {
+        token ?: return null
+        return NSKeyedArchiver.archivedDataWithRootObject(token, requiringSecureCoding = true, error = null)?.base64EncodedStringWithOptions(0u)
+    }
+
+    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+    private fun decode(text: String): PHPersistentChangeToken? {
+        if (text.isEmpty()) return null
+        val data = NSData.create(base64EncodedString = text, options = 0u) ?: return null
+        return NSKeyedUnarchiver.unarchivedObjectOfClass(PHPersistentChangeToken, data, null) as? PHPersistentChangeToken
+    }
+
     // Its own pool: a first read runs through the whole library in one task.
     private fun readFacts(asset: PHAsset): FileFacts = autoreleasepool {
         val files = PHAssetResource.assetResourcesForAsset(asset).map { resource ->
@@ -217,6 +344,9 @@ internal class IosMediaLibrary(private val cache: FileFactsCache? = null) : Medi
     }
 
     private companion object {
+        /** Changes when what an item holds is read differently, so marks made before read the library whole once. */
+        const val READER_VERSION = 1
+
         /** More stale photos than this are read in the background (a few ms each). */
         const val READ_NOW = 300
         const val READ_BATCH = 200

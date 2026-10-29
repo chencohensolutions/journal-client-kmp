@@ -72,6 +72,8 @@ final class SettingsViewModel: ObservableObject {
     func setPreviewsEnabled(_ enabled: Bool) { controller.setPreviewsEnabled(enabled: enabled) }
     func setPreviewFormat(_ format: PreviewFormat) { controller.setPreviewFormat(format: format) }
     func setPreviewQuality(_ quality: PreviewQuality) { controller.setPreviewQuality(quality: quality) }
+    func setFirstImageWidth(_ percent: Int) { controller.setFirstImageWidth(percent: Int32(percent)) }
+    func setFirstImageFormat(_ format: PreviewFormat) { controller.setFirstImageFormat(format: format) }
 
     /// The limit; a lower one applies at once (the oldest go first).
     func setPreviewLimit(_ gigabytes: Int) {

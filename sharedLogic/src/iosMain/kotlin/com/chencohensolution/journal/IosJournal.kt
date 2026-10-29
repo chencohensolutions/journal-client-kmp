@@ -439,6 +439,9 @@ object IosJournal {
             .also { serverStream = it }
 
     /** The user's choices on the Settings screen. */
+    /** Settings › Library › "Share JPEG XL as JPEG", as last saved: what Share does with a photo kept as JPEG XL. */
+    val shareJpegXlAsJpeg: Boolean get() = JournalSettings(UserDefaultsStore()).shareJpegXlAsJpeg
+
     fun createSettingsController(): SettingsController = SettingsController(
         JournalSettings(UserDefaultsStore()),
         defaultSimilarityPercent = IosPhotoAnalyzer.DEFAULT_SAME_SCENE_PERCENT,

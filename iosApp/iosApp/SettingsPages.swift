@@ -112,7 +112,7 @@ private struct NotBackedUpLink<Destination: View>: View {
     var body: some View {
         NavigationLink { destination() } label: {
             Label {
-                Text("\(count.formatted()) not backed up") + Text(verbatim: " ›")
+                Text("\(count.formatted()) not backed up")
             } icon: {
                 Image(systemName: "icloud.and.arrow.up")
             }

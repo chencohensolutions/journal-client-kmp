@@ -68,6 +68,22 @@ class IosServerFiles internal constructor(
         previews.tile(sha, item.type == MediaType.VIDEO, item.fileName, w, h, decoders(decoding, item, maxOf(w, h)))
     }
 
+    /**
+     * What a photo only on the server shows first, before its sharp tile: [ServerPreviews.firstImage], the photo's shape
+     * at Settings' part of a window [windowWidth] pixels wide (the same size on every screen, so one file serves them
+     * all). Null when it is off, for a video, or when there is none.
+     */
+    fun firstImage(item: MediaItem, windowWidth: Int, onResult: (UIImage?) -> Unit): ObservationHandle = run(onResult) {
+        val decoding = decoding ?: return@run null
+        val percent = previews.currentOptions.firstWidthPercent
+        if (percent <= 0 || windowWidth <= 0 || item.type == MediaType.VIDEO || item.keptOriginal != null) return@run null
+        val sha = item.sha256 ?: return@run null
+        val width = (windowWidth * percent / 100).coerceAtLeast(1)
+        val height = if (item.width > 0 && item.height > 0) (width.toLong() * item.height / item.width).toInt().coerceAtLeast(1) else width
+        val bytes = previews.firstImage(sha, width, height) ?: return@run null
+        withContext(fullDecodes) { decoding.decodeData(bytes.toNSData()) }
+    }
+
     /** A server-only photo opened on its own, fitted in [maxSide]: [ServerPreviews.viewer] (its original, downloaded). */
     fun viewer(item: MediaItem, maxSide: Int, onResult: (UIImage?) -> Unit): ObservationHandle = run(onResult) {
         val decoding = decoding ?: return@run null
@@ -166,6 +182,18 @@ class IosServerFiles internal constructor(
      */
     fun fetchOriginal(item: MediaItem, onResult: (String?) -> Unit): ObservationHandle = run(onResult) {
         item.keptOriginal ?: item.sha256?.let { previews.original(it, item.fileName ?: it) }
+    }
+
+    /**
+     * For Share with "Share JPEG XL as JPEG": the JPEG a JPEG XL on the server was packed from, byte for byte, as the
+     * server makes it again when asked by the JPEG's sha256 (its encodedFrom), downloaded and checked against it. Null
+     * for a JPEG XL that wasn't packed from a JPEG, for any other file, and offline.
+     */
+    fun fetchJpegOf(item: MediaItem, onResult: (String?) -> Unit): ObservationHandle = run(onResult) {
+        val sha = library.sha256Of(item) ?: return@run null
+        val jpeg = library.file(sha)?.encodedSha256 ?: return@run null
+        val name = (item.fileName ?: "photo").substringBeforeLast('.') + ".jpg"
+        previews.original(jpeg, name)
     }
 
     private fun <T> observe(flow: StateFlow<T>, onChange: (T) -> Unit): ObservationHandle {

@@ -169,7 +169,7 @@ struct HiddenCollectionsLabel: View {
                 Text("Private settings").foregroundStyle(LibraryColors.onBackground)
                 Image(systemName: "lock.fill").font(.caption).foregroundStyle(LibraryColors.muted)
             }
-            Text("Private media, nudity, sound recordings, WhatsApp and screenshots by app")
+            Text("Private media, nudity, sound recordings, apps and screenshots by app")
                 .font(.footnote)
                 .foregroundStyle(LibraryColors.muted)
             if let syncProgress {
@@ -247,6 +247,32 @@ struct StorageSections: View {
             }
         } header: {
             Text("Image quality")
+        }
+        .listRowBackground(LibraryColors.raised)
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                SettingsLabel(
+                    "Quick image while scrolling",
+                    detail: "Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer."
+                )
+                Text("Width, of the screen's").foregroundStyle(LibraryColors.onBackground)
+                Picker("Width, of the screen's", selection: Binding(get: { Int(options.firstWidthPercent) }, set: actions.setFirstImageWidth)) {
+                    ForEach(PreviewOptions.companion.FIRST_WIDTH_OPTIONS.map(\.intValue), id: \.self) { percent in
+                        if percent == 0 { Text("None").tag(percent) } else { Text(verbatim: "\(percent)%").tag(percent) }
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            if options.firstWidthPercent > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Format", selection: Binding(get: { options.firstFormat }, set: actions.setFirstImageFormat)) {
+                        ForEach(PreviewFormat.shownInSettings, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .foregroundStyle(LibraryColors.onBackground)
+                    Text(options.firstFormat.hint).font(.footnote).foregroundStyle(LibraryColors.muted)
+                }
+            }
         }
         .listRowBackground(LibraryColors.raised)
     }

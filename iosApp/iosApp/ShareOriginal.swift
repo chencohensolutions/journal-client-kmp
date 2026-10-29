@@ -5,19 +5,29 @@ import SharedLogic
 /// The viewer's Share: the original file itself goes to the system share sheet, byte for byte (EXIF, HEIC and the
 /// video as recorded), never a re-encoded image. A library item's original resource is read from PhotoKit (read only);
 /// one only on the server is its kept or cached original, downloaded first the way the viewer does when it isn't here.
-/// The file is copied under its real name into a temp folder that keeps only the latest share.
+/// The file is copied under its real name into a temp folder that keeps only the latest share. With "Share JPEG XL as
+/// JPEG" (Settings, on by default) a JPEG XL the server packed from a JPEG goes as that JPEG, byte for byte, as few apps
+/// open JPEG XL; the server makes it again (no libjxl here). One that wasn't packed from a JPEG goes as it is.
 enum ShareOriginal {
     /// The file to share, or nil when it couldn't be had.
     static func file(for item: MediaItem) async -> URL? {
         guard let folder = freshFolder() else { return nil }
+        if IosJournal.shared.shareJpegXlAsJpeg && item.isJpegXl,
+           let path = await awaiting({ done in ServerImages.shared.files.fetchJpegOf(item: item, onResult: done) }) {
+            let name = safeName(((item.fileName ?? "photo") as NSString).deletingPathExtension + ".jpg")
+            return await copy(URL(fileURLWithPath: path), to: folder.appendingPathComponent(name))
+        }
         if item.isOnDevice { return await libraryOriginal(item, into: folder) }
         guard let path = await awaiting({ done in ServerImages.shared.files.fetchOriginal(item: item, onResult: done) }) else { return nil }
         let source = URL(fileURLWithPath: path)
         // The cache calls it "original.<ext>": it goes out under the photo's own name.
         var name = item.fileName.map(safeName) ?? source.lastPathComponent
         if (name as NSString).pathExtension.isEmpty, !source.pathExtension.isEmpty { name += "." + source.pathExtension }
-        let target = folder.appendingPathComponent(name)
-        return await Task.detached(priority: .userInitiated) {
+        return await copy(source, to: folder.appendingPathComponent(name))
+    }
+
+    private static func copy(_ source: URL, to target: URL) async -> URL? {
+        await Task.detached(priority: .userInitiated) {
             (try? FileManager.default.copyItem(at: source, to: target)) != nil ? target : nil
         }.value
     }
@@ -68,5 +78,12 @@ enum ShareOriginal {
     private static func safeName(_ name: String) -> String {
         let cleaned = name.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
         return cleaned.isEmpty || cleaned == "." || cleaned == ".." ? "original" : cleaned
+    }
+}
+
+private extension MediaItem {
+    /// A JPEG XL photo, by its type or name.
+    var isJpegXl: Bool {
+        !isVideo && (mimeType?.lowercased() == "image/jxl" || fileName?.lowercased().hasSuffix(".jxl") == true)
     }
 }

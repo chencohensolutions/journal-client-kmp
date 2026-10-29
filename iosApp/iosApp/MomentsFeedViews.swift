@@ -227,6 +227,12 @@ struct FeedRowsView: View {
         if selection.isEmpty && actions.menus {
             Section("\(item.day.label) · \(item.takenAt.formatted(date: .omitted, time: .shortened))") {
                 let written = note(item.id)?.hasWriting == true
+                // What was written about it (its title, else its paragraph), under the photo the menu lifts; as Android's.
+                if let note = note(item.id), written {
+                    Text(verbatim: note.title.isEmpty ? note.caption : note.title).font(.system(.body, design: .serif))
+                } else {
+                    Text("Nothing written yet")
+                }
                 Button { actions.write(item) } label: {
                     Label(written ? "Edit what you wrote" : "Write about it", systemImage: "pencil")
                 }
@@ -828,8 +834,10 @@ func clockTime(_ millis: Int64) -> String {
 /// leaves the row; "+N" opens the "Showing" sheet with every source as a pill.
 struct FeedSourceBar: View {
     let feed: MomentsFeed
+    let shown: ShownSources
     let onToggle: (MediaSource) -> Void
     @State private var open = false
+    @Environment(\.shownSourcesChoice) private var choice
 
     var body: some View {
         let counts = feed.counts
@@ -843,39 +851,58 @@ struct FeedSourceBar: View {
                         withAnimation(.snappy) { onToggle(source) }
                     }
                 }
+                // What the server's import placed, all of it in one chip (its box icon kept while on).
+                if feed.importedCount > 0 {
+                    FilterBarChip(
+                        title: String(localized: "Imported"), symbol: "shippingbox", count: Int(feed.importedCount).formatted(), on: true,
+                        keepIcon: true
+                    ) {
+                        withAnimation(.snappy) { choice.toggleImported() }
+                    }
+                }
             }
             .padding(.horizontal, 16)
         }
         .scrollIndicators(.hidden)
         .sheet(isPresented: $open) {
-            ShowingPillsSheet(sources: feed.sheet, counts: counts, isOn: { feed.shown.contains($0) }, toggle: onToggle)
+            ShowingSheet(shown: shown, counts: counts, onToggle: onToggle, whatsAppNote: false)
         }
     }
 }
 
-/// A chip of the filter bar: on (filled, with a ✓ in place of its icon) or off (outlined), an icon, a title and a count;
-/// "+N" is one with a title alone.
+/// A chip of the filter bar, and a pill of Show in the app: on (filled, with a ✓ in place of its icon, or its icon with
+/// `keepIcon`) or off (outlined), an icon, a title and a count; "+N" is one with a title alone. `small` for Imported's
+/// kinds; `locked` adds a lock after the count, for a source Private settings hides in part.
 struct FilterBarChip: View {
     let title: String
     var symbol: String? = nil
     var count: String? = nil
     let on: Bool
+    var keepIcon = false
+    var small = false
+    var locked = false
     let action: () -> Void
 
     var body: some View {
+        let size: CGFloat = small ? 12 : 13
         Button(action: action) {
             HStack(spacing: 6) {
-                if let symbol { Image(systemName: on ? "checkmark" : symbol).font(.system(size: 12, weight: .semibold)) }
-                if !title.isEmpty { Text(verbatim: title).font(.system(size: 13, weight: .semibold)) }
+                if let symbol { Image(systemName: on && !keepIcon ? "checkmark" : symbol).font(.system(size: size - 1, weight: .semibold)) }
+                if !title.isEmpty { Text(verbatim: title).font(.system(size: size, weight: .semibold)) }
                 if let count {
                     Text(verbatim: count)
-                        .font(.system(size: 13))
+                        .font(.system(size: size))
+                        .foregroundStyle(on ? LibraryColors.onInverseMuted : LibraryColors.muted.opacity(0.7))
+                }
+                if locked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: size - 3))
                         .foregroundStyle(on ? LibraryColors.onInverseMuted : LibraryColors.muted.opacity(0.7))
                 }
             }
             .foregroundStyle(on ? LibraryColors.onInverse : LibraryColors.muted)
-            .padding(.horizontal, 12)
-            .frame(height: 34)
+            .padding(.horizontal, small ? 10 : 12)
+            .frame(height: small ? 28 : 34)
             .background {
                 if on {
                     Capsule().fill(LibraryColors.inverse)

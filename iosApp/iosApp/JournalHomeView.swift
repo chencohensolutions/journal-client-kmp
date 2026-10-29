@@ -498,7 +498,7 @@ struct JournalHomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 titleRow
                 if tab == .moments {
-                    if stories.shownSources.showFilterBar { FeedSourceBar(feed: stories.feed, onToggle: actions.toggleSource) }
+                    if stories.shownSources.showFilterBar { FeedSourceBar(feed: stories.feed, shown: stories.shownSources, onToggle: actions.toggleSource) }
                 } else if tab == .explore {
                     ExploreBar(view: $exploreView, people: people != nil, onMap: actions.explore.openMap)
                 }

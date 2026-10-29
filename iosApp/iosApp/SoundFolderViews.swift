@@ -256,20 +256,22 @@ struct KeepOnPhoneSection: View {
     let keep: KeepOnPhone
     let setKeep: (KeepOnPhone) -> Void
 
+    // A switch per kind, as Android's card. "Photos as JPEG XL" isn't offered: it would put the JPEG XL in the photo
+    // library in place of the JPEG, and this app never writes there.
     var body: some View {
+        let flac = keep == .flac
         Section {
-            Picker("Keep on this phone", selection: Binding(get: { keep }, set: setKeep)) {
-                Text(verbatim: "WAV").tag(KeepOnPhone.wav)
-                Text(verbatim: "FLAC").tag(KeepOnPhone.flac)
+            Toggle(isOn: Binding(get: { flac }, set: { setKeep($0 ? .flac : .wav) })) {
+                SettingsLabel(
+                    "Recordings as FLAC",
+                    detail: flac ? "FLAC replaces each WAV once the server has it: about half the space." : "WAVs stay as they are."
+                )
             }
-            .pickerStyle(.segmented)
-            Text(keep == .wav ? "The WAV stays as it is." : "The FLAC replaces the WAV once the server has it.")
-                .font(.footnote)
-                .foregroundStyle(LibraryColors.muted)
+            .tint(LibraryColors.accent)
         } header: {
             Text("Keep on this phone")
         } footer: {
-            Text("WAV recordings are sent as FLAC: the same sound in about half the space.")
+            Text("The server keeps recordings as FLAC and photos as JPEG XL, from which the very same WAV or JPEG comes back.")
         }
         .listRowBackground(LibraryColors.raised)
     }

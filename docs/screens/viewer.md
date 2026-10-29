@@ -102,7 +102,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
     on your server", or the upload state with % and a bar), then file name, size, dimensions, length for videos,
     type, and where it came from: **From** Camera, Screenshots, Sent to you, Other, or **Saved in** an app's or a
     folder's name ("Saved in: Telegram"), with "· Imported" for what the server's import placed; and **Camera**, the
-    camera its tags name ("Canon EOS 80D", imported files too; Android Oct 27, 2026, iOS not built yet), from the
+    camera its tags name ("Canon EOS 80D", imported files too; Android Oct 27, 2026, iOS Oct 29, 2026), from the
     server's copy (`ServerMedia.camera`, the change feed's `Media.camera`, kept in `server_media`), named as Your
     cameras names it (`cameraName`: "SM-S931B" is "Samsung Galaxy S25"; see settings.md). The phone's own
     folder isn't shown: the server keeps it (`deviceFolder`) but doesn't send it. For a photo only on the server: **Preview on this phone**

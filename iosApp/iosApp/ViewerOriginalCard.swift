@@ -9,6 +9,17 @@ import SharedLogic
 /// length, type, source), what is kept here of a photo only on the server, and "Mark private" for a photo the server
 /// has.
 struct OriginalCard: View {
+    /// "Saved in: Telegram" for a folder's kind, else "From: Camera"; "· Imported" for what the server's import placed.
+    @ViewBuilder private var sourceFacts: some View {
+        let kind = item.source.kind
+        let imported = item.source.isImported ? String(localized: "Imported") : nil
+        if let folder = kind.folderName {
+            Detail(label: "Saved in", value: [folder, imported].compactMap { $0 }.joined(separator: " · "))
+        } else {
+            Detail(label: "From", value: [kind.title, imported].compactMap { $0 }.joined(separator: " · "))
+        }
+    }
+
     let item: MediaItem
     let setPrivate: (MediaItem, Bool) async -> Bool
 
@@ -16,6 +27,8 @@ struct OriginalCard: View {
     /// What is being asked of the server (private or not) until it answers; nil when nothing is.
     @State private var markingPrivate: Bool?
     @State private var message: String?
+    /// The camera its tags name, as the server read them (imported files too); nil without tags or a server copy.
+    @State private var camera: String?
 
     var body: some View {
         let uploading = item.backup as? BackupStatusUploading
@@ -46,7 +59,14 @@ struct OriginalCard: View {
                 if item.width > 0 && item.height > 0 { Detail(label: "Dimensions", value: pixelsText(Int(item.width), Int(item.height))) }
                 if let duration = item.duration { Detail(label: "Length", value: formatDuration(duration)) }
                 if let mimeType = item.mimeType { Detail(label: "Type", value: typeName(mimeType)) }
-                Detail(label: "From", value: item.source.label)
+                sourceFacts
+                if let camera { Detail(label: "Camera", value: camera) }
+            }
+            .task(id: item.id) {
+                let library = IosJournal.shared.serverLibrary()
+                camera = nil
+                guard let sha = try? await library.sha256Of(item: item), let file = try? await library.file(sha256: sha) else { return }
+                camera = file.camera
             }
             if !item.hasOriginalHere { ShownHereFacts(item: item) }
 

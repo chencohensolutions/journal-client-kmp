@@ -31,7 +31,16 @@ struct MediaTileView: View {
             .task(id: item.id) {
                 // Zoomed in, the tile shows a part of a larger image.
                 let size = CGSize(width: geometry.size.width * crop.zoom, height: geometry.size.height * crop.zoom)
-                thumbnail = await PhotoLibraryImages.shared.image(item: item, pointSize: size)
+                // A photo only on the server shows its quick image first, while the sharp one comes.
+                if !item.isOnDevice, thumbnail == nil, ServerImages.shared.inMemory(item) == nil {
+                    thumbnail = await ServerImages.shared.first(item, windowPixels: Int(windowPixels))
+                    // The sharp one once the list stops here: a tile scrolled past cancels this.
+                    if thumbnail != nil {
+                        try? await Task.sleep(for: .milliseconds(300))
+                        if Task.isCancelled { return }
+                    }
+                }
+                if let sharp = await PhotoLibraryImages.shared.image(item: item, pointSize: size) { thumbnail = sharp }
             }
         }
         .contentShape(Rectangle())
@@ -39,6 +48,13 @@ struct MediaTileView: View {
         .accessibilityLabel(item.accessibilityDescription)
         .accessibilityAddTraits(.isButton)
     }
+}
+
+/// The window's width in pixels: quick images are a part of it, the same on every screen.
+private var windowPixels: CGFloat {
+    let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+    let screen = scene?.screen
+    return (screen?.bounds.width ?? 400) * (screen?.scale ?? 3)
 }
 
 /// `image` scaled to cover `size`, anchored at the crop's focus point and zoomed around it, clipped to `size`.

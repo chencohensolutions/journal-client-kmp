@@ -89,7 +89,8 @@ struct SettingsView: View {
             setBackupEnabled: backup.setEnabled, toggleBackupSource: backup.toggleSource, setWifiOnly: backup.setWifiOnly,
             setChargingOnly: backup.setChargingOnly, setOrder: backup.setOrder, backUpNow: backup.backUpNow,
             setMomentsRowsPerPage: settings.setMomentsRowsPerPage, setMomentsLoadAhead: settings.setMomentsLoadAhead,
-            resetMomentsPaging: settings.resetMomentsPaging, setShareJpegXlAsJpeg: settings.setShareJpegXlAsJpeg
+            resetMomentsPaging: settings.resetMomentsPaging, setShareJpegXlAsJpeg: settings.setShareJpegXlAsJpeg,
+            setFirstImageWidth: settings.setFirstImageWidth, setFirstImageFormat: settings.setFirstImageFormat
         )
     }
 }
@@ -126,6 +127,9 @@ struct SettingsActions {
     var resetMomentsPaging: () -> Void = {}
     /// "Share JPEG XL as JPEG".
     var setShareJpegXlAsJpeg: (Bool) -> Void = { _ in }
+    /// Quick image while scrolling: its width, a part of the screen's (0: off), and its format.
+    var setFirstImageWidth: (Int) -> Void = { _ in }
+    var setFirstImageFormat: (PreviewFormat) -> Void = { _ in }
 }
 
 /// The user's choices, kept on this device: a short page of groups (Library, Privacy, Backup and storage, Search),

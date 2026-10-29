@@ -9255,6 +9255,2314 @@
           }
         }
       }
+    },
+    "Advanced" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתקדם"
+          }
+        }
+      }
+    },
+    "Loading Moments" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טעינת ״רגעים״"
+          }
+        }
+      }
+    },
+    "%lld rows at a time · %lld ahead" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld שורות בכל פעם · %2$lld מראש"
+          }
+        }
+      }
+    },
+    "Rows loaded at a time" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שורות שנטענות בכל פעם"
+          }
+        }
+      }
+    },
+    "More: fewer pauses when scrolling far, more memory." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יותר: פחות עצירות בגלילה ארוכה, יותר זיכרון."
+          }
+        }
+      }
+    },
+    "Load ahead" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טעינה מראש"
+          }
+        }
+      }
+    },
+    "How many rows before the end of what is loaded the next rows start loading. More: smoother fast scrolling." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמה שורות לפני סוף מה שנטען מתחילה טעינת השורות הבאות. יותר: גלילה מהירה חלקה יותר."
+          }
+        }
+      }
+    },
+    "%lld (default)" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld (ברירת מחדל)"
+          }
+        }
+      }
+    },
+    "Only on this phone. Applies as Moments loads its next rows." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק בטלפון הזה. חל כש״רגעים״ טוען את השורות הבאות."
+          }
+        }
+      }
+    },
+    "Reset to %lld and %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס ל־%1$lld ו־%2$lld"
+          }
+        }
+      }
+    },
+    "What Moments shows" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מה מוצג ברגעים"
+          }
+        }
+      }
+    },
+    "Photos and videos" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות וסרטונים"
+          }
+        }
+      }
+    },
+    "Sound" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שמע"
+          }
+        }
+      }
+    },
+    "Calls" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיחות"
+          }
+        }
+      }
+    },
+    "Voice recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטות קול"
+          }
+        }
+      }
+    },
+    "Sent to you" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשלח אליך"
+          }
+        }
+      }
+    },
+    "%@ files" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ קבצים"
+          }
+        }
+      }
+    },
+    "%@ not backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ לא מגובים"
+          }
+        }
+      }
+    },
+    "All backed up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכול מגובה"
+          }
+        }
+      }
+    },
+    "To hide a kind on this phone, or show it again, use the filter bar in Moments. This phone remembers it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כדי להסתיר סוג בטלפון הזה, או להציג אותו שוב, השתמשו בסרגל הסינון ברגעים. הטלפון הזה זוכר את הבחירה."
+          }
+        }
+      }
+    },
+    "%lld kinds hidden on all your devices" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg kind hidden on all your devices"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg kinds hidden on all your devices"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg סוגים מוסתרים בכל המכשירים שלך"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "סוג אחד מוסתר בכל המכשירים שלך"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg סוגים מוסתרים בכל המכשירים שלך"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שני סוגים מוסתרים בכל המכשירים שלך"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Share JPEG XL as JPEG" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיתוף JPEG XL כ-JPEG"
+          }
+        }
+      }
+    },
+    "Photos kept as JPEG XL are shared as the JPEG they were made from, exactly as it was, so every app can open them. Off, they are shared as JPEG XL." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות שנשמרו כ-JPEG XL משותפות כקובץ ה-JPEG שממנו נוצרו, בדיוק כפי שהיה, כדי שכל אפליקציה תוכל לפתוח אותן. כשההגדרה כבויה, הן משותפות כ-JPEG XL."
+          }
+        }
+      }
+    },
+    "Quick image while scrolling" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונה מהירה בזמן גלילה"
+          }
+        }
+      }
+    },
+    "Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר."
+          }
+        }
+      }
+    },
+    "Width, of the screen's" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רוחב, מתוך רוחב המסך"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ללא"
+          }
+        }
+      }
+    },
+    "Recordings as FLAC" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטות כ-FLAC"
+          }
+        }
+      }
+    },
+    "WAVs stay as they are." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובצי WAV נשארים כמו שהם."
+          }
+        }
+      }
+    },
+    "FLAC replaces each WAV once the server has it: about half the space." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FLAC מחליף כל WAV כשהשרת מחזיק אותו: כמחצית מהמקום."
+          }
+        }
+      }
+    },
+    "The server keeps recordings as FLAC and photos as JPEG XL, from which the very same WAV or JPEG comes back." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת שומר הקלטות כ-FLAC ותמונות כ-JPEG XL, ומהם חוזר בדיוק אותו WAV או JPEG."
+          }
+        }
+      }
+    },
+    "Private media, nudity, sound recordings, apps and screenshots by app" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה"
+          }
+        }
+      }
+    },
+    "Your cameras" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המצלמות שלך"
+          }
+        }
+      }
+    },
+    "Every camera that took your photos and videos, as their tags say. Turn off one that isn’t yours: its photos move to Sent to you, on all your devices." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל מצלמה שצילמה את התמונות והסרטונים שלך, לפי התגים שלהם. כבה מצלמה שאינה שלך: התמונות שלה יעברו אל נשלח אליך, בכל המכשירים שלך."
+          }
+        }
+      }
+    },
+    "A camera you haven’t marked counts as yours, so nothing moves until you choose." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצלמה שלא סימנת נחשבת שלך, כך ששום דבר לא זז עד שתבחר."
+          }
+        }
+      }
+    },
+    "Mine" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שלי"
+          }
+        }
+      }
+    },
+    "Its photos are in Sent to you" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התמונות שלה בנשלח אליך"
+          }
+        }
+      }
+    },
+    "Move" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העבר"
+          }
+        }
+      }
+    },
+    "They stay on your server and in the app, under Sent to you instead of Camera. Mark the %@ yours again to bring them back." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הן נשארות בשרת שלך ובאפליקציה, תחת נשלח אליך במקום מצלמה. סמן את %@ כשלך שוב כדי להחזיר אותן."
+          }
+        }
+      }
+    },
+    "%lld photos will move to Sent to you" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photo will move to Sent to you"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photos will move to Sent to you"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות יעברו אל נשלח אליך"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונה תעבור אל נשלח אליך"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות יעברו אל נשלח אליך"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות יעברו אל נשלח אליך"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Moving %lld photos…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg photo…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg photos…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg תמונות…"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg תמונה…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg תמונות…"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg תמונות…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Which cameras were yours" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אילו מצלמות היו שלך"
+          }
+        }
+      }
+    },
+    "%lld cameras" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg camera"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cameras"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg מצלמות"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg מצלמה"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg מצלמות"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg מצלמות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld not yours" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld לא שלך"
+          }
+        }
+      }
+    },
+    "Sound folders" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקיות קול"
+          }
+        }
+      }
+    },
+    "Their recordings are phone calls, in Calls on all your devices." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההקלטות שלהן הן שיחות טלפון, תחת שיחות בכל המכשירים שלך."
+          }
+        }
+      }
+    },
+    "Their recordings are in Voice recordings on all your devices." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההקלטות שלהן תחת הקלטות קול בכל המכשירים שלך."
+          }
+        }
+      }
+    },
+    "Kept as folders" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקיות נפרדות"
+          }
+        }
+      }
+    },
+    "Each stays a folder of its own, until you move it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל אחת נשארת תיקייה בפני עצמה, עד שתעביר אותה."
+          }
+        }
+      }
+    },
+    "No folder yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין אין תיקייה"
+          }
+        }
+      }
+    },
+    "Move to…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העבר אל…"
+          }
+        }
+      }
+    },
+    "Only how they are labelled changes, on your server: the recordings themselves stay as they are." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק התווית שלהם משתנה, בשרת שלך: ההקלטות עצמן נשארות כמו שהן."
+          }
+        }
+      }
+    },
+    "On your server. You can leave this page; Moments follows in a moment." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשרת שלך. אפשר לצאת מהעמוד; רגעים יתעדכנו בקרוב."
+          }
+        }
+      }
+    },
+    "WhatsApp voice messages always stay voice messages." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הודעות קוליות מוואטסאפ נשארות תמיד הודעות קוליות."
+          }
+        }
+      }
+    },
+    "from your phones" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מהטלפונים שלך"
+          }
+        }
+      }
+    },
+    "imported" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיובאים"
+          }
+        }
+      }
+    },
+    "%@ imported" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ מיובאים"
+          }
+        }
+      }
+    },
+    "%lld files" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ %arg"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files will become Calls" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file will become Calls"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files will become Calls"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו לשיחות"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ %arg יעבור לשיחות"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו לשיחות"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו לשיחות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files will become Voice recordings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file will become Voice recordings"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files will become Voice recordings"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו להקלטות קול"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ %arg יעבור להקלטות קול"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו להקלטות קול"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יעברו להקלטות קול"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files will go back to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg file will go back to %2$@"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files will go back to %2$@"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יחזרו אל %2$@"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ %arg יחזור אל %2$@"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יחזרו אל %2$@"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים יחזרו אל %2$@"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Moving %lld files to %@…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg file to %2$@…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg files to %2$@…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים אל %2$@…"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר קובץ %arg אל %2$@…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים אל %2$@…"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים אל %2$@…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld left to move" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg left to move"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg left to move"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "נשארו %arg להעביר"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "נשאר %arg להעביר"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "נשארו %arg להעביר"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "נשארו %arg להעביר"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Which folders are calls or voice recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אילו תיקיות הן שיחות או הקלטות קול"
+          }
+        }
+      }
+    },
+    "Moving %lld files…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg file…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Moving %arg files…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים…"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר קובץ %arg…"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים…"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "מעביר %arg קבצים…"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld folders" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg folder"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg folders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תיקיות"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תיקייה"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תיקיות"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תיקיות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld as Calls" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld כשיחות"
+          }
+        }
+      }
+    },
+    "%lld as Voice recordings" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld כהקלטות קול"
+          }
+        }
+      }
+    },
+    "Copies on other disks" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עותקים בדיסקים אחרים"
+          }
+        }
+      }
+    },
+    "Your server also keeps your files in these folders, so a failing disk doesn’t take them." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת שומר את הקבצים שלך גם בתיקיות האלה, כך שדיסק שנכשל לא ייקח אותם."
+          }
+        }
+      }
+    },
+    "No copies yet. They are set up on the server, in config.json." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין עותקים עדיין. מגדירים אותם בשרת, ב-config.json."
+          }
+        }
+      }
+    },
+    "Up to date" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעודכן"
+          }
+        }
+      }
+    },
+    "%lld files to copy (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "1 file to copy (%2$@)"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files to copy (%2$@)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים להעתקה (%2$@)"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ אחד להעתקה (%2$@)"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים להעתקה (%2$@)"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים להעתקה (%2$@)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "of %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתוך %@"
+          }
+        }
+      }
+    },
+    "%@ of %@ files" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ מתוך %2$@ קבצים"
+          }
+        }
+      }
+    },
+    "of %@ files" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתוך %@ קבצים"
+          }
+        }
+      }
+    },
+    "Less than a minute left" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פחות מדקה"
+          }
+        }
+      }
+    },
+    "About %lld min left" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "About 1 min left"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "About %arg min left"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד כ-%arg דקות"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד כדקה"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד כ-%arg דקות"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד כ-%arg דקות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "About %lld h %lld min left" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד כ-%1$lld שע׳ ו-%2$lld דק׳"
+          }
+        }
+      }
+    },
+    "Finding what to copy…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בודק מה להעתיק…"
+          }
+        }
+      }
+    },
+    "Copy now" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העתק עכשיו"
+          }
+        }
+      }
+    },
+    "Last pass %@, stopped · %@ files, %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעבר אחרון %1$@, נעצר · %2$@ קבצים, %3$@"
+          }
+        }
+      }
+    },
+    "Last pass %@ · %@ files, %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעבר אחרון %1$@ · %2$@ קבצים, %3$@"
+          }
+        }
+      }
+    },
+    "Can’t find this folder since %@. Is the disk plugged in?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התיקייה לא נמצאת מאז %@. האם הדיסק מחובר?"
+          }
+        }
+      }
+    },
+    "The disk is full: copying stopped." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הדיסק מלא: ההעתקה נעצרה."
+          }
+        }
+      }
+    },
+    "On the same disk as your server’s files: a failing disk would take both." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "על אותו דיסק כמו קבצי השרת: דיסק שנכשל ייקח את שניהם."
+          }
+        }
+      }
+    },
+    "%lld files couldn’t be copied. They’re tried again at the next pass." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "1 file couldn’t be copied. It’s tried again at the next pass."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files couldn’t be copied. They’re tried again at the next pass."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים לא הועתקו. ננסה שוב במעבר הבא."
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ אחד לא הועתק. ננסה שוב במעבר הבא."
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים לא הועתקו. ננסה שוב במעבר הבא."
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים לא הועתקו. ננסה שוב במעבר הבא."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "As files arrive, and daily at %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשקבצים מגיעים, וכל יום ב-%@"
+          }
+        }
+      }
+    },
+    "Daily at %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל יום ב-%@"
+          }
+        }
+      }
+    },
+    "No pass since the server started" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא היה מעבר מאז שהשרת עלה"
+          }
+        }
+      }
+    },
+    "%@ free on the disk" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ פנויים בדיסק"
+          }
+        }
+      }
+    },
+    "%lld files are only in the copy (gone from the server; kept)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "1 file is only in the copy (gone from the server; kept)"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg files are only in the copy (gone from the server; kept)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "קובץ אחד נמצא רק בעותק (נמחק מהשרת; נשמר)"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg קבצים נמצאים רק בעותק (נמחקו מהשרת; נשמרו)"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Checked %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נבדק %@"
+          }
+        }
+      }
+    },
+    "All %lld copies up to date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Your copy is up to date"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "All %arg copies up to date"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כל %arg העותקים מעודכנים"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "העותק שלך מעודכן"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כל %arg העותקים מעודכנים"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "שני העותקים מעודכנים"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld copies up to date" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld מתוך %2$lld עותקים מעודכנים"
+          }
+        }
+      }
+    },
+    "Needs a look: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דורש בדיקה: %@"
+          }
+        }
+      }
+    },
+    "Copying to %@…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעתיק אל %@…"
+          }
+        }
+      }
+    },
+    "Comparing with your files…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משווה עם הקבצים שלך…"
+          }
+        }
+      }
+    },
+    "Show on all your devices" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להציג בכל המכשירים שלך"
+          }
+        }
+      }
+    },
+    "Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone's lock." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק. העמוד נפתח רק עם נעילת הטלפון."
+          }
+        }
+      }
+    },
+    "%@ · Hidden on all your devices" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · מוסתר בכל המכשירים שלך"
+          }
+        }
+      }
+    },
+    "%@ · by the app they were taken in" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · לפי האפליקציה שבה צולמו"
+          }
+        }
+      }
+    },
+    "No app name" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלי שם אפליקציה"
+          }
+        }
+      }
+    },
+    "Imported" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיובא"
+          }
+        }
+      }
+    },
+    "Of what was imported" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתוך מה שיובא"
+          }
+        }
+      }
+    },
+    "%@: files whose name and folder say nothing: downloads, saved images, files from a computer." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: קבצים שהשם והתיקייה שלהם לא מספרים דבר: הורדות, תמונות שנשמרו, קבצים ממחשב."
+          }
+        }
+      }
+    },
+    "%@ more %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Hidden on all your devices: %@. Not counted here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוסתר בכל המכשירים שלך: %@. לא נספר כאן."
+          }
+        }
+      }
+    },
+    "Private settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren't counted here." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדרות פרטיות יכולות להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן."
+          }
+        }
+      }
+    },
+    "Nothing written yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עוד לא נכתב כלום"
+          }
+        }
+      }
+    },
+    "%lld more in sources you hide · Show" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg more in sources you hide · Show"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg more in sources you hide · Show"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד %arg במקורות שהסתרת · הצג"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד אחת במקורות שהסתרת · הצג"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד %arg במקורות שהסתרת · הצג"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "עוד %arg במקורות שהסתרת · הצג"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Including %lld from sources you hide · Hide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Including %arg from sources you hide · Hide"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "Including %arg from sources you hide · Hide"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@n@"
+          },
+          "substitutions" : {
+            "n" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כולל %arg ממקורות שהסתרת · הסתר"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כולל אחת ממקורות שהסתרת · הסתר"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כולל %arg ממקורות שהסתרת · הסתר"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "כולל %arg ממקורות שהסתרת · הסתר"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Saved in" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשמר ב"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

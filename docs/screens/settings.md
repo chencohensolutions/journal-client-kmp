@@ -24,8 +24,7 @@ saying how it stands and opening a page of its own; the switches used most stay 
 
 The pages, and what each holds:
 
-- **Show in the app** (a page; first; since Oct 27, 2026 a status page, kinds c3 of the UI lab, Android; iOS not built
-  yet): nothing here changes; it says what the user has and what isn't backed up. At the top "87,343 files" and, in
+- **Show in the app** (a page; first; since Oct 27, 2026 a status page, kinds c3 of the UI lab, Android; iOS since Oct 29, 2026): nothing here changes; it says what the user has and what isn't backed up. At the top "87,343 files" and, in
   orange, "☁ 15 not backed up ›" (or "All backed up"). Then **Photos and videos**, a card with a line per kind:
   Camera, Screenshots, Sent to you, each folder (WhatsApp, Telegram, Petcube…), Other last, the most files first, each
   with its icon, its total in a column at the end, and "12 not backed up ›" in orange under its name where some of
@@ -55,7 +54,7 @@ The pages, and what each holds:
   `folder:whatsapp` it is since Oct 27, 2026, as is any folder kept with capitals: folder ids are in lower case since
   Oct 27, 2026, and written so). The Showing sheets keep b2's pills, Imported box and Private settings line
   (`ShownSourcesPills.kt`, `ShowingSheet`).
-- **Your cameras** (a page under Library, Oct 27, 2026; Android only, iOS not built yet): a line on what it does,
+- **Your cameras** (a page under Library, Oct 27, 2026; Android; iOS since Oct 29, 2026): a line on what it does,
   then one card of every camera the user's files name, the most photos first, each with its photos and years
   ("Samsung Galaxy S25 · 8,542 · 2025–2026") and a **Mine** switch; a camera marked not the user's also says "Its
   photos are in Sent to you". **Names and merging are the phone's** (Oct 27, 2026, the owner's choice): the server
@@ -76,8 +75,7 @@ The pages, and what each holds:
   marked counts as yours, so nothing moves until you choose." Loading, "Can't reach your server" with Try again, and
   "Not changed" (the switch goes back) as in Private settings. In the UI lab: `./scripts/ui-lab.sh cameras
   current|confirm|moving` (the owner's camera tags with made-up years, so the merging shows; the move timed).
-- **Sound folders** (a page under Library after Your cameras, Oct 27, 2026, option b of the UI lab; Android only, iOS
-  not built yet): every folder the user's sound recordings came from (`soundFolders`: a phone's Call, an import's
+- **Sound folders** (a page under Library after Your cameras, Oct 27, 2026, option b of the UI lab; Android; iOS since Oct 29, 2026): every folder the user's sound recordings came from (`soundFolders`: a phone's Call, an import's
   Calls, Voice Recorder, super_recorder), grouped by where their recordings go: **Calls** ("Their recordings are phone
   calls, in Calls on all your devices."), **Voice recordings**, then **Kept as folders** ("Each stays a folder of its
   own, until you move it."; its own kind, `folder:calls`), each group's folders in a card, the most files first, or "No
@@ -107,7 +105,7 @@ The pages, and what each holds:
     `storageUsage`), also with backup off. Asked when Settings or Backup opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
   - **Copies on other disks ›** (Oct 28, 2026, option a of
-    [the round](../ux-history/backup/2026-10-28-copies.md); Android only, iOS not built yet), the top card's last row,
+    [the round](../ux-history/backup/2026-10-28-copies.md); Android; iOS since Oct 29, 2026), the top card's last row,
     also with backup off, on a server whose `serverInfo.copies` is on and once it answered with at least one copy
     (`ServerCopies.refresh` when Backup opens). Its line is `ServerCopiesState.summary`: "Needs a look: F:\hen" in
     red with a dot (a copy's folder gone, its disk full, files failed or on the server's own disk), "Copying to
@@ -197,7 +195,7 @@ The pages, and what each holds:
   - **Kept on this phone**: "2.3 GB of 10 GB used", a limit of **1, 2, 5, 10 (default), 20 or 50 GB**, and **Clear**.
     Previews and downloaded originals of server photos are kept up to the limit (the oldest go first) and fetched
     again when scrolled to; none are pinned, also for photos removed from the phone.
-  - Android only, at the end of Image quality: **Quick image while scrolling** (a section of its own, "Advanced",
+  - At the end of Image quality (Android; iOS since Oct 29, 2026, its width as a segmented control and the sharp image asked for once a tile has stayed 0.3 s): **Quick image while scrolling** (a section of its own, "Advanced",
     until Oct 24, 2026): the first image of a photo only on the server, shown at once and while a list moves fast,
     before its sharp preview: its width in percent of the screen's (or **None**), and its format.
 - **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row under Backup and storage, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
@@ -232,7 +230,7 @@ The pages, and what each holds:
   (since Oct 21, 2026 only there; it also drove story suggestions until stories were removed). Higher sets only
   near-identical photos together; lower makes bigger, looser sets. The default is the platform model's
   own (**60%** Android, **80%** iOS); **Reset to N%** shows when it's changed. Then (Android since Oct 27, 2026, moved
-  from Show in the app when it became a status page; iOS still has them there) **What Moments shows**: **Filter bar in
+  from Show in the app when it became a status page; iOS since Oct 29, 2026) **What Moments shows**: **Filter bar in
   Moments** ("The row of sources above the feed. When off, choose them here."; on; `ShownSources.showFilterBar`, kept
   as `show_filter_bar`) and **Say what's hidden** ("“+6 WhatsApp” on a day, tap to see them"; on; the
   [Moments](moments.md) chips), with "Photos you wrote about always show in the storyline. Hiding never deletes
@@ -242,7 +240,7 @@ The pages, and what each holds:
   app", see below. **Show private media** moved into that screen (Android Oct 25, 2026; iOS Oct 26, 2026). The nudity slider
   that was here moved into Hidden collections (Oct 23, 2026), where the server does the hiding.
 - **Private settings** (its own screen, asked for Oct 22, 2026 as Hidden collections; both platforms; since Oct 27,
-  2026 on Android one list by kind, private c2 of the UI lab; iOS not built yet): opens only after the phone's lock
+  2026 on Android one list by kind, private c2 of the UI lab; iOS since Oct 29, 2026): opens only after the phone's lock
   (Android: fingerprint, face, PIN, pattern or password, the system's `BiometricPrompt` with device credential; iOS:
   Face ID, Touch ID or the passcode, `LAContext` `.deviceOwnerAuthentication`), every time it opens and again after
   the app was in the background; a phone without a screen lock (or passcode) can't open it. First **Private media**
@@ -276,7 +274,7 @@ The pages, and what each holds:
   200", "Server: paused at 40 of 200", "Server: waiting to read your photos", or "200 per page · 3 kept on this
   phone".
 - **Loading Moments** (a page, under Advanced at the end of the first page; Android since Oct 26, 2026, chosen by the
-  owner from the UI lab, round `ux/settings/2026-10-26`; iOS not yet): how [Moments](moments.md) is read from the
+  owner from the UI lab, round `ux/settings/2026-10-26`; iOS since Oct 29, 2026, its chips in a row that scrolls): how [Moments](moments.md) is read from the
   library database a page at a time. **Rows loaded at a time** (15, **30**, 60, 120: "More: fewer pauses when
   scrolling far, more memory.") and **Load ahead** (10, 20, **40**, 80: how many rows before the end of what is loaded
   the next rows start loading), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
@@ -503,6 +501,13 @@ indexes on the phone, to search without the server, offline too (journal-server-
   iCloud backup). Backup in [BackupViewModel.swift](../../iosApp/iosApp/BackupViewModel.swift) and
   [BackupService.swift](../../iosApp/iosApp/BackupService.swift) (when runs start), with `IosMediaFiles` and
   `BackgroundPieceSender` in [iosMain/backup/](../../sharedLogic/src/iosMain/kotlin/com/chencohensolution/journal/backup/BackgroundPieceSender.kt).
+- iOS pages added Oct 29, 2026: Show in the app, Moments' "What Moments shows" and Loading Moments in
+  [SettingsPages.swift](../../iosApp/iosApp/SettingsPages.swift); Your cameras in
+  [CamerasView.swift](../../iosApp/iosApp/CamerasView.swift) (`CamerasController`); Sound folders in
+  [SoundFoldersView.swift](../../iosApp/iosApp/SoundFoldersView.swift) (`SoundFoldersController`); Copies on other disks
+  in [CopiesView.swift](../../iosApp/iosApp/CopiesView.swift) (`IosJournal.serverCopies()`, watched while the page
+  shows); the Showing sheets' pills in [ShownSourcesViews.swift](../../iosApp/iosApp/ShownSourcesViews.swift)
+  (`ShownSourcesPills`, with `ShownSourcesChoice` in the environment for Imported and Private settings).
 
 ## Design history
 

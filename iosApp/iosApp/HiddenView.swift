@@ -16,7 +16,7 @@ struct HiddenView: View {
                 actions: HiddenActions(
                     retry: hidden.retry, set: hidden.set, setQuery: hidden.setQuery,
                     setNudityHidden: hidden.setNudityHidden, setNudityFromPercent: hidden.setNudityFromPercent,
-                    setShowPrivate: settings.setShowPrivateMedia
+                    setShowPrivate: settings.setShowPrivateMedia, show: hidden.show
                 ),
                 showPrivate: settings.state.privateMedia.show
             )
@@ -49,6 +49,7 @@ final class HiddenViewModel: ObservableObject {
     func retry() { controller.retry() }
     func set(_ collection: HiddenCollections.Collection, _ hidden: Bool) { controller.set(collection: collection, hidden: hidden) }
     func setQuery(_ text: String) { controller.setQuery(text: text) }
+    func show(_ kind: PrivateKinds.Kind, _ shown: Bool) { controller.show(kind: kind, shown: shown) }
     func setNudityHidden(_ hidden: Bool) { controller.setNudityHidden(hidden: hidden) }
     func setNudityFromPercent(_ percent: Int) { controller.setNudityFromPercent(percent: Int32(percent)) }
 }
@@ -66,19 +67,20 @@ struct HiddenActions {
     var setNudityFromPercent: (Int) -> Void
     /// "Show private media", kept on this phone (not on the server).
     var setShowPrivate: (Bool) -> Void = { _ in }
+    /// A kind, or a screenshot app, shown or hidden on every device; like `set`.
+    var show: (PrivateKinds.Kind, Bool) -> Void = { _, _ in }
 }
 
-/// "Show private media" (this phone's), then nudity, sound recordings, all of WhatsApp and screenshots by app, hidden on
-/// every device by the server. Drawn from `state` alone, so the UI lab shows it too. As Android's `HiddenContent`; see
-/// docs/screens/settings.md.
+/// "Show private media" (this phone's), then what shows on all your devices (option c2 of the UI lab, Oct 27, 2026): one
+/// list by kind with a Show switch each (on = shown), the hidden ones included, the most files first, Screenshots as
+/// chips of just the app's name; then Nudity with its slider. Drawn from `state` alone, so the UI lab shows it too. As
+/// Android's `HiddenContent`; see docs/screens/settings.md.
 struct HiddenScreen: View {
     let state: HiddenCollectionsState
     let actions: HiddenActions
     var showPrivate = false
     /// The nudity slider's value while it is dragged; saved when let go.
     @State private var nudityFrom: Double?
-    /// The screenshot apps are folded to the shown ones until opened.
-    @State private var appsOpen = false
 
     var body: some View {
         Form {
@@ -95,8 +97,6 @@ struct HiddenScreen: View {
                 .tint(LibraryColors.accent)
             } header: {
                 Text("Private media")
-            } footer: {
-                Text("Hidden here means hidden on all your devices: not in the library, its counts or search. Nothing is deleted; switch it off to see them again. Previews kept on this phone of what you hide are deleted.")
             }
             .listRowBackground(LibraryColors.raised)
             switch state {
@@ -124,99 +124,71 @@ struct HiddenScreen: View {
 
     @ViewBuilder
     private func collections(_ ready: HiddenCollectionsStateReady) -> some View {
-        let shown = ready.collections
         let saving = ready.saving
-        if ready.notChanged {
-            Section {
-            } footer: {
-                Text("Not changed: can’t reach your server. Try again when connected to it.").foregroundStyle(LibraryColors.warning)
-            }
-        }
-        nudity(shown.nudity, saving: saving)
-        // Sound recordings, on a server that has them: how many of each, and whether to show them (off at first: on
-        // means shown here, unlike the collections below).
-        if let recordings = shown.recordings, let calls = shown.calls, let voiceMessages = shown.voiceMessages {
-            Section {
-                showRow(Text("Show recordings"), recordings, count: String(localized: "\(Int(recordings.files)) recordings"), saving: saving)
-                showRow(Text("Show phone calls"), calls, count: String(localized: "\(Int(calls.files)) calls"), saving: saving)
-                showRow(
-                    Text("Show WhatsApp voice messages"), voiceMessages,
-                    count: String(localized: "\(Int(voiceMessages.files)) voice messages"), saving: saving
-                )
-            } header: {
-                Text("Sound recordings")
-            } footer: {
-                Text("Off at first: sound recordings stay hidden on all your devices until you show them here. Shown ones appear in Moments.")
-            }
-            .listRowBackground(LibraryColors.raised)
-        }
+        let show: (PrivateKinds.Kind, Bool) -> Void = { kind, shown in if !saving { actions.show(kind, shown) } }
         Section {
-            row(Text("All WhatsApp photos and videos"), shown.whatsapp, count: String(localized: "\(Int(shown.whatsapp.files)) photos and videos"), saving: saving)
-        } header: {
-            Text("WhatsApp")
-        }
-        .listRowBackground(LibraryColors.raised)
-        Section {
-            row(Text("Without an app name"), shown.screenshotsWithoutApp, count: screenshots(shown.screenshotsWithoutApp), saving: saving)
-            if shown.screenshotApps.isEmpty {
-                Text("No screenshot on your server names its app yet.").font(.footnote).foregroundStyle(LibraryColors.muted)
-            } else {
-                apps(ready, saving: saving)
+            ForEach(Array(ready.kinds.kinds.enumerated()), id: \.offset) { _, kind in
+                if kind.type == .screenshots {
+                    screenshotsRow(kind, apps: ready.kinds.screenshotApps, show: show)
+                } else {
+                    kindRow(kind, show: show)
+                }
             }
         } header: {
-            Text("Screenshots")
+            Text("Show on all your devices")
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                if ready.notChanged {
+                    Text("Not changed: can’t reach your server. Try again when connected to it.").foregroundStyle(LibraryColors.warning)
+                }
+                Text("Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone's lock.")
+            }
         }
         .listRowBackground(LibraryColors.raised)
+        nudity(ready.collections.nudity, saving: saving)
     }
 
-    /// Screenshot apps as pills, filled with a check while shown. Folded at first to the shown ones; open, every app
-    /// (filtered by Find an app) to show or hide.
-    @ViewBuilder
-    private func apps(_ ready: HiddenCollectionsStateReady, saving: Bool) -> some View {
-        let all = ready.collections.screenshotApps
-        let appsShown = all.filter { !$0.hidden }
-        Button { withAnimation { appsOpen.toggle() } } label: {
-            HStack {
+    /// A kind's Show switch, with its icon and files; off says it is hidden on all devices.
+    private func kindRow(_ kind: PrivateKinds.Kind, show: @escaping (PrivateKinds.Kind, Bool) -> Void) -> some View {
+        let files = Int(kind.files).formatted()
+        return Toggle(isOn: Binding(get: { kind.shown }, set: { show(kind, $0) })) {
+            HStack(spacing: 14) {
+                Image(systemName: kind.symbol).foregroundStyle(LibraryColors.muted).frame(width: 22)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Apps").fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
-                    Text("\(appsShown.count.formatted()) of \(all.count.formatted()) shown")
+                    Text(verbatim: kind.title).fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Group {
+                        if kind.shown { Text(verbatim: files) } else { Text("\(files) · Hidden on all your devices") }
+                    }
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(kind.shown ? LibraryColors.muted : LibraryColors.warning)
+                }
+            }
+        }
+        .tint(LibraryColors.accent)
+    }
+
+    /// Screenshots: its files, then a chip per app it was taken in, just the app's name.
+    private func screenshotsRow(_ kind: PrivateKinds.Kind, apps: [PrivateKinds.Kind], show: @escaping (PrivateKinds.Kind, Bool) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Image(systemName: kind.symbol).foregroundStyle(LibraryColors.muted).frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: kind.title).fontWeight(.semibold).foregroundStyle(LibraryColors.onBackground)
+                    Text("\(Int(kind.files).formatted()) · by the app they were taken in")
                         .font(.footnote)
                         .monospacedDigit()
                         .foregroundStyle(LibraryColors.muted)
                 }
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .foregroundStyle(LibraryColors.muted)
-                    .rotationEffect(.degrees(appsOpen ? 180 : 0))
             }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(appsOpen ? Text("Show only the apps shown") : Text("Show all apps"))
-        if appsOpen {
-            HStack {
-                Image(systemName: "magnifyingglass").foregroundStyle(LibraryColors.muted)
-                TextField("Find an app", text: Binding(get: { ready.query }, set: actions.setQuery))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .foregroundStyle(LibraryColors.onBackground)
-            }
-            Text("Tap an app to show or hide its screenshots; filled ones are shown.")
-                .font(.footnote)
-                .foregroundStyle(LibraryColors.muted)
-        }
-        let pills = appsOpen ? ready.shownApps : appsShown
-        if pills.isEmpty && !appsOpen {
-            Text("No app’s screenshots are shown. Open the list to show some.").font(.footnote).foregroundStyle(LibraryColors.muted)
-        } else if !pills.isEmpty {
             FlowLayout(spacing: 8) {
-                ForEach(pills, id: \.name) { app in
-                    AppPill(app: app) { if !saving { actions.set(app, !app.hidden) } }
+                ForEach(Array(apps.enumerated()), id: \.offset) { _, app in
+                    AppPill(app: app) { show(app, !app.shown) }
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.leading, 36)
         }
+        .padding(.vertical, 4)
     }
 
     /// Nudity: the Show switch (off, so hidden, by default), with how many files score that much (and how many aren't
@@ -262,47 +234,23 @@ struct HiddenScreen: View {
         }
         .listRowBackground(LibraryColors.raised)
     }
-
-    /// A collection's switch, with how many files it has; on means hidden.
-    private func row(_ title: Text, _ collection: HiddenCollections.Collection, count: String, saving: Bool) -> some View {
-        Toggle(isOn: Binding(get: { collection.hidden }, set: { if !saving { actions.set(collection, $0) } })) {
-            VStack(alignment: .leading, spacing: 2) {
-                title.foregroundStyle(LibraryColors.onBackground)
-                Text(count).font(.footnote).monospacedDigit().foregroundStyle(LibraryColors.muted)
-            }
-        }
-        .tint(LibraryColors.accent)
-    }
-
-    /// A collection's Show switch, with how many files it has: on means shown, the opposite of `row`. For sound
-    /// recordings, hidden until the user shows them.
-    private func showRow(_ title: Text, _ collection: HiddenCollections.Collection, count: String, saving: Bool) -> some View {
-        Toggle(isOn: Binding(get: { !collection.hidden }, set: { if !saving { actions.set(collection, !$0) } })) {
-            VStack(alignment: .leading, spacing: 2) {
-                title.foregroundStyle(LibraryColors.onBackground)
-                Text(count).font(.footnote).monospacedDigit().foregroundStyle(LibraryColors.muted)
-            }
-        }
-        .tint(LibraryColors.accent)
-    }
-
-    private func screenshots(_ collection: HiddenCollections.Collection) -> String {
-        String(localized: "\(Int(collection.files)) screenshots")
-    }
 }
 
-/// A screenshot app as a pill: filled, with a check, while its screenshots are shown; outlined while hidden. The count
-/// is how many screenshots it has.
+/// A screenshot app as a pill, just its name ("Bumble", "No app name") and its screenshots: filled, with a check, while
+/// they are shown; outlined while hidden.
 private struct AppPill: View {
-    let app: HiddenCollections.Collection
+    let app: PrivateKinds.Kind
     let toggle: () -> Void
 
     var body: some View {
-        let on = !app.hidden
+        let on = app.shown
         Button(action: toggle) {
             HStack(spacing: 6) {
                 if on { Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)) }
-                Text(verbatim: app.name).font(.system(size: 14, weight: .semibold))
+                Group {
+                    if app.name.isEmpty { Text("No app name") } else { Text(verbatim: app.name) }
+                }
+                .font(.system(size: 14, weight: .semibold))
                 Text(verbatim: Int(app.files).formatted())
                     .font(.system(size: 13))
                     .foregroundStyle(on ? LibraryColors.onInverseMuted : LibraryColors.muted)
@@ -320,6 +268,31 @@ private struct AppPill: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? [.isSelected] : [])
+    }
+}
+
+extension PrivateKinds.Kind {
+    /// The kind as the rest of the app names it: a folder by its name, Screenshots, Sent to you, the sound kinds.
+    var title: String {
+        switch type {
+        case .folder: return MediaSource.companion.folder(name: name).title
+        case .screenshots: return MediaSource.screenshots.title
+        case .sentToYou: return MediaSource.received.title
+        case .calls: return AudioKind.call.title
+        case .voiceRecordings: return AudioKind.recording.title
+        default: return AudioKind.voiceMessage.title
+        }
+    }
+
+    var symbol: String {
+        switch type {
+        case .folder: return MediaSource.companion.folder(name: name).symbol
+        case .screenshots: return MediaSource.screenshots.symbol
+        case .sentToYou: return MediaSource.received.symbol
+        case .calls: return AudioKind.call.symbol
+        case .voiceRecordings: return AudioKind.recording.symbol
+        default: return AudioKind.voiceMessage.symbol
+        }
     }
 }
 

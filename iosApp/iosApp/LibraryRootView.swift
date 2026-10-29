@@ -53,6 +53,8 @@ struct LibraryRootView: View {
         case similar(String)
         /// A sound recording's page, by its sha256.
         case recording(String)
+        /// Private settings, from a source's lock in a "Showing" sheet.
+        case privateSettings
     }
 
     /// Opened from the storyline (`storyline`), a tag (`tag`), a row of Moments (`feedSection`, its key, with
@@ -181,6 +183,7 @@ struct LibraryRootView: View {
                                 prepare: search.prepare,
                                 addPerson: search.addPerson,
                                 removePerson: search.removePerson,
+                                showHiddenSources: search.showHiddenSources,
                                 markPrivate: { items in
                                     let done = await ServerImages.shared.markPrivate(items)
                                     if done { await MainActor.run { search.madePrivate(items) } }
@@ -236,6 +239,8 @@ struct LibraryRootView: View {
                             }
                             SimilarPageView(items: items) { openInOrder(items, $0) }
                                 .task(id: itemId) { await stories.want(opened.map(\.id)) }
+                        case .privateSettings:
+                            HiddenView(settings: settings)
                         case .recording(let sha256):
                             recordingPage(sha256)
                         case .tags:
@@ -251,6 +256,10 @@ struct LibraryRootView: View {
                 .environment(\.exploreReads, exploreReads)
                 .environment(\.feedAudio, FeedAudio(player: AudioPlayer.shared) { path.append(.recording($0.sha256)) })
                 .environment(\.showOnPhoneBadge, settings.state.showOnPhoneBadge)
+                .environment(\.shownSourcesChoice, ShownSourcesChoice(
+                    shown: settings.state.shownSources, hiddenEverywhere: settings.hiddenEverywhere,
+                    toggleImported: settings.toggleImported, openPrivate: { path.append(.privateSettings) }
+                ))
                 .cropCover($crop, stories: stories.state, want: stories.want) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)
                 .fullScreenCover(item: $viewer) { request in

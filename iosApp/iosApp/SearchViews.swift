@@ -25,6 +25,8 @@ struct SearchActions {
     var addPerson: (Person) -> Void = { _ in }
     /// A person chip's ×.
     var removePerson: (String) -> Void = { _ in }
+    /// "N more in sources you hide · Show" (true) and its "Hide" (false), for this search only.
+    var showHiddenSources: (Bool) -> Void = { _ in }
     /// The picked photos' Mark private; false when the server couldn't be reached.
     var markPrivate: ([MediaItem]) async -> Bool = { _ in true }
 }
@@ -110,6 +112,25 @@ struct SearchResultsView: View {
             }
             if search.status == .done {
                 FoundNote(search: search)
+            }
+            if search.status == .done && search.hiddenBySources > 0 {
+                let count = Int(search.hiddenBySources)
+                Button { actions.showHiddenSources(!search.showingHidden) } label: {
+                    Group {
+                        if search.showingHidden {
+                            Text("Including \(count) from sources you hide · Hide")
+                        } else {
+                            Text("\(count) more in sources you hide · Show")
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(LibraryColors.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
             // Kept while a new search runs; the field shows its spinner.
             if search.status == .done || search.status == .searching {

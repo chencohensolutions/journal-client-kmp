@@ -46,4 +46,6 @@ final class SearchViewModel: ObservableObject {
     func addPerson(_ person: Person) { controller.addPerson(person: person) }
     func removePerson(_ id: String) { controller.removePerson(id: id) }
     func madePrivate(_ items: [MediaItem]) { controller.madePrivate(items: items) }
+    /// The results of the sources Moments hides, shown (true) or left out again, for this search only.
+    func showHiddenSources(_ show: Bool) { controller.showHiddenSources(show: show) }
 }

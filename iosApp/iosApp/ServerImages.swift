@@ -34,6 +34,16 @@ final class ServerImages: NSObject, ServerImageDecoding {
         return image
     }
 
+    /// What `item` shows first, before its sharp tile (Settings › Storage on this phone › Quick image while scrolling),
+    /// from memory or as `IosServerFiles.firstImage` finds it; nil when it is off.
+    func first(_ item: MediaItem, windowPixels: Int) async -> UIImage? {
+        let key = "\(item.id)@first-\(windowPixels)" as NSString
+        if let image = cache.object(forKey: key) { return image }
+        let image = await awaiting { done in self.files.firstImage(item: item, windowWidth: Int32(windowPixels), onResult: done) }
+        if let image { cache.setObject(image, forKey: key, cost: Int(image.size.width * image.size.height * image.scale * image.scale * 4)) }
+        return image
+    }
+
     /// `face` as a round avatar `pixels` across: a crop of its photo's preview from the server, kept in memory.
     func face(_ face: Face, pixels: Int) async -> UIImage? {
         let key = "face:\(face.id)@\(pixels)" as NSString

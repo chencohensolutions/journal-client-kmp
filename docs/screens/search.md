@@ -85,8 +85,8 @@ anyway ("Always show this day"). The filter's years and towns count only what sh
 many were left out of the pages shown so far, "**12 more in sources you hide · Show**"; a tap shows them for this
 search only ("Including 12 from sources you hide · Hide" takes them out again), and the next search hides them again.
 Show in the app itself doesn't change. A change to Show in the app while results are up shows them again through it.
-What Private settings hides on all devices never reaches the phone: the server leaves it out. Android only; on iOS
-the line is still to do.
+What Private settings hides on all devices never reaches the phone: the server leaves it out. Android, and iOS since
+Oct 29, 2026.
 
 ## Code
 
