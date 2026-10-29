@@ -31,4 +31,7 @@ internal interface DeviceKeyStore {
     fun saveCertificate(alias: String, certificateDer: ByteArray)
 
     fun delete(alias: String)
+
+    /** When the certificate saved under [alias] expires (epoch milliseconds); null when it can't tell. */
+    fun certificateNotAfter(alias: String): Long? = null
 }

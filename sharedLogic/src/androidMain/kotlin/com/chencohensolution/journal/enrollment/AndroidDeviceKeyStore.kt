@@ -46,6 +46,9 @@ internal class AndroidDeviceKeyStore : DeviceKeyStore {
         if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
     }
 
+    override fun certificateNotAfter(alias: String): Long? =
+        (androidKeyStore().getCertificate(alias) as? java.security.cert.X509Certificate)?.notAfter?.time
+
     private fun generateKeyPair(alias: String, strongBox: Boolean): KeyPair {
         // StrongBox only supports SHA-256; the TLS stack may also ask for other digests or none.
         val digests = if (strongBox) {

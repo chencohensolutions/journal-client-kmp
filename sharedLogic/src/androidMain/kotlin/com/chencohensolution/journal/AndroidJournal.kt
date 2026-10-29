@@ -9,6 +9,8 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.chencohensolution.journal.db.LibraryDatabase
 import android.os.Build
 import com.chencohensolution.journal.backup.AndroidMediaFiles
+import com.chencohensolution.journal.enrollment.HttpRenewApi
+import com.chencohensolution.journal.enrollment.CertificateRenewal
 import com.chencohensolution.journal.backup.AndroidSoundFolders
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.backup.UploadLedger
@@ -119,6 +121,18 @@ fun createEnrollmentController(context: Context, journal: JournalController): En
         defaultDeviceName = Build.MODEL,
         onEnrolled = journal::useEnrolledIdentity,
     )
+
+/** Renews this device's certificate in its last 30 days; a renewal switches [journal] to the new identity. */
+fun createCertificateRenewal(context: Context, journal: JournalController): CertificateRenewal {
+    val settings = JournalSettings(SharedPreferencesStore(context))
+    return CertificateRenewal(
+        settings = settings,
+        keyStore = AndroidDeviceKeyStore(),
+        api = HttpRenewApi(serverHttp(context)),
+        test = CertificateRenewal.connectionTest(settings, AndroidMtlsHttpClientFactory(context)),
+        onRenewed = journal::useRenewedIdentity,
+    )
+}
 
 /**
  * The device photo library (MediaStore), with each photo's backup status from [backup], and the photos that are only on

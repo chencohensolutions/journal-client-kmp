@@ -344,4 +344,11 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   kept as a conflict copy; the writing's `history` lets two edits be merged instead, keeping both as versions.
 - Other devices check for changes on open and **every 15 minutes** (Android WorkManager's minimum; on iOS when the
   system allows).
-- Later: removing a photo from the journal, certificate renewal, search with a shared model.
+- Later: removing a photo from the journal, search with a shared model.
+- **Certificate renewal** (Oct 30, 2026; Android only, iOS not built yet): a device certificate lasts a year. In its
+  last 30 days the app renews it at start (`CertificateRenewal`, `enrollment/CertificateRenewal.kt`): a new key under
+  a new alias, `renewCertificate` asked with the current certificate, a connection test with the new one, then the
+  switch (`JournalController.useRenewedIdentity`) and the old key deleted. The server revokes the old certificate
+  once the new one is used, so a renewal that fails part way changes nothing; it is tried at the next start. The
+  certificate's end is kept in settings (`certificateExpiresAt`) from enrollment on, and read from the Keystore
+  (`DeviceKeyStore.certificateNotAfter`) for a device enrolled before.

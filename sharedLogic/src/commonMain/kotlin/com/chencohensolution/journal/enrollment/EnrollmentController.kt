@@ -214,6 +214,7 @@ class EnrollmentController internal constructor(
                 }
 
                 val previous = settings.identityAlias
+                settings.certificateExpiresAt = runCatching { Instant.parse(issued.expiresAt).toEpochMilliseconds() }.getOrNull()
                 onEnrolled(endpoint, alias)
                 succeeded = true
                 if (previous != null && previous != alias && previous.startsWith(IDENTITY_ALIAS_PREFIX)) {

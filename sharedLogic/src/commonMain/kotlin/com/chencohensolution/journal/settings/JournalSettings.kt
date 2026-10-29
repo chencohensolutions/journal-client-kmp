@@ -28,6 +28,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_IDENTITY_ALIAS)
         set(value) = store.putString(KEY_IDENTITY_ALIAS, value)
 
+    /** When this device's certificate expires (epoch milliseconds); null when not known (enrolled before it was kept). */
+    var certificateExpiresAt: Long?
+        get() = store.getString(KEY_CERTIFICATE_EXPIRES_AT)?.toLongOrNull()
+        set(value) = store.putString(KEY_CERTIFICATE_EXPIRES_AT, value?.toString())
+
     /** Whether the photo access screen was answered (allowed, denied or "Not now"). */
     var photoAccessRequested: Boolean
         get() = store.getString(KEY_PHOTO_ACCESS_REQUESTED) == "true"
@@ -297,6 +302,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
+        private const val KEY_CERTIFICATE_EXPIRES_AT = "certificate_expires_at"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"
         private const val KEY_LAST_STORY_ID_MILLIS = "last_story_id_millis"
         private const val KEY_MADE_UP_LIBRARY = "made_up_library"

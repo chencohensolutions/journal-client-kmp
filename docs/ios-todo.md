@@ -13,6 +13,14 @@ their page), and backup of calls and recordings from folders with Free up space 
 
 Still missing on iOS:
 
+- **Certificate renewal** (Android Oct 30, 2026; [design.md](design.md), "Certificate renewal"). Shared logic is done:
+  `CertificateRenewal` (`enrollment/CertificateRenewal.kt`) with `renewIfDue(onDone)`, `expiresAt()` and `close()`.
+  iOS needs: an `IosJournal` factory like Android's `createCertificateRenewal` (in `AndroidJournal.kt`: settings, the
+  key store, `HttpRenewApi(serverHttp)`, `CertificateRenewal.connectionTest`, `journal::useRenewedIdentity`), a call
+  to `renewIfDue` at app start (Android: `JournalViewModel`'s `init`), and `IosDeviceKeyStore.certificateNotAfter`
+  (the Keychain certificate's notValidAfter) for iPhones enrolled before Oct 30, 2026, which don't have the end in
+  settings. No screen and no strings.
+
 - **Backup › Copies on other disks** (Android Oct 28, 2026; [screens/settings.md](screens/settings.md), Backup).
   Shared logic is done: `ServerCopies` (`server/ServerCopies.kt`) with `currentState: ServerCopiesState`, `refresh()`
   (when Backup opens), `watch()` (while the page shows; cancel the handle on leave), `copyNow(folder)`, `stop(folder)`,

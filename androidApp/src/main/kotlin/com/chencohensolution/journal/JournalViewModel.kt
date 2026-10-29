@@ -1,12 +1,15 @@
 package com.chencohensolution.journal
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.chencohensolution.journal.backup.BackupController
 import com.chencohensolution.journal.connection.JournalController
+import com.chencohensolution.journal.enrollment.CertificateRenewal
 import com.chencohensolution.journal.enrollment.EnrollmentController
+import com.chencohensolution.journal.enrollment.RenewalResult
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.local.LocalIndexes
@@ -43,10 +46,13 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val localIndexes: LocalIndexes = localIndexes(application)
     val serverIndexing: ServerIndexing = serverIndexing(application)
     val serverCopies: ServerCopies = serverCopies(application)
+    val renewal: CertificateRenewal = createCertificateRenewal(application, controller)
 
     init {
         // The video cache counts toward the same limit as previews from the start (Media3 reads its index here).
         Thread { ServerVideos.cache(application) }.start()
+        // In its last 30 days the certificate is renewed; offline, it is tried again at the next start.
+        renewal.renewIfDue { if (it is RenewalResult.Failed) Log.w("Journal", "Renewing the certificate: ${it.message}") }
     }
 
     override fun onCleared() {
@@ -56,6 +62,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
         settings.close()
         library.close()
         enrollment.close()
+        renewal.close()
         controller.close()
     }
 }

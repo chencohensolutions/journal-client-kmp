@@ -113,6 +113,12 @@ class JournalController internal constructor(
         }
     }
 
+    /** Switches to a renewed identity (CertificateRenewal): the same server, a new certificate; no new connection check. */
+    internal fun useRenewedIdentity(alias: String) {
+        settings.identityAlias = alias
+        _state.update { it.copy(identityAlias = alias) }
+    }
+
     fun connect() {
         val url = _state.value.serverUrl.trim()
         if (url.isEmpty()) {

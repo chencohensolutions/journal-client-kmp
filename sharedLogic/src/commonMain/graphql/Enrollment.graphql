@@ -26,3 +26,20 @@ mutation EnrollDevice($input: EnrollDeviceInput!) {
     }
   }
 }
+
+# A new certificate for a new key, asked with the current one in its last 30 days (CertificateRenewal).
+mutation RenewCertificate($csr: String!, $keyProtection: KeyProtection!) {
+  renewCertificate(csr: $csr, keyProtection: $keyProtection) {
+    __typename
+    ... on EnrolledDevice {
+      user
+      deviceName
+      certificate
+      serial
+      expiresAt
+    }
+    ... on EnrollmentRejected {
+      reason
+    }
+  }
+}
