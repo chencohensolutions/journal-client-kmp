@@ -7,11 +7,14 @@
 # debugging); otherwise the APK has every ABI.
 # Installing over an existing copy keeps its data (stories, tags, enrollment).
 set -euo pipefail
+# Git Bash on Windows would rewrite the device's paths (/data/local/tmp) into Windows ones.
+export MSYS_NO_PATHCONV=1
 
 target="${1:-phone}"
 cd "$(dirname "$0")/.."
 
 sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+[[ -d "$sdk" ]] || sdk="${LOCALAPPDATA:-}/Android/Sdk" # Windows
 adb="$sdk/platform-tools/adb"
 # Gradle needs a JDK: JAVA_HOME, else Homebrew's openjdk@21, else the one bundled with Android Studio.
 if [[ -z "${JAVA_HOME:-}" ]]; then
