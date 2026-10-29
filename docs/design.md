@@ -137,6 +137,8 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 - More than one photo for a storyline entry (the owner will decide how).
 - Multi-select in Moments for tagging (tag several at once; the shared logic already takes lists).
 - Renaming/merging tags; month scrubber; similarity search in the app (the server has `searchMedia`).
+- Copies on a friend's server (swap), encrypted copies, restore, and encrypted accounts (the server can't read them;
+  previews and indexes made on the phone), all optional: [plans/swap-and-encryption.md](plans/swap-and-encryption.md).
 
 ## Upload and sync
 
