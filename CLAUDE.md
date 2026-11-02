@@ -81,6 +81,12 @@ for later are in [docs/plans/](docs/plans/).
 
 No system JDK: use Homebrew's `openjdk@21` (or Android Studio's, if installed). `scripts/*.sh` find it themselves.
 
+Android emulator: use the `Journal` AVD, made for this project (2 cores, 2 GB RAM, Android 37.2 with Google Play).
+Run it only while needed: `./scripts/emulator.sh up` before installing or testing on it, `./scripts/emulator.sh down`
+when done. `up` starts it headless on the Mac's GPU (less power than software rendering), shuts down any other
+emulator, since scripts and `adb` pick the first running one, and waits for the boot (seconds, from the quick-boot
+snapshot). `WINDOW=1` shows its window.
+
 ```sh
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 ./gradlew :sharedLogic:testAndroidHostTest          # shared tests on the JVM (includes PhotoSafetyTest)
