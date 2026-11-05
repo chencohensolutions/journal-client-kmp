@@ -249,19 +249,55 @@ A user with `encrypted` keeps `blobs/` in the data folder instead of `media/`:
 
 ## Part 5: indexing on the phone (encrypted accounts)
 
-- In Settings › Search, an encrypted account turns indexes on per phone, as "On this phone" does today: text search
-  and faces first; text in photos, similar photos and aesthetic scores after.
-- **One phone indexes at a time**: on charger and Wi-Fi it takes a lease from the server for the next items
-  (`indexLease(index)`: a range of the feed, an hour long), so phones don't do the same work twice.
-- It reads each item **from a preview** of the size the model needs (about 512 px for SigLIP, about 1080 px for faces;
-  made on request as above), not the original.
+The server can't read an encrypted account, so phones make its indexes. **Making them is optional** (the owner's
+choice, Oct 29, 2026): off by default, on per phone and per index.
+
+### Two settings per index
+In Settings › Search, each index (text search, faces, text in photos, similar photos, aesthetic scores, the nudity
+scan) has, per phone:
+- **Keep on this phone** (as "On this phone" today): download the account's index blobs, decrypt them into the local
+  index and search there. Costs storage, no battery to speak of.
+- **Make on this phone** (new, off by default): run the model on this phone's photos and upload what it found. Needs
+  the model downloaded (sizes shown) and costs battery; turning it on implies keeping it.
+
+What follows from it being optional:
+- **No phone makes an index → that feature is off** for the account, as `serverInfo` turns it off today. The app
+  says so where the feature would be ("Search needs a phone that makes the search index", with a link to the
+  setting), not as an error.
+- **One phone is enough.** Other phones only keep the index, so an old or small phone can search without running any
+  model.
+- **Turned on later**, a phone catches up on the items no phone read yet (below). **Turned off**, it stops; what it
+  made stays in the account and other phones keep using it, and another phone can take over.
+- **The nudity scan** hides photos on other phones, so it is the one worth turning on early. While no phone makes it,
+  nothing is hidden by it; the app says so in the setting.
+
+### When a phone makes an index
+- **At upload, from the original.** A phone with "make" on runs the models on a photo while it has the original in
+  the clear for encrypting, so new photos cost no download. Models that are too heavy for that moment (aesthetic) wait
+  for the catch-up.
+- **Catch-up, on charger and Wi-Fi**: the items no phone read yet (photos uploaded by a phone with "make" off, the
+  library before the setting was turned on, a model changed). The phone takes a lease from the server for the next
+  items (`indexLease(index)`: a range of the feed, an hour long), so two phones don't do the same work, and reads each
+  **from a preview** of the size the model needs (about 512 px for SigLIP, about 1080 px for faces; made on request as
+  above). Android: WorkManager with charging and idle constraints. iOS: `BGProcessingTask`, which gives short and
+  unpredictable stretches, so the work saves after every item and goes on where it stopped.
+- **Which phone made what** is in the index blobs, so Settings can show "made by Pixel 9, 48 210 of 48 210".
+
+### What is kept and shared
 - It **uploads the vectors encrypted** (`kind=index`, one blob per batch, with `indexKey`; private items' vectors in
   their own blobs, under the private key), and **keeps them decrypted in its local index** (`localindex/`, as today).
-  Other phones download the batches and decrypt them into their own local index; search runs on the phone, offline
-  too.
-- Faces are grouped on the phone that indexes, and the names and groups go to the `people` account blob (versioned).
-- Models come from the server as today (`/models/…`); the vision half of the search model is needed now, not only the
-  text half.
+  Phones that keep the index download the batches and decrypt them into their own local index; search runs on the
+  phone, offline too.
+- **One model per account and index**, written in the account blob with its version. Every phone makes and reads with
+  that one, so their vectors compare. Since no server vectors need matching, mobile-sized models can be chosen
+  (a smaller SigLIP or MobileCLIP, 8-bit); changing the model means reading everything again.
+- **Android and iOS must agree**: the fixtures (`scripts/local-fixtures`) gain pictures and their vectors, and both
+  apps test that theirs are within 0.98 cosine of them, whatever their decoder and runtime (Core ML, NNAPI or CPU).
+- **Faces** are found on the phone that makes the index. New faces join the nearest named person or group; a full
+  regrouping runs only in the catch-up. Names and groups go to the `people` account blob (versioned).
+- **Duplicates** (similar photos) compare all pairs once in the catch-up, then only new items.
+- Models come from the server as today (`/models/…`), now with the vision halves too, downloaded only by phones with
+  "make" on.
 
 ## Part 6: swap and restore for encrypted accounts
 
@@ -277,7 +313,7 @@ be trusted and `"encrypt"` isn't asked for. Restore brings `blobs/` back; the ph
 | 2 | Encrypted copies: key file, opaque names, manifest | 1 | An off-site copy the friend can't read |
 | 3 | Restore, plain and encrypted | 1, 2 | Getting it back |
 | 4 | Encrypted accounts: spec, blob store, onboarding and key, upload, viewing, previews on request, private key | – | An account the server can't read |
-| 5 | Indexing on the phone | 4 | Search and faces for encrypted accounts |
+| 5 | Indexing on the phone (optional, per phone and index) | 4 | Search and faces for encrypted accounts |
 | 6 | Swap and restore for encrypted accounts | 1, 3, 4 | Their off-site copy |
 
 1–3 and 4–5 are independent; 1–3 first, since they protect the owner's existing library.
@@ -286,6 +322,10 @@ be trusted and `"encrypt"` isn't asked for. Restore brings `blobs/` back; the ph
 
 - The exact Argon2id parameters, the cipher, and the key file's format (in the spec, Part 4).
 - How a phone without the private key shows a private item: not at all, or a locked tile.
+- Which models encrypted accounts use on phones (Part 5): the server's SigLIP 2 base at 8 bits, or a smaller one;
+  measure time a photo and battery on a mid-range Android phone and an iPhone first.
+- Whether onboarding of an encrypted account suggests turning "make" on for the nudity scan and text search on the
+  first phone, or leaves every index off until the user goes to Settings.
 - Whether peers' certificates expire with the same 365 days as devices', and how they renew (devices don't yet).
 - What the host shows its admin about the peers it keeps copies for (`journal-server peers` is the start).
 
