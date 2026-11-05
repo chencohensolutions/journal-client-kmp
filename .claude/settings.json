@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "chencohen-skills": {
+      "source": {
+        "source": "github",
+        "repo": "chencohensolutions/claude-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ui-lab@chencohen-skills": true,
+    "android-emulator@chencohen-skills": true
+  }
+}
