@@ -13,6 +13,8 @@ Proposed on Nov 7, 2026, at the owner's ask: "pair two servers from the clients"
 - **No cap per user.** A user may offer friends any amount up to the free space on the disk of `peers_folder`; the
   phone shows that free space when making an invite. (A cap set at the server was proposed and declined.)
 - **Copies are encrypted by default**, with a passphrase the phone asks for (the existing `--from-passphrase` key).
+  The phone suggests six random words, shows them once and asks for them typed back (the server needs 24 characters,
+  or 4 words and 20); a forgotten passphrase is a lost copy.
   A plain copy, which the friend can read, is an option the user picks for a friend they trust.
 
 ## Proposed
