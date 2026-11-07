@@ -31,6 +31,9 @@ dependencies {
     implementation(libs.maplibre.android)
     implementation(libs.androidx.exifinterface)
     implementation(libs.play.services.code.scanner)
+    implementation(libs.zxing.core)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
 
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)

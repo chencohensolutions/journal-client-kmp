@@ -47,6 +47,12 @@ internal sealed interface Route {
     /** Settings › Backup › Copies on other disks. */
     data object Copies : Route
 
+    /** Settings › Backup › Swap with a friend, and its pages: an invite, joining one (or an offer back), the passphrase. */
+    data object Swap : Route
+    data object SwapHere : Route
+    data class SwapThere(val offerId: String? = null) : Route
+    data object CopyPassphrase : Route
+
     /** A person's page, or a group's ("Who's this?"). */
     data class Person(val id: String) : Route
 
@@ -100,6 +106,10 @@ internal sealed interface Route {
         SearchSettings -> "search-settings"
         BackupSettings -> "backup-settings"
         Copies -> "copies"
+        Swap -> "swap"
+        SwapHere -> "swap-here"
+        is SwapThere -> "swap-there|${offerId.orEmpty()}"
+        CopyPassphrase -> "copy-passphrase"
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
@@ -130,6 +140,11 @@ internal sealed interface Route {
                 "search-settings" -> SearchSettings
                 "backup-settings" -> BackupSettings
                 "copies" -> Copies
+                "swap" -> Swap
+                "swap-here" -> SwapHere
+                "swap-there" -> SwapThere(parts.getOrNull(1)?.ifEmpty { null })
+                // Behind the phone's lock, never brought back by itself: back to the Swap page.
+                "copy-passphrase" -> Swap
                 "phone-search" -> SearchSettings // On this phone, a screen of its own until Oct 24, 2026
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))

@@ -17,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.chencohensolution.journal.enrollment.parseEnrollmentLink
 import com.chencohensolution.journal.ui.EnrollmentWizard
+import com.chencohensolution.journal.swap.parseSwapLink
 import com.chencohensolution.journal.ui.JournalTheme
 import com.chencohensolution.journal.ui.library.LibraryApp
 import com.chencohensolution.journal.work.freeUp
@@ -26,6 +27,9 @@ class MainActivity : ComponentActivity() {
 
     /** Set when an enrollment link arrives, to open the wizard on it. */
     private var linkOpened by mutableStateOf(false)
+
+    /** A swap link opened from a friend's message (journal://swap?…), for Swap with a friend. */
+    private var swapLink by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -75,10 +79,13 @@ class MainActivity : ComponentActivity() {
                         localIndexes = viewModel.localIndexes,
                         serverIndexing = viewModel.serverIndexing,
                         serverCopies = viewModel.serverCopies,
+                        swaps = viewModel.swaps,
                         onRegisterAgain = {
                             viewModel.enrollment.reset()
                             showWizard = true
                         },
+                        swapLink = swapLink,
+                        swapLinkOpened = { swapLink = null },
                     )
                 }
             }
@@ -91,7 +98,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openLink(intent: Intent?) {
-        val link = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString?.let(::parseEnrollmentLink) ?: return
+        val data = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        if (parseSwapLink(data) != null) {
+            swapLink = data
+            return
+        }
+        val link = parseEnrollmentLink(data) ?: return
         viewModel.enrollment.openLink(link)
         linkOpened = true
     }

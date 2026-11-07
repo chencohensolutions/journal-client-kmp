@@ -59,6 +59,7 @@ import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.SoundFoldersState
 import com.chencohensolution.journal.server.KeptOriginals
 import com.chencohensolution.journal.server.ServerCopies
+import com.chencohensolution.journal.swap.SwapController
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
@@ -92,7 +93,11 @@ fun LibraryApp(
     localIndexes: LocalIndexes,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
+    swaps: SwapController,
     onRegisterAgain: () -> Unit,
+    /** A journal://swap link opened from outside the app (a friend's message), to join; [swapLinkOpened] once used. */
+    swapLink: String? = null,
+    swapLinkOpened: () -> Unit = {},
 ) {
     // Sound recordings play while the app is in front: leaving it pauses them (no background playing).
     val context = LocalContext.current
@@ -107,7 +112,7 @@ fun LibraryApp(
         LocalAudioPlayer provides audioPlayer,
         LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {
-        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, serverCopies, onRegisterAgain)
+        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, serverCopies, swaps, onRegisterAgain, swapLink, swapLinkOpened)
     }
 }
 
@@ -127,8 +132,13 @@ private fun LibraryScreens(
     localIndexes: LocalIndexes,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
+    swaps: SwapController,
     onRegisterAgain: () -> Unit,
+    swapLink: String?,
+    swapLinkOpened: () -> Unit,
 ) {
+    val swapState by swaps.state.collectAsStateWithLifecycle()
+    val swapMemory = remember { SwapRouteMemory() }
     val phoneSearchState by localIndexes.state.collectAsStateWithLifecycle()
     val indexingState by serverIndexing.state.collectAsStateWithLifecycle()
     val copiesState by serverCopies.state.collectAsStateWithLifecycle()
@@ -182,6 +192,17 @@ private fun LibraryScreens(
         stack = stack + it
     }
     val pop: () -> Unit = { stack = stack.dropLast(1) }
+    // A swap link opened from a friend's message: "Keep my copy at a friend's" on it.
+    LaunchedEffect(swapLink) {
+        val link = swapLink ?: return@LaunchedEffect
+        swapMemory.draft = JoinDraft().apply {
+            linkText = link
+            name = com.chencohensolution.journal.swap.parseSwapLink(link)?.from.orEmpty()
+        }
+        swaps.clearOutcome()
+        push(Route.SwapThere())
+        swapLinkOpened()
+    }
     actions.openFreeUp = { push(Route.FreeUp) }
     // A face's sheet, in a photo's details and after Edit faces: corrections go through the people controller.
     val faceActions = FaceActions(
@@ -434,6 +455,7 @@ private fun LibraryScreens(
                                         if (backupState.activity !is BackupActivity.Running) server.library.refreshUsage()
                                     }
                                     LaunchedEffect(features?.copies) { if (features?.copies == true) serverCopies.refresh() }
+                                    LaunchedEffect(Unit) { swaps.refresh() }
                                     BackupSettingsScreen(
                                         BackupUi(
                                             backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts,
@@ -442,6 +464,8 @@ private fun LibraryScreens(
                                         actions.backup,
                                         back = pop,
                                         openCopies = { push(Route.Copies) },
+                                        swap = swapState.takeIf { it.info != null && !it.unsupported },
+                                        openSwap = { push(Route.Swap) },
                                     )
                                 }
                                 Route.Copies -> {
@@ -452,6 +476,8 @@ private fun LibraryScreens(
                                     }
                                     CopiesScreen(copiesState, CopiesActions(copyNow = { serverCopies.copyNow(it.folder) }, stop = { serverCopies.stop(it.folder) }), back = pop)
                                 }
+                                Route.Swap, Route.SwapHere, is Route.SwapThere, Route.CopyPassphrase ->
+                                    SwapRoute(route, swaps, swapMemory, push, pop)
                                 Route.FreeUp -> {
                                     LaunchedEffect(Unit) { freeUp.refreshPlan() }
                                     FreeUpScreen(ui = storageUi(), actions = actions.storage, back = pop)

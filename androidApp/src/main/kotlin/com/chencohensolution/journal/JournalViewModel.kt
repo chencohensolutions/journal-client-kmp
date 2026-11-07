@@ -17,6 +17,7 @@ import com.chencohensolution.journal.people.PeopleController
 import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.server.ServerCopies
+import com.chencohensolution.journal.swap.SwapController
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.ui.library.ServerFiles
@@ -46,6 +47,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val localIndexes: LocalIndexes = localIndexes(application)
     val serverIndexing: ServerIndexing = serverIndexing(application)
     val serverCopies: ServerCopies = serverCopies(application)
+    val swaps: SwapController = swaps(application)
     val renewal: CertificateRenewal = createCertificateRenewal(application, controller)
 
     init {
