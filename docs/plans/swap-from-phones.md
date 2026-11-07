@@ -70,9 +70,11 @@ The owner wants the passphrase saved, not only remembered. When an encrypted cop
 1. The phone saves it to the platform's synced keychain by itself: iCloud Keychain on iOS (a `kSecAttrSynchronizable`
    item), Google Password Manager through Credential Manager on Android. A new phone on the same account gets it
    back; Settings shows it again behind Face ID or the fingerprint ("Show my copy passphrase").
-2. It offers a **recovery sheet**: a one-page PDF with the words, the server id and how to restore, to print or keep
+2. It offers a **recovery sheet**: a one-page PDF with the words (and a QR code of them), the server id, the friend's name and how to restore, to print or keep
    in Files.
-3. It offers the share sheet, for a password manager or a note.
+3. It offers the share sheet, for a password manager or a note, and Copy.
+4. Before the copy starts, the user types two of the words back, so it was surely kept. (On Android, Block Store,
+   restored with the phone's backup, is the alternative to Credential Manager; to decide when building.)
 
 Never on the journal server (the thing a copy guards against losing) or on the host (it holds the copy).
 
