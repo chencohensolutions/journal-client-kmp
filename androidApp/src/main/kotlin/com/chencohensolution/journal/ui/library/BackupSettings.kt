@@ -50,6 +50,7 @@ import com.chencohensolution.journal.backup.UploadOrder
 import com.chencohensolution.journal.backup.WaitReason
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.ServerCopiesState
+import com.chencohensolution.journal.swap.SwapState
 import com.chencohensolution.journal.server.StorageUsage
 
 // Settings › Backup, a screen of its own since Oct 24, 2026 (its row in Settings says how it goes): what it shows
@@ -104,7 +105,14 @@ internal class BackupActions(
  * recordings, "+ Add a folder" last), when, and in which order.
  */
 @Composable
-internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: () -> Unit, openCopies: () -> Unit = {}) {
+internal fun BackupSettingsScreen(
+    ui: BackupUi,
+    actions: BackupActions,
+    back: () -> Unit,
+    openCopies: () -> Unit = {},
+    swap: SwapState? = null,
+    openSwap: () -> Unit = {},
+) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
@@ -112,7 +120,7 @@ internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: ()
                 .verticalScroll(rememberScrollState())
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
-            BackupSection(ui, actions, openCopies)
+            BackupSection(ui, actions, openCopies, swap, openSwap)
         }
         TitleBar(stringResource(R.string.settings_backup_title), back, Modifier.align(Alignment.TopCenter))
     }
@@ -121,7 +129,7 @@ internal fun BackupSettingsScreen(ui: BackupUi, actions: BackupActions, back: ()
 
 /** Backup: on or off with its status, then what uploads, when, and in which order. */
 @Composable
-private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -> Unit) {
+private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -> Unit, swap: SwapState?, openSwap: () -> Unit) {
     val settings = ui.state.settings
     SettingsCard {
         SwitchRow(
@@ -144,6 +152,8 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
         }
         // Since Oct 28, 2026 (docs/ux-history/backup/2026-10-28-copies.md): shown with backup off too.
         ui.copies?.let { CopiesRow(it, openCopies) }
+        // Since Nov 8, 2026 (docs/plans/swap-from-phones.md): on a server with swaps (1.1.0), with backup off too.
+        swap?.let { SwapRow(it, openSwap) }
     }
     if (!settings.enabled) return
 

@@ -110,6 +110,9 @@ The pages, and what each holds:
   - **On your server**: what the user's originals take up there, "4.2 GB · 1,234 photos, 56 videos" (server query
     `storageUsage`), also with backup off. Asked when Settings or Backup opens and again when a backup run ends; "Can't reach the
     server right now" until it answers.
+  - **Swap with a friend ›** (Nov 8, 2026), the top card's last row, also with backup off, on a server with swaps
+    (journal-server 1.1.0): the user's copy at friends' servers and friends' copies here, set up from the phone.
+    See [swap.md](swap.md).
   - **Copies on other disks ›** (Oct 28, 2026, option a of
     [the round](../ux-history/backup/2026-10-28-copies.md); Android; iOS since Oct 29, 2026), the top card's last row,
     also with backup off, on a server whose `serverInfo.copies` is on and once it answered with at least one copy

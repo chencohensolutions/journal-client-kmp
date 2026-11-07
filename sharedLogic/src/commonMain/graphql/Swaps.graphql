@@ -1,0 +1,59 @@
+# Settings › Backup › Swap with a friend (docs/plans/swap-from-phones.md, journal-server-go docs/peers.md "Swaps from the
+# phones"): the caller's own swaps both ways. Asked on its own: a server from before swaps (1.1.0) doesn't know them.
+
+query SwapInfo {
+  serverInfo {
+    swap { available freeSpace copyKey }
+    discovery { id }
+  }
+}
+
+fragment MySwapFields on MySwap {
+  name
+  quota
+  addedAt
+  encrypted
+  copy { ...DataCopyFields }
+}
+
+fragment SwapsFields on Swaps {
+  mine { ...MySwapFields }
+  kept { name quota used addedAt revokedAt }
+  offers { id from name quota expiresAt }
+}
+
+query Swaps {
+  swaps { ...SwapsFields }
+}
+
+mutation SwapInvite($name: String!, $quota: Int64!) {
+  swapInvite(name: $name, quota: $quota) { link code expiresAt }
+}
+
+fragment JoinSwapResultFields on JoinSwapResult {
+  __typename
+  ... on SwapJoined { swap { ...MySwapFields } offered }
+  ... on SwapRefused { reason message }
+}
+
+mutation JoinSwap($link: String!, $name: String!, $passphrase: String, $plain: Boolean, $offerQuota: Int64) {
+  joinSwap(link: $link, name: $name, passphrase: $passphrase, plain: $plain, offerQuota: $offerQuota) {
+    ...JoinSwapResultFields
+  }
+}
+
+mutation AcceptSwapOffer($id: ID!, $passphrase: String, $plain: Boolean) {
+  acceptSwapOffer(id: $id, passphrase: $passphrase, plain: $plain) { ...JoinSwapResultFields }
+}
+
+mutation DeclineSwapOffer($id: ID!) {
+  declineSwapOffer(id: $id)
+}
+
+mutation RemoveSwap($name: String!) {
+  removeSwap(name: $name)
+}
+
+mutation RevokeSwap($name: String!, $deleteFiles: Boolean) {
+  revokeSwap(name: $name, deleteFiles: $deleteFiles)
+}

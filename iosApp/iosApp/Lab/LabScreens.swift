@@ -90,7 +90,24 @@ let labScreens: [LabScreen] = [
     LabScreen(id: "hidden", title: "Private settings", options: [
         current { HiddenScreen(state: data.hiddenCollections, actions: .lab) },
     ]),
+    // Swap with a friend on the live (unenrolled) view model: the steps that don't need the server.
+    LabScreen(id: "swap", title: "Swap with a friend", options: [
+        current { NavigationStack { SwapView(model: .shared) }.preferredColorScheme(.dark) },
+        LabOption(id: "link", title: "Join: the link") { labSwapThere(.link) },
+        LabOption(id: "protect", title: "Join: how it's kept") { labSwapThere(.protect) },
+        LabOption(id: "words", title: "Join: the six words") { labSwapThere(.words) },
+        LabOption(id: "check", title: "Join: two words typed back") { labSwapThere(.check) },
+    ]),
 ]
+
+private func labSwapThere(_ step: JoinStep) -> some View {
+    let draft = JoinDraft()
+    draft.linkText = "journal://swap?address=https%3A%2F%2F203.0.113.5%3A56398&code=K7QM-4XPD&from=dana&id=MFZWI3D-BONSGYC-MFZWI3D-BONSGYC-MFZWI3D-BONSGYC-MFZWI3D-BONSGYC"
+    draft.name = "Dana"
+    draft.suggested = Passphrase.shared.suggest()
+    draft.step = step
+    return NavigationStack { SwapThereView(model: .shared, draft: draft) }.preferredColorScheme(.dark)
+}
 
 /// Settings as the app pushes it, with backup running; its rows open the lab's Free up space and Hidden collections.
 /// `offline`: no answer from the server yet.

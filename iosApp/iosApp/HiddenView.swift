@@ -301,6 +301,9 @@ extension PrivateKinds.Kind {
 /// passcode can't open it.
 struct PhoneLocked<Content: View>: View {
     let title: LocalizedStringKey
+    /// What Face ID's prompt says, and the locked screen's line.
+    var reason = String(localized: "Unlock to see what is hidden.")
+    var lockedText: LocalizedStringKey = "Locked. Unlock with your phone’s lock to see what is hidden."
     @ViewBuilder let content: () -> Content
     @StateObject private var lock = PhoneLockModel()
     @Environment(\.scenePhase) private var scenePhase
@@ -312,11 +315,11 @@ struct PhoneLocked<Content: View>: View {
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "lock.fill").font(.system(size: 36)).foregroundStyle(LibraryColors.muted)
-                    Text(lock.secure ? "Locked. Unlock with your phone’s lock to see what is hidden." : "Set a passcode on this phone to open Private settings.")
+                    Text(lock.secure ? lockedText : "Set a passcode on this phone to open Private settings.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(LibraryColors.onBackground)
                     if lock.secure {
-                        Button("Unlock") { Task { await lock.ask() } }
+                        Button("Unlock") { Task { await lock.ask(reason: reason) } }
                             .buttonStyle(.borderedProminent)
                             .tint(LibraryColors.inverse)
                             .foregroundStyle(LibraryColors.onInverse)
@@ -330,13 +333,13 @@ struct PhoneLocked<Content: View>: View {
                 .toolbarBackground(LibraryColors.background, for: .navigationBar)
             }
         }
-        .task { await lock.ask() }
+        .task { await lock.ask(reason: reason) }
         .onChange(of: scenePhase) { _, phase in
             // The lock prompt itself only makes the app inactive; going to the background locks, coming back asks again.
             if phase == .background {
                 lock.wentToBackground()
             } else if phase == .active, lock.askOnReturn {
-                Task { await lock.ask() }
+                Task { await lock.ask(reason: reason) }
             }
         }
     }
@@ -354,11 +357,10 @@ final class PhoneLockModel: ObservableObject {
     private let lock = ScreenLock()
     private var asking = false
 
-    func ask() async {
+    func ask(reason: String = String(localized: "Unlock to see what is hidden.")) async {
         askOnReturn = false
         guard secure, !lock.isUnlocked, !asking else { return }
         asking = true
-        let reason = String(localized: "Unlock to see what is hidden.")
         let passed = (try? await LAContext().evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
         asking = false
         if passed { lock.unlocked() }

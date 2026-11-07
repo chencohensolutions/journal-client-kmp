@@ -14,15 +14,19 @@ struct BackupSettingsView: View {
     /// Whether the server keeps copies on other disks: Backup's Copies row.
     var copiesOffered = false
     @ObservedObject private var copies = CopiesViewModel.shared
+    @ObservedObject private var swap = SwapViewModel.shared
 
     var body: some View {
         BackupSettingsScreen(
             backup: backup.state, notBackedUp: notBackedUp, sourceCounts: sourceCounts, serverUsage: settings.serverUsage,
             actions: actions, folders: backup.folderActions,
             copies: copiesOffered && copies.state.loaded ? copies.state : nil,
-            copiesScreen: { [copies] in AnyView(CopiesView(copies: copies)) }
+            copiesScreen: { [copies] in AnyView(CopiesView(copies: copies)) },
+            swap: swap.state.info != nil && !swap.state.unsupported ? swap.state : nil,
+            swapScreen: { [swap] in AnyView(SwapView(model: swap)) }
         )
         .task(id: copiesOffered) { if copiesOffered { copies.refresh() } }
+        .task { swap.refresh() }
     }
 }
 
@@ -41,6 +45,9 @@ struct BackupSettingsScreen: View {
     /// Copies on other disks, once the server answered; nil: no row.
     var copies: ServerCopiesState? = nil
     var copiesScreen: () -> AnyView = { AnyView(EmptyView()) }
+    /// Swap with a friend, on a server with swaps (1.1.0); nil: no row.
+    var swap: SwapState? = nil
+    var swapScreen: () -> AnyView = { AnyView(EmptyView()) }
     @StateObject private var picking = FolderPicking()
     /// "Add this network" couldn't read the network's name.
     @State private var noNetworkName = false
@@ -73,6 +80,7 @@ struct BackupSettingsScreen: View {
                         .foregroundStyle(LibraryColors.muted)
                 }
                 if let copies { CopiesRow(copies: copies, destination: copiesScreen) }
+                if let swap { SwapRow(swap: swap, destination: swapScreen) }
             }
             .listRowBackground(LibraryColors.raised)
             if state.enabled {

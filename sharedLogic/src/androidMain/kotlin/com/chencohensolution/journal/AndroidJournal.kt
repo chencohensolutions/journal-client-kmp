@@ -37,6 +37,8 @@ import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.ServerIndexing
 import com.chencohensolution.journal.server.HttpCopiesApi
 import com.chencohensolution.journal.server.ServerCopies
+import com.chencohensolution.journal.swap.HttpSwapApi
+import com.chencohensolution.journal.swap.SwapController
 import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.places.PhotoPlaces
@@ -194,6 +196,13 @@ private var serverCopies: ServerCopies? = null
 @Synchronized
 fun serverCopies(context: Context): ServerCopies =
     serverCopies ?: ServerCopies(HttpCopiesApi(serverHttp(context.applicationContext))).also { serverCopies = it }
+
+private var swaps: SwapController? = null
+
+/** Settings › Backup › Swap with a friend: this user's swaps with friends' servers. One per process. */
+@Synchronized
+fun swaps(context: Context): SwapController =
+    swaps ?: SwapController(HttpSwapApi(serverHttp(context.applicationContext))).also { swaps = it }
 
 private fun localSearchApi(context: Context): LocalSearchApi {
     val settings = JournalSettings(SharedPreferencesStore(context))
