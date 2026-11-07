@@ -108,6 +108,8 @@ class JournalController internal constructor(
         connectJob?.cancel()
         settings.serverUrl = serverUrl
         settings.identityAlias = alias
+        // Perhaps another server: what was kept of the old one (its pinned key, its addresses) doesn't apply.
+        settings.serverDiscovery = null
         _state.update {
             JournalState(serverUrl = serverUrl, identityAlias = alias, status = ConnectionStatus.NotConnected)
         }
@@ -143,7 +145,8 @@ class JournalController internal constructor(
             } catch (e: Exception) {
                 ConnectionResult(ConnectionStatus.Error(e.describe()))
             }
-            _state.update { it.copy(status = result.status, serverError = result.serverError) }
+            // The server may have been found at another address (ServerFinder).
+            _state.update { it.copy(serverUrl = settings.serverUrl, status = result.status, serverError = result.serverError) }
         }
     }
 

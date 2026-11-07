@@ -1,6 +1,10 @@
 package com.chencohensolution.journal.server
 
 import com.apollographql.apollo.ApolloClient
+import com.chencohensolution.journal.discovery.KeptDiscovery
+import com.chencohensolution.journal.discovery.ServerFinder
+import com.chencohensolution.journal.discovery.findServerOnNetworkErrors
+import com.chencohensolution.journal.graphql.ServerDiscoveryQuery
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
 import com.chencohensolution.journal.settings.JournalSettings
@@ -11,27 +15,37 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * The mTLS client for the server, made once per device identity and server address and kept: previews, originals,
- * verify and GraphQL all go over it, so the phone holds one HTTP/2 connection to the server (one handshake, with a
- * signature in its secure hardware) instead of opening one per call.
+ * The mTLS client for the server, made once per device identity, server address and pinned key and kept: previews,
+ * originals, verify and GraphQL all go over it, so the phone holds one HTTP/2 connection to the server (one handshake,
+ * with a signature in its secure hardware) instead of opening one per call. When the server stops answering, [finder]
+ * looks for it at its other addresses and in the DHT (docs/plans/discovery.md, "Phones").
  */
 internal class ServerHttp(
     private val settings: JournalSettings,
     private val clientFactory: MtlsHttpClientFactory,
     private val trustedCas: List<ByteArray>,
+    private val finder: ServerFinder = ServerFinder(settings),
 ) {
-    private class Held(val alias: String, val url: String, val http: HttpClient, val apollo: ApolloClient)
+    private class Held(val alias: String, val url: String, val pin: String?, val http: HttpClient, val apollo: ApolloClient)
 
     private val mutex = Mutex()
     private var held: Held? = null
 
+    /**
+     * The client replaced last: closed only when the next one replaces it, since requests may still be running on it
+     * (the request that found the server at a new address is retried on the client it started on).
+     */
+    private var retired: Held? = null
+
     private suspend fun held(): Held? = mutex.withLock {
         val alias = settings.identityAlias ?: return null
         val url = settings.serverUrl
-        held?.takeIf { it.alias == alias && it.url == url }?.let { return it }
-        held?.apollo?.close() // closes its HttpClient too
-        val http = clientFactory.create(alias, trustedCas)
-        Held(alias, url, http, createApolloClient(http, url)).also { held = it }
+        val pin = settings.serverFingerprint
+        held?.takeIf { it.alias == alias && it.url == url && it.pin == pin }?.let { return it }
+        retired?.apollo?.close() // closes its HttpClient too
+        retired = held
+        val http = clientFactory.create(alias, trustedCas).findServerOnNetworkErrors(finder)
+        Held(alias, url, pin, http, createApolloClient(http, url)).also { held = it }
     }
 
     /** Null when the device isn't registered. */
@@ -46,4 +60,21 @@ internal class ServerHttp(
         fragment = ""
         encodedPath = path
     }.buildString() + (query?.let { "?$it" } ?: "")
+
+    /**
+     * Asks the server who it is and where (`serverInfo.discovery`) and keeps it. A server from before discovery
+     * doesn't know the field: nothing changes then.
+     */
+    suspend fun refreshDiscovery() {
+        val discovery = graphql { apollo ->
+            apollo.query(ServerDiscoveryQuery()).execute().data?.serverInfo?.discovery
+        } ?: return
+        keepDiscovery(discovery.fingerprint, discovery.id, discovery.key, discovery.addresses)
+    }
+
+    /** Keeps what the server at `serverUrl` said of itself (see [KeptDiscovery.merge]). */
+    fun keepDiscovery(fingerprint: String, id: String, key: String?, addresses: List<String>) {
+        if (fingerprint.length != 64) return
+        settings.serverDiscovery = KeptDiscovery.merge(settings.serverDiscovery, settings.serverUrl, fingerprint, id, key, addresses)
+    }
 }

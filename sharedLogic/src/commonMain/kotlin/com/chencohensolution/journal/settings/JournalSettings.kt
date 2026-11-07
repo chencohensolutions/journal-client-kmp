@@ -4,6 +4,7 @@ import com.chencohensolution.journal.backup.BackupSettings
 import com.chencohensolution.journal.backup.KeepOnPhone
 import com.chencohensolution.journal.backup.SoundFolder
 import com.chencohensolution.journal.backup.UploadOrder
+import com.chencohensolution.journal.discovery.KeptDiscovery
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
@@ -22,6 +23,17 @@ internal class JournalSettings(private val store: KeyValueStore) {
     var serverUrl: String
         get() = store.getString(KEY_SERVER_URL) ?: DEFAULT_SERVER_URL
         set(value) = store.putString(KEY_SERVER_URL, value)
+
+    /**
+     * Who the server is and where (`serverInfo.discovery`, docs/plans/discovery.md "Phones"); null before a server
+     * that tells it answered. Its fingerprint is pinned by the mTLS clients once kept.
+     */
+    var serverDiscovery: KeptDiscovery?
+        get() = store.getString(KEY_SERVER_DISCOVERY)?.let { runCatching { featuresJson.decodeFromString(KeptDiscovery.serializer(), it) }.getOrNull() }
+        set(value) = store.putString(KEY_SERVER_DISCOVERY, value?.let { featuresJson.encodeToString(KeptDiscovery.serializer(), it) })
+
+    /** The server key's fingerprint the mTLS clients pin; null: they check the CA and the host name. */
+    val serverFingerprint: String? get() = serverDiscovery?.fingerprint
 
     /** Name of the client identity used for mTLS (Android KeyChain alias / iOS Keychain label). */
     var identityAlias: String?
@@ -301,6 +313,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_PHONE_INDEXES_UPDATED_AT = "phone_indexes_updated_at"
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"
+        private const val KEY_SERVER_DISCOVERY = "server_discovery"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
         private const val KEY_CERTIFICATE_EXPIRES_AT = "certificate_expires_at"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"

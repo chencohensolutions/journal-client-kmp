@@ -22,6 +22,19 @@ import platform.Foundation.NSURLSessionAuthChallengeUseCredential
 import platform.Foundation.credentialForTrust
 import platform.Foundation.credentialWithIdentity
 import platform.Foundation.serverTrust
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.UserDefaultsStore
+import com.chencohensolution.journal.tls.ServerPin
+import kotlinx.cinterop.get
+import platform.CoreFoundation.CFArrayGetCount
+import platform.CoreFoundation.CFArrayGetValueAtIndex
+import platform.CoreFoundation.CFDataGetBytePtr
+import platform.CoreFoundation.CFDataGetLength
+import platform.CoreFoundation.CFRelease
+import platform.Security.SecCertificateCopyData
+import platform.Security.SecCertificateRef
+import platform.Security.SecTrustCopyCertificateChain
+import platform.Security.SecTrustRef
 import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustSetAnchorCertificates
 import platform.Security.SecTrustSetAnchorCertificatesOnly
@@ -51,7 +64,12 @@ internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
  * besides the system roots. Shared by the Ktor client, the video player's URLSession (IosServerStream) and the
  * background upload session ([answerChallenge]).
  */
-internal class MtlsChallenges(private val identity: Any?, private val anchors: List<Any>) {
+internal class MtlsChallenges(
+    private val identity: Any?,
+    private val anchors: List<Any>,
+    /** The server key's fingerprint, once kept (serverInfo.discovery); read at each challenge. */
+    private val pin: () -> String? = { JournalSettings(UserDefaultsStore()).serverFingerprint },
+) {
     /** As the Keychain identity [identityAlias], trusting [trustedCas]. */
     constructor(identityAlias: String?, trustedCas: List<ByteArray>) : this(
         identityAlias?.let { KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again") },
@@ -71,9 +89,17 @@ internal class MtlsChallenges(private val identity: Any?, private val anchors: L
         }
     }
 
-    /** The server's certificate checked against the journal's CA (and the system roots); null: don't connect. */
+    /**
+     * The server's certificate checked against the journal's CA (and the system roots) and the host name; null: don't
+     * connect. Once the server's key is kept, only the key is checked instead, so any address works
+     * (docs/plans/discovery.md, "Phones").
+     */
     fun serverTrust(challenge: NSURLAuthenticationChallenge): NSURLCredential? {
         val trust = challenge.protectionSpace.serverTrust ?: return null
+        pin()?.let { fingerprint ->
+            val leaf = leafCertificateDer(trust) ?: return null
+            return if (ServerPin.matches(leaf, fingerprint)) NSURLCredential.credentialForTrust(trust) else null
+        }
         withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
         // Keep trusting the system roots as well, like the Android client.
         SecTrustSetAnchorCertificatesOnly(trust, false)
@@ -90,6 +116,25 @@ internal class MtlsChallenges(private val identity: Any?, private val anchors: L
                 persistence = NSURLCredentialPersistence.NSURLCredentialPersistenceForSession,
             )
         }
+    }
+}
+
+/** The DER of the server's own certificate (the first of the chain it sent). */
+private fun leafCertificateDer(trust: SecTrustRef): ByteArray? {
+    val chain = SecTrustCopyCertificateChain(trust) ?: return null
+    try {
+        if (CFArrayGetCount(chain) < 1) return null
+        val leaf: SecCertificateRef = CFArrayGetValueAtIndex(chain, 0)?.reinterpret() ?: return null
+        val data = SecCertificateCopyData(leaf) ?: return null
+        try {
+            val length = CFDataGetLength(data).toInt()
+            val bytes = CFDataGetBytePtr(data) ?: return null
+            return ByteArray(length) { bytes[it].toByte() }
+        } finally {
+            CFRelease(data)
+        }
+    } finally {
+        CFRelease(chain)
     }
 }
 

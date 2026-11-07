@@ -10,6 +10,8 @@ import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
+import com.chencohensolution.journal.discovery.ServerFinder
+import com.chencohensolution.journal.discovery.findServerOnNetworkErrors
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
@@ -289,7 +291,7 @@ class BackupController internal constructor(
             val items = (if (photos) library.loadItems() else emptyList()) + soundFiles(folders)
             val queue = backupQueue(items, current).filterNot { ledger.isUploaded(it) }.map { it.id }.toSet()
             _state.update { it.copy(queued = queue) }
-            val http = clientFactory.create(alias, trustedCas)
+            val http = clientFactory.create(alias, trustedCas).findServerOnNetworkErrors(ServerFinder(settings))
             var done = 0
             val rate = TransferRate()
             var shownFile: String? = null

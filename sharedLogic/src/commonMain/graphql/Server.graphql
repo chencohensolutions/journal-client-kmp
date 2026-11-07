@@ -20,6 +20,14 @@ query ServerInfo {
   }
 }
 
+# Asked on its own: a server from before discovery (journal-server-go PR #4) doesn't know the field, and its error must
+# not cost the features above.
+query ServerDiscovery {
+  serverInfo {
+    discovery { fingerprint id key addresses }
+  }
+}
+
 query LocalIndexes {
   localIndexes {
     name
