@@ -1,8 +1,10 @@
 # Plan: servers and phones find each other without a fixed address
 
-**Not built yet.** Proposed on Nov 7, 2026, at the owner's ask: "Syncthing resolves devices from their ids; add that
-so swap servers find each other when they have no static IP address or host name". Waiting for the owner's choices
-("Choices for the owner" below) before building.
+Proposed on Nov 7, 2026, at the owner's ask: "Syncthing resolves devices from their ids; add that so swap servers
+find each other when they have no static IP address or host name". **Decided the same day:** discovery through the
+**BitTorrent DHT** (free, no server to run), and **no relay**. **Built for servers** (journal-server-go branch
+`claude/project-thread-f40fq0`, docs/peers.md "Finding the host"): server ids, peers telling each other their
+addresses, the DHT. Not built: port mapping, and everything on the phones (parts 2 and 3 below).
 
 ## The problem today
 
@@ -93,38 +95,27 @@ learns, and keeps the best connection it gets.
 - Global IPv6 needs no mapping, only the Windows firewall rule the installer already adds; many home and mobile
   lines now have IPv6, so this alone often works.
 
-### 5. A rendezvous service (discovery and relay), optional
+### 5. The BitTorrent DHT as the phone book (chosen)
 
-For the cases the peers can't solve alone: both servers moved at once, a server behind carrier-grade NAT, or a phone
-that has been away longer than its addresses last.
-
-- `journal-server rendezvous` runs a small discovery server: announce over mTLS with the server key (the id is
-  taken from the handshake), lookup by id, entries kept for an hour. It needs a machine with a fixed address: a
-  small VPS, or a friend's server that has one. Config: `"rendezvous": [{"url": "...", "id": "..."}]`, pinned by id
-  like a peer. Lookups return only addresses, never names or users.
-- The same command can relay (step 6 of Syncthing): the server keeps one connection open to it, a dialer asks for
-  the id, and the relay pipes the bytes. The mTLS session is end to end, so the relay sees only how much passes.
-  Copies are throttled through a relay (`bandwidth_kbps`), and phones use it for the feed and previews but wait for
-  a direct connection to upload originals.
-- QUIC hole punching is left out: the phones' HTTP clients (OkHttp, URLSession) speak TCP, and the relay covers the
-  rest. It can come later between servers only.
+- Each server publishes a BEP 44 mutable item: under an ed25519 key made from its TLS key, signed with it, and sealed
+  with a key made from its fingerprint, so DHT nodes see an opaque blob. Every 45 minutes and when its addresses
+  change. Peers get the DHT key when they enroll and from `GET /peer/addresses`.
+- A server that can't reach a peer at any known address looks it up there and dials what it finds.
+- **Phones (not built):** a small DHT client in `sharedLogic` (KRPC over UDP: `get` toward the target
+  SHA1(key + salt), from the BitTorrent bootstrap nodes; check the ed25519 signature; open the seal), used only when
+  the last address and Bonjour fail. The phone gets the DHT key at enrollment (a new `serverInfo` field or the
+  enrollment answer). Salt `journal-server/v1`; the record format is in journal-server-go `discovery/record.go`.
+- **No relay** (the owner's choice): a server behind carrier-grade NAT is found but can't be reached.
 
 ## Order of work
 
-1. **Server id and many addresses for peers** (server only): the id format, optional address in `peer add`,
+1. **Server id and many addresses for peers** (server only; built): the id format, optional address in `peer add`,
    `POST/GET /peer/addresses`, dialing all addresses, docs/peers.md. Fixes a swap where one side's IP changes.
 2. **Port mapping and IPv6** (server only).
 3. **Phones**: pin the id instead of the host name, `serverInfo.addresses`, trying them in order; enrollment by id.
    Then Bonjour on the LAN. Android first if built on Windows (docs/ios-todo.md).
-4. **Rendezvous**: discovery, then relay.
+4. **DHT**: built for servers (part 5); the phones' DHT client after part 3.
 
-## Choices for the owner
+## Decided
 
-- **Who runs the rendezvous service.** (a) Nobody for now: parts 1–3 only, enough while the two servers in a swap
-  don't both move at once and neither is behind carrier-grade NAT. (b) The owner runs `journal-server rendezvous`
-  on a small VPS, and the community's servers can point at it or run their own. (c) Syncthing's public discovery
-  servers speak a documented protocol and would accept our announces, but they are donated for Syncthing users;
-  not recommended.
-- Whether phones should go through a relay at all, or only servers.
-- Whether the server id should replace the apps' CA for phones entirely (simpler: each phone trusts one key), or sit
-  beside it.
+- Nov 7, 2026: the BitTorrent DHT for discovery; no relay; no paid or self-run rendezvous server.
