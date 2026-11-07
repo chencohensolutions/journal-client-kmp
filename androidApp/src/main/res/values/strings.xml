@@ -939,4 +939,8 @@
     <string name="copies_summary_checking">Comparing with your files…</string>
     <string name="copies_checking">Comparing with your files…</string>
     <string name="copies_offline">Can’t reach the server right now</string>
+    <string name="settings_server_title">Your server</string>
+    <string name="settings_server_id">ID %1$s</string>
+    <string name="settings_server_no_id">Its ID shows once the server has told it.</string>
+    <string name="enroll_server_verified_id">Its key matches server ID %1$s</string>
 </resources>

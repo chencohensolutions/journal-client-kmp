@@ -19,6 +19,11 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.X509ExtendedKeyManager
+import javax.net.ssl.X509TrustManager
+import java.security.cert.CertificateException
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.SharedPreferencesStore
+import com.chencohensolution.journal.tls.ServerPin
 
 /**
  * mTLS over OkHttp. The identity is either a key created by enrollment (app Android Keystore) or
@@ -42,17 +47,26 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
      * Blocks (KeyChain and Keystore), so it must stay off the main thread.
      */
     fun okHttpClient(identityAlias: String?, trustedCas: List<ByteArray>): OkHttpClient {
-        val trust = HandshakeCertificates.Builder()
-            .addPlatformTrustedCertificates()
-            .apply { trustedCas.forEach { addTrustedCertificate(parseX509Certificate(it)) } }
-            .build()
+        // Once the server's key is kept (serverInfo.discovery), it is checked instead of the CA and the host name, so
+        // the server is reached at any address (docs/plans/discovery.md, "Phones").
+        val pin = JournalSettings(SharedPreferencesStore(appContext)).serverFingerprint
+        val trustManager = if (pin != null) {
+            PinnedTrustManager(pin)
+        } else {
+            HandshakeCertificates.Builder()
+                .addPlatformTrustedCertificates()
+                .apply { trustedCas.forEach { addTrustedCertificate(parseX509Certificate(it)) } }
+                .build()
+                .trustManager
+        }
 
         val keyManagers = identityAlias?.let { arrayOf(keyManager(it)) }
         val sslContext = SSLContext.getInstance("TLS").apply {
-            init(keyManagers, arrayOf(trust.trustManager), null)
+            init(keyManagers, arrayOf(trustManager), null)
         }
         return OkHttpClient.Builder()
-            .sslSocketFactory(sslContext.socketFactory, trust.trustManager)
+            .sslSocketFactory(sslContext.socketFactory, trustManager)
+            .apply { if (pin != null) hostnameVerifier { _, _ -> true } }
             // OkHttp waits 10 s by default; the server answers an upload piece only after writing and syncing it,
             // and the last one only after hashing the whole file, which takes longer for a large video.
             .readTimeout(2, TimeUnit.MINUTES)
@@ -76,6 +90,24 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
             ?: error("Could not access system certificate chain for $alias")
         return KeyChainKeyManager(alias, privateKey, chain)
     }
+}
+
+/**
+ * Accepts the server whose certificate's key (SubjectPublicKeyInfo) hashes to [fingerprint], whatever its CA, host name
+ * or address; any other is refused. Client certificates aren't checked here (this is the phone's side).
+ */
+internal class PinnedTrustManager(private val fingerprint: String) : X509TrustManager {
+    override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+        val leaf = chain?.firstOrNull() ?: throw CertificateException("The server sent no certificate")
+        if (!ServerPin.fingerprintOfSpki(leaf.publicKey.encoded).equals(fingerprint, ignoreCase = true)) {
+            throw CertificateException("The server's key isn't the one this phone knows")
+        }
+    }
+
+    override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?): Unit =
+        throw CertificateException("Not a server")
+
+    override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
 }
 
 /**

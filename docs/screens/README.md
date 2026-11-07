@@ -9,7 +9,7 @@ their story and group pages, were replaced by the storyline on Oct 21, 2026 (own
 
 | Screen | Shown when | Doc |
 |---|---|---|
-| Enrollment wizard | The device has no identity yet | `docs/authentication.md` in journal-server-go |
+| Enrollment wizard | The device has no identity yet | [enrollment.md](enrollment.md); `docs/authentication.md` in journal-server-go |
 | Photo access | After enrollment, until the user answers once | [photo-access.md](photo-access.md) |
 | Journal (home) | Every launch after that; opens on the Storyline tab | [journal-home.md](journal-home.md) |
 | Moments (feed) | The Moments tab of the Journal (Android) | [moments.md](moments.md) |

@@ -110,6 +110,9 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 - Moments' sets by looks (dHash + native embeddings), merged and split by hand.
 - Enrollment by QR code: **Scan QR code** on the code screen and `journal://enroll?code=…&server=…` links, on both
   platforms (iOS Oct 21, 2026).
+- Enrolling by id (Nov 7, 2026, both platforms; [screens/enrollment.md](screens/enrollment.md)): a link with the
+  server's `fingerprint`, DHT `key` and `address`es pins the key from the first connection, so the phone enrolls at
+  an address the certificate doesn't list, trying the other addresses, then the DHT, when the first doesn't answer.
 - Tags and notes per photo, Tags screen, tag page, and the tag search picker.
 - Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
   both; iOS since Oct 21, 2026).
@@ -303,7 +306,18 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   or its downloaded original. Videos stream (see Upload and sync above). A new device downloads only the journal data (paged change
   feed, gzip), then previews as you scroll (cache default **10 GB**, set in Settings). Everything goes over one
   mTLS client per device identity (`ServerHttp`: previews, originals, verify and GraphQL), so the phone keeps one
-  HTTP/2 connection to the server instead of a handshake per call (Oct 23, 2026). When the hidden collections or
+  HTTP/2 connection to the server instead of a handshake per call (Oct 23, 2026). **Finding the server when its
+  address changes** (Nov 7, 2026, Android and iOS; docs/plans/discovery.md "Phones"): after the features, the app asks
+  `serverInfo.discovery` on its own (an older server doesn't know it) and keeps the server's key fingerprint, id, DHT
+  key and up to 16 addresses (`KeptDiscovery` in `JournalSettings`). From then on the mTLS clients pin the key
+  instead of checking the CA and the host name (Android `PinnedTrustManager`, also for the video stream; iOS
+  `MtlsChallenges.serverTrust` reading the SPKI from the certificate's DER, `ServerPin`), so any address of the server
+  works. A request that fails on the network (not an HTTP answer) makes `ServerFinder` try the kept addresses, 400 ms
+  apart, the first to answer winning, then a DHT lookup at most every 2 minutes (`DhtClient`: KRPC `get` over UDP with
+  ktor-network; the record opened with HKDF-SHA256 and XChaCha20-Poly1305, `Seal`, all pure Kotlin); the address that
+  answers becomes `serverUrl` and the request is sent again (GraphQL and GETs; an upload piece fails once and the next
+  goes to the new address). A new enrollment forgets what was kept, unless its link said who the server is (enrolling by id). Settings shows the server's id under its address.
+  When the hidden collections or
   the device's private setting change, the server sends only the files that changed visibility, then goes on; a
   cursor it can't read starts the feed again, so the app never has to clear one. Previews are optional (Oct 20,
   2026): off, the originals are downloaded into the same cache instead; on, their format (WebP, HEIF, AVIF, JPEG XL,

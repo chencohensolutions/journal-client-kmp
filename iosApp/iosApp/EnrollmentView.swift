@@ -145,7 +145,9 @@ struct EnrollmentView: View {
                     VStack(spacing: 0) {
                         DetailRow(systemName: "server.rack", label: "Server",
                                   value: displayAddress(viewModel.state.serverAddress),
-                                  detail: "Verified by journal-server-ca", highlight: true)
+                                  detail: viewModel.state.serverId.map { LocalizedStringKey("Its key matches server ID \(shortServerId($0))") }
+                                      ?? LocalizedStringKey("Verified by journal-server-ca"),
+                                  highlight: true)
                         Divider().padding(.leading, 72)
                         DetailRow(systemName: "person", label: "Account", value: step.user,
                                   detail: "Code \(viewModel.state.code.uppercased()) · expires in \(Int(step.minutesLeft)) min",
@@ -530,4 +532,9 @@ private extension View {
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(isError ? Color.red : Color(.systemGray4)))
     }
+}
+
+/// The first two groups of a server id, "T6DNBAM-IJR6WLU-…": enough to recognize it.
+private func shortServerId(_ id: String) -> String {
+    id.split(separator: "-").prefix(2).joined(separator: "-") + "-…"
 }

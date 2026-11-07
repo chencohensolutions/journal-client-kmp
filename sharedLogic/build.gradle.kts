@@ -43,6 +43,8 @@ kotlin {
         commonMain.dependencies {
             api(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
+            // UDP for the DHT lookup (discovery/DhtClient.kt).
+            implementation(libs.ktor.network)
             implementation(libs.apollo.runtime)
             implementation(libs.apollo.engine.ktor)
             implementation(libs.kotlinx.serialization.json)

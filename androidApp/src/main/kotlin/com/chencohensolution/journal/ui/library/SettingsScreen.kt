@@ -1,5 +1,8 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -88,6 +91,8 @@ internal class SettingsActions(
     val setMomentsRowsPerPage: (Int) -> Unit = {},
     val setMomentsLoadAhead: (Int) -> Unit = {},
     val resetMomentsPaging: () -> Unit = {},
+    /** Reads the server's address and id again (they change while the app runs). */
+    val refreshServer: () -> Unit = {},
     val back: () -> Unit = {},
 )
 
@@ -210,6 +215,30 @@ private fun MainPage(
         Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
     }
     AdvancedSection(settings.momentsPaging) { actions.openPage(SettingsPage.LOADING_MOMENTS) }
+    LaunchedEffect(Unit) { actions.refreshServer() }
+    ServerSection(settings.serverAddress, settings.serverId)
+}
+
+/**
+ * Your server: where the app reaches it now and, under it, its id (docs/plans/discovery.md): the server is known by it
+ * wherever it is. Both can be selected to copy.
+ */
+@Composable
+private fun ServerSection(address: String, id: String?) {
+    SectionTitle(stringResource(R.string.settings_server_title))
+    SettingsCard {
+        SelectionContainer {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+                Text(address, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (id != null) stringResource(R.string.settings_server_id, id) else stringResource(R.string.settings_server_no_id),
+                    color = LibraryColors.Muted,
+                    fontSize = 13.sp,
+                    fontFamily = if (id != null) FontFamily.Monospace else null,
+                )
+            }
+        }
+    }
 }
 
 /** Moments: how its rows are made, with the break's length under "By breaks", and how alike a set's photos are. */

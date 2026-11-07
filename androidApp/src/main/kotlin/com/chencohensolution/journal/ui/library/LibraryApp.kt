@@ -415,6 +415,7 @@ private fun LibraryScreens(
                                             setMomentsRowsPerPage = settings::setMomentsRowsPerPage,
                                             setMomentsLoadAhead = settings::setMomentsLoadAhead,
                                             resetMomentsPaging = settings::resetMomentsPaging,
+                                            refreshServer = settings::refreshServer,
                                             back = pop,
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },

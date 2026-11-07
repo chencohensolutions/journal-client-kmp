@@ -100,6 +100,7 @@ final class SettingsViewModel: ObservableObject {
     func setMomentsRowsPerPage(_ rows: Int) { controller.setMomentsRowsPerPage(rows: Int32(rows)) }
     func setMomentsLoadAhead(_ rows: Int) { controller.setMomentsLoadAhead(rows: Int32(rows)) }
     func resetMomentsPaging() { controller.resetMomentsPaging() }
+    func refreshServer() { controller.refreshServer() }
 
     /// "Imported" in the Showing sheets and the Moments filter bar: what the server's import placed, shown or not.
     func toggleImported() { controller.toggleImported() }

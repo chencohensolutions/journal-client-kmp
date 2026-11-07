@@ -343,6 +343,7 @@ class ServerLibrary internal constructor(
                 } ?: return@launch
                 settings.serverFeatures = answer
                 _features.value = answer
+                http.refreshDiscovery()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

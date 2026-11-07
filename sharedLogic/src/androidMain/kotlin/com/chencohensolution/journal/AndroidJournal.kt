@@ -329,15 +329,18 @@ fun serverPreviews(context: Context): ServerPreviews =
 /** Where to stream a server original from (`GET /media/{sha256}`, with Range), and the mTLS client to do it with. */
 class ServerStream(val url: String, val client: OkHttpClient)
 
-private var streamClient: Pair<String, OkHttpClient>? = null
+/** The stream's client, made for an identity and a pinned server key. */
+private var streamClient: Pair<Pair<String, String?>, OkHttpClient>? = null
 
 /** The stream of [sha256]'s original; null when this device isn't registered. Blocks the first time: call off the main thread. */
 fun serverStream(context: Context, sha256: String): ServerStream? {
-    val alias = JournalSettings(SharedPreferencesStore(context)).identityAlias ?: return null
+    val settings = JournalSettings(SharedPreferencesStore(context))
+    val alias = settings.identityAlias ?: return null
+    val made = alias to settings.serverFingerprint
     val client = synchronized(ServerStream::class) {
-        streamClient?.takeIf { it.first == alias }?.second
+        streamClient?.takeIf { it.first == made }?.second
             ?: AndroidMtlsHttpClientFactory(context).okHttpClient(alias, decodePemCertificates(SERVER_CA_PEM))
-                .also { streamClient = alias to it }
+                .also { streamClient = made to it }
     }
     return ServerStream(serverPreviews(context).mediaUrl(sha256), client)
 }
