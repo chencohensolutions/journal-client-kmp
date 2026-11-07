@@ -18,6 +18,7 @@ their story and group pages, were replaced by the storyline on Oct 21, 2026 (own
 | People | Explore › People; a person's page, Who's this? | [people.md](people.md) |
 | Tags | The tag button on the Journal; a tag opens its photos | [tags.md](tags.md) |
 | Settings | Settings button in the top bar | [settings.md](settings.md) |
+| Swap with a friend | Settings › Backup › Swap with a friend | [swap.md](swap.md) |
 | Viewer | Tapping any photo or video | [viewer.md](viewer.md) |
 | Crop | Viewer → Crop, or long press in Moments → Crop | [crop.md](crop.md) |
 

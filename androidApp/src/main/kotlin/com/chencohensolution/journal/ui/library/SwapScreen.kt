@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -479,7 +482,9 @@ private fun ProtectStep(state: SwapState, draft: JoinDraft, kind: CopyKeyKind?, 
 private fun WordsStep(draft: JoinDraft, actions: SwapThereActions) {
     val words = draft.suggested ?: return
     Text(stringResource(R.string.swap_words_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+    // The words are English: numbered left to right in Hebrew too.
     SettingsCard {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             words.words.chunked(2).forEachIndexed { row, pair ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -494,6 +499,7 @@ private fun WordsStep(draft: JoinDraft, actions: SwapThereActions) {
                     }
                 }
             }
+        }
         }
     }
     SettingsCard {
@@ -617,7 +623,7 @@ internal fun CopyPassphraseScreen(passphrase: String?, copy: () -> Unit, share: 
         }
         SettingsCard {
             Text(
-                passphrase,
+                "\u200E" + passphrase,
                 color = LibraryColors.OnBackground,
                 fontSize = 22.sp,
                 fontFamily = FontFamily.Monospace,
@@ -663,7 +669,12 @@ private fun PrimaryButton(text: String, enabled: Boolean = true, busy: Boolean =
     Button(
         onClick = onClick,
         enabled = enabled,
-        colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = LibraryColors.Inverse,
+            contentColor = LibraryColors.OnInverse,
+            disabledContainerColor = LibraryColors.Muted.copy(alpha = 0.25f),
+            disabledContentColor = LibraryColors.Muted,
+        ),
     ) {
         if (busy) CircularProgressIndicator(Modifier.padding(end = 8.dp).size(16.dp), color = LibraryColors.OnInverse, strokeWidth = 2.dp)
         Text(text)

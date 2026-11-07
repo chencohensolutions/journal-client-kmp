@@ -1021,7 +1021,7 @@
     <string name="swap_revoke_body">השרת של %1$s יידחה מעכשיו.</string>
     <string name="swap_revoke_delete">למחוק גם את הקבצים שלו (%1$s)</string>
     <string name="swap_cancel">לא עכשיו</string>
-    <string name="swap_offer_title">%1$s מציע לשמור גם את העותק שלכם (%2$s)</string>
+    <string name="swap_offer_title">%1$s מציע לשמור גם את העותק שלכם, עד %2$s</string>
     <string name="swap_offer_body">אם תאשרו, העותק שלכם יישלח גם לשרת של %1$s. ההצעה בתוקף עוד כ-%2$d דק׳.</string>
     <string name="swap_offer_accept">אישור</string>
     <string name="swap_offer_decline">דחייה</string>

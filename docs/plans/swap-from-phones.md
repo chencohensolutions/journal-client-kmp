@@ -1,7 +1,8 @@
 # Plan: setting up a swap from the phones
 
 Proposed on Nov 7, 2026, at the owner's ask: "pair two servers from the clients". Server side built Nov 7, 2026 (journal-server-go PR #4, docs/peers.md "Swaps
-from the phones"; the schema is in `sharedLogic/src/commonMain/graphql/swaps.graphqls`); the apps are next. Builds on the swap
+from the phones"; the schema is in `sharedLogic/src/commonMain/graphql/swaps.graphqls`); the apps Nov 8, 2026
+([docs/screens/swap.md](../screens/swap.md)), with one scan both ways as proposed. Builds on the swap
 ([swap-and-encryption.md](swap-and-encryption.md), journal-server-go docs/peers.md) and discovery
 ([discovery.md](discovery.md)).
 
