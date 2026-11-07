@@ -64,14 +64,14 @@ learns, and keeps the best connection it gets.
 
 ### 2. Addresses, not an address
 
-- `peer add dana <code>.<id>`: the address becomes optional. `peer.json` gains `addresses` (a list, newest first,
-  each with when it last worked) beside `url`, which stays as the address the owner typed, tried first.
+- `peer add dana <address> <code>.<id>`: the address is only the first guess (`peer invite` prints the host's public
+  IP when it has no `public_url`). `peer.json` gains `addresses` (the one that last worked first) beside `url`,
+  which stays as the owner typed it.
 - The server works out its own addresses at start and whenever the network changes: its LAN IPs (IPv4 and global
   IPv6), the port mapping from step 4, the public IP the peers and discovery see, and `public_url` if set.
-- **Peers tell each other.** A new peer route, `POST /peer/addresses` (with the peer certificate), sends this
-  server's current addresses to the host, at start, every 30 minutes, and at once when they change. Each server also
-  answers `GET /peer/addresses` with its own list. In a swap both servers do this both ways, so when one moves, it
-  tells the other at the old address the other still knows. This needs no outside service.
+- **Peers tell each other.** A new peer route, `GET /peer/addresses` (with the peer certificate), answers the
+  host's addresses, its DHT key and the caller's IP; the owner's server asks at start and every 30 minutes. In a
+  swap both servers ask both ways. (A `POST` that pushes a move at once was left out: the DHT covers it.)
 - `copies.Peer` dials every known address (the last that worked first; the others a moment later, as browsers do),
   checking the id on each, and keeps the first that answers.
 - **Phones** get the list too: `serverInfo.addresses` (public schema), kept by the app beside `serverUrl` and tried
@@ -109,8 +109,7 @@ learns, and keeps the best connection it gets.
 
 ## Order of work
 
-1. **Server id and many addresses for peers** (server only; built): the id format, optional address in `peer add`,
-   `POST/GET /peer/addresses`, dialing all addresses, docs/peers.md. Fixes a swap where one side's IP changes.
+1. **Server id and many addresses for peers** (server only; built): the id format, `GET /peer/addresses`, dialing all addresses, docs/peers.md. Fixes a swap where one side's IP changes.
 2. **Port mapping and IPv6** (server only).
 3. **Phones**: pin the id instead of the host name, `serverInfo.addresses`, trying them in order; enrollment by id.
    Then Bonjour on the LAN. Android first if built on Windows (docs/ios-todo.md).
