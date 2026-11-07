@@ -42,7 +42,13 @@ import com.chencohensolution.journal.settings.ScreenLock
  * saved, so a screen brought back after the app was closed asks again. A phone with no screen lock can't open it.
  */
 @Composable
-internal fun PhoneLocked(title: String, back: () -> Unit, content: @Composable () -> Unit) {
+internal fun PhoneLocked(
+    title: String,
+    back: () -> Unit,
+    lockedText: Int = R.string.phone_lock_locked,
+    noLockText: Int = R.string.phone_lock_none,
+    content: @Composable () -> Unit,
+) {
     val context = LocalContext.current
     val lock = remember { ScreenLock() }
     val unlocked by lock.state.collectAsStateWithLifecycle()
@@ -68,7 +74,7 @@ internal fun PhoneLocked(title: String, back: () -> Unit, content: @Composable (
         ) {
             Icon(LibraryIcons.Lock, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(40.dp))
             Text(
-                stringResource(if (secure) R.string.phone_lock_locked else R.string.phone_lock_none),
+                stringResource(if (secure) lockedText else noLockText),
                 color = LibraryColors.OnBackground,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center,

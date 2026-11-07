@@ -5761,6 +5761,16 @@
         }
       }
     },
+    "Set a passcode on this iPhone to see your copy passphrase." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדירו קוד גישה באייפון הזה כדי לראות את סיסמת העותק."
+          }
+        }
+      }
+    },
     "Set a passcode on this phone to open Private settings." : {
       "localizations" : {
         "he" : {

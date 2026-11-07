@@ -1068,4 +1068,6 @@
     <string name="swap_sheet_restore_title">To restore</string>
     <string name="swap_sheet_restore">1. Install journal-server on a new PC.\n2. Ask %1$s to let your new server take over the copy, then join it.\n3. Run: journal-server restore %2$s --from %1$s --to &lt;an empty folder&gt; --passphrase\n   and type the six words.</string>
     <string name="swap_sheet_keep">Anyone with these words and the copy can open your photos.</string>
+    <string name="swap_passphrase_locked">Locked. Unlock with your phone’s lock to see your copy passphrase.</string>
+    <string name="swap_passphrase_no_lock">Set a screen lock on this phone (PIN, pattern or password) to see your copy passphrase.</string>
 </resources>

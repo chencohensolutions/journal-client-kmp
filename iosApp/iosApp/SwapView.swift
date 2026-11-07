@@ -145,7 +145,8 @@ struct SwapView: View {
                     Section("Copy passphrase") {
                         NavigationLink {
                             PhoneLocked(title: "Show my copy passphrase", reason: String(localized: "Unlock to see your copy passphrase."),
-                                lockedText: "Locked. Unlock with Face ID or your passcode to see your copy passphrase.") {
+                                lockedText: "Locked. Unlock with Face ID or your passcode to see your copy passphrase.",
+                                noPasscodeText: "Set a passcode on this iPhone to see your copy passphrase.") {
                                 CopyPassphraseView(friend: state.mine.first { $0.encrypted }?.name ?? "", serverId: state.info?.serverId)
                             }
                         } label: {

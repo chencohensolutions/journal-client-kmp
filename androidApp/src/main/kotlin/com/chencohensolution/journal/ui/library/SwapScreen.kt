@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -444,6 +445,7 @@ private fun ProtectStep(state: SwapState, draft: JoinDraft, kind: CopyKeyKind?, 
                         label = { Text(stringResource(R.string.swap_passphrase)) },
                         colors = fieldColors(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                        visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                     TextButton(onClick = actions.fill) { Text(stringResource(R.string.swap_protect_fill), color = LibraryColors.OnBackground) }

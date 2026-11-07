@@ -304,6 +304,7 @@ struct PhoneLocked<Content: View>: View {
     /// What Face ID's prompt says, and the locked screen's line.
     var reason = String(localized: "Unlock to see what is hidden.")
     var lockedText: LocalizedStringKey = "Locked. Unlock with your phone’s lock to see what is hidden."
+    var noPasscodeText: LocalizedStringKey = "Set a passcode on this phone to open Private settings."
     @ViewBuilder let content: () -> Content
     @StateObject private var lock = PhoneLockModel()
     @Environment(\.scenePhase) private var scenePhase
@@ -315,7 +316,7 @@ struct PhoneLocked<Content: View>: View {
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "lock.fill").font(.system(size: 36)).foregroundStyle(LibraryColors.muted)
-                    Text(lock.secure ? lockedText : "Set a passcode on this phone to open Private settings.")
+                    Text(lock.secure ? lockedText : noPasscodeText)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(LibraryColors.onBackground)
                     if lock.secure {
