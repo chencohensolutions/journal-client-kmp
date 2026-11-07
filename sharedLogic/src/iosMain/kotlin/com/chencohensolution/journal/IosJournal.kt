@@ -40,6 +40,8 @@ import com.chencohensolution.journal.tls.KeychainIdentities
 import com.chencohensolution.journal.server.HttpIndexingApi
 import com.chencohensolution.journal.server.HttpCopiesApi
 import com.chencohensolution.journal.server.ServerCopies
+import com.chencohensolution.journal.swap.HttpSwapApi
+import com.chencohensolution.journal.swap.SwapController
 import com.chencohensolution.journal.server.IosServerFiles
 import com.chencohensolution.journal.server.IosServerStream
 import com.chencohensolution.journal.server.KeptOriginals
@@ -168,6 +170,12 @@ object IosJournal {
     /** Settings › Backup › Copies on other disks: this user's copies on the server. One per process. */
     fun serverCopies(): ServerCopies =
         serverCopies ?: ServerCopies(HttpCopiesApi(serverHttp())).also { serverCopies = it }
+
+    private var swaps: SwapController? = null
+
+    /** Settings › Backup › Swap with a friend: this user's swaps with friends' servers. One per process. */
+    fun swaps(): SwapController =
+        swaps ?: SwapController(HttpSwapApi(serverHttp())).also { swaps = it }
 
     /**
      * Settings › Search › On this phone: the server's indexes kept in Application Support (`local`), out of the
