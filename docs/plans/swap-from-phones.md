@@ -63,6 +63,19 @@ When hen's server joins Dana's, it offers its own invite in the same exchange (w
 Dana). Dana's phone then shows "hen offers to keep your copy too (2 TB). Accept?" and her server joins back.
 Declining leaves a one-way copy.
 
+### Keeping the passphrase (the owner asked, Nov 7, 2026)
+
+The owner wants the passphrase saved, not only remembered. When an encrypted copy is set up:
+
+1. The phone saves it to the platform's synced keychain by itself: iCloud Keychain on iOS (a `kSecAttrSynchronizable`
+   item), Google Password Manager through Credential Manager on Android. A new phone on the same account gets it
+   back; Settings shows it again behind Face ID or the fingerprint ("Show my copy passphrase").
+2. It offers a **recovery sheet**: a one-page PDF with the words, the server id and how to restore, to print or keep
+   in Files.
+3. It offers the share sheet, for a password manager or a note.
+
+Never on the journal server (the thing a copy guards against losing) or on the host (it holds the copy).
+
 ### A friend's server set up again
 
 After a friend loses their PC, their new server can't reach their copy: the host lets in only the old server's
