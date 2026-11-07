@@ -146,7 +146,8 @@ logic goes in `sharedLogic` with tests; the UIs change only to show the server i
    - send `{"t": <2 bytes>, "y": "q", "q": "get", "a": {"id": <random 20 bytes>, "target": <20 bytes>}}`, read
      `nodes` (26-byte compact entries: 20-byte id, IPv4, port) and walk toward the target, up to 8 queries in
      flight, stopping after 15 s or when the closest 8 nodes have answered;
-   - a reply with `v`, `k` (== key), `seq` and `sig` is a record; keep the highest `seq` whose seal opens;
+   - a reply with `v`, `k` (== key), `seq` and `sig` is a record; keep the one whose seal opens with the latest `t`
+     inside (not the highest `seq`, which isn't checked without the signature);
    - **open the seal** instead of checking the ed25519 signature (the seal's tag proves the record came from someone
      who knows the fingerprint, which DHT nodes don't): key = HKDF-SHA256(secret = the fingerprint's 32 bytes, no
      salt, info "journal dht seal v1", 32 bytes); the value is a 24-byte nonce then XChaCha20-Poly1305 ciphertext
