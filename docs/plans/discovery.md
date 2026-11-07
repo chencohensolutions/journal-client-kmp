@@ -4,7 +4,9 @@ Proposed on Nov 7, 2026, at the owner's ask: "Syncthing resolves devices from th
 find each other when they have no static IP address or host name". **Decided the same day:** discovery through the
 **BitTorrent DHT** (free, no server to run), and **no relay**. **Built for servers** (journal-server-go branch
 `claude/project-thread-f40fq0`, docs/peers.md "Finding the host"): server ids, peers telling each other their
-addresses, the DHT. Not built: port mapping, and everything on the phones (parts 2 and 3 below).
+addresses, the DHT. **Phones built** the same day (journal-client-kmp branch `claude/project-thread-f40fq0`, "Phones:
+the spec" below): the pinned key, the addresses, the DHT lookup, the id in Settings. Not built: port mapping, Bonjour,
+enrolling by id.
 
 ## The problem today
 
@@ -159,3 +161,10 @@ logic goes in `sharedLogic` with tests; the UIs change only to show the server i
 5. **Settings** shows the server id (`discovery.id`) under the server address.
 
 Not in this step: Bonjour on the LAN, enrolling by id, the phone pairing servers by QR.
+
+**As built** (Nov 7, 2026): `discovery/` in `sharedLogic` (`KeptDiscovery`, `ServerFinder`, `DhtClient`,
+`DhtRecord`, `Bencode`, `Seal`) and `tls/ServerPin.kt`; `serverInfo.discovery` is its own query (`ServerDiscovery`), so
+a server from before PR #4 keeps answering the features. The servers' keys are RSA (`certs.go`), not P-256, so iOS
+doesn't rebuild the SPKI from `SecKeyCopyExternalRepresentation`: it reads it from the certificate's DER, the same
+bytes the server hashes. The fallback re-sends a request only when its body can be sent again (GraphQL, GETs); the
+background upload session on iOS isn't retried, its next piece goes to the new `serverUrl`.

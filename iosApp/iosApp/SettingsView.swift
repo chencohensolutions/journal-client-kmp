@@ -91,7 +91,8 @@ struct SettingsView: View {
             setMomentsRowsPerPage: settings.setMomentsRowsPerPage, setMomentsLoadAhead: settings.setMomentsLoadAhead,
             resetMomentsPaging: settings.resetMomentsPaging, setShareJpegXlAsJpeg: settings.setShareJpegXlAsJpeg,
             addCurrentNetwork: backup.addCurrentNetwork, removeNetwork: backup.removeNetwork,
-            setFirstImageWidth: settings.setFirstImageWidth, setFirstImageFormat: settings.setFirstImageFormat
+            setFirstImageWidth: settings.setFirstImageWidth, setFirstImageFormat: settings.setFirstImageFormat,
+            refreshServer: settings.refreshServer
         )
     }
 }
@@ -134,6 +135,8 @@ struct SettingsActions {
     /// Quick image while scrolling: its width, a part of the screen's (0: off), and its format.
     var setFirstImageWidth: (Int) -> Void = { _ in }
     var setFirstImageFormat: (PreviewFormat) -> Void = { _ in }
+    /// Reads the server's address and id again (they change while the app runs).
+    var refreshServer: () -> Void = {}
 }
 
 /// The user's choices, kept on this device: a short page of groups (Library, Privacy, Backup and storage, Search),
@@ -210,6 +213,9 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
                 Text("Advanced")
             }
             .listRowBackground(LibraryColors.raised)
+
+            ServerSection(address: content.settings.serverAddress, id: content.settings.serverId)
+                .onAppear { content.actions.refreshServer() }
         }
     }
 
@@ -223,6 +229,38 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
                 serverUsage: content.serverUsage, actions: content.actions
             )
         }
+    }
+}
+
+/// Your server: where the app reaches it now and, under it, its id (docs/plans/discovery.md): the server is known by it
+/// wherever it is. Both can be selected to copy.
+private struct ServerSection: View {
+    let address: String
+    let id: String?
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: address)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(LibraryColors.onBackground)
+                    .textSelection(.enabled)
+                if let id {
+                    Text("ID \(id)")
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(LibraryColors.muted)
+                        .textSelection(.enabled)
+                } else {
+                    Text("Its ID shows once the server has told it.")
+                        .font(.footnote)
+                        .foregroundStyle(LibraryColors.muted)
+                }
+            }
+            .padding(.vertical, 2)
+        } header: {
+            Text("Your server")
+        }
+        .listRowBackground(LibraryColors.raised)
     }
 }
 

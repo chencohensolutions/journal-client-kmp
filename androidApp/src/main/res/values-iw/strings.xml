@@ -989,4 +989,7 @@
     <string name="copies_summary_checking">משווה עם הקבצים שלך…</string>
     <string name="copies_checking">משווה עם הקבצים שלך…</string>
     <string name="copies_offline">אין כרגע חיבור לשרת</string>
+    <string name="settings_server_title">השרת שלך</string>
+    <string name="settings_server_id">מזהה %1$s</string>
+    <string name="settings_server_no_id">המזהה יופיע אחרי שהשרת ימסור אותו.</string>
 </resources>

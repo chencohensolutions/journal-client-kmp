@@ -11603,6 +11603,36 @@
           }
         }
       }
+    },
+    "Your server" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השרת שלך"
+          }
+        }
+      }
+    },
+    "ID %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מזהה %@"
+          }
+        }
+      }
+    },
+    "Its ID shows once the server has told it." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המזהה יופיע אחרי שהשרת ימסור אותו."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

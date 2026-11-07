@@ -115,6 +115,10 @@ data class SettingsState(
     val searchPageSize: Int = JournalSettings.DEFAULT_SEARCH_PAGE_SIZE,
     /** How Moments is read a page at a time. */
     val momentsPaging: MomentsPaging = MomentsPaging(),
+    /** Where the app reaches the server now ("journal.example.com:56398"); it changes when the server is found elsewhere. */
+    val serverAddress: String = "",
+    /** The server's id (`serverInfo.discovery.id`, "MFZWI3D-BONSGYC-…"); null before the server told it. */
+    val serverId: String? = null,
 ) {
     companion object {
         /** What the Settings screen offers for [searchPageSize] (the server sends at most 1000 at a time). */
@@ -146,6 +150,8 @@ class SettingsController internal constructor(
             shareJpegXlAsJpeg = settings.shareJpegXlAsJpeg,
             searchPageSize = settings.searchPageSize,
             momentsPaging = settings.momentsPaging,
+            serverAddress = shownServerAddress(settings.serverUrl),
+            serverId = settings.serverDiscovery?.id,
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -157,6 +163,11 @@ class SettingsController internal constructor(
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: SettingsState get() = _state.value
+
+    /** Reads the server's address and id again: they change while the app runs (Settings calls it when it opens). */
+    fun refreshServer() {
+        _state.update { it.copy(serverAddress = shownServerAddress(settings.serverUrl), serverId = settings.serverDiscovery?.id) }
+    }
 
     fun setGroupingMode(mode: GroupingMode) = changeGrouping { it.copy(mode = mode) }
 
@@ -298,3 +309,7 @@ class SettingsController internal constructor(
         _state.update { it.copy(grouping = grouping) }
     }
 }
+
+/** The address as people read it: no `https://`, no `/query`. */
+private fun shownServerAddress(serverUrl: String): String =
+    com.chencohensolution.journal.network.serverAddress(serverUrl).removePrefix("https://")

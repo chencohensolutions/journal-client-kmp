@@ -21,6 +21,12 @@ saying how it stands and opening a page of its own; the switches used most stay 
   (its line, below).
 - **Search ›** on its own (its line, below).
 - **Advanced:** **Loading Moments ›** ("30 rows at a time · 40 ahead"; below).
+- **Your server** (last; Nov 7, 2026, Android and iOS): where the app reaches the server now
+  ("journal.example.com:56398", `SettingsState.serverAddress`) and under it, in monospace, "ID MFZWI3D-BONSGYC-…"
+  (`serverInfo.discovery.id`, `SettingsState.serverId`), or "Its ID shows once the server has told it." before a
+  server with discovery answered. Both can be selected to copy; nothing opens. Read again each time Settings opens
+  (`SettingsController.refreshServer`), since the address changes when the app finds the server elsewhere
+  (docs/plans/discovery.md, "Phones").
 
 The pages, and what each holds:
 

@@ -184,3 +184,20 @@ class ServerFinderTest {
         assertEquals(kept, settings.serverDiscovery)
     }
 }
+
+class SettingsServerTest {
+    @Test
+    fun settingsShowsTheAddressAndTheIdOnceKnown() {
+        val settings = JournalSettings(MapStore()).apply { serverUrl = "https://journal.example.com:56398/query" }
+        val controller = com.chencohensolution.journal.settings.SettingsController(settings, kotlinx.coroutines.Dispatchers.Unconfined)
+        assertEquals("journal.example.com:56398", controller.currentState.serverAddress)
+        assertNull(controller.currentState.serverId)
+        settings.serverUrl = "https://203.0.113.7:56398/query"
+        settings.serverDiscovery = KeptDiscovery(fingerprint = "ab".repeat(32), id = "MFZWI3D-BONSGYC")
+        controller.refreshServer()
+        assertEquals("203.0.113.7:56398", controller.currentState.serverAddress)
+        assertEquals("MFZWI3D-BONSGYC", controller.currentState.serverId)
+        controller.close()
+    }
+}
+
