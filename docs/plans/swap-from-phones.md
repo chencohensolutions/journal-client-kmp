@@ -72,6 +72,16 @@ for that copy (10 minutes, once), the friend's new server joins with it and gets
 certificate is refused from then on. Then `restore --passphrase` (from the friend's phone later). Nobody can read
 the copy without the passphrase; a forgotten one is a lost copy.
 
+### The host set up again
+
+When the host's server is set up fresh (a new key, so a new id) but its `peers_folder` survives, the friends' copies
+are still there; only the pairing is lost, since each friend's server pins the old id. On the host's phone, **Invite
+back the friends whose copies are here** makes one invite per copy kept (10 minutes, once), each tied to the folder it
+already has. The friend scans it, and their server takes the new id for the same peer: it keeps its manifest (or
+reads it back from the host) and sends only what the host lacks. (Today `peer add` refuses a name already added, and
+`peer remove` sets the manifest aside, so the command line needs `peer remove` and `peer add` with the manifest read
+back.) Without any server, the host can hand over the folder on a disk for `restore --from-folder --passphrase`.
+
 ### In the apps
 
 - Settings > Backup gets **Swap with a friend**: "Keep a friend's copy here" (quota, then the QR code and Share) and
