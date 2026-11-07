@@ -1,0 +1,86 @@
+# Plan: setting up a swap from the phones
+
+Proposed on Nov 7, 2026, at the owner's ask: "pair two servers from the clients". Not built. Builds on the swap
+([swap-and-encryption.md](swap-and-encryption.md), journal-server-go docs/peers.md) and discovery
+([discovery.md](discovery.md)).
+
+## Decided (Nov 7, 2026)
+
+- **No admin role.** A phone never sees or changes anything of another user: not their devices, copies, peers or
+  offers. Setting up a swap is not an admin job: each user sets up their own.
+- **Invite codes last 10 minutes and work once**, like enrollment codes and `peer invite` today. A friend far away
+  uses the link while the two are talking, or a new one is made.
+
+## Proposed, waiting for the owner
+
+- **A cap per user on the space they may offer friends**, set in config.json by whoever runs the server
+  (`"swap_space": "2TB"` on a user; none by default, so a user can't offer space until it is set). A phone offers up
+  to it, never more, and can't change it. The alternative: any user up to the disk's free space.
+- **Copies are encrypted by default**, with a passphrase the phone asks for (the existing `--from-passphrase` key).
+  A plain copy, which the friend can read, stays an option the user picks for a friend they trust.
+- **One scan sets up both directions**, with an accept step on the other phone.
+
+## The problem today
+
+Everything is done at the server's command line, by whoever runs it, for the whole server:
+
+1. On the friend's server: `peer invite --name hen --quota 2TB` (a 10-minute code and the host's id).
+2. On ours: `peer add dana <address> <code>.<id> --trusted`.
+3. In config.json, a copy `{ "peer": "dana" }` on each user who should have one, and a restart.
+4. For a swap, all of it again the other way.
+
+A peer belongs to the server, and config.json decides which users' copies go to it.
+
+## The design
+
+### A peer belongs to a user
+
+- On the **owner's** server, a peer added from hen's phone is hen's: kept in `peers_dir/<user>/<name>/` and used
+  only for hen's copy. Peers added at the command line stay as today (the server's, for the users config.json lists).
+- On the **host**, an invite made on Dana's phone is Dana's: the peers it lets in keep their files in
+  `peers_folder/<dana>/<peer>/<user>/`, and their space counts against Dana's `swap_space`. Peers invited at the
+  command line stay as today.
+- The peer certificate the host issues names the host user it belongs to, so the host can check every
+  `/peer/` request against it.
+
+### The phone's side (public schema, each acting on the device's own user only)
+
+- `swapInvite(name, quota)`: makes an invite that belongs to this user (quota at most what is left of
+  `swap_space`) and answers its link: `journal://swap?code=…&id=…&key=…&address=…` (the code, the server id, the DHT
+  key, up to 6 addresses: the same as the enrollment link). The app shows it as a QR code and a link to share.
+- `joinSwap(link, passphrase?)`: this user's server pairs with the host (addresses, then the DHT; the id is pinned
+  from the first connection), keeps the peer as this user's, and starts this user's copy there, encrypted with a
+  key from the passphrase unless the user chose a plain copy. No config edit or restart.
+- `swaps`: this user's swaps both ways: my copy at each friend's (how far it is, last compare, reachable), and each
+  friend's copy I keep (space used of the quota). With `removeSwap` and `revokeSwap`.
+- `serverInfo.swap { available, spaceLeft }`, so the apps show Swap only when the server keeps peers' copies at all
+  (`peers_folder`) and this user has `swap_space`.
+
+### One scan, both ways
+
+When hen's server joins Dana's, it offers its own invite in the same exchange (with the quota hen chose for
+Dana). Dana's phone then shows "hen offers to keep your copy too (2 TB). Accept?" and her server joins back.
+Declining leaves a one-way copy.
+
+### In the apps
+
+- Settings > Backup gets **Swap with a friend**: "Keep a friend's copy here" (quota, then the QR code and Share) and
+  "Keep my copy at a friend's" (Scan, or paste a link; then the passphrase, or "plain, I trust this friend").
+- The friends appear under the copies as today (`kind: PEER`), and in a Swaps list with the space and Remove.
+
+### What stays at the server
+
+Whoever runs it decides whether the server keeps friends' copies (`peers_folder`), where, and each user's
+`swap_space`. The copy keys never leave the server or the phone that made them; restore stays at the server.
+
+## Limits
+
+- At least one of the two servers must be reachable from outside (the router's port opened by the server, or
+  IPv6). Behind carrier-grade NAT on both sides they can't connect: there is no relay.
+- Both servers need the discovery build.
+
+## Order of work
+
+1. Server: peers that belong to a user (both sides), `swap_space`, the four calls and `serverInfo.swap`; tests.
+2. Apps: the Swap screens (Android, then iOS on the Mac), the QR code and the scan.
+3. One scan both ways.
