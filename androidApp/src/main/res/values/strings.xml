@@ -942,4 +942,5 @@
     <string name="settings_server_title">Your server</string>
     <string name="settings_server_id">ID %1$s</string>
     <string name="settings_server_no_id">Its ID shows once the server has told it.</string>
+    <string name="enroll_server_verified_id">Its key matches server ID %1$s</string>
 </resources>

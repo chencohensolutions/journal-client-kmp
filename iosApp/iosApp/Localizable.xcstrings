@@ -11633,6 +11633,16 @@
           }
         }
       }
+    },
+    "Its key matches server ID %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המפתח שלו תואם למזהה השרת %@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

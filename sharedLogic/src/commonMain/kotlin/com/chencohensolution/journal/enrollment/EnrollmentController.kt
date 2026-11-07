@@ -2,6 +2,14 @@ package com.chencohensolution.journal.enrollment
 
 import com.chencohensolution.journal.connection.ConnectionStatus
 import com.chencohensolution.journal.connection.ObservationHandle
+import com.apollographql.apollo.exception.ApolloNetworkException
+import com.chencohensolution.journal.discovery.DhtClient
+import com.chencohensolution.journal.discovery.KeptDiscovery
+import com.chencohensolution.journal.discovery.ServerId
+import com.chencohensolution.journal.discovery.ServerRecord
+import com.chencohensolution.journal.discovery.answersAt
+import com.chencohensolution.journal.discovery.firstToAnswer
+import kotlin.time.Duration.Companion.milliseconds
 import com.chencohensolution.journal.graphql.type.EnrollmentRejectedReason
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
 import com.chencohensolution.journal.network.createApolloClient
@@ -89,6 +97,11 @@ data class EnrollmentState(
     val code: String,
     val deviceName: String,
     val step: EnrollmentStep,
+    /**
+     * The server's id when the enrollment link said who it is ("T6DNBAM-IJR6WLU-…"): its key is checked against it
+     * instead of the CA and the host name. Null otherwise.
+     */
+    val serverId: String? = null,
 )
 
 /**
@@ -102,14 +115,30 @@ class EnrollmentController internal constructor(
     private val clientFactory: MtlsHttpClientFactory,
     private val keyStore: DeviceKeyStore,
     defaultDeviceName: String,
-    private val onEnrolled: (serverUrl: String, identityAlias: String) -> Unit,
+    /** The new identity, at the GraphQL endpoint it enrolled at, with who the server is when the link said (else null). */
+    private val onEnrolled: (serverUrl: String, identityAlias: String, discovery: KeptDiscovery?) -> Unit,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val trustedCas: List<ByteArray> = decodePemCertificates(SERVER_CA_PEM),
     private val clock: Clock = Clock.System,
+    /** The DHT lookup, when none of the link's addresses answers. */
+    private val dhtLookup: suspend (key: String, fingerprint: String) -> ServerRecord? = { key, fingerprint ->
+        DhtClient().lookup(key, fingerprint)
+    },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var job: Job? = null
+
+    /** The link scanned or opened, when it said who the server is (its fingerprint): the connections pin its key. */
+    private var pinned: EnrollmentLink? = null
+
+    /**
+     * What `serverDiscovery` was before enrollment put the link's in, so the mTLS clients pin it (they read it from the
+     * settings); put back when the user leaves without enrolling. Null while nothing was put in.
+     */
+    private var discoveryBefore: SavedDiscovery? = null
+
+    private class SavedDiscovery(val value: KeptDiscovery?)
 
     private val _state = MutableStateFlow(
         EnrollmentState(
@@ -151,7 +180,8 @@ class EnrollmentController internal constructor(
         setStep(EnrollmentStep.EnterCode(checking = true))
         job = scope.launch {
             val next = try {
-                val preview = anonymousApollo(current.serverAddress) { previewEnrollment(it, current.code) }
+                val (address, preview) = reachServer(current.serverAddress) { previewEnrollment(it, current.code) }
+                if (address != current.serverAddress) _state.update { it.copy(serverAddress = address) }
                 EnrollmentStep.Confirm(preview.user, minutesUntil(preview.expiresAt))
             } catch (e: CancellationException) {
                 throw e
@@ -166,7 +196,7 @@ class EnrollmentController internal constructor(
     fun register() {
         val current = _state.value
         if (current.step !is EnrollmentStep.Confirm) return
-        val endpoint = graphQlEndpoint(current.serverAddress)
+        var endpoint = graphQlEndpoint(current.serverAddress)
         val alias = IDENTITY_ALIAS_PREFIX + clock.now().toEpochMilliseconds()
         val deviceName = current.deviceName.trim()
 
@@ -188,7 +218,11 @@ class EnrollmentController internal constructor(
                     val csr = withContext(workDispatcher) {
                         CertificateRequest.build(deviceName, key.publicKeyInfo, key::sign)
                     }
-                    anonymousApollo(current.serverAddress) { enrollDevice(it, current.code, deviceName, csr, key.protection) }
+                    val (address, issued) = reachServer(current.serverAddress) {
+                        enrollDevice(it, current.code, deviceName, csr, key.protection)
+                    }
+                    endpoint = graphQlEndpoint(address)
+                    issued
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     return@launch setStep(EnrollmentStep.Failed(e.toEnrollmentError()))
@@ -215,7 +249,8 @@ class EnrollmentController internal constructor(
 
                 val previous = settings.identityAlias
                 settings.certificateExpiresAt = runCatching { Instant.parse(issued.expiresAt).toEpochMilliseconds() }.getOrNull()
-                onEnrolled(endpoint, alias)
+                onEnrolled(endpoint, alias, pinned?.let { discoveryOf(it, endpoint) })
+                discoveryBefore = null
                 succeeded = true
                 if (previous != null && previous != alias && previous.startsWith(IDENTITY_ALIAS_PREFIX)) {
                     withContext(workDispatcher) { runCatching { keyStore.delete(previous) } }
@@ -243,7 +278,7 @@ class EnrollmentController internal constructor(
         job?.cancel()
         _state.update {
             when (it.step) {
-                is EnrollmentStep.EnterCode -> it.copy(step = EnrollmentStep.Welcome)
+                is EnrollmentStep.EnterCode -> it.copy(step = EnrollmentStep.Welcome).also { forgetPin() }
                 is EnrollmentStep.Confirm, is EnrollmentStep.Registering -> it.copy(step = EnrollmentStep.EnterCode())
                 is EnrollmentStep.Failed -> it.copy(code = "", step = EnrollmentStep.EnterCode())
                 EnrollmentStep.Welcome, is EnrollmentStep.Enrolled -> it
@@ -260,8 +295,15 @@ class EnrollmentController internal constructor(
     fun openLink(link: EnrollmentLink) {
         if (_state.value.step is EnrollmentStep.Registering) return
         job?.cancel()
+        forgetPin()
+        pinned = link.takeIf { it.fingerprint != null }
         _state.update {
-            it.copy(serverAddress = link.server ?: it.serverAddress, code = cleanCode(link.code), step = EnrollmentStep.EnterCode())
+            it.copy(
+                serverAddress = link.server ?: link.addresses.firstOrNull() ?: it.serverAddress,
+                code = cleanCode(link.code),
+                step = EnrollmentStep.EnterCode(),
+                serverId = pinned?.fingerprint?.let(ServerId::format),
+            )
         }
         checkCode()
     }
@@ -273,6 +315,7 @@ class EnrollmentController internal constructor(
 
     fun reset() {
         job?.cancel()
+        forgetPin()
         _state.update { it.copy(code = "", serverAddress = serverAddress(settings.serverUrl), step = EnrollmentStep.Welcome) }
     }
 
@@ -295,6 +338,77 @@ class EnrollmentController internal constructor(
             throw EnrollmentTransportException(e.describe())
         }
         return createApolloClient(httpClient, endpoint).useClient { block(it) }
+    }
+
+    /**
+     * Runs [block] on the anonymous client at [address], pinning the link's key when it has one. When [address] doesn't
+     * answer at all and the link said who the server is, the link's other addresses are tried (400 ms apart, the first
+     * to answer wins), then the DHT under its key, and [block] runs where the server answered. Gives that address too.
+     */
+    private suspend fun <T> reachServer(address: String, block: suspend (com.apollographql.apollo.ApolloClient) -> T): Pair<String, T> {
+        pinned?.let { pinFor(it, address) }
+        try {
+            return address to anonymousApollo(address, block)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            // No answer at all (Apollo's NoDataException around its network error), not a refusal or an HTTP error.
+            val network = generateSequence<Throwable>(e) { it.cause?.takeIf { cause -> cause !== it } }.take(10).any { it is ApolloNetworkException }
+            val link = pinned?.takeIf { network } ?: throw e
+            val found = findElsewhere(link, KeptDiscovery.originOf(graphQlEndpoint(address))) ?: throw e
+            pinFor(link, found)
+            return found to anonymousApollo(found, block)
+        }
+    }
+
+    private suspend fun findElsewhere(link: EnrollmentLink, failed: String?): String? {
+        val fingerprint = link.fingerprint ?: return null
+        val http = try {
+            clientFactory.create(null, trustedCas)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            return null
+        }
+        try {
+            val probe: suspend (String) -> Boolean = { http.answersAt(it) }
+            firstToAnswer(link.addresses.filter { it != failed }, 400.milliseconds, probe)?.let { return it }
+            val key = link.key ?: return null
+            val record = try {
+                dhtLookup(key, fingerprint)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                null
+            } ?: return null
+            val found = record.addresses.mapNotNull(KeptDiscovery::originOf).distinct().filter { it != failed }
+            return firstToAnswer(found, 400.milliseconds, probe)
+        } finally {
+            http.close()
+        }
+    }
+
+    /** Puts the link's server in the settings, as at [address], so the mTLS clients pin its key. */
+    private fun pinFor(link: EnrollmentLink, address: String) {
+        if (discoveryBefore == null) discoveryBefore = SavedDiscovery(settings.serverDiscovery)
+        settings.serverDiscovery = discoveryOf(link, graphQlEndpoint(address))
+    }
+
+    /** Puts back what the settings had before [pinFor], when the user leaves without enrolling. */
+    private fun forgetPin() {
+        discoveryBefore?.let { settings.serverDiscovery = it.value }
+        discoveryBefore = null
+        pinned = null
+        _state.update { it.copy(serverId = null) }
+    }
+
+    private fun discoveryOf(link: EnrollmentLink, endpoint: String): KeptDiscovery {
+        val fingerprint = link.fingerprint!!
+        return KeptDiscovery.merge(
+            old = null,
+            workingUrl = endpoint,
+            fingerprint = fingerprint,
+            id = ServerId.format(fingerprint).orEmpty(),
+            key = link.key,
+            addresses = link.addresses,
+        )
     }
 
     private fun minutesUntil(timestamp: String): Int =
@@ -322,10 +436,24 @@ private val PASTED_CODE = Regex("""(?<![A-Za-z0-9])[A-Za-z0-9]{4}-?[A-Za-z0-9]{4
  * Pasted text (e.g. a terminal line with "Code  K7QM-4XPD" or extra lines) is reduced to the first
  * code-shaped word in it. The server ignores case and dashes.
  */
-/** What an enrollment QR code holds (see `enroll-code` in journal-server-go). [server] is null when it has none. */
-data class EnrollmentLink(val code: String, val server: String?)
+/**
+ * What an enrollment QR code holds (see `enroll-code` in journal-server-go docs/authentication.md). [server] is null when
+ * it has none. Since Nov 7, 2026 ("Enrolling by id") also who the server is and where: its key's [fingerprint] (64 hex
+ * digits; the app pins it from the first connection, so an address the certificate doesn't list works), its DHT [key]
+ * and its [addresses]; null and empty from an older server.
+ */
+data class EnrollmentLink(
+    val code: String,
+    val server: String?,
+    val fingerprint: String? = null,
+    val key: String? = null,
+    val addresses: List<String> = emptyList(),
+)
 
-/** `journal://enroll?code=K7QM-4XPD&server=https%3A%2F%2Fhost%3A56398`; null for any other link. */
+/**
+ * `journal://enroll?code=K7QM-4XPD&server=https%3A%2F%2Fhost%3A56398&fingerprint=…&key=…&address=…&address=…`; null
+ * for any other link. A fingerprint or key that isn't 64 hex digits is left out, and addresses that aren't https.
+ */
 fun parseEnrollmentLink(link: String): EnrollmentLink? {
     val url = try {
         Url(link.trim())
@@ -334,7 +462,14 @@ fun parseEnrollmentLink(link: String): EnrollmentLink? {
     }
     if (url.protocol.name != "journal" || url.host != "enroll") return null
     val code = url.parameters["code"]?.takeIf { it.isNotBlank() } ?: return null
-    return EnrollmentLink(code, url.parameters["server"]?.takeIf { it.isNotBlank() })
+    fun hex64(name: String) = url.parameters[name]?.trim()?.lowercase()?.takeIf { v -> v.length == 64 && v.all { it in "0123456789abcdef" } }
+    return EnrollmentLink(
+        code = code,
+        server = url.parameters["server"]?.takeIf { it.isNotBlank() },
+        fingerprint = hex64("fingerprint"),
+        key = hex64("key"),
+        addresses = url.parameters.getAll("address").orEmpty().mapNotNull(KeptDiscovery::originOf).distinct(),
+    )
 }
 
 internal fun cleanCode(input: String): String {

@@ -110,6 +110,9 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 - Moments' sets by looks (dHash + native embeddings), merged and split by hand.
 - Enrollment by QR code: **Scan QR code** on the code screen and `journal://enroll?code=…&server=…` links, on both
   platforms (iOS Oct 21, 2026).
+- Enrolling by id (Nov 7, 2026, both platforms; [screens/enrollment.md](screens/enrollment.md)): a link with the
+  server's `fingerprint`, DHT `key` and `address`es pins the key from the first connection, so the phone enrolls at
+  an address the certificate doesn't list, trying the other addresses, then the DHT, when the first doesn't answer.
 - Tags and notes per photo, Tags screen, tag page, and the tag search picker.
 - Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
   both; iOS since Oct 21, 2026).
@@ -313,7 +316,7 @@ previews, originals and videos of them. Not yet anywhere: note sync.
   apart, the first to answer winning, then a DHT lookup at most every 2 minutes (`DhtClient`: KRPC `get` over UDP with
   ktor-network; the record opened with HKDF-SHA256 and XChaCha20-Poly1305, `Seal`, all pure Kotlin); the address that
   answers becomes `serverUrl` and the request is sent again (GraphQL and GETs; an upload piece fails once and the next
-  goes to the new address). A new enrollment forgets what was kept. Settings shows the server's id under its address.
+  goes to the new address). A new enrollment forgets what was kept, unless its link said who the server is (enrolling by id). Settings shows the server's id under its address.
   When the hidden collections or
   the device's private setting change, the server sends only the files that changed visibility, then goes on; a
   cursor it can't read starts the feed again, so the app never has to clear one. Previews are optional (Oct 20,

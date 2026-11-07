@@ -9,6 +9,7 @@ import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.tls.certificateCommonName
 import com.chencohensolution.journal.tls.decodePemCertificates
+import com.chencohensolution.journal.discovery.KeptDiscovery
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -103,13 +104,16 @@ class JournalController internal constructor(
         _state.update { it.copy(identityAlias = alias) }
     }
 
-    /** Switches to an identity created by enrollment; called by EnrollmentController. */
-    internal fun useEnrolledIdentity(serverUrl: String, alias: String) {
+    /**
+     * Switches to an identity created by enrollment; called by EnrollmentController. [discovery]: who the server is,
+     * when the enrollment link said (its key is pinned from then on); null forgets what was kept of a server before.
+     */
+    internal fun useEnrolledIdentity(serverUrl: String, alias: String, discovery: KeptDiscovery? = null) {
         connectJob?.cancel()
         settings.serverUrl = serverUrl
         settings.identityAlias = alias
         // Perhaps another server: what was kept of the old one (its pinned key, its addresses) doesn't apply.
-        settings.serverDiscovery = null
+        settings.serverDiscovery = discovery
         _state.update {
             JournalState(serverUrl = serverUrl, identityAlias = alias, status = ConnectionStatus.NotConnected)
         }

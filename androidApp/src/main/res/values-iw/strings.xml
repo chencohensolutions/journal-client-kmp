@@ -992,4 +992,5 @@
     <string name="settings_server_title">השרת שלך</string>
     <string name="settings_server_id">מזהה %1$s</string>
     <string name="settings_server_no_id">המזהה יופיע אחרי שהשרת ימסור אותו.</string>
+    <string name="enroll_server_verified_id">המפתח שלו תואם למזהה השרת %1$s</string>
 </resources>

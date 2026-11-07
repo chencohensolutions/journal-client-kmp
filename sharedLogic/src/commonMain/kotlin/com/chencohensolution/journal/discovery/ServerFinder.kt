@@ -92,36 +92,42 @@ internal class ServerFinder(
         return origin
     }
 
-    /** The first of [origins] to answer, each started [stagger] after the one before; null when none does. */
-    private suspend fun race(origins: List<String>, probe: suspend (String) -> Boolean): String? {
-        if (origins.isEmpty()) return null
-        return coroutineScope {
-            val winner = CompletableDeferred<String?>()
-            val tries = origins.mapIndexed { i, origin ->
-                launch {
-                    delay(stagger * i)
-                    val answered = try {
-                        // On its own job: a failed request may fail the job it runs in, which mustn't stop the others.
-                        supervisorScope { async { probe(origin) }.await() }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        false
-                    }
-                    if (answered) winner.complete(origin)
-                }
-            }
-            launch {
-                tries.joinAll()
-                winner.complete(null)
-            }
-            winner.await().also { coroutineContext.cancelChildren() }
-        }
-    }
+    private suspend fun race(origins: List<String>, probe: suspend (String) -> Boolean): String? =
+        firstToAnswer(origins, stagger, probe)
 
     companion object {
         /** How long an address may take to answer a probe. */
         val PROBE_TIMEOUT = 6.seconds
+    }
+}
+
+/**
+ * The first of [origins] for which [probe] says the server answers, each started [stagger] after the one before;
+ * null when none does. Also used by enrollment (EnrollmentController).
+ */
+internal suspend fun firstToAnswer(origins: List<String>, stagger: Duration, probe: suspend (String) -> Boolean): String? {
+    if (origins.isEmpty()) return null
+    return coroutineScope {
+        val winner = CompletableDeferred<String?>()
+        val tries = origins.mapIndexed { i, origin ->
+            launch {
+                delay(stagger * i)
+                val answered = try {
+                    // On its own job: a failed request may fail the job it runs in, which mustn't stop the others.
+                    supervisorScope { async { probe(origin) }.await() }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+                if (answered) winner.complete(origin)
+            }
+        }
+        launch {
+            tries.joinAll()
+            winner.complete(null)
+        }
+        winner.await().also { coroutineContext.cancelChildren() }
     }
 }
 
@@ -159,7 +165,7 @@ private fun Any.canSendAgain(): Boolean =
     this is OutgoingContent.ByteArrayContent || this is OutgoingContent.NoContent
 
 /** Whether the server answers at [origin] at all: any HTTP answer means the TLS handshake (and the pin) passed. */
-private suspend fun HttpClient.answersAt(origin: String): Boolean = withTimeout(ServerFinder.PROBE_TIMEOUT) {
+internal suspend fun HttpClient.answersAt(origin: String): Boolean = withTimeout(ServerFinder.PROBE_TIMEOUT) {
     get("$origin/query") { attributes.put(NoFallback, Unit) }
     true
 }

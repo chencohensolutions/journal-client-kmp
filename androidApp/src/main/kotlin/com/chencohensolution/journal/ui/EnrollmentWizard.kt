@@ -217,7 +217,8 @@ private fun ColumnScope.ConfirmStep(state: EnrollmentState, step: EnrollmentStep
         ) {
             Column {
                 DetailRow(Icons.Server, stringResource(R.string.enroll_server), state.serverAddress.removePrefix("https://"),
-                    stringResource(R.string.enroll_server_verified))
+                    state.serverId?.let { stringResource(R.string.enroll_server_verified_id, shortServerId(it)) }
+                        ?: stringResource(R.string.enroll_server_verified))
                 HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                 DetailRow(Icons.Person, stringResource(R.string.enroll_account), step.user,
                     stringResource(R.string.enroll_code_expires, state.code.uppercase(), step.minutesLeft), highlight = false)
@@ -593,3 +594,6 @@ private fun RegisteringPreview() {
         )
     }
 }
+
+/** The first two groups of a server id, "T6DNBAM-IJR6WLU-…": enough to recognize it. */
+internal fun shortServerId(id: String): String = id.split("-").take(2).joinToString("-") + "-…"

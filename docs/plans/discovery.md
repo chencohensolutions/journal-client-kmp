@@ -5,8 +5,8 @@ find each other when they have no static IP address or host name". **Decided the
 **BitTorrent DHT** (free, no server to run), and **no relay**. **Built for servers** (journal-server-go branch
 `claude/project-thread-f40fq0`, docs/peers.md "Finding the host"): server ids, peers telling each other their
 addresses, the DHT. **Phones built** the same day (journal-client-kmp branch `claude/project-thread-f40fq0`, "Phones:
-the spec" below): the pinned key, the addresses, the DHT lookup, the id in Settings. Not built: port mapping, Bonjour,
-enrolling by id.
+the spec" below): the pinned key, the addresses, the DHT lookup, the id in Settings; enrolling by id from the QR link the same
+evening (docs/screens/enrollment.md). Not built: port mapping, Bonjour, typing an id by hand.
 
 ## The problem today
 

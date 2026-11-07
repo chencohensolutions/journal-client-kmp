@@ -208,7 +208,7 @@ class EnrollmentControllerTest {
             },
             keyStore = keyStore,
             defaultDeviceName = "Pixel 9 Pro",
-            onEnrolled = { url, alias -> enrolled = url to alias },
+            onEnrolled = { url, alias, _ -> enrolled = url to alias },
             dispatcher = dispatcher,
             workDispatcher = dispatcher,
             clock = object : Clock {
@@ -356,5 +356,166 @@ class EnrollmentControllerTest {
         assertEquals("journal-device-2", journal.currentState.identityAlias)
         assertEquals(ConnectionStatus.NotConnected, journal.currentState.status)
         assertEquals("journal-device-2", JournalSettings(store).identityAlias)
+    }
+}
+
+/**
+ * Enrolling by id (journal-server-go docs/authentication.md "Enrolling by id"): the link says who the server is, the
+ * connections pin its key from the first, and the other addresses, then the DHT, are tried when the first doesn't
+ * answer. On real time: the probes have a timeout of their own, which virtual time would run out at once.
+ */
+@OptIn(ExperimentalTime::class)
+class EnrollByIdTest {
+    private val fingerprint = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    private val dhtKey = "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664"
+    private val store = MemoryStore()
+    private val settings = JournalSettings(store)
+    private val asked = mutableListOf<String>()
+    private var enrolled: Triple<String, String, com.chencohensolution.journal.discovery.KeptDiscovery?>? = null
+    private var dhtAsked = 0
+
+    /** The server, answering only at [up] (hosts), as a dead address fails elsewhere; the pin it was asked with. */
+    private val pinsSeen = mutableListOf<String?>()
+
+    private fun controller(up: Set<String>, dht: List<String>? = null) = EnrollmentController(
+        settings = settings,
+        clientFactory = MtlsHttpClientFactory { _, _ ->
+            pinsSeen += settings.serverFingerprint
+            HttpClient(MockEngine { request ->
+                asked += request.url.host
+                if (request.url.host !in up) throw kotlinx.io.IOException("No route to host")
+                val body = request.body.toByteArray().decodeToString()
+                val operation = Regex("\"operationName\":\"(\\w+)\"").find(body)?.groupValues?.get(1)
+                val json = when (operation) {
+                    "EnrollmentPreview" -> PREVIEW_JSON
+                    "EnrollDevice" -> ENROLLED_JSON
+                    null -> "" // a probe
+                    else -> USAGE_OK
+                }
+                respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            })
+        },
+        keyStore = FakeKeyStore(),
+        defaultDeviceName = "Galaxy",
+        onEnrolled = { url, alias, discovery -> enrolled = Triple(url, alias, discovery) },
+        dispatcher = kotlinx.coroutines.Dispatchers.Default,
+        workDispatcher = kotlinx.coroutines.Dispatchers.Default,
+        clock = object : Clock {
+            override fun now() = Instant.parse("2026-10-17T14:24:00Z")
+        },
+        dhtLookup = { key, fp ->
+            dhtAsked++
+            assertEquals(dhtKey, key)
+            assertEquals(fingerprint, fp)
+            dht?.let { com.chencohensolution.journal.discovery.ServerRecord(it, 0) }
+        },
+    )
+
+    private fun link(server: String, vararg addresses: String) = parseEnrollmentLink(
+        "journal://enroll?code=K7QM-4XPD&server=" + server.replace(":", "%3A").replace("/", "%2F") +
+            "&fingerprint=$fingerprint&key=$dhtKey" + addresses.joinToString("") { "&address=" + it.replace(":", "%3A").replace("/", "%2F") },
+    )!!
+
+    private suspend fun EnrollmentController.awaitStep(predicate: (EnrollmentStep) -> Boolean): EnrollmentStep =
+        state.first { predicate(it.step) }.step
+
+    private fun realTime(block: suspend () -> Unit) = runTest { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { block() } }
+
+    @Test
+    fun theLinkPinsTheKeyFromTheFirstConnection() = realTime {
+        val controller = controller(up = setOf("203.0.113.7"))
+        controller.openLink(link("https://203.0.113.7:56398"))
+        assertIs<EnrollmentStep.Confirm>(controller.awaitStep { it is EnrollmentStep.Confirm || it is EnrollmentStep.EnterCode && it.error != null })
+        assertEquals(listOf<String?>(fingerprint), pinsSeen)
+        assertEquals("T6DNBAM-IJR6WLU-GRP5KQM-KWWQCWV-R36TY3F-MFYELGR-RLVWBLM-HQBIEAE", controller.currentState.serverId)
+        controller.register()
+        assertIs<EnrollmentStep.Enrolled>(controller.awaitStep { it is EnrollmentStep.Enrolled || it is EnrollmentStep.Failed })
+        assertTrue(pinsSeen.all { it == fingerprint }, "every connection pinned the key: $pinsSeen")
+        val (url, _, discovery) = enrolled!!
+        assertEquals("https://203.0.113.7:56398/query", url)
+        assertEquals(fingerprint, discovery!!.fingerprint)
+        assertEquals(dhtKey, discovery.key)
+        assertEquals("T6DNBAM-IJR6WLU-GRP5KQM-KWWQCWV-R36TY3F-MFYELGR-RLVWBLM-HQBIEAE", discovery.id)
+        controller.close()
+    }
+
+    @Test
+    fun anotherAddressOfTheLinkIsTriedWhenTheFirstDoesNotAnswer() = realTime {
+        val controller = controller(up = setOf("192.168.1.20"))
+        controller.openLink(link("https://203.0.113.7:56398", "https://203.0.113.7:56398", "https://192.168.1.20:56398"))
+        assertIs<EnrollmentStep.Confirm>(controller.awaitStep { it is EnrollmentStep.Confirm || it is EnrollmentStep.EnterCode && it.error != null })
+        assertEquals("https://192.168.1.20:56398", controller.currentState.serverAddress)
+        assertEquals(0, dhtAsked)
+        controller.register()
+        assertIs<EnrollmentStep.Enrolled>(controller.awaitStep { it is EnrollmentStep.Enrolled || it is EnrollmentStep.Failed })
+        val (url, _, discovery) = enrolled!!
+        assertEquals("https://192.168.1.20:56398/query", url)
+        assertEquals("https://192.168.1.20:56398", discovery!!.addresses.first())
+        controller.close()
+    }
+
+    @Test
+    fun theDhtIsAskedWhenNoAddressAnswers() = realTime {
+        val controller = controller(up = setOf("198.51.100.20"), dht = listOf("https://198.51.100.20:56398"))
+        controller.openLink(link("https://203.0.113.7:56398", "https://203.0.113.7:56398"))
+        assertIs<EnrollmentStep.Confirm>(controller.awaitStep { it is EnrollmentStep.Confirm || it is EnrollmentStep.EnterCode && it.error != null })
+        assertEquals(1, dhtAsked)
+        assertEquals("https://198.51.100.20:56398", controller.currentState.serverAddress)
+        controller.close()
+    }
+
+    @Test
+    fun leavingWithoutEnrollingPutsBackWhatWasKept() = realTime {
+        val before = com.chencohensolution.journal.discovery.KeptDiscovery(fingerprint = "ab".repeat(32), id = "OLD")
+        settings.serverDiscovery = before
+        val controller = controller(up = setOf("203.0.113.7"))
+        controller.openLink(link("https://203.0.113.7:56398"))
+        controller.awaitStep { it is EnrollmentStep.Confirm }
+        assertEquals(fingerprint, settings.serverFingerprint)
+        controller.back() // to the code
+        controller.back() // to the start
+        assertEquals(before, settings.serverDiscovery)
+        assertNull(controller.currentState.serverId)
+        controller.close()
+    }
+
+    @Test
+    fun aLinkWithoutAFingerprintWorksAsBefore() = realTime {
+        val controller = controller(up = setOf("journal.example.com"))
+        controller.openLink(EnrollmentLink("K7QM-4XPD", "https://journal.example.com:56398"))
+        assertIs<EnrollmentStep.Confirm>(controller.awaitStep { it is EnrollmentStep.Confirm || it is EnrollmentStep.EnterCode && it.error != null })
+        assertEquals(listOf<String?>(null), pinsSeen)
+        controller.close()
+    }
+}
+
+class EnrollmentLinkByIdTest {
+    @Test
+    fun readsWhoTheServerIs() {
+        val link = parseEnrollmentLink(
+            "journal://enroll?address=https%3A%2F%2F203.0.113.7%3A56398&address=https%3A%2F%2F%5B2001%3Adb8%3A%3A7%5D%3A56398" +
+                "&address=http%3A%2F%2Fplain.example&code=K7QM-4XPD&fingerprint=" + "AB".repeat(32) + "&key=" + "cd".repeat(32),
+        )!!
+        assertEquals("ab".repeat(32), link.fingerprint)
+        assertEquals("cd".repeat(32), link.key)
+        assertEquals(listOf("https://203.0.113.7:56398", "https://[2001:db8::7]:56398"), link.addresses)
+        assertNull(link.server)
+        val bad = parseEnrollmentLink("journal://enroll?code=K7QM-4XPD&fingerprint=abc&key=zz")!!
+        assertNull(bad.fingerprint)
+        assertNull(bad.key)
+    }
+
+    @Test
+    fun serverIdsAsTheServerWritesThem() {
+        val ids = com.chencohensolution.journal.discovery.ServerId
+        // Made by journal-server-go's discovery.FormatID.
+        assertEquals("T6DNBAM-IJR6WLU-GRP5KQM-KWWQCWV-R36TY3F-MFYELGR-RLVWBLM-HQBIEAE",
+            ids.format("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"))
+        assertEquals("AAAAAAA-AAAAAAA-AAAAAAA-AAAAAAA-AAAAAAA-AAAAAAA-AAAAAAA-AAAAAAA", ids.format("00".repeat(32)))
+        assertEquals("7777777-777777N-7777777-777777N-7777777-777777N-7777777-77777Q4", ids.format("ff".repeat(32)))
+        assertEquals("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            ids.parse("t6dnbam ijr6wlu-grp5kqm-kwwqcwv-r36ty3f-mfyelgr-rlvwblm-hqbieae"))
+        assertNull(ids.parse("T6DNBAM-IJR6WLU-GRP5KQM-KWWQCWV-R36TY3F-MFYELGR-RLVWBLM-HQBIEAF"), "a typo")
+        assertNull(ids.format("abc"))
     }
 }
