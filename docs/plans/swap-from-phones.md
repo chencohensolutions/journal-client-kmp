@@ -61,6 +61,15 @@ When hen's server joins Dana's, it offers its own invite in the same exchange (w
 Dana). Dana's phone then shows "hen offers to keep your copy too (2 TB). Accept?" and her server joins back.
 Declining leaves a one-way copy.
 
+### A friend's server set up again
+
+After a friend loses their PC, their new server can't reach their copy: the host lets in only the old server's
+certificate. The passphrase alone decrypts the copy (it carries the Argon2id salt), so the host only has to let the
+new server in. On the host's phone, each friend's copy I keep has **Let a new server take over**: it makes an invite
+for that copy (10 minutes, once), the friend's new server joins with it and gets the same files, and the old
+certificate is refused from then on. Then `restore --passphrase` (from the friend's phone later). Nobody can read
+the copy without the passphrase; a forgotten one is a lost copy.
+
 ### In the apps
 
 - Settings > Backup gets **Swap with a friend**: "Keep a friend's copy here" (quota, then the QR code and Share) and
