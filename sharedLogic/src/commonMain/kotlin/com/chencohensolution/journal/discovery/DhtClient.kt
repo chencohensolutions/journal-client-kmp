@@ -7,6 +7,8 @@ import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.aSocket
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
@@ -39,6 +41,8 @@ internal class DhtClient(
     private val parallel: Int = 8,
     private val closest: Int = 8,
     private val random: Random = Random.Default,
+    /** What the walk did, for a live check by hand (LiveDhtTest). */
+    private val trace: (String) -> Unit = {},
 ) {
     private enum class Asked { NOT_YET, WAITING, ANSWERED, FAILED }
 
@@ -98,7 +102,8 @@ internal class DhtClient(
                         waiting[tid.toHexString()] = node
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        trace("send to ${node.host}:${node.port} failed: $e")
                         node.asked = Asked.FAILED // a bootstrap name that doesn't resolve, no network
                     }
                 }
@@ -116,8 +121,9 @@ internal class DhtClient(
                 } ?: continue
                 val reply = runCatching { Bencode.decode(packet.data) as? Map<*, *> }.getOrNull() ?: continue
                 val tid = (reply["t"] as? ByteArray)?.toHexString() ?: continue
-                val node = waiting.remove(tid) ?: continue
+                val node = waiting.remove(tid) ?: run { trace("late or unknown answer from ${packet.host}"); continue }
                 if ((reply["y"] as? ByteArray)?.decodeToString() != "r") {
+                    trace("error from ${packet.host}: ${(reply["e"] as? List<*>)?.map { if (it is ByteArray) it.decodeToString() else it }}")
                     node.asked = Asked.FAILED
                     continue
                 }
@@ -134,6 +140,7 @@ internal class DhtClient(
                         nodes.getOrPut("$host:$port") { Node(host, port, id) }
                     }
                 }
+                if (r["v"] != null) trace("a value from ${node.host}: k=${(r["k"] as? ByteArray)?.toHexString()?.take(8)} seq=${r["seq"]}")
                 recordIn(r, key, fingerprintHex)?.let { found ->
                     // The newest by its sealed time: seq isn't checked without the signature.
                     if (found.at > (best?.at ?: Long.MIN_VALUE)) best = found
@@ -141,6 +148,13 @@ internal class DhtClient(
             }
         } finally {
             socket.close()
+            trace(
+                "asked ${nodes.values.count { it.asked != Asked.NOT_YET }} of ${nodes.size} nodes, " +
+                    "${nodes.values.count { it.asked == Asked.ANSWERED }} answered, in ${started.elapsedNow()}; " +
+                    "nearest answered: " + nodes.values.filter { it.asked == Asked.ANSWERED && it.id != null }
+                        .sortedWith(::distanceOrder).take(3).joinToString { n -> n.id!!.toHexString().take(8) } +
+                    " (target ${target.toHexString().take(8)})",
+            )
         }
         return best
     }
@@ -164,19 +178,34 @@ internal class DhtClient(
 
 private fun ByteArray.toHexString(): String = joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
 
+/** The first IPv4 address of [host] ("1.2.3.4"), from the platform's resolver; null when it has none. Blocks. */
+internal expect fun resolveIpv4(host: String): String?
+
 /** UDP with ktor-network, on Android and iOS. */
 internal class KtorDhtTransport private constructor(
     private val selector: SelectorManager,
     private val socket: BoundDatagramSocket,
 ) : DhtTransport {
+    /** Bootstrap names as IPv4 numbers: ktor-network on iOS can't look a name up (ENOENT). */
+    private val resolved = HashMap<String, String>()
+
     override suspend fun send(packet: DhtPacket) {
-        socket.send(Datagram(Buffer().apply { write(packet.data) }, InetSocketAddress(packet.host, packet.port)))
+        val host = resolved.getOrPut(packet.host) {
+            if (packet.host.all { it.isDigit() || it == '.' }) {
+                packet.host
+            } else {
+                withContext(Dispatchers.IO) { resolveIpv4(packet.host) } ?: error("${packet.host} has no IPv4 address")
+            }
+        }
+        socket.send(Datagram(Buffer().apply { write(packet.data) }, InetSocketAddress(host, packet.port)))
     }
 
     override suspend fun receive(): DhtPacket {
         val datagram = socket.receive()
         val from = datagram.address as? InetSocketAddress
-        return DhtPacket(from?.hostname ?: "", from?.port ?: 0, datagram.packet.readByteArray())
+        // The IP as numbers: `hostname` looks the name up in the DNS on the JVM, for every packet.
+        val ip = from?.resolveAddress()?.takeIf { it.size == 4 }?.joinToString(".") { (it.toInt() and 0xff).toString() }
+        return DhtPacket(ip ?: "", from?.port ?: 0, datagram.packet.readByteArray())
     }
 
     override fun close() {
@@ -188,7 +217,9 @@ internal class KtorDhtTransport private constructor(
         suspend fun open(): KtorDhtTransport {
             val selector = SelectorManager(Dispatchers.Default)
             return try {
-                KtorDhtTransport(selector, aSocket(selector).udp().bind())
+                // IPv4: the bootstrap nodes and the compact node entries (BEP 5 "nodes") are IPv4, and an unspecified bind may
+                // not get their answers.
+                KtorDhtTransport(selector, aSocket(selector).udp().bind(InetSocketAddress("0.0.0.0", 0)))
             } catch (e: Throwable) {
                 selector.close()
                 throw e
