@@ -169,7 +169,7 @@ private fun OfferCard(offer: SwapOffer, nowMillis: Long, acting: Boolean, accept
 @Composable
 private fun MySwapRow(swap: MySwap, acting: Boolean, remove: () -> Unit) {
     val format = NumberFormat.getIntegerInstance()
-    val copy = swap.copy
+    val copy = swap.dataCopy
     val status = when {
         copy == null -> stringResource(R.string.swap_copy_unknown)
         copy.problem == CopyProblem.PEER_UNREACHABLE -> stringResource(R.string.swap_copy_unreachable)

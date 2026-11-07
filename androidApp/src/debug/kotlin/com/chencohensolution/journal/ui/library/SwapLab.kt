@@ -26,8 +26,8 @@ internal val labSwapInfo = SwapInfo(available = true, freeSpace = 1_840 * GB, co
 internal val labSwaps = SwapState(
     info = labSwapInfo.copy(copyKey = CopyKeyKind.PASSPHRASE),
     mine = listOf(
-        MySwap("Dana", 1_000 * GB, labSwapNow, encrypted = true, copy = labCopies.copies.firstOrNull { it.onPeer } ?: labCopies.copies.first()),
-        MySwap("Noa", 250 * GB, labSwapNow, encrypted = false, copy = null),
+        MySwap("Dana", 1_000 * GB, labSwapNow, encrypted = true, dataCopy = labCopies.copies.firstOrNull { it.onPeer } ?: labCopies.copies.first()),
+        MySwap("Noa", 250 * GB, labSwapNow, encrypted = false, dataCopy = null),
     ),
     kept = listOf(
         KeptSwap("Dana", 500 * GB, 212 * GB, labSwapNow, null),
@@ -53,6 +53,6 @@ internal fun labDraft(step: JoinStep, offer: SwapOffer? = null) = JoinDraft(offe
     check1 = "outlast"
 }
 
-internal val labJoined = SwapOutcome.Joined(MySwap("Dana", 500 * GB, labSwapNow, encrypted = true, copy = null), offered = true)
+internal val labJoined = SwapOutcome.Joined(MySwap("Dana", 500 * GB, labSwapNow, encrypted = true, dataCopy = null), offered = true)
 internal val labRefused = SwapOutcome.Refused(SwapRefusal.CODE_REFUSED, "the code was used")
 

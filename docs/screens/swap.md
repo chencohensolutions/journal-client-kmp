@@ -80,8 +80,11 @@ there yet. Never on the journal server or the friend's.
 - Android: [SwapScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/SwapScreen.kt)
   (the screens), `SwapRoutes.kt` (wiring), `SwapPlatform.kt` (QR code, Keystore, Credential Manager, the recovery
   sheet, Share, Copy); previews in `SwapScreenshots.kt` with `SwapLab.kt`'s made-up swaps.
-- iOS: `SwapView.swift` (the screens and the view model), `SwapPlatform.swift` (QR code, scanner, Keychain, Face
-  ID, the recovery sheet).
+- iOS: [SwapView.swift](../../iosApp/iosApp/SwapView.swift) (`SwapViewModel`, the screens; the iOS forms are
+  native `Form`s, so the look differs a little from Android's cards), [SwapPlatform.swift](../../iosApp/iosApp/SwapPlatform.swift)
+  (QR code, the `kSecAttrSynchronizable` Keychain item, the recovery sheet, Share, Copy); the scanner is
+  `QRCodeScanner.swift`'s and Face ID is `PhoneLocked`'s. A `journal://swap` link opens the join as a sheet over the
+  journal (`ContentView.swift`). UI lab: `./scripts/ui-lab-ios.sh swap [link|protect|words|check]`.
 
 ## Not built yet
 

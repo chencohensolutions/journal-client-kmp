@@ -106,7 +106,7 @@ private fun ServerCopyKeyKind.toKind() = when (this) {
     else -> CopyKeyKind.NONE
 }
 
-private fun MySwapFields.toSwap() = MySwap(name, quota, millis(addedAt) ?: 0, encrypted, copy?.dataCopyFields?.toCopy())
+private fun MySwapFields.toSwap() = MySwap(name, quota, millis(addedAt) ?: 0, encrypted, dataCopy = copy?.dataCopyFields?.toCopy())
 
 private fun SwapsFields.toAnswer() = SwapsAnswer(
     mine = mine.map { it.mySwapFields.toSwap() },

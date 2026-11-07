@@ -53,8 +53,8 @@ data class MySwap(
     val quota: Long,
     val addedAtMillis: Long,
     val encrypted: Boolean,
-    /** How the copy is doing; null when the server can't open it. */
-    val copy: DataCopy?,
+    /** How the copy is doing; null when the server can't open it. (Not `copy`: NSObject's copy() in Swift.) */
+    val dataCopy: DataCopy?,
 )
 
 /** A friend's copy kept on this server. */
