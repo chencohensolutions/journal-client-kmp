@@ -10,7 +10,7 @@ camera took a photo, imported ones too, and to set which camera models were his.
 ## Options
 - **a — One list with Mine switches**: every camera in one card, with its photos and years ("Samsung Galaxy S25 ·
   1,240 · 2025–2026") and a "Mine" switch; turning one off asks in a dialog ("312 photos will move to Sent to you"),
-  and the row then says "Moving 312 photos…" with a bar. *Picked*, promoted in c6e46cd (the lab now has the real screen as `cameras current|confirm|moving`).
+  and the row then says "Moving 312 photos…" with a bar. *Picked*, promoted in 68ad3db (the lab now has the real screen as `cameras current|confirm|moving`).
 - **b — Yours and Sent to you**: two groups, each camera with a "Not mine" or "Mine" button; the question opens inside
   the row, and a band at the top says what is moving. *Turned down* for a.
 - **c — Cameras over the years**: a card per camera, newest first, with a strip of the library's years it was used in,

@@ -4,7 +4,7 @@
 [settings.md](../screens/settings.md#search--on-this-phone), [viewer.md](../screens/viewer.md),
 [search.md](../screens/search.md), [explore.md](../screens/explore.md) and [moments.md](../screens/moments.md).
 
-Agreed with the owner on Oct 24, 2026 on the Mac. The server (journal-server-go, up to commit `4ed5669`) has face
+Agreed with the owner on Oct 24, 2026 on the Mac. The server (journal-server-go, up to commit `ca074f8`) has face
 search, text in photos, similar photos and duplicates, aesthetic scores, a search warm-up, error codes,
 `serverInfo`, and indexes a phone may keep and search itself. Neither app uses any of them yet. This file records
 the UX the owner chose; nothing is built. The next step is mockups in the UI lab (docs/previews.md), then the shared

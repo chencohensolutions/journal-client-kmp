@@ -1,7 +1,7 @@
 # Plan: the library on disk, read in pages (plan B)
 
 **Not built yet.** Written Oct 25, 2026 on Windows, after the app ran out of memory while backing up 1,709 calls
-(fixed for now in `0c1a97c`: library merges run one at a time). The owner asked how the app would cope with a
+(fixed for now in `79c973a`: library merges run one at a time). The owner asked how the app would cope with a
 million items. Today it can't: this plan makes the app's memory independent of the library's size.
 
 ## Why
@@ -170,7 +170,7 @@ Confirmed by the owner on Oct 25, 2026:
        nothing of what it hides, and `server_hidden` keeps only those files' sha256s. While "Show private media" is
        off, private files keep only sha256, name and size (`server_private`, `ServerLibrary.privateFiles`), to hide
        the phone's copies of them. Turning the switch on reads the feed again from the start.
-     - Fixed on the way: a change that came during a merge was never merged again (since `0c1a97c`). The merge
+     - Fixed on the way: a change that came during a merge was never merged again (since `79c973a`). The merge
        job called `publish()` while it still counted as active.
 2. **Device items.** `device_item` with incremental MediaStore / PhotoKit sync; `MediaLibrary.loadItems()` callers
    switch to queries one by one.
@@ -615,7 +615,7 @@ Confirmed by the owner on Oct 25, 2026:
 - iOS: SQLDelight's native driver and threading. Keep the database on one dispatcher.
 
 ## Before starting (state on Oct 25, 2026)
-- Client `main` is at `0c1a97c` (sound folders, WAV as FLAC, Free up by groups, merges one at a time); server `main`
-  is at `17d02b6`. Neither is pushed.
+- Client `main` is at `79c973a` (sound folders, WAV as FLAC, Free up by groups, merges one at a time); server `main`
+  is at `d75a438`. Neither is pushed.
 - The temporary start-up timing lines used on Oct 25 were discarded, not committed. Phase 0 adds its own
   measurements. The Journal build on the owner's phone still has them, until the next install.

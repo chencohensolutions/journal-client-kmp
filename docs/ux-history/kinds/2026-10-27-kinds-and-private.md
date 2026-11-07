@@ -19,14 +19,14 @@ the app) and "private" (Private settings).
 - **kinds c3 — A list with totals**: one line per kind, its total in a column at the end, "N not backed up ›" under the
   name where it applies; a summary at the top ("87,343 files · 15 not backed up"); a Sound group; one unnamed line for
   kinds hidden on all devices; a note that hiding on this phone is the Moments filter bar's (a saved choice per phone).
-  *Picked*, promoted in 5f663b1.
+  *Picked*, promoted in 506a1f5.
 - **private a — One flat list by kind**. *Turned down*.
 - **private b — Groups that fold** (Apps and folders, Screenshots, Sound, Sent to you, Nudity). *Turned down*.
 - **private c — Choose what shows, no lock to hide**: opens without the lock, hidden kinds unnamed until unlocked, and
   showing one again asks for the lock. *Turned down*: the owner wants Private settings never open without the lock.
 - **private c2 — Choose what shows, behind the lock**: the phone's lock first (as today); then every kind with a Show
   switch (on = shown), hidden ones included, Screenshots as chips of just the app name, Sound kinds, Sent to you,
-  Nudity with its slider; no second prompt. *Picked*, promoted in 5f663b1.
+  Nudity with its slider; no second prompt. *Picked*, promoted in 506a1f5.
 
 Decided along the way: Show in the app is a status page only; choosing what shows is Private settings' (all devices);
 the Moments filter bar stays a saved choice per phone.

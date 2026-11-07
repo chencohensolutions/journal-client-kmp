@@ -514,9 +514,9 @@ indexes on the phone, to search without the server, offline too (journal-server-
 - [Backup — calls and recordings from folders](../ux-history/backup/2026-10-25-sound-folders.md) (Oct 25, 2026): one list of pills with "+ Add a folder" (b2) picked.
 - [Settings — Loading Moments](../ux-history/settings/2026-10-26-loading-moments.md) (Oct 26, 2026): an Advanced section with a page of chips (a) picked.
 - [Show in the app — imported files](../ux-history/sources/2026-10-27-imported.md) (Oct 27, 2026): "Imported" as one source with its kinds, saying what Private settings hides on all devices (b2) picked.
-- [Your cameras](../ux-history/cameras/2026-10-27-your-cameras.md) (Oct 27, 2026): one list with a "Mine" switch per camera (a) picked, promoted in c6e46cd.
-- [Backup — what stays on the phone](../ux-history/backup/2026-10-28-keep-on-phone.md) (Oct 28, 2026): one Keep on this phone card with a switch per kind (b2) picked, promoted in ecb5d00.
-- [Backup — copies on other disks](../ux-history/backup/2026-10-28-copies.md) (Oct 28, 2026): a row in the top card opening a page of the copies (a) picked, promoted in b1e7943.
-- [Backup › Copies — a pass's progress](../ux-history/backup/2026-10-28-copy-progress.md) (Oct 28, 2026): size and percentage on one line, time left and Stop under the bar (c) picked, promoted in d050669.
-- [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked, promoted in a2f654b.
-- [Show in the app and Private settings by kind](../ux-history/kinds/2026-10-27-kinds-and-private.md) (Oct 27, 2026): a list of kinds with totals (kinds c3) and Private settings choosing what shows, behind the lock (private c2) picked, promoted in 5f663b1.
+- [Your cameras](../ux-history/cameras/2026-10-27-your-cameras.md) (Oct 27, 2026): one list with a "Mine" switch per camera (a) picked, promoted in 68ad3db.
+- [Backup — what stays on the phone](../ux-history/backup/2026-10-28-keep-on-phone.md) (Oct 28, 2026): one Keep on this phone card with a switch per kind (b2) picked, promoted in fe25be1.
+- [Backup — copies on other disks](../ux-history/backup/2026-10-28-copies.md) (Oct 28, 2026): a row in the top card opening a page of the copies (a) picked, promoted in 097031f.
+- [Backup › Copies — a pass's progress](../ux-history/backup/2026-10-28-copy-progress.md) (Oct 28, 2026): size and percentage on one line, time left and Stop under the bar (c) picked, promoted in 1ccfdf6.
+- [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked, promoted in c29cd83.
+- [Show in the app and Private settings by kind](../ux-history/kinds/2026-10-27-kinds-and-private.md) (Oct 27, 2026): a list of kinds with totals (kinds c3) and Private settings choosing what shows, behind the lock (private c2) picked, promoted in 506a1f5.

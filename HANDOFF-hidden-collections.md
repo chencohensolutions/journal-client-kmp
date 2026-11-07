@@ -31,7 +31,7 @@ Decisions the owner made (don't reopen them):
 
 ## What exists
 
-**Server** (journal-server-go, commit `fd135f3`). Read its `docs/media.md`, sections "Hidden collections" and
+**Server** (journal-server-go, commit `874ce84`). Read its `docs/media.md`, sections "Hidden collections" and
 "Fixing sources".
 - `facts.app` in each sidecar is the app named in a screenshot's file name (`Screenshot_20240301_030715_Bumble.jpg` →
   `Bumble`), read by `media.ScreenshotApp`. It is filled for new uploads and imports, and exposed as `Media.app`.
@@ -92,7 +92,7 @@ server has no WhatsApp files or screenshots, so the per-app list and the library
    - Reduce `HiddenScreen.kt` to drawing the state.
    - Test the controller with the fake server in `HiddenCollectionsTest`.
 
-3. **Build the iOS screen.** Commit `8784a5c` (ui lab) changed iOS Settings so screens draw from state plus an
+3. **Build the iOS screen.** Commit `19df0e8` (ui lab) changed iOS Settings so screens draw from state plus an
    actions struct (`SettingsScreen`, `SettingsActions` in `iosApp/iosApp/SettingsView.swift`). Follow that pattern:
    - A **Hidden collections** row in `privateMediaSection`, with a `NavigationLink` like `freeUpSection`, opening a
      `HiddenView` / `HiddenScreen` over the shared controller.
