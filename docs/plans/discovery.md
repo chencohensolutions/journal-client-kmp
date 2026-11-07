@@ -118,3 +118,43 @@ learns, and keeps the best connection it gets.
 ## Decided
 
 - Nov 7, 2026: the BitTorrent DHT for discovery; no relay; no paid or self-run rendezvous server.
+
+## Phones: the spec (Nov 7, 2026)
+
+The server tells the app who it is and where (journal-server-go PR #4): `serverInfo { discovery { fingerprint id
+key addresses } }` (`graph/schema/discovery.graphql`; copy it into the client with `syncServerSchema`). All of the
+logic goes in `sharedLogic` with tests; the UIs change only to show the server id.
+
+1. **Keep it.** After each successful `serverInfo`, `JournalSettings` keeps the fingerprint, the DHT key and the
+   addresses (`https://host:port`, the one that last worked first, at most 16; the enrolled `serverUrl`'s own
+   address stays in the list).
+2. **Pin the key, not the name.** Once a fingerprint is kept, the mTLS clients accept the server when the sha256
+   of its certificate's SubjectPublicKeyInfo is the fingerprint, whatever the host name or IP, and skip the host
+   name check. Before (a phone that hasn't seen `discovery` yet) they behave as today (the apps' CA and the host
+   name). Android: an `X509TrustManager` and `HostnameVerifier` in `AndroidMtlsHttpClientFactory` (OkHttp, also used
+   by ExoPlayer and the thumbnails). iOS: in `IosMtlsHttpClientFactory.serverTrust`, evaluate with
+   `SecPolicyCreateSSL(true, null)` (no host name) or skip evaluation and compare the SPKI hash; the key from
+   `SecCertificateCopyKey` + `SecKeyCopyExternalRepresentation` is the raw 65-byte P-256 point, so prefix the fixed
+   P-256 SPKI header (`3059301306072a8648ce3d020106082a8648ce3d030107034200`) before hashing.
+3. **Try the others.** When a request fails on the network (not an HTTP answer), the app tries each kept address
+   (the next started 400 ms after the one before, the first to answer kept), then the DHT (below, at most every 2
+   minutes). The address that works becomes `serverUrl` (with `/query`) and goes first in the list. Media, previews
+   and uploads use the same base URL.
+4. **The DHT lookup** (commonMain, a `DhtClient`): KRPC over UDP (BEP 5) with `get` (BEP 44):
+   - target = SHA-1(key bytes + "journal-server/v1"); start from `router.bittorrent.com:6881`,
+     `dht.transmissionbt.com:6881`, `router.utorrent.com:6881`, `dht.libtorrent.org:25401`;
+   - send `{"t": <2 bytes>, "y": "q", "q": "get", "a": {"id": <random 20 bytes>, "target": <20 bytes>}}`, read
+     `nodes` (26-byte compact entries: 20-byte id, IPv4, port) and walk toward the target, up to 8 queries in
+     flight, stopping after 15 s or when the closest 8 nodes have answered;
+   - a reply with `v`, `k` (== key), `seq` and `sig` is a record; keep the highest `seq` whose seal opens;
+   - **open the seal** instead of checking the ed25519 signature (the seal's tag proves the record came from someone
+     who knows the fingerprint, which DHT nodes don't): key = HKDF-SHA256(secret = the fingerprint's 32 bytes, no
+     salt, info "journal dht seal v1", 32 bytes); the value is a 24-byte nonce then XChaCha20-Poly1305 ciphertext
+     with the salt bytes as additional data; the plain text is JSON `{"v": 1, "a": [addresses], "t": "<RFC 3339>"}`.
+   - Bencode, HChaCha20/XChaCha20-Poly1305 and HKDF in pure Kotlin (no CryptoKit from Kotlin/Native); SHA-1 and
+     SHA-256 from okio. UDP with ktor-network (`aSocket(SelectorManager()).udp()`), which runs on Android and iOS.
+   - `DhtFixtures.kt` in commonTest has a record the Go server made: its target, its sealed value, a whole bencoded
+     reply, and what it opens to. Test against it, and the ciphers against RFC 8439 / the XChaCha draft vectors.
+5. **Settings** shows the server id (`discovery.id`) under the server address.
+
+Not in this step: Bonjour on the LAN, enrolling by id, the phone pairing servers by QR.
