@@ -23,3 +23,15 @@
 # them by reflection: without their constructors it logs NoSuchMethodException and the scanner doesn't start.
 -keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
 -keep class com.google.mlkit.**.*Registrar { <init>(); }
+# MediaPipe's image embedder reads its options protos by field name (protobuf-lite reflection): renamed fields fail
+# with "Field platform_ ... not found" and similarity falls back to dHashes only.
+-keep class com.google.mediapipe.** { *; }
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite { <fields>; }
+# ONNX Runtime's native library binds its Java classes and methods by name over JNI.
+-keep class ai.onnxruntime.** { *; }
+# Unused MediaPipe framework APIs reference protos that aren't shipped.
+-dontwarn com.google.mediapipe.proto.CalculatorProfileProto$CalculatorProfile
+-dontwarn com.google.mediapipe.proto.GraphTemplateProto$CalculatorGraphTemplate
+# MediaPipe logs with Flogger, which finds its caller on the stack by the logger's class name: renamed, Graph's
+# static initializer throws "no caller found on the stack".
+-keep class com.google.common.flogger.** { *; }
