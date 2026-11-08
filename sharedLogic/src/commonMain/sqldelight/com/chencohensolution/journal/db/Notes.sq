@@ -36,8 +36,9 @@ SELECT count(*) FROM note_outbox WHERE id = ?;
 
 -- The server's notes not yet brought into this phone's: new, changed or deleted since, or with a photo now shown under
 -- another id. Each with the photo the library shows for the file (null until it shows one; a phone photo first).
+-- The columns are named: SQLDelight writes a `*` over a subquery as server_media.*, which SQLite can't read there.
 incoming:
-SELECT * FROM (
+SELECT sha256, note, note_version, synced_version, synced_item, item_id FROM (
     SELECT s.sha256, s.note, s.note_version, n.version AS synced_version, n.item_id AS synced_item,
         (SELECT i.id FROM library_item i WHERE i.server_sha256 = s.sha256 ORDER BY i.is_on_device DESC, i.id LIMIT 1) AS item_id
     FROM server_media s LEFT JOIN note_synced n ON n.sha256 = s.sha256
