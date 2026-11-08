@@ -388,6 +388,12 @@ data class MediaItem(
     /** The user marked it private on the server; shown only while "Show private media" is on. */
     val isPrivate: Boolean = false,
     /**
+     * The user tucked it away on the server (setTucked): left out of Moments, the storyline and Explore until its day is
+     * revealed for the session ([com.chencohensolution.journal.stories.TuckedReveal]), never in search. Independent of
+     * [isPrivate].
+     */
+    val isTucked: Boolean = false,
+    /**
      * How good it looks, about 1 to 10 (the server's aesthetic score: 4 to 5 an ordinary snapshot, 6 and more a good
      * photo); null until scored, or for a photo the server doesn't have.
      */

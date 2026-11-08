@@ -32,7 +32,9 @@ CREATE TABLE server_media (
     camera_model TEXT,
     -- The JPEG a JPEG XL was kept from, or the WAV a FLAC was, which the server answers as this file (encodedFrom;
     -- since version 10): the phone's copy of that JPEG is this file.
-    encoded_sha256 TEXT
+    encoded_sha256 TEXT,
+    -- The user tucked it away (setTucked; since version 11): left out of the feeds until revealed, never searched.
+    is_tucked INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
 );
 
 -- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.
@@ -61,9 +63,9 @@ SELECT sha256 FROM server_media WHERE lower(file_name) = lower(:name) AND size =
 audioMedia:
 SELECT * FROM server_media WHERE is_audio = 1 ORDER BY rowid;
 
--- The few facts of every file that the phone's search and people read (where and when, and whether private).
+-- The few facts of every file that the phone's search and people read (where and when, whether private or tucked).
 mediaFacts:
-SELECT sha256, taken_at, uploaded_at, latitude, longitude, is_private FROM server_media;
+SELECT sha256, taken_at, uploaded_at, latitude, longitude, is_private, is_tucked FROM server_media;
 
 countMedia:
 SELECT count(*) FROM server_media;

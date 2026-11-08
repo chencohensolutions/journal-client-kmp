@@ -83,11 +83,12 @@ private fun scenario(seed: Int): Scenario {
     }
     val entries = mutableListOf<LedgerEntry>()
     val server = mutableListOf<ServerMedia>()
-    fun serverMedia(s: String, name: String, size: Long, n: Int, private: Boolean = false, audio: Boolean = false) = ServerMedia(
+    fun serverMedia(s: String, name: String, size: Long, n: Int, private: Boolean = false, audio: Boolean = false, tucked: Boolean = n % 5 == 2) = ServerMedia(
         sha256 = s, isVideo = false, fileName = name, mimeType = if (audio) "audio/mp4" else "image/heic", size = size,
         takenAt = "2026-09-${(10 + n % 18).toString().padStart(2, '0')}T12:00:00+03:00", width = if (n % 5 == 0) null else 1000, height = 800,
         latitude = if (n % 2 == 0) 31.5 else null, longitude = if (n % 2 == 0) 35.1 else null, source = listOf("camera", "whatsapp", null, "folder:Petcube")[n % 4],
         uploadedAt = "2026-10-20T10:00:00Z", isPrivate = private, aesthetic = if (n % 3 == 0) 5.5 + n / 10.0 else null, isAudio = audio,
+        isTucked = tucked,
     )
     device.forEach { item ->
         val n = item.id.toInt()
@@ -174,6 +175,9 @@ class LibraryTableTest {
             saw("kept original", items) { it.keptOriginal != null }
             saw("scored", items) { it.aesthetic != null }
             saw("read by backup", items) { it.isOnDevice && it.sha256 != null }
+            saw("tucked away on the phone, read by backup", items) { it.isOnDevice && it.isTucked && it.sha256 != null }
+            saw("tucked away on the phone, by name and size", items) { it.isOnDevice && it.isTucked && it.sha256 == null }
+            saw("tucked away on the server", items) { !it.isOnDevice && it.isTucked }
             val jpegs = s.server.mapNotNullTo(HashSet()) { it.encodedSha256 }
             saw("a JPEG kept as JPEG XL on the phone", items) { it.isOnDevice && it.sha256 in jpegs }
             saw("a JPEG kept as JPEG XL, deleted from the phone", items) { !it.isOnDevice && it.id.startsWith("oldjxl") }

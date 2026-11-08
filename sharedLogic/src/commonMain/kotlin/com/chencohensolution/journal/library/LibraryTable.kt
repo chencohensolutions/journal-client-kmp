@@ -391,6 +391,7 @@ internal fun libraryRow(
     id: String, sha256: String?, serverSha256: String?, isOnDevice: Boolean, isVideo: Boolean, takenMillis: Long, epochDay: Long,
     durationMillis: Long?, width: Long, height: Long, size: Long?, fileName: String?, burstId: String?, source: String,
     latitude: Double?, longitude: Double?, modifiedMillis: Long?, mimeType: String?, isPrivate: Boolean, aesthetic: Double?,
+    isTucked: Boolean,
 ) = LibraryRow(
     MediaItem(
         id = id,
@@ -411,6 +412,7 @@ internal fun libraryRow(
         sha256 = sha256,
         isOnDevice = isOnDevice,
         isPrivate = isPrivate,
+        isTucked = isTucked,
         aesthetic = aesthetic?.toFloat(),
     ),
     serverSha256,

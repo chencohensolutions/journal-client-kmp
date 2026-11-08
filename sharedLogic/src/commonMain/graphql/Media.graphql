@@ -38,40 +38,97 @@ query Changes($since: String, $limit: Int) {
       deleted
       hidden
       media {
+      sha256
+      kind
+      fileName
+      mimeType
+      size
+      takenAt
+      endedAt
+      width
+      height
+      durationMs
+      call {
+        contact
+        number
+      }
+      location {
+        lat
+        lon
+      }
+      source
+      screenshotApp
+      camera {
+        make
+        model
+      }
+      uploadedAt
+      uploadedBy
+      nudity
+      aesthetic
+      private
+      encodedFrom {
         sha256
-        kind
-        fileName
-        mimeType
-        size
-        takenAt
-        endedAt
-        width
-        height
-        durationMs
-        call {
-          contact
-          number
-        }
-        location {
-          lat
-          lon
-        }
-        source
-        screenshotApp
-        camera {
-          make
-          model
-        }
-        uploadedAt
-        uploadedBy
-        nudity
-        aesthetic
-        private
-        encodedFrom {
-          sha256
-        }
+      }
       }
     }
+  }
+}
+
+# Changes with each file's tucked flag, asked only of a server that has it (serverInfo.tuckedAway): an older one
+# refuses a field it doesn't know. The same fields as Changes otherwise.
+query ChangesTucked($since: String, $limit: Int) {
+  changes(since: $since, limit: $limit) {
+    cursor
+    hasMore
+    remaining
+    changes {
+      kind
+      path
+      deleted
+      hidden
+      media {
+      sha256
+      kind
+      fileName
+      mimeType
+      size
+      takenAt
+      endedAt
+      width
+      height
+      durationMs
+      call {
+        contact
+        number
+      }
+      location {
+        lat
+        lon
+      }
+      source
+      screenshotApp
+      camera {
+        make
+        model
+      }
+      uploadedAt
+      uploadedBy
+      nudity
+      aesthetic
+      private
+      encodedFrom {
+        sha256
+      }
+        tucked
+      }
+    }
+  }
+}
+
+mutation SetTucked($sha256s: [Sha256!]!, $tucked: Boolean!) {
+  setTucked(sha256s: $sha256s, tucked: $tucked) {
+    sha256
   }
 }
 

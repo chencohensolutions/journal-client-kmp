@@ -40,7 +40,7 @@ internal typealias FileWalk = suspend (each: (FileFacts) -> Unit) -> Unit
 internal class ShownFiles(val taken: Map<String, Long?>, val total: Int)
 
 /**
- * The files of [walk] that are shown: private ones only with [includePrivate], of [years] and inside [area] when given.
+ * The files of [walk] that are shown (never those tucked away): private ones only with [includePrivate], of [years] and inside [area] when given.
  * Read a row at a time, so only these few facts of the files kept are in memory, and only while a search runs (step
  * 6e; before, the whole list was held for it).
  */
@@ -48,7 +48,8 @@ internal suspend fun shownFiles(walk: FileWalk, includePrivate: Boolean, years: 
     val taken = HashMap<String, Long?>()
     var total = 0
     walk each@{ file ->
-        if (file.isPrivate && !includePrivate) return@each
+        // What is tucked away is never found, as the server's search leaves it out.
+        if ((file.isPrivate && !includePrivate) || file.isTucked) return@each
         total++
         val time = parseTimestamp(file.takenAt ?: file.uploadedAt)
         if (years != null && time?.day?.year !in years) return@each

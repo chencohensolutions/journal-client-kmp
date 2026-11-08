@@ -33,6 +33,11 @@ query ServerVideoFrames {
   serverInfo { videoFrames }
 }
 
+# Asked on its own too (Nov 8, 2026): whether files can be tucked away (setTucked, Media.tucked).
+query ServerTuckedAway {
+  serverInfo { tuckedAway }
+}
+
 query LocalIndexes {
   localIndexes {
     name

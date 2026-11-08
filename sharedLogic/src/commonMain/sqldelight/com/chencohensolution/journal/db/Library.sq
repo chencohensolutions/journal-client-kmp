@@ -23,7 +23,9 @@ CREATE TABLE library_item (
     modified_millis INTEGER,
     mime_type TEXT,
     is_private INTEGER AS kotlin.Boolean NOT NULL,
-    aesthetic REAL
+    aesthetic REAL,
+    -- Its server file is tucked away (since version 11): Moments, the storyline and Explore leave it out until revealed.
+    is_tucked INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
 );
 
 CREATE INDEX library_item_day ON library_item(epoch_day, taken_millis);
@@ -52,7 +54,9 @@ CREATE TABLE library_fresh (
     modified_millis INTEGER,
     mime_type TEXT,
     is_private INTEGER AS kotlin.Boolean NOT NULL,
-    aesthetic REAL
+    aesthetic REAL,
+    -- Its server file is tucked away (since version 11): Moments, the storyline and Explore leave it out until revealed.
+    is_tucked INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
 );
 
 -- Photos backup hasn't read are matched by name (ignoring case) and size.
@@ -148,7 +152,7 @@ DELETE FROM library_fresh;
 
 -- The phone's items, but for its copies of what the server hides and of the private files left out, each with the
 -- server file it is (by sha256, the server's own or the JPEG's it kept as JPEG XL, else by name and size), whether
--- that is private, and its score.
+-- that is private, its score, and whether it is tucked away.
 freshFromDevice:
 INSERT OR REPLACE INTO library_fresh
 SELECT v.id, v.sha,
@@ -160,7 +164,10 @@ SELECT v.id, v.sha,
     v.latitude, v.longitude, v.modified_millis, v.mime_type,
     CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE (s.sha256 = v.sha OR s.encoded_sha256 = v.sha) AND s.is_private AND s.is_audio = 0)
         ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_private AND s.is_audio = 0) END,
-    NULL
+    NULL,
+    -- Tucked away, matched as private is (a photo backup hasn't read by name and size).
+    CASE WHEN v.sha IS NOT NULL THEN EXISTS (SELECT 1 FROM server_media s WHERE (s.sha256 = v.sha OR s.encoded_sha256 = v.sha) AND s.is_tucked AND s.is_audio = 0)
+        ELSE EXISTS (SELECT 1 FROM server_media s WHERE lower(s.file_name) = lower(v.file_name) AND s.size = v.size AND s.is_tucked AND s.is_audio = 0) END
 FROM device_with_sha v
 WHERE (v.sha IS NULL OR v.sha NOT IN (SELECT sha256 FROM server_hidden))
     AND (CASE WHEN v.sha IS NOT NULL THEN v.sha NOT IN (SELECT sha256 FROM server_private)
@@ -189,7 +196,7 @@ SELECT coalesce(
     -- What the server's import placed is its own source, "import:" and the server's ("import:folder:whatsapp",
     -- "import:camera"; an old "import:whatsapp" is read as the folder too): MediaSource.imported and MediaSource.parse.
     CASE WHEN s.uploaded_by = 'import' THEN 'import:' || coalesce(s.source, 'other') ELSE coalesce(s.source, 'other') END,
-    s.latitude, s.longitude, NULL, s.mime_type, s.is_private, s.aesthetic
+    s.latitude, s.longitude, NULL, s.mime_type, s.is_private, s.aesthetic, s.is_tucked
 FROM server_media s
 WHERE s.is_audio = 0
     AND (:everything = 1 OR s.sha256 IN (SELECT key FROM library_keys WHERE kind = 's'))
@@ -346,6 +353,7 @@ WHERE epoch_day <= :day AND (epoch_day < :day OR taken_millis < :taken OR (taken
 ORDER BY epoch_day DESC, taken_millis DESC, id
 LIMIT :limit;
 
+-- Explore's queries below leave out what is tucked away (is_tucked; since version 11).
 -- Explore's home: the items with a location of their own per 0.1° square (truncated, as home() does) and source, and
 -- per day on the days given (those a hidden source is always shown on): on_day says whether a group is such a day's,
 -- and any_day is then that day.
@@ -353,48 +361,48 @@ homeSquares:
 SELECT source, CAST(latitude * 10 AS INTEGER) AS lat10, CAST(longitude * 10 AS INTEGER) AS lon10,
   epoch_day IN :days AS on_day, max(epoch_day) AS any_day, count(*) AS photos
 FROM library_item
-WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0
 GROUP BY source, lat10, lon10, CASE WHEN epoch_day IN :days THEN epoch_day END;
 
 -- The items with a location of their own in one 0.1° square, in the screens' order: home's position.
 homeSquareRows:
 SELECT id, epoch_day, taken_millis, source, latitude, longitude FROM library_item
-WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0
   AND CAST(latitude * 10 AS INTEGER) = :lat10 AND CAST(longitude * 10 AS INTEGER) = :lon10
 ORDER BY epoch_day DESC, taken_millis DESC, id;
 
 -- Those of these items without a location of their own: where a place found for them counts instead.
 unlocatedLibraryRows:
-SELECT id, epoch_day, taken_millis, source FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL);
+SELECT id, epoch_day, taken_millis, source FROM library_item WHERE id IN ? AND (latitude IS NULL OR longitude IS NULL) AND is_tucked = 0;
 
 -- Every item's place in the screens' order with what Explore's summaries go by (its type, source, location and score),
 -- a batch at a time after a row (step 6c).
 exploreRowsAfter:
 SELECT id, epoch_day, taken_millis, is_video, source, latitude, longitude, server_sha256, aesthetic FROM library_item
-WHERE epoch_day <= :day AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
+WHERE is_tucked = 0 AND epoch_day <= :day AND (epoch_day < :day OR taken_millis < :taken OR (taken_millis = :taken AND id > :id))
 ORDER BY epoch_day DESC, taken_millis DESC, id
 LIMIT :limit;
 
 -- Photos and videos per day, source and type: Explore's years and what each one hides.
 dayCounts:
-SELECT epoch_day, source, is_video, count(*) AS items FROM library_item GROUP BY epoch_day, source, is_video;
+SELECT epoch_day, source, is_video, count(*) AS items FROM library_item WHERE is_tucked = 0 GROUP BY epoch_day, source, is_video;
 
 -- The items with a location of their own per day and source, with the box around them: the map's years and where it
 -- opens.
 locatedDays:
 SELECT epoch_day, source, min(latitude) AS south, min(longitude) AS west, max(latitude) AS north, max(longitude) AS east
-FROM library_item WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+FROM library_item WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0
 GROUP BY epoch_day, source;
 
 -- The items in a range of days, in the screens' order: a year's or a month's page.
 libraryItemsInDays:
-SELECT * FROM library_item WHERE epoch_day BETWEEN :first AND :last ORDER BY epoch_day DESC, taken_millis DESC, id;
+SELECT * FROM library_item WHERE epoch_day BETWEEN :first AND :last AND is_tucked = 0 ORDER BY epoch_day DESC, taken_millis DESC, id;
 
 -- The items with a location of their own inside a box (across the date line when :wraps is 1) in a range of days: a
 -- town's or the map's photos, before their places are checked.
 locatedInBox:
 SELECT id, latitude, longitude FROM library_item
-WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0 AND (epoch_day BETWEEN :first AND :last)
   AND (latitude BETWEEN :south AND :north)
   AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)));
 
@@ -415,7 +423,7 @@ SELECT CAST(latitude / :size AS INTEGER) - (latitude / :size < CAST(latitude / :
   CAST(longitude / :size AS INTEGER) - (longitude / :size < CAST(longitude / :size AS INTEGER)) AS lon_cell,
   count(*) AS photos, sum(latitude) AS lat_sum, sum(longitude) AS lon_sum, CASE WHEN count(*) = 1 THEN min(id) END AS only_id
 FROM library_item
-WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0 AND (epoch_day BETWEEN :first AND :last)
   AND (latitude BETWEEN :south AND :north)
   AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)))
   AND (source NOT IN :hidden OR (epoch_day || ':' || source) IN :always)
@@ -424,7 +432,7 @@ GROUP BY lat_cell, lon_cell;
 -- How many of the shown items with a location of their own are in a box and a range of days (see mapCells).
 mapCount:
 SELECT count(*) FROM library_item
-WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND (epoch_day BETWEEN :first AND :last)
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_tucked = 0 AND (epoch_day BETWEEN :first AND :last)
   AND (latitude BETWEEN :south AND :north)
   AND ((:wraps = 0 AND (longitude BETWEEN :west AND :east)) OR (:wraps = 1 AND (longitude >= :west OR longitude <= :east)))
   AND (source NOT IN :hidden OR (epoch_day || ':' || source) IN :always);

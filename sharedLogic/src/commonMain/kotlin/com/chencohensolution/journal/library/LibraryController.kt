@@ -759,6 +759,10 @@ internal fun mergeWithServer(
         .apply { privateFiles.flatMapTo(this) { listOfNotNull(it.sha256, it.encodedSha256) } }
     val markedNamesAndSizes = marked.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
         .apply { privateFiles.mapTo(this) { it.fileName.lowercase() to it.size } }
+    // Tucked away ([MediaItem.isTucked]): the device's copies are marked, matched as private ones are.
+    val tucked = server.filter { it.isTucked }
+    val tuckedShas = tucked.flatMapTo(HashSet()) { listOfNotNull(it.sha256, it.encodedSha256) }
+    val tuckedNamesAndSizes = tucked.mapTo(HashSet<Pair<String?, Long?>>()) { it.fileName.lowercase() to it.size }
     fun MediaItem.matches(shas: Set<String>, namesAndSizes: Set<Pair<String?, Long?>>): Boolean {
         val sha = sha256
         return if (sha != null) sha in shas else (fileName?.lowercase() to sizeBytes) in namesAndSizes
@@ -773,11 +777,12 @@ internal fun mergeWithServer(
         val score = sha256?.let(scoreBySha::get) ?: if (sha256 == null) scoreByNameAndSize[fileName?.lowercase() to sizeBytes] else null
         return if (score == null || score == aesthetic) this else copy(aesthetic = score)
     }
+    fun MediaItem.tucked(): MediaItem = if (tucked.isNotEmpty() && matches(tuckedShas, tuckedNamesAndSizes)) copy(isTucked = true) else this
     val shown = items.mapNotNull { item ->
         when {
             item.matches(hiddenShas, hiddenNamesAndSizes) -> null
-            item.matches(markedShas, markedNamesAndSizes) -> item.copy(isPrivate = true).scored()
-            else -> item.scored()
+            item.matches(markedShas, markedNamesAndSizes) -> item.copy(isPrivate = true).scored().tucked()
+            else -> item.scored().tucked()
         }
     }
     val serverOnly = server.filter {
