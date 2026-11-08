@@ -1152,4 +1152,15 @@
     <string name="models_space">תופס %1$s בטלפון · %2$s פנויים</string>
     <string name="models_row">%1$d מתוך %2$d הורדו</string>
     <string name="models_row_downloading">מוריד…</string>
+
+    <!-- Onboarding › Models on this phone (ModelsOnboardingScreen.kt) -->
+    <string name="models_onboarding_title">מכינים את הטלפון</string>
+    <string name="models_onboarding_body">האפליקציה מריצה כמה מודלים בטלפון הזה. הם מגיעים מהשרת שלך, לא עם האפליקציה.</string>
+    <string name="models_onboarding_checking">שואלים את השרת שלך מה הוא מציע…</string>
+    <string name="models_onboarding_words_size">מודל %1$s והאינדקס שלו %2$s</string>
+    <string name="models_onboarding_wifi_body">חיפוש לפי מילים ממתין ל-Wi-Fi. דמיון בין תמונות קטן ויורד עכשיו.</string>
+    <string name="models_onboarding_ready">מוכן</string>
+    <string name="models_onboarding_starting">מתחיל…</string>
+    <string name="models_onboarding_later">ההורדות ממשיכות ברקע. הגדרות › מודלים בטלפון הזה מציגות אותן.</string>
+    <string name="models_onboarding_continue">המשך</string>
 </resources>

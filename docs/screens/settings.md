@@ -486,6 +486,7 @@ server instead of with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in
 - **Only on Wi-Fi** is On device search's setting (`phone_indexes_wifi_only`), one for every download: the photo model
   follows it too since Nov 8, 2026 (it downloaded on any network before). Download now and Try again download
   whatever the network.
+- The same models are offered once after enrolling, as the onboarding's last step ([enrollment.md](enrollment.md#models-on-this-phone-nov-8-2026-android-only)).
 - Kept: the photo model in `files/models` (`mobilenet_v3_large.tflite` and its `.ok`), the text model in
   `files/local/models`.
 

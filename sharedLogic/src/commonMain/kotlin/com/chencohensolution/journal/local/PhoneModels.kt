@@ -44,7 +44,12 @@ data class PhoneModelsState(
     /** The server couldn't be reached: nothing downloads, what's here still works. */
     val offline: Boolean = false,
     val freeBytes: Long = 0,
+    /** The server has said what it offers (or couldn't be reached): until then a model may show as Not downloaded. */
+    val known: Boolean = true,
 ) {
+    /** Nothing to download: no model listed, or the server offers none (or can't be reached). */
+    val nothingOffered: Boolean get() = offline || models.all { it.status == PhoneModelStatus.NOT_OFFERED }
+
     val here: Int get() = models.count { it.status == PhoneModelStatus.HERE }
 
     /** What Download all fetches: the models not here that can be downloaded. */
@@ -129,6 +134,7 @@ class PhoneModels(
             wifiOnly = search?.wifiOnly ?: indexes?.currentState?.wifiOnly ?: true,
             offline = photo?.unreachable == true,
             freeBytes = search?.freeBytes ?: indexes?.currentState?.freeBytes ?: 0,
+            known = photo == null || photo.here || photo.offered != null || photo.unreachable,
         )
     }
 

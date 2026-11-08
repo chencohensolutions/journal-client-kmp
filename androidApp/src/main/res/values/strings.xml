@@ -1101,4 +1101,15 @@
     <string name="models_space">Uses %1$s of this phone · %2$s free</string>
     <string name="models_row">%1$d of %2$d downloaded</string>
     <string name="models_row_downloading">Downloading…</string>
+
+    <!-- Onboarding › Models on this phone (ModelsOnboardingScreen.kt) -->
+    <string name="models_onboarding_title">Get this phone ready</string>
+    <string name="models_onboarding_body">The app runs a few models on this phone. They come from your server, not with the app.</string>
+    <string name="models_onboarding_checking">Asking your server what it offers…</string>
+    <string name="models_onboarding_words_size">%1$s model and its %2$s index</string>
+    <string name="models_onboarding_wifi_body">Search by words waits for Wi-Fi. Photo similarity is small and downloads now.</string>
+    <string name="models_onboarding_ready">Ready</string>
+    <string name="models_onboarding_starting">Starting…</string>
+    <string name="models_onboarding_later">Downloads go on in the background. Settings › Models on this phone shows them.</string>
+    <string name="models_onboarding_continue">Continue</string>
 </resources>

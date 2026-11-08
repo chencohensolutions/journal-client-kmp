@@ -47,6 +47,7 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.local.PhoneModels
+import com.chencohensolution.journal.local.ModelsOnboarding
 import com.chencohensolution.journal.people.PageSort
 import com.chencohensolution.journal.people.PeopleController
 import com.chencohensolution.journal.stories.ExploreScope
@@ -93,6 +94,7 @@ fun LibraryApp(
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
     models: PhoneModels,
+    onboarding: ModelsOnboarding,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
     swaps: SwapController,
@@ -114,7 +116,7 @@ fun LibraryApp(
         LocalAudioPlayer provides audioPlayer,
         LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {
-        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, models, serverIndexing, serverCopies, swaps, onRegisterAgain, swapLink, swapLinkOpened)
+        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, models, onboarding, serverIndexing, serverCopies, swaps, onRegisterAgain, swapLink, swapLinkOpened)
     }
 }
 
@@ -133,6 +135,7 @@ private fun LibraryScreens(
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
     models: PhoneModels,
+    onboarding: ModelsOnboarding,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
     swaps: SwapController,
@@ -183,6 +186,21 @@ private fun LibraryScreens(
 
     if (libraryState.access == PhotoAccess.NOT_DETERMINED) {
         PhotoAccessScreen(onAllow = actions.requestAccess, onNotNow = library::skipAccess)
+        return
+    }
+    // After enrolling and photo access: Models on this phone, once (skipped when the server offers none).
+    val onboardingState by onboarding.state.collectAsStateWithLifecycle()
+    if (onboardingState.show) {
+        LaunchedEffect(Unit) { onboarding.start() }
+        ModelsOnboardingScreen(
+            onboardingState,
+            ModelsOnboardingActions(
+                setSearchByWords = onboarding::setSearchByWords,
+                setWifiOnly = onboarding::setWifiOnly,
+                downloadNow = { models.download(it, true) },
+                continueOn = onboarding::finish,
+            ),
+        )
         return
     }
 

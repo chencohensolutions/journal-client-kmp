@@ -265,6 +265,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_PHONE_INDEXES_WIFI_ONLY) != "false"
         set(value) = store.putString(KEY_PHONE_INDEXES_WIFI_ONLY, value.toString())
 
+    /** The onboarding's Models on this phone step is still to show: set when the device enrolls, cleared by Continue. */
+    var modelsOnboardingDue: Boolean
+        get() = store.getString(KEY_MODELS_ONBOARDING_DUE) == "true"
+        set(value) = store.putString(KEY_MODELS_ONBOARDING_DUE, if (value) "true" else null)
+
     /** "Show the phone badge" (Settings → Badges): off by default. */
     var showOnPhoneBadge: Boolean
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
@@ -312,6 +317,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SERVER_FEATURES = "server_features"
         private const val KEY_PHONE_INDEXES = "phone_indexes"
         private const val KEY_PHONE_INDEXES_WIFI_ONLY = "phone_indexes_wifi_only"
+        private const val KEY_MODELS_ONBOARDING_DUE = "models_onboarding_due"
         private const val KEY_PHONE_INDEXES_UPDATED_AT = "phone_indexes_updated_at"
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"

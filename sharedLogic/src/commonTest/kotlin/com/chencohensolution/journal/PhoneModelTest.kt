@@ -1,6 +1,9 @@
 package com.chencohensolution.journal
 
 import com.chencohensolution.journal.local.ModelFileInfo
+import com.chencohensolution.journal.local.ModelsOnboarding
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.local.PhoneDownload
 import com.chencohensolution.journal.local.PhoneIndex
 import com.chencohensolution.journal.local.PhoneIndexKind
@@ -200,3 +203,60 @@ class PhoneModelsTest {
         assertNull(photo.path())
     }
 }
+
+private class OnboardingStore : KeyValueStore {
+    private val values = mutableMapOf<String, String>()
+    override fun getString(key: String) = values[key]
+    override fun putString(key: String, value: String?) {
+        if (value == null) values.remove(key) else values[key] = value
+    }
+}
+
+class ModelsOnboardingTest {
+    @Test
+    fun showsAfterEnrollingAndStartsThePhotoModelWhateverTheNetwork() = runTest {
+        val settings = JournalSettings(OnboardingStore())
+        val api = FakePhoneModelApi()
+        val photo = PhoneModel("model.tflite", api, FakeFileSystem(), MODELS, wifiOnly = { true }, onWifi = { false })
+        val onboarding = ModelsOnboarding(settings, PhoneModels(photo, null))
+        assertFalse(onboarding.state.value.show)
+
+        onboarding.enrolled()
+        waitUntil { onboarding.state.value.show }
+        assertTrue(settings.modelsOnboardingDue)
+        onboarding.start()
+        // Off Wi-Fi with Only on Wi-Fi on, the photo model downloads anyway: it is small, and the step is for it.
+        waitUntil { photo.state.value.here }
+        assertTrue(onboarding.state.value.show)
+
+        onboarding.finish()
+        waitUntil { !onboarding.state.value.show }
+        assertFalse(settings.modelsOnboardingDue)
+        assertFalse(ModelsOnboarding(settings, PhoneModels(photo, null)).state.value.show)
+    }
+
+    @Test
+    fun skippedWhenTheServerOffersNothing() = runTest {
+        val settings = JournalSettings(OnboardingStore())
+        val api = FakePhoneModelApi(offered = emptyList())
+        val photo = PhoneModel("model.tflite", api, FakeFileSystem(), MODELS)
+        val onboarding = ModelsOnboarding(settings, PhoneModels(photo, null))
+        onboarding.enrolled()
+        onboarding.start()
+        waitUntil { !settings.modelsOnboardingDue }
+        assertFalse(onboarding.state.value.show)
+        assertEquals(0, api.downloads)
+    }
+
+    @Test
+    fun skippedWhenTheServerCantBeReached() = runTest {
+        val settings = JournalSettings(OnboardingStore())
+        val api = FakePhoneModelApi().apply { unreachable = true }
+        val onboarding = ModelsOnboarding(settings, PhoneModels(PhoneModel("model.tflite", api, FakeFileSystem(), MODELS), null))
+        onboarding.enrolled()
+        onboarding.start()
+        waitUntil { !settings.modelsOnboardingDue }
+        assertFalse(onboarding.state.value.show)
+    }
+}
+
