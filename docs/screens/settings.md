@@ -464,11 +464,11 @@ indexes on the phone, to search without the server, offline too (journal-server-
 
 ## Models on this phone
 
-(Nov 8, 2026, Android only; iOS not built yet.) The models the app runs on the phone, which come from the user's
-server instead of with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in `local/PhoneModels.kt`, with
+(Nov 8, 2026, Android only; iOS not built yet.) The models the app runs on the phone, downloaded from where they
+were published or from the user's server instead of coming with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in `local/PhoneModels.kt`, with
 `PhoneModelsTest`):
 
-- A line on what they are ("The app runs these models on this phone. They come from your server, not with the app.
+- A line on what they are ("The app runs these models on this phone. They're downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app.
   Until one is here, its feature uses a simpler way or your server."), and in amber "Your server can't be reached.
   What's downloaded still works." when the last ask failed.
 - A card with a row per model: **Photo similarity** (MediaPipe's MobileNet-V3, 10.9 MB; sets in [Moments](moments.md))
@@ -494,7 +494,7 @@ server instead of with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in
   sent other bytes is downloaded again from the start). The photo model's link and sha256 are also in the app
   (`AndroidPhotoAnalyzer.MODEL`), so it downloads from Google even when the server doesn't list it or can't be reached.
   Resume, Pause and Only on Wi-Fi work the same whichever it comes from. Tests: `ModelSourceTest`,
-  `BuiltInPhoneModelTest`. The page's line still says they come from your server; not changed yet.
+  `BuiltInPhoneModelTest`.
 - Kept: the photo model in `files/models` (`mobilenet_v3_large.tflite` and its `.ok`), the text model in
   `files/local/models`.
 
