@@ -297,7 +297,7 @@ The pages, and what each holds:
   owner from the UI lab, round `ux/settings/2026-10-26`; iOS since Oct 29, 2026, its chips in a row that scrolls): how [Moments](moments.md) is read from the
   library database a page at a time. **Rows loaded at a time** (15, **30**, 60, 120: "More: fewer pauses when
   scrolling far, more memory.") and **Load ahead** (10, 20, **40**, 80: how many rows before the end of what is loaded
-  the next rows start loading), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
+  the next rows start loading; since Nov 8, 2026 also how many rows ahead search loads its quick images), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
   changed. On this phone only, and applied as Moments loads its next rows (no restart). Kept as
   `moments_rows_per_page` and `moments_load_ahead` (`SettingsState.momentsPaging`, `MomentsPaging`).
 

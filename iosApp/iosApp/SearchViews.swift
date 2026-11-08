@@ -41,6 +41,8 @@ struct SearchResultsView: View {
     var faces: [Person] = []
     /// The sets picked, by their first photo's id; a tap picks while any is.
     var selection: Binding<Set<String>> = .constant([])
+    /// How many rows ahead quick images load: Settings › Advanced › Loading Moments › Load ahead.
+    var picturesAhead = Int(MomentsPaging.companion.DEFAULT_LOAD_AHEAD)
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -154,7 +156,7 @@ struct SearchResultsView: View {
                     // The next page once the last rows come into view: a few ahead, so it is usually there by the end.
                     .onAppear {
                         if index >= loadFrom && search.canLoadMore && !search.loadingMore { actions.loadMore() }
-                        SearchPrefetch.shared.ahead(of: index, in: search.sets, width: width)
+                        SearchPrefetch.shared.ahead(of: index, in: search.sets, width: width, firstAhead: picturesAhead)
                     }
                 }
                 if search.loadingMore {
@@ -333,19 +335,18 @@ private struct FoundSet: View {
 
 /// Loads the pictures of the rows after the one that just came into view, so they are there when they scroll in: the
 /// sharp tiles of the next `sharpAhead` rows (a set's first two photos) at exactly the size their tiles ask for, and the
-/// quick images of photos only on the server up to `firstAhead` rows on. One at a time, in order; a row coming into
-/// view replaces what is still waiting, and the one under way finishes, to be there next time.
+/// quick images of photos only on the server up to `firstAhead` rows on (Settings' Load ahead). One at a time, in
+/// order; a row coming into view replaces what is still waiting, and the one under way finishes, to be there next time.
 @MainActor
 private final class SearchPrefetch {
     static let shared = SearchPrefetch()
 
     private let sharpAhead = 3
-    private let firstAhead = 12
     /// What was asked for already, so a row seen again asks for nothing.
     private var asked: Set<String> = []
     private var work: Task<Void, Never>?
 
-    func ahead(of index: Int, in sets: [[MediaItem]], width: CGFloat) {
+    func ahead(of index: Int, in sets: [[MediaItem]], width: CGFloat, firstAhead: Int) {
         guard !UiLab.isOn, width > 0 else { return }
         let last = min(index + firstAhead, sets.count - 1)
         guard index < last else { return }

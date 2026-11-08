@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.runtime.CompositionLocalProvider
+import com.chencohensolution.journal.settings.MomentsPaging
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -130,6 +131,8 @@ internal fun SearchContent(
     faces: List<Person> = emptyList(),
     /** The sets picked, by their first photo's id; a tap picks while any is. */
     selection: FeedSelection = FeedSelection(),
+    /** How many rows past the screen quick images load: Settings › Advanced › Loading Moments › Load ahead. */
+    picturesAhead: Int = MomentsPaging.DEFAULT_LOAD_AHEAD,
 ) {
     // Rows about two screens ahead are composed in spare time between frames, so their pictures are loading before
     // they scroll into view.
@@ -145,10 +148,10 @@ internal fun SearchContent(
             }
     }
     LaunchedEffect(Unit) { currentActions.prepare() }
-    // As in Moments: sharp photos decode once the list slows down; until then each shows its quick image, loaded further
-    // ahead of the scroll (a set's second photo is a swipe away).
+    // As in Moments: sharp photos decode once the list slows down; until then each shows its quick image, loaded
+    // [picturesAhead] rows ahead of the scroll (a set's second photo is a swipe away).
     val scrollSettled = rememberScrollSettled(list)
-    PrefetchFirstImages(list, search.sets, { it.first().id }) { set -> set.take(2) }
+    PrefetchFirstImages(list, search.sets, { it.first().id }, picturesAhead) { set -> set.take(2) }
     val hiding = rowsHiding(remember(search.sets) { search.sets.map { it.first().id } })
     LazyColumn(state = list, contentPadding = contentPadding) {
         if (search.people.isNotEmpty()) item(key = "people-chips") { PersonChips(search.people, actions.removePerson) }

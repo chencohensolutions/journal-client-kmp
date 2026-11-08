@@ -250,11 +250,17 @@ private fun decodeFirstImage(bytes: ByteArray, width: Int, height: Int): Bitmap?
  * shows full size. Only photos that are only on the server; the others have MediaStore's thumbnails.
  */
 @Composable
-internal fun <R> PrefetchFirstImages(list: LazyListState, rows: List<R>, key: (R) -> Any, items: (R) -> List<MediaItem>) {
+internal fun <R> PrefetchFirstImages(
+    list: LazyListState,
+    rows: List<R>,
+    key: (R) -> Any,
+    ahead: Int = FIRST_AHEAD,
+    items: (R) -> List<MediaItem>,
+) {
     if (LocalThumbnailSource.current != null) return
     val previews = LocalServerPreviews.current ?: return
     val window = LocalWindowInfo.current.containerSize.width
-    LaunchedEffect(list, rows, window) {
+    LaunchedEffect(list, rows, window, ahead) {
         val byKey = withContext(Dispatchers.Default) { rows.withIndex().associate { (index, row) -> key(row) to index } }
         val rowOf = { listKey: Any -> byKey[listKey] }
         var lastFirst = list.firstVisibleItemIndex
@@ -263,8 +269,8 @@ internal fun <R> PrefetchFirstImages(list: LazyListState, rows: List<R>, key: (R
                 val down = list.firstVisibleItemIndex >= lastFirst
                 lastFirst = list.firstVisibleItemIndex
                 val edge = (if (down) lastKey else firstKey)?.let(rowOf) ?: return@collectLatest
-                val ahead = if (down) (edge + 1..minOf(edge + FIRST_AHEAD, rows.lastIndex)) else (edge - 1 downTo maxOf(edge - FIRST_AHEAD, 0))
-                for (index in ahead) {
+                val next = if (down) (edge + 1..minOf(edge + ahead, rows.lastIndex)) else (edge - 1 downTo maxOf(edge - ahead, 0))
+                for (index in next) {
                     for (item in items(rows[index])) {
                         // One at a time; the one under way finishes when the scroll moves on, to be there next time.
                         if (!item.hasOriginalHere) withContext(NonCancellable) { loadFirstImage(previews, item, window) }
@@ -274,7 +280,7 @@ internal fun <R> PrefetchFirstImages(list: LazyListState, rows: List<R>, key: (R
     }
 }
 
-/** How many rows past the screen [PrefetchFirstImages] loads. */
+/** How many rows past the screen [PrefetchFirstImages] loads, unless told otherwise. */
 private const val FIRST_AHEAD = 20
 
 /**
