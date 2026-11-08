@@ -64,8 +64,8 @@ The page asks the server every 30 s while it shows, every 3 s while an invite's 
 4. **Two words typed back** ("Word 2", "Word 5"; case and spaces ignored) before **Start the copy**.
 5. **How it went**: "Your copy is going to Dana's server", encrypted or plain and the quota, "Dana's phone now offers
    to keep their copy here" when offered back. Or the refusal in the app's words (each `SwapRefusal`) with **Back**
-   to the step to fix: the link step for a refused code, an unreachable server, the user's own server or a name
-   taken; the passphrase step otherwise.
+   to the step to fix: the link step for a refused code, an unreachable server, the user's own server, a name
+   taken or a friend already swapped with under another name (`ALREADY_SWAPPED`, journal-server 1.1.1); the passphrase step otherwise.
 
 When an encrypted copy started with a passphrase, the phone keeps it (Android: encrypted with an Android Keystore
 key; iOS: the synced Keychain item) and, on Android, offers it to Google Password Manager if the user didn't save it

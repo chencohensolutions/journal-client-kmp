@@ -131,5 +131,6 @@ internal fun refusal(reason: ServerSwapRefusal): SwapRefusal = when (reason) {
     ServerSwapRefusal.WRONG_PASSPHRASE -> SwapRefusal.WRONG_PASSPHRASE
     ServerSwapRefusal.NO_SPACE -> SwapRefusal.NO_SPACE
     ServerSwapRefusal.OFFER_GONE -> SwapRefusal.OFFER_GONE
+    ServerSwapRefusal.ALREADY_SWAPPED -> SwapRefusal.ALREADY_SWAPPED
     else -> SwapRefusal.OTHER
 }

@@ -139,7 +139,10 @@ internal fun SwapRoute(route: Route, swaps: SwapController, memory: SwapRouteMem
                 back = { memory.draft = null; swaps.clearOutcome(); pop() },
             )
         }
-        Route.CopyPassphrase -> PhoneLocked(stringResource(R.string.swap_show_passphrase), pop) {
+        Route.CopyPassphrase -> PhoneLocked(
+            stringResource(R.string.swap_show_passphrase), pop,
+            lockedText = R.string.swap_passphrase_locked, noLockText = R.string.swap_passphrase_no_lock,
+        ) {
             var passphrase by remember { mutableStateOf(keeper.read()) }
             CopyPassphraseScreen(
                 passphrase,

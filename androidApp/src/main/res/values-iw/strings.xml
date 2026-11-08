@@ -1119,4 +1119,7 @@
     <string name="swap_sheet_restore_title">לשחזור</string>
     <string name="swap_sheet_restore">1. התקינו את journal-server במחשב חדש.\n2. בקשו מ%1$s לתת לשרת החדש שלכם להשתלט על העותק, והצטרפו אליו.\n3. הריצו: journal-server restore %2$s --from %1$s --to &lt;תיקייה ריקה&gt; --passphrase\n   והקלידו את שש המילים.</string>
     <string name="swap_sheet_keep">כל מי שיש לו את המילים האלה ואת העותק יכול לפתוח את התמונות שלכם.</string>
+    <string name="swap_passphrase_locked">נעול. פתחו בנעילת הטלפון כדי לראות את סיסמת העותק.</string>
+    <string name="swap_passphrase_no_lock">הגדירו נעילת מסך בטלפון הזה (קוד, קו ביטול נעילה או סיסמה) כדי לראות את סיסמת העותק.</string>
+    <string name="swap_refused_already">כבר שמרתם את העותק שלכם בשרת של החבר הזה, בשם אחר. הסירו קודם את ההחלפה ההיא כדי להגדיר אותה מחדש.</string>
 </resources>

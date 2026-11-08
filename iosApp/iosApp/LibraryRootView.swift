@@ -125,7 +125,7 @@ struct LibraryRootView: View {
 
     var body: some View {
         Group {
-            if library.state.access == .notDetermined {
+            if library.state.access == .notDetermined && !library.accessAnswered {
                 PhotoAccessView(onAllow: library.requestAccess, onNotNow: library.skipAccess)
             } else {
                 NavigationStack(path: $path) {

@@ -5761,6 +5761,16 @@
         }
       }
     },
+    "Set a passcode on this iPhone to see your copy passphrase." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדירו קוד גישה באייפון הזה כדי לראות את סיסמת העותק."
+          }
+        }
+      }
+    },
     "Set a passcode on this phone to open Private settings." : {
       "localizations" : {
         "he" : {
@@ -6344,6 +6354,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כבר יש לכם חבר בשם הזה"
+          }
+        }
+      }
+    },
+    "You already keep your copy at this friend’s server, under another name. Remove that swap first to set it up again." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבר שמרתם את העותק שלכם בשרת של החבר הזה, בשם אחר. הסירו קודם את ההחלפה ההיא כדי להגדיר אותה מחדש."
           }
         }
       }

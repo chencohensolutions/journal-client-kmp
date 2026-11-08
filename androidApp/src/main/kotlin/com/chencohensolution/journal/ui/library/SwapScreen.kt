@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -444,6 +445,7 @@ private fun ProtectStep(state: SwapState, draft: JoinDraft, kind: CopyKeyKind?, 
                         label = { Text(stringResource(R.string.swap_passphrase)) },
                         colors = fieldColors(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                        visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                     TextButton(onClick = actions.fill) { Text(stringResource(R.string.swap_protect_fill), color = LibraryColors.OnBackground) }
@@ -590,7 +592,8 @@ private fun ResultStep(state: SwapState, draft: JoinDraft, actions: SwapThereAct
 
 /** The step a refusal sends the user back to. */
 internal fun refusalStep(reason: SwapRefusal, accepting: Boolean): JoinStep = when (reason) {
-    SwapRefusal.INVALID_LINK, SwapRefusal.CODE_REFUSED, SwapRefusal.UNREACHABLE, SwapRefusal.OWN_SERVER, SwapRefusal.NAME_TAKEN ->
+    SwapRefusal.INVALID_LINK, SwapRefusal.CODE_REFUSED, SwapRefusal.UNREACHABLE, SwapRefusal.OWN_SERVER, SwapRefusal.NAME_TAKEN,
+    SwapRefusal.ALREADY_SWAPPED ->
         if (accepting) JoinStep.PROTECT else JoinStep.LINK
     else -> JoinStep.PROTECT
 }
@@ -607,6 +610,7 @@ internal fun refusalText(reason: SwapRefusal, friend: String): String = when (re
     SwapRefusal.WRONG_PASSPHRASE -> stringResource(R.string.swap_refused_wrong)
     SwapRefusal.NO_SPACE -> stringResource(R.string.swap_refused_no_space)
     SwapRefusal.OFFER_GONE -> stringResource(R.string.swap_refused_offer_gone, friend)
+    SwapRefusal.ALREADY_SWAPPED -> stringResource(R.string.swap_refused_already, friend)
     SwapRefusal.OTHER -> stringResource(R.string.swap_refused_other)
 }
 
