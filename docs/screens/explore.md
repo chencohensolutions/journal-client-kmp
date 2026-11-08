@@ -51,6 +51,12 @@ the library and the places found so far, and it shows the same sources as the Mo
     counted per small square, each time it settles (docs/plans/library-on-disk.md, step 6c). A pan further than that
     shows the photos there once the map stops.
 
+## Tucked away (Nov 8, 2026, Android)
+
+What is [tucked away](moments.md#tucked-away-nov-8-2026) never shows in Explore: not in the towns, years and map
+(the database's Explore queries leave `is_tucked` rows out), nor on a town's or a year's page, with no pill. A long
+press on a page's photo starts picking, with the Moments picking bar (Mark private, Tuck away).
+
 ## iOS
 
 The same tab, pages and map, from the same shared logic, with these differences:
@@ -61,7 +67,7 @@ The same tab, pages and map, from the same shared logic, with these differences:
 - The summaries, pages and pins are worked out in a detached task, again whenever the library, the places or the
   sources shown change.
 - A town's or a year's page has the system navigation bar (back, and swiping back) over its photo, with a scrim
-  behind it. A long press on its photos does nothing, as on Android.
+  behind it. A long press on its photos does nothing (on Android it starts picking since Nov 8, 2026).
 - The map is MapLibre Native iOS (Swift package `maplibre-gl-native-distribution`, pinned to 6.31.0) in a
   `UIViewRepresentable`: the photos are an `MLNShapeSource` clustered at a 48 pt radius up to zoom 16, drawn by three
   layers (circles with the count, and single pins) in the library colors of the scheme shown. The year slider is a

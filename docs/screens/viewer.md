@@ -106,7 +106,10 @@ Swiping is not a tap; a playing video's own controls take its taps.
     server's copy (`ServerMedia.camera`, the change feed's `Media.camera`, kept in `server_media`), named as Your
     cameras names it (`cameraName`: "SM-S931B" is "Samsung Galaxy S25"; see settings.md). The phone's own
     folder isn't shown: the server keeps it (`deviceFolder`) but doesn't send it. For a photo only on the server: **Preview on this phone**
-    (the largest kept, "2560 × 1920 · 635 kB", or "None yet"). Then **Mark private**.
+    (the largest kept, "2560 × 1920 · 635 kB", or "None yet"). Then **Mark private** (**Unmark private** asks for the
+    phone's lock unless this session passed it for Tucked away; Android, Nov 8, 2026). For a photo
+    [tucked away](moments.md#tucked-away-nov-8-2026) (revealed for the session): a **Tucked away** section saying what
+    it means and **Bring back**, behind the same lock (Android; iOS not built yet).
   - **Camera details** (photos) or **Video details** (videos), read from the original on this phone (the gallery's
     file, or the one the viewer downloaded; never from the server). A photo: make and model, the lens, and chips for
     ISO, 35 mm focal length, f-number, shutter and exposure bias; **All EXIF (n)** opens every tag, by section

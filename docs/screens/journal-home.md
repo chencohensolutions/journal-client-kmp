@@ -29,8 +29,12 @@ Photos fill the screen on the page background (light or dark with the system); t
   the photo, the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
   Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to
   have one photo of a set here, open that photo and write on it. Tapping opens the [viewer](viewer.md), swiping
-  through the storyline; a long press opens the photo's menu, with **Remove from storyline** (the writing stays and
-  still shows in Moments; `"storyline": false` in its note file) or, once removed, **Add to storyline**.
+  through the storyline; a long press starts picking, as in Moments (Android, Nov 8, 2026; iOS: its menu, with Remove
+  from storyline). **Remove from storyline** (the writing stays and still shows in Moments; `"storyline": false` in
+  its note file), or once removed **Add to storyline**, is in the viewer's details panel. A photo
+  [tucked away](moments.md#tucked-away-nov-8-2026) leaves it with its writing; its day says "1 tucked away" under its
+  heading (the day stays, with only the pill, when all its photos are tucked), and tapping that shows them for the
+  session.
 - **Moments:** a feed of every photo that groups itself, full-width photos split by time, place, source and
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).
@@ -43,8 +47,9 @@ Photos fill the screen on the page background (light or dark with the system); t
   - No fade behind them (removed Oct 24, 2026): the controls float over the photos, above the system's gesture bar.
   - **Moments / Storyline / Explore** switch (Moments first, and the tab home opens on, since Oct 24, 2026): Moments
     every photo, Storyline the photos you wrote about,
-    Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in Moments,
-    **Cancel · N selected · Merge** takes its place.
+    Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in
+    Moments or the storyline, the picking bar takes its place: **Cancel · N selected · Mark private · Tuck away** (see
+    [moments.md](moments.md)).
 
 Empty, loading and error states show a single line of text in place of the days. With nothing written yet, the
 Storyline tab says "Nothing here yet. Open a photo and tap Write: what you write shows here."

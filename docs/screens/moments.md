@@ -43,12 +43,18 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   [crop](crop.md). A video shows its length.
 - **Writing** (Oct 21, 2026): a photo's title is above it (semibold), its paragraph under it in serif, up to 4 lines
   and then **more**. In a near-duplicate set, the writing of the photo shown.
-- **Long press** a photo for **Write about it** (or **Edit what you wrote**), **Crop**, **Tag**, **Select**, in a
-  set **Take out of this set**, and for a photo with writing **Remove from storyline** (or, once removed, **Add to
-  storyline**; see [journal-home.md](journal-home.md)). **Add to story** went with stories on Oct 21, 2026.
-- **Merging (asked Oct 19, 2026):** **Select** starts picking: tapping a photo or set picks it (a check at its
-  corner), back or **Cancel** stops. **Merge**, with two or more picked, makes them one set you swipe, shown where its
-  oldest photo is, wherever the others were. **Take out of this set** removes a photo from a set (made by hand or by
+- **Long press** a photo to start **picking** (Nov 8, 2026, Android; it replaced the long-press menu of Write about
+  it, Crop, Tag, Select, Take out of this set and Remove from storyline): the photo is picked (a check at its corner),
+  taps then pick or unpick (a set is picked whole), back or **Cancel** stops. In place of the tabs, the **picking
+  bar**: **Cancel · N selected · Mark private · Tuck away** (N counts photos, a set each of its own; Mark private asks
+  first, as search's does; Tuck away doesn't), or **Bring back** in place of Tuck away when every photo picked is
+  tucked away. Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
+  two or more photos or sets picked, **Merge**; with one set picked, **Take out** (the photo the long press was on).
+  Remove from / Add to storyline is in the viewer's details panel. A long press on a photo taken during a recording
+  still plays the recording. The same bar (`PickingBar`) is search's and Explore's pages'. **Add to story** went with
+  stories on Oct 21, 2026. See [Tucked away](#tucked-away-nov-8-2026) below.
+- **Merging (asked Oct 19, 2026):** with photos picked, **Merge** makes them one set you swipe, shown where its
+  oldest photo is, wherever the others were. **Take out** removes a photo from a set (made by hand or by
   itself) and it isn't put in one by itself again. A [cropped](crop.md) photo is never put in a set by itself either.
   Saved in each photo's note file (`"set"`, `"apart"`). A set never shows in the storyline: only the photo of it you
   wrote on does.
@@ -102,6 +108,40 @@ photos, Explore, the Storyline or search; Moments and their [page](viewer.md#a-s
 Tapping a photo opens the [viewer](viewer.md) on its row's photos, in the order shown. When the viewer closes, the
 feed scrolls to that photo, and a near-duplicate set turns to it.
 
+## Tucked away (Nov 8, 2026)
+
+"מוצנע" in Hebrew: a casual private level, asked by the owner on Nov 8, 2026 (plan:
+https://claude.ai/artifact/GVKv6SowaqUXAdY8uJUvTE). Android; iOS not built yet ([ios-todo.md](../ios-todo.md)).
+
+- **Tuck away** (picking bar; no confirmation, no lock) marks the picked files on the server (`setTucked`, at most
+  1000 a call, like `setPrivate`; the server must be reachable, else "Not changed: can't reach your server…" and the
+  picks stay). A photo backup hasn't read is matched by name and size, as Mark private matches it. Offered only by a
+  server whose `serverInfo.tuckedAway` is true.
+- Tucked photos leave **Moments**, the **storyline** (with their title and paragraph) and **Explore**, and are never
+  found by **search** (the server leaves them out; the app drops them from its results and from On this phone's search
+  too). They aren't hidden by the server: they come in the change feed with their flag (`Media.tucked`, kept as
+  `server_media.is_tucked` and on `library_item`).
+- **Each day with tucked photos** says how many: a small **"3 tucked away"** pill (eye with a line through it) under a
+  Moments row's divider, and under a storyline day's heading. A day whose photos are all tucked keeps its divider or
+  heading, with only the pill. Tapping the pill **reveals** that day's tucked photos in place among its moments, each
+  with a small mark at its corner, and fills the pill; tapping again hides them. A row over two days (grouping by
+  gaps) reveals both.
+- The **first reveal in a session** asks for the phone's lock (the prompt of Private settings); after that, pills,
+  **Bring back** and **Unmark private** don't ask again in that session. The session ends with the app: after a
+  process start, or when the app comes back after more than 5 minutes in the background (`TuckedReveal`, with its
+  clock, in shared logic); then nothing is revealed and the lock asks again. Tucking away and marking private never
+  ask. A phone with no screen lock doesn't ask.
+- **Bring back**: the picking bar when every photo picked is tucked (revealed ones), and the viewer's details panel
+  ([viewer.md](viewer.md)).
+- Tucked and private are independent: a file both private and tucked stays hidden until Show private media is on,
+  whatever the pill says.
+- How: rows keep tucked photos in their span (so revealing never moves rows) but not among their moments, and count
+  them (`FeedSection.tucked`; `buildFeed(tuckedShown = …)`). The rows kept in `feed_section` never show them; a
+  revealed row is made again in memory (`FeedPager`, as a hidden source's band is). The storyline by day is
+  `StoriesState.storylineDays`. Tests: `TuckedAwayTest`, and tucked photos in `FeedWindowsTest` and
+  `LibraryTableTest`. Android: [TuckedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/TuckedViews.kt)
+  (pill, mark, lock, picking bar), previews `TuckedScreenshots.kt`.
+
 ## Going to a date (Oct 24, 2026)
 
 A **month pill** above the tabs, "‹ 24 October 2026 ›", says which day the top of the feed is in (with its month and
@@ -150,7 +190,8 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
   heading, then **Write about it** (or **Edit what you wrote**), **Crop** (photos only), **Tag**, **Select**, in a set
   **Take out of this set**, and **Remove from storyline** or **Add to storyline** for a photo with writing. **Crop** opens the [crop screen](crop.md) on the photo's
   Moments crop.
-- While picking, the bottom bar is **Cancel · N selected · Merge**; changing tabs stops picking.
+- While picking (from the menu's **Select**), the bottom bar is **Cancel · N selected · Merge**; changing tabs stops
+  picking. Android's long-press picking and Tucked away are not built yet (see [ios-todo.md](../ios-todo.md)).
 - **Sets** are a horizontal paging scroll view; the photos beside the one shown are cached ahead
   (`PHCachingImageManager`). There are no photos only on the server on iOS yet, so nothing is downloaded.
 - **Videos** play with `AVQueuePlayer` and `AVPlayerLooper` in an `AVPlayerLayer`. Muted, the audio session is
