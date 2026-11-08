@@ -46,6 +46,8 @@ internal class FeedPage(
      * file keeps the flag its row had.
      */
     val knowsTucked: Boolean = true,
+    /** Whether the page has each file's note (a server with serverInfo.notes): from an older one, a file keeps its row's. */
+    val knowsNotes: Boolean = true,
 )
 
 /** What [ServerMediaStore.apply] changed. */
@@ -116,7 +118,10 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         var hiddenChanged = false
         val removed = mutableListOf<String>()
         page.media.forEach { received ->
-            val media = if (page.knowsTucked) received else received.copy(isTucked = queries.mediaWithSha(received.sha256).executeAsOneOrNull()?.is_tucked == true)
+            val kept = if (page.knowsTucked && page.knowsNotes) null else queries.mediaWithSha(received.sha256).executeAsOneOrNull()
+            val media = received
+                .let { if (page.knowsTucked) it else it.copy(isTucked = kept?.is_tucked == true) }
+                .let { if (page.knowsNotes) it else it.copy(note = kept?.note, noteVersion = kept?.note_version) }
             if (media.isPrivate && !showPrivate) {
                 queries.addPrivate(media.sha256, media.fileName, media.size, media.encodedSha256)
                 if (queries.deleteMedia(media.sha256).value > 0) mediaChanged = true
@@ -137,6 +142,22 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         page.shownAgain.forEach { if (queries.removeHidden(it).value > 0) hiddenChanged = true }
         setCursor(page.cursor)
         Applied(mediaChanged, hiddenChanged, removed)
+    }
+
+    /**
+     * The first sync that asks for notes: true once, when the cursor is dropped so the whole feed is read again with
+     * them (notes written while this phone read the feed without them came and went).
+     */
+    fun startNotes(): Boolean = database.transactionWithResult {
+        if (state.stateValue(READS_NOTES).executeAsOneOrNull() != null) return@transactionWithResult false
+        state.clearState(CURSOR)
+        state.setState(READS_NOTES, "true")
+        true
+    }
+
+    /** Keeps the note the server answered for [sha256] (its setNote), as the feed will bring it. */
+    fun keepNote(sha256: String, note: String?, version: String?) {
+        queries.setNote(note = note, note_version = version, sha256 = sha256)
     }
 
     /**
@@ -186,6 +207,7 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         const val CURSOR = "server_cursor"
         const val HOLDS_PRIVATE = "server_holds_private"
         const val MADE_UP = "server_made_up"
+        const val READS_NOTES = "server_reads_notes"
     }
 }
 
@@ -217,6 +239,8 @@ private fun ServerMedia.toRow() = Server_media(
     camera_model = cameraModel,
     encoded_sha256 = encodedSha256,
     is_tucked = isTucked,
+    note = note,
+    note_version = noteVersion,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -246,4 +270,6 @@ private fun Server_media.toServerMedia() = ServerMedia(
     cameraModel = camera_model,
     encodedSha256 = encoded_sha256,
     isTucked = is_tucked,
+    note = note,
+    noteVersion = note_version,
 )

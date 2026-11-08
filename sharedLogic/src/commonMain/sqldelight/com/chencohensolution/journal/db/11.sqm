@@ -1,0 +1,15 @@
+-- Version 11 to 12 (Nov 8, 2026): notes sync with the server (NoteSync). Each server file's note as the change feed
+-- brings it, the phone's notes waiting to be sent, and the server's notes as last brought into the phone's.
+ALTER TABLE server_media ADD COLUMN note TEXT;
+ALTER TABLE server_media ADD COLUMN note_version TEXT;
+
+CREATE TABLE note_outbox (
+    id TEXT NOT NULL PRIMARY KEY,
+    change INTEGER NOT NULL
+);
+
+CREATE TABLE note_synced (
+    sha256 TEXT NOT NULL PRIMARY KEY,
+    version TEXT,
+    item_id TEXT
+);

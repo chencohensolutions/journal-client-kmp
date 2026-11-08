@@ -126,6 +126,69 @@ query ChangesTucked($since: String, $limit: Int) {
   }
 }
 
+# Changes with each file's tucked flag and note, asked only of a server that has notes (serverInfo.notes; it has tucking
+# away too): an older one refuses a field it doesn't know. The same fields as ChangesTucked otherwise.
+query ChangesNotes($since: String, $limit: Int) {
+  changes(since: $since, limit: $limit) {
+    cursor
+    hasMore
+    remaining
+    changes {
+      kind
+      path
+      deleted
+      hidden
+      media {
+      sha256
+      kind
+      fileName
+      mimeType
+      size
+      takenAt
+      endedAt
+      width
+      height
+      durationMs
+      call {
+        contact
+        number
+      }
+      location {
+        lat
+        lon
+      }
+      source
+      screenshotApp
+      camera {
+        make
+        model
+      }
+      uploadedAt
+      uploadedBy
+      nudity
+      aesthetic
+      private
+      encodedFrom {
+        sha256
+      }
+        tucked
+        note
+        noteVersion
+      }
+    }
+  }
+}
+
+# Replaces a file's note (serverInfo.notes), from the version this phone last had (null: none). A conflict brings the
+# note now kept, to merge into and send again (NoteSync).
+mutation SetNote($sha256: Sha256!, $note: String, $baseVersion: String) {
+  setNote(sha256: $sha256, note: $note, baseVersion: $baseVersion) {
+    __typename
+    ... on NoteSaved { media { note noteVersion } }
+    ... on NoteConflict { media { note noteVersion } }
+  }
+}
+
 mutation SetTucked($sha256s: [Sha256!]!, $tucked: Boolean!) {
   setTucked(sha256s: $sha256s, tucked: $tucked) {
     sha256

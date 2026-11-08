@@ -1,0 +1,52 @@
+-- Notes synced with the server (NoteSync, since version 12). A photo's note is kept on the phone as a file
+-- (journal/media/<id>.json, PhotoNote); the server keeps it in the file's sidecar and sends it in the change feed
+-- (server_media.note). These tables say what is still to send and what was last brought in.
+
+-- The photos whose notes changed on this phone and are still to be sent, by the photo's id. change goes up with each
+-- change, so a change made while one was being sent is sent too.
+CREATE TABLE note_outbox (
+    id TEXT NOT NULL PRIMARY KEY,
+    change INTEGER NOT NULL
+);
+
+-- The server's note of each file as last brought into this phone's notes or sent from them: its version (null: none)
+-- and the photo it went to, so a photo shown under another id (deleted from the phone, kept by its old id or not) gets
+-- it again.
+CREATE TABLE note_synced (
+    sha256 TEXT NOT NULL PRIMARY KEY,
+    version TEXT,
+    item_id TEXT
+);
+
+-- Marks a photo's note to send (again).
+addToOutbox:
+INSERT OR REPLACE INTO note_outbox VALUES (:id, coalesce((SELECT change FROM note_outbox WHERE id = :id), 0) + 1);
+
+-- The notes to send, each with the server file the library matched its photo to (null: not on the server yet).
+outbox:
+SELECT o.id, o.change, (SELECT i.server_sha256 FROM library_item i WHERE i.id = o.id) AS server_sha256
+FROM note_outbox o;
+
+-- Sent: unless it changed again meanwhile.
+sent:
+DELETE FROM note_outbox WHERE id = :id AND change = :change;
+
+isInOutbox:
+SELECT count(*) FROM note_outbox WHERE id = ?;
+
+-- The server's notes not yet brought into this phone's: new, changed or deleted since, or with a photo now shown under
+-- another id. Each with the photo the library shows for the file (null until it shows one; a phone photo first).
+incoming:
+SELECT * FROM (
+    SELECT s.sha256, s.note, s.note_version, n.version AS synced_version, n.item_id AS synced_item,
+        (SELECT i.id FROM library_item i WHERE i.server_sha256 = s.sha256 ORDER BY i.is_on_device DESC, i.id LIMIT 1) AS item_id
+    FROM server_media s LEFT JOIN note_synced n ON n.sha256 = s.sha256
+    WHERE s.note_version IS NOT NULL OR n.version IS NOT NULL
+)
+WHERE note_version IS NOT synced_version OR (note_version IS NOT NULL AND item_id IS NOT NULL AND item_id IS NOT synced_item);
+
+syncedVersion:
+SELECT version FROM note_synced WHERE sha256 = ?;
+
+keepSynced:
+INSERT OR REPLACE INTO note_synced VALUES (?, ?, ?);

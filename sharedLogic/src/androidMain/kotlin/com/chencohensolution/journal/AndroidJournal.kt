@@ -22,6 +22,7 @@ import com.chencohensolution.journal.stories.FeedPager
 import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
+import com.chencohensolution.journal.stories.NoteSyncSource
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
@@ -493,5 +494,7 @@ fun createStoriesController(context: Context, library: LibraryController, settin
             pageSize = { settings.currentState.momentsPaging.rowsPerPage },
         ),
         shownRow = library::shownRow,
+        // Notes synced with the server, through the same database (NoteSync).
+        noteSync = NoteSyncSource.of(libraryDatabase(context), serverLibrary(context), Dispatchers.IO),
     )
 }

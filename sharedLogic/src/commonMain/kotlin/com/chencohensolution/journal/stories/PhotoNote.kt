@@ -80,11 +80,26 @@ data class PhotoNote(
 /** An earlier title and paragraph of a note, and when they were saved (RFC 3339). */
 data class NoteVersion(val title: String, val text: String, val savedAt: String)
 
-/** Where photo notes are kept until they can be synced to the server. */
+/** Where photo notes are kept on this device; [NoteSync] sends them to the server and brings the server's in. */
 internal interface PhotoNoteStore {
     fun loadAll(): List<PhotoNote>
     fun save(note: PhotoNote)
     fun delete(deviceId: String)
+
+    /**
+     * The note of [deviceId] as the server keeps it: its file's JSON object, without what only this device knows (the
+     * photo's id, name and time), with the fields a newer version wrote; null when it has no note.
+     */
+    fun syncContent(deviceId: String): String?
+
+    /**
+     * The server's note [content] (as [syncContent] makes it) as the note of [deviceId], replacing its file, with
+     * [fileName] and [takenAtMillis]; null, and nothing written, when it isn't a note this version can read.
+     */
+    fun saveFromServer(deviceId: String, fileName: String?, takenAtMillis: Long, content: String): PhotoNote?
+
+    /** The server's note [content] as a note, without writing it; null when it can't be read. */
+    fun parse(deviceId: String, fileName: String?, takenAtMillis: Long, content: String): PhotoNote?
 }
 
 /**
@@ -130,6 +145,40 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
         }
     }
 
+    override fun syncContent(deviceId: String): String? {
+        val path = pathOf(deviceId)
+        val file = try {
+            if (fileSystem.exists(path)) fileSystem.read(path) { json.parseToJsonElement(readUtf8()) as? JsonObject } else null
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        return syncJson.encodeToString(JsonObject.serializer(), JsonObject(file.filterKeys { it !in DEVICE_KEYS }))
+    }
+
+    override fun saveFromServer(deviceId: String, fileName: String?, takenAtMillis: Long, content: String): PhotoNote? {
+        val (file, note) = read(deviceId, fileName, takenAtMillis, content) ?: return null
+        fileSystem.createDirectories(dir)
+        val path = pathOf(deviceId)
+        val temp = dir / "${path.name}.tmp"
+        fileSystem.write(temp) { writeUtf8(json.encodeToString(JsonObject.serializer(), file)) }
+        fileSystem.atomicMove(temp, path)
+        return note
+    }
+
+    override fun parse(deviceId: String, fileName: String?, takenAtMillis: Long, content: String): PhotoNote? =
+        read(deviceId, fileName, takenAtMillis, content)?.second
+
+    /** The file the server's [content] makes for [deviceId], and its note. */
+    private fun read(deviceId: String, fileName: String?, takenAtMillis: Long, content: String): Pair<JsonObject, PhotoNote>? = try {
+        val server = json.parseToJsonElement(content) as? JsonObject ?: return null
+        val device = json.encodeToJsonElement(NoteFile.serializer(), NoteFile(deviceId = deviceId, fileName = fileName, takenAt = takenAtMillis))
+            .jsonObject.filterKeys { it in DEVICE_KEYS }
+        val file = JsonObject(server.filterKeys { it !in DEVICE_KEYS } + device)
+        file to json.decodeFromJsonElement(NoteFile.serializer(), file).toNote()
+    } catch (e: Exception) {
+        null
+    }
+
     /** iOS ids contain "/", so anything but letters, digits, "-", "_" and "." becomes "_". */
     private fun pathOf(deviceId: String) = dir / "${deviceId.replace(Regex("[^A-Za-z0-9._-]"), "_")}.json"
 
@@ -140,6 +189,12 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
             "apart", "front", "zoom", "updatedAt",
         )
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
+
+        /** What only this device knows of a note: never sent to the server, and the device's own kept from its notes. */
+        val DEVICE_KEYS = setOf("deviceId", "fileName", "takenAt")
+
+        /** The server keeps notes compacted. */
+        val syncJson = Json { prettyPrint = false }
 
         /** [file] over [previous], keeping [previous]'s unknown fields, also inside "crops". */
         fun merged(previous: JsonObject?, file: NoteFile): JsonObject {
