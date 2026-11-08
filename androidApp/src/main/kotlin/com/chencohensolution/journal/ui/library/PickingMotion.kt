@@ -67,8 +67,11 @@ internal const val SPACE_MS = 250
 private val spaceEasing = FastOutSlowInEasing
 
 /**
- * Whether the latest change of a list's [keys] only took rows away (hiding, tucking away): then the others close the
- * space after the leaving rows faded; otherwise (rows added: revealing, bringing back) they open it at once.
+ * Whether the latest change of a list's [keys] took more rows away than it brought (hiding, tucking away): then the
+ * others close the space after the leaving rows faded; otherwise (revealing, bringing back) they open it at once.
+ * Not "only took rows away": tucking away a moment's first photo also renames the moment's label (its key is its first
+ * photo), so the change brings a row too; asking for none made that tuck close the space at once, over the fading
+ * photo (Nov 8, 2026).
  */
 @Composable
 internal fun rowsHiding(keys: List<String>): Boolean {
@@ -76,7 +79,7 @@ internal fun rowsHiding(keys: List<String>): Boolean {
     val hiding = remember { booleanArrayOf(false) }
     val now = remember(keys) { keys.toHashSet() }
     val before = last[0]
-    if (before != null && before != now) hiding[0] = now.all { it in before }
+    if (before != null && before != now) hiding[0] = before.count { it !in now } > now.count { it !in before }
     last[0] = now
     return hiding[0]
 }
