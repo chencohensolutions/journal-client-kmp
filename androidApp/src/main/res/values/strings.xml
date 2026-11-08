@@ -1070,4 +1070,5 @@
     <string name="swap_sheet_keep">Anyone with these words and the copy can open your photos.</string>
     <string name="swap_passphrase_locked">Locked. Unlock with your phone’s lock to see your copy passphrase.</string>
     <string name="swap_passphrase_no_lock">Set a screen lock on this phone (PIN, pattern or password) to see your copy passphrase.</string>
+    <string name="swap_refused_already">You already keep your copy at this friend’s server, under another name. Remove that swap first to set it up again.</string>
 </resources>

@@ -132,6 +132,9 @@ enum class SwapRefusal {
     /** The offer isn't there any more (expired, or answered). */
     OFFER_GONE,
 
+    /** The user keeps their copy at that friend already, under another name (journal-server 1.1.1): once per friend. */
+    ALREADY_SWAPPED,
+
     /** A reason this app doesn't know yet (a newer server): its [SwapOutcome.Refused.message] says it. */
     OTHER,
 }

@@ -5,6 +5,9 @@ import SharedLogic
 /// Bridges the shared Kotlin `LibraryController` (device photo library) into SwiftUI.
 final class LibraryViewModel: ObservableObject {
     @Published private(set) var state: LibraryState
+    /// The photo access question was answered once ("Not now" included): the access screen doesn't show again. PhotoKit
+    /// still says "not determined" after Not now, so the state's access alone can't tell.
+    @Published private(set) var accessAnswered = false
 
     /// Shared with `StoriesViewModel`, which builds the timeline from the same library.
     let controller: LibraryController
@@ -21,6 +24,7 @@ final class LibraryViewModel: ObservableObject {
             privateMedia: settings.controller.privateMedia
         )
         state = controller.currentState
+        accessAnswered = controller.accessRequested
         // The controller delivers updates on the main thread.
         observation = controller.observe { [weak self] newState in
             self?.state = newState
@@ -36,7 +40,10 @@ final class LibraryViewModel: ObservableObject {
     func refresh() { controller.refresh() }
 
     /// "Not now" on the photo access screen.
-    func skipAccess() { controller.skipAccess() }
+    func skipAccess() {
+        controller.skipAccess()
+        accessAnswered = true
+    }
 
     /// Shows the system prompt. Once answered, iOS never shows it again; only Settings can change the answer.
     func requestAccess() {

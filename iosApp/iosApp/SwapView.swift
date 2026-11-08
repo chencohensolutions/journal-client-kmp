@@ -112,7 +112,7 @@ struct SwapView: View {
                             offering = true
                         } label: {
                             PageLabel(title: String(localized: "Keep a friend’s copy here"),
-                                detail: String(localized: "\(fileSize(state.info?.freeSpace?.int64Value ?? 0)) free on your server"))
+                                detail: String(localized: "\(swapSize(state.info?.freeSpace?.int64Value ?? 0)) free on your server"))
                         }
                     }
                 }
@@ -187,7 +187,7 @@ struct SwapView: View {
                 if !swap.revoked {
                     Button("Revoke", role: .destructive) { model.swaps.revoke(name: swap.name, deleteFiles: false); revoking = nil }
                 }
-                Button(String(localized: "Revoke and delete their files (\(fileSize(swap.used)))"), role: .destructive) {
+                Button(String(localized: "Revoke and delete their files (\(swapSize(swap.used)))"), role: .destructive) {
                     model.swaps.revoke(name: swap.name, deleteFiles: true)
                     revoking = nil
                 }
@@ -225,7 +225,7 @@ private struct OfferCard: View {
     var body: some View {
         let minutes = Int(max(0, (offer.expiresAtMillis - now) / 60_000)) + 1
         VStack(alignment: .leading, spacing: 6) {
-            Text("\(offer.name) offers to keep your copy too (\(fileSize(offer.quota)))").font(.headline).foregroundStyle(LibraryColors.onBackground)
+            Text("\(offer.name) offers to keep your copy too (\(swapSize(offer.quota)))").font(.headline).foregroundStyle(LibraryColors.onBackground)
             Text("Accept and your copy goes to \(offer.name)’s server as well. The offer lasts about \(minutes) more min.")
                 .font(.footnote).foregroundStyle(LibraryColors.muted)
             HStack {
@@ -252,8 +252,8 @@ private struct MySwapRow: View {
                 }
                 Text(verbatim: status).font(.footnote).foregroundStyle(swap.dataCopy?.problem != nil ? LibraryColors.error : LibraryColors.muted)
                 Text(verbatim: swap.encrypted
-                    ? String(localized: "Encrypted · up to \(fileSize(swap.quota))")
-                    : String(localized: "Plain: your friend can see it · up to \(fileSize(swap.quota))"))
+                    ? String(localized: "Encrypted · up to \(swapSize(swap.quota))")
+                    : String(localized: "Plain: your friend can see it · up to \(swapSize(swap.quota))"))
                     .font(.footnote).foregroundStyle(LibraryColors.muted)
             }
             Spacer()
@@ -280,7 +280,7 @@ private struct KeptSwapRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: swap.name).font(.headline).foregroundStyle(LibraryColors.onBackground)
-                Text("\(fileSize(swap.used)) of \(fileSize(swap.quota)) used").font(.footnote).foregroundStyle(LibraryColors.muted)
+                Text("\(swapSize(swap.used)) of \(swapSize(swap.quota)) used").font(.footnote).foregroundStyle(LibraryColors.muted)
                 ProgressView(value: Double(swap.fraction)).tint(LibraryColors.onBackground)
                 if swap.revoked {
                     Text("Revoked: their server is refused. Their files are still here.").font(.footnote).foregroundStyle(LibraryColors.warning)
@@ -350,7 +350,7 @@ struct SwapHereView: View {
                 } header: {
                     Text("How much to keep for them")
                 } footer: {
-                    Text("\(fileSize(free)) free on your server’s disk")
+                    Text("\(swapSize(free)) free on your server’s disk")
                 }
                 .listRowBackground(LibraryColors.raised)
                 Section {
@@ -380,7 +380,7 @@ struct SwapHereView: View {
             if invite.joined {
                 Image(systemName: "checkmark.circle").font(.system(size: 40)).foregroundStyle(LibraryColors.onBackground)
                 Text("\(invite.name)’s server joined").font(.headline).foregroundStyle(LibraryColors.onBackground)
-                Text("Their copy is kept here now, up to \(fileSize(invite.quota)).").font(.footnote).foregroundStyle(LibraryColors.muted)
+                Text("Their copy is kept here now, up to \(swapSize(invite.quota)).").font(.footnote).foregroundStyle(LibraryColors.muted)
             } else if invite.expired(nowMillis: clock) {
                 Text("The code expired. Make a new one while you talk.").font(.headline).multilineTextAlignment(.center)
                 Button("Make a new invite") { model.swaps.closeInvite() }.buttonStyle(.borderless)
@@ -424,7 +424,7 @@ private struct QuotaPicker: View {
                     Button {
                         quota = q
                     } label: {
-                        Text(verbatim: q == free ? String(localized: "All \(fileSize(q))") : fileSize(q))
+                        Text(verbatim: q == free ? String(localized: "All \(swapSize(q))") : swapSize(q))
                             .padding(.horizontal, 12).padding(.vertical, 6)
                             .background(q == quota ? LibraryColors.inverse : Color.clear, in: Capsule())
                             .overlay(Capsule().stroke(LibraryColors.muted.opacity(0.5)))
@@ -682,8 +682,8 @@ struct SwapThereView: View {
                     Image(systemName: "checkmark.circle").font(.system(size: 40))
                     Text("Your copy is going to \(joined.swap.name)’s server").font(.headline).multilineTextAlignment(.center)
                     Text(verbatim: joined.swap.encrypted
-                        ? String(localized: "Encrypted, up to \(fileSize(joined.swap.quota)). The first pass starts now, then daily.")
-                        : String(localized: "Plain, up to \(fileSize(joined.swap.quota)). The first pass starts now, then daily."))
+                        ? String(localized: "Encrypted, up to \(swapSize(joined.swap.quota)). The first pass starts now, then daily.")
+                        : String(localized: "Plain, up to \(swapSize(joined.swap.quota)). The first pass starts now, then daily."))
                         .font(.footnote).foregroundStyle(LibraryColors.muted).multilineTextAlignment(.center)
                     if joined.offered {
                         Text("\(joined.swap.name)’s phone now offers to keep their copy here.").font(.footnote).foregroundStyle(LibraryColors.muted).multilineTextAlignment(.center)
@@ -745,7 +745,7 @@ struct SwapThereView: View {
 /// The step a refusal sends the user back to.
 func refusalStep(_ reason: SwapRefusal, accepting: Bool) -> JoinStep {
     switch reason {
-    case .invalidLink, .codeRefused, .unreachable, .ownServer, .nameTaken: return accepting ? .protect : .link
+    case .invalidLink, .codeRefused, .unreachable, .ownServer, .nameTaken, .alreadySwapped: return accepting ? .protect : .link
     default: return .protect
     }
 }
@@ -762,6 +762,7 @@ func refusalText(_ reason: SwapRefusal, friend: String) -> String {
     case .wrongPassphrase: return String(localized: "That isn’t the passphrase your copies are encrypted with.")
     case .noSpace: return String(localized: "Your server has no room for what you offered back. Offer less, or none.")
     case .offerGone: return String(localized: "\(friend)’s offer is gone: it lasts 10 minutes.")
+    case .alreadySwapped: return String(localized: "You already keep your copy at this friend’s server, under another name. Remove that swap first to set it up again.")
     default: return String(localized: "Your server refused. Try again.")
     }
 }
@@ -803,4 +804,16 @@ struct CopyPassphraseView: View {
             }
         }
     }
+}
+
+/// "241 GB", "1.8 TB": a size without the decimals ByteCountFormatter adds for GB, as Android's short file sizes.
+func swapSize(_ bytes: Int64) -> String {
+    let formatter = ByteCountFormatter()
+    formatter.countStyle = .file
+    formatter.isAdaptive = false
+    if bytes >= 1_000_000_000_000 {
+        formatter.allowedUnits = [.useTB]
+        formatter.isAdaptive = true
+    }
+    return formatter.string(fromByteCount: bytes)
 }

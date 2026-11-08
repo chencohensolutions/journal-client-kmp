@@ -105,6 +105,11 @@ enum SwapRefusal {
   NO_SPACE
   "The offer isn't there any more (expired after 10 minutes, or answered)."
   OFFER_GONE
+  """
+  The caller keeps their copy at that friend already (the same user on the same server, under another name): a user
+  swaps with each friend once.
+  """
+  ALREADY_SWAPPED
 }
 
 type Swaps {

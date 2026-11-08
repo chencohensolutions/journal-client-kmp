@@ -111,7 +111,7 @@ class SwapControllerTest {
     @Test
     fun everyRefusalOfTheServerIsMapped() {
         val known = ServerSwapRefusal.knownEntries
-        assertEquals(10, known.size)
+        assertEquals(11, known.size)
         for (reason in known) assertEquals(reason.name, refusal(reason).name)
         assertEquals(SwapRefusal.OTHER, refusal(ServerSwapRefusal.safeValueOf("NEW_ONE")))
     }

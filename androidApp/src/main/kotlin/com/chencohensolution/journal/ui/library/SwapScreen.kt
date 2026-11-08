@@ -592,7 +592,8 @@ private fun ResultStep(state: SwapState, draft: JoinDraft, actions: SwapThereAct
 
 /** The step a refusal sends the user back to. */
 internal fun refusalStep(reason: SwapRefusal, accepting: Boolean): JoinStep = when (reason) {
-    SwapRefusal.INVALID_LINK, SwapRefusal.CODE_REFUSED, SwapRefusal.UNREACHABLE, SwapRefusal.OWN_SERVER, SwapRefusal.NAME_TAKEN ->
+    SwapRefusal.INVALID_LINK, SwapRefusal.CODE_REFUSED, SwapRefusal.UNREACHABLE, SwapRefusal.OWN_SERVER, SwapRefusal.NAME_TAKEN,
+    SwapRefusal.ALREADY_SWAPPED ->
         if (accepting) JoinStep.PROTECT else JoinStep.LINK
     else -> JoinStep.PROTECT
 }
@@ -609,6 +610,7 @@ internal fun refusalText(reason: SwapRefusal, friend: String): String = when (re
     SwapRefusal.WRONG_PASSPHRASE -> stringResource(R.string.swap_refused_wrong)
     SwapRefusal.NO_SPACE -> stringResource(R.string.swap_refused_no_space)
     SwapRefusal.OFFER_GONE -> stringResource(R.string.swap_refused_offer_gone, friend)
+    SwapRefusal.ALREADY_SWAPPED -> stringResource(R.string.swap_refused_already, friend)
     SwapRefusal.OTHER -> stringResource(R.string.swap_refused_other)
 }
 
