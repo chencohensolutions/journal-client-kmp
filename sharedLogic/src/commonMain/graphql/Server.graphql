@@ -39,3 +39,7 @@ query LocalIndexes {
     models { name precision bytes sha256 url }
   }
 }
+
+query PhoneModels {
+  phoneModels { name precision bytes sha256 url }
+}

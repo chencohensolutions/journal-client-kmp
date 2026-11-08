@@ -48,6 +48,7 @@ import android.net.NetworkCapabilities
 import android.os.StatFs
 import com.chencohensolution.journal.local.AndroidTextEncoding
 import com.chencohensolution.journal.local.HttpLocalIndexApi
+import com.chencohensolution.journal.local.PhoneModel
 import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.local.LocalSearchApi
 import com.chencohensolution.journal.local.PhoneFallbackFindingsApi
@@ -433,8 +434,8 @@ fun createSettingsController(context: Context): SettingsController =
 
 /**
  * Photo notes kept on this device, in the app's private files folder (`files/journal/media`); the stories once kept
- * beside them are deleted. Photo fingerprints for Moments' sets are cached in `cache/similarity`, where photos were
- * taken and place names in `cache/places`.
+ * beside them are deleted. Photo fingerprints for Moments' sets are cached in `cache/similarity` (their model in
+ * `files/models`, from the server), where photos were taken and place names in `cache/places`.
  */
 fun createStoriesController(context: Context, library: LibraryController, settings: SettingsController): StoriesController {
     val journal = context.filesDir.toOkioPath() / "journal"
@@ -445,7 +446,16 @@ fun createStoriesController(context: Context, library: LibraryController, settin
         settings = settings,
         newId = StoryIds(JournalSettings(SharedPreferencesStore(context)), System::currentTimeMillis)::next,
         similarity = PhotoSimilarity(
-            AndroidPhotoAnalyzer(context),
+            AndroidPhotoAnalyzer(
+                context,
+                // Downloaded from the server on first use (`phoneModels`), into files/models.
+                PhoneModel(
+                    AndroidPhotoAnalyzer.MODEL_FILE,
+                    HttpLocalIndexApi(serverHttp(context.applicationContext)),
+                    FileSystem.SYSTEM,
+                    context.filesDir.toOkioPath() / "models",
+                ),
+            ),
             FingerprintCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "similarity"),
         ),
         places = PhotoPlaces(AndroidPlaceReader(context), PlaceCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "places")),

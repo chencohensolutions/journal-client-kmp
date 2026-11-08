@@ -15,9 +15,10 @@ internal class GrayImage(val width: Int, val height: Int, val pixels: IntArray) 
 /**
  * What the platform reads from a photo: a small grayscale copy, and its image model's embeddings of the whole photo
  * and of its center zoomed in by each of [EMBEDDING_ZOOMS] after the first (empty if the model failed; the whole
- * photo first).
+ * photo first). [withoutModel] when the model wasn't on the phone yet (it is downloaded on first use): the photo is
+ * read again for its embeddings once it is.
  */
-internal class PhotoAnalysis(val gray: GrayImage, val embeddings: List<FloatArray>)
+internal class PhotoAnalysis(val gray: GrayImage, val embeddings: List<FloatArray>, val withoutModel: Boolean = false)
 
 /**
  * Zooms into the center that the platform embeds besides the whole photo (1). A camera's zoom is a center crop, so
@@ -39,6 +40,12 @@ internal interface PhotoAnalyzer {
 
     /** Null when the photo can't be read, e.g. when it is only in iCloud. Called one photo at a time. */
     suspend fun analyze(item: MediaItem): PhotoAnalysis?
+
+    /** Whether the model is here to embed with; false while it is still to be downloaded (only dHashes meanwhile). */
+    val embeds: Boolean get() = true
+
+    /** Gets the model when [embeds] is false (a download from the server); true once it embeds. */
+    suspend fun prepare(): Boolean = true
 }
 
 /**
@@ -46,7 +53,12 @@ internal interface PhotoAnalyzer {
  * model's embeddings the same way ([EMBEDDING_ZOOMS]) scaled to bytes; the whole photo first in both. Equality is
  * identity: [PhotoSimilarity] keeps one per photo, so states built from the same fingerprints stay equal.
  */
-class PhotoFingerprint internal constructor(internal val dHashes: LongArray, internal val embeddings: List<ByteArray>) {
+class PhotoFingerprint internal constructor(
+    internal val dHashes: LongArray,
+    internal val embeddings: List<ByteArray>,
+    /** Read before the model was on the phone: read again once it is ([PhotoAnalysis.withoutModel]). */
+    internal val withoutModel: Boolean = false,
+) {
     /** The whole photo's dHash. */
     val dHash: Long get() = dHashes.first()
 }

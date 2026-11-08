@@ -232,8 +232,12 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
     (embeddings at 1.4× and 2×, dHashes at nine steps from 1.15× to 3×); each one's whole frame is compared with the
     other's zoomed centers, so either can be the zoomed shot.
   - Embeddings: **Vision feature print** on iOS (threshold 0.80, on the Neural Engine), **MediaPipe image embedder**
-    with **MobileNet-V3 large** on Android (Apache 2.0, 10.9 MB, bundled in `sharedLogic/src/androidMain/assets`; on
-    the CPU, about 10 ms a run). Read from a 512 px copy, one photo at a time in the background, the feed's newest
+    with **MobileNet-V3 large** on Android (Apache 2.0, 10.9 MB; on the CPU, about 10 ms a run). Android doesn't carry
+    the model in the app: it downloads it from the user's server on first use (`phoneModels`,
+    `/models/phone/mobilenet_v3_large.tflite`, with Range and its sha256 checked) into `files/models`. Until it is
+    there (the server doesn't have it yet, or can't be reached), photos are read by dHash alone and marked so; once it
+    arrives they are read again for their embeddings. A failed download is tried again 10 minutes later at the
+    earliest, on the next request. Read from a 512 px copy, one photo at a time in the background, the feed's newest
     first. Fingerprints are cached per device and model in the caches folder (`similarity/fingerprints.json`), never
     synced: the two platforms' embeddings can't be compared. Videos aren't fingerprinted. Code in
     [similarity/](../../sharedLogic/src/commonMain/kotlin/com/chencohensolution/journal/similarity/).
