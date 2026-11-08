@@ -42,6 +42,7 @@ class ServerPreviewsTest {
     private var offline = false
     private val fs = FakeFileSystem()
     private var options = PreviewOptions()
+    private var serverFrames = false
 
     /** While set, an original's download waits for it. */
     private var holdOriginal: kotlinx.coroutines.CompletableDeferred<Unit>? = null
@@ -57,6 +58,10 @@ class ServerPreviewsTest {
                     val path = request.url.encodedPath
                     when {
                         path == "/media/$sha/preview" -> respond("preview ${request.url.parameters["fmt"]} ${request.url.parameters["q"]}".encodeToByteArray())
+                        path == "/media/$sha/frame" -> respond(
+                            "first frame".encodeToByteArray(),
+                            headers = io.ktor.http.headersOf(io.ktor.http.HttpHeaders.ContentType, "video/mp4"),
+                        )
                         // Any original asked for gets these bytes, so a wrong sha256 is caught by the check.
                         path.startsWith("/media/") -> respond(original)
                         else -> respond("", HttpStatusCode.NotFound)
@@ -68,6 +73,7 @@ class ServerPreviewsTest {
         fileSystem = fs,
         directory = "/cache/previews".toPath(),
         options = { options },
+        videoFrames = { serverFrames },
     )
 
     @Test
@@ -145,9 +151,10 @@ class ServerPreviewsTest {
 
     @Test
     fun aTileUsesTheOriginalHereThenTheExactPreviewAndAVideoItsPoster() = runTest {
-        // A video: its poster at that size, never its original.
+        // A video: its very first frame at that size, never its original.
         assertEquals("preview webp high", previews.tile(sha, isVideo = true, "VID.mp4", 320, 240, decoders()))
         assertEquals(0, requests.count { it.encodedPath == "/media/$sha" })
+        assertEquals("first", requests.last().parameters["frame"])
 
         // Previews on: the exact preview, made by the server.
         assertEquals("preview webp high", previews.tile(sha, isVideo = false, "IMG.HEIC", 640, 480, decoders()))
@@ -239,5 +246,38 @@ class ServerPreviewsTest {
         assertEquals(750L + original.size, kept.totalBytes)
 
         assertEquals("https://journal.test/media/$sha", previews.mediaUrl(sha))
+    }
+
+    @Test
+    fun aVideoFrameIsDecodedHereOnlyWhenChosenAndTheServerCutsIt() = runTest {
+        val video = ServerPreviews.Decoders(
+            original = { path -> "decoded " + fs.read(path.toPath()) { readUtf8() } },
+            preview = { bytes -> bytes.decodeToString() },
+        )
+        // Chosen, but the server can't cut the frame: its preview of the first frame.
+        options = PreviewOptions(videoFramesOnPhone = true)
+        assertEquals("preview webp high", previews.tile(sha, isVideo = true, "VID.mp4", 320, 240, video))
+        assertTrue(requests.none { it.encodedPath.endsWith("/frame") })
+
+        // Both: the one-frame video, decoded here, and kept: asked for once, and never shown as a preview.
+        serverFrames = true
+        requests.clear()
+        assertEquals("decoded first frame", previews.tile(sha, isVideo = true, "VID.mp4", 640, 480, video))
+        assertEquals("decoded first frame", previews.tile(sha, isVideo = true, "VID.mp4", 1080, 810, video))
+        assertEquals(listOf("/media/$sha/frame"), requests.map { it.encodedPath })
+        assertTrue(previews.kept(sha).none { it.file.endsWith("frame.mp4") })
+
+        // Off again: the server's preview.
+        options = PreviewOptions()
+        assertEquals("preview webp high", previews.tile(sha, isVideo = true, "VID.mp4", 640, 480, video))
+    }
+
+    @Test
+    fun aVideosFirstFrameStandsForItOverAnOlderPoster() = runTest {
+        previews.preview(sha, 640, 480, contain = true)
+        assertEquals(1, previews.kept(sha).size)
+        previews.preview(sha, 320, 240, contain = true, firstFrame = true)
+        val kept = previews.kept(sha).single()
+        assertTrue("-first-" in kept.file, kept.file)
     }
 }

@@ -4,7 +4,9 @@ import io.ktor.client.request.get
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.readRawBytes
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -37,6 +39,8 @@ class ServerPreviews internal constructor(
     private val directory: Path,
     private val maxBytes: () -> Long = { DEFAULT_MAX_BYTES },
     private val options: () -> PreviewOptions = { PreviewOptions() },
+    /** Whether the server cuts a video's first frame out as a video of its own ([ServerFeatures.videoFrames]). */
+    private val videoFrames: () -> Boolean = { false },
 ) {
     private val downloads = Semaphore(PARALLEL_DOWNLOADS)
     private val originalDownloads = Semaphore(PARALLEL_ORIGINALS)
@@ -74,14 +78,20 @@ class ServerPreviews internal constructor(
     )
 
     /**
-     * A server-only photo or video drawn at [width] × [height] pixels (a tile). A video: its poster at that size (videos
-     * aren't downloaded to be shown). A photo: its original when one is in this cache; else, with previews on, the
+     * A server-only photo or video drawn at [width] × [height] pixels (a tile). A video: its very first frame (videos
+     * aren't downloaded to be shown), decoded here from the frame the server cuts out with
+     * [PreviewOptions.videoFramesOnPhone], else the server's preview of it at that size. A photo: its original when one is in this cache; else, with previews on, the
      * preview at exactly that size (kept, or made by the server now); with previews off, the exact preview when one is
      * kept, else the original downloaded now, and a preview after all when this device can't decode it (Samsung's DNG
      * 1.7). Offline, the largest preview kept stands in. Null when nothing of it can be had.
      */
     suspend fun <T : Any> tile(sha256: String, isVideo: Boolean, fileName: String?, width: Int, height: Int, decode: Decoders<T>): T? {
-        if (isVideo) return preview(sha256, width, height, contain = true)?.let { decode.preview(it) }
+        if (isVideo) {
+            if (options().videoFramesOnPhone && videoFrames()) {
+                firstFrameVideo(sha256)?.let { decode.original(it) }?.let { return it }
+            }
+            return preview(sha256, width, height, contain = true, firstFrame = true)?.let { decode.preview(it) }
+        }
         cachedOriginal(sha256)?.let { decode.original(it) }?.let { return it }
         if (!usesPreviews) {
             preview(sha256, width, height, contain = true, fetch = false, orLargest = false)?.let { decode.preview(it) }?.let { return it }
@@ -125,9 +135,11 @@ class ServerPreviews internal constructor(
      * when the server can't make it, the smallest preview kept that is at least that large, in any format; null when
      * there is none.
      */
-    suspend fun firstImage(sha256: String, width: Int, height: Int): ByteArray? {
-        preview(sha256, width, height, contain = true, orLargest = false, format = options().firstFormat, quality = PreviewQuality.MEDIUM)
-            ?.let { return it }
+    suspend fun firstImage(sha256: String, width: Int, height: Int, isVideo: Boolean = false): ByteArray? {
+        preview(
+            sha256, width, height, contain = true, orLargest = false, format = options().firstFormat, quality = PreviewQuality.MEDIUM,
+            firstFrame = isVideo,
+        )?.let { return it }
         val atLeast = maxOf(width, height)
         val smallest = kept(sha256)
             .mapNotNull { kept -> keptPreview(kept, 0, 0)?.let { kept to maxOf(it.width, it.height) } }
@@ -140,7 +152,8 @@ class ServerPreviews internal constructor(
     /**
      * The preview of [sha256] at [width] × [height] pixels ([contain]: fitted inside, else filling it), in the format
      * and quality of [options] unless [format] or [quality] are given: the one kept here, else made by the server now
-     * (unless not [fetch]). Offline (with [orLargest]), the largest preview of it kept here (the platform scales it);
+     * (unless not [fetch]). [firstFrame]: a video's very first frame (`frame=first`; a server from before it, which
+     * ignores the word, sends its usual poster). Offline (with [orLargest]), the largest preview of it kept here (the platform scales it);
      * null when there is none. Encoded.
      */
     suspend fun preview(
@@ -154,6 +167,7 @@ class ServerPreviews internal constructor(
         quality: PreviewQuality? = null,
         /** A part of the photo (fractions x, y, w, h of the upright photo), drawn instead of all of it: a face. */
         crop: FloatArray? = null,
+        firstFrame: Boolean = false,
     ): ByteArray? {
         if (width <= 0 || height <= 0) return null
         val w = width.coerceAtMost(MAX_SIDE)
@@ -165,14 +179,16 @@ class ServerPreviews internal constructor(
         // Rounded as the server rounds it (1/10000 of the photo), so nearly equal crops share a file.
         val cropText = crop?.joinToString(",") { ((it * 10_000).toInt() / 10_000.0).toString() }
         val cropName = cropText?.let { "-crop" + it.replace(',', '_') }.orEmpty()
-        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit$cropName-${quality.query}.${format.extension}"
+        val frameName = if (firstFrame) FIRST_FRAME_NAME else ""
+        val path = directory / sha256.take(2) / sha256 / "${w}x$h-$fit$cropName$frameName-${quality.query}.${format.extension}"
         markOnce()
         withContext(Dispatchers.IO) { if (fileSystem.exists(path)) return@withContext fileSystem.read(path) { readByteArray() } else null }
             ?.let { return it }
         val fetched = if (!fetch) null else try {
             downloads.withPermit {
                 val client = http.client() ?: return@withPermit null
-                val query = "w=$w&h=$h&fit=$fit&fmt=${format.query}&q=${quality.query}" + cropText?.let { "&crop=$it" }.orEmpty()
+                val query = "w=$w&h=$h&fit=$fit&fmt=${format.query}&q=${quality.query}" + cropText?.let { "&crop=$it" }.orEmpty() +
+                    (if (firstFrame) "&frame=first" else "")
                 val response = client.get(http.url("/media/$sha256/preview", query))
                 if (response.status != HttpStatusCode.OK) null else response.readRawBytes().also { store(path, it) }
             }
@@ -283,6 +299,28 @@ class ServerPreviews internal constructor(
         withContext(Dispatchers.IO) { if (fileSystem.exists(directory)) markNoMedia(fileSystem, directory) }
     }
 
+    /**
+     * [sha256]'s first frame as a video of its own (`GET /media/{sha256}/frame`): the file kept here, else fetched now
+     * and kept under the same limit, for this phone's decoder. Null offline or when the server can't cut it.
+     */
+    suspend fun firstFrameVideo(sha256: String): String? {
+        val path = directory / sha256.take(2) / sha256 / FRAME_VIDEO
+        markOnce()
+        if (withContext(Dispatchers.IO) { fileSystem.exists(path) }) return path.toString()
+        return try {
+            downloads.withPermit {
+                val client = http.client() ?: return@withPermit null
+                val response = client.get(http.url("/media/$sha256/frame"))
+                val video = response.status == HttpStatusCode.OK && response.contentType()?.match(ContentType.Video.MP4) == true
+                if (!video) null else response.readRawBytes().let { store(path, it); path.toString() }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /** A preview kept on this device: its file and size. */
     data class Kept(val file: String, val bytes: Long)
 
@@ -290,8 +328,12 @@ class ServerPreviews internal constructor(
     suspend fun kept(sha256: String): List<Kept> = withContext(Dispatchers.IO) {
         val dir = directory / sha256.take(2) / sha256
         if (!fileSystem.exists(dir)) return@withContext emptyList()
-        // Faces (a crop of the photo) aren't the photo: never shown for it.
-        fileSystem.list(dir).filter { !it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") && "-crop" !in it.name }
+        // Faces (a crop of the photo) aren't the photo: never shown for it; nor a video's frame cut out as a video.
+        val pictures = fileSystem.list(dir)
+            .filter { !it.name.startsWith(ORIGINAL) && !it.name.endsWith(".tmp") && "-crop" !in it.name && it.name != FRAME_VIDEO }
+        // A video's very first frame, once here, stands for it: posters from before (a keyframe 1 s in) don't.
+        val firstFrames = pictures.filter { FIRST_FRAME_NAME + "-" in it.name }
+        (firstFrames.ifEmpty { pictures })
             .map { Kept(it.toString(), fileSystem.metadataOrNull(it)?.size ?: 0) }
             .sortedByDescending { it.bytes }
     }
@@ -389,6 +431,12 @@ class ServerPreviews internal constructor(
 
         /** The name (before its extension) of an original kept in this cache. */
         private const val ORIGINAL = "original"
+
+        /** In a preview's name: a video's very first frame ("640x480-contain-first-high.webp"). */
+        private const val FIRST_FRAME_NAME = "-first"
+
+        /** A video's first frame cut out as a video of its own ([firstFrameVideo]). */
+        private const val FRAME_VIDEO = "frame.mp4"
 
         /** What the viewer and the tiles ask for (androidApp VIEWER_MAX_SIDE and THUMB_LARGE). */
         private const val VIEWER_SIDE = 2560

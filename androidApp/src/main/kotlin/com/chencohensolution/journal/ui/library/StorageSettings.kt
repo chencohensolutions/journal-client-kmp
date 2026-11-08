@@ -54,6 +54,7 @@ internal class StorageActions(
     val setPreviewQuality: (PreviewQuality) -> Unit = {},
     val setFirstImageFormat: (PreviewFormat) -> Unit = {},
     val setFirstImageWidth: (Int) -> Unit = {},
+    val setVideoFramesOnPhone: (Boolean) -> Unit = {},
     val setPreviewLimit: (Int) -> Unit = {},
     val clearPreviews: () -> Unit = {},
     val setRule: (FreeUpRule) -> Unit = {},
@@ -173,6 +174,13 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
                 Text(formatHint(options.firstFormat), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
             }
         }
+        HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+        SwitchRow(
+            title = stringResource(R.string.settings_video_frames_on_phone),
+            body = stringResource(R.string.settings_video_frames_on_phone_body),
+            checked = options.videoFramesOnPhone,
+            onChange = actions.setVideoFramesOnPhone,
+        )
     }
 }
 

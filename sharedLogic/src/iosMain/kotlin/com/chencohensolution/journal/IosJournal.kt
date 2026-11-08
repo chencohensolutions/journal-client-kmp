@@ -322,6 +322,7 @@ object IosJournal {
                 directory = cachesDir().toPath() / "previews",
                 maxBytes = { settings.previewCacheGigabytes.toLong() shl 30 },
                 options = { settings.previewOptions },
+                videoFrames = { settings.serverFeatures?.videoFrames == true },
             )
         }.also { serverPreviews = it }
 

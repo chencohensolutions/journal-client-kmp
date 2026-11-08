@@ -271,6 +271,7 @@ internal fun libraryActions(
                 setPreviewQuality = settings::setPreviewQuality,
                 setFirstImageFormat = settings::setFirstImageFormat,
                 setFirstImageWidth = settings::setFirstImageWidth,
+                setVideoFramesOnPhone = settings::setVideoFramesOnPhone,
                 setPreviewLimit = settings::setPreviewCacheGigabytes,
                 clearPreviews = {
                     scope.launch {

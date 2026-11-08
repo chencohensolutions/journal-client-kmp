@@ -207,6 +207,14 @@ The pages, and what each holds:
   - At the end of Image quality (Android; iOS since Oct 29, 2026, its width as a segmented control and the sharp image asked for once a tile has stayed 0.3 s): **Quick image while scrolling** (a section of its own, "Advanced",
     until Oct 24, 2026): the first image of a photo only on the server, shown at once and while a list moves fast,
     before its sharp preview: its width in percent of the screen's (or **None**), and its format.
+  - Last in Image quality (Nov 8, 2026; Android only, iOS not built yet): **Make video thumbnails on this phone**,
+    off by default. A video's thumbnail is always its very first frame (asked for by the owner on Nov 8, 2026: posters
+    a second in, or the frame Android's or iOS's own thumbnailer picks, weren't what the video starts with). Off: the
+    server's preview of that frame (`frame=first`, tens of KB, any format). On, with a server that has
+    `serverInfo.videoFrames`: the server copies the first frame out of the video as a one-frame MP4 (`GET
+    /media/{sha256}/frame`, about one keyframe, 0.3 to 2 MB for 4K), kept beside the previews, and the phone's own
+    decoder makes the picture (`MediaMetadataRetriever`, its hardware decoder): more data, no decoding on the
+    server. Videos on the phone are thumbnailed from their first frame the same way.
 - **Free up space** (Android; iOS since Oct 21, 2026, see Behavior): a row under Backup and storage, "14 GB can be freed" (or "Checking 3 of 120", "120 files (3.2 GB) checked, waiting
   for you", "Nothing to free up right now"), opening its own screen (UX chosen by the owner on Oct 20, 2026: one button
   plus More options, a summary before running, sources to choose, manual only):

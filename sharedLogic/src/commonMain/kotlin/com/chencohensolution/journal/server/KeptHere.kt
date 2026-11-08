@@ -25,7 +25,8 @@ data class KeptHere(
 }
 
 /**
- * Reads a kept preview's name: "1080x1440-contain-high.jxl" (box, fit, quality, format), "1080x1440-cover.webp" (from
+ * Reads a kept preview's name: "1080x1440-contain-high.jxl" (box, fit, quality, format; a video's first frame has
+ * "-first" before its quality), "1080x1440-cover.webp" (from
  * before formats could be chosen) or "1920x1080-poster.webp" (made on this device). A preview fitted inside its box
  * ("contain") has the photo's shape; the server never scales up, so neither is larger than the photo.
  */
@@ -52,7 +53,8 @@ internal fun keptPreview(kept: ServerPreviews.Kept, photoWidth: Int, photoHeight
         width = width,
         height = height,
         format = PreviewFormat.entries.firstOrNull { it.extension == extension } ?: PreviewFormat.JPEG.takeIf { extension == "jpeg" },
-        quality = PreviewQuality.entries.firstOrNull { it.query == parts.getOrNull(2) },
+        // A video's first frame has "first" before its quality ("640x480-contain-first-high.webp").
+        quality = PreviewQuality.entries.firstOrNull { it.query == parts.getOrNull(2) || it.query == parts.getOrNull(3) && parts[2] == "first" },
         madeHere = madeHere,
         bytes = kept.bytes,
     )

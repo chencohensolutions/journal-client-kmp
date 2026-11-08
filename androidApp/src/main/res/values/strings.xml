@@ -485,6 +485,8 @@
     <string name="explore_sheet_body">The same in Moments and Explore.</string>
     <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
     <string name="settings_first_image">Quick image while scrolling</string>
+    <string name="settings_video_frames_on_phone">Make video thumbnails on this phone</string>
+    <string name="settings_video_frames_on_phone_body">Videos only on the server show their first frame. With this on, the phone gets the frame from the video itself and decodes it, so your server does less work, but each video takes about 0.3 to 2 MB instead of tens of KB.</string>
     <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>
     <string name="settings_first_image_size">Width, of the screen\'s</string>
     <string name="settings_first_image_off">None</string>

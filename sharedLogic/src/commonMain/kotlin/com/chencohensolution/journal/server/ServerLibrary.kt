@@ -9,6 +9,7 @@ import com.chencohensolution.journal.graphql.SoundFoldersQuery
 import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
+import com.chencohensolution.journal.graphql.ServerVideoFramesQuery
 import com.chencohensolution.journal.graphql.SetCallMutation
 import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
 import com.chencohensolution.journal.graphql.SetPrivateMutation
@@ -339,7 +340,11 @@ class ServerLibrary internal constructor(
                 val answer = http.graphql { apollo ->
                     val response = apollo.query(ServerInfoQuery()).execute()
                     response.exception?.let { throw it }
-                    response.data?.serverInfo?.toFeatures()
+                    val features = response.data?.serverInfo?.toFeatures() ?: return@graphql null
+                    // Asked on its own: a server from before it doesn't know the field.
+                    val frames = runCatching { apollo.query(ServerVideoFramesQuery()).execute().data?.serverInfo?.videoFrames }
+                        .getOrNull() == true
+                    features.copy(videoFrames = frames)
                 } ?: return@launch
                 settings.serverFeatures = answer
                 _features.value = answer
