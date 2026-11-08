@@ -123,6 +123,11 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("waiting", "Waiting for Wi-Fi") { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.waiting, ModelsActions()) } },
         LabOption("offline", "Offline, server without the photo model") { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.offline, ModelsActions()) } },
     )),
+    // The onboarding step after photo access (Nov 8, 2026): the same models as the page.
+    LabScreen("models-onboarding", "Onboarding › Models on this phone", listOf(
+        current { ModelsOnboardingScreen(ModelsLab.onboarding, ModelsOnboardingActions()) },
+        LabOption("hebrew", "Hebrew") { LabHebrew { ModelsOnboardingScreen(ModelsLab.onboarding, ModelsOnboardingActions()) } },
+    )),
     LabScreen("country", "Country", listOf(
         current { CountryScreen("France", PreviewData.placesLibrary, PreviewData.placesStories, onOpenPlace = {}, onBack = {}) },
     )),

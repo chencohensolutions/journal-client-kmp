@@ -37,6 +37,16 @@ Still missing on iOS:
   `settings_video_frames_on_phone_body` (strings `settings_video_frames_on_phone` and `_body` in
   `values/strings.xml` and `values-iw/strings.xml`).
 
+- **Onboarding › Models on this phone** (Android Nov 8, 2026; [enrollment.md](screens/enrollment.md#models-on-this-phone-nov-8-2026-android-only)).
+  Shared logic is done: `ModelsOnboarding` (`local/ModelsOnboarding.kt`) with `state` / `currentState` / `observe`
+  (`ModelsOnboardingState`: `show`, `models` (a `PhoneModelsState`, with `known`), `searchByWords`) and `enrolled()`,
+  `start()`, `setSearchByWords(on)`, `setWifiOnly(on)`, `finish()`, `close()`; it needs the `PhoneModels` of the entry
+  below. iOS needs: an `IosJournal` factory (Android: `modelsOnboarding` in `AndroidJournal.kt`), `enrolled()` when the
+  wizard ends (Android: `MainActivity`'s `onOpenJournal`), the step after photo access while `show` is true, calling
+  `start()` once when it shows (Android: `LibraryApp`), a view mirroring `ModelsOnboardingScreen.kt` (system theme,
+  a card per offered model with its size and a bar, Search by words' check box, Only on Wi-Fi, Continue), and the
+  `models_onboarding_*` strings. On iOS only Search by words is listed (no photo model), so with a server without
+  local indexes the step skips itself.
 - **Settings › Models on this phone** (Android Nov 8, 2026; [settings.md](screens/settings.md#models-on-this-phone),
   round `ux/settings/2026-11-08`). Shared logic is done: `PhoneModels` (`local/PhoneModels.kt`) with `state` /
   `currentState` / `observe` (`PhoneModelsState`: `models` as `PhoneModelRow`s with `kind`, `status`, `bytes`,

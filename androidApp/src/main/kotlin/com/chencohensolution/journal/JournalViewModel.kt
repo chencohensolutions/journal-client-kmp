@@ -15,6 +15,8 @@ import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.local.PhoneModels
 import com.chencohensolution.journal.phoneModels
+import com.chencohensolution.journal.modelsOnboarding
+import com.chencohensolution.journal.local.ModelsOnboarding
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -58,6 +60,9 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
         server.library.features.map { it?.localIndexes == true }
             .stateIn(viewModelScope, SharingStarted.Eagerly, server.library.features.value?.localIndexes == true),
     )
+
+    /** The onboarding's Models on this phone step, after enrollment and photo access. */
+    val onboarding: ModelsOnboarding = modelsOnboarding(application, models)
     val serverIndexing: ServerIndexing = serverIndexing(application)
     val serverCopies: ServerCopies = serverCopies(application)
     val swaps: SwapController = swaps(application)
@@ -73,6 +78,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     override fun onCleared() {
         findings.close()
         models.close()
+        onboarding.close()
         search.close()
         stories.close()
         settings.close()

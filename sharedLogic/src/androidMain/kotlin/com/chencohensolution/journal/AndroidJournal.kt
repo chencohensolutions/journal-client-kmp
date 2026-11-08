@@ -50,6 +50,7 @@ import com.chencohensolution.journal.local.AndroidTextEncoding
 import com.chencohensolution.journal.local.HttpLocalIndexApi
 import com.chencohensolution.journal.local.PhoneModel
 import com.chencohensolution.journal.local.PhoneModels
+import com.chencohensolution.journal.local.ModelsOnboarding
 import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.local.LocalSearchApi
 import com.chencohensolution.journal.local.PhoneFallbackFindingsApi
@@ -212,6 +213,10 @@ fun photoModel(context: Context): PhoneModel =
 /** Settings › Models on this phone: the photo model and Search by words' model, from where each is downloaded. */
 fun phoneModels(context: Context, searchOffered: StateFlow<Boolean>): PhoneModels =
     PhoneModels(photoModel(context), localIndexes(context), searchOffered)
+
+/** The onboarding's Models on this phone step, on [models] (the same as Settings'). */
+fun modelsOnboarding(context: Context, models: PhoneModels): ModelsOnboarding =
+    ModelsOnboarding(JournalSettings(SharedPreferencesStore(context.applicationContext)), models)
 
 private var serverIndexing: ServerIndexing? = null
 

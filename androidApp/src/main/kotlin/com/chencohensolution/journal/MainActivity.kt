@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity() {
                     EnrollmentWizard(
                         controller = viewModel.enrollment,
                         onOpenJournal = {
+                            // Models on this phone shows after photo access.
+                            viewModel.onboarding.enrolled()
                             showWizard = false
                             viewModel.enrollment.reset()
                         },
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
                         findings = viewModel.findings,
                         localIndexes = viewModel.localIndexes,
                         models = viewModel.models,
+                        onboarding = viewModel.onboarding,
                         serverIndexing = viewModel.serverIndexing,
                         serverCopies = viewModel.serverCopies,
                         swaps = viewModel.swaps,

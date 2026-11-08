@@ -15,6 +15,27 @@ Shown while the device has no identity. The server side (codes, certificates, th
 4. **Register** (`EnrollmentStep.Registering`): key in secure hardware, certificate request, certificate saved,
    connection test; then **Enrolled**, or **Failed** with what went wrong.
 
+## Models on this phone (Nov 8, 2026, Android only)
+
+After enrolling and [photo access](photo-access.md), one more step (`ModelsOnboardingScreen.kt`; shared logic
+`ModelsOnboarding` in `local/ModelsOnboarding.kt`, with `ModelsOnboardingTest`), on the same state and downloads as
+Settings › [Models on this phone](settings.md#models-on-this-phone):
+
+- **Get this phone ready**, "The app runs a few models on this phone. They come from your server, not with the app."
+  ("Asking your server what it offers…" until it answers.)
+- A card per model the server offers, with what it does, its size and a bar: **Photo similarity** (11 MB) starts
+  downloading as the step shows, whatever the network; **Search by words** ("290 MB model and its 440 MB index") has
+  a check box, checked at first: checked, it downloads as On device search's Search by words does, waiting for Wi-Fi
+  ("Waiting for Wi-Fi" with **Download now**) while **Only on Wi-Fi** is on; unchecked, it stops and is deleted.
+  A failed download has **Try again**.
+- **Only on Wi-Fi** (On device search's setting, the one for every download), "Downloads go on in the background.
+  Settings › Models on this phone shows them.", and **Continue**, which never waits.
+- Shown once, after the device enrolls (`JournalSettings.modelsOnboardingDue`, set by the wizard's end, cleared by
+  Continue); skipped without showing when the server offers no model or can't be reached. Devices enrolled before
+  Nov 8, 2026 don't see it; their Models page is in Settings.
+- Screenshots: [onboarding.png](mockups/models/onboarding.png), [onboarding-hebrew.png](mockups/models/onboarding-hebrew.png).
+  iOS not built yet ([ios-todo.md](../ios-todo.md)).
+
 ## Enrolling by id (Nov 7, 2026)
 
 The QR link from a server with discovery (journal-server-go PR #2, `enroll-code`) also holds `fingerprint=` (the
