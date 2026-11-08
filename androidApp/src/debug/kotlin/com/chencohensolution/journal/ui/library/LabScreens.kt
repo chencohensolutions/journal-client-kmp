@@ -116,6 +116,23 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("waiting", "Waiting for Wi-Fi") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchWaiting, SearchSettingsActions()) },
         LabOption("off", "Never turned on") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchOff, SearchSettingsActions()) },
     )),
+    // Downloading the models the app runs (proposed Nov 8, 2026; lab/models/): A a page of its own, B a card in
+    // Search above On device search, C the photo model beside Sets of similar photos in Moments.
+    LabScreen("models", "Models on this phone", listOf(
+        LabOption("a", "A · A page of its own", "Settings › Search group › Models on this phone") { LibraryTheme(dark = true) { ModelsPageA(LabModelsState.usual) } },
+        LabOption("a-row", "A · Its row", "On Settings' first page, under Search") { LibraryTheme(dark = true) { ModelsRowA(LabModelsState.usual) } },
+        LabOption("a-downloading", "A · Downloading") { LibraryTheme(dark = true) { ModelsPageA(LabModelsState.downloading) } },
+        LabOption("a-waiting", "A · Waiting for Wi-Fi") { LibraryTheme(dark = true) { ModelsPageA(LabModelsState.waiting) } },
+        LabOption("a-offline", "A · Offline, server without it") { LibraryTheme(dark = true) { ModelsPageA(LabModelsState.offline) } },
+        LabOption("a-hebrew", "A · Hebrew") { LibraryTheme(dark = true) { LabHebrew { ModelsPageA(LabModelsState.downloading) } } },
+        LabOption("b", "B · A card in Search", "Above On device search") { LibraryTheme(dark = true) { ModelsInSearchB(LabModelsState.usual, PeopleLabData.phoneSearch) } },
+        LabOption("b-offline", "B · Offline, server without it") { LibraryTheme(dark = true) { ModelsInSearchB(LabModelsState.offline, PeopleLabData.phoneSearch) } },
+        LabOption("b-hebrew", "B · Hebrew") { LibraryTheme(dark = true) { LabHebrew { ModelsInSearchB(LabModelsState.downloading, PeopleLabData.phoneSearch) } } },
+        LabOption("c", "C · Beside its feature", "Settings › Moments, under Sets of similar photos") { LibraryTheme(dark = true) { PhotoModelInMomentsC(LabModelsState.usual) } },
+        LabOption("c-missing", "C · Not downloaded yet") { LibraryTheme(dark = true) { PhotoModelInMomentsC(LabModelsState.waiting) } },
+        LabOption("c-offline", "C · Server without it") { LibraryTheme(dark = true) { PhotoModelInMomentsC(LabModelsState.offline) } },
+        LabOption("c-hebrew", "C · Hebrew") { LibraryTheme(dark = true) { LabHebrew { PhotoModelInMomentsC(LabModelsState.waiting) } } },
+    )),
     LabScreen("country", "Country", listOf(
         current { CountryScreen("France", PreviewData.placesLibrary, PreviewData.placesStories, onOpenPlace = {}, onBack = {}) },
     )),
