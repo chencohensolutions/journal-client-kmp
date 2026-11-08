@@ -41,10 +41,10 @@ query LocalIndexes {
     dim
     files
     bytes
-    models { name precision bytes sha256 url }
+    models { name precision bytes sha256 url source }
   }
 }
 
 query PhoneModels {
-  phoneModels { name precision bytes sha256 url }
+  phoneModels { name precision bytes sha256 url source }
 }

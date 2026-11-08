@@ -487,6 +487,14 @@ server instead of with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in
   follows it too since Nov 8, 2026 (it downloaded on any network before). Download now and Try again download
   whatever the network.
 - The same models are offered once after enrolling, as the onboarding's last step ([enrollment.md](enrollment.md#models-on-this-phone-nov-8-2026-android-only)).
+- Where each comes from (Nov 8, 2026, both platforms' shared logic): its pinned Hugging Face or Google link first
+  (`ModelFileInfo.source`, which the server gives in `phoneModels` and `localIndexes` since journal-server-go #9), and
+  the server's `url` when the link can't be reached, breaks, or sends bytes that don't match the server's sha256
+  (`HttpLocalIndexApi.model`; a link that broke leaves what came, and the server goes on from there with Range; one that
+  sent other bytes is downloaded again from the start). The photo model's link and sha256 are also in the app
+  (`AndroidPhotoAnalyzer.MODEL`), so it downloads from Google even when the server doesn't list it or can't be reached.
+  Resume, Pause and Only on Wi-Fi work the same whichever it comes from. Tests: `ModelSourceTest`,
+  `BuiltInPhoneModelTest`. The page's line still says they come from your server; not changed yet.
 - Kept: the photo model in `files/models` (`mobilenet_v3_large.tflite` and its `.ok`), the text model in
   `files/local/models`.
 

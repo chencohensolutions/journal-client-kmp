@@ -63,11 +63,19 @@ stories deleted (see "Storyline" below).
 - Photos that look alike are one set however far apart they were taken, and quick shots of different things are
   split; two are enough. Time (10 s) is only the fallback for photos not read yet. Looks: a dHash for
   near-duplicates plus each platform's own image embedding for the same scene (Vision feature print on iOS,
-  MediaPipe MobileNet-V3 large on Android, downloaded from the user's server on first use since Nov 8, 2026, to keep
-  10.9 MB out of the APK), zoom-aware (each photo's zoomed centers are compared with the other's
+  MediaPipe MobileNet-V3 large on Android, downloaded on first use since Nov 8, 2026, to keep 10.9 MB out of the APK:
+  from Google's pinned link first, else the user's server), zoom-aware (each photo's zoomed centers are compared with the other's
   whole frame). The owner chose native per platform for this, and **one shared open model** (commercial use allowed,
   e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) for search across the library, which the
   server now has (`searchMedia`). Fingerprints are a per-device cache, never synced.
+- **Models come from where they were published, then the server** (Nov 8, 2026, the owner's choice): each model file
+  the phone runs (the photo embedder, Search by words' text model) is downloaded from its pinned Hugging Face or
+  Google link first (`ModelFileInfo.source`, from the server's `phoneModels` and `localIndexes`; the app also knows the
+  photo model's link and sha256 itself), and from the user's server when that fails or sends other bytes, so a large
+  model doesn't take the server's upload. **Privacy:** this is the one time the phone contacts anyone but the user's
+  server and the map's tiles: once per model file, to Hugging Face (huggingface.co and its CDN) or Google
+  (storage.googleapis.com), a plain download that says nothing about the user, their photos or their server. What
+  comes is checked against the server's sha256 before it is used.
 
 **Photos are never modified**
 - The app must never change, move or delete a photo. Enforced by `PhotoSafetyTest` (scans all sources for

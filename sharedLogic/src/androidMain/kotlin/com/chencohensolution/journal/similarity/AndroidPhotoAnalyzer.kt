@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.local.ModelFileInfo
 import com.chencohensolution.journal.local.PhoneModel
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
@@ -143,6 +144,19 @@ internal class AndroidPhotoAnalyzer(context: Context, private val model: PhoneMo
         private const val TAG = "PhotoSimilarity"
         /** The model's name in the server's `phoneModels`; kept in `files/models/`. */
         const val MODEL_FILE = "mobilenet_v3_large.tflite"
+
+        /**
+         * The model as the app knows it: Google's pinned MediaPipe file and its sha256, downloaded from there first and
+         * from the server (`/models/phone/...`) when Google fails, so it comes even from a server that doesn't list it.
+         */
+        val MODEL = ModelFileInfo(
+            name = MODEL_FILE,
+            precision = "",
+            bytes = 10_889_458,
+            sha256 = "11af3c560dfeed7737cb4c03c23bf52a8403020784192d4dea0b74862a12828d",
+            url = "/models/phone/$MODEL_FILE",
+            source = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_large/float32/1/mobilenet_v3_large.tflite",
+        )
 
         // Big enough that a 2× center still fills the model's 224 px input.
         private const val THUMBNAIL_SIZE = 512
