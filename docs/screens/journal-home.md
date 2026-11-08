@@ -49,7 +49,8 @@ Photos fill the screen on the page background (light or dark with the system); t
     every photo, Storyline the photos you wrote about,
     Explore the photos by town and year and the map ([explore.md](explore.md)). No counts. While photos are picked in
     Moments or the storyline, the picking bar takes its place: **Cancel · N selected · Mark private · Tuck away** (see
-    [moments.md](moments.md)).
+    [moments.md](moments.md)). The bar and the tabs trade places with a short slide and fade (Android, Nov 8, 2026;
+    see Motion in moments.md).
 
 Empty, loading and error states show a single line of text in place of the days. With nothing written yet, the
 Storyline tab says "Nothing here yet. Open a photo and tap Write: what you write shows here."

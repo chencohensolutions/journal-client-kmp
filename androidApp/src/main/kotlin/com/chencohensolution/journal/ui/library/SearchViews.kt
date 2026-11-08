@@ -191,10 +191,13 @@ internal fun SearchContent(
                 val key = set.first().id
                 val picked = if (selection.active) key in selection.keys else null
                 val pick = { selection.toggle(key) }
-                if (set.size == 1) {
-                    FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
-                } else {
-                    FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
+                // Results made private or tucked away fade out, and the rest slide up into their place.
+                Box(animatedRow()) {
+                    if (set.size == 1) {
+                        FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
+                    } else {
+                        FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
+                    }
                 }
             }
             if (search.loadingMore) item(key = "more") {

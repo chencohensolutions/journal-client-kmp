@@ -6,6 +6,7 @@ import androidx.compose.runtime.withFrameNanos
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.Measure
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import com.chencohensolution.journal.backup.BackupProgress
 import androidx.activity.compose.BackHandler
@@ -499,10 +500,12 @@ internal fun JournalHomeScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                 insets = WindowInsets.navigationBars.union(WindowInsets.ime),
             ) {
-                if (searchPicks.active) {
-                    SearchPickingBar(search, searchPicks, actions.search)
-                } else {
-                    SearchBottomBar(search, actions.search, onClose = { searching = false })
+                AnimatedContent(searchPicks.active, transitionSpec = { barSwap() }, contentAlignment = Alignment.BottomCenter, label = "search bar") { picking ->
+                    if (picking) {
+                        SearchPickingBar(search, searchPicks, actions.search)
+                    } else {
+                        SearchBottomBar(search, actions.search, onClose = { searching = false })
+                    }
                 }
             }
         } else TopBar(
@@ -528,82 +531,90 @@ internal fun JournalHomeScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             summaryHidden = bottomHidden,
         ) {
-            if (selection.active && (moments || storyline)) {
-                val picked = rows.picked(selection)
-                val one = picked.singleOrNull()
-                // Moments: one set picked (whole) can lose the photo the long press was on.
-                val pickedBlocks = feedRows.filterIsInstance<FeedRow.Photo>().filter { moments && it.block.key in selection.keys }.map { it.block }
-                val pressed = selection.pressed
-                val setOfPressed = pickedBlocks.singleOrNull()?.takeIf { it is FeedBlock.Similar && it.items.any { item -> item.id == pressed } }
-                fun then(action: () -> Unit): () -> Unit = {
-                    selection.clear()
-                    action()
-                }
-                PickingBar(
-                    picked = picked,
-                    onCancel = selection::clear,
-                    onDone = { _, _ -> selection.clear() },
-                    extras = PickingExtras(
-                        write = one?.let { item -> then { writingFor = item.id } },
-                        written = one?.let { stories.notes[it.id]?.hasWriting } == true,
-                        crop = one?.takeIf { it.durationMillis == null }?.let { item -> then { actions.crop(item.id) } },
-                        tag = one?.let { item -> then { tagFor = item.id } },
-                        merge = if (pickedBlocks.size >= 2) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
-                        takeOut = if (setOfPressed != null && pressed != null) then { actions.takeOutOfSet(pressed) } else null,
-                    ),
-                )
-            } else {
-                val band = reveal?.takeIf { moments }?.let { shown ->
-                    stories.feed.section(shown.section)?.let { section -> section.revealed.firstOrNull { it.source == shown.source }?.let { section to it } }
-                }
-                band?.let { (section, photos) ->
-                    RevealNote(section, photos) {
-                        reveal = null
-                        actions.hideOnRow(section.key, photos.source)
+            // The picking bar slides up over the tabs as picking starts, and back down as it ends (Nov 8, 2026).
+            AnimatedContent(
+                targetState = selection.active && (moments || storyline),
+                transitionSpec = { barSwap() },
+                contentAlignment = Alignment.BottomCenter,
+                label = "bottom bar",
+            ) { isPicking ->
+                if (isPicking) {
+                    val picked = rows.picked(selection)
+                    val one = picked.singleOrNull()
+                    // Moments: one set picked (whole) can lose the photo the long press was on.
+                    val pickedBlocks = feedRows.filterIsInstance<FeedRow.Photo>().filter { moments && it.block.key in selection.keys }.map { it.block }
+                    val pressed = selection.pressed
+                    val setOfPressed = pickedBlocks.singleOrNull()?.takeIf { it is FeedBlock.Similar && it.items.any { item -> item.id == pressed } }
+                    fun then(action: () -> Unit): () -> Unit = {
+                        selection.clear()
+                        action()
                     }
-                }
-                if (moments && band == null && !timeline.isEmpty) {
-                    // Slides down with the tabs into their place at the bottom, and back up with them.
-                    Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
-                        TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
-                            val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
-                            // The feed's rows come last in the list, after its banners. A row not in the list yet is
-                            // read first (down to it), then gone to by the key the read names: the rows may have been
-                            // made again since this timeline, with other keys.
-                            jumpTo = null
-                            val asked = ++jumpsAsked[0]
-                            if (row >= 0) {
-                                scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
-                            } else {
-                                actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key }
+                    PickingBar(
+                        picked = picked,
+                        onCancel = selection::clear,
+                        onDone = { _, _ -> selection.clear() },
+                        extras = PickingExtras(
+                            write = one?.let { item -> then { writingFor = item.id } },
+                            written = one?.let { stories.notes[it.id]?.hasWriting } == true,
+                            crop = one?.takeIf { it.durationMillis == null }?.let { item -> then { actions.crop(item.id) } },
+                            tag = one?.let { item -> then { tagFor = item.id } },
+                            merge = if (pickedBlocks.size >= 2) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
+                            takeOut = if (setOfPressed != null && pressed != null) then { actions.takeOutOfSet(pressed) } else null,
+                        ),
+                    )
+                } else {
+                    val band = reveal?.takeIf { moments }?.let { shown ->
+                        stories.feed.section(shown.section)?.let { section -> section.revealed.firstOrNull { it.source == shown.source }?.let { section to it } }
+                    }
+                    band?.let { (section, photos) ->
+                        RevealNote(section, photos) {
+                            reveal = null
+                            actions.hideOnRow(section.key, photos.source)
+                        }
+                    }
+                    if (moments && band == null && !timeline.isEmpty) {
+                        // Slides down with the tabs into their place at the bottom, and back up with them.
+                        Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
+                            TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                                val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
+                                // The feed's rows come last in the list, after its banners. A row not in the list yet is
+                                // read first (down to it), then gone to by the key the read names: the rows may have been
+                                // made again since this timeline, with other keys.
+                                jumpTo = null
+                                val asked = ++jumpsAsked[0]
+                                if (row >= 0) {
+                                    scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
+                                } else {
+                                    actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key }
+                                }
                             }
                         }
                     }
-                }
-                // Slides down off the screen while the list goes down (keeping its place for the month pill to take).
-                Row(
-                    Modifier
-                        .onSizeChanged { tabsRoom[0] = it.height + bottomGap }
-                        .graphicsLayer { translationY = tabsAway.value * (size.height + TABS_AWAY.toPx()) },
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SegmentedBar(
-                        options = listOf(
-                            HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
-                            HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
-                            HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
-                        ),
-                        selected = tab,
-                        onSelect = {
+                    // Slides down off the screen while the list goes down (keeping its place for the month pill to take).
+                    Row(
+                        Modifier
+                            .onSizeChanged { tabsRoom[0] = it.height + bottomGap }
+                            .graphicsLayer { translationY = tabsAway.value * (size.height + TABS_AWAY.toPx()) },
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SegmentedBar(
+                            options = listOf(
+                                HomeTab.MOMENTS to stringResource(R.string.library_tab_moments),
+                                HomeTab.STORYLINE to stringResource(R.string.library_tab_storyline),
+                                HomeTab.EXPLORE to stringResource(R.string.library_tab_explore),
+                            ),
+                            selected = tab,
+                            onSelect = {
+                                selection.clear()
+                                tab = it
+                            },
+                        )
+                        SearchButton {
                             selection.clear()
-                            tab = it
-                        },
-                    )
-                    SearchButton {
-                        selection.clear()
-                        reveal = null
-                        searching = true
+                            reveal = null
+                            searching = true
+                        }
                     }
                 }
             }
