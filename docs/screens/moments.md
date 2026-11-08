@@ -141,10 +141,13 @@ https://claude.ai/artifact/GVKv6SowaqUXAdY8uJUvTE). Android; iOS not built yet (
   `StoriesState.storylineDays`. Tests: `TuckedAwayTest`, and tucked photos in `FeedWindowsTest` and
   `LibraryTableTest`. Android: [TuckedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/TuckedViews.kt)
   (pill, mark, lock, picking bar), previews `TuckedScreenshots.kt`.
-- **Motion** (asked Nov 8, 2026; Android): rows fade out as photos are tucked away or hidden again by their pill, and
-  fade in as they are revealed or brought back, the rows around them sliding into place (keyed list items with
-  `animateItem`). The pill's fill, eye and count cross-fade, and it grows in or shrinks away as a day gets or loses
-  tucked photos. Picking: the bar slides up and fades in over the tabs (which slide down and fade), and the other way
+- **Motion** (asked Nov 8, 2026; Android): photos come and go one step at a time. Leaving (tucked away, hidden again
+  by their pill, search results taken away), a photo fades out in its place (200 ms), then the space closes as the
+  rows below slide up (250 ms); coming back (revealed, brought back), the rows below slide down to make the space
+  first (250 ms), then the photo fades in (200 ms). Keyed list items with `animateItem`: the placement waits for the
+  fade when the list's latest change only took rows away (`rowsHiding`), and the fade-in waits for the placement.
+  The pill's fill, eye and count cross-fade, and it opens a space then fades in as a day gets tucked photos (fades,
+  then closes as it loses them). Picking: the bar slides up and fades in over the tabs (which slide down and fade), and the other way
   as it ends; Write · Crop · Tag grow in and out, the "N selected" count rolls up or down, and Tuck away cross-fades
   into Bring back. A picked photo draws in from its edges with rounded corners and its check springs in (spring),
   unpicking springs back. All of it about 250 ms on Material's standard easing (`PickingMotion.kt`); the system's

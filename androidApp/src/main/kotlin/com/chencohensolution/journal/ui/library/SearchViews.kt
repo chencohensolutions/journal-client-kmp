@@ -139,6 +139,7 @@ internal fun SearchContent(
             }
     }
     LaunchedEffect(Unit) { currentActions.prepare() }
+    val hiding = rowsHiding(remember(search.sets) { search.sets.map { it.first().id } })
     LazyColumn(state = list, contentPadding = contentPadding) {
         if (search.people.isNotEmpty()) item(key = "people-chips") { PersonChips(search.people, actions.removePerson) }
         when (search.status) {
@@ -192,7 +193,7 @@ internal fun SearchContent(
                 val picked = if (selection.active) key in selection.keys else null
                 val pick = { selection.toggle(key) }
                 // Results made private or tucked away fade out, and the rest slide up into their place.
-                Box(animatedRow()) {
+                Box(animatedRow(hiding)) {
                     if (set.size == 1) {
                         FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
                     } else {

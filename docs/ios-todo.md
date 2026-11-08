@@ -54,8 +54,9 @@ Still missing on iOS:
   `picking_write`, `picking_edit`, `picking_take_out` (Hebrew: מוצנע, הצנעה, החזרה, "%d מוצנעים"). Left to decide on
   iOS: whether the long press still lifts the photo (the context menu's preview) before picking.
   5. **Motion** (Android, Nov 8, 2026; `PickingMotion.kt`, see Motion in moments.md): ~250 ms, standard easing. Rows
-     leaving or coming back fade while the rest move (`withAnimation` around the state change, `.transition(.opacity)`
-     on rows with stable `id`s); the pill's fill/eye/count cross-fade (`.contentTransition(.numericText())` for the
+     leave and come back in two steps (asked Nov 8, 2026): leaving, fade out 200 ms in place, then the space closes
+     250 ms; coming back, the space opens 250 ms, then fade in 200 ms (stable `id`s; e.g. a row's opacity animated
+     first, then removed from the data in a second `withAnimation`, and the reverse); the pill's fill/eye/count cross-fade (`.contentTransition(.numericText())` for the
      count); the picking bar slides up + fades over the tabs (`.transition(.move(edge: .bottom).combined(with:
      .opacity))`), its extras grow in and out; a picked photo scales to 0.92 with 14pt corners and its check springs in
      (`.spring`). Honour Reduce Motion.
