@@ -440,6 +440,7 @@ internal fun JournalHomeScreen(
                 PaddingValues(top = insets.calculateTopPadding() + 80.dp, bottom = insets.calculateBottomPadding() + 150.dp),
                 faces = people?.list?.people.orEmpty().sortedByDescending { it.files }.take(SEARCH_FACES),
                 selection = searchPicks,
+                picturesAhead = loadAhead,
             )
         } else if (tab == HomeTab.EXPLORE) {
             ExploreContent(

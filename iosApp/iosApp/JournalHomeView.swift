@@ -129,7 +129,8 @@ struct JournalHomeView: View {
                     SearchResultsView(
                         search: shownSearch, places: stories.places, width: geometry.size.width, actions: actions.search,
                         faces: Array((people?.list.people ?? []).sorted { $0.files > $1.files }.prefix(16)),
-                        selection: $searchPicks
+                        selection: $searchPicks,
+                        picturesAhead: loadAheadRows
                     )
                         .padding(.top, 80)
                         .padding(.bottom, 150)

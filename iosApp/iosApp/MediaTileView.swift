@@ -51,7 +51,7 @@ struct MediaTileView: View {
 }
 
 /// The window's width in pixels: quick images are a part of it, the same on every screen.
-private var windowPixels: CGFloat {
+var windowPixels: CGFloat {
     let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
     let screen = scene?.screen
     return (screen?.bounds.width ?? 400) * (screen?.scale ?? 3)

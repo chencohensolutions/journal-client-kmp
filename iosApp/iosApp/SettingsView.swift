@@ -206,7 +206,7 @@ struct SettingsScreen<FreeUp: View, Hidden: View>: View {
             .listRowBackground(LibraryColors.raised)
 
             Section {
-                PageRow("Loading Moments", detail: content.settings.momentsPaging.rowText) {
+                PageRow("Loading while scrolling", detail: content.settings.momentsPaging.rowText) {
                     LoadingMomentsPage(paging: content.settings.momentsPaging, actions: content.actions)
                 }
             } header: {

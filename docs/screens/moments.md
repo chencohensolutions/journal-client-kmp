@@ -175,7 +175,7 @@ month or day with one finger. Android and iOS.
   day lands on its row's divider, just under the sources bar. A row over two days (grouping by gaps) is landed on for
   either day.
 - **A page at a time:** Moments reads 30 rows from the database at first, and the next 30 once the list is 40 rows
-  from the end of what is read. Both numbers are in Settings › [Loading Moments](settings.md) (Android; iOS keeps 40
+  from the end of what is read. Both numbers are in Settings › [Loading while scrolling](settings.md) (Android; iOS keeps 40
   ahead until it has the page).
 - **A day further down than what is read** (Moments is read from the database a page at a time) reads the rows down to
   it first (`StoriesController.loadMomentsTo`), then lands on the row the read names once the list has it. The row is
