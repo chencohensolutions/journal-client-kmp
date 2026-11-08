@@ -79,6 +79,8 @@ internal class SettingsActions(
     val setShareJpegXlAsJpeg: (Boolean) -> Unit = {},
     /** Opens Settings › Search. */
     val openSearch: () -> Unit = {},
+    /** Opens Settings › Models on this phone. */
+    val openModels: () -> Unit = {},
     /** Opens one of Settings' pages (Show in the app, Moments, Storage on this phone). */
     val openPage: (SettingsPage) -> Unit = {},
     /** Opens Settings › Backup. */
@@ -125,6 +127,8 @@ internal fun SettingsScreen(
     cameras: CamerasState? = null,
     /** Sound folders' last list, for its row; null when the server doesn't keep sound folders (no row). */
     soundFolders: SoundFoldersState? = null,
+    /** Models on this phone, for its row under Search; null or none listed: no row. */
+    models: com.chencohensolution.journal.local.PhoneModelsState? = null,
 ) {
     val insets = WindowInsets.systemBars.asPaddingValues()
     val title = when (page) {
@@ -142,7 +146,7 @@ internal fun SettingsScreen(
                 .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         ) {
             when (page) {
-                SettingsPage.MAIN -> MainPage(settings, actions, kinds, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders)
+                SettingsPage.MAIN -> MainPage(settings, actions, kinds, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders, models)
                 SettingsPage.SHOWN -> ShowInAppPage(kinds, actions.openBackup, actions.openHidden)
                 SettingsPage.MOMENTS -> MomentsPage(settings, actions)
                 SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
@@ -167,6 +171,7 @@ private fun MainPage(
     indexing: ServerIndexingState?,
     cameras: CamerasState?,
     soundFolders: SoundFoldersState?,
+    models: com.chencohensolution.journal.local.PhoneModelsState?,
 ) {
     SectionTitle(stringResource(R.string.settings_library_title))
     Card {
@@ -212,7 +217,13 @@ private fun MainPage(
         }
     }
     Column(Modifier.padding(top = 20.dp)) {
-        Card { SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch) }
+        Card {
+            SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch)
+            if (models != null && models.models.isNotEmpty()) {
+                RowDivider()
+                ModelsRow(models, actions.openModels)
+            }
+        }
     }
     AdvancedSection(settings.momentsPaging) { actions.openPage(SettingsPage.LOADING_MOMENTS) }
     LaunchedEffect(Unit) { actions.refreshServer() }

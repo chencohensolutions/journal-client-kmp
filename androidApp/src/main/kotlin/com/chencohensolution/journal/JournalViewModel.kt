@@ -13,6 +13,12 @@ import com.chencohensolution.journal.enrollment.RenewalResult
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.local.PhoneModels
+import com.chencohensolution.journal.phoneModels
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import com.chencohensolution.journal.people.PeopleController
 import com.chencohensolution.journal.people.PhotoFindingsController
 import com.chencohensolution.journal.search.SearchController
@@ -45,6 +51,13 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
     val people: PeopleController = peopleController(application)
     val findings: PhotoFindingsController = createPhotoFindingsController(application, library)
     val localIndexes: LocalIndexes = localIndexes(application)
+
+    /** Settings › Models on this phone; Search by words is listed when the server lets phones keep its indexes. */
+    val models: PhoneModels = phoneModels(
+        application,
+        server.library.features.map { it?.localIndexes == true }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, server.library.features.value?.localIndexes == true),
+    )
     val serverIndexing: ServerIndexing = serverIndexing(application)
     val serverCopies: ServerCopies = serverCopies(application)
     val swaps: SwapController = swaps(application)
@@ -59,6 +72,7 @@ class JournalViewModel(application: Application) : AndroidViewModel(application)
 
     override fun onCleared() {
         findings.close()
+        models.close()
         search.close()
         stories.close()
         settings.close()

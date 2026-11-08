@@ -84,6 +84,8 @@ data class PhoneSearchState(
     val error: String? = null,
     /** The server's manifest is known (else the sizes are what was last seen). */
     val loaded: Boolean = false,
+    /** Search by words' model is here whole (Settings › Models on this phone). */
+    val wordsModelHere: Boolean = false,
 ) {
     /** The indexes kept: turned on, and offered by the server. */
     val kept: List<PhoneIndex> get() = indexes.filter { it.on && it.available }
@@ -361,6 +363,7 @@ class LocalIndexes internal constructor(
                 newOnServer = behind,
                 freeBytes = freeSpace(),
                 loaded = offered != null,
+                wordsModelHere = textModel() != null,
             )
         }
     }

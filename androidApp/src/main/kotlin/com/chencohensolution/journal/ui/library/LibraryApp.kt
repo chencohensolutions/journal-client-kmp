@@ -46,6 +46,7 @@ import com.chencohensolution.journal.library.LibraryController
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.PhotoAccess
 import com.chencohensolution.journal.local.LocalIndexes
+import com.chencohensolution.journal.local.PhoneModels
 import com.chencohensolution.journal.people.PageSort
 import com.chencohensolution.journal.people.PeopleController
 import com.chencohensolution.journal.stories.ExploreScope
@@ -91,6 +92,7 @@ fun LibraryApp(
     people: PeopleController,
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
+    models: PhoneModels,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
     swaps: SwapController,
@@ -112,7 +114,7 @@ fun LibraryApp(
         LocalAudioPlayer provides audioPlayer,
         LocalExploreReads provides remember(stories) { DatabaseExploreReads(stories) },
     ) {
-        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, serverIndexing, serverCopies, swaps, onRegisterAgain, swapLink, swapLinkOpened)
+        LibraryScreens(journal, library, stories, settings, backup, server, freeUp, search, people, findings, localIndexes, models, serverIndexing, serverCopies, swaps, onRegisterAgain, swapLink, swapLinkOpened)
     }
 }
 
@@ -130,6 +132,7 @@ private fun LibraryScreens(
     people: PeopleController,
     findings: PhotoFindingsController,
     localIndexes: LocalIndexes,
+    models: PhoneModels,
     serverIndexing: ServerIndexing,
     serverCopies: ServerCopies,
     swaps: SwapController,
@@ -140,6 +143,7 @@ private fun LibraryScreens(
     val swapState by swaps.state.collectAsStateWithLifecycle()
     val swapMemory = remember { SwapRouteMemory() }
     val phoneSearchState by localIndexes.state.collectAsStateWithLifecycle()
+    val modelsState by models.state.collectAsStateWithLifecycle()
     val indexingState by serverIndexing.state.collectAsStateWithLifecycle()
     val copiesState by serverCopies.state.collectAsStateWithLifecycle()
     val journalState by journal.state.collectAsStateWithLifecycle()
@@ -431,6 +435,7 @@ private fun LibraryScreens(
                                             setShowOnPhoneBadge = settings::setShowOnPhoneBadge,
                                             setShareJpegXlAsJpeg = settings::setShareJpegXlAsJpeg,
                                             openSearch = { push(Route.SearchSettings) },
+                                            openModels = { push(Route.Models) },
                                             openPage = { push(Route.SettingsPageRoute(it)) },
                                             openBackup = { push(Route.BackupSettings) },
                                             setMomentsRowsPerPage = settings::setMomentsRowsPerPage,
@@ -441,6 +446,7 @@ private fun LibraryScreens(
                                         ),
                                         phoneSearch = phoneSearchState.takeIf { features?.localIndexes == true },
                                         indexing = indexingState.takeIf { features?.indexing == true && it.loaded },
+                                        models = modelsState,
                                         backup = BackupUi(backupState, libraryState.notBackedUpCount, actions.backgroundLocation, serverUsage, storiesState.feed.counts, actions.canTrashWithoutAsking),
                                         backupActions = actions.backup,
                                         storage = storageUi(),
@@ -517,6 +523,20 @@ private fun LibraryScreens(
                                                 updateNow = localIndexes::updateNow,
                                                 pause = localIndexes::pause,
                                             ),
+                                        ),
+                                    )
+                                }
+                                Route.Models -> {
+                                    LaunchedEffect(Unit) { models.refresh() }
+                                    ModelsScreen(
+                                        modelsState,
+                                        ModelsActions(
+                                            download = models::download,
+                                            pause = models::pause,
+                                            delete = models::delete,
+                                            downloadAll = models::downloadAll,
+                                            setWifiOnly = models::setWifiOnly,
+                                            back = pop,
                                         ),
                                     )
                                 }

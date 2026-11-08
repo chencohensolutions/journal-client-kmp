@@ -116,6 +116,13 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("waiting", "Waiting for Wi-Fi") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchWaiting, SearchSettingsActions()) },
         LabOption("off", "Never turned on") { SearchSettingsScreen(100, PeopleLabData.indexingIdle, PeopleLabData.phoneSearchOff, SearchSettingsActions()) },
     )),
+    // Settings › Models on this phone (Nov 8, 2026; option A of the round in docs/screens/mockups/models/).
+    LabScreen("models", "Settings › Models on this phone", listOf(
+        current { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.usual, ModelsActions()) } },
+        LabOption("downloading", "Downloading") { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.downloading, ModelsActions()) } },
+        LabOption("waiting", "Waiting for Wi-Fi") { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.waiting, ModelsActions()) } },
+        LabOption("offline", "Offline, server without the photo model") { LibraryTheme(dark = true) { ModelsScreen(ModelsLab.offline, ModelsActions()) } },
+    )),
     LabScreen("country", "Country", listOf(
         current { CountryScreen("France", PreviewData.placesLibrary, PreviewData.placesStories, onOpenPlace = {}, onBack = {}) },
     )),
@@ -173,6 +180,9 @@ internal val labScreens: List<LabScreen> = listOf(
         },
         LabOption("phone-search", "With On this phone", "Search's row with a phone index kept") {
             SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch)
+        },
+        LabOption("models", "With Models on this phone", "The row under Search: 1 of 2 downloaded") {
+            SettingsScreen(SettingsState(), SettingsActions(), phoneSearch = PeopleLabData.phoneSearch, models = ModelsLab.usual)
         },
     )),
     // Made-up settings and copies (BackupLab): backup on, Camera and a Voice Recorder folder, two copies. The keep-on-phone

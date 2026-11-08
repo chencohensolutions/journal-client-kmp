@@ -162,6 +162,28 @@ private class FakeAnalyzer(override val modelId: String = "fake-1") : PhotoAnaly
     }
 }
 
+/** An analyzer whose model is downloaded on first use ([prepare]); dHashes only until then. */
+private class ModelLaterAnalyzer : PhotoAnalyzer {
+    override val modelId = "fake-later"
+    override val sameScene = 0.9f
+    var downloadWorks = false
+    var prepared = 0
+    override var embeds = false
+    val analyzed = mutableListOf<String>()
+
+    override suspend fun prepare(): Boolean {
+        prepared++
+        embeds = downloadWorks
+        return embeds
+    }
+
+    override suspend fun analyze(item: MediaItem): PhotoAnalysis {
+        analyzed += item.id
+        val gray = if (item.id.startsWith("w")) waves else diagonal
+        return if (embeds) PhotoAnalysis(gray, listOf(floatArrayOf(1f, 2f, 3f))) else PhotoAnalysis(gray, emptyList(), withoutModel = true)
+    }
+}
+
 private val CACHE_DIR = "/cache/similarity".toPath()
 
 class PhotoSimilarityTest {
@@ -199,6 +221,41 @@ class PhotoSimilarityTest {
         similarity(fileSystem, newModel).request(listOf(photo("a", 0)))
         advanceUntilIdle()
         assertEquals(listOf("a"), newModel.analyzed)
+    }
+
+    @Test
+    fun photosReadBeforeTheModelArrivedAreReadAgain() = runTest {
+        val fileSystem = FakeFileSystem()
+        val analyzer = ModelLaterAnalyzer()
+        val similarity = similarity(fileSystem, analyzer)
+        similarity.request(listOf(photo("a", 0), photo("w", 1)))
+        advanceUntilIdle()
+        // The first download failed: dHashes only, kept as read without the model.
+        assertEquals(1, analyzer.prepared)
+        assertEquals(listOf("a", "w"), analyzer.analyzed)
+        assertTrue(similarity.looks.value.fingerprints.values.all { it.embeddings.isEmpty() && it.withoutModel })
+
+        // Asked again soon after: no new download, and nothing to read.
+        similarity.request(listOf(photo("a", 0), photo("w", 1)))
+        advanceUntilIdle()
+        assertEquals(1, analyzer.prepared)
+        assertEquals(listOf("a", "w"), analyzer.analyzed)
+
+        // Another start, with the download working this time: both are read again, with embeddings.
+        analyzer.analyzed.clear()
+        analyzer.downloadWorks = true
+        val again = similarity(fileSystem, analyzer)
+        again.request(listOf(photo("a", 0), photo("w", 1)))
+        advanceUntilIdle()
+        assertEquals(2, analyzer.prepared)
+        assertEquals(listOf("a", "w"), analyzer.analyzed)
+        assertTrue(again.looks.value.fingerprints.values.all { it.embeddings.isNotEmpty() && !it.withoutModel })
+
+        // Kept that way: the next start reads nothing.
+        analyzer.analyzed.clear()
+        similarity(fileSystem, analyzer).request(listOf(photo("a", 0), photo("w", 1)))
+        advanceUntilIdle()
+        assertTrue(analyzer.analyzed.isEmpty())
     }
 
     @Test

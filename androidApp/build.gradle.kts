@@ -65,13 +65,20 @@ android {
         (findProperty("abi") as String?)?.let { abis -> ndk { abiFilters += abis.split(",") } }
     }
     packaging {
+        // Native libraries compressed in the APK (ONNX Runtime, MapLibre, MediaPipe: about 57 MB stored, 22 MB
+        // compressed), unpacked on install: a smaller download for a little more space on the phone.
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     buildTypes {
+        // R8 and resource shrinking: an arm64 release went from 123 MB to 42 MB with the native libraries compressed.
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

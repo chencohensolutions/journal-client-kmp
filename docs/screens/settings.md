@@ -282,6 +282,9 @@ The pages, and what each holds:
 - **Search** (both platforms; its own screen since Oct 24, 2026, see "Search" below): one row, "Server: reading 40 of
   200", "Server: paused at 40 of 200", "Server: waiting to read your photos", or "200 per page · 3 kept on this
   phone".
+- **Models on this phone** (Android since Nov 8, 2026; iOS not built yet, see [ios-todo.md](../ios-todo.md); chosen
+  by the owner from the UI lab, round `ux/settings/2026-11-08`): a row in the Search card, under Search, "1 of 2
+  downloaded" (or "Downloading…"), shown when the app lists any model; it opens the page below.
 - **Loading Moments** (a page, under Advanced at the end of the first page; Android since Oct 26, 2026, chosen by the
   owner from the UI lab, round `ux/settings/2026-10-26`; iOS since Oct 29, 2026, its chips in a row that scrolls): how [Moments](moments.md) is read from the
   library database a page at a time. **Rows loaded at a time** (15, **30**, 60, 120: "More: fewer pauses when
@@ -451,6 +454,33 @@ indexes on the phone, to search without the server, offline too (journal-server-
   `OnnxTextEncoding` in `PeopleViewModels.swift` (onnxruntime-swift-package-manager); Android
   `PhoneSearchSection` in `PhoneSearchScreen.kt`, iOS `PhoneSearchSections` in `PhoneSearchView.swift`.
 
+## Models on this phone
+
+(Nov 8, 2026, Android only; iOS not built yet.) The models the app runs on the phone, which come from the user's
+server instead of with the app (`ModelsScreen.kt`; shared logic `PhoneModels` in `local/PhoneModels.kt`, with
+`PhoneModelsTest`):
+
+- A line on what they are ("The app runs these models on this phone. They come from your server, not with the app.
+  Until one is here, its feature uses a simpler way or your server."), and in amber "Your server can't be reached.
+  What's downloaded still works." when the last ask failed.
+- A card with a row per model: **Photo similarity** (MediaPipe's MobileNet-V3, 10.9 MB; sets in [Moments](moments.md))
+  and, when the server lets phones keep its indexes, **Search by words** (its 8-bit text model, about 290 MB, "Comes
+  with Search by words in On device search, and its 440 MB index"). Each says how it stands: Downloaded · 11 MB, Not
+  downloaded · 290 MB, Downloading 112 MB of 290 MB (with a bar), Waiting for Wi-Fi, Couldn't download, or Your
+  server doesn't offer it yet (amber); and has one button: **Delete**, **Download**, **Download now** (waiting for
+  Wi-Fi), **Pause**, **Try again**, or none.
+- **Download all · 730 MB** while any model can be downloaded; then **Only on Wi-Fi**; then "Uses 11 MB of this
+  phone · 48 GB free".
+- One source of truth for each model: the photo model is `PhoneModel` (the same one Moments downloads on first use),
+  and Search by words is On device search's own switch in `LocalIndexes`, so both screens always agree. Download there
+  turns Search by words on in On device search (its index comes with it), Delete turns it off (its index goes too),
+  and Pause is On device search's Pause.
+- **Only on Wi-Fi** is On device search's setting (`phone_indexes_wifi_only`), one for every download: the photo model
+  follows it too since Nov 8, 2026 (it downloaded on any network before). Download now and Try again download
+  whatever the network.
+- Kept: the photo model in `files/models` (`mobilenet_v3_large.tflite` and its `.ok`), the text model in
+  `files/local/models`.
+
 ## Code
 
 - Shared: `SettingsController`, `TimelineGrouping`, `SimilarityThreshold` and `PrivateMedia` in
@@ -526,6 +556,7 @@ indexes on the phone, to search without the server, offline too (journal-server-
 - [Your cameras](../ux-history/cameras/2026-10-27-your-cameras.md) (Oct 27, 2026): one list with a "Mine" switch per camera (a) picked, promoted in 68ad3db.
 - [Backup — what stays on the phone](../ux-history/backup/2026-10-28-keep-on-phone.md) (Oct 28, 2026): one Keep on this phone card with a switch per kind (b2) picked, promoted in fe25be1.
 - [Backup — copies on other disks](../ux-history/backup/2026-10-28-copies.md) (Oct 28, 2026): a row in the top card opening a page of the copies (a) picked, promoted in 097031f.
+- [Settings — Models on this phone](../ux-history/settings/2026-11-08-models.md) (Nov 8, 2026): a page of its own from a row under Search (a) picked; mockups in [mockups/models/](mockups/models/).
 - [Backup › Copies — a pass's progress](../ux-history/backup/2026-10-28-copy-progress.md) (Oct 28, 2026): size and percentage on one line, time left and Stop under the bar (c) picked, promoted in 1ccfdf6.
 - [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked, promoted in c29cd83.
 - [Show in the app and Private settings by kind](../ux-history/kinds/2026-10-27-kinds-and-private.md) (Oct 27, 2026): a list of kinds with totals (kinds c3) and Private settings choosing what shows, behind the lock (private c2) picked, promoted in 506a1f5.

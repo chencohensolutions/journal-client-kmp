@@ -1,6 +1,7 @@
 package com.chencohensolution.journal.local
 
 import com.chencohensolution.journal.graphql.LocalIndexesQuery
+import com.chencohensolution.journal.graphql.PhoneModelsQuery
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.firstServerError
 import io.ktor.client.request.header
@@ -103,7 +104,7 @@ internal interface LocalIndexApi {
     suspend fun model(file: ModelFileInfo, fileSystem: FileSystem, target: Path, progress: (Long) -> Unit): Boolean
 }
 
-internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi {
+internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi, PhoneModelApi {
     override suspend fun manifest(): List<LocalIndexInfo> = http.graphql { apollo ->
         val response = apollo.query(LocalIndexesQuery()).execute()
         response.exception?.let { throw it }
@@ -119,6 +120,13 @@ internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi {
                 models = x.models.map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url) },
             )
         }
+    } ?: throw StreamBroke("This device isn't registered")
+
+    override suspend fun phoneModels(): List<ModelFileInfo> = http.graphql { apollo ->
+        val response = apollo.query(PhoneModelsQuery()).execute()
+        response.exception?.let { throw it }
+        firstServerError(response.errors)?.let { throw it }
+        response.data?.phoneModels.orEmpty().map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url) }
     } ?: throw StreamBroke("This device isn't registered")
 
     override suspend fun stream(name: String, cursor: String?, sink: StreamSink): String {

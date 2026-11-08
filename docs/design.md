@@ -63,7 +63,8 @@ stories deleted (see "Storyline" below).
 - Photos that look alike are one set however far apart they were taken, and quick shots of different things are
   split; two are enough. Time (10 s) is only the fallback for photos not read yet. Looks: a dHash for
   near-duplicates plus each platform's own image embedding for the same scene (Vision feature print on iOS,
-  MediaPipe MobileNet-V3 large on Android), zoom-aware (each photo's zoomed centers are compared with the other's
+  MediaPipe MobileNet-V3 large on Android, downloaded from the user's server on first use since Nov 8, 2026, to keep
+  10.9 MB out of the APK), zoom-aware (each photo's zoomed centers are compared with the other's
   whole frame). The owner chose native per platform for this, and **one shared open model** (commercial use allowed,
   e.g. SigLIP 2 or DINOv2; not MobileCLIP, whose weights are research-only) for search across the library, which the
   server now has (`searchMedia`). Fingerprints are a per-device cache, never synced.

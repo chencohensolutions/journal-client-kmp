@@ -1071,4 +1071,32 @@
     <string name="swap_passphrase_locked">Locked. Unlock with your phone’s lock to see your copy passphrase.</string>
     <string name="swap_passphrase_no_lock">Set a screen lock on this phone (PIN, pattern or password) to see your copy passphrase.</string>
     <string name="swap_refused_already">You already keep your copy at this friend’s server, under another name. Remove that swap first to set it up again.</string>
+
+    <!-- Settings › Models on this phone (ModelsScreen.kt) -->
+    <string name="models_title">Models on this phone</string>
+    <string name="models_intro">The app runs these models on this phone. They come from your server, not with the app. Until one is here, its feature uses a simpler way or your server.</string>
+    <string name="models_photos_title">Photo similarity</string>
+    <string name="models_photos_body">Finds photos of the same scene for sets in Moments</string>
+    <string name="models_words_title">Search by words</string>
+    <string name="models_words_body">Reads your words when you search on this phone</string>
+    <string name="models_words_with">Comes with Search by words in On device search, and its %1$s index</string>
+    <string name="models_here">Downloaded · %1$s</string>
+    <string name="models_missing">Not downloaded · %1$s</string>
+    <string name="models_missing_size_unknown">Not downloaded</string>
+    <string name="models_downloading">Downloading %1$s of %2$s</string>
+    <string name="models_waiting">Waiting for Wi-Fi</string>
+    <string name="models_not_offered">Your server doesn\'t offer it yet</string>
+    <string name="models_failed">Couldn\'t download</string>
+    <string name="models_download">Download</string>
+    <string name="models_download_now">Download now</string>
+    <string name="models_pause">Pause</string>
+    <string name="models_try_again">Try again</string>
+    <string name="models_delete">Delete</string>
+    <string name="models_download_all">Download all · %1$s</string>
+    <string name="models_offline">Your server can\'t be reached. What\'s downloaded still works.</string>
+    <string name="models_wifi_only">Only on Wi-Fi</string>
+    <string name="models_wifi_only_body">Downloads wait for Wi-Fi. The same switch as On device search\'s.</string>
+    <string name="models_space">Uses %1$s of this phone · %2$s free</string>
+    <string name="models_row">%1$d of %2$d downloaded</string>
+    <string name="models_row_downloading">Downloading…</string>
 </resources>

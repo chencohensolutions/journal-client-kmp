@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import okio.FileSystem
 import okio.Path
 import kotlin.io.encoding.Base64
@@ -48,6 +51,10 @@ class PhotoSimilarity internal constructor(
     /** Set by [requestFrom] while the worker reads: it starts again from the newest. */
     private var again = false
 
+    /** While the analyzer's model is being downloaded ([PhotoAnalyzer.prepare]), and when the last try failed. */
+    private var preparing = false
+    private var preparedFailed: TimeMark? = null
+
     private val _looks = MutableStateFlow(PhotoLooks.NONE)
 
     /** Every fingerprint worked out so far; grows in batches while photos are read. */
@@ -60,6 +67,7 @@ class PhotoSimilarity internal constructor(
 
     init {
         scope.launch { known() }
+        scope.launch { analyzer.modelArrived.collect { modelHere() } }
     }
 
     /** The photos to fingerprint, most wanted first; replaces the previous request. Known ones are skipped. */
@@ -101,7 +109,10 @@ class PhotoSimilarity internal constructor(
         val known = known()
         var added = 0
         // A photo only on the server is never read here (its fingerprint, if any, was made while it was on the device).
-        fun needed(item: MediaItem) = item.isOnDevice && item.id !in known && item.id !in failed
+        // One read before the model was here is read again once it is, for its embeddings.
+        fun needed(item: MediaItem) = item.isOnDevice && item.id !in failed &&
+            (known[item.id]?.let { it.withoutModel && analyzer.embeds } ?: true)
+        if (!analyzer.embeds) prepare()
         do {
             again = false
             val walk = batches?.let { BatchWalk(MediaItem::key, batchSize, it) }
@@ -132,8 +143,39 @@ class PhotoSimilarity internal constructor(
             failed += next.id
             return false
         }
-        known[next.id] = PhotoFingerprint(dHashes(analysis.gray), analysis.embeddings.mapNotNull(::quantize))
+        known[next.id] = PhotoFingerprint(dHashes(analysis.gray), analysis.embeddings.mapNotNull(::quantize), analysis.withoutModel)
         return true
+    }
+
+    /**
+     * Gets the analyzer's model in the background while photos are read by dHash alone; once it is here, those photos
+     * are read again for their embeddings. A failed download is tried again on a later request, after [RETRY].
+     */
+    private fun prepare() {
+        if (preparing || preparedFailed?.let { it.elapsedNow() < RETRY } == true) return
+        preparing = true
+        scope.launch {
+            val ready = try {
+                analyzer.prepare()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+            preparing = false
+            if (!ready) {
+                preparedFailed = TimeSource.Monotonic.markNow()
+                return@launch
+            }
+            modelHere()
+        }
+    }
+
+    /** The model is here now: the photos read without it are read again, the newest first. */
+    private fun modelHere() {
+        preparedFailed = null
+        again = true
+        if (worker?.isActive != true) worker = scope.launch { work() }
     }
 
     private fun publish(known: Map<String, PhotoFingerprint>) {
@@ -146,12 +188,15 @@ class PhotoSimilarity internal constructor(
 
         /** Rows read from the database at a time ([requestFrom]): a few hundred photos. */
         const val BATCH = 500
+
+        /** How long after a failed model download ([prepare]) a request tries again. */
+        val RETRY = 10.minutes
     }
 }
 
 /**
  * `<dir>/fingerprints.json`: device photo id → dHashes (16 hex digits each) and embeddings (base64 bytes each), the
- * whole photo first, for one model.
+ * whole photo first, for one model; `n` when it was read before the model was on the phone.
  * A cache in the platform's caches folder, rebuilt when it's missing, damaged, or from another model.
  */
 internal class FingerprintCache(private val fileSystem: FileSystem, private val dir: Path) {
@@ -163,7 +208,7 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
             emptyMap()
         } else {
             saved.photos.mapValues { (_, photo) ->
-                PhotoFingerprint(photo.d.map { it.toULong(16).toLong() }.toLongArray(), photo.e.map { Base64.decode(it) })
+                PhotoFingerprint(photo.d.map { it.toULong(16).toLong() }.toLongArray(), photo.e.map { Base64.decode(it) }, photo.n)
             }
         }
     } catch (e: Exception) {
@@ -176,6 +221,7 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
                 CachedPhoto(
                     it.dHashes.map { hash -> hash.toULong().toString(16).padStart(16, '0') },
                     it.embeddings.map { bytes -> Base64.encode(bytes) },
+                    it.withoutModel,
                 )
             }
             fileSystem.createDirectories(dir)
@@ -191,7 +237,7 @@ internal class FingerprintCache(private val fileSystem: FileSystem, private val 
     private class CacheFile(val v: Int, val model: String, val photos: Map<String, CachedPhoto>)
 
     @Serializable
-    private class CachedPhoto(val d: List<String>, val e: List<String> = emptyList())
+    private class CachedPhoto(val d: List<String>, val e: List<String> = emptyList(), val n: Boolean = false)
 
     private companion object {
         // 2: dHashes and embeddings of zoomed centers too.
