@@ -173,6 +173,9 @@ private fun LibraryScreens(
     val activity = LocalActivity.current
 
     LaunchedEffect(Unit) { journal.connect() }
+    // Tucked away: what this session reveals lasts until the app was away for more than 5 minutes (TuckedReveal).
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { stories.tucked.wentToBackground() }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { stories.tucked.cameBack() }
     // The search page offers people's faces once the server says it has face search.
     LaunchedEffect(features?.faces) { if (features?.faces == true) people.load() }
     // Picks up photos taken and permission changes made while the app was in the background.
@@ -183,6 +186,16 @@ private fun LibraryScreens(
         onPauseOrDispose {}
     }
     val actions = libraryActions(library, libraryState, backup, server, freeUp, freeUpState, settings)
+    val tuckedActions = remember(stories, features?.tuckedAway) {
+        TuckedActions(
+            canTuck = features?.tuckedAway == true,
+            needsLock = { stories.tucked.needsLock },
+            unlocked = stories.tucked::unlocked,
+            toggleDays = stories.tucked::toggle,
+            setTucked = { items, tucked -> server.library.setTuckedItems(items, tucked).also { if (it && tucked) search.madeTucked(items) } },
+            markPrivate = { items -> actions.markPrivate(items).also { if (it) search.madePrivate(items) } },
+        )
+    }
 
     if (libraryState.access == PhotoAccess.NOT_DETERMINED) {
         PhotoAccessScreen(onAllow = actions.requestAccess, onNotNow = library::skipAccess)
@@ -261,6 +274,7 @@ private fun LibraryScreens(
     SharedTransitionLayout {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
+            LocalTucked provides tuckedActions,
             LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge,
             // Show in the app's pills in the "Showing" sheets of Moments and Explore.
             LocalShownSources provides ShownSourcesChoice(
@@ -342,7 +356,9 @@ private fun LibraryScreens(
                                             prepare = search::prepare,
                                             addPerson = search::addPerson,
                                             removePerson = search::removePerson,
-                                            markPrivate = { items -> actions.markPrivate(items).also { if (it) search.madePrivate(items) } },
+                                            // The picking bar sent them already (LocalTucked); these only take them out of the results.
+                                            madePrivate = search::madePrivate,
+                                            madeTucked = search::madeTucked,
                                             showHiddenSources = search::showHiddenSources,
                                         ),
                                     ),

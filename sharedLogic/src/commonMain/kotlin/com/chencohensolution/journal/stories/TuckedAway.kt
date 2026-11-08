@@ -91,7 +91,7 @@ data class StorylineDay(val day: LocalDay, val items: List<MediaItem>, val tucke
  * The storyline ([all], newest first, tucked ones too) by day, as shown with [session]: a day whose photos are all
  * tucked away is still a day, with its count and no photos.
  */
-internal fun storylineDays(all: List<MediaItem>, session: TuckedSession): List<StorylineDay> =
+fun storylineDays(all: List<MediaItem>, session: TuckedSession): List<StorylineDay> =
     all.groupBy { it.day }.map { (day, items) ->
         val tucked = items.count { it.isTucked }
         val revealed = tucked > 0 && session.shows(day)

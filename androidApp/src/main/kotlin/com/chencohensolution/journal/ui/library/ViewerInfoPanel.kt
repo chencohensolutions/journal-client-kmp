@@ -290,6 +290,10 @@ private fun OriginalCard(
         value = server?.let { library -> library.sha256Of(item)?.let { library.file(it) }?.camera }
     }
     var confirmingPrivate by remember(item.id) { mutableStateOf(false) }
+    // Bring back and Unmark private ask for the phone's lock, unless this session passed it (Tucked away).
+    val tucked = LocalTucked.current
+    val lock = rememberTuckedLock()
+    var bringingBack by remember(item.id) { mutableStateOf(false) }
     // What is being asked of the server (private or not) until it answers; null when nothing is.
     var markingPrivate by remember(item.id) { mutableStateOf<Boolean?>(null) }
     fun markPrivate(isPrivate: Boolean) {
@@ -353,9 +357,30 @@ private fun OriginalCard(
             }
         } else if (item.sha256 != null && status == BackupStatus.BackedUp) {
             if (item.isPrivate) {
-                OriginalButton(LibraryIcons.Eye, stringResource(R.string.library_private_unmark)) { markPrivate(false) }
+                OriginalButton(LibraryIcons.Eye, stringResource(R.string.library_private_unmark)) { lock { markPrivate(false) } }
             } else {
                 OriginalButton(LibraryIcons.Lock, stringResource(R.string.library_private_mark)) { confirmingPrivate = true }
+            }
+        }
+        // Tucked away (revealed for the session, or opened from it): Bring back.
+        if (item.isTucked) {
+            InfoHeading(stringResource(R.string.tucked_away))
+            Text(stringResource(R.string.tucked_viewer_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+            if (bringingBack) {
+                Row(Modifier.height(40.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(18.dp), color = LibraryColors.Accent, strokeWidth = 2.dp)
+                    Text(stringResource(R.string.tucked_bringing_back), color = LibraryColors.OnInverseMuted, modifier = Modifier.padding(start = 8.dp))
+                }
+            } else {
+                OriginalButton(LibraryIcons.Eye, stringResource(R.string.tucked_bring_back)) {
+                    lock {
+                        bringingBack = true
+                        scope.launch {
+                            if (!tucked.setTucked(listOf(item), false)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+                            bringingBack = false
+                        }
+                    }
+                }
             }
         }
     }

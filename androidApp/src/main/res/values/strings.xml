@@ -1112,4 +1112,17 @@
     <string name="models_onboarding_starting">Starting…</string>
     <string name="models_onboarding_later">Downloads go on in the background. Settings › Models on this phone shows them.</string>
     <string name="models_onboarding_continue">Continue</string>
+    <!-- Tucked away (Nov 8, 2026): a casual private level, out of Moments, the storyline and Explore, never in search -->
+    <string name="tucked_away">Tucked away</string>
+    <string name="tucked_tuck_away">Tuck away</string>
+    <string name="tucked_bring_back">Bring back</string>
+    <string name="tucked_bringing_back">Bringing back…</string>
+    <plurals name="tucked_pill">
+        <item quantity="one">%d tucked away</item>
+        <item quantity="other">%d tucked away</item>
+    </plurals>
+    <string name="tucked_viewer_body">Left out of Moments, the storyline and Explore, and never found by search. Each day with tucked photos says how many.</string>
+    <string name="picking_write">Write</string>
+    <string name="picking_edit">Edit</string>
+    <string name="picking_take_out">Take out</string>
 </resources>

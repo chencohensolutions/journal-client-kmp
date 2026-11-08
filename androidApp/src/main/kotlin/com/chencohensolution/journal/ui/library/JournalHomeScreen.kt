@@ -179,8 +179,6 @@ internal fun JournalHomeScreen(
     showInMoments: ShowInMoments? = null,
     /** The backup run in progress, for the bottom pill. */
     backupRunning: BackupProgress? = null,
-    /** The photo whose long-press menu is open at first; previews use it. */
-    initialMenuItem: String? = null,
     /** Photos and sets picked at first (by first photo id); previews use it. */
     initialSelection: Set<String> = emptySet(),
     /** The band whose "Showing 6 from WhatsApp" note shows at first; previews use it. */
@@ -200,11 +198,10 @@ internal fun JournalHomeScreen(
     // Search covers the tab until its ✕ (or back), and the tab is as it was.
     var searching by rememberSaveable { mutableStateOf(initialSearching) }
     var exploreView by rememberSaveable { mutableStateOf(initialExploreView) }
-    // The photo whose long-press menu is open, and the one being written about or tagged from it.
-    var menuItem by rememberSaveable { mutableStateOf(initialMenuItem) }
+    // The photo being written about or tagged from the picking bar.
     var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
     var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
-    // Photos and sets picked to merge; back stops picking.
+    // Photos and sets picked (a long press in Moments or the storyline); back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
     BackHandler(enabled = selection.active) { selection.clear() }
     // Search's results picked to mark private; closing search stops picking.
@@ -247,7 +244,12 @@ internal fun JournalHomeScreen(
             Measure.log?.invoke("First Moments frame ${SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()} ms after start")
         }
     }
-    val storyRows = remember(stories.storyline) { storylineRows(stories.storyline) }
+    val storyRows = remember(stories.storylineDays) { storylineDayRows(stories.storylineDays) }
+    // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
+    val tucked = LocalTucked.current
+    val tuckedLock = rememberTuckedLock()
+    val currentTucked by rememberUpdatedState(tucked)
+    val currentLock by rememberUpdatedState(tuckedLock)
     // The month pill grown into the ruler; a touch anywhere else, back, or leaving the tab folds it.
     var timelineOpen by remember { mutableStateOf(false) }
     BackHandler(enabled = timelineOpen) { timelineOpen = false }
@@ -410,7 +412,7 @@ internal fun JournalHomeScreen(
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
             openStoryline = { currentActions.openStoryline(it) },
-            itemMenu = { item -> menuItem = item.id },
+            toggleTucked = { days -> currentLock { currentTucked.toggleDays(days) } },
             showOnRow = { section, source ->
                 reveal = FeedReveal(section.key, source)
                 currentActions.showOnRow(section.key, source)
@@ -526,15 +528,29 @@ internal fun JournalHomeScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             summaryHidden = bottomHidden,
         ) {
-            if (selection.active && moments) {
-                FeedSelectionBar(
-                    count = selection.keys.size,
+            if (selection.active && (moments || storyline)) {
+                val picked = rows.picked(selection)
+                val one = picked.singleOrNull()
+                // Moments: one set picked (whole) can lose the photo the long press was on.
+                val pickedBlocks = feedRows.filterIsInstance<FeedRow.Photo>().filter { moments && it.block.key in selection.keys }.map { it.block }
+                val pressed = selection.pressed
+                val setOfPressed = pickedBlocks.singleOrNull()?.takeIf { it is FeedBlock.Similar && it.items.any { item -> item.id == pressed } }
+                fun then(action: () -> Unit): () -> Unit = {
+                    selection.clear()
+                    action()
+                }
+                PickingBar(
+                    picked = picked,
                     onCancel = selection::clear,
-                    onMerge = {
-                        val ids = feedRows.filterIsInstance<FeedRow.Photo>().filter { it.block.key in selection.keys }.flatMap { it.block.items }.map { it.id }
-                        selection.clear()
-                        actions.merge(ids)
-                    },
+                    onDone = { _, _ -> selection.clear() },
+                    extras = PickingExtras(
+                        write = one?.let { item -> then { writingFor = item.id } },
+                        written = one?.let { stories.notes[it.id]?.hasWriting } == true,
+                        crop = one?.takeIf { it.durationMillis == null }?.let { item -> then { actions.crop(item.id) } },
+                        tag = one?.let { item -> then { tagFor = item.id } },
+                        merge = if (pickedBlocks.size >= 2) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
+                        takeOut = if (setOfPressed != null && pressed != null) then { actions.takeOutOfSet(pressed) } else null,
+                    ),
                 )
             } else {
                 val band = reveal?.takeIf { moments }?.let { shown ->
@@ -593,28 +609,6 @@ internal fun JournalHomeScreen(
             }
         }
 
-        menuItem?.let { stories.itemsById[it] }?.let { item ->
-            val block = feedRows.firstNotNullOfOrNull { row -> (row as? FeedRow.Photo)?.block?.takeIf { block -> block.items.any { it.id == item.id } } }
-            FeedItemMenu(
-                item,
-                note = stories.notes[item.id],
-                inSet = block is FeedBlock.Similar,
-                inMoments = moments,
-                onDismiss = { menuItem = null },
-                onChoose = { choice ->
-                    menuItem = null
-                    when (choice) {
-                        FeedItemChoice.WRITE -> writingFor = item.id
-                        FeedItemChoice.CROP -> actions.crop(item.id)
-                        FeedItemChoice.REMOVE_FROM_STORYLINE -> actions.setInStoryline(item.id, false)
-                        FeedItemChoice.ADD_TO_STORYLINE -> actions.setInStoryline(item.id, true)
-                        FeedItemChoice.TAG -> tagFor = item.id
-                        FeedItemChoice.SELECT -> selection.toggle(block?.key ?: item.id)
-                        FeedItemChoice.TAKE_OUT -> actions.takeOutOfSet(item.id)
-                    }
-                },
-            )
-        }
     }
 
     writingFor?.let { id ->

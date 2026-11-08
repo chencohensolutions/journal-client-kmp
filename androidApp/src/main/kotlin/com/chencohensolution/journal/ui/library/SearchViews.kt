@@ -107,8 +107,9 @@ internal class SearchActions(
     val addPerson: (Person) -> Unit = {},
     /** A person chip's ×. */
     val removePerson: (String) -> Unit = {},
-    /** The picked photos' Mark private; false when the server couldn't be reached. */
-    val markPrivate: suspend (List<MediaItem>) -> Boolean = { true },
+    /** The server took the picked results as private, or tucked them away: they leave the results now. */
+    val madePrivate: (List<MediaItem>) -> Unit = {},
+    val madeTucked: (List<MediaItem>) -> Unit = {},
     /** "N more in sources you hide · Show" (true) and its "Hide" (false), for this search only. */
     val showHiddenSources: (Boolean) -> Unit = {},
 )
@@ -423,46 +424,23 @@ internal fun SearchBottomBar(search: SearchState, actions: SearchActions, onClos
 }
 
 /**
- * While picking, in place of the field: Cancel, "3 selected" (the photos, a set counting each of its own), and Mark
- * private, asked first as the viewer's is. Picking stops once they are marked; offline, it stays for another try.
+ * While picking, in place of the field: Cancel, "3 selected" (the photos, a set counting each of its own), Mark
+ * private (asked first, as the viewer's is) and Tuck away ([PickingBar]). Picking stops once the server took them;
+ * offline, it stays for another try.
  */
 @Composable
 internal fun SearchPickingBar(search: SearchState, selection: FeedSelection, actions: SearchActions) {
     val picked = search.sets.filter { it.first().id in selection.keys }.flatten()
-    var confirming by remember { mutableStateOf(false) }
-    var marking by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    FeedSelectionBar(
-        count = picked.size,
+    // The picking bar of Moments too (one bar for both): Mark private, and Tuck away. Search never shows what is tucked.
+    PickingBar(
+        picked = picked,
         onCancel = selection::clear,
-        onMerge = { if (!marking) confirming = true },
-        action = stringResource(R.string.library_private_mark),
-        minimum = 1,
-        busy = marking,
+        onDone = { items, tucked ->
+            selection.clear()
+            if (tucked == true) actions.madeTucked(items) else if (tucked == null) actions.madePrivate(items)
+        },
+        canBringBack = false,
     )
-    if (confirming) {
-        AlertDialog(
-            onDismissRequest = { confirming = false },
-            title = { Text(pluralStringResource(R.plurals.search_private_title, picked.size, picked.size)) },
-            text = { Text(stringResource(R.string.search_private_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirming = false
-                    marking = true
-                    scope.launch {
-                        if (actions.markPrivate(picked)) {
-                            selection.clear()
-                        } else {
-                            Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
-                        }
-                        marking = false
-                    }
-                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
-            },
-            dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.library_cancel)) } },
-        )
-    }
 }
 
 /** Whether there is a year or a town to choose: more than one of either among the matches, or one chosen already. */

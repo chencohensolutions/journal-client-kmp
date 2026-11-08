@@ -91,7 +91,7 @@ internal fun PhoneLocked(
 }
 
 /** Shows the system's lock prompt; [onUnlocked] runs once it is passed. Cancelled or failed, the screen stays locked. */
-private fun askForPhoneLock(context: Context, title: String, onUnlocked: () -> Unit): CancellationSignal {
+internal fun askForPhoneLock(context: Context, title: String, onUnlocked: () -> Unit): CancellationSignal {
     val cancel = CancellationSignal()
     BiometricPrompt.Builder(context)
         .setTitle(title)
