@@ -187,7 +187,11 @@ Hidden collections, behind the phone's lock, hides all of WhatsApp, or the scree
 reads the app from a screenshot's name, `Media.app`), and (Oct 23, 2026) what the nudity scan scored at the chosen
 score or more (from 50% by default; the apps hid it themselves before), on every device. The server does the hiding: hidden files come
 as deleted, aren't counted or found by search, and 404; the app drops them like deleted files, with its cached
-previews, originals and videos of them. Not yet anywhere: note sync.
+previews, originals and videos of them. **Tucked away** ("מוצנע", asked for Nov 8, 2026; Android, iOS to do): a
+lighter level than private. Picked photos are tucked on the server (`setTucked`) and leave Moments, the storyline and
+Explore, and search never finds them; each day with some says "3 tucked away", and tapping that reveals them for the
+session, behind the phone's lock once per session (see [screens/moments.md](screens/moments.md#tucked-away-nov-8-2026)).
+Not yet anywhere: note sync.
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will

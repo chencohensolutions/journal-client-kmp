@@ -123,8 +123,10 @@ internal class FeedPager(
         val sections = table.sections(Long.MAX_VALUE, count.toLong(), sounds, shown)
         loaded = sections.size
         everything = sections.size < count
-        val withRevealed = if (revealed.isEmpty()) sections else sections.map { section ->
-            if (revealed.none { it.section == section.key }) section else reveal(section, context, revealed, shown) ?: section
+        val tuckedShown = context.tuckedShown
+        val withRevealed = if (revealed.isEmpty() && tuckedShown.isEmpty()) sections else sections.map { section ->
+            val tuckedHere = section.tucked > 0 && section.days.any { it in tuckedShown }
+            if (revealed.none { it.section == section.key } && !tuckedHere) section else reveal(section, context, revealed, shown) ?: section
         }
         return MomentsFeed(
             entries = withRevealed.map(FeedEntry::Section),
@@ -143,7 +145,10 @@ internal class FeedPager(
         val source = object : FeedSource by table {
             override fun items(first: LocalDay, last: LocalDay): List<MediaItem> = table.shownItems(first, last, shown)
         }
-        return buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, revealed, context.sounds)
+        return buildWindow(
+            window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, revealed, context.sounds,
+            context.tuckedShown,
+        )
             .firstOrNull { it.key == section.key }
     }
 }

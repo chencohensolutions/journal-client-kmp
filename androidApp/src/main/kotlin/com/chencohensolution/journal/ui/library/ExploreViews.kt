@@ -32,7 +32,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -609,7 +613,8 @@ internal fun YearScreen(
 private fun rememberExplorePage(library: LibraryState, stories: StoriesState, whole: ExploreScope, shown: ExploreScope): ExplorePage? {
     val reads = LocalExploreReads.current
     val page by produceState<ExplorePage?>(null, library, stories, shown) {
-        val everything = reads.scope(library, stories, whole)
+        // What is tucked away never shows in Explore.
+        val everything = reads.scope(library, stories, whole).filterNot { it.isTucked }
         value = withContext(Dispatchers.Default) {
             val all = everything.filter(stories::shows)
             val inScope = all.filter { shown.matches(it, stories.places) }
@@ -646,6 +651,10 @@ private fun <T> ExplorePageLayout(
     val list = rememberLazyListState()
     list.LandOn(landing, rows.size) { rows.rowOf(it) }
     val actions = FeedActions(openItem = onOpenItem)
+    // A long press picks photos, to mark private or tuck away (the bar of Moments); back stops picking.
+    val selection = remember { FeedSelection() }
+    BackHandler(enabled = selection.active) { selection.clear() }
+    LaunchedEffect(sort) { selection.clear() }
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(state = list, contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + 48.dp)) {
             item(key = "cover") { PageCover(title, subtitle, cover) }
@@ -664,9 +673,17 @@ private fun <T> ExplorePageLayout(
                 }
             }
             if (onSort != null) item(key = "sort") { SortChips(sort, onSort, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) }
-            if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes)
+            if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes, selection = selection)
         }
         PageBack(onBack)
+        if (selection.active) {
+            PickingBar(
+                picked = rows.picked(selection),
+                onCancel = selection::clear,
+                onDone = { _, _ -> selection.clear() },
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
+            )
+        }
     }
     if (sheetOpen && counts != null) ShowingSheet(counts, onDismiss = { sheetOpen = false }, whatsAppNote = true)
 }

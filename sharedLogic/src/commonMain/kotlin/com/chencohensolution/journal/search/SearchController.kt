@@ -295,6 +295,9 @@ class SearchController internal constructor(
     /** The ids of what was made private here ([madePrivate]), left out while private media isn't shown. */
     private val madePrivate = HashSet<String>()
 
+    /** The ids of what was tucked away here ([madeTucked]): never in the results, also before the library syncs. */
+    private val madeTucked = HashSet<String>()
+
     /** The filter of [loaded], sent with each next page. */
     private var years: List<Int>? = null
     private var area: GeoArea? = null
@@ -352,6 +355,15 @@ class SearchController internal constructor(
      */
     fun madePrivate(items: List<MediaItem>) {
         madePrivate += items.map { it.id }
+        refresh()
+    }
+
+    /**
+     * The server took [items] as tucked away: they leave the results now (search never shows what is tucked away),
+     * not once the library has synced.
+     */
+    fun madeTucked(items: List<MediaItem>) {
+        madeTucked += items.map { it.id }
         refresh()
     }
 
@@ -542,7 +554,11 @@ class SearchController internal constructor(
         val current = _state.value
         if (current.status != SearchStatus.DONE && current.status != SearchStatus.SEARCHING) return
         val hiding = madePrivate.isNotEmpty() && !showsPrivate()
-        val resolve = if (hiding) { shas: List<String> -> resolveAll(shas).filter { it.id !in madePrivate } } else resolveAll
+        // What is tucked away is never found (the server leaves it out too; this covers the library's own copies and
+        // what was tucked since the answer).
+        val resolve = { shas: List<String> ->
+            resolveAll(shas).filter { !it.isTucked && it.id !in madeTucked && !(hiding && it.id in madePrivate) }
+        }
         val town = current.town
         val sources = stories?.value?.shownSources
         val hides: (MediaItem) -> Boolean = { sources != null && !sources.shows(it) }

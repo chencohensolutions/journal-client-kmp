@@ -34,21 +34,6 @@ fun MomentsTabLong() = Screen {
 }
 
 @PreviewTest
-@Preview(name = "light", device = PHONE, showBackground = true)
-@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
-@Composable
-fun MomentsItemMenu() = Screen {
-    JournalHomeScreen(
-        PreviewData.library,
-        PreviewData.feedStories,
-        ServerHealth.OK,
-        HomeActions(),
-        initialTab = HomeTab.MOMENTS,
-        initialMenuItem = PreviewData.notedPhoto.id,
-    )
-}
-
-@PreviewTest
 @Preview(name = "offline, limited access", device = PHONE, showBackground = true)
 @Composable
 fun OfflineLimited() = Screen {

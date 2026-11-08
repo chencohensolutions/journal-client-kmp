@@ -54,6 +54,8 @@ data class ServerFeatures(
      * phone that decodes video thumbnails itself (Settings › Storage on this phone).
      */
     val videoFrames: Boolean = false,
+    /** Files can be tucked away (setTucked, Media.tucked): Tuck away is offered (Nov 8, 2026). */
+    val tuckedAway: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */

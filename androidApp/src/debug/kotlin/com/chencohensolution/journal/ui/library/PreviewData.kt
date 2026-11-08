@@ -192,9 +192,45 @@ internal object PreviewData {
         feed = feed,
         notes = feedNotes,
         storyline = listOf(notedPhoto, croppedPhoto, tripPhoto).sortedByDescending { it.takenAtMillis },
+        storylineDays = com.chencohensolution.journal.stories.storylineDays(
+            listOf(notedPhoto, croppedPhoto, tripPhoto).sortedByDescending { it.takenAtMillis },
+            com.chencohensolution.journal.stories.TuckedSession.NONE,
+        ),
         itemsById = stories.itemsById + feed.entries.flatMap { (it as FeedEntry.Section).section.items }.associateBy { it.id },
         sounds = labSounds.associateBy { it.sha256 },
+        // Built and read: Moments draws its rows rather than its spinner.
+        ready = true,
     )
+
+    /**
+     * Tucked away (Nov 8, 2026): Today has 3 photos tucked away, its pill says so; with [revealed], they show in place
+     * among its moments, each with the tucked mark. Yesterday in the storyline has one tucked too.
+     */
+    fun tuckedStories(revealed: Boolean): StoriesState {
+        val sections = feed.entries.map { (it as FeedEntry.Section).section }
+        val today = sections[0]
+        val tucked = List(3) { photo(0, hour = 12, ratio = ratios[it % ratios.size]).copy(isTucked = true) }
+        val withTucked = if (!revealed) {
+            today.copy(tucked = tucked.size)
+        } else {
+            today.copy(
+                moments = today.moments + FeedMoment(MediaSource.CAMERA, tucked.map { FeedBlock.Single(it) }, "Rothschild Boulevard"),
+                tucked = tucked.size,
+                tuckedShown = true,
+            ).let { it.copy(moments = it.moments.sortedByDescending { m -> m.startMillis }) }
+        }
+        val storylineTucked = photo(1, hour = 18).copy(isTucked = true)
+        val storyline = (feedStories.storyline + storylineTucked).sortedByDescending { it.takenAtMillis }
+        val session = com.chencohensolution.journal.stories.TuckedSession(days = if (revealed) setOf(today.span.newestDay, storylineTucked.day) else emptySet())
+        val days = com.chencohensolution.journal.stories.storylineDays(storyline, session)
+        return feedStories.copy(
+            feed = feed.copy(entries = listOf(FeedEntry.Section(withTucked)) + feed.entries.drop(1)),
+            storyline = days.flatMap { it.items },
+            storylineDays = days,
+            itemsById = feedStories.itemsById + (tucked + storylineTucked).associateBy { it.id },
+            notes = feedStories.notes + (storylineTucked.id to PhotoNote(storylineTucked.id, storylineTucked.fileName, storylineTucked.takenAtMillis, caption = "Just for us.", updatedAt = "2026-11-08T10:00:00Z", title = "Dinner on the roof")),
+        )
+    }
 
     /**
      * Seven years of photos for going to a date in Moments (FeedTimeline): quiet weeks, busy days and a few trips, the

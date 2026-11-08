@@ -3,16 +3,19 @@ package com.chencohensolution.journal.server
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.CamerasQuery
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.ChangesTuckedQuery
 import com.chencohensolution.journal.graphql.FolderNamesQuery
 import com.chencohensolution.journal.graphql.SetSoundFolderMutation
 import com.chencohensolution.journal.graphql.SoundFoldersQuery
 import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
+import com.chencohensolution.journal.graphql.ServerTuckedAwayQuery
 import com.chencohensolution.journal.graphql.ServerVideoFramesQuery
 import com.chencohensolution.journal.graphql.SetCallMutation
 import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
 import com.chencohensolution.journal.graphql.SetPrivateMutation
+import com.chencohensolution.journal.graphql.SetTuckedMutation
 import com.chencohensolution.journal.graphql.StorageUsageQuery
 import com.chencohensolution.journal.graphql.type.CallInput
 import com.chencohensolution.journal.graphql.type.MediaKind
@@ -70,6 +73,8 @@ data class ServerMedia(
     val nudity: Double? = null,
     /** The user marked it private; hidden unless "Show private media" (see PrivateMedia). */
     val isPrivate: Boolean = false,
+    /** The user tucked it away (setTucked): left out of the feeds until revealed, never in search (see [MediaItem.isTucked]). */
+    val isTucked: Boolean = false,
     /** How good it looks, about 1 to 10 (the server's aesthetic score); null until scored. */
     val aesthetic: Double? = null,
     /** A sound recording (kind AUDIO): kept apart from the photos, as [toSoundRecording]. */
@@ -146,6 +151,7 @@ data class ServerMedia(
             isOnDevice = false,
             keptOriginal = keptOriginal,
             isPrivate = isPrivate,
+            isTucked = isTucked,
             aesthetic = aesthetic?.toFloat(),
         )
     }
@@ -344,7 +350,9 @@ class ServerLibrary internal constructor(
                     // Asked on its own: a server from before it doesn't know the field.
                     val frames = runCatching { apollo.query(ServerVideoFramesQuery()).execute().data?.serverInfo?.videoFrames }
                         .getOrNull() == true
-                    features.copy(videoFrames = frames)
+                    val tucked = runCatching { apollo.query(ServerTuckedAwayQuery()).execute().data?.serverInfo?.tuckedAway }
+                        .getOrNull() == true
+                    features.copy(videoFrames = frames, tuckedAway = tucked)
                 } ?: return@launch
                 settings.serverFeatures = answer
                 _features.value = answer
@@ -440,6 +448,40 @@ class ServerLibrary internal constructor(
         }
         scope.launch { follow() }
         return true
+    }
+
+    /**
+     * Tucks [sha256s] away ([tucked]), or brings them back, on the server (with the files that go with them, as
+     * [setPrivate] does), then syncs so the library follows. [SET_PRIVATE_BATCH] at a time, the most the server takes.
+     * False when the server couldn't be reached or refused (the batches sent before that stay changed).
+     */
+    suspend fun setTucked(sha256s: List<String>, tucked: Boolean): Boolean {
+        try {
+            for (batch in sha256s.distinct().chunked(SET_PRIVATE_BATCH)) {
+                http.graphql { apollo ->
+                    val response = apollo.mutation(SetTuckedMutation(batch, tucked)).execute()
+                    response.exception?.let { throw it }
+                    response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                    Unit // not the line above's null, which reads as "not registered"
+                } ?: return false
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return false
+        }
+        scope.launch { follow() }
+        return true
+    }
+
+    /**
+     * Tucks [items] away (or brings them back): their server files, found as [sha256Of] finds them (a phone photo
+     * backup hasn't read by its name and size). What the server doesn't have is left as it is. False when the server
+     * couldn't be reached or refused.
+     */
+    suspend fun setTuckedItems(items: List<MediaItem>, tucked: Boolean): Boolean {
+        val shas = items.mapNotNull { sha256Of(it) }
+        return shas.isEmpty() || setTucked(shas, tucked)
     }
 
     /**
@@ -569,12 +611,11 @@ class ServerLibrary internal constructor(
         val gone = mutableListOf<String>()
         var done = 0
         try {
+            // Only a server that has tucking away is asked for the flag: an older one refuses a field it doesn't know.
+            val knowsTucked = _features.value?.tuckedAway == true
             http.graphql { apollo ->
                 do {
-                    val response = apollo.query(ChangesQuery(Optional.presentIfNotNull(cursor), Optional.present(PAGE))).execute()
-                    response.exception?.let { throw it }
-                    response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
-                    val page = response.data?.changes ?: break
+                    val page = changesPage(apollo, knowsTucked) ?: break
                     val media = mutableListOf<ServerMedia>()
                     val pageGone = mutableListOf<String>()
                     val hidden = mutableListOf<String>()
@@ -582,11 +623,13 @@ class ServerLibrary internal constructor(
                     page.changes.forEach { change ->
                         val sha = change.path.removePrefix("media/")
                         if (change.hidden) hidden += sha else shownAgain += sha
-                        // A kind this version doesn't know is left out like a deleted file.
-                        val item = change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }
-                        if (change.deleted || item == null) pageGone += sha else media += item.toServerMedia()
+                        // A kind this version doesn't know is left out like a deleted file (changesPage).
+                        val item = change.media
+                        if (change.deleted || item == null) pageGone += sha else media += item
                     }
-                    val applied = withContext(io) { store.apply(FeedPage(media, pageGone, hidden, shownAgain, page.cursor), holdsPrivate) }
+                    val applied = withContext(io) {
+                        store.apply(FeedPage(media, pageGone, hidden, shownAgain, page.cursor, knowsTucked = knowsTucked), holdsPrivate)
+                    }
                     cursor = page.cursor
                     changed = changed || applied.mediaChanged
                     hiddenChanged = hiddenChanged || applied.hiddenChanged
@@ -601,6 +644,27 @@ class ServerLibrary internal constructor(
             if (changed || hiddenChanged) withContext(NonCancellable) { publish(media = changed, hidden = hiddenChanged) }
             if (gone.isNotEmpty()) withContext(NonCancellable) { runCatching { removed(gone) } }
         }
+    }
+
+    /** The page of the change feed after [cursor]; null when the server answered with none. */
+    private suspend fun changesPage(apollo: com.apollographql.apollo.ApolloClient, knowsTucked: Boolean): ChangesPage? {
+        val since = Optional.presentIfNotNull(cursor)
+        if (knowsTucked) {
+            val response = apollo.query(ChangesTuckedQuery(since, Optional.present(PAGE))).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            val page = response.data?.changes ?: return null
+            return ChangesPage(page.cursor, page.hasMore, page.remaining, page.changes.map { change ->
+                Change(change.path, change.deleted, change.hidden, change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }?.toServerMedia())
+            })
+        }
+        val response = apollo.query(ChangesQuery(since, Optional.present(PAGE))).execute()
+        response.exception?.let { throw it }
+        response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+        val page = response.data?.changes ?: return null
+        return ChangesPage(page.cursor, page.hasMore, page.remaining, page.changes.map { change ->
+            Change(change.path, change.deleted, change.hidden, change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }?.toServerMedia())
+        })
     }
 
     /**
@@ -658,6 +722,11 @@ class ServerLibrary internal constructor(
     }
 }
 
+/** One page of the change feed, from either query ([ChangesQuery], or [ChangesTuckedQuery] with each file's tucked flag). */
+private class ChangesPage(val cursor: String?, val hasMore: Boolean, val remaining: Int, val changes: List<Change>)
+
+private class Change(val path: String, val deleted: Boolean, val hidden: Boolean, val media: ServerMedia?)
+
 private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     sha256 = sha256,
     isVideo = kind == MediaKind.VIDEO,
@@ -684,4 +753,34 @@ private fun ChangesQuery.Media.toServerMedia() = ServerMedia(
     cameraMake = camera?.make,
     cameraModel = camera?.model,
     encodedSha256 = encodedFrom?.sha256,
+)
+
+// The same as ChangesQuery's, with the tucked flag (the two queries' types are apart).
+private fun ChangesTuckedQuery.Media.toServerMedia() = ServerMedia(
+    sha256 = sha256,
+    isVideo = kind == MediaKind.VIDEO,
+    isAudio = kind == MediaKind.AUDIO,
+    isCall = call != null,
+    callContact = call?.contact,
+    callNumber = call?.number,
+    fileName = fileName,
+    mimeType = mimeType,
+    size = size,
+    takenAt = takenAt,
+    width = width,
+    height = height,
+    durationMillis = durationMs,
+    latitude = location?.lat,
+    longitude = location?.lon,
+    source = source,
+    uploadedAt = uploadedAt,
+    nudity = nudity,
+    isPrivate = private,
+    aesthetic = aesthetic,
+    uploadedBy = uploadedBy,
+    screenshotApp = screenshotApp,
+    cameraMake = camera?.make,
+    cameraModel = camera?.model,
+    encodedSha256 = encodedFrom?.sha256,
+    isTucked = tucked,
 )

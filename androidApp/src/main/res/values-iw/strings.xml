@@ -1163,4 +1163,18 @@
     <string name="models_onboarding_starting">מתחיל…</string>
     <string name="models_onboarding_later">ההורדות ממשיכות ברקע. הגדרות › מודלים בטלפון הזה מציגות אותן.</string>
     <string name="models_onboarding_continue">המשך</string>
+    <!-- מוצנע (8 בנובמבר 2026): רמת פרטיות קלה, מחוץ לרגעים, לסיפור ולגילוי, ולא בחיפוש -->
+    <string name="tucked_away">מוצנע</string>
+    <string name="tucked_tuck_away">הצנעה</string>
+    <string name="tucked_bring_back">החזרה</string>
+    <string name="tucked_bringing_back">מחזיר…</string>
+    <plurals name="tucked_pill">
+        <item quantity="one">%d מוצנע</item>
+        <item quantity="two">%d מוצנעים</item>
+        <item quantity="other">%d מוצנעים</item>
+    </plurals>
+    <string name="tucked_viewer_body">לא מופיעה ברגעים, בסיפור ובגילוי, והחיפוש לא מוצא אותה. בכל יום שיש בו תמונות מוצנעות כתוב כמה.</string>
+    <string name="picking_write">כתיבה</string>
+    <string name="picking_edit">עריכה</string>
+    <string name="picking_take_out">הוצאה</string>
 </resources>

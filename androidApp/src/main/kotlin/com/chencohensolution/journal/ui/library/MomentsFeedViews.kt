@@ -74,6 +74,7 @@ import com.chencohensolution.journal.stories.Moment
 import com.chencohensolution.journal.stories.MomentsFeed
 import com.chencohensolution.journal.stories.PhotoNote
 import com.chencohensolution.journal.stories.RevealedPhotos
+import com.chencohensolution.journal.stories.StorylineDay
 import java.time.LocalDate
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
@@ -93,6 +94,8 @@ internal class FeedActions(
     val openRevealed: (FeedSection, RevealedPhotos, MediaItem) -> Unit = { _, _, _ -> },
     /** A band's "Always show this day". */
     val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
+    /** A day's "3 tucked away" pill (a row of Moments, or a day of the storyline): reveals them, or hides them again. */
+    val toggleTucked: (days: List<LocalDay>) -> Unit = {},
 )
 
 /**
@@ -152,8 +155,8 @@ internal sealed interface FeedRow {
         override val key get() = "band-end-${section.key}-${band.source}"
     }
 
-    /** The storyline: the day of the photos under it, until the next one. */
-    data class StoryDay(val day: LocalDay) : FeedRow {
+    /** The storyline: the day of the photos under it, until the next one; [tucked] of its photos tucked away. */
+    data class StoryDay(val day: LocalDay, val tucked: Int = 0, val revealed: Boolean = false) : FeedRow {
         override val key get() = "story-day-$day"
     }
 
@@ -163,20 +166,47 @@ internal sealed interface FeedRow {
     }
 }
 
-/** Photos and sets picked in Moments to merge, by their first photo's id; picking is on while any is. */
+/**
+ * Photos and sets picked (a long press starts picking, taps add and remove): in Moments, the storyline, Explore's pages
+ * and search, by their first photo's id; picking is on while any is.
+ */
 @Stable
 internal class FeedSelection {
     var keys by mutableStateOf(emptySet<String>())
         private set
     val active: Boolean get() = keys.isNotEmpty()
 
+    /** The photo the long press that started picking was on: a set's Take out takes it out. */
+    var pressed by mutableStateOf<String?>(null)
+        private set
+
     fun toggle(key: String) {
         keys = if (key in keys) keys - key else keys + key
     }
 
+    /** A long press: picks [key], starting picking when it is off. */
+    fun press(key: String, itemId: String) {
+        if (!active) pressed = itemId
+        toggle(key)
+    }
+
     fun clear() {
         keys = emptySet()
+        pressed = null
     }
+}
+
+/** The photos picked among [this] rows (a set's every photo), in the order shown. */
+internal fun List<FeedRow>.picked(selection: FeedSelection): List<MediaItem> {
+    val keys = selection.keys
+    if (keys.isEmpty()) return emptyList()
+    return flatMap { row ->
+        when (row) {
+            is FeedRow.Photo -> if (row.block.key in keys) row.block.items else emptyList()
+            is FeedRow.StoryPhoto -> if (row.item.id in keys) listOf(row.item) else emptyList()
+            else -> emptyList()
+        }
+    }.distinctBy { it.id }
 }
 
 /** The key a block is picked by: its first photo's id. */
@@ -219,15 +249,9 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
     }
 }
 
-/** The storyline ([items], newest first) as list items: each day, then its photos. */
-internal fun storylineRows(items: List<MediaItem>): List<FeedRow> {
-    var day: LocalDay? = null
-    return items.flatMap { item ->
-        val heading = if (item.day != day) FeedRow.StoryDay(item.day) else null
-        day = item.day
-        listOfNotNull(heading, FeedRow.StoryPhoto(item))
-    }
-}
+/** The storyline by day as list items: each day (with its tucked-away pill), then its photos shown. */
+internal fun storylineDayRows(days: List<StorylineDay>): List<FeedRow> =
+    days.flatMap { day -> listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map(FeedRow::StoryPhoto) }
 
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
@@ -249,9 +273,11 @@ internal fun LazyListScope.feedItems(
     landing: String?,
     video: FeedVideo = FeedVideo(),
     notes: Map<String, PhotoNote> = emptyMap(),
-    selection: FeedSelection = FeedSelection(),
+    /** Long press starts picking ([FeedSelection]); null: it opens [FeedActions.itemMenu] instead (People). */
+    selection: FeedSelection? = null,
     audio: FeedAudio = FeedAudio(),
 ) {
+    val picking = selection?.active == true
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         when (row) {
             is FeedRow.RecordingBar -> RecordingBar(row.moment, audio, Modifier.padding(top = 16.dp))
@@ -263,18 +289,21 @@ internal fun LazyListScope.feedItems(
             is FeedRow.BandTop -> BandTop(row)
             is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
             is FeedRow.BandEnd -> BandEnd(row.band) { actions.alwaysShow(row.section, row.band.source) }
-            is FeedRow.StoryDay -> StorylineDay(row.day)
+            is FeedRow.StoryDay -> StorylineDay(row) { actions.toggleTucked(listOf(row.day)) }
             is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
                 val note = notes[row.item.id]
                 PhotoTitle(note?.title)
-                FullWidthPhoto(
-                    row.item,
-                    video,
-                    note?.crops?.moments,
-                    Modifier.combinedClickable(
-                        onLongClick = { actions.itemMenu(row.item) },
-                        onClick = { actions.openStoryline(row.item) }),
-                )
+                Box {
+                    FullWidthPhoto(
+                        row.item,
+                        video,
+                        note?.crops?.moments,
+                        Modifier.combinedClickable(
+                            onLongClick = { if (selection != null) selection.press(row.item.id, row.item.id) else actions.itemMenu(row.item) },
+                            onClick = { if (picking) selection?.toggle(row.item.id) else actions.openStoryline(row.item) }),
+                    )
+                    if (picking) SelectMark(row.item.id in selection!!.keys, Modifier.align(Alignment.TopStart).padding(10.dp))
+                }
                 PhotoNoteText(note?.caption)
             }
 
@@ -291,25 +320,26 @@ internal fun LazyListScope.feedItems(
                                 onLongClick = {
                                     val recording = row.recording
                                     when {
-                                        selection.active -> selection.toggle(block.key)
+                                        picking -> selection!!.toggle(block.key)
                                         // During a recording: plays it from when the photo was taken.
                                         recording != null -> audio.seek(recording, block.item.takenAtMillis - recording.startMillis)
+                                        selection != null -> selection.press(block.key, block.item.id)
                                         else -> actions.itemMenu(block.item)
                                     }
                                 },
                                 onClick = {
-                                    if (selection.active) selection.toggle(block.key) else actions.openItem(
+                                    if (picking) selection!!.toggle(block.key) else actions.openItem(
                                         row.section,
                                         block.item
                                     )
                                 },
                             ),
                         )
-                        if (selection.active) SelectMark(
-                            block.key in selection.keys,
+                        if (picking) SelectMark(
+                            block.key in selection!!.keys,
                             Modifier.align(Alignment.TopStart).padding(10.dp)
                         )
-                        row.recording?.takeIf { !selection.active }?.let { recording ->
+                        row.recording?.takeIf { !picking }?.let { recording ->
                             RecordingOffset(block.item, recording, Modifier.align(Alignment.TopStart).padding(10.dp))
                         }
                     }
@@ -322,9 +352,15 @@ internal fun LazyListScope.feedItems(
                     notes,
                     video,
                     Modifier.padding(bottom = TILE_GAP),
-                    selected = if (selection.active) block.key in selection.keys else null,
-                    onLongPress = { if (selection.active) selection.toggle(block.key) else actions.itemMenu(it) },
-                ) { if (selection.active) selection.toggle(block.key) else actions.openItem(row.section, it) }
+                    selected = if (picking) block.key in selection!!.keys else null,
+                    onLongPress = {
+                        when {
+                            picking -> selection!!.toggle(block.key)
+                            selection != null -> selection.press(block.key, it.id)
+                            else -> actions.itemMenu(it)
+                        }
+                    },
+                ) { if (picking) selection!!.toggle(block.key) else actions.openItem(row.section, it) }
             }
         }
     }
@@ -368,7 +404,8 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
+            // A row of only tucked-away photos says only its pill.
+            if (count > 0 || section.tucked == 0) Text(
                 (heading.towns.ifEmpty { null }?.let { "$it · " }.orEmpty()) +
                         pluralStringResource(R.plurals.library_story_items, count, count),
                 color = LibraryColors.Muted,
@@ -377,6 +414,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (section.tucked > 0) TuckedPill(section.tucked, section.tuckedShown, { actions.toggleTucked(section.days) })
             (shownHere + section.hidden.keys).sorted().forEach { source ->
                 when {
                     source in shownHere -> HiddenChip(
@@ -497,14 +535,17 @@ private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
     }
 }
 
-/** The storyline's day above its photos, on a line like a Moments row's: "Sat, Oct 4". */
+/** The storyline's day above its photos, on a line like a Moments row's: "Sat, Oct 4"; under it, its tucked-away pill. */
 @Composable
-private fun StorylineDay(day: LocalDay) {
+private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit) {
+    val day = row.day
     val line = LibraryColors.Muted.copy(alpha = 0.3f)
-    Row(
+    Column(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).height(1.dp).background(line))
         Text(
             dayLabel(day),
@@ -518,6 +559,8 @@ private fun StorylineDay(day: LocalDay) {
                 .semantics { heading() },
         )
         Box(Modifier.weight(1f).height(1.dp).background(line))
+    }
+    if (row.tucked > 0) TuckedPill(row.tucked, row.revealed, onTucked)
     }
 }
 
@@ -718,6 +761,8 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
             )
         }
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
+        // Tucked away and revealed for the session.
+        if (item.isTucked) TuckedMark(Modifier.align(Alignment.TopEnd).padding(10.dp))
     }
 }
 

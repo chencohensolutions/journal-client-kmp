@@ -29,6 +29,11 @@ internal class FeedContext(
     val sounds: List<SoundRecording>,
     /** What the rows were made with (settings, threshold): a different one makes them all again. */
     val version: String,
+    /**
+     * The days whose tucked-away photos show for the session: rows of them are made again in memory with those photos
+     * (FeedPager), never saved; the rows kept only count them.
+     */
+    val tuckedShown: Set<LocalDay> = emptySet(),
 )
 
 /**
@@ -269,6 +274,8 @@ internal class SectionData(
     val places: List<String>,
     val hidden: Map<String, Int> = emptyMap(),
     val sounds: List<SoundData> = emptyList(),
+    /** [FeedSection.tucked]. */
+    val tucked: Int = 0,
 ) {
     fun itemIds(): List<String> = span.filter { it.at == null }.map { it.id } + moments.flatMap { m -> m.blocks.flatten() }
 
@@ -302,6 +309,7 @@ internal class SectionData(
                 if (sound.voice != null) FeedSound.Voice(sounds[sound.voice] ?: return null)
                 else FeedSound.Calls(sound.calls.map { sounds[it] ?: return null })
             },
+            tucked = tucked,
         )
     }
 
@@ -326,6 +334,7 @@ internal class SectionData(
                     is FeedSound.Voice -> SoundData(voice = sound.recording.sha256)
                 }
             },
+            tucked = section.tucked,
         )
     }
 }

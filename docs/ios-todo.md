@@ -23,6 +23,37 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Tucked away and long-press picking** (Android Nov 8, 2026; [moments.md](screens/moments.md#tucked-away-nov-8-2026),
+  [journal-home.md](screens/journal-home.md), [search.md](screens/search.md), [viewer.md](screens/viewer.md),
+  [explore.md](screens/explore.md)). Shared logic is done and already applies on iOS: tucked photos leave Moments, the
+  storyline and Explore, and search never shows them. What iOS still lacks is the way to tuck, reveal and bring back:
+  1. **Picking from a long press** in Moments, the storyline and Explore's town and year pages, replacing the context
+     menu (Select goes). Taps pick/unpick, a set is picked whole. One bar for all of them and for search's picking:
+     **Cancel · N selected · Mark private · Tuck away** (N counts photos), or **Bring back** in place of Tuck away when
+     `allTucked(picked)`; above it, with one photo, **Write/Edit · Crop · Tag**; in Moments **Merge** (2+ picked) and
+     **Take out** (one set picked: the photo long-pressed). Mark private asks first, as search's does; Tuck away
+     doesn't. Offline: the toast text of `library_private_unreachable`, picks kept. Tuck away only when
+     `serverLibrary.currentFeatures.tuckedAway`. Calls: `ServerLibrary.setTuckedItems(items:tucked:)` (and for search
+     `SearchController.madeTucked(items:)` after it).
+  2. **Day pills**: `FeedSection.tucked` (count) and `tuckedShown` on each Moments row: a "%d tucked away" pill under
+     the divider (outlined, eye-slash; filled with an eye while shown), also on a row with no moments (a day all
+     tucked: show its divider and pill only, no count line). Storyline: draw from `StoriesState.storylineDays`
+     (`StorylineDay.day`, `items`, `tucked`, `revealed`) instead of `storyline`, a pill under a day's heading. A tap:
+     `storiesController.tucked.toggle(days:)` with the row's `section.days` (or the storyline day), after the phone's
+     lock when `tucked.needsLock` (`LAContext` `.deviceOwnerAuthentication`, the prompt Private settings uses), then
+     `tucked.unlocked()`. A revealed tucked photo (`MediaItem.isTucked`) shows an eye-slash mark at its top corner.
+  3. **Session**: call `storiesController.tucked.wentToBackground()` when the scene goes to the background and
+     `cameBack()` when it is active again (5 minutes away resets it; the class keeps the clock).
+  4. **Viewer details**: for `item.isTucked`, a "Tucked away" heading, the `tucked_viewer_body` text and **Bring back**
+     (`setTuckedItems([item], false)`), behind the lock as in 2; **Unmark private** behind the same lock.
+  Android files to mirror: `TuckedViews.kt` (pill, mark, lock, `PickingBar`), `MomentsFeedViews.kt` (`FeedSelection`,
+  `picked`, `DayDivider`, `StorylineDay`, `storylineDayRows`), `JournalHomeScreen.kt` (the bar's extras),
+  `ExploreViews.kt` (`ExplorePageLayout` picking), `SearchViews.kt` (`SearchPickingBar`), `ViewerInfoPanel.kt`,
+  `LibraryApp.kt` (`TuckedActions`). Strings (both languages in `values*/strings.xml`): `tucked_away`,
+  `tucked_tuck_away`, `tucked_bring_back`, `tucked_bringing_back`, plurals `tucked_pill`, `tucked_viewer_body`,
+  `picking_write`, `picking_edit`, `picking_take_out` (Hebrew: מוצנע, הצנעה, החזרה, "%d מוצנעים"). Left to decide on
+  iOS: whether the long press still lifts the photo (the context menu's preview) before picking.
+
 - **Video thumbnails from the very first frame, and Make video thumbnails on this phone** (Android Nov 8, 2026;
   [settings.md](screens/settings.md), Image quality). Shared logic is done: server-only videos already ask for
   `frame=first` (`ServerPreviews.tile` and `firstImage(sha, w, h, isVideo)`), and with

@@ -15,6 +15,8 @@ internal class FileFacts(
     val latitude: Double?,
     val longitude: Double?,
     val isPrivate: Boolean,
+    /** Tucked away: the phone's search leaves it out, as the server's does. */
+    val isTucked: Boolean = false,
 )
 
 /**
@@ -39,6 +41,11 @@ internal class FeedPage(
     val hidden: List<String>,
     val shownAgain: List<String>,
     val cursor: String?,
+    /**
+     * Whether the page says which files are tucked away (a server with serverInfo.tuckedAway): from an older one, a
+     * file keeps the flag its row had.
+     */
+    val knowsTucked: Boolean = true,
 )
 
 /** What [ServerMediaStore.apply] changed. */
@@ -73,8 +80,8 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
      * memory at once (docs/plans/library-on-disk.md, step 6e).
      */
     fun forEachFile(each: (FileFacts) -> Unit) {
-        val query = queries.mediaFacts { sha256, takenAt, uploadedAt, latitude, longitude, isPrivate ->
-            FileFacts(sha256, takenAt, uploadedAt, latitude, longitude, isPrivate)
+        val query = queries.mediaFacts { sha256, takenAt, uploadedAt, latitude, longitude, isPrivate, isTucked ->
+            FileFacts(sha256, takenAt, uploadedAt, latitude, longitude, isPrivate, isTucked)
         }
         query.execute { cursor ->
             while (cursor.next().value) each(query.mapper(cursor))
@@ -108,7 +115,8 @@ internal class ServerMediaStore(private val database: LibraryDatabase) {
         var mediaChanged = false
         var hiddenChanged = false
         val removed = mutableListOf<String>()
-        page.media.forEach { media ->
+        page.media.forEach { received ->
+            val media = if (page.knowsTucked) received else received.copy(isTucked = queries.mediaWithSha(received.sha256).executeAsOneOrNull()?.is_tucked == true)
             if (media.isPrivate && !showPrivate) {
                 queries.addPrivate(media.sha256, media.fileName, media.size, media.encodedSha256)
                 if (queries.deleteMedia(media.sha256).value > 0) mediaChanged = true
@@ -208,6 +216,7 @@ private fun ServerMedia.toRow() = Server_media(
     camera_make = cameraMake,
     camera_model = cameraModel,
     encoded_sha256 = encodedSha256,
+    is_tucked = isTucked,
 )
 
 private fun Server_media.toServerMedia() = ServerMedia(
@@ -236,4 +245,5 @@ private fun Server_media.toServerMedia() = ServerMedia(
     cameraMake = camera_make,
     cameraModel = camera_model,
     encodedSha256 = encoded_sha256,
+    isTucked = is_tucked,
 )
