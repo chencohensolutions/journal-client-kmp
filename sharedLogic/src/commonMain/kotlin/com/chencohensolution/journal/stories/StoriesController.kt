@@ -27,6 +27,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -83,6 +86,8 @@ class StoriesController internal constructor(
     private val feed: FeedPager? = null,
     /** A database row as the screens show it (LibraryController.shownRow), for [feed]'s items. */
     private val shownRow: (LibraryRow) -> MediaItem = { it.item },
+    /** What this session reveals of what is tucked away ([TuckedSession]); the app tells it when it leaves and comes back. */
+    val tucked: TuckedReveal = TuckedReveal(),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
@@ -125,6 +130,8 @@ class StoriesController internal constructor(
     init {
         scope.launch { libraryState.collect { outsideChanges.value++ } }
         scope.launch { settingsState.collect { outsideChanges.value++ } }
+        // Revealing a day's tucked photos (or the session starting over) makes its rows again, in memory.
+        scope.launch { tucked.state.map { it.days }.distinctUntilChanged().drop(1).collect { outsideChanges.value++ } }
         similarity?.let { scope.launch { it.looks.collect { backgroundChanges.value++ } } }
         places?.let { scope.launch { it.places.collect { backgroundChanges.value++ } } }
         // The caches kept on this phone being read: the feed is ready once they are (StoriesState.ready).
@@ -182,7 +189,7 @@ class StoriesController internal constructor(
         ).joinToString("|")
         return FeedContext(
             shown, settings.grouping, places?.places?.value ?: Places.NONE, looks, aloneIn(notes), setsIn(notes),
-            libraryState.value.sounds, version,
+            libraryState.value.sounds, version, tuckedShown = tucked.state.value.days,
         )
     }
 
@@ -610,6 +617,7 @@ class StoriesController internal constructor(
     private fun inputs() = Inputs(
         libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed,
         // From the database: its first page read. Else the whole library merged. Either way with the caches read.
+        tuckedShown = tucked.state.value.days,
         ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete),
         paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
         items = if (feed != null) readItems else null,
@@ -625,6 +633,7 @@ class StoriesController internal constructor(
         val looks: PhotoLooks,
         val places: Places,
         val revealed: Set<FeedReveal>,
+        val tuckedShown: Set<LocalDay>,
         val ready: Boolean,
         val paged: MomentsFeed?,
         val items: Map<String, MediaItem>?,
@@ -637,6 +646,7 @@ class StoriesController internal constructor(
                 shown = settings.shownSources,
                 places = places,
                 revealed = revealed,
+                tuckedShown = tuckedShown,
                 ready = ready,
                 paged = paged,
                 items = items,

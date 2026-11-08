@@ -150,6 +150,7 @@ internal fun buildWindow(
     sets: Map<String, String>,
     revealed: Set<FeedReveal>,
     sounds: List<SoundRecording>,
+    tuckedShown: Set<LocalDay> = emptySet(),
 ): List<FeedSection> =
-    buildFeed(source.items(window.first, window.last), shown, grouping, places, looks, alone, sets, revealed, sounds.filter { it.day in window })
+    buildFeed(source.items(window.first, window.last), shown, grouping, places, looks, alone, sets, revealed, sounds.filter { it.day in window }, tuckedShown)
         .entries.mapNotNull { (it as? FeedEntry.Section)?.section }

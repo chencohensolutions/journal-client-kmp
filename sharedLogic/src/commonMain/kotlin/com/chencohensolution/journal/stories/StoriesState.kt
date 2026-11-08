@@ -2,6 +2,7 @@ package com.chencohensolution.journal.stories
 
 import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.SoundRecording
 import com.chencohensolution.journal.places.Places
@@ -28,6 +29,11 @@ data class StoriesState(
      * set), newest first. It shows whatever source it is from.
      */
     val storyline: List<MediaItem> = emptyList(),
+    /**
+     * The storyline by day as drawn: a day with tucked-away photos says how many, and shows them while revealed
+     * ([StoriesController.tucked]). [storyline] is what shows of it.
+     */
+    val storylineDays: List<StorylineDay> = emptyList(),
     /** Writing, tags and crops, by device id. */
     val notes: Map<String, PhotoNote> = emptyMap(),
     /** Every tag in use, most recently used first. */
@@ -77,7 +83,8 @@ data class StoriesState(
      * year's page in Explore.
      */
     fun feedOf(items: List<MediaItem>): MomentsFeed =
-        buildFeed(items, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
+        // Explore leaves out what is tucked away, with no pill.
+        buildFeed(items.filterNot { it.isTucked }, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
@@ -115,6 +122,8 @@ internal fun buildState(
     shown: ShownSources = ShownSources(),
     places: Places = Places.NONE,
     revealed: Set<FeedReveal> = emptySet(),
+    /** The days whose tucked-away photos show ([TuckedSession.days]). */
+    tuckedShown: Set<LocalDay> = emptySet(),
     ready: Boolean = true,
     /** Moments read from the database a page at a time (FeedPager): used as it is, the whole feed isn't built. */
     paged: MomentsFeed? = null,
@@ -142,8 +151,13 @@ internal fun buildState(
             )
         }
         .sortedByDescending { it.lastUsed }
+    val storylineDays = storylineDays(
+        notes.values.filter { it.onStoryline }.mapNotNull { itemsById[it.deviceId] }.sortedByDescending { it.takenAtMillis },
+        TuckedSession(days = tuckedShown),
+    )
     return StoriesState(
-        storyline = notes.values.filter { it.onStoryline }.mapNotNull { itemsById[it.deviceId] }.sortedByDescending { it.takenAtMillis },
+        storyline = storylineDays.flatMap { it.items },
+        storylineDays = storylineDays,
         places = places,
         grouping = grouping,
         looks = looks,
@@ -160,6 +174,7 @@ internal fun buildState(
             sets = setsIn(notes),
             revealed = revealed,
             sounds = library.sounds,
+            tuckedShown = tuckedShown,
         ),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,

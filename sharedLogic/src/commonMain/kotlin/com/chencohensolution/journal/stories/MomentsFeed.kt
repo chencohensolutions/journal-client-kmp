@@ -90,6 +90,13 @@ data class FeedSection(
     val revealed: List<RevealedPhotos> = emptyList(),
     /** Its calls and voice messages, newest first; drawn among the moments by time ([parts]). */
     val sounds: List<FeedSound> = emptyList(),
+    /**
+     * How many of its photos are tucked away (revealed or not): its "3 tucked away" pill. A row may have nothing else,
+     * when every photo of its days is tucked away.
+     */
+    val tucked: Int = 0,
+    /** Whether its tucked photos show, in place among its moments (its days are revealed for the session). */
+    val tuckedShown: Boolean = false,
 ) {
     val key: String get() = span.key
 
@@ -220,11 +227,17 @@ internal fun buildFeed(
     sets: Map<String, String> = emptyMap(),
     revealed: Set<FeedReveal> = emptySet(),
     sounds: List<SoundRecording> = emptyList(),
+    /** The days whose tucked-away photos show ([TuckedSession.days]); the others' are only counted ([FeedSection.tucked]). */
+    tuckedShown: Set<LocalDay> = emptySet(),
 ): MomentsFeed {
     val counts = sourceCounts(items)
-    val (visible, hidden) = items.partition(shown::shows)
+    val (visible, hiddenBySource) = items.partition(shown::shows)
+    // A tucked photo of a hidden source is neither counted on the source's chip nor shown in its band.
+    val hidden = hiddenBySource.filterNot { it.isTucked }
+    // Tucked away and not revealed: in its row's span (so revealing never moves rows), but not among its moments.
+    fun tuckedAway(item: MediaItem) = item.isTucked && item.day !in tuckedShown
     // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
-    val merged = visible.filter { it.id in sets }.groupBy { sets.getValue(it.id) }.values
+    val merged = visible.filter { it.id in sets && !tuckedAway(it) }.groupBy { sets.getValue(it.id) }.values
         .map { members -> members.sortedBy { it.takenAtMillis } }
         .associateBy { it.first().id }
     val inLaterPlace = merged.values.flatMap { it.drop(1) }.map { it.id }.toSet()
@@ -232,7 +245,9 @@ internal fun buildFeed(
     val marks = soundMarks(shownSounds.values, grouping)
     val rowItems = if (marks.isEmpty()) visible else (visible + marks).sortedByDescending { it.takenAtMillis }
     val sections = groupMoments(rowItems.filter { it.id !in inLaterPlace }, grouping).mapNotNull { span ->
-        val photos = span.items.filter { it.type != MediaType.AUDIO }
+        val spanPhotos = span.items.filter { it.type != MediaType.AUDIO }
+        val tucked = spanPhotos.count { it.isTucked }
+        val photos = if (tucked == 0) spanPhotos else spanPhotos.filterNot(::tuckedAway)
         // A sound belongs to the row its start is in.
         val spanSounds = span.items.filter { it.id.startsWith(SOUND_PREFIX) }.mapNotNull { shownSounds[it.id.removePrefix(SOUND_PREFIX)] }
         val taken = HashSet<String>()
@@ -250,11 +265,15 @@ internal fun buildFeed(
         val soundRows = callRuns(spanSounds.filter { it.kind == AudioKind.CALL }) +
             spanSounds.filter { it.kind == AudioKind.VOICE_MESSAGE }.map(FeedSound::Voice)
         // A row made only of where a recording ended (it started in the row before) shows nothing.
-        if (moments.isEmpty() && soundRows.isEmpty()) return@mapNotNull null
+        // A row of only tucked photos stays, for its pill.
+        if (moments.isEmpty() && soundRows.isEmpty() && tucked == 0) return@mapNotNull null
         val towns = moments.reversed()
             .filter { it.source.kind == MediaSource.CAMERA }
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
-        FeedSection(span, moments, towns.distinct(), sounds = soundRows.sortedByDescending { it.startMillis })
+        FeedSection(
+            span, moments, towns.distinct(), sounds = soundRows.sortedByDescending { it.startMillis },
+            tucked = tucked, tuckedShown = tucked > 0 && spanPhotos.any { it.isTucked && it.day in tuckedShown },
+        )
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
     return MomentsFeed(
         sections.map(FeedEntry::Section),

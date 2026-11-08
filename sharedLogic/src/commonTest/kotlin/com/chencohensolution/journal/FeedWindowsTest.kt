@@ -54,6 +54,8 @@ private fun library(seed: Int): WindowLibrary {
         items += MediaItem(
             "p${n++}", if (random.nextInt(12) == 0) MediaType.VIDEO else MediaType.IMAGE, at, day, null, 10, 10, 100, "IMG_$n.jpg",
             source = sources[random.nextInt(sources.size)],
+            // Some tucked away (not drawn from random, so the libraries are as before).
+            isTucked = n % 9 == 4,
         )
     }
     val sounds = (0 until 25).map { k ->
@@ -79,19 +81,21 @@ class FeedWindowsTest {
             val source = ListSource(library.items)
             val grouping = if (seed % 2 == 0) TimelineGrouping(GroupingMode.BY_DAY) else TimelineGrouping(GroupingMode.BY_GAP, gapHours = 1 + seed % 6)
             val shown = ShownSources(hidden = if (seed % 3 == 0) setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) else emptySet())
-            val whole = buildFeed(source.items, shown, grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds)
+            val days = source.items.map { it.day }.distinct()
+            // Some seeds reveal the tucked photos of every third day.
+            val tuckedShown = if (seed % 4 == 1) days.filterIndexed { i, _ -> i % 3 == 0 }.toSet() else emptySet()
+            val whole = buildFeed(source.items, shown, grouping, Places.NONE, PhotoLooks.NONE, sets = library.sets, sounds = library.sounds, tuckedShown = tuckedShown)
                 .entries.mapNotNull { (it as? FeedEntry.Section)?.section }
             val random = Random(seed + 7)
-            val days = source.items.map { it.day }.distinct()
             repeat(6) {
                 val changed = (0..random.nextInt(3)).map { days[random.nextInt(days.size)] }.toSet()
                 windowsFor(changed, source, grouping, library.sounds, library.sets).forEach { window ->
                     windows++
-                    val built = buildWindow(window, source, shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, emptySet(), library.sounds)
+                    val built = buildWindow(window, source, shown, grouping, Places.NONE, PhotoLooks.NONE, emptySet(), library.sets, emptySet(), library.sounds, tuckedShown)
                     val expected = whole.filter { section -> section.days.any { it in window } }
                     assertTrue(expected.all { section -> section.days.all { it in window } }, "seed $seed: a row crosses the edge of $window: ${expected.filterNot { s -> s.days.all { it in window } }.map { s -> s.key + " " + s.days + " " + s.span.items.map { it.id + "@" + it.takenAtMillis } }}")
                     fun summary(sections: List<com.chencohensolution.journal.stories.FeedSection>) = sections.map { s ->
-                        "${s.key}: ${s.items.map { it.id }} sounds=${s.sounds.map { it.key }} rec=${s.moments.mapNotNull { it.recording?.sha256?.take(3) }} hidden=${s.hidden}"
+                        "${s.key}: ${s.items.map { it.id }} sounds=${s.sounds.map { it.key }} rec=${s.moments.mapNotNull { it.recording?.sha256?.take(3) }} hidden=${s.hidden} tucked=${s.tucked}/${s.tuckedShown}"
                     }
                     assertEquals(summary(expected), summary(built), "seed $seed, $grouping, $window")
                     assertEquals(expected, built, "seed $seed, $grouping, $window")
@@ -124,7 +128,7 @@ private fun MediaItem.toLibraryRow() = com.chencohensolution.journal.db.Library_
     taken_millis = takenAtMillis, epoch_day = day.toEpochDay(), duration_millis = durationMillis, width = width.toLong(),
     height = height.toLong(), size = sizeBytes, file_name = fileName, burst_id = burstId, source = source.id, latitude = location?.latitude,
     longitude = location?.longitude, modified_millis = modifiedMillis, mime_type = mimeType, is_private = isPrivate,
-    aesthetic = aesthetic?.toDouble(),
+    aesthetic = aesthetic?.toDouble(), is_tucked = isTucked,
 )
 
 class FeedTableTest {
