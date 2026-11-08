@@ -73,7 +73,7 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   composes the rows about two screens ahead (and keeps those half a screen behind), so their pictures load before they
   show, and loads the quick images of the next rows while the list moves (a set's first two photos). iOS loads the
   sharp pictures of the next 3 rows and the quick images further on as each row comes into view, one at a time. How
-  many rows of quick images: Settings › Advanced › Loading Moments › **Load ahead** (40 by default; asked Nov 8, 2026).
+  many rows of quick images: Settings › Advanced › Loading while scrolling › **Load ahead** (40 by default; asked Nov 8, 2026).
 - **Tucked away** (Nov 8, 2026): search never shows what is [tucked away](moments.md#tucked-away-nov-8-2026): the
   server leaves it out, the app drops what the library knows as tucked from its results, and On this phone's search
   skips it (`shownFiles`).

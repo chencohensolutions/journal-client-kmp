@@ -20,7 +20,7 @@ saying how it stands and opening a page of its own; the switches used most stay 
   **Storage on this phone ›** ("1.8 GB of 10 GB · WebP, High", or "· Originals" with previews off), **Free up space ›**
   (its line, below).
 - **Search ›** on its own (its line, below).
-- **Advanced:** **Loading Moments ›** ("30 rows at a time · 40 ahead"; below).
+- **Advanced:** **Loading while scrolling ›** (called Loading Moments until Nov 8, 2026) ("30 rows at a time · 40 ahead"; below).
 - **Your server** (last; Nov 7, 2026, Android and iOS): where the app reaches the server now
   ("journal.example.com:56398", `SettingsState.serverAddress`) and under it, in monospace, "ID MFZWI3D-BONSGYC-…"
   (`serverInfo.discovery.id`, `SettingsState.serverId`), or "Its ID shows once the server has told it." before a
@@ -293,12 +293,12 @@ The pages, and what each holds:
 - **Models on this phone** (Android since Nov 8, 2026; iOS not built yet, see [ios-todo.md](../ios-todo.md); chosen
   by the owner from the UI lab, round `ux/settings/2026-11-08`): a row in the Search card, under Search, "1 of 2
   downloaded" (or "Downloading…"), shown when the app lists any model; it opens the page below.
-- **Loading Moments** (a page, under Advanced at the end of the first page; Android since Oct 26, 2026, chosen by the
+- **Loading while scrolling** (a page, under Advanced at the end of the first page; Android since Oct 26, 2026, chosen by the
   owner from the UI lab, round `ux/settings/2026-10-26`; iOS since Oct 29, 2026, its chips in a row that scrolls): how [Moments](moments.md) is read from the
   library database a page at a time. **Rows loaded at a time** (15, **30**, 60, 120: "More: fewer pauses when
   scrolling far, more memory.") and **Load ahead** (10, 20, **40**, 80: how many rows before the end of what is loaded
   the next rows start loading; since Nov 8, 2026 also how many rows ahead search loads its quick images), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
-  changed. On this phone only, and applied as Moments loads its next rows (no restart). Kept as
+  changed. On this phone only, and applied as the list scrolls (no restart): "Only on this phone. Applies as you scroll, in Moments and in search." Kept as
   `moments_rows_per_page` and `moments_load_ahead` (`SettingsState.momentsPaging`, `MomentsPaging`).
 
 ## Behavior

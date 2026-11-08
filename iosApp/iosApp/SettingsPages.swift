@@ -191,7 +191,7 @@ struct LoadingMomentsPage: View {
 
     var body: some View {
         let companion = MomentsPaging.companion
-        SettingsPage(title: "Loading Moments") {
+        SettingsPage(title: "Loading while scrolling") {
             Section {
                 PagingChoice(
                     title: "Rows loaded at a time", detail: "More: fewer pauses when scrolling far, more memory.",
@@ -200,12 +200,12 @@ struct LoadingMomentsPage: View {
                 )
                 PagingChoice(
                     title: "Load ahead",
-                    detail: "How many rows before the end of what is loaded the next rows start loading. More: smoother fast scrolling.",
+                    detail: "How many rows before the end of what is loaded the next rows start loading, and how many rows ahead search loads pictures. More: smoother fast scrolling.",
                     options: companion.LOAD_AHEAD_OPTIONS.map(\.intValue), value: Int(paging.loadAhead),
                     defaultValue: Int(companion.DEFAULT_LOAD_AHEAD), pick: actions.setMomentsLoadAhead
                 )
             } footer: {
-                Text("Only on this phone. Applies as Moments loads its next rows.")
+                Text("Only on this phone. Applies as you scroll, in Moments and in search.")
             }
             .listRowBackground(LibraryColors.raised)
             if !paging.isDefault {

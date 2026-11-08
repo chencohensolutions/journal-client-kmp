@@ -41,7 +41,7 @@ struct SearchResultsView: View {
     var faces: [Person] = []
     /// The sets picked, by their first photo's id; a tap picks while any is.
     var selection: Binding<Set<String>> = .constant([])
-    /// How many rows ahead quick images load: Settings › Advanced › Loading Moments › Load ahead.
+    /// How many rows ahead quick images load: Settings › Advanced › Loading while scrolling › Load ahead.
     var picturesAhead = Int(MomentsPaging.companion.DEFAULT_LOAD_AHEAD)
 
     var body: some View {

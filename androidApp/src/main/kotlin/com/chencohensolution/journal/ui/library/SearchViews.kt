@@ -131,7 +131,7 @@ internal fun SearchContent(
     faces: List<Person> = emptyList(),
     /** The sets picked, by their first photo's id; a tap picks while any is. */
     selection: FeedSelection = FeedSelection(),
-    /** How many rows past the screen quick images load: Settings › Advanced › Loading Moments › Load ahead. */
+    /** How many rows past the screen quick images load: Settings › Advanced › Loading while scrolling › Load ahead. */
     picturesAhead: Int = MomentsPaging.DEFAULT_LOAD_AHEAD,
 ) {
     // Rows about two screens ahead are composed in spare time between frames, so their pictures are loading before

@@ -10445,12 +10445,12 @@
         }
       }
     },
-    "Loading Moments" : {
+    "Loading while scrolling" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "טעינת ״רגעים״"
+            "value" : "טעינה בזמן גלילה"
           }
         }
       }
@@ -10495,12 +10495,12 @@
         }
       }
     },
-    "How many rows before the end of what is loaded the next rows start loading. More: smoother fast scrolling." : {
+    "How many rows before the end of what is loaded the next rows start loading, and how many rows ahead search loads pictures. More: smoother fast scrolling." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כמה שורות לפני סוף מה שנטען מתחילה טעינת השורות הבאות. יותר: גלילה מהירה חלקה יותר."
+            "value" : "כמה שורות לפני סוף מה שנטען מתחילה טעינת השורות הבאות, וכמה שורות מראש החיפוש טוען תמונות. יותר: גלילה מהירה חלקה יותר."
           }
         }
       }
@@ -10515,12 +10515,12 @@
         }
       }
     },
-    "Only on this phone. Applies as Moments loads its next rows." : {
+    "Only on this phone. Applies as you scroll, in Moments and in search." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "רק בטלפון הזה. חל כש״רגעים״ טוען את השורות הבאות."
+            "value" : "רק בטלפון הזה. חל תוך כדי גלילה, ב״רגעים״ ובחיפוש."
           }
         }
       }
