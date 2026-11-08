@@ -7,6 +7,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -53,13 +55,43 @@ internal const val MOTION_MS = 250
 
 internal fun <T> motion(): FiniteAnimationSpec<T> = tween(MOTION_MS, easing = FastOutSlowInEasing)
 
-/** A row of the feed or the storyline coming into the list: it fades in while the others make room. */
-internal val itemIn: FiniteAnimationSpec<Float> = tween(MOTION_MS, easing = FastOutSlowInEasing)
-internal val itemOut: FiniteAnimationSpec<Float> = tween(MOTION_MS - 50, easing = FastOutSlowInEasing)
-internal val itemMove: FiniteAnimationSpec<IntOffset> = tween(MOTION_MS, easing = FastOutSlowInEasing)
+// Photos leaving and coming back go one step at a time (asked Nov 8, 2026): leaving, the photo fades out in its place
+// first, then the space closes; coming back, the space opens first, then the photo fades in.
 
-/** A list item that fades in and out and slides into place as rows around it come and go. */
-internal fun LazyItemScope.animatedRow(): Modifier = Modifier.animateItem(fadeInSpec = itemIn, placementSpec = itemMove, fadeOutSpec = itemOut)
+/** How long a photo takes to fade out or in. */
+internal const val FADE_MS = 200
+
+/** How long its space takes to close or open. */
+internal const val SPACE_MS = 250
+
+private val spaceEasing = FastOutSlowInEasing
+
+/**
+ * Whether the latest change of a list's [keys] only took rows away (hiding, tucking away): then the others close the
+ * space after the leaving rows faded; otherwise (rows added: revealing, bringing back) they open it at once.
+ */
+@Composable
+internal fun rowsHiding(keys: List<String>): Boolean {
+    val last = remember { arrayOf<Set<String>?>(null) }
+    val hiding = remember { booleanArrayOf(false) }
+    val now = remember(keys) { keys.toHashSet() }
+    val before = last[0]
+    if (before != null && before != now) hiding[0] = now.all { it in before }
+    last[0] = now
+    return hiding[0]
+}
+
+/**
+ * A list item that comes and goes in two steps: leaving, it fades out in its place, then the rows around it close the
+ * space; coming in, the rows make space first, then it fades in. [hiding]: the list's latest change only took rows
+ * away ([rowsHiding]), so the others wait for the fade before closing the space.
+ */
+internal fun LazyItemScope.animatedRow(hiding: Boolean): Modifier =
+    Modifier.animateItem(
+        fadeInSpec = tween(FADE_MS, delayMillis = SPACE_MS, easing = LinearOutSlowInEasing),
+        placementSpec = tween(SPACE_MS, delayMillis = if (hiding) FADE_MS else 0, easing = spaceEasing),
+        fadeOutSpec = tween(FADE_MS, easing = FastOutLinearInEasing),
+    )
 
 /** A bar coming up from the bottom: slides up a little and fades in. */
 internal val barIn: EnterTransition = slideInVertically(motion()) { it / 2 } + fadeIn(motion())
@@ -70,8 +102,11 @@ internal fun <S> AnimatedContentTransitionScope<S>.barSwap(): ContentTransform =
     (barIn togetherWith barOut).using(SizeTransform(clip = false) { _, _ -> tween<IntSize>(MOTION_MS, easing = FastOutSlowInEasing) })
 
 /** Something in a row appearing or leaving (a pill, the bar's Write · Crop · Tag): grows open and fades. */
-internal val growIn: EnterTransition = expandVertically(motion()) + fadeIn(motion())
-internal val shrinkOut: ExitTransition = shrinkVertically(motion()) + fadeOut(motion())
+// One step at a time, as photos do: the space opens, then it fades in; it fades out, then the space closes.
+internal val growIn: EnterTransition =
+    expandVertically(tween(SPACE_MS, easing = spaceEasing)) + fadeIn(tween(FADE_MS, delayMillis = SPACE_MS, easing = LinearOutSlowInEasing))
+internal val shrinkOut: ExitTransition =
+    fadeOut(tween(FADE_MS, easing = FastOutLinearInEasing)) + shrinkVertically(tween(SPACE_MS, delayMillis = FADE_MS, easing = spaceEasing))
 
 /** A check mark popping in and out: a soft spring, so it lands with a little bounce. */
 private val checkSpring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)

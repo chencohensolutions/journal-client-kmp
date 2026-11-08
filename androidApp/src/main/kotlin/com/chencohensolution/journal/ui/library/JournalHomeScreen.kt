@@ -451,6 +451,7 @@ internal fun JournalHomeScreen(
                 people,
             )
         } else CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
+            val hiding = rowsHiding(remember(rows) { rows.map { it.key } })
             LazyColumn(
                 state = list,
                 contentPadding = PaddingValues(
@@ -489,7 +490,7 @@ internal fun JournalHomeScreen(
                     item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
                 }
                 // Last, so landing from the viewer can count them from the end.
-                if (!momentsWaiting) feedItems(rows, feedActions, landing, video, stories.notes, selection, audio)
+                if (!momentsWaiting) feedItems(rows, feedActions, landing, video, stories.notes, selection, audio, hiding)
             }
         }
 

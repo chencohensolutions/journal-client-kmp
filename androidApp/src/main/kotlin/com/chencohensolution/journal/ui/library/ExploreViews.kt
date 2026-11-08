@@ -656,6 +656,7 @@ private fun <T> ExplorePageLayout(
     val selection = remember { FeedSelection() }
     BackHandler(enabled = selection.active) { selection.clear() }
     LaunchedEffect(sort) { selection.clear() }
+    val hiding = rowsHiding(remember(rows) { rows.map { it.key } })
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(state = list, contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + 48.dp)) {
             item(key = "cover") { PageCover(title, subtitle, cover) }
@@ -674,7 +675,7 @@ private fun <T> ExplorePageLayout(
                 }
             }
             if (onSort != null) item(key = "sort") { SortChips(sort, onSort, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) }
-            if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes, selection = selection)
+            if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes, selection = selection, hiding = hiding)
         }
         PageBack(onBack)
         // Slides up as picking starts, down as it ends.

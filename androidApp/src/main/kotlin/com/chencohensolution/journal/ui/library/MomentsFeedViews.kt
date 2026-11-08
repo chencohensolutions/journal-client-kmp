@@ -276,11 +276,13 @@ internal fun LazyListScope.feedItems(
     /** Long press starts picking ([FeedSelection]); null: it opens [FeedActions.itemMenu] instead (People). */
     selection: FeedSelection? = null,
     audio: FeedAudio = FeedAudio(),
+    /** The latest change only took rows away ([rowsHiding]): the rest close the space once they faded. */
+    hiding: Boolean = false,
 ) {
     val picking = selection?.active == true
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
         // Rows fade in and out as photos are tucked away, revealed or brought back, and the rest slide into place.
-        Box(animatedRow()) {
+        Box(animatedRow(hiding)) {
         when (row) {
             is FeedRow.RecordingBar -> RecordingBar(row.moment, audio, Modifier.padding(top = 16.dp))
             is FeedRow.Sound -> when (val sound = row.sound) {
