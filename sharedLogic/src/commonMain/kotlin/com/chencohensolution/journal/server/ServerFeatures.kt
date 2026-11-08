@@ -56,6 +56,8 @@ data class ServerFeatures(
     val videoFrames: Boolean = false,
     /** Files can be tucked away (setTucked, Media.tucked): Tuck away is offered (Nov 8, 2026). */
     val tuckedAway: Boolean = false,
+    /** Notes are kept and synced (setNote, Media.note): each photo's writing, tags, crops and sets (Nov 8, 2026). */
+    val notes: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */

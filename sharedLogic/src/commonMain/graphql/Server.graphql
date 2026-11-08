@@ -38,6 +38,11 @@ query ServerTuckedAway {
   serverInfo { tuckedAway }
 }
 
+# Asked on its own too (Nov 8, 2026): whether notes are kept and synced (setNote, Media.note).
+query ServerNotes {
+  serverInfo { notes }
+}
+
 query LocalIndexes {
   localIndexes {
     name

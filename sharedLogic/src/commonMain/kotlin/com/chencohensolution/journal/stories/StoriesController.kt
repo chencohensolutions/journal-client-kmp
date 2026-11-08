@@ -56,8 +56,8 @@ private const val FEED_VERSION = 4
 
 /**
  * What the user adds to their photos, kept on this device: each photo's writing (and its earlier versions), tags,
- * crops and Moments sets. Combines them with the photo library into the Storyline and Moments tabs. Syncing to the
- * server comes with uploads. (The name is from when the app had stories, which the storyline replaced.)
+ * crops and Moments sets. Combines them with the photo library into the Storyline and Moments tabs, and syncs them with
+ * the server ([NoteSync]). (The name is from when the app had stories, which the storyline replaced.)
  */
 @OptIn(ExperimentalTime::class)
 class StoriesController internal constructor(
@@ -88,6 +88,8 @@ class StoriesController internal constructor(
     private val shownRow: (LibraryRow) -> MediaItem = { it.item },
     /** What this session reveals of what is tucked away ([TuckedSession]); the app tells it when it leaves and comes back. */
     val tucked: TuckedReveal = TuckedReveal(),
+    /** The server the notes sync with ([NoteSync]); without it (tests, no database) they stay on this phone. */
+    noteSync: NoteSyncSource? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
@@ -167,6 +169,91 @@ class StoriesController internal constructor(
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: StoriesState get() = state.value
+
+    // MARK: Notes synced with the server
+
+    private val outbox = noteSync?.let { NoteOutbox(it.database) }
+    private val sync = noteSync?.let { NoteSync(it, this, outbox!!, scope, libraryState) }
+
+    init {
+        sync?.start()
+    }
+
+    /** The ids of the photos with notes. */
+    internal fun noteIds(): Set<String> = notes.keys
+
+    /** The note of [itemId] as the server keeps it ([PhotoNoteStore.syncContent]); null when it has none. */
+    internal fun syncContentOf(itemId: String): String? = noteStore.syncContent(itemId)
+
+    /**
+     * The server's note [content] (null: deleted there) becomes the note of [itemId], replacing this phone's: it changed
+     * on another device, and not here since. Not sent back.
+     */
+    internal suspend fun noteFromServer(itemId: String, content: String?) {
+        val current = notes[itemId]
+        if (content == null) {
+            if (current == null) return
+            noteStore.delete(itemId)
+            notes = notes - itemId
+            noteChangedFromServer(itemId, null)
+            return
+        }
+        val item = itemOf(itemId)
+        val saved = noteStore.saveFromServer(itemId, current?.fileName ?: item?.fileName, current?.takenAtMillis ?: item?.takenAtMillis ?: 0, content)
+            ?: return
+        if (saved == current) return
+        if (saved.isEmpty) {
+            noteStore.delete(itemId)
+            notes = notes - itemId
+        } else {
+            notes = notes + (itemId to saved)
+        }
+        noteChangedFromServer(itemId, item)
+    }
+
+    /**
+     * The server's note [content] (null: deleted there) and this phone's note of [itemId] both changed: made one
+     * ([mergeNotes]), which stays to be sent. A note deleted on one side and changed on the other keeps the change.
+     */
+    internal suspend fun mergeFromServer(itemId: String, content: String?) {
+        val current = notes[itemId]
+        val item = itemOf(itemId)
+        val server = content?.let {
+            noteStore.parse(itemId, current?.fileName ?: item?.fileName, current?.takenAtMillis ?: item?.takenAtMillis ?: 0, it)
+        }
+        val merged = when {
+            server == null -> return
+            current == null -> server
+            else -> mergeNotes(current, server)
+        }
+        if (merged == current) return
+        try {
+            if (merged.isEmpty) {
+                noteStore.delete(itemId)
+                notes = notes - itemId
+            } else {
+                noteStore.save(merged)
+                notes = notes + (itemId to merged)
+            }
+        } catch (e: Exception) {
+            error = e.describe()
+        }
+        noteChangedFromServer(itemId, item)
+    }
+
+    /** The photo [itemId], as the state or the database has it; null when the library doesn't. */
+    private suspend fun itemOf(itemId: String): MediaItem? =
+        _state.value.itemsById[itemId] ?: readItems[itemId] ?: if (feed != null) library.items(listOf(itemId))[itemId] else itemsById(listOf(itemId)).firstOrNull()
+
+    /** A note brought in from the server: shown as one changed here is, its photo's day made again. */
+    private suspend fun noteChangedFromServer(itemId: String, item: MediaItem?) {
+        if (feed != null) {
+            if (item != null && itemId in notes) readItems = readItems + (itemId to item)
+            item?.let { feed.markDays(setOf(it.day)) }
+            outsideChanges.value++
+        }
+        publish()
+    }
 
     // MARK: Moments from the database
 
@@ -558,6 +645,7 @@ class StoriesController internal constructor(
     private fun changeNotesOf(items: List<MediaItem>, rebuild: Boolean, transform: (PhotoNote) -> PhotoNote) {
         val time = now()
         var changedAny = false
+        val changedIds = mutableListOf<String>()
         // With Moments from the database, a photo given a note is one the screens use from now on (storyline, tags).
         if (feed != null) readItems = readItems + items.associateBy { it.id }
         try {
@@ -566,6 +654,7 @@ class StoriesController internal constructor(
                 val changed = transform(current)
                 if (changed == current) return@forEach
                 changedAny = true
+                changedIds += item.id
                 if (changed.isEmpty) {
                     noteStore.delete(item.id)
                     notes = notes - item.id
@@ -578,6 +667,12 @@ class StoriesController internal constructor(
             error = null
         } catch (e: Exception) {
             error = e.describe()
+        }
+        // To the server, a few seconds later (NoteSync).
+        try {
+            outbox?.add(changedIds)
+        } catch (e: Exception) {
+            // The database can't be written: the note is kept on the phone, and sent with its next change.
         }
         // From the database: the days of the photos whose notes changed are made again (a crop, a set).
         if (changedAny && rebuild && feed != null) {

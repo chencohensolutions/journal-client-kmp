@@ -191,7 +191,7 @@ previews, originals and videos of them. **Tucked away** ("מוצנע", asked for
 lighter level than private. Picked photos are tucked on the server (`setTucked`) and leave Moments, the storyline and
 Explore, and search never finds them; each day with some says "3 tucked away", and tapping that reveals them for the
 session, behind the phone's lock once per session (see [screens/moments.md](screens/moments.md#tucked-away-nov-8-2026)).
-Not yet anywhere: note sync.
+**Notes sync** with the server (Nov 8, 2026; see Notes below).
 
 **Server and network**
 - A dedicated machine with a fixed IP, reachable from the internet (mTLS on everything but enrollment). It will
@@ -356,13 +356,32 @@ Not yet anywhere: note sync.
 - Fingerprints for grouping by looks stay a per-device cache, computed from the large preview when there is no
   original.
 
-**Notes** (not built; stories were dropped from this plan on Oct 21, 2026)
-- File sync: `putFile(path, content, baseVersion)` (version = sha256 of the content; conflict returns the current
-  file), `changes(since: cursor)` pages of up to ~2,000 entries. Notes sync as `notes/<sha256>` and are stored
-  inside the photo's sidecar; a note syncs once its photo is uploaded. On a conflict the newer wins and the other is
-  kept as a conflict copy; the writing's `history` lets two edits be merged instead, keeping both as versions.
-- Other devices check for changes on open and **every 15 minutes** (Android WorkManager's minimum; on iOS when the
-  system allows).
+**Notes** (synced since Nov 8, 2026, asked for by the owner: "sync everything with the server"; stories were dropped
+from this plan on Oct 21, 2026)
+- What syncs: everything the phone keeps about a photo in `journal/media/<id>.json` (`PhotoNote`): the title and
+  paragraph with their earlier versions, tags, crops, Moments sets and the photo a set opens on, "Remove from
+  storyline", where the viewer was zoomed. The server keeps it in the photo's sidecar as `note` (journal-server-go
+  docs/media.md "Notes"): the file's JSON object without what only the phone knows (`deviceId`, `fileName`,
+  `takenAt`), kept as sent, so fields a newer app writes reach the others untouched. Its version is the sha256 of
+  what the server keeps.
+- **Out** (`NoteSync`, `stories/NoteSync.kt`): each change goes in the library database's outbox (`note_outbox`,
+  `Notes.sq`), sent 3 seconds after the last change with `setNote(sha256, note, baseVersion)`, once the photo is on
+  the server (the library's `server_sha256` for its id; until then it waits). The first time, every note already on the
+  phone goes in the outbox.
+- **In**: the change feed brings each file's note (`ChangesNotes`, asked only of a server with `serverInfo.notes`; the
+  first such sync reads the feed again from the start) into `server_media.note`. A version that differs from the one
+  last brought in (`note_synced`) replaces the note of the photo the library shows for that file, or of its new id when
+  that changed, unless the phone's note is still in the outbox: then the two are merged.
+- **Conflicts** (both changed since they were last the same; `setNote` answers `NoteConflict` with the server's note):
+  `mergeNotes` keeps the writing saved last as the photo's, and the other as an earlier version (the histories
+  joined), so nothing written is lost; tags, crops, sets, the storyline mark and zoom are the note changed last's. A
+  note deleted on one side and changed on the other keeps the change. The merged note is sent again.
+- Hidden with its photo: a file the device may not see comes as deleted, note and all; a tucked photo's writing stays
+  out of Moments, the storyline, Explore and search with the photo, as before. Private files' notes come once
+  private media is shown.
+- Other devices get changes when they sync with the server (opening the app, coming back to it). Later: every 15
+  minutes in the background (Android WorkManager's minimum; on iOS when the system allows). Both apps share it all;
+  nothing in the UIs changed.
 - Later: removing a photo from the journal, search with a shared model.
 - **Certificate renewal** (Oct 30, 2026; Android only, iOS not built yet): a device certificate lasts a year. In its
   last 30 days the app renews it at start (`CertificateRenewal`, `enrollment/CertificateRenewal.kt`): a new key under

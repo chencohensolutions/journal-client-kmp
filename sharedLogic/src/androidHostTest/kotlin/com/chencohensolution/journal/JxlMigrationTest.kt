@@ -39,8 +39,12 @@ class JxlMigrationTest {
     fun aVersion9DatabaseMatchesJpegsKeptAsJxl() = runTest {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY, Properties())
         LibraryDatabase.Schema.create(driver)
-        // Back to version 9's shape: no encoded_sha256 (nor version 11's is_tucked), and its triggers.
+        // Back to version 9's shape: no encoded_sha256 (nor version 11's is_tucked, nor version 12's notes), and its triggers.
         listOf(
+            "ALTER TABLE server_media DROP COLUMN note",
+            "ALTER TABLE server_media DROP COLUMN note_version",
+            "DROP TABLE note_outbox",
+            "DROP TABLE note_synced",
             "ALTER TABLE server_media DROP COLUMN is_tucked",
             "ALTER TABLE library_item DROP COLUMN is_tucked",
             "ALTER TABLE library_fresh DROP COLUMN is_tucked",

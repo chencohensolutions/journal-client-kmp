@@ -34,7 +34,11 @@ CREATE TABLE server_media (
     -- since version 10): the phone's copy of that JPEG is this file.
     encoded_sha256 TEXT,
     -- The user tucked it away (setTucked; since version 11): left out of the feeds until revealed, never searched.
-    is_tucked INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
+    is_tucked INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    -- What the user wrote about it and how they arranged it, as the server keeps it (Media.note, a JSON object as text),
+    -- and its version (Media.noteVersion); null without one (since version 12). NoteSync brings it into the phone's notes.
+    note TEXT,
+    note_version TEXT
 );
 
 -- The files the user hides on every device (ServerLibrary.hidden): the server sends nothing more of them.
@@ -66,6 +70,10 @@ SELECT * FROM server_media WHERE is_audio = 1 ORDER BY rowid;
 -- The few facts of every file that the phone's search and people read (where and when, whether private or tucked).
 mediaFacts:
 SELECT sha256, taken_at, uploaded_at, latitude, longitude, is_private, is_tucked FROM server_media;
+
+-- The note the server answered for a file (setNote), as the change feed will bring it.
+setNote:
+UPDATE server_media SET note = :note, note_version = :note_version WHERE sha256 = :sha256;
 
 countMedia:
 SELECT count(*) FROM server_media;

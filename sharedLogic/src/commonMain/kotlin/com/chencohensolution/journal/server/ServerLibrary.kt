@@ -11,6 +11,9 @@ import com.chencohensolution.journal.graphql.SetCameraMutation
 import com.chencohensolution.journal.graphql.HiddenCollectionsQuery
 import com.chencohensolution.journal.graphql.ServerInfoQuery
 import com.chencohensolution.journal.graphql.ServerTuckedAwayQuery
+import com.chencohensolution.journal.graphql.ServerNotesQuery
+import com.chencohensolution.journal.graphql.ChangesNotesQuery
+import com.chencohensolution.journal.graphql.SetNoteMutation
 import com.chencohensolution.journal.graphql.ServerVideoFramesQuery
 import com.chencohensolution.journal.graphql.SetCallMutation
 import com.chencohensolution.journal.graphql.SetHiddenCollectionsMutation
@@ -95,6 +98,12 @@ data class ServerMedia(
      * or the WAV of a FLAC. The phone's copy of that JPEG, by the sha256 backup read, is this file.
      */
     val encodedSha256: String? = null,
+    /**
+     * What the user wrote about it and how they arranged it in the apps, as the server keeps it (a JSON object: see
+     * PhotoNote's file), and its version; null without one, or from a server without notes.
+     */
+    val note: String? = null,
+    val noteVersion: String? = null,
 ) {
     /** "Canon EOS 80D", "samsung SM-S931B": the camera as a photo's info names it; null when its tags name none. */
     val camera: String? get() = cameraName(cameraMake, cameraModel)
@@ -192,6 +201,12 @@ private const val SET_PRIVATE_BATCH = 1000
 
 /** What the user's originals take up on the server. */
 data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
+
+/**
+ * The server's answer to [ServerLibrary.setNote]: [saved], or not because the note changed since the version sent; either
+ * way the note it keeps now ([note], null for none) and its [version].
+ */
+internal data class NoteAnswer(val saved: Boolean, val note: String?, val version: String?)
 
 /** How far a sync of more than one page has read the server's change feed: [done] of [total] changes. */
 data class SyncProgress(val done: Int, val total: Int)
@@ -352,7 +367,9 @@ class ServerLibrary internal constructor(
                         .getOrNull() == true
                     val tucked = runCatching { apollo.query(ServerTuckedAwayQuery()).execute().data?.serverInfo?.tuckedAway }
                         .getOrNull() == true
-                    features.copy(videoFrames = frames, tuckedAway = tucked)
+                    val notes = runCatching { apollo.query(ServerNotesQuery()).execute().data?.serverInfo?.notes }
+                        .getOrNull() == true
+                    features.copy(videoFrames = frames, tuckedAway = tucked, notes = notes)
                 } ?: return@launch
                 settings.serverFeatures = answer
                 _features.value = answer
@@ -485,6 +502,31 @@ class ServerLibrary internal constructor(
     }
 
     /**
+     * Replaces the note of the server file [sha256] with [note] (a JSON object as text; null deletes it), from the
+     * version this phone last had, [baseVersion] (null: none). Null when the server couldn't be reached or refused; the
+     * note is then sent again later (NoteSync). The database's copy of the file's note follows the answer, so the next
+     * sync doesn't bring the old one back.
+     */
+    internal suspend fun setNote(sha256: String, note: String?, baseVersion: String?): NoteAnswer? {
+        val answer = try {
+            http.graphql { apollo ->
+                val response = apollo.mutation(SetNoteMutation(sha256, Optional.present(note), Optional.present(baseVersion))).execute()
+                response.exception?.let { throw it }
+                response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+                val result = response.data?.setNote ?: return@graphql null
+                result.onNoteSaved?.media?.let { NoteAnswer(saved = true, note = it.note, version = it.noteVersion) }
+                    ?: result.onNoteConflict?.media?.let { NoteAnswer(saved = false, note = it.note, version = it.noteVersion) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        withContext(io) { store.keepNote(sha256, answer.note, answer.version) }
+        return answer
+    }
+
+    /**
      * Syncs after a change the server made, so the library follows. The change is made whether or not this sync gets
      * through, so a failed one isn't the change's failure: the next sync brings it.
      */
@@ -611,11 +653,15 @@ class ServerLibrary internal constructor(
         val gone = mutableListOf<String>()
         var done = 0
         try {
-            // Only a server that has tucking away is asked for the flag: an older one refuses a field it doesn't know.
-            val knowsTucked = _features.value?.tuckedAway == true
+            // Only a server that has tucking away is asked for the flag, and only one with notes for the notes: an older
+            // one refuses a field it doesn't know. The first sync with notes reads the feed again from the start, for the
+            // notes written while this phone didn't ask for them.
+            val knowsNotes = _features.value?.notes == true
+            val knowsTucked = knowsNotes || _features.value?.tuckedAway == true
+            if (knowsNotes && withContext(io) { store.startNotes() }) cursor = null
             http.graphql { apollo ->
                 do {
-                    val page = changesPage(apollo, knowsTucked) ?: break
+                    val page = changesPage(apollo, knowsTucked, knowsNotes) ?: break
                     val media = mutableListOf<ServerMedia>()
                     val pageGone = mutableListOf<String>()
                     val hidden = mutableListOf<String>()
@@ -628,7 +674,7 @@ class ServerLibrary internal constructor(
                         if (change.deleted || item == null) pageGone += sha else media += item
                     }
                     val applied = withContext(io) {
-                        store.apply(FeedPage(media, pageGone, hidden, shownAgain, page.cursor, knowsTucked = knowsTucked), holdsPrivate)
+                        store.apply(FeedPage(media, pageGone, hidden, shownAgain, page.cursor, knowsTucked = knowsTucked, knowsNotes = knowsNotes), holdsPrivate)
                     }
                     cursor = page.cursor
                     changed = changed || applied.mediaChanged
@@ -647,8 +693,17 @@ class ServerLibrary internal constructor(
     }
 
     /** The page of the change feed after [cursor]; null when the server answered with none. */
-    private suspend fun changesPage(apollo: com.apollographql.apollo.ApolloClient, knowsTucked: Boolean): ChangesPage? {
+    private suspend fun changesPage(apollo: com.apollographql.apollo.ApolloClient, knowsTucked: Boolean, knowsNotes: Boolean): ChangesPage? {
         val since = Optional.presentIfNotNull(cursor)
+        if (knowsNotes) {
+            val response = apollo.query(ChangesNotesQuery(since, Optional.present(PAGE))).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            val page = response.data?.changes ?: return null
+            return ChangesPage(page.cursor, page.hasMore, page.remaining, page.changes.map { change ->
+                Change(change.path, change.deleted, change.hidden, change.media?.takeIf { it.kind != MediaKind.UNKNOWN__ }?.toServerMedia())
+            })
+        }
         if (knowsTucked) {
             val response = apollo.query(ChangesTuckedQuery(since, Optional.present(PAGE))).execute()
             response.exception?.let { throw it }
@@ -722,7 +777,10 @@ class ServerLibrary internal constructor(
     }
 }
 
-/** One page of the change feed, from either query ([ChangesQuery], or [ChangesTuckedQuery] with each file's tucked flag). */
+/**
+ * One page of the change feed, from any of its queries ([ChangesQuery], [ChangesTuckedQuery] with each file's tucked
+ * flag, [ChangesNotesQuery] with its note too).
+ */
 private class ChangesPage(val cursor: String?, val hasMore: Boolean, val remaining: Int, val changes: List<Change>)
 
 private class Change(val path: String, val deleted: Boolean, val hidden: Boolean, val media: ServerMedia?)
@@ -783,4 +841,36 @@ private fun ChangesTuckedQuery.Media.toServerMedia() = ServerMedia(
     cameraModel = camera?.model,
     encodedSha256 = encodedFrom?.sha256,
     isTucked = tucked,
+)
+
+// The same as ChangesTuckedQuery's, with the note.
+private fun ChangesNotesQuery.Media.toServerMedia() = ServerMedia(
+    sha256 = sha256,
+    isVideo = kind == MediaKind.VIDEO,
+    isAudio = kind == MediaKind.AUDIO,
+    isCall = call != null,
+    callContact = call?.contact,
+    callNumber = call?.number,
+    fileName = fileName,
+    mimeType = mimeType,
+    size = size,
+    takenAt = takenAt,
+    width = width,
+    height = height,
+    durationMillis = durationMs,
+    latitude = location?.lat,
+    longitude = location?.lon,
+    source = source,
+    uploadedAt = uploadedAt,
+    nudity = nudity,
+    isPrivate = private,
+    aesthetic = aesthetic,
+    uploadedBy = uploadedBy,
+    screenshotApp = screenshotApp,
+    cameraMake = camera?.make,
+    cameraModel = camera?.model,
+    encodedSha256 = encodedFrom?.sha256,
+    isTucked = tucked,
+    note = note,
+    noteVersion = noteVersion,
 )
