@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -71,10 +72,11 @@ internal fun MediaTile(
         if (item.type == MediaType.VIDEO) {
             DurationChip(item.durationMillis, Modifier.align(Alignment.TopEnd).padding(5.dp))
         }
-        if (selected != null) {
-            if (selected) Box(Modifier.fillMaxSize().border(3.dp, LibraryColors.PhotoText))
-            SelectionCheck(selected, Modifier.align(Alignment.TopStart).padding(7.dp))
-        } else {
+        // Picked: an outline fades in around it (and the check springs in), both leaving with picking.
+        val outline by animateFloatAsState(if (selected == true) 1f else 0f, motion(), label = "picked outline")
+        if (outline > 0f) Box(Modifier.fillMaxSize().border((3 * outline).dp, LibraryColors.PhotoText.copy(alpha = outline)))
+        PickMark(selected, Modifier.align(Alignment.TopStart).padding(7.dp)) { SelectionCheck(it) }
+        if (selected == null) {
             BackupBadge(
                 item.backup,
                 badgeSize,
@@ -88,15 +90,7 @@ internal fun MediaTile(
 
 @Composable
 internal fun SelectionCheck(selected: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(24.dp)
-            .background(if (selected) LibraryColors.Accent else LibraryColors.BadgeScrim, CircleShape)
-            .border(2.dp, Color.White, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (selected) Icon(LibraryIcons.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
-    }
+    CheckCircle(selected, 24.dp, 14.dp, LibraryColors.BadgeScrim, modifier)
 }
 
 /** Marks a video: a play icon, plus its length when known. */

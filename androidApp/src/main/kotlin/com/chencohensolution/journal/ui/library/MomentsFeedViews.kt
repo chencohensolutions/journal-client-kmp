@@ -279,6 +279,8 @@ internal fun LazyListScope.feedItems(
 ) {
     val picking = selection?.active == true
     items(rows, key = { it.key }, contentType = { it::class }) { row ->
+        // Rows fade in and out as photos are tucked away, revealed or brought back, and the rest slide into place.
+        Box(animatedRow()) {
         when (row) {
             is FeedRow.RecordingBar -> RecordingBar(row.moment, audio, Modifier.padding(top = 16.dp))
             is FeedRow.Sound -> when (val sound = row.sound) {
@@ -292,8 +294,9 @@ internal fun LazyListScope.feedItems(
             is FeedRow.StoryDay -> StorylineDay(row) { actions.toggleTucked(listOf(row.day)) }
             is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
                 val note = notes[row.item.id]
+                val picked = if (picking) row.item.id in selection!!.keys else null
                 PhotoTitle(note?.title)
-                Box {
+                Box(Modifier.pickedInset(picked)) {
                     FullWidthPhoto(
                         row.item,
                         video,
@@ -302,7 +305,7 @@ internal fun LazyListScope.feedItems(
                             onLongClick = { if (selection != null) selection.press(row.item.id, row.item.id) else actions.itemMenu(row.item) },
                             onClick = { if (picking) selection?.toggle(row.item.id) else actions.openStoryline(row.item) }),
                     )
-                    if (picking) SelectMark(row.item.id in selection!!.keys, Modifier.align(Alignment.TopStart).padding(10.dp))
+                    PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
                 }
                 PhotoNoteText(note?.caption)
             }
@@ -310,8 +313,9 @@ internal fun LazyListScope.feedItems(
             is FeedRow.Label -> MomentLabel(row)
             is FeedRow.Photo -> when (val block = row.block) {
                 is FeedBlock.Single -> Column(Modifier.padding(bottom = TILE_GAP)) {
+                    val picked = if (picking) block.key in selection!!.keys else null
                     PhotoTitle(notes[block.item.id]?.title)
-                    Box {
+                    Box(Modifier.pickedInset(picked)) {
                         FullWidthPhoto(
                             block.item,
                             video,
@@ -335,10 +339,7 @@ internal fun LazyListScope.feedItems(
                                 },
                             ),
                         )
-                        if (picking) SelectMark(
-                            block.key in selection!!.keys,
-                            Modifier.align(Alignment.TopStart).padding(10.dp)
-                        )
+                        PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
                         row.recording?.takeIf { !picking }?.let { recording ->
                             RecordingOffset(block.item, recording, Modifier.align(Alignment.TopStart).padding(10.dp))
                         }
@@ -362,6 +363,7 @@ internal fun LazyListScope.feedItems(
                     },
                 ) { if (picking) selection!!.toggle(block.key) else actions.openItem(row.section, it) }
             }
+        }
         }
     }
 }
@@ -414,7 +416,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (section.tucked > 0) TuckedPill(section.tucked, section.tuckedShown, { actions.toggleTucked(section.days) })
+            TuckedPillSlot(section.tucked, section.tuckedShown, { actions.toggleTucked(section.days) })
             (shownHere + section.hidden.keys).sorted().forEach { source ->
                 when {
                     source in shownHere -> HiddenChip(
@@ -560,7 +562,7 @@ private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit) {
         )
         Box(Modifier.weight(1f).height(1.dp).background(line))
     }
-    if (row.tucked > 0) TuckedPill(row.tucked, row.revealed, onTucked)
+    TuckedPillSlot(row.tucked, row.revealed, onTucked)
     }
 }
 
@@ -812,7 +814,7 @@ private fun SimilarPhotos(
     val shown = notes[block.items[pager.currentPage.coerceIn(block.items.indices)].id]
     Column(modifier) {
         PhotoTitle(shown?.title)
-        Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).background(LibraryColors.Raised)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(block.items.first().ratio).pickedInset(selected).background(LibraryColors.Raised)) {
             // The photos beside the one shown are ready before a swipe; one only on the server is fetched only once it
             // is next to the one shown (the pager's own look-ahead gets an empty page instead), not the whole set.
             HorizontalPager(
@@ -864,7 +866,7 @@ private fun SimilarPhotos(
                     )
                 }
             }
-            if (selected != null) SelectMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
+            PickMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
         }
         PhotoNoteText(shown?.caption)
     }

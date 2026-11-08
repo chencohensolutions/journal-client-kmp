@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -676,12 +677,18 @@ private fun <T> ExplorePageLayout(
             if (sort == PageSort.BEST) photoGrid(bestFirst(pagePhotos), onOpenShown) else feedItems(rows, actions, landing, notes = stories.notes, selection = selection)
         }
         PageBack(onBack)
-        if (selection.active) {
+        // Slides up as picking starts, down as it ends.
+        AnimatedVisibility(
+            selection.active,
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
+            enter = barIn,
+            exit = barOut,
+            label = "picking bar",
+        ) {
             PickingBar(
                 picked = rows.picked(selection),
                 onCancel = selection::clear,
                 onDone = { _, _ -> selection.clear() },
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
             )
         }
     }

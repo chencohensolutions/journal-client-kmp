@@ -65,7 +65,9 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   (`SearchController.madePrivate`), not after the sync that brings the change to the library. Offline it
   says so and keeps the picks. Back, Cancel or ✕ stop picking. Since Nov 8, 2026 (Android) the bar is Moments'
   picking bar, with **Tuck away** too (no confirmation; on a server with `serverInfo.tuckedAway`): tucked photos leave
-  the results at once (`SearchController.madeTucked`).
+  the results at once (`SearchController.madeTucked`). Motion (Android, Nov 8, 2026): the picking bar and the field
+  trade places with a slide and fade, results that leave fade out as the rest slide up, and a picked result's outline
+  fades in as its check springs in.
 - **Tucked away** (Nov 8, 2026): search never shows what is [tucked away](moments.md#tucked-away-nov-8-2026): the
   server leaves it out, the app drops what the library knows as tucked from its results, and On this phone's search
   skips it (`shownFiles`).

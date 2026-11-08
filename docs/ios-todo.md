@@ -53,6 +53,12 @@ Still missing on iOS:
   `tucked_tuck_away`, `tucked_bring_back`, `tucked_bringing_back`, plurals `tucked_pill`, `tucked_viewer_body`,
   `picking_write`, `picking_edit`, `picking_take_out` (Hebrew: מוצנע, הצנעה, החזרה, "%d מוצנעים"). Left to decide on
   iOS: whether the long press still lifts the photo (the context menu's preview) before picking.
+  5. **Motion** (Android, Nov 8, 2026; `PickingMotion.kt`, see Motion in moments.md): ~250 ms, standard easing. Rows
+     leaving or coming back fade while the rest move (`withAnimation` around the state change, `.transition(.opacity)`
+     on rows with stable `id`s); the pill's fill/eye/count cross-fade (`.contentTransition(.numericText())` for the
+     count); the picking bar slides up + fades over the tabs (`.transition(.move(edge: .bottom).combined(with:
+     .opacity))`), its extras grow in and out; a picked photo scales to 0.92 with 14pt corners and its check springs in
+     (`.spring`). Honour Reduce Motion.
 
 - **Video thumbnails from the very first frame, and Make video thumbnails on this phone** (Android Nov 8, 2026;
   [settings.md](screens/settings.md), Image quality). Shared logic is done: server-only videos already ask for

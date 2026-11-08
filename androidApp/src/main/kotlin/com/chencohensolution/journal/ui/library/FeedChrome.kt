@@ -147,18 +147,10 @@ internal fun FilterBarChip(
     }
 }
 
-/** While picking: a filled check when picked, an empty ring when not. */
+/** While picking: a filled check when picked, an empty ring when not; the check springs in and out. */
 @Composable
 internal fun SelectMark(selected: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(28.dp)
-            .background(if (selected) LibraryColors.Accent else Color.Black.copy(alpha = 0.25f), CircleShape)
-            .border(2.dp, Color.White, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (selected) Icon(LibraryIcons.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-    }
+    CheckCircle(selected, 28.dp, 16.dp, Color.Black.copy(alpha = 0.25f), modifier)
 }
 
 /** Towns shown in a row's heading; a long day shows where it started. */

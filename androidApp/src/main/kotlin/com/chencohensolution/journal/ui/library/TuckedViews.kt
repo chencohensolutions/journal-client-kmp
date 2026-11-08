@@ -2,6 +2,17 @@ package com.chencohensolution.journal.ui.library
 
 import android.app.KeyguardManager
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,27 +109,47 @@ internal fun rememberTuckedLock(): (then: () -> Unit) -> Unit {
     }
 }
 
-/** In a day's divider or heading: "3 tucked away", outlined; filled while they show. */
+/**
+ * Where a day's [TuckedPill] goes: it grows in when the day gets tucked photos and shrinks away when it has none,
+ * keeping its last count while it leaves.
+ */
+@Composable
+internal fun TuckedPillSlot(count: Int, revealed: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val last = remember { intArrayOf(count) }
+    if (count > 0) last[0] = count
+    AnimatedVisibility(count > 0, modifier, enter = growIn, exit = shrinkOut, label = "tucked pill") {
+        TuckedPill(last[0], revealed, onClick)
+    }
+}
+
+/**
+ * In a day's divider or heading: "3 tucked away", outlined; filled while they show. The fill, the eye and the count
+ * cross-fade as it changes.
+ */
 @Composable
 internal fun TuckedPill(count: Int, revealed: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val color = if (revealed) LibraryColors.OnInverse else LibraryColors.Muted
+    val color by animateColorAsState(if (revealed) LibraryColors.OnInverse else LibraryColors.Muted, motion(), label = "pill text")
+    val fill by animateColorAsState(if (revealed) LibraryColors.Inverse else LibraryColors.Inverse.copy(alpha = 0f), motion(), label = "pill fill")
+    val edge by animateColorAsState(
+        if (revealed) LibraryColors.Inverse.copy(alpha = 0f) else LibraryColors.Muted.copy(alpha = 0.5f), motion(), label = "pill edge",
+    )
     Row(
         modifier
             .clip(RoundedCornerShape(50))
-            .then(
-                if (revealed) {
-                    Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50))
-                } else {
-                    Modifier.border(1.dp, LibraryColors.Muted.copy(alpha = 0.5f), RoundedCornerShape(50))
-                },
-            )
+            .background(fill, RoundedCornerShape(50))
+            .border(1.dp, edge, RoundedCornerShape(50))
             .clickable(role = Role.Button, onClick = onClick)
+            .animateContentSize(motion())
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(if (revealed) LibraryIcons.Eye else LibraryIcons.EyeOff, null, tint = color, modifier = Modifier.size(14.dp))
-        Text(pluralStringResource(R.plurals.tucked_pill, count, count), color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Crossfade(revealed, animationSpec = motion(), label = "pill eye") { shown ->
+            Icon(if (shown) LibraryIcons.Eye else LibraryIcons.EyeOff, null, tint = color, modifier = Modifier.size(14.dp))
+        }
+        AnimatedContent(count, transitionSpec = { countChange(targetState > initialState) }, label = "pill count") { n ->
+            Text(pluralStringResource(R.plurals.tucked_pill, n, n), color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
     }
 }
 
@@ -163,6 +194,14 @@ internal fun PickingBar(
     /** Search never shows tucked photos, so it never offers Bring back. */
     canBringBack: Boolean = true,
 ) {
+    // Picking ends before the bar has slid away: it keeps showing what was picked, and its extras, while it leaves.
+    val held = remember { arrayOf<Any>(picked, extras) }
+    if (picked.isNotEmpty()) {
+        held[0] = picked
+        held[1] = extras
+    }
+    @Suppress("UNCHECKED_CAST", "NAME_SHADOWING") val picked = held[0] as List<MediaItem>
+    @Suppress("NAME_SHADOWING") val extras = held[1] as PickingExtras
     val tucked = LocalTucked.current
     val lock = rememberTuckedLock()
     val scope = rememberCoroutineScope()
@@ -190,12 +229,15 @@ internal fun PickingBar(
             extras.merge?.let { add(R.string.feed_merge to it) }
             extras.takeOut?.let { add(R.string.picking_take_out to it) }
         }
-        if (extraButtons.isNotEmpty()) {
+        // Write · Crop · Tag (or Merge) grow in and out as the picks change, and cross-fade between them.
+        val lastExtras = remember { arrayOf(extraButtons) }
+        if (extraButtons.isNotEmpty()) lastExtras[0] = extraButtons
+        AnimatedVisibility(extraButtons.isNotEmpty(), enter = growIn + scaleIn(motion(), initialScale = 0.9f), exit = shrinkOut + scaleOut(motion(), targetScale = 0.9f), label = "picking extras") {
             Row(
-                Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(4.dp),
+                Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(4.dp).animateContentSize(motion()),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                extraButtons.forEach { (label, action) ->
+                lastExtras[0].forEach { (label, action) ->
                     TextButton(onClick = action, enabled = busy == null) {
                         Text(stringResource(label), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
@@ -208,23 +250,32 @@ internal fun PickingBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnInverse) }
-            Text(
-                pluralStringResource(R.plurals.feed_selected, picked.size, picked.size),
-                color = LibraryColors.OnInverseMuted,
-                fontSize = 14.sp,
-                maxLines = 1,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
+            // The count rolls up as photos are picked, down as they are let go.
+            AnimatedContent(picked.size, transitionSpec = { countChange(targetState > initialState) }, label = "picked count") { n ->
+                Text(
+                    pluralStringResource(R.plurals.feed_selected, n, n),
+                    color = LibraryColors.OnInverseMuted,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
             BarButton(stringResource(R.string.library_private_mark), busy == "private", enabled = picked.isNotEmpty() && busy == null, accent = false) {
                 confirmingPrivate = true
             }
-            if (bringBack) {
-                BarButton(stringResource(R.string.tucked_bring_back), busy == "back", enabled = busy == null) {
-                    lock { send("back", { tucked.setTucked(picked, false) }, false) }
-                }
-            } else if (tucked.canTuck) {
-                BarButton(stringResource(R.string.tucked_tuck_away), busy == "tuck", enabled = picked.isNotEmpty() && busy == null) {
-                    send("tuck", { tucked.setTucked(picked, true) }, true)
+            // Tuck away turns into Bring back (and back) as tucked and untucked photos are picked.
+            AnimatedContent(
+                if (bringBack) "back" else if (tucked.canTuck) "tuck" else "",
+                transitionSpec = { (fadeIn(motion()) togetherWith fadeOut(motion())).using(SizeTransform(clip = false) { _, _ -> motion() }) },
+                label = "tuck button",
+            ) { button ->
+                when (button) {
+                    "back" -> BarButton(stringResource(R.string.tucked_bring_back), busy == "back", enabled = busy == null) {
+                        lock { send("back", { tucked.setTucked(picked, false) }, false) }
+                    }
+                    "tuck" -> BarButton(stringResource(R.string.tucked_tuck_away), busy == "tuck", enabled = picked.isNotEmpty() && busy == null) {
+                        send("tuck", { tucked.setTucked(picked, true) }, true)
+                    }
                 }
             }
         }
