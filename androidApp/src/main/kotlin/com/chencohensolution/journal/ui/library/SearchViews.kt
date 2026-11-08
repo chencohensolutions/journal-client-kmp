@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
@@ -36,6 +37,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -115,6 +118,7 @@ internal class SearchActions(
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SearchContent(
     search: SearchState,
@@ -127,7 +131,9 @@ internal fun SearchContent(
     /** The sets picked, by their first photo's id; a tap picks while any is. */
     selection: FeedSelection = FeedSelection(),
 ) {
-    val list = rememberLazyListState()
+    // Rows about two screens ahead are composed in spare time between frames, so their pictures are loading before
+    // they scroll into view.
+    val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = SEARCH_AHEAD, behind = SEARCH_BEHIND) })
     list.LandOn(landing, search.sets.size) { id -> search.sets.indexOfFirst { set -> set.any { it.id == id } } }
     // The next page once the last rows come into view: a few rows ahead, so it is usually there by the end.
     val currentSearch by rememberUpdatedState(search)
@@ -139,6 +145,10 @@ internal fun SearchContent(
             }
     }
     LaunchedEffect(Unit) { currentActions.prepare() }
+    // As in Moments: sharp photos decode once the list slows down; until then each shows its quick image, loaded further
+    // ahead of the scroll (a set's second photo is a swipe away).
+    val scrollSettled = rememberScrollSettled(list)
+    PrefetchFirstImages(list, search.sets, { it.first().id }) { set -> set.take(2) }
     val hiding = rowsHiding(remember(search.sets) { search.sets.map { it.first().id } })
     LazyColumn(state = list, contentPadding = contentPadding) {
         if (search.people.isNotEmpty()) item(key = "people-chips") { PersonChips(search.people, actions.removePerson) }
@@ -194,10 +204,12 @@ internal fun SearchContent(
                 val pick = { selection.toggle(key) }
                 // Results made private or tucked away fade out, and the rest slide up into their place.
                 Box(animatedRow(hiding)) {
-                    if (set.size == 1) {
-                        FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
-                    } else {
-                        FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
+                    CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
+                        if (set.size == 1) {
+                            FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
+                        } else {
+                            FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
+                        }
                     }
                 }
             }
@@ -209,6 +221,10 @@ internal fun SearchContent(
         }
     }
 }
+
+/** How far past the screen [SearchContent] composes rows ahead of the scroll, and keeps them behind it. */
+private val SEARCH_AHEAD = 1600.dp
+private val SEARCH_BEHIND = 400.dp
 
 /** "36 photos, best first", or "Nothing found", and how far the server has read the library while it still is. */
 @Composable

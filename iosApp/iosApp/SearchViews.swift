@@ -152,7 +152,10 @@ struct SearchResultsView: View {
                     }
                     .id(key)
                     // The next page once the last rows come into view: a few ahead, so it is usually there by the end.
-                    .onAppear { if index >= loadFrom && search.canLoadMore && !search.loadingMore { actions.loadMore() } }
+                    .onAppear {
+                        if index >= loadFrom && search.canLoadMore && !search.loadingMore { actions.loadMore() }
+                        SearchPrefetch.shared.ahead(of: index, in: search.sets, width: width)
+                    }
                 }
                 if search.loadingMore {
                     ProgressView().tint(LibraryColors.muted).frame(maxWidth: .infinity).padding(24)
@@ -324,6 +327,61 @@ private struct FoundSet: View {
         .padding(.bottom, 14)
         .onChange(of: viewerShowing) { _, showing in
             if let id = showing?.itemId, id != current, items.contains(where: { $0.id == id }) { current = id }
+        }
+    }
+}
+
+/// Loads the pictures of the rows after the one that just came into view, so they are there when they scroll in: the
+/// sharp tiles of the next `sharpAhead` rows (a set's first two photos) at exactly the size their tiles ask for, and the
+/// quick images of photos only on the server up to `firstAhead` rows on. One at a time, in order; a row coming into
+/// view replaces what is still waiting, and the one under way finishes, to be there next time.
+@MainActor
+private final class SearchPrefetch {
+    static let shared = SearchPrefetch()
+
+    private let sharpAhead = 3
+    private let firstAhead = 12
+    /// What was asked for already, so a row seen again asks for nothing.
+    private var asked: Set<String> = []
+    private var work: Task<Void, Never>?
+
+    func ahead(of index: Int, in sets: [[MediaItem]], width: CGFloat) {
+        guard !UiLab.isOn, width > 0 else { return }
+        let last = min(index + firstAhead, sets.count - 1)
+        guard index < last else { return }
+        if asked.count > 5000 { asked.removeAll() }
+        var jobs: [(key: String, load: () async -> Void)] = []
+        for row in (index + 1)...last {
+            let set = sets[row]
+            let size = CGSize(width: width, height: width / foundShape(set[0]))
+            for item in set.prefix(2) {
+                if row <= index + sharpAhead {
+                    let key = "\(item.id)@\(Int(size.width))x\(Int(size.height))"
+                    if asked.contains(key) { continue }
+                    if item.isOnDevice {
+                        jobs.append((key, { PhotoLibraryImages.shared.prefetch(ids: [item.id], pointSize: size) }))
+                    } else {
+                        jobs.append((key, { _ = await ServerImages.shared.tile(item, pixels: PhotoLibraryImages.pixels(size)) }))
+                    }
+                } else if !item.isOnDevice && !item.hasOriginalHere {
+                    let key = "\(item.id)@first"
+                    if asked.contains(key) { continue }
+                    jobs.append((key, { _ = await ServerImages.shared.first(item, windowPixels: Int(windowPixels)) }))
+                }
+            }
+        }
+        guard !jobs.isEmpty else { return }
+        work?.cancel()
+        let previous = work
+        work = Task {
+            await previous?.value
+            for job in jobs {
+                if Task.isCancelled { return }
+                guard asked.insert(job.key).inserted else { continue }
+                // Its own task, so cancelling this one doesn't stop a picture halfway.
+                let load = job.load
+                await Task { await load() }.value
+            }
         }
     }
 }
