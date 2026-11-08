@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# ML Kit's code scanner (the QR codes at enrollment and for swaps) finds its component registrars by name and makes
+# them by reflection: without their constructors it logs NoSuchMethodException and the scanner doesn't start.
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
+-keep class com.google.mlkit.**.*Registrar { <init>(); }
