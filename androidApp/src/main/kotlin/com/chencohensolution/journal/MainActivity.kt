@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         people = viewModel.people,
                         findings = viewModel.findings,
                         localIndexes = viewModel.localIndexes,
+                        models = viewModel.models,
                         serverIndexing = viewModel.serverIndexing,
                         serverCopies = viewModel.serverCopies,
                         swaps = viewModel.swaps,

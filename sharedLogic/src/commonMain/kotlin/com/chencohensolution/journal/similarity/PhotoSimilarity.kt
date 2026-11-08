@@ -67,6 +67,7 @@ class PhotoSimilarity internal constructor(
 
     init {
         scope.launch { known() }
+        scope.launch { analyzer.modelArrived.collect { modelHere() } }
     }
 
     /** The photos to fingerprint, most wanted first; replaces the previous request. Known ones are skipped. */
@@ -166,10 +167,15 @@ class PhotoSimilarity internal constructor(
                 preparedFailed = TimeSource.Monotonic.markNow()
                 return@launch
             }
-            preparedFailed = null
-            again = true
-            if (worker?.isActive != true) worker = scope.launch { work() }
+            modelHere()
         }
+    }
+
+    /** The model is here now: the photos read without it are read again, the newest first. */
+    private fun modelHere() {
+        preparedFailed = null
+        again = true
+        if (worker?.isActive != true) worker = scope.launch { work() }
     }
 
     private fun publish(known: Map<String, PhotoFingerprint>) {

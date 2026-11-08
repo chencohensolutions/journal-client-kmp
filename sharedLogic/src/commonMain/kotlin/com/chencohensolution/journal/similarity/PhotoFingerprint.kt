@@ -46,6 +46,9 @@ internal interface PhotoAnalyzer {
 
     /** Gets the model when [embeds] is false (a download from the server); true once it embeds. */
     suspend fun prepare(): Boolean = true
+
+    /** Emits when the model arrives some other way (Settings' Download): photos read without it are read again. */
+    val modelArrived: kotlinx.coroutines.flow.Flow<Unit> get() = kotlinx.coroutines.flow.emptyFlow()
 }
 
 /**

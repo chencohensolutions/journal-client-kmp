@@ -41,6 +41,9 @@ internal sealed interface Route {
     /** Settings › Search. */
     data object SearchSettings : Route
 
+    /** Settings › Models on this phone. */
+    data object Models : Route
+
     /** Settings › Backup. */
     data object BackupSettings : Route
 
@@ -104,6 +107,7 @@ internal sealed interface Route {
         Cameras -> "cameras"
         SoundFolders -> "sound-folders"
         SearchSettings -> "search-settings"
+        Models -> "models"
         BackupSettings -> "backup-settings"
         Copies -> "copies"
         Swap -> "swap"
@@ -138,6 +142,7 @@ internal sealed interface Route {
                 "cameras" -> Cameras
                 "sound-folders" -> SoundFolders
                 "search-settings" -> SearchSettings
+                "models" -> Models
                 "backup-settings" -> BackupSettings
                 "copies" -> Copies
                 "swap" -> Swap

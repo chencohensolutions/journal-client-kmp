@@ -23,6 +23,20 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Settings › Models on this phone** (Android Nov 8, 2026; [settings.md](screens/settings.md#models-on-this-phone),
+  round `ux/settings/2026-11-08`). Shared logic is done: `PhoneModels` (`local/PhoneModels.kt`) with `state` /
+  `currentState` / `observe` (`PhoneModelsState`: `models` as `PhoneModelRow`s with `kind`, `status`, `bytes`,
+  `downloadedBytes`, `downloadingBytes`, `withBytes`; `wifiOnly`, `offline`, `freeBytes`, `here`, `missing`,
+  `missingBytes`, `keptBytes`) and `refresh()`, `download(kind, force)`, `pause(kind)`, `delete(kind)`,
+  `downloadAll()`, `setWifiOnly(on)`, `close()`. On iOS the photo model doesn't exist (Vision's feature print is
+  built in), so build it as `PhoneModels(photos = null, indexes = localIndexes, searchOffered = <serverInfo.localIndexes as a StateFlow>)`:
+  the page lists Search by words alone. iOS needs: an `IosJournal` factory for that, a `ModelsView` mirroring
+  Android's `ModelsScreen.kt` (intro, the offline line, a row per model with its status and one button, Download
+  all, Only on Wi-Fi, the space line), its row in Settings' Search card (`ModelsRow`: "1 of 2 downloaded" /
+  "Downloading…", shown when `models` isn't empty), and the `models_*` strings (English and Hebrew in Android's
+  `strings.xml`) in `Localizable.xcstrings`. Left to decide: whether a page with one model is worth a row on iOS, or
+  Search by words' model is enough in On device search there.
+
 - **Certificate renewal** (Android Oct 30, 2026; [design.md](design.md), "Certificate renewal"). Shared logic is done:
   `CertificateRenewal` (`enrollment/CertificateRenewal.kt`) with `renewIfDue(onDone)`, `expiresAt()` and `close()`.
   iOS needs: an `IosJournal` factory like Android's `createCertificateRenewal` (in `AndroidJournal.kt`: settings, the

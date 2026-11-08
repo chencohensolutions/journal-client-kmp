@@ -13,6 +13,10 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.imageembedder.ImageEmbedder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -45,11 +49,20 @@ internal class AndroidPhotoAnalyzer(context: Context, private val model: PhoneMo
         model.fetch() != null && embedder() != null
     }
 
+    override val modelArrived: Flow<Unit> = model.state.map { it.here }.distinctUntilChanged().filter { it }.map {}
+
     @Synchronized
     private fun embedder(): ImageEmbedder? {
+        val file = model.path()
+        if (file == null) {
+            // Deleted in Settings: let it go, and read by dHash alone until it is downloaded again.
+            embedder?.close()
+            embedder = null
+            loadFailed = false
+            return null
+        }
         embedder?.let { return it }
         if (loadFailed) return null
-        val file = model.path() ?: return null
         return try {
             ImageEmbedder.createFromOptions(
                 this.context,

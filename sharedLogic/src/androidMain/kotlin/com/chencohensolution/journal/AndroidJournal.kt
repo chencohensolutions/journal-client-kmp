@@ -49,6 +49,7 @@ import android.os.StatFs
 import com.chencohensolution.journal.local.AndroidTextEncoding
 import com.chencohensolution.journal.local.HttpLocalIndexApi
 import com.chencohensolution.journal.local.PhoneModel
+import com.chencohensolution.journal.local.PhoneModels
 import com.chencohensolution.journal.local.LocalIndexes
 import com.chencohensolution.journal.local.LocalSearchApi
 import com.chencohensolution.journal.local.PhoneFallbackFindingsApi
@@ -174,15 +175,43 @@ fun localIndexes(context: Context): LocalIndexes =
             api = HttpLocalIndexApi(serverHttp(app)),
             fileSystem = FileSystem.SYSTEM,
             directory = app.filesDir.toOkioPath() / "local",
-            onWifi = {
-                val connectivity = app.getSystemService(ConnectivityManager::class.java)
-                connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
-            },
+            onWifi = { onWifi(app) },
             freeSpace = { runCatching { StatFs(app.filesDir.path).availableBytes }.getOrDefault(0) },
             now = System::currentTimeMillis,
             encoding = AndroidTextEncoding(),
         )
     }.also { localIndexes = it }
+
+/** Whether the phone is on Wi-Fi (or another network that costs nothing). */
+private fun onWifi(context: Context): Boolean {
+    val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    return connectivity?.getNetworkCapabilities(connectivity.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true
+}
+
+private var photoModel: PhoneModel? = null
+
+/**
+ * The photo embedder's model ([AndroidPhotoAnalyzer]), downloaded from the server into `files/models` on first use
+ * or from Settings › Models on this phone; it follows On device search's Only on Wi-Fi. One per process.
+ */
+@Synchronized
+fun photoModel(context: Context): PhoneModel =
+    photoModel ?: run {
+        val app = context.applicationContext
+        val settings = JournalSettings(SharedPreferencesStore(app))
+        PhoneModel(
+            AndroidPhotoAnalyzer.MODEL_FILE,
+            HttpLocalIndexApi(serverHttp(app)),
+            FileSystem.SYSTEM,
+            app.filesDir.toOkioPath() / "models",
+            wifiOnly = { settings.phoneIndexesWifiOnly },
+            onWifi = { onWifi(app) },
+        )
+    }.also { photoModel = it }
+
+/** Settings › Models on this phone: the photo model and Search by words' model, from where each is downloaded. */
+fun phoneModels(context: Context, searchOffered: StateFlow<Boolean>): PhoneModels =
+    PhoneModels(photoModel(context), localIndexes(context), searchOffered)
 
 private var serverIndexing: ServerIndexing? = null
 
@@ -446,16 +475,7 @@ fun createStoriesController(context: Context, library: LibraryController, settin
         settings = settings,
         newId = StoryIds(JournalSettings(SharedPreferencesStore(context)), System::currentTimeMillis)::next,
         similarity = PhotoSimilarity(
-            AndroidPhotoAnalyzer(
-                context,
-                // Downloaded from the server on first use (`phoneModels`), into files/models.
-                PhoneModel(
-                    AndroidPhotoAnalyzer.MODEL_FILE,
-                    HttpLocalIndexApi(serverHttp(context.applicationContext)),
-                    FileSystem.SYSTEM,
-                    context.filesDir.toOkioPath() / "models",
-                ),
-            ),
+            AndroidPhotoAnalyzer(context, photoModel(context)),
             FingerprintCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "similarity"),
         ),
         places = PhotoPlaces(AndroidPlaceReader(context), PlaceCache(FileSystem.SYSTEM, context.cacheDir.toOkioPath() / "places")),

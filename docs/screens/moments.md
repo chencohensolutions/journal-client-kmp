@@ -236,7 +236,9 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
     the model in the app: it downloads it from the user's server on first use (`phoneModels`,
     `/models/phone/mobilenet_v3_large.tflite`, with Range and its sha256 checked) into `files/models`. Until it is
     there (the server doesn't have it yet, or can't be reached), photos are read by dHash alone and marked so; once it
-    arrives they are read again for their embeddings. A failed download is tried again 10 minutes later at the
+    arrives they are read again for their embeddings (also when it is downloaded from Settings ›
+    [Models on this phone](settings.md#models-on-this-phone), where it can be deleted too). It follows Only on Wi-Fi,
+    On device search's setting. A failed download is tried again 10 minutes later at the
     earliest, on the next request. Read from a 512 px copy, one photo at a time in the background, the feed's newest
     first. Fingerprints are cached per device and model in the caches folder (`similarity/fingerprints.json`), never
     synced: the two platforms' embeddings can't be compared. Videos aren't fingerprinted. Code in
