@@ -49,6 +49,11 @@ data class ServerFeatures(
     val keepsJpegAsJxl: Boolean = false,
     /** A phone can see how its user's copies on other disks are doing and start a pass (Settings › Backup). */
     val copies: Boolean = false,
+    /**
+     * A video's preview can be its very first frame, and the server cuts that frame out as a one-frame video for a
+     * phone that decodes video thumbnails itself (Settings › Storage on this phone).
+     */
+    val videoFrames: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */

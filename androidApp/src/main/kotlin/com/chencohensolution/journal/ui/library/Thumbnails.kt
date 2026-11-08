@@ -2,11 +2,12 @@ package com.chencohensolution.journal.ui.library
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.awxkee.jxlcoder.JxlCoder
 import android.graphics.ImageDecoder
-import android.media.ThumbnailUtils
+import android.media.MediaMetadataRetriever
 import java.io.File
 import android.net.Uri
 import android.provider.MediaStore
@@ -222,7 +223,7 @@ internal suspend fun loadFirstImage(previews: ServerPreviews?, item: MediaItem, 
     // The photo's shape at a part of the window's width: what a full-width photo is drawn at, scaled down.
     val width = (windowWidth * options.firstWidthPercent / 100).coerceAtLeast(1)
     val height = if (item.width > 0 && item.height > 0) ceil(width.toFloat() * item.height / item.width).toInt() else width
-    val bytes = previews.firstImage(sha, width, height) ?: return null
+    val bytes = previews.firstImage(sha, width, height, isVideo = item.type == MediaType.VIDEO) ?: return null
     return withContext(firstLoads) { decodeFirstImage(bytes, width, height) }?.also { thumbnailCache.put(key, it) }
 }
 
@@ -299,7 +300,8 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
     LocalThumbnailSource.current?.let { source ->
         return remember(source, item, width, height) { source.thumbnail(item, maxOf(width, height)) }
     }
-    val resolver = LocalContext.current.contentResolver
+    val context = LocalContext.current
+    val resolver = context.contentResolver
     val previews = LocalServerPreviews.current
     val key = "${item.id}@${width}x$height"
     val bitmap by produceState(thumbnailCache.get(key), key) {
@@ -315,7 +317,7 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
                 serverBitmap(previews, item, w, h) { ow, oh -> coverDimensions(ow, oh, width, height) }
             } else if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
                 val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
-                runCatching { resolver.loadThumbnail(item.contentUri(), size, null) }.getOrNull()?.let { loaded ->
+                deviceThumbnail(context, item, size)?.let { loaded ->
                     coverDimensions(loaded.width, loaded.height, width, height)
                         ?.let { (w, h) -> Bitmap.createScaledBitmap(loaded, w, h, true) }
                         ?: loaded
@@ -477,7 +479,8 @@ internal fun rememberFace(face: Face, sizePx: Int): ImageBitmap? {
 @Composable
 internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
     LocalThumbnailSource.current?.let { source -> return remember(source, item, sizePx) { source.thumbnail(item, sizePx) } }
-    val resolver = LocalContext.current.contentResolver
+    val context = LocalContext.current
+    val resolver = context.contentResolver
     val previews = LocalServerPreviews.current
     val key = "${item.id}@$sizePx"
     // The state outlives a change of item, so each new key replaces the value, even with null when it can't be read.
@@ -491,7 +494,7 @@ internal fun rememberThumbnail(item: MediaItem, sizePx: Int): ImageBitmap? {
             } else if (item.isJxl) {
                 withContext(fullDecodes) { decodeJxl(readDevice(resolver, item)) { w, h -> fitInside(w, h, sizePx) } }
             } else {
-                runCatching { resolver.loadThumbnail(item.contentUri(), Size(sizePx, sizePx), null) }.getOrNull()
+                deviceThumbnail(context, item, Size(sizePx, sizePx))
             }
         }?.forDrawing()?.also { thumbnailCache.put(key, it) }
     }
@@ -508,12 +511,34 @@ internal suspend fun loadImage(resolver: ContentResolver, previews: ServerPrevie
     }
 }
 
-/** An original the app downloaded and kept, decoded to the size [target] picks (null: as it is); a video's frame. */
+/**
+ * A photo or video on this phone fitted in [size]: the system's thumbnail of a photo; a video's very first frame
+ * (the system's thumbnail of a video is a frame it picks, often not the first).
+ */
+private fun deviceThumbnail(context: Context, item: MediaItem, size: Size): Bitmap? =
+    if (item.type == MediaType.VIDEO) {
+        firstVideoFrame(size.width, size.height) { it.setDataSource(context, item.contentUri()) }
+    } else {
+        runCatching { context.contentResolver.loadThumbnail(item.contentUri(), size, null) }.getOrNull()
+    }
+
+/**
+ * A video's very first frame, as a player shows it first (rotated upright), fitted in [width] × [height], decoded by
+ * the phone's own decoder (its hardware one where it has one). [open] gives the retriever the video. Null when it can't.
+ */
+internal fun firstVideoFrame(width: Int, height: Int, open: (MediaMetadataRetriever) -> Unit): Bitmap? = runCatching {
+    MediaMetadataRetriever().use { retriever ->
+        open(retriever)
+        retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST, width.coerceAtLeast(1), height.coerceAtLeast(1))
+    }
+}.getOrNull()
+
+/** An original the app downloaded and kept, decoded to the size [target] picks (null: as it is); a video's first frame. */
 private fun decodeKept(path: String, item: MediaItem, target: (Int, Int) -> Pair<Int, Int>?): Bitmap? = runCatching {
     val file = File(path)
     if (item.type == MediaType.VIDEO) {
         val size = target(item.width.coerceAtLeast(1), item.height.coerceAtLeast(1)) ?: (item.width to item.height)
-        ThumbnailUtils.createVideoThumbnail(file, Size(size.first.coerceAtLeast(1), size.second.coerceAtLeast(1)), null)
+        firstVideoFrame(size.first, size.second) { it.setDataSource(file.path) }
     } else if (item.isJxl || file.extension.equals("jxl", ignoreCase = true)) {
         decodeJxl(file.readBytes(), target)
     } else {

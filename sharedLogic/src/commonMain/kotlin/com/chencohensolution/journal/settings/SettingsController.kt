@@ -257,6 +257,9 @@ class SettingsController internal constructor(
         if (percent in 0..100) changePreviews { it.copy(firstWidthPercent = percent) }
     }
 
+    /** Video thumbnails decoded on this phone from the video's first frame, instead of the server's preview of it. */
+    fun setVideoFramesOnPhone(on: Boolean) = changePreviews { it.copy(videoFramesOnPhone = on) }
+
     private fun changePreviews(transform: (PreviewOptions) -> PreviewOptions) {
         val options = transform(_state.value.previewOptions)
         settings.previewOptions = options

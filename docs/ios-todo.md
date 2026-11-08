@@ -23,6 +23,20 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Video thumbnails from the very first frame, and Make video thumbnails on this phone** (Android Nov 8, 2026;
+  [settings.md](screens/settings.md), Image quality). Shared logic is done: server-only videos already ask for
+  `frame=first` (`ServerPreviews.tile` and `firstImage(sha, w, h, isVideo)`), and with
+  `PreviewOptions.videoFramesOnPhone` on and `ServerFeatures.videoFrames`, `tile` fetches the one-frame MP4
+  (`ServerPreviews.firstFrameVideo`, `GET /media/{sha256}/frame`) and hands its path to the `original` decoder. iOS
+  needs: (1) `ServerImages.videoFrame(url:maxSide:)` to take time `.zero` with `requestedTimeToleranceBefore` and
+  `requestedTimeToleranceAfter` set to `.zero` (now 0.5 s, which a one-frame video doesn't reach); (2) videos in
+  PhotoKit tiles from their first frame too (`PhotoLibraryImages`: `PHImageManager.requestAVAsset`, then the same
+  generator) rather than Photos' own key frame, if the owner wants that on iOS as well; (3) in Settings › Image
+  quality, last, a switch "Make video thumbnails on this phone" bound to `previewOptions.videoFramesOnPhone`, calling
+  `SettingsController.setVideoFramesOnPhone(on:)`, with the body text of Android's
+  `settings_video_frames_on_phone_body` (strings `settings_video_frames_on_phone` and `_body` in
+  `values/strings.xml` and `values-iw/strings.xml`).
+
 - **Settings › Models on this phone** (Android Nov 8, 2026; [settings.md](screens/settings.md#models-on-this-phone),
   round `ux/settings/2026-11-08`). Shared logic is done: `PhoneModels` (`local/PhoneModels.kt`) with `state` /
   `currentState` / `observe` (`PhoneModelsState`: `models` as `PhoneModelRow`s with `kind`, `status`, `bytes`,

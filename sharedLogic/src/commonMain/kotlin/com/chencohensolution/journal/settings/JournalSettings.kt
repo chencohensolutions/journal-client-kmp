@@ -221,6 +221,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 ?: PreviewFormat.HEIF,
             firstWidthPercent = store.getString(KEY_FIRST_IMAGE_WIDTH_PERCENT)?.toIntOrNull()?.takeIf { it in 0..100 }
                 ?: PreviewOptions.DEFAULT_FIRST_WIDTH_PERCENT,
+            videoFramesOnPhone = store.getString(KEY_VIDEO_FRAMES_ON_PHONE) == "true",
         )
         set(value) {
             store.putString(KEY_PREVIEWS_ENABLED, value.enabled.toString())
@@ -228,6 +229,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
             store.putString(KEY_PREVIEW_QUALITY, value.quality.name)
             store.putString(KEY_FIRST_IMAGE_FORMAT, value.firstFormat.name)
             store.putString(KEY_FIRST_IMAGE_WIDTH_PERCENT, value.firstWidthPercent.toString())
+            store.putString(KEY_VIDEO_FRAMES_ON_PHONE, value.videoFramesOnPhone.toString())
         }
 
     /** "Show private media" (Settings → Private media); off by default. */
@@ -351,6 +353,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_PREVIEW_QUALITY = "preview_quality"
         private const val KEY_FIRST_IMAGE_FORMAT = "first_image_format"
         private const val KEY_FIRST_IMAGE_WIDTH_PERCENT = "first_image_width_percent"
+        private const val KEY_VIDEO_FRAMES_ON_PHONE = "video_frames_on_phone"
         private const val KEY_SHOW_PRIVATE_MEDIA = "show_private_media"
         /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"

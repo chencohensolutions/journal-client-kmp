@@ -362,6 +362,7 @@ fun serverPreviews(context: Context): ServerPreviews =
             directory = context.cacheDir.toOkioPath() / "previews",
             maxBytes = { settings.previewCacheGigabytes.toLong() shl 30 },
             options = { settings.previewOptions },
+            videoFrames = { settings.serverFeatures?.videoFrames == true },
         )
     }.also { serverPreviews = it }
 

@@ -505,6 +505,8 @@
     <string name="explore_sheet_body">אותו הדבר ברגעים ובגילוי.</string>
     <string name="explore_sheet_whatsapp">לרוב התמונות מוואטסאפ אין מיקום, כך שממילא מעטות מהן מופיעות במפה. ההסתרה משנה בעיקר את השנים ואת התמונות בדף של עיר.</string>
     <string name="settings_first_image">תמונה מהירה בזמן גלילה</string>
+    <string name="settings_video_frames_on_phone">יצירת תמונות ממוזערות של סרטונים בטלפון</string>
+    <string name="settings_video_frames_on_phone_body">סרטונים שנמצאים רק בשרת מוצגים בפריים הראשון שלהם. כשזה מופעל, הטלפון מקבל את הפריים מתוך הסרטון עצמו ומפענח אותו בעצמו, כך שהשרת עובד פחות, אבל כל סרטון לוקח בערך 0.3 עד 2 MB במקום עשרות KB.</string>
     <string name="settings_first_image_body">תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר.</string>
     <string name="settings_first_image_size">רוחב, מתוך רוחב המסך</string>
     <string name="settings_first_image_off">ללא</string>

@@ -28,6 +28,11 @@ query ServerDiscovery {
   }
 }
 
+# Asked on its own, like discovery: a server from before it doesn't know the field.
+query ServerVideoFrames {
+  serverInfo { videoFrames }
+}
+
 query LocalIndexes {
   localIndexes {
     name
