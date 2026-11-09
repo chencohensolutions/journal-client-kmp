@@ -1,6 +1,5 @@
 package com.chencohensolution.journal.ui.library
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +43,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -123,7 +121,8 @@ internal fun MediaItem.shownRatio(crop: CropRect?): Float = crop?.takeIf { durat
 @Composable
 internal fun SetThumb(item: MediaItem, modifier: Modifier = Modifier) {
     Box(modifier.clipToBounds().background(LibraryColors.Raised)) {
-        rememberThumbnail(item, THUMB_SMALL)?.let { Image(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        // As the grids draw them: a photo only on the server from the previews kept on this phone.
+        CroppedThumbnail(item, Modifier.fillMaxSize())
     }
 }
 

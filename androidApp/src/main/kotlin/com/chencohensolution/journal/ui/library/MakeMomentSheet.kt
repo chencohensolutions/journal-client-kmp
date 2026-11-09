@@ -3,6 +3,9 @@ package com.chencohensolution.journal.ui.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +60,11 @@ internal fun MakeMomentSheet(
     val firstDay = photos.first().day
     val lastDay = photos.last().day
     PageSheet(onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // Scrolls, so Make it stays reachable while the keyboard is up.
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp).padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             Text(stringResource(R.string.make_moment_title), color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.make_moment_name)) }, singleLine = true)
             Text(stringResource(R.string.make_moment_highlights), color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
