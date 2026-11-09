@@ -58,8 +58,9 @@ android {
         applicationId = "com.chencohensolution.journal"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        // A release branch release/<version> sets both (.github/workflows/android-release.yml, docs/releases.md).
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = findProperty("versionName") as String? ?: "1.0"
         // -Pabi=arm64-v8a (scripts/android-run.sh with ABI=…) packs only that processor's native libraries: about a third of
         // the debug APK's 200 MB, for a faster install on one phone. Without it, every ABI (emulators and old phones too).
         (findProperty("abi") as String?)?.let { abis -> ndk { abiFilters += abis.split(",") } }
@@ -74,6 +75,17 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // The release key, when the build is given one (the release workflow, from the repository's secrets). Every APK
+    // published must be signed with the same key, or a phone refuses to install it over the one it has.
+    val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
+    if (releaseKeystore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(releaseKeystore)
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+        }
+    }
     buildTypes {
         // R8 and resource shrinking: an arm64 release went from 123 MB to 42 MB with the native libraries compressed.
         release {
@@ -83,6 +95,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
         }
         // Release as it runs, signed with the debug key so it installs over a debug build and keeps its data: for
         // measuring scrolling and start-up, which a debug build makes several times slower.
