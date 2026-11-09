@@ -23,6 +23,9 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Crop on and off glides** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the viewer's Show all / Show crop
+  animates the part shown between the crop and the whole photo (0.3 s, ease), with the same image. Android: the frame
+  `Animatable` in `ViewerImage` (`ViewerScreen.kt`).
 - **Viewer videos play at once, muted, and resume** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): a video
   plays as soon as it is shown, muted, with a sound button (top right) for the viewer's videos; swiped away and back,
   it goes on from where it was (positions by id while the viewer is open). Android: `VideoPage`, `ViewerVideos` in

@@ -36,6 +36,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.rememberUpdatedState
@@ -826,14 +828,24 @@ private fun ViewerImage(
     // Told again on every change: after a swipe the zoom is a new one, while the screen's size stays the same.
     var screen by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
     SideEffect { if (!screen.isEmpty()) zoom?.layout(screen, ratio, side) }
+    // The part shown: the crop, or the whole photo. Turning the crop off or on (the chip) glides between them, the same
+    // image opening out or closing in (asked Nov 9, 2026); a zoom, which drops the crop too, takes over at once.
+    val target = crop ?: WHOLE_PHOTO
+    val frame = remember { Animatable(target, CropRectConverter) }
+    val zoomed = zoom?.isZoomed == true
+    LaunchedEffect(target.x, target.y, target.w, target.h) {
+        if (zoomed) frame.snapTo(target) else frame.animateTo(target, tween(CROP_GLIDE_MILLIS, easing = FastOutSlowInEasing))
+    }
+    val shown = frame.value
+    val gliding = !zoomed && !shown.samePart(target)
     Box(
         Modifier
             .fillMaxSize()
             .onSizeChanged { screen = it.toSize() },
         contentAlignment = Alignment.Center,
     ) {
-        if (crop != null) {
-            CropBox(crop, Modifier.aspectRatio(ratio * crop.w / crop.h).shared(sharedKey)) { Pictures(ContentScale.FillBounds) }
+        if (crop != null || gliding) {
+            CropBox(shown, Modifier.aspectRatio(ratio * shown.w / shown.h).shared(sharedKey)) { Pictures(ContentScale.FillBounds) }
         } else {
             // Laid out at its zoomed size and place (not only drawn so), so closing flies to the tile from the zoomed
             // view rather than from the fitted photo.
@@ -842,6 +854,20 @@ private fun ViewerImage(
         }
     }
 }
+
+/** The whole photo as a crop, for gliding to and from one. */
+private val WHOLE_PHOTO = CropRect(0f, 0f, 1f, 1f)
+
+/** How long turning a crop off or on takes. */
+private const val CROP_GLIDE_MILLIS = 300
+
+private fun CropRect.samePart(other: CropRect) = x == other.x && y == other.y && w == other.w && h == other.h
+
+/** A crop's part as four numbers, for animating it (its shape on another screen is not animated). */
+private val CropRectConverter = androidx.compose.animation.core.TwoWayConverter<CropRect, androidx.compose.animation.core.AnimationVector4D>(
+    convertToVector = { androidx.compose.animation.core.AnimationVector4D(it.x, it.y, it.w, it.h) },
+    convertFromVector = { CropRect(it.v1, it.v2, it.v3, it.v4) },
+)
 
 /** "Cropped · Show all" over a cropped photo, or "Show crop" while the whole photo shows. */
 @Composable

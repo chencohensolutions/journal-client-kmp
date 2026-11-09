@@ -40,6 +40,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+  Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
+  in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
+  at once.
   The chip **stays on screen** over a cropped photo (not only with the bars) and toggles between the crop and the
   whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
   photo, asked for the same day.
