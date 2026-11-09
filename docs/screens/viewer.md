@@ -34,7 +34,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   without the original: "Couldn’t get the original to share." Hidden while the details panel is open; back or a tap on the photo closes the panel. The
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
-  **Cropped · Show all** at the top.
+  **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+  **Holding a finger on the photo** (0.3 s, without moving) shows the whole photo until it lets go, in a set too
+  (Nov 9, 2026, Android only; iOS not built yet).
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS).
 - **Zoom** (asked for Oct 21, 2026, reworked the same day; iOS since Oct 22, see Platform notes):

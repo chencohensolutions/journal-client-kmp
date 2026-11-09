@@ -50,7 +50,8 @@ mode](viewer.md#a-set-nov-9-2026) (`Route.Recompose`, `SetCropEditor`): the Mome
 ## In the viewer
 
 The photo fills the screen at its crop, with **Cropped · Show all** at the top; **Show all** shows the whole photo
-(kept while swiping) and **Show crop** turns it back. A crop made on a phone with another screen shape keeps its
+(kept while swiping) and **Show crop** turns it back. Holding a finger on the photo shows it whole until it lets go.
+In a set (its Moments crops) the chip and the hold work the same way. A crop made on a phone with another screen shape keeps its
 center and height (width sideways), and the other side follows this screen.
 
 ## How it's saved
