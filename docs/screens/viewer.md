@@ -43,9 +43,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
   in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
   at once.
-  The chip **stays on screen** over a cropped photo (not only with the bars) and toggles between the crop and the
-  whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
-  photo, asked for the same day.
+  The chip toggles between the crop and the whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet;
+  it replaced holding a finger on the photo). It shows and hides with the bars: a tap hides it with the rest, and it is
+  hidden while a slideshow plays (Nov 9, 2026; for a while that day it stayed on screen).
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS). Swiping moves between photos fitted to the screen (Nov 9, 2026, Android): once a photo is settled
   on, the photos on each side (5 by default; Settings › Advanced › Loading while scrolling, 0 to 10) are made ready at screen size, the way the swipes go first (a photo only on the server:

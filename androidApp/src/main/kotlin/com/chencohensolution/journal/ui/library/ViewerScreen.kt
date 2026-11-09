@@ -538,8 +538,8 @@ internal fun ViewerScreen(
         }
 
         AnimatedVisibility(
-            // Always there over a cropped photo, not only with the bars (Nov 9, 2026: a toggle instead of holding).
-            currentCrop != null && !showInfo && !playing,
+            // Over a cropped photo with the bars, and hidden with them by a tap (Nov 9, 2026: it was always there).
+            chrome && currentCrop != null && !showInfo && !playing,
             Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),

@@ -50,9 +50,9 @@ Still missing on iOS:
   plays as soon as it is shown, muted, with a sound button (top right) for the viewer's videos; swiped away and back,
   it goes on from where it was (positions by id while the viewer is open). Android: `VideoPage`, `ViewerVideos` in
   `ViewerScreen.kt`. Strings: the feed's mute/unmute.
-- **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
-  Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
-  over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Crop chip as a toggle** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
+  Show all chip toggles crop/whole (no hold-to-peek) and shows and hides with the bars (a tap hides it with the rest;
+  hidden during a slideshow); in a set it shows over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
 - **Swiping through all of Moments, and brief info** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the
   viewer opened from a Moments row swipes through every row read so far (`viewerItems`: all sections' items), calls
   `loadMoreMoments()` within 20 of the end and appends the new rows. Over the photo, with the bars: place (label, city,
