@@ -45,10 +45,10 @@ internal data class CastTv(val id: String, val name: String, val description: St
 internal object JournalCast {
     /**
      * The receiver's app id from Google's Cast console (cast.google.com/publish): it points at
-     * https://chencohensolutions.github.io/journal-client-kmp/receiver/. Empty until it is registered: then the Cast
-     * button doesn't show.
+     * https://chencohensolutions.github.io/journal-client-kmp/receiver/ (registered Nov 9, 2026). Empty: the Cast button
+     * doesn't show.
      */
-    const val APP_ID = ""
+    const val APP_ID = "95B1757E"
 
     private const val TAG = "JournalCast"
 
