@@ -33,6 +33,11 @@ Still missing on iOS:
   `PHAssetResourceManager`, JPEG XL packed from a JPEG as that JPEG, DNG as a 3840 px JPEG); in the viewer a Cast
   button and TV list, `show` with `castAhead`, the frame overlay with `TvZoom.zoomBy`/`panBy` from a pinch and a drag,
   and `CastVideoControls`' equivalent. Strings: `cast_*` in `values/strings.xml` (and `values-iw/`).
+  Learned on the TV with Android (Nov 9): the phone's server must stay reachable while the app is in the background
+  (Android needed a foreground service, `CastService`, and a Wi-Fi lock; iOS suspends background apps, so it needs a
+  background task or AV session, or casting only while the app is open), a video only on the server is downloaded
+  whole first and the TV reads that file (`VideoDownload` in `CastServer.kt`), and the Cast button shows filled in
+  while connected (`LibraryIcons.CastOn`). Nothing changes in `receiver/`.
 
 - **Viewer without gradients; feed-style floating bar; reel at the bottom** (Android Nov 9, 2026;
   [viewer.md](screens/viewer.md)): no scrims; mild text and icon shadows over the photo; the actions in a bar styled as
