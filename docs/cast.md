@@ -33,7 +33,9 @@ phone (viewer)                                   TV (Cast receiver page)
   A photo the TV can't read (DNG, other raw files) goes as a JPEG made on the phone at 3840 px.
 - **The receiver decodes**: JPEG, PNG, WebP, GIF and AVIF by the TV's browser; HEIC/HEIF with libheif-js 1.23.5 and
   JPEG XL with jxl-oxide-wasm 0.12.6, both WebAssembly, vendored in `receiver/vendor/` with their licences and loaded
-  the first time one comes. The kind is told from the bytes. Photos are kept at most 6144 px on their longer side, so
+  the first time one comes. HEIC is decoded in a worker (`receiver/heif-worker.js`): libheif-js compiles its
+  WebAssembly synchronously, which the TV's Cast browser (Chromium 92 on the Streamer, Nov 2026) refuses on the page's
+  thread for anything over 4 KB. The kind is told from the bytes. Photos are kept at most 6144 px on their longer side, so
   zooming stays sharp on a 4K TV; the one shown, the next three and the one before are kept decoded.
 - **The frame** (`TvZoom` in `sharedLogic/.../cast/CastFrame.kt`) is a rectangle of the TV's shape in fractions of the
   upright photo. At scale 1 it shows the whole photo (reaching past it where the TV has black bars); a pinch zooms it

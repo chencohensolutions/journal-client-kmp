@@ -1,6 +1,7 @@
 // Turns an original's bytes into a picture the page can draw. The TV's browser reads JPEG, PNG, WebP, GIF and AVIF
-// itself; HEIC/HEIF and JPEG XL go through the decoders in vendor/, loaded the first time one comes. The kind is told
-// from the bytes, not the name or type the phone sent, as the phone's guess may be wrong.
+// itself; HEIC/HEIF and JPEG XL go through the decoders in vendor/, loaded the first time one comes (HEIF in a worker,
+// heif-worker.js). The kind is told from the bytes, not the name or type the phone sent, as the phone's guess may be
+// wrong.
 
 /** The longest side a photo is kept at: sharp when zoomed in on a 4K TV, and about 150 MB at most in memory. */
 export const MAX_SIDE = 6144;
@@ -59,43 +60,41 @@ async function decodeNative(blob) {
   return scaled;
 }
 
-let heif = null;
+// HEIC/HEIF is decoded in a worker (heif-worker.js): the TV's browser won't compile libheif on the page's thread.
+let heifWorker = null;
+let heifAsked = 0;
+const heifWaiting = new Map();
 
-async function heifLibrary() {
-  if (!heif) {
-    heif = (async () => {
-      const { default: factory } = await import('./vendor/libheif/libheif-bundle.mjs');
-      const lib = factory();
-      if (lib && typeof lib.then === 'function') return await lib;
-      if (lib && lib.ready && typeof lib.ready.then === 'function') await lib.ready;
-      return lib;
-    })();
+function heifDecoder() {
+  if (!heifWorker) {
+    heifWorker = new Worker(new URL('./heif-worker.js', import.meta.url), { type: 'module' });
+    heifWorker.onmessage = ({ data }) => {
+      const waiting = heifWaiting.get(data.id);
+      if (!waiting) return;
+      heifWaiting.delete(data.id);
+      if (data.error) waiting.reject(new Error(data.error));
+      else waiting.resolve(data);
+    };
+    heifWorker.onerror = (event) => {
+      const error = new Error(event.message || 'the HEIF decoder could not start');
+      for (const waiting of heifWaiting.values()) waiting.reject(error);
+      heifWaiting.clear();
+      heifWorker = null;
+    };
   }
-  return heif;
+  return heifWorker;
 }
 
 async function decodeHeif(bytes) {
-  const lib = await heifLibrary();
-  const decoder = new lib.HeifDecoder();
-  const images = decoder.decode(bytes);
-  if (!images || images.length === 0) throw new Error('not a HEIF photo');
-  // The primary image comes first; libheif turns it upright (its irot and imir boxes).
-  const image = images[0];
-  try {
-    const width = image.get_width();
-    const height = image.get_height();
-    const data = await new Promise((resolve, reject) => {
-      image.display({ data: new Uint8ClampedArray(width * height * 4), width, height }, (shown) => {
-        if (shown) resolve(shown); else reject(new Error('HEIF decoding failed'));
-      });
-    });
-    const fit = fitInside(width, height);
-    return await createImageBitmap(new ImageData(data.data, width, height),
-      { resizeWidth: fit.width, resizeHeight: fit.height, resizeQuality: 'high' });
-  } finally {
-    for (const each of images) each.free?.();
-    decoder.decoder && lib.heif_context_free?.(decoder.decoder);
-  }
+  const id = ++heifAsked;
+  const { width, height, data } = await new Promise((resolve, reject) => {
+    heifWaiting.set(id, { resolve, reject });
+    // A copy goes to the worker, so the bytes the page keeps stay usable.
+    heifDecoder().postMessage({ id, bytes });
+  });
+  const fit = fitInside(width, height);
+  return createImageBitmap(new ImageData(data, width, height),
+    { resizeWidth: fit.width, resizeHeight: fit.height, resizeQuality: 'high' });
 }
 
 let jxl = null;
