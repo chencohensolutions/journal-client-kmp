@@ -1044,7 +1044,7 @@ private fun PhotoBrief(item: MediaItem, stories: StoriesState, modifier: Modifie
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             place?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            Text(formatDate(taken, "EEEdMMMyyyyjmm"), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1)
+            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1)
             if (tags.isNotEmpty()) {
                 Text(tags.joinToString("  ") { "#$it" }, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
