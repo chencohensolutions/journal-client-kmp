@@ -48,7 +48,7 @@ Swiping is not a tap; a playing video's own controls take its taps.
   photo, asked for the same day.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS). Swiping moves between photos fitted to the screen (Nov 9, 2026, Android): once a photo is settled
-  on, the three on each side are made ready at screen size, the way the swipes go first (a photo only on the server:
+  on, the photos on each side (5 by default; Settings › Advanced › Loading while scrolling, 0 to 10) are made ready at screen size, the way the swipes go first (a photo only on the server:
   the server's preview at that size, no original downloaded), into their own cache by bytes (`screenPreviews`), and the
   pager composes its neighbours (`beyondViewportPageCount = 1`), so each slides in sharp instead of soft first. The full
   image (or the downloaded original) is loaded for the photo shown only, once it is settled, and takes its place; a

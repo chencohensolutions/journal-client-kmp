@@ -300,6 +300,9 @@ The pages, and what each holds:
   the next rows start loading; since Nov 8, 2026 also how many rows ahead search loads its quick images), as chips, the default's marked "(default)"; **Reset to 30 and 40** once either is
   changed. On this phone only, and applied as the list scrolls (no restart): "Only on this phone. Applies as you scroll, in Moments and in search." Kept as
   `moments_rows_per_page` and `moments_load_ahead` (`SettingsState.momentsPaging`, `MomentsPaging`).
+  Under them (Nov 9, 2026, Android only): **Photos made ready while swiping** (0, 2, **5**, 8, 10): in the
+  [viewer](viewer.md), how many photos on each side of the one shown are prepared at screen size so they slide in sharp
+  ("More uses more memory."); kept as `viewer_ahead` (`MomentsPaging.viewerAhead`, 0 to 10), and reset with the others.
 
 ## Behavior
 

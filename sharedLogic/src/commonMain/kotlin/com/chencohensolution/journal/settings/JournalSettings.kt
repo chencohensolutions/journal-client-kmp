@@ -181,10 +181,13 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 ?: MomentsPaging.DEFAULT_ROWS_PER_PAGE,
             loadAhead = store.getString(KEY_MOMENTS_LOAD_AHEAD)?.toIntOrNull()?.takeIf { it in MomentsPaging.RANGE }
                 ?: MomentsPaging.DEFAULT_LOAD_AHEAD,
+            viewerAhead = store.getString(KEY_VIEWER_AHEAD)?.toIntOrNull()?.takeIf { it in MomentsPaging.VIEWER_AHEAD_RANGE }
+                ?: MomentsPaging.DEFAULT_VIEWER_AHEAD,
         )
         set(value) {
             store.putString(KEY_MOMENTS_ROWS_PER_PAGE, value.rowsPerPage.toString())
             store.putString(KEY_MOMENTS_LOAD_AHEAD, value.loadAhead.toString())
+            store.putString(KEY_VIEWER_AHEAD, value.viewerAhead.toString())
         }
 
     var previewCacheGigabytes: Int
@@ -350,6 +353,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
         private const val KEY_MOMENTS_ROWS_PER_PAGE = "moments_rows_per_page"
         private const val KEY_MOMENTS_LOAD_AHEAD = "moments_load_ahead"
+        private const val KEY_VIEWER_AHEAD = "viewer_ahead"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_FREE_UP_KEPT = "free_up_kept"

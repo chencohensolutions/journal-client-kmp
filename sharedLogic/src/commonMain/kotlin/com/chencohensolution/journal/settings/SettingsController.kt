@@ -72,13 +72,25 @@ data class PrivateMedia(val show: Boolean = false) {
 /**
  * How Moments is read from the library database a page at a time (Settings › Advanced › Loading Moments):
  * [rowsPerPage] rows per page, and the next page starts once the list is [loadAhead] rows from the end of what is read.
+ * Beside them, [viewerAhead]: how many photos on each side of the one shown the viewer makes ready at screen size, so
+ * they slide in sharp (asked Nov 9, 2026).
  */
-data class MomentsPaging(val rowsPerPage: Int = DEFAULT_ROWS_PER_PAGE, val loadAhead: Int = DEFAULT_LOAD_AHEAD) {
-    val isDefault: Boolean get() = rowsPerPage == DEFAULT_ROWS_PER_PAGE && loadAhead == DEFAULT_LOAD_AHEAD
+data class MomentsPaging(
+    val rowsPerPage: Int = DEFAULT_ROWS_PER_PAGE,
+    val loadAhead: Int = DEFAULT_LOAD_AHEAD,
+    val viewerAhead: Int = DEFAULT_VIEWER_AHEAD,
+) {
+    val isDefault: Boolean
+        get() = rowsPerPage == DEFAULT_ROWS_PER_PAGE && loadAhead == DEFAULT_LOAD_AHEAD && viewerAhead == DEFAULT_VIEWER_AHEAD
 
     companion object {
         const val DEFAULT_ROWS_PER_PAGE = 30
         const val DEFAULT_LOAD_AHEAD = 40
+        const val DEFAULT_VIEWER_AHEAD = 5
+
+        /** The viewer's photos made ready ahead: none up to ten on each side. */
+        val VIEWER_AHEAD_RANGE: IntRange = 0..10
+        val VIEWER_AHEAD_OPTIONS: List<Int> = listOf(0, 2, 5, 8, 10)
 
         /** What the Settings screen offers. */
         val ROWS_PER_PAGE_OPTIONS: List<Int> = listOf(15, 30, 60, 120)
@@ -225,6 +237,12 @@ class SettingsController internal constructor(
     fun setMomentsLoadAhead(rows: Int) {
         if (rows !in MomentsPaging.RANGE) return
         changeMomentsPaging { it.copy(loadAhead = rows) }
+    }
+
+    /** Photos on each side the viewer makes ready; values outside [MomentsPaging.VIEWER_AHEAD_RANGE] are ignored. */
+    fun setViewerAhead(photos: Int) {
+        if (photos !in MomentsPaging.VIEWER_AHEAD_RANGE) return
+        changeMomentsPaging { it.copy(viewerAhead = photos) }
     }
 
     fun resetMomentsPaging() = changeMomentsPaging { MomentsPaging() }

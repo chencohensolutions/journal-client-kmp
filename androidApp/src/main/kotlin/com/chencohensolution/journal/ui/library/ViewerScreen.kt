@@ -165,6 +165,31 @@ private suspend fun screenPreview(context: android.content.Context, previews: Se
     return loadCover(context, previews, item, w.coerceAtLeast(1), h.coerceAtLeast(1))?.also { screenPreviews.put(item.id, it) }
 }
 
+/**
+ * Room in [screenPreviews] for the photo shown and [ahead] on each side at [screen] size, within a quarter of the app's
+ * memory.
+ */
+private fun fitScreenPreviews(ahead: Int, screen: IntSize) {
+    val one = screen.width.toLong() * screen.height * 4
+    val wanted = (2L * ahead + 2) * one
+    val most = Runtime.getRuntime().maxMemory() / 4
+    screenPreviews.resize(wanted.coerceIn(one, most).toInt())
+}
+
+/** The steps from the photo shown to make ready, the way the swipes go first: 1, -1, 2, 3, -2, …, about two ahead to one behind. */
+internal fun aheadSteps(ahead: Int): List<Int> {
+    val forward = (1..ahead).toMutableList()
+    val back = (1..ahead).map { -it }.toMutableList()
+    val steps = mutableListOf<Int>()
+    if (forward.isNotEmpty()) steps += forward.removeAt(0)
+    if (back.isNotEmpty()) steps += back.removeAt(0)
+    while (forward.isNotEmpty() || back.isNotEmpty()) {
+        repeat(2) { if (forward.isNotEmpty()) steps += forward.removeAt(0) }
+        if (back.isNotEmpty()) steps += back.removeAt(0)
+    }
+    return steps
+}
+
 /** [item]'s [screenPreview]: from memory at once when made ready ahead, else once loaded. */
 @Composable
 private fun rememberScreenPreview(item: MediaItem): android.graphics.Bitmap? {
@@ -263,6 +288,8 @@ internal fun ViewerScreen(
     findings: com.chencohensolution.journal.people.PhotoFindings = com.chencohensolution.journal.people.PhotoFindings.NONE,
     /** The named people, for a face's "Who is it?". */
     people: List<com.chencohensolution.journal.people.Person> = emptyList(),
+    /** Photos on each side of the one shown made ready at screen size while swiping (Settings › Advanced). */
+    viewerAhead: Int = com.chencohensolution.journal.settings.MomentsPaging.DEFAULT_VIEWER_AHEAD,
 ) {
     var faceSheet by remember { mutableStateOf<com.chencohensolution.journal.people.FoundFace?>(null) }
     val onBack = actions.back
@@ -292,16 +319,18 @@ internal fun ViewerScreen(
     Slideshow(set != null && playing, speed.millis, items.size, shownIndex, prepare = { i ->
         items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) }
     }) { setIndex = it }
-    // Swiping: once a photo is settled on, the three on each side are made ready at screen size, the way the swipes go
-    // first, so each slides in sharp (asked Nov 9, 2026); a swipe on cancels what was still to come.
+    // Swiping: once a photo is settled on, the photos on each side ([viewerAhead]; Settings › Advanced) are
+    // made ready at screen size, the way the swipes go first, so each slides in sharp (asked Nov 9, 2026); a swipe on
+    // cancels what was still to come.
     val context = LocalContext.current
     val screenSize = LocalWindowInfo.current.containerSize
     val settledIndex = if (set != null) setIndex else pager.settledPage
     var lastSettled by remember { mutableIntStateOf(settledIndex) }
-    LaunchedEffect(settledIndex, items.size) {
+    LaunchedEffect(settledIndex, items.size, viewerAhead) {
         val way = if (settledIndex < lastSettled) -1 else 1
         lastSettled = settledIndex
-        listOf(1, -1, 2, 3, -2, -3).forEach { step ->
+        fitScreenPreviews(viewerAhead, screenSize)
+        aheadSteps(viewerAhead).forEach { step ->
             items.getOrNull(settledIndex + step * way)?.let { screenPreview(context, previews, it, screenSize) }
         }
     }

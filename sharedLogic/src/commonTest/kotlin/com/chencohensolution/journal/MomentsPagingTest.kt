@@ -47,6 +47,29 @@ class MomentsPagingTest {
     }
 
     @Test
+    fun theViewersPhotosMadeReadyAheadAreFiveUntilChosen() = runTest {
+        val store = PagingTestStore()
+        assertEquals(5, JournalSettings(store).momentsPaging.viewerAhead)
+        val settings = SettingsController(JournalSettings(store), StandardTestDispatcher(testScheduler))
+        settings.setViewerAhead(8)
+        assertEquals(8, settings.currentState.momentsPaging.viewerAhead)
+        assertEquals(8, JournalSettings(store).momentsPaging.viewerAhead)
+        assertTrue(!settings.currentState.momentsPaging.isDefault)
+
+        // None is a choice; past ten is ignored, and so is an unreadable value kept on the device.
+        settings.setViewerAhead(0)
+        assertEquals(0, JournalSettings(store).momentsPaging.viewerAhead)
+        settings.setViewerAhead(11)
+        assertEquals(0, settings.currentState.momentsPaging.viewerAhead)
+        store.values["viewer_ahead"] = "many"
+        assertEquals(5, JournalSettings(store).momentsPaging.viewerAhead)
+
+        settings.resetMomentsPaging()
+        assertEquals(5, settings.currentState.momentsPaging.viewerAhead)
+        settings.close()
+    }
+
+    @Test
     fun anUnreadableValueFallsBackOnItsOwn() {
         val store = PagingTestStore()
         store.values["moments_rows_per_page"] = "lots"

@@ -498,6 +498,7 @@ private fun LibraryScreens(
                                             openBackup = { push(Route.BackupSettings) },
                                             setMomentsRowsPerPage = settings::setMomentsRowsPerPage,
                                             setMomentsLoadAhead = settings::setMomentsLoadAhead,
+                                            setViewerAhead = settings::setViewerAhead,
                                             resetMomentsPaging = settings::resetMomentsPaging,
                                             refreshServer = settings::refreshServer,
                                             back = pop,
@@ -730,6 +731,7 @@ private fun LibraryScreens(
                                     if (reading) Box(Modifier.fillMaxSize().background(LibraryColors.Background)) else ViewerScreen(
                                         items = shownItems,
                                         set = viewerSet,
+                                        viewerAhead = settingsState.momentsPaging.viewerAhead,
                                         startId = route.itemId,
                                         stories = storiesState,
                                         actions = ViewerActions(

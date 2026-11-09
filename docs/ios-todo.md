@@ -23,6 +23,10 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Setting: photos made ready while swiping** (Android Nov 9, 2026; [settings.md](screens/settings.md)): under Load
+  ahead in Loading while scrolling, chips 0, 2, **5**, 8, 10 for how many photos on each side the viewer prepares at
+  screen size (`MomentsPaging.viewerAhead`, shared; iOS has no such prefetch yet). Strings: `settings_viewer_ahead`,
+  `settings_viewer_ahead_body`.
 - **Swiping between screen-size photos** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): three photos on each
   side of the one shown are made ready fitted to the screen (server previews at that size for photos only there), the
   way the swipes go first, so each slides in sharp; the full image or original only for the photo shown. Android:

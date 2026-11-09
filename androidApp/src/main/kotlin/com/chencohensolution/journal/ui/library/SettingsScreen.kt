@@ -92,6 +92,8 @@ internal class SettingsActions(
     /** Settings › Loading Moments: rows read at a time, how near the end the next are read, and both back to the defaults. */
     val setMomentsRowsPerPage: (Int) -> Unit = {},
     val setMomentsLoadAhead: (Int) -> Unit = {},
+    /** The viewer's photos made ready ahead, on each side. */
+    val setViewerAhead: (Int) -> Unit = {},
     val resetMomentsPaging: () -> Unit = {},
     /** Reads the server's address and id again (they change while the app runs). */
     val refreshServer: () -> Unit = {},

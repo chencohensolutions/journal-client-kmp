@@ -54,6 +54,15 @@ internal fun LoadingMomentsPage(paging: MomentsPaging, actions: SettingsActions)
             MomentsPaging.DEFAULT_LOAD_AHEAD,
             actions.setMomentsLoadAhead,
         )
+        RowDivider()
+        Choice(
+            stringResource(R.string.settings_viewer_ahead),
+            stringResource(R.string.settings_viewer_ahead_body),
+            MomentsPaging.VIEWER_AHEAD_OPTIONS,
+            paging.viewerAhead,
+            MomentsPaging.DEFAULT_VIEWER_AHEAD,
+            actions.setViewerAhead,
+        )
     }
     Text(
         stringResource(R.string.settings_loading_note),
