@@ -30,6 +30,23 @@ leaves its near-duplicate set in Moments and shows on its own (unless merged int
 **Done** saves at once every mode opened here, as shown (a Portrait or Landscape suggestion too), and clears the ones
 reset; nothing is saved before it. A dot marks each mode that will be saved.
 
+## A set: Recompose (Nov 9, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). From **Recompose** in the [viewer's set
+mode](viewer.md#a-set-nov-9-2026) (`Route.Recompose`, `SetCropEditor`): the Moments crops of every photo of the set
+(videos left out), so it flips in Moments without jumping.
+
+- The photo shown with its frame, as in the Moments mode (drag, pinch, corners and sides); **Reset** and **Done** at
+  the top. Done saves every photo's crop at once (`StoriesController.setMomentsCrops`, one rebuild), or just closes
+  when nothing changed.
+- **Shape chips**: Original (no crop) · Square · 4:5 · Wide (16:9): the largest frame of that shape around the
+  current one; the frame stays free after.
+- **The set's strip**: its photos in a row, the one shown outlined, a dot on each cropped; a tap goes to it without
+  leaving.
+- **⧉ Same frame for all**: every photo of the set of the same shape as the one shown gets its frame.
+- A near-duplicate set that wasn't made by hand becomes one when Recompose saves (a cropped photo is never put in a set
+  by itself), so it stays together.
+
 ## In the viewer
 
 The photo fills the screen at its crop, with **Cropped · Show all** at the top; **Show all** shows the whole photo

@@ -50,8 +50,8 @@ final class StoriesViewModel: ObservableObject {
     /// The photos of the picked sets and photos become one set you swipe.
     func mergeInFeed(_ itemIds: [String]) { controller.mergeInFeed(itemIds: itemIds) }
     func takeOutOfSet(_ itemId: String) { controller.takeOutOfSet(itemId: itemId) }
-    /// The set of `itemIds` was turned to `itemId`: it opens there next time.
-    func turnSet(_ itemIds: [String], to itemId: String) { controller.turnSet(itemIds: itemIds, itemId: itemId) }
+    /// Turning a set is remembered while the app runs only (the feed's playback pages); notes keep highlights instead.
+    func turnSet(_ itemIds: [String], to itemId: String) {}
     /// A hidden source's photos shown on one row (its key), until hidden again; the setting doesn't change.
     func showOnRow(_ sectionKey: String, source: MediaSource) { controller.showOnRow(sectionKey: sectionKey, source: source) }
     func hideOnRow(_ sectionKey: String, source: MediaSource) { controller.hideOnRow(sectionKey: sectionKey, source: source) }

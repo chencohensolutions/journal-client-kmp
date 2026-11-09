@@ -27,6 +27,23 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    // A set of photos (promoted from the moment-set round, Nov 9, 2026): the app's screens with the preview data.
+    LabScreen("moment-set", "A set of photos", listOf(
+        current {
+            JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        },
+        LabOption("viewer", "Viewer on a set", "Cross-fading swipes, the scrubber, Highlight · Play · Recompose") {
+            val set = labSet()
+            ViewerScreen(set, set.first().id, PreviewData.feedStories, ViewerActions(), set = ViewerSet(highlights = listOf(set[1].id)))
+        },
+        LabOption("recompose", "Recompose", "The crop screen's set mode: the strip, shapes, Same frame for all") {
+            val set = labSet()
+            SetCropEditor(set, emptyMap(), set.first().id, onDone = {}, onClose = {})
+        },
+        LabOption("make", "Make a moment", "The sheet from the picking bar: name, highlights, the days it shows on") {
+            LibraryTheme(dark = true) { MakeMomentSheet(labSet(), onMake = { _, _, _ -> }, onDismiss = {}) }
+        },
+    )),
     // Made-up data (KindsLab): unlocked, as the emulator has no screen lock; the switches work while it is open.
     LabScreen("private", "Private settings", listOf(
         current { PrivateSettingsLab() },
@@ -231,3 +248,10 @@ internal val labScreens: List<LabScreen> = listOf(
         },
     )),
 )
+
+/** The first set of the preview feed's photos. */
+private fun labSet(): List<com.chencohensolution.journal.library.MediaItem> =
+    PreviewData.feedStories.feed.entries.asSequence()
+        .flatMap { (it as com.chencohensolution.journal.stories.FeedEntry.Section).section.moments }
+        .flatMap { it.blocks }
+        .first { it is com.chencohensolution.journal.stories.FeedBlock.Similar }.items

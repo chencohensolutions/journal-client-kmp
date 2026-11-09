@@ -84,7 +84,8 @@ data class StoriesState(
      */
     fun feedOf(items: List<MediaItem>): MomentsFeed =
         // Explore leaves out what is tucked away, with no pill.
-        buildFeed(items.filterNot { it.isTucked }, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes))
+        buildFeed(items.filterNot { it.isTucked }, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes), placements = placementsIn(notes))
+            .withSets(notes)
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
 
@@ -95,11 +96,16 @@ data class StoriesState(
     fun gone(itemId: String): Boolean = itemId !in itemsById && (whole || itemId in missing)
 
     /**
-     * The photo a set of [items] opens on: the one the user turned it to last ([PhotoNote.front]), else the
-     * best-looking (the server's aesthetic score), else null (the first).
+     * The cover of a set of [items], where it opens and what shows of it with no highlights: its first highlight
+     * ([PhotoNote.highlight]), else the best-looking (the server's aesthetic score), else null (the first).
      */
-    fun frontOf(items: List<MediaItem>): String? =
-        items.firstOrNull { notes[it.id]?.front == true }?.id ?: bestLooking(items)?.id
+    fun frontOf(items: List<MediaItem>): String? = highlightsOf(items).firstOrNull()?.id ?: bestLooking(items)?.id
+
+    /** Of [items] (a set), its highlights in their order. */
+    fun highlightsOf(items: List<MediaItem>): List<MediaItem> = highlightsOf(items, notes)
+
+    /** The moment made by hand that [itemId] is in, if any ([StoriesController.makeMoment]). */
+    fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSetsIn(notes)[it] }
 
     /** Photos and videos tagged [tag] (ignoring case) that [shownSources] shows, by day, newest first. */
     fun tagged(tag: String): List<DayGroup> = notes.values
@@ -168,14 +174,15 @@ internal fun buildState(
         whole = paged == null || items == null,
         missing = missing,
         // Empty until ready, so Moments never draws a feed that is about to change.
-        feed = paged ?: if (!ready) MomentsFeed() else buildFeed(
+        feed = (paged ?: if (!ready) MomentsFeed() else buildFeed(
             library.days.flatMap { it.items }, shown, grouping, places, looks,
             alone = aloneIn(notes),
             sets = setsIn(notes),
             revealed = revealed,
             sounds = library.sounds,
             tuckedShown = tuckedShown,
-        ),
+            placements = placementsIn(notes),
+        )).withSets(notes),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,
         home = home,

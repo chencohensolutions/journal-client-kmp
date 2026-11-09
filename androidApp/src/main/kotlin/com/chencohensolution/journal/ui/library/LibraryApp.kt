@@ -261,6 +261,21 @@ private fun LibraryScreens(
     }
     val exploreReads = LocalExploreReads.current
     val coroutines = rememberCoroutineScope()
+    // A set opens the viewer on it alone (its set mode), at [item]. Photos of it not read yet (a moment's other days) are
+    // read first, so the viewer opens with all of them.
+    val openSet: (List<String>, List<MediaItem>, MediaItem) -> Unit = { ids, items, item ->
+        val key = setListKey(ids)
+        val given = items.associateBy { it.id }
+        fun go() {
+            val known = stories.currentState.itemsById
+            pageLists[key] = ids.mapNotNull { given[it] ?: known[it] }
+            push(Route.Viewer(null, item.id, list = key))
+        }
+        if (ids.all { it in given || it in stories.currentState.itemsById }) go() else coroutines.launch {
+            stories.want(ids)
+            go()
+        }
+    }
     var previewBytes by actions.previewBytes
     // A function, not a value: each screen on the back stack keeps the content it was first given, so it has to read
     // the state when it draws.
@@ -269,7 +284,7 @@ private fun LibraryScreens(
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
     val systemDark = isSystemInDarkTheme()
-    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop || it is Route.Audio } || systemDark)
+    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop || it is Route.Recompose || it is Route.Audio } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
         CompositionLocalProvider(
@@ -295,7 +310,7 @@ private fun LibraryScreens(
                     NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
                         val route = entry.route
                         val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
-                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || route is Route.Audio || systemDark) {
+                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || route is Route.Recompose || route is Route.Audio || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
                                     // Moments first and opened on start (asked Oct 24, 2026); previews keep the storyline.
@@ -317,8 +332,16 @@ private fun LibraryScreens(
                                         restoreWriting = stories::restoreWriting,
                                         crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
                                         merge = stories::mergeInFeed,
+                                        openSet = openSet,
+                                        makeMoment = { picked, name, highlights, showOn ->
+                                            val photos = picked.sortedBy { it.takenAtMillis }
+                                            val ids = photos.map { it.id }
+                                            if (stories.makeMoment(ids, name, highlights, showOn) != null) {
+                                                val cover = highlights.firstOrNull() ?: stories.currentState.frontOf(photos) ?: ids.first()
+                                                openSet(ids, photos, photos.first { it.id == cover })
+                                            }
+                                        },
                                         takeOutOfSet = stories::takeOutOfSet,
-                                        turnSet = stories::turnSet,
                                         setInStoryline = stories::setInStoryline,
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
@@ -643,7 +666,7 @@ private fun LibraryScreens(
                                     // holds only part of the library), so the viewer never comes out empty meanwhile.
                                     val kept = remember(route.encode()) { viewerItems(libraryState, storiesState, route, searchState, pageLists) }
                                     // Fixed when opened: tagging a photo or removing it from the storyline must not pull it out from under the viewer.
-                                    var ids by rememberSaveable(route.encode()) { mutableStateOf(kept.map { it.id }) }
+                                    var ids by rememberSaveable(route.encode()) { mutableStateOf(kept.map { it.id }.ifEmpty { setIdsOf(route.list).orEmpty() }) }
                                     // An Explore page's or the map's photos that weren't kept (the app was closed meanwhile)
                                     // are read from the database again (step 6c); until then nothing is shown.
                                     var read by remember(route.encode()) { mutableStateOf<List<MediaItem>?>(null) }
@@ -660,8 +683,18 @@ private fun LibraryScreens(
                                     var shownId by remember(route.encode()) { mutableStateOf(route.itemId) }
                                     // The photo shown and its neighbours, read from the database as it is swiped.
                                     LaunchedEffect(ids, shownId) { stories.want(ids.around(shownId)) }
+                                    val shownItems = ids.mapNotNull { id -> storiesState.itemsById[id] ?: openedById[id]?.takeUnless { storiesState.gone(id) } }
+                                    // A set: its own controls (highlights, Play, Recompose).
+                                    val viewerSet = if (!route.isSet) null else ViewerSet(
+                                        name = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.name },
+                                        highlights = storiesState.highlightsOf(shownItems).map { it.id },
+                                        setHighlight = { id, on -> stories.setHighlight(ids, id, on) },
+                                        moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
+                                        recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
+                                    )
                                     if (reading) Box(Modifier.fillMaxSize().background(LibraryColors.Background)) else ViewerScreen(
-                                        items = ids.mapNotNull { id -> storiesState.itemsById[id] ?: openedById[id]?.takeUnless { storiesState.gone(id) } },
+                                        items = shownItems,
+                                        set = viewerSet,
                                         startId = route.itemId,
                                         stories = storiesState,
                                         actions = ViewerActions(
@@ -703,6 +736,26 @@ private fun LibraryScreens(
                                         findings = findingsState,
                                         people = peopleState.list.people,
                                     )
+                                }
+                                is Route.Recompose -> {
+                                    val setIds = remember(route.list) { setIdsOf(route.list).orEmpty() }
+                                    LaunchedEffect(route.list) { stories.want(setIds) }
+                                    val kept = remember(route.list) { pageLists[route.list].associateBy { it.id } }
+                                    val photos = setIds.mapNotNull { id -> storiesState.itemsById[id] ?: kept[id]?.takeUnless { storiesState.gone(id) } }
+                                    if (photos.isEmpty()) {
+                                        if (setIds.all(storiesState::gone)) LaunchedEffect(Unit) { pop() }
+                                    } else {
+                                        SetCropEditor(
+                                            items = photos,
+                                            saved = photos.associate { it.id to storiesState.note(it.id)?.crops?.moments },
+                                            startId = route.itemId,
+                                            onDone = { crops ->
+                                                stories.setMomentsCrops(crops)
+                                                pop()
+                                            },
+                                            onClose = pop,
+                                        )
+                                    }
                                 }
                                 is Route.Crop -> {
                                     LaunchedEffect(route.itemId) { stories.want(listOf(route.itemId)) }

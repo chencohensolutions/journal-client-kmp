@@ -427,7 +427,7 @@ private struct FeedSet: View {
         self.menu = { AnyView(menu($0)) }
         self.turnSet = turnSet
         // Where it was turned to while the app runs, else the photo saved in its notes, else its first.
-        let start = playback.pages[block.key] ?? block.items.first { note($0.id)?.front == true }?.id ?? ExploreKt.bestLooking(items: block.items)?.id
+        let start = playback.pages[block.key] ?? block.items.first { note($0.id)?.highlight?.intValue == 1 }?.id ?? ExploreKt.bestLooking(items: block.items)?.id
         _current = State(initialValue: start ?? block.items.first?.id)
     }
 

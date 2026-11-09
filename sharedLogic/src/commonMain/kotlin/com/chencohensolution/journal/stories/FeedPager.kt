@@ -147,7 +147,7 @@ internal class FeedPager(
         }
         return buildWindow(
             window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, revealed, context.sounds,
-            context.tuckedShown,
+            context.tuckedShown, context.placements,
         )
             .firstOrNull { it.key == section.key }
     }

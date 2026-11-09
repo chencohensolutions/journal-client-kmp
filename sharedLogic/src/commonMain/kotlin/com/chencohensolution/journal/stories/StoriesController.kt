@@ -276,7 +276,7 @@ class StoriesController internal constructor(
         ).joinToString("|")
         return FeedContext(
             shown, settings.grouping, places?.places?.value ?: Places.NONE, looks, aloneIn(notes), setsIn(notes),
-            libraryState.value.sounds, version, tuckedShown = tucked.state.value.days,
+            libraryState.value.sounds, version, tuckedShown = tucked.state.value.days, placements = placementsIn(notes),
         )
     }
 
@@ -584,15 +584,76 @@ class StoriesController internal constructor(
         changeNotes(itemIds.distinct()) { it.copy(feedSet = set, apart = false) }
     }
 
-    /** Moments: the photo leaves its set (made by hand or by itself) and isn't put in one by itself again. */
-    fun takeOutOfSet(itemId: String) = changeNotes(listOf(itemId)) { it.copy(feedSet = null, apart = true) }
+    /**
+     * Moments: the photo leaves its set (made by hand or by itself) and isn't put in one by itself again. It is no longer
+     * a highlight; a moment's name it carried moves to another of the set's photos.
+     */
+    fun takeOutOfSet(itemId: String) {
+        val note = notes[itemId]
+        val info = note?.setInfo
+        val heir = if (info == null || note.feedSet == null) null else notes.values
+            .filter { it.feedSet == note.feedSet && it.deviceId != itemId }
+            .minWithOrNull(compareBy({ it.highlight ?: Int.MAX_VALUE }, { it.takenAtMillis }))?.deviceId
+        changeNotes(listOfNotNull(itemId, heir)) {
+            if (it.deviceId == itemId) it.copy(feedSet = null, apart = true, highlight = null, setInfo = null) else it.copy(setInfo = info)
+        }
+    }
 
     /**
-     * Moments: the set of [itemIds] (in its order) was turned to [itemId], so it opens there next time, also on another
-     * device once notes are synced. Kept in the photo's note; turning back to the first photo clears it.
+     * Moments: [itemIds] (the photos picked, two or more) become one moment: a set ([mergeInFeed]) named [name], shown
+     * on the days [showOn] says, with [highlightIds] as its highlights in that order. Its name is kept on its cover (the
+     * first highlight, else its first photo). Returns the set's id; null, and nothing changed, with fewer than two photos.
      */
-    fun turnSet(itemIds: List<String>, itemId: String) =
-        changeNotes(itemIds, rebuild = false) { it.copy(front = it.deviceId == itemId && itemId != itemIds.first()) }
+    fun makeMoment(itemIds: List<String>, name: String, highlightIds: List<String>, showOn: ShowOn): String? {
+        val ids = itemIds.distinct()
+        if (ids.size < 2) return null
+        val set = newId()
+        val order = highlightIds.distinct().filter { it in ids }
+        val cover = order.firstOrNull() ?: ids.first()
+        val info = name.trim().takeIf { it.isNotEmpty() }?.let { SetInfo(it, showOn) }
+        changeNotes(ids) { note ->
+            note.copy(
+                feedSet = set,
+                apart = false,
+                highlight = order.indexOf(note.deviceId).takeIf { it >= 0 }?.plus(1),
+                setInfo = info?.takeIf { note.deviceId == cover },
+            )
+        }
+        return set
+    }
+
+    /**
+     * ☆ Highlight: [itemId] of the set [itemIds] becomes its last highlight ([on]), or stops being one; the others are
+     * numbered again from 1. A moment's name moves with its cover (the first highlight).
+     */
+    fun setHighlight(itemIds: List<String>, itemId: String, on: Boolean) {
+        val current = highlightOrder(itemIds)
+        writeHighlights(itemIds, if (on) current - itemId + itemId else current - itemId)
+    }
+
+    /** The highlight [itemId] of the set [itemIds] moves to place [to] (from 0) among its highlights. */
+    fun moveHighlight(itemIds: List<String>, itemId: String, to: Int) {
+        val current = highlightOrder(itemIds)
+        if (itemId !in current) return
+        val order = (current - itemId).toMutableList()
+        order.add(to.coerceIn(0, order.size), itemId)
+        writeHighlights(itemIds, order)
+    }
+
+    /** Of [itemIds], the highlights in their order. */
+    private fun highlightOrder(itemIds: List<String>): List<String> =
+        itemIds.mapNotNull { id -> notes[id]?.highlight?.let { id to it } }.sortedBy { it.second }.map { it.first }
+
+    private fun writeHighlights(itemIds: List<String>, order: List<String>) {
+        val info = itemIds.firstNotNullOfOrNull { notes[it]?.setInfo }
+        val cover = order.firstOrNull()
+        changeNotes(itemIds) { note ->
+            note.copy(
+                highlight = order.indexOf(note.deviceId).takeIf { it >= 0 }?.plus(1),
+                setInfo = if (info == null || cover == null) note.setInfo else info.takeIf { note.deviceId == cover },
+            )
+        }
+    }
 
     /**
      * Where the viewer was zoomed in on the photo as it was left ([zoom]: the part on screen; null: fitted), so it opens
@@ -602,6 +663,23 @@ class StoriesController internal constructor(
 
     /** The photo's crops, for looking only (the photo isn't changed); empty crops remove them. */
     fun setCrops(itemId: String, crops: PhotoCrops) = changeNotes(listOf(itemId)) { it.copy(crops = crops) }
+
+    /**
+     * Recompose: the Moments crops of a set's photos at once ([crops], by id; null: none), one rebuild. A cropped photo
+     * is never put in a set by itself, so a set that wasn't made by hand becomes one, and stays together.
+     */
+    fun setMomentsCrops(crops: Map<String, CropRect?>) {
+        val ids = crops.keys.toList()
+        val sets = ids.map { notes[it]?.feedSet }.toSet()
+        val set = if (ids.size < 2) null else sets.singleOrNull() ?: newId()
+        changeNotes(ids) { note ->
+            val cropped = note.copy(crops = note.crops.copy(moments = crops[note.deviceId]))
+            if (set == null) cropped else cropped.copy(feedSet = set, apart = false)
+        }
+    }
+
+    /** Same frame for all: [crop] as the Moments crop of every photo of [itemIds] ([setMomentsCrops]). */
+    fun setMomentsCrop(itemIds: List<String>, crop: CropRect?) = setMomentsCrops(itemIds.associateWith { crop })
 
     /**
      * Tags [itemIds] with [tag]; an existing tag with the same name in another case is reused. Returns the tag as

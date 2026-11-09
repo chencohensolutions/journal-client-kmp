@@ -1177,4 +1177,47 @@
     <string name="picking_write">כתיבה</string>
     <string name="picking_edit">עריכה</string>
     <string name="picking_take_out">הוצאה</string>
+    <!-- Moment sets (docs/screens/moments.md, viewer.md, crop.md) -->
+    <string name="set_position">%1$d מתוך %2$d</string>
+    <string name="set_hold_to_flip">החזיקו והחליקו כדי לדפדף</string>
+    <plurals name="set_line">
+        <item quantity="one">תמונה אחת בסט</item>
+        <item quantity="two">%d תמונות בסט</item>
+        <item quantity="other">%d תמונות בסט</item>
+    </plurals>
+    <string name="set_part_of">חלק מ%1$s</string>
+    <string name="set_play_here">הפעלה כאן</string>
+    <string name="set_highlight">הדגשה</string>
+    <string name="set_highlighted">מודגשת</string>
+    <string name="set_play">הפעלה</string>
+    <string name="set_stop">עצירה</string>
+    <string name="set_recompose">מסגור מחדש</string>
+    <string name="set_speed_fast">מהיר</string>
+    <string name="set_speed_normal">רגיל</string>
+    <string name="set_speed_slow">איטי</string>
+    <string name="set_all_photos">כל התמונות</string>
+    <plurals name="set_photos">
+        <item quantity="one">תמונה אחת</item>
+        <item quantity="two">%d תמונות</item>
+        <item quantity="other">%d תמונות</item>
+    </plurals>
+    <string name="set_highlights">הדגשות</string>
+    <string name="set_highlights_hint">החזיקו אחת וגררו כדי לשנות את הסדר</string>
+    <string name="set_more">עוד</string>
+    <string name="recompose_same_frame">אותה מסגרת לכולן</string>
+    <string name="recompose_shape_original">מקורי</string>
+    <string name="recompose_shape_square">ריבוע</string>
+    <string name="recompose_shape_portrait">4:5</string>
+    <string name="recompose_shape_wide">רחב</string>
+    <string name="recompose_hint">גררו כדי להזיז את המסגרת, צבטו כדי לשנות את גודלה. אותה מסגרת לכולן נותנת אותה לכל התמונות בצורה הזו.</string>
+    <string name="make_moment">יצירת רגע</string>
+    <string name="make_moment_title">רגע חדש</string>
+    <string name="make_moment_name">שם</string>
+    <string name="make_moment_highlights">הדגשות</string>
+    <string name="make_moment_highlights_hint">הקישו על התמונות שהרגעים יציגו ממנו, לפי הסדר. בלי: התמונה היפה ביותר.</string>
+    <string name="make_moment_show_on">להציג ברגעים ביום</string>
+    <string name="make_moment_every_day">בכל יום שלו</string>
+    <string name="make_moment_hint_each">כל יום מציג את התמונות שלו, עם קישור לרגע כולו.</string>
+    <string name="make_moment_hint_one">התמונות עוזבות את הימים שלהן ומוצגות כאן יחד.</string>
+    <string name="make_moment_make">יצירה</string>
 </resources>

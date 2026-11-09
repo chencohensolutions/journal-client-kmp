@@ -23,15 +23,35 @@ import com.chencohensolution.journal.similarity.PhotoLooks
  * voice messages. Nothing here is saved: it is worked out again from the library.
  */
 
-/** One photo, or near-duplicates (a burst, or photos that look alike) shown as one photo you swipe through. */
+/** One photo, or near-duplicates (a burst, or photos that look alike) shown as one photo you flip through. */
 sealed interface FeedBlock {
     val items: List<MediaItem>
 
-    data class Single(val item: MediaItem) : FeedBlock {
+    /** The moment made by hand this is of ([StoriesController.makeMoment]): all of it, or one day's part ([NamedSet.isPartOf]). */
+    val named: NamedSet?
+
+    data class Single(val item: MediaItem, override val named: NamedSet? = null) : FeedBlock {
         override val items: List<MediaItem> get() = listOf(item)
     }
 
-    data class Similar(override val items: List<MediaItem>) : FeedBlock
+    data class Similar(
+        override val items: List<MediaItem>,
+        /**
+         * Its photos marked highlights ([PhotoNote.highlight]), in their order: what Moments shows of it, one under the
+         * other, above the set's line. Empty: it shows its cover ([StoriesState.frontOf]).
+         */
+        val highlights: List<MediaItem> = emptyList(),
+        override val named: NamedSet? = null,
+    ) : FeedBlock
+}
+
+/**
+ * A set made into a moment by hand: its [name], the days that show it ([showOn]) and all its photos ([itemIds], oldest
+ * first), for opening the whole set from one day's part of it.
+ */
+data class NamedSet(val setId: String, val name: String, val showOn: ShowOn, val itemIds: List<String>) {
+    /** Whether [block] is only one day's photos of it ([ShowOn.EACH]): it shows a link "Part of <name> ›". */
+    fun isPartOf(block: FeedBlock): Boolean = block.items.size < itemIds.size
 }
 
 /**
@@ -229,6 +249,11 @@ internal fun buildFeed(
     sounds: List<SoundRecording> = emptyList(),
     /** The days whose tucked-away photos show ([TuckedSession.days]); the others' are only counted ([FeedSection.tucked]). */
     tuckedShown: Set<LocalDay> = emptySet(),
+    /**
+     * Where the named sets of [sets] show (set id to [ShowOn]); a set not in it shows where its oldest photo is. With
+     * [ShowOn.EACH] each day's photos of the set are a set of their own on that day.
+     */
+    placements: Map<String, ShowOn> = emptyMap(),
 ): MomentsFeed {
     val counts = sourceCounts(items)
     val (visible, hiddenBySource) = items.partition(shown::shows)
@@ -236,11 +261,13 @@ internal fun buildFeed(
     val hidden = hiddenBySource.filterNot { it.isTucked }
     // Tucked away and not revealed: in its row's span (so revealing never moves rows), but not among its moments.
     fun tuckedAway(item: MediaItem) = item.isTucked && item.day !in tuckedShown
-    // Each set merged by hand, oldest first, by its oldest photo; its other photos show only in it.
-    val merged = visible.filter { it.id in sets && !tuckedAway(it) }.groupBy { sets.getValue(it.id) }.values
-        .map { members -> members.sortedBy { it.takenAtMillis } }
-        .associateBy { it.first().id }
-    val inLaterPlace = merged.values.flatMap { it.drop(1) }.map { it.id }.toSet()
+    // Each set merged by hand, oldest first, by the photo it shows at (its oldest; its newest when shown on its last
+    // day); its other photos show only in it. A set shown on each of its days is a set per day.
+    val merged = visible.filter { it.id in sets && !tuckedAway(it) }
+        .groupBy { item -> sets.getValue(item.id).let { set -> if (placements[set] == ShowOn.EACH) "$set@${item.day}" else set } }
+        .map { (key, members) -> key.substringBefore("@") to members.sortedBy { it.takenAtMillis } }
+        .associate { (set, members) -> (if (placements[set] == ShowOn.LAST) members.last() else members.first()).id to members }
+    val inLaterPlace = merged.flatMap { (at, members) -> members.filter { it.id != at } }.map { it.id }.toSet()
     val shownSounds = sounds.filter { it.kind != AudioKind.VOICE_MESSAGE || shown.shows(it.day, it.source) }.associateBy { it.sha256 }
     val marks = soundMarks(shownSounds.values, grouping)
     val rowItems = if (marks.isEmpty()) visible else (visible + marks).sortedByDescending { it.takenAtMillis }
@@ -284,6 +311,50 @@ internal fun buildFeed(
         importedSheet = shown.importedChoices(counts),
     )
 }
+
+/**
+ * The feed with its sets' highlights and names from [notes] ([FeedBlock.Similar.highlights], [FeedBlock.named]): laid
+ * over the rows however they were made (in memory or read from the database, which keeps only their ids). The feed
+ * itself when no note has either.
+ */
+internal fun MomentsFeed.withSets(notes: Map<String, PhotoNote>): MomentsFeed {
+    val named = namedSetsIn(notes)
+    if (named.isEmpty() && notes.values.none { it.highlight != null }) return this
+    fun nameOf(block: FeedBlock): NamedSet? = block.items.firstNotNullOfOrNull { item -> notes[item.id]?.feedSet?.let(named::get) }
+    fun laid(block: FeedBlock): FeedBlock = when (block) {
+        is FeedBlock.Single -> nameOf(block)?.let { block.copy(named = it) } ?: block
+        is FeedBlock.Similar -> {
+            val highlights = highlightsOf(block.items, notes)
+            val name = nameOf(block)
+            if (highlights.isEmpty() && name == null) block else block.copy(highlights = highlights, named = name)
+        }
+    }
+    return copy(
+        entries = entries.map { entry ->
+            when (entry) {
+                is FeedEntry.Section -> FeedEntry.Section(
+                    entry.section.copy(moments = entry.section.moments.map { moment -> moment.copy(blocks = moment.blocks.map(::laid)) }),
+                )
+            }
+        },
+    )
+}
+
+/** Of [items], the highlights ([PhotoNote.highlight]) in their order. */
+internal fun highlightsOf(items: List<MediaItem>, notes: Map<String, PhotoNote>): List<MediaItem> =
+    items.mapNotNull { item -> notes[item.id]?.highlight?.let { item to it } }.sortedWith(compareBy({ it.second }, { it.first.takenAtMillis })).map { it.first }
+
+/** The named sets ([PhotoNote.setInfo] on any of a set's photos), by set id; their photos oldest first. */
+internal fun namedSetsIn(notes: Map<String, PhotoNote>): Map<String, NamedSet> {
+    val members = notes.values.filter { it.feedSet != null }.groupBy { it.feedSet!! }
+    return members.mapNotNull { (set, notes) ->
+        val info = notes.sortedBy { it.highlight ?: Int.MAX_VALUE }.firstNotNullOfOrNull { it.setInfo } ?: return@mapNotNull null
+        set to NamedSet(set, info.name, info.showOn, notes.sortedBy { it.takenAtMillis }.map { it.deviceId })
+    }.toMap()
+}
+
+/** Where each named set shows (set id to [ShowOn]), for [buildFeed]. */
+internal fun placementsIn(notes: Map<String, PhotoNote>): Map<String, ShowOn> = namedSetsIn(notes).mapValues { it.value.showOn }
 
 /**
  * [hidden] photos (newest first) counted on, or for [revealed] sources shown on, the row of their day nearest to

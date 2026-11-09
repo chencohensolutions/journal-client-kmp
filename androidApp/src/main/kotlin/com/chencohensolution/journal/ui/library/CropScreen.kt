@@ -28,6 +28,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -216,6 +219,133 @@ internal fun CropScreen(
         CropModes(kind, saved, screenRatio, actions.select, Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
     }
 }
+
+/**
+ * The crop screen's set mode (Recompose, from the viewer of a set): each photo's Moments crop, the set's strip to go
+ * between its photos without leaving, the shape chips (Original, Square, 4:5, Wide) and Same frame for all (every photo
+ * of the same shape gets the frame shown, so the set flips without jumping). [saved] are the photos' Moments crops;
+ * Done hands back all of them ([onDone]), or just closes when nothing changed.
+ */
+@Composable
+internal fun SetCropEditor(
+    items: List<MediaItem>,
+    saved: Map<String, CropRect?>,
+    startId: String,
+    onDone: (Map<String, CropRect?>) -> Unit,
+    onClose: () -> Unit,
+) {
+    val photos = items.filter { it.durationMillis == null }
+    if (photos.isEmpty()) return onClose()
+    var index by rememberSaveable { mutableStateOf(photos.indexOfFirst { it.id == startId }.coerceAtLeast(0)) }
+    var drafts by remember { mutableStateOf(photos.associate { it.id to saved[it.id] }) }
+    val item = photos[index.coerceIn(photos.indices)]
+    val frame = drafts[item.id] ?: CropRect.WHOLE
+    fun set(rect: CropRect?) {
+        drafts = drafts + (item.id to rect?.takeUnless { it.isWhole() })
+    }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val result = photos.associate { it.id to drafts[it.id] }
+    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onClose) {
+                Icon(LibraryIcons.Close, stringResource(R.string.library_cancel), tint = Color.White)
+            }
+            Text(
+                stringResource(R.string.set_recompose),
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { set(null) }, enabled = drafts[item.id] != null) {
+                Text(stringResource(R.string.crop_reset), color = if (drafts[item.id] != null) Color.White else Color.White.copy(alpha = 0.35f))
+            }
+            Box(
+                Modifier
+                    .padding(end = 8.dp)
+                    .height(36.dp)
+                    .background(LibraryColors.Accent, RoundedCornerShape(50))
+                    .clickable { if (photos.all { saved[it.id] == result[it.id] }) onClose() else onDone(result) }
+                    .padding(horizontal = 18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(stringResource(R.string.crop_done), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
+            CropCanvas(item, frame, null) { set(it) }
+        }
+        Text(
+            stringResource(R.string.recompose_hint),
+            color = Color(0xFFB8C2BF),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        )
+        Text(
+            stringResource(R.string.crop_untouched),
+            color = Color(0xFF7E8987),
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            listOf(
+                R.string.recompose_shape_original to null,
+                R.string.recompose_shape_square to 1f,
+                R.string.recompose_shape_portrait to 0.8f,
+                R.string.recompose_shape_wide to 16f / 9f,
+            ).forEach { (label, shape) ->
+                val on = if (shape == null) drafts[item.id] == null else sameShape(frame.ratioOn(item.ratio), shape)
+                Box(
+                    Modifier
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (on) Color.White else Color.White.copy(alpha = 0.14f))
+                        .clickable { set(shape?.let { CropRect.largest(it, item.ratio, around = frame).copy(aspect = null) }) }
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(label), color = if (on) Color.Black else Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        if (photos.size > 1) {
+            androidx.compose.foundation.lazy.LazyRow(
+                Modifier.fillMaxWidth().padding(top = 14.dp).height(56.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            ) {
+                items(photos.size, key = { photos[it].id }) { i ->
+                    val photo = photos[i]
+                    Box(Modifier.size(42.dp, 56.dp).clip(RoundedCornerShape(4.dp)).clickable { index = i }) {
+                        SetThumb(photo, Modifier.fillMaxSize())
+                        if (drafts[photo.id] != null) {
+                            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp).size(5.dp).background(Color.White, CircleShape))
+                        }
+                        if (i == index) Box(Modifier.fillMaxSize().border(2.dp, Color.White, RoundedCornerShape(4.dp)))
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = {
+                    val shown = drafts[item.id]
+                    drafts = drafts + photos.filter { sameShape(it.ratio, item.ratio) }.associate { it.id to shown }
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                }) {
+                    Text("⧉  " + stringResource(R.string.recompose_same_frame), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        } else {
+            Box(Modifier.height(16.dp))
+        }
+    }
+}
+
+private fun CropRect.isWhole(): Boolean = x < 0.001f && y < 0.001f && w > 0.999f && h > 0.999f
 
 /**
  * The photo fitted in the space, dimmed outside [frame]. Dragging moves the frame and pinching sizes it; the handles

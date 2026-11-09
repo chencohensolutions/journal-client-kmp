@@ -77,12 +77,16 @@ internal sealed interface Route {
     /** The crop screen for one photo, opened on [kind]. */
     data class Crop(val itemId: String, val kind: CropKind) : Route
 
+    /** The crop screen's set mode (Recompose): the set's Moments crops, [list] its viewer list ([setListKey]), on [itemId]. */
+    data class Recompose(val list: String, val itemId: String) : Route
+
     /**
      * Opened from the storyline ([storyline]), a tag ([tag]), one row of the Moments tab
      * ([moment], its [com.chencohensolution.journal.stories.FeedSection.key]), or Explore
      * ([scope]: the map's photos, or with [moment] a row of a town's or a year's page). With [moment] and [revealed],
      * the band of that hidden source's photos on the Moments row. With [search], the photos the last search found.
-     * With [list], the photos a page showed when it opened the viewer (a person's, similar photos): see [PageLists].
+     * With [list], the photos a page showed when it opened the viewer (a person's, similar photos): see [PageLists]; a
+     * set's list ([setListKey]) opens it in its set mode ([isSet]).
      */
     data class Viewer(
         val moment: String?,
@@ -93,7 +97,9 @@ internal sealed interface Route {
         val storyline: Boolean = false,
         val search: Boolean = false,
         val list: String? = null,
-    ) : Route
+    ) : Route {
+        val isSet: Boolean get() = setIdsOf(list) != null
+    }
 
     // Tags are free text and moment keys are item ids, so they are URL-encoded to keep "|" out.
     fun encode(): String = when (this) {
@@ -117,6 +123,7 @@ internal sealed interface Route {
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
         is Crop -> "crop|$kind|$itemId"
+        is Recompose -> "recompose|${URLEncoder.encode(list, "UTF-8")}|$itemId"
         is Audio -> "audio|$sha256"
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
         is Place -> "place|${URLEncoder.encode(town, "UTF-8")}"
@@ -155,6 +162,7 @@ internal sealed interface Route {
                 "similar" -> Similar(parts.drop(1).joinToString("|"))
                 "audio" -> Audio(parts[1])
                 "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
+                "recompose" -> Recompose(URLDecoder.decode(parts[1], "UTF-8"), parts.drop(2).joinToString("|"))
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))
                 "year" -> Year(parts[1].toInt(), parts[2].toIntOrNull())
@@ -211,6 +219,9 @@ internal data class StackEntry(val depth: Int, val route: Route) {
  */
 internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Route.Viewer, search: SearchState, lists: PageLists = PageLists()): List<MediaItem> = when {
     route.search -> search.items
+    // A set: as opened, else (after the process was killed) its photos by id, those not read yet read as it shows.
+    route.isSet -> lists[route.list!!].ifEmpty { setIdsOf(route.list).orEmpty().mapNotNull { stories.itemsById[it] } }
+        .mapNotNull { item -> stories.itemsById[item.id] ?: item.takeUnless { stories.gone(it.id) } }
     route.list != null -> lists[route.list].mapNotNull { item -> stories.itemsById[item.id] ?: item.takeUnless { stories.gone(it.id) } }
     // As the page or the map gave them; when they aren't kept (after the process was killed) they are read again
     // (scopeViewerItems).

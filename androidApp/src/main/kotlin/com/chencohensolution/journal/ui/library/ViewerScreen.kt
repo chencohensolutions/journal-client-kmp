@@ -19,6 +19,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
@@ -152,6 +161,21 @@ internal class ViewerActions(
     val faces: FaceActions = FaceActions(),
 )
 
+/**
+ * The viewer opened on a set ([Route.Viewer.list] a set's): its photos cross-fade instead of sliding, under the photo
+ * the scrubber and ☆ Highlight · ▶ Play · Recompose; Write, Details and Share move to the top bar's menu.
+ */
+internal class ViewerSet(
+    /** Its name, when it is a moment made by hand. */
+    val name: String? = null,
+    /** Its highlights' ids in order; the first is its cover. */
+    val highlights: List<String> = emptyList(),
+    val setHighlight: (itemId: String, on: Boolean) -> Unit = { _, _ -> },
+    val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
+    /** The crop screen's set mode, on this photo. */
+    val recompose: (itemId: String) -> Unit = {},
+)
+
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
 @Composable
 internal fun ViewerScreen(
@@ -159,6 +183,8 @@ internal fun ViewerScreen(
     startId: String,
     stories: StoriesState,
     actions: ViewerActions,
+    /** Opened on a set: its controls, and swipes that cross-fade. */
+    set: ViewerSet? = null,
     /** The bars and buttons shown on opening (for the screen previews); a tap shows them otherwise. */
     chromeAtStart: Boolean = false,
     /** What the server found in the photo the details panel shows (it asks with [ViewerActions.findIn]). */
@@ -175,9 +201,20 @@ internal fun ViewerScreen(
     }
     HideSystemBars()
     val pager = rememberPagerState(initialPage = items.indexOfFirst { it.id == startId }.coerceAtLeast(0)) { items.size }
+    // In a set there is no pager: the photo shown is this, and swipes cross-fade to the next.
+    var setIndex by rememberSaveable { mutableIntStateOf(items.indexOfFirst { it.id == startId }.coerceAtLeast(0)) }
+    val shownIndex = (if (set != null) setIndex else pager.currentPage).coerceIn(items.indices)
+    var playing by rememberSaveable { mutableStateOf(false) }
+    var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
+    var grid by rememberSaveable { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+    Slideshow(set != null && playing, speed.millis, items.size, shownIndex) { setIndex = it }
+    KeepScreenOn(set != null && playing)
+    BackHandler(playing) { playing = false }
     var showInfo by rememberSaveable { mutableStateOf(false) }
     // The bars and buttons over the photo: hidden at first, shown by a tap for CHROME_MILLIS, hidden by the next tap.
-    var chrome by remember { mutableStateOf(chromeAtStart) }
+    // In a set they show from the start (its scrubber is the way through it), until a tap hides them.
+    var chrome by remember { mutableStateOf(chromeAtStart || set != null) }
     var choosingTag by rememberSaveable { mutableStateOf(false) }
     var editingCaption by rememberSaveable { mutableStateOf(false) }
     // The whole photo instead of its crop, until turned back (kept while swiping).
@@ -186,9 +223,10 @@ internal fun ViewerScreen(
     val window = LocalWindowInfo.current.containerSize
     val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
     val cropKind = if (screenRatio <= 1f) CropKind.PORTRAIT else CropKind.LANDSCAPE
-    fun cropOf(item: MediaItem) =
-        stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
-    val current = items[pager.currentPage.coerceIn(items.indices)]
+    // In a set, its Moments crops (Recompose), so it flips as composed.
+    fun cropOf(item: MediaItem) = if (set != null) stories.note(item.id)?.crops?.moments?.takeIf { item.type != MediaType.VIDEO }
+    else stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
+    val current = items[shownIndex]
     // Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open;
     // zoomed, the whole photo shows instead of its crop.
     val zoomScope = rememberCoroutineScope()
@@ -227,14 +265,69 @@ internal fun ViewerScreen(
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
     LaunchedEffect(chrome, showInfo, choosingTag, editingCaption) {
-        if (chrome && !showInfo && !choosingTag && !editingCaption) {
+        if (chrome && set == null && !showInfo && !choosingTag && !editingCaption) {
             delay(CHROME_MILLIS)
             chrome = false
         }
     }
 
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(
+        if (set != null) Box(
+            Modifier
+                .fillMaxSize()
+                .zoomGestures({ zoomNow }) {
+                    chrome = false
+                    showInfo = false
+                }
+                .pointerInput(current.type == MediaType.VIDEO, playing) {
+                    detectTapGestures(
+                        onDoubleTap = { at ->
+                            if (current.type == MediaType.VIDEO) return@detectTapGestures
+                            chrome = false
+                            showInfo = false
+                            zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
+                        },
+                        onTap = {
+                            showInfo = false
+                            if (playing) {
+                                playing = false
+                                chrome = true
+                            } else {
+                                chrome = !chrome
+                            }
+                        },
+                    )
+                }
+                // A swipe cross-fades to the next or previous photo (not while zoomed in: the zoom takes the drag).
+                .pointerInput(items.size, rtl) {
+                    var dragged = 0f
+                    detectHorizontalDragGestures(onDragStart = { dragged = 0f }, onDragEnd = {
+                        if (abs(dragged) > SET_SWIPE.toPx()) {
+                            val forward = (dragged < 0) != rtl
+                            val next = setIndex + if (forward) 1 else -1
+                            if (next in items.indices) {
+                                playing = false
+                                setIndex = next
+                            }
+                        }
+                    }) { change, amount ->
+                        if (zoomNow?.isZoomed == true) return@detectHorizontalDragGestures
+                        change.consume()
+                        dragged += amount
+                    }
+                },
+        ) {
+            Crossfade(shownIndex, Modifier.fillMaxSize(), animationSpec = tween(SET_FADE_MILLIS), label = "set photo") { page ->
+                val item = items[page]
+                if (item.type == MediaType.VIDEO) {
+                    VideoPage(item, sharedKey(item), isCurrent = page == shownIndex)
+                } else {
+                    val pageZoom = zoomOf(item)
+                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole && !pageZoom.isZoomed }, pageZoom)
+                }
+            }
+        } else HorizontalPager(
             pager,
             key = { items[it].id },
             // Zoomed in, a drag moves the photo instead of swiping; double-taps step back to fitted.
@@ -277,14 +370,30 @@ internal fun ViewerScreen(
         }
 
         AnimatedVisibility(
-            chrome && currentCrop != null && !showInfo,
+            chrome && set == null && currentCrop != null && !showInfo,
             Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
             CropChip(showingWhole = showWhole, onToggle = { showWhole = !showWhole })
         }
-        AnimatedVisibility(
+        if (set != null) {
+            AnimatedVisibility(
+                chrome && !showInfo && !playing,
+                Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                SetBar(items, set, shownIndex, onIndex = { setIndex = it }, onPlay = { playing = true })
+            }
+            AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
+                SlideshowBar(shownIndex, items.size, speed, { speed = it }, onStop = {
+                    playing = false
+                    chrome = true
+                })
+            }
+        }
+        if (set == null) AnimatedVisibility(
             chrome && !showInfo,
             Modifier.align(Alignment.BottomCenter).navigationBarRoom().padding(bottom = 20.dp),
             enter = fadeIn(),
@@ -310,7 +419,7 @@ internal fun ViewerScreen(
             }
         }
 
-        AnimatedVisibility(chrome, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(chrome && !playing, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -323,7 +432,47 @@ internal fun ViewerScreen(
                     Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
                 }
                 val showInMoments = actions.showInMoments
-                if (showInMoments == null) {
+                if (set != null) {
+                    Column(Modifier.weight(1f)) {
+                        set.name?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
+                        Text(
+                            stringResource(R.string.set_position, shownIndex + 1, items.size) + " · " + dayLabel(current.day),
+                            color = PositionColor,
+                            fontSize = 13.sp,
+                        )
+                    }
+                    IconButton(onClick = { grid = true }) {
+                        Icon(LibraryIcons.Grid, stringResource(R.string.set_all_photos), tint = Color.White)
+                    }
+                    Box {
+                        IconButton(onClick = { menu = true }) {
+                            Icon(LibraryIcons.More, stringResource(R.string.set_more), tint = Color.White)
+                        }
+                        val context = LocalContext.current
+                        val scope = rememberCoroutineScope()
+                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.viewer_write)) }, onClick = {
+                                menu = false
+                                editingCaption = true
+                            })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
+                                menu = false
+                                showInfo = true
+                            })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.library_share)) }, onClick = {
+                                menu = false
+                                val item = current
+                                scope.launch { if (!actions.share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show() }
+                            })
+                            showInMoments?.let { show ->
+                                DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
+                                    menu = false
+                                    show(current.id)
+                                })
+                            }
+                        }
+                    }
+                } else if (showInMoments == null) {
                     Text(
                         stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
                         color = PositionColor,
@@ -369,6 +518,19 @@ internal fun ViewerScreen(
         }
     }
 
+    if (grid && set != null) {
+        SetGridSheet(
+            items,
+            set.highlights.mapNotNull { id -> items.firstOrNull { it.id == id } },
+            current.id,
+            onPick = { item ->
+                grid = false
+                setIndex = items.indexOf(item).coerceAtLeast(0)
+            },
+            onMove = { item, to -> set.moveHighlight(item.id, to) },
+            onDismiss = { grid = false },
+        )
+    }
     faceSheet?.let { found ->
         PageSheet({ faceSheet = null }) {
             FaceSheet(found, people, actions.faces, onDone = { faceSheet = null })
@@ -396,6 +558,39 @@ internal fun ViewerScreen(
             },
             onDismiss = { editingCaption = false },
         )
+    }
+}
+
+/** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
+@Composable
+private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+    val item = items[index]
+    val place = set.highlights.indexOf(item.id)
+    Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
+        if (items.size > 1) SetScrubber(items, set.highlights.toSet(), index, onIndex, Modifier.padding(horizontal = 16.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            SetBarButton(
+                if (place >= 0) "★" else "☆",
+                stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
+                Modifier.weight(1f),
+            ) { set.setHighlight(item.id, place < 0) }
+            Box(
+                Modifier.size(60.dp).clip(CircleShape).background(Color.White).clickable(onClickLabel = stringResource(R.string.set_play), onClick = onPlay),
+                contentAlignment = Alignment.Center,
+            ) { Icon(LibraryIcons.Play, stringResource(R.string.set_play), tint = Color.Black, modifier = Modifier.size(26.dp)) }
+            SetBarButton("⌗", stringResource(R.string.set_recompose), Modifier.weight(1f), enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
+        }
+    }
+}
+
+@Composable
+private fun SetBarButton(glyph: String, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 6.dp).alpha(if (enabled) 1f else 0.4f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(glyph, color = Color.White, fontSize = 22.sp)
+        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 

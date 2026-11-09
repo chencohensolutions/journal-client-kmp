@@ -42,14 +42,15 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
 - **Photos** are edge to edge and full width, at their own shape (never cropped to squares), or at their Moments
   [crop](crop.md). A video shows its length.
 - **Writing** (Oct 21, 2026): a photo's title is above it (semibold), its paragraph under it in serif, up to 4 lines
-  and then **more**. In a near-duplicate set, the writing of the photo shown.
+  and then **more**. In a set, the writing of the photo shown (each highlight shows its own).
 - **Long press** a photo to start **picking** (Nov 8, 2026, Android; it replaced the long-press menu of Write about
   it, Crop, Tag, Select, Take out of this set and Remove from storyline): the photo is picked (a check at its corner),
   taps then pick or unpick (a set is picked whole), back or **Cancel** stops. In place of the tabs, the **picking
   bar**: **Cancel · N selected · Mark private · Tuck away** (N counts photos, a set each of its own; Mark private asks
   first, as search's does; Tuck away doesn't), or **Bring back** in place of Tuck away when every photo picked is
   tucked away. Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
-  two or more photos or sets picked, **Merge**; with one set picked, **Take out** (the photo the long press was on).
+  two or more photos picked, **Make a moment** (Nov 9, 2026, below) and, with two or more photos or sets picked none of
+  which is a named moment, **Merge**; with one set picked, **Take out** (the photo the long press was on).
   Remove from / Add to storyline is in the viewer's details panel. A long press on a photo taken during a recording
   still plays the recording. The same bar (`PickingBar`) is search's and Explore's pages'. **Add to story** went with
   stories on Oct 21, 2026. See [Tucked away](#tucked-away-nov-8-2026) below.
@@ -61,16 +62,47 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
 - Each photo has the **backup badge** in its bottom-right corner, as on the grids (see [README.md](README.md)): a phone
   when it is on this phone and on the server, a crossed-out cloud while it isn't uploaded, nothing when it is only on
   the server; a set shows the badge of the photo it is turned to. A playing video shows its sound button there instead.
-- **Near-duplicates** are one photo at the first one's shape. Swipe sideways for the others; a "2 / 4" badge and
-  dots show where you are, with no peek of the next one.
-  The photos beside the one shown are loaded ahead, so a swipe either way shows a ready photo; for photos only on the
-  server, only those two neighbours' previews are downloaded (never the rest of the set) until a swipe brings more
-  next to the one shown.
-- A set **opens on the photo it was last turned to**, also after scrolling away or restarting the app (kept on this
-  device in settings, `feed_page|<first photo id>`; turning back to the first forgets it). A set never turned opens on
-  its best-looking photo (the server's aesthetic score, kept by On device search; Oct 24, 2026), else the first
-  (`StoriesState.frontOf`).
+- **Sets** (near-duplicates, sets merged by hand and moments made by hand; Nov 9, 2026, Android only; iOS not built
+  yet, it still swipes a pager): see [Sets](#sets-nov-9-2026) below.
 - There are no trip cards any more: "Looks like a trip" with **Save as story** went with stories on Oct 21, 2026.
+
+## Sets (Nov 9, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the UI lab round
+[moment-set](../ux-history/moment-set/2026-11-09-viewing-sets.md) (options b, c, d); plan in
+[plans/moment-sets.md](../plans/moment-sets.md).
+
+- **Highlights**: any of a set's photos can be marked a highlight (☆ Highlight in the [viewer](viewer.md#a-set-nov-9-2026));
+  those are what Moments shows of it, **one under the other** as single photos (each with its own title and
+  paragraph), then the set's line, "⧉ 36 photos in this set ›", which opens it. Their order is the order they were
+  marked, changed by dragging in the viewer's grid sheet. The first highlight is the set's **cover**: where it opens.
+- **A set without highlights shows its cover**: the photo it was turned to while the feed shows, else its best-looking
+  photo (the server's aesthetic score), else its first (`StoriesState.frontOf`). At the cover's shape, the others
+  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner and a thin line near the bottom with a
+  mark where the photo shown is (a dot at the cover).
+  - **Hold and slide** flips through it in place: hold, then slide sideways, a tick per photo, 10 dp each, with
+    "12 of 36" at the top while sliding. Letting go keeps it there until the feed is left (never saved: notes keep
+    highlights, not turns). A hold let go without sliding is the long press (picking); a vertical move scrolls.
+  - A small **▶** at the bottom corner plays it in place, muted, a photo every 0.5 s, round and round; again to stop.
+  - A **tap** opens the viewer on the set only, at the photo shown.
+  - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
+- **A moment made by hand** shows its name over it, "Beach weekend · Fri – Sun".
+- **Make a moment** (picking bar, two or more photos picked): a sheet with its **name**, its **highlights** (tap
+  several; the numbers are their order; none: its best-looking photo) and **Show it in Moments on**: its first day,
+  its last day, or **every day it has** (first and last are the same with one day, and then only first is offered).
+  **Make it** saves it (`StoriesController.makeMoment`: merged, highlights, `setInfo` on its cover) and opens the
+  viewer on it. With "every day it has", each day shows its own photos of it as a set (or one photo), with a link
+  **"Part of Beach weekend ›"** under them that opens the whole moment.
+- Saved in each photo's note file (format 5): `"highlight": 1` (its place among the highlights; replaces format 4's
+  `"front"`, which is read as highlight 1), and on the cover `"setInfo": {"name": "Beach weekend", "showOn":
+  "first" | "last" | "each"}`. Taking a photo out of a set ends its highlight, and a name it carried moves to another
+  of the set's photos; the name moves with the cover when highlights are reordered.
+- Code: `FeedBlock.Similar.highlights` and `FeedBlock.named` (`MomentsFeed.withSets`, laid over the rows from the
+  notes, also those read from the database), placement by `ShowOn` in `buildFeed`; Android `SetBlock` / `SetCover` in
+  [MomentsFeedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentsFeedViews.kt),
+  [MakeMomentSheet.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MakeMomentSheet.kt),
+  the shared parts in [MomentSets.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentSets.kt).
+  Tests: `MomentSetsTest`.
 
 **Videos play in the feed**, muted and looping. Only one plays: of the videos at least 60% in view between the top bar
 and the bottom controls, the one closest to the middle. It stops when it scrolls away, the tab changes or the app
@@ -203,7 +235,7 @@ The same feed, from the same shared `StoriesState.feed`, with these differences:
   Moments crop.
 - While picking (from the menu's **Select**), the bottom bar is **Cancel · N selected · Merge**; changing tabs stops
   picking. Android's long-press picking and Tucked away are not built yet (see [ios-todo.md](../ios-todo.md)).
-- **Sets** are a horizontal paging scroll view; the photos beside the one shown are cached ahead
+- **Sets** are still a horizontal paging scroll view (Android's [Sets](#sets-nov-9-2026) are not built yet); the photos beside the one shown are cached ahead
   (`PHCachingImageManager`). There are no photos only on the server on iOS yet, so nothing is downloaded.
 - **Videos** play with `AVQueuePlayer` and `AVPlayerLooper` in an `AVPlayerLayer`. Muted, the audio session is
   `ambient` with `mixWithOthers`, so music from another app keeps playing; with sound it is `playback`, and an
