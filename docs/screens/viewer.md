@@ -47,7 +47,12 @@ Swiping is not a tap; a playing video's own controls take its taps.
   whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
   photo, asked for the same day.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
-  screen size on iOS).
+  screen size on iOS). Swiping moves between photos fitted to the screen (Nov 9, 2026, Android): once a photo is settled
+  on, the three on each side are made ready at screen size, the way the swipes go first (a photo only on the server:
+  the server's preview at that size, no original downloaded), into their own cache by bytes (`screenPreviews`), and the
+  pager composes its neighbours (`beyondViewportPageCount = 1`), so each slides in sharp instead of soft first. The full
+  image (or the downloaded original) is loaded for the photo shown only, once it is settled, and takes its place; a
+  swipe on cancels what was still to come. In a set the same, around the photo cross-faded to.
 - **Zoom** (asked for Oct 21, 2026, reworked the same day; iOS since Oct 22, see Platform notes):
   - **Double-taps step**: fitted → filling the screen (edges cut off) → the original's size (one photo pixel to one
     screen pixel) → back to fitted, zooming around the tap. A step that would add nothing is skipped (a small photo's

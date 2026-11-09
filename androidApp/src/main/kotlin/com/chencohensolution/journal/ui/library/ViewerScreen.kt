@@ -109,6 +109,7 @@ import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -127,10 +128,54 @@ import kotlinx.coroutines.withContext
 private const val VIEWER_MAX_SIDE = 2560
 
 /**
- * The viewer's full images of the last few photos, by id: a slideshow decodes the next one here before it switches,
- * so the photo shows sharp at once (asked Nov 9, 2026). A few only: each is up to 2560 px, about 20 MB.
+ * The viewer's full images of the last few photos, by id: a slideshow decodes the next one here before it switches, so
+ * the photo shows sharp at once (asked Nov 9, 2026). A few only (each is up to 2560 px, about 20 MB), by bytes.
  */
-private val viewerImages = LruCache<String, android.graphics.Bitmap>(4)
+private val viewerImages = object : LruCache<String, android.graphics.Bitmap>(
+    minOf(4L * VIEWER_IMAGE_BYTES, Runtime.getRuntime().maxMemory() / 6).toInt(),
+) {
+    override fun sizeOf(key: String, value: android.graphics.Bitmap) = value.allocationByteCount
+}
+
+/** About what one of [viewerImages] takes: 2560 × 1920 at 4 bytes a pixel. */
+private const val VIEWER_IMAGE_BYTES = 2560L * 1920 * 4
+
+/**
+ * Each photo fitted to the screen, by id: what the viewer slides between (asked Nov 9, 2026). The photos beside the one
+ * shown are made ready here ahead, so each slides in sharp at once; the full image comes after, for the photo shown
+ * only. By bytes (a screen-size photo is about 8 MB on a 1080 × 2340 screen).
+ */
+private val screenPreviews = object : LruCache<String, android.graphics.Bitmap>((Runtime.getRuntime().maxMemory() / 8).toInt()) {
+    override fun sizeOf(key: String, value: android.graphics.Bitmap) = value.allocationByteCount
+}
+
+/**
+ * [item] fitted inside [screen] (pixels): from [screenPreviews], else decoded at that size (a photo only on the server:
+ * the server's preview at that size, no original downloaded) and kept there.
+ */
+private suspend fun screenPreview(context: android.content.Context, previews: ServerPreviews?, item: MediaItem, screen: IntSize): android.graphics.Bitmap? {
+    screenPreviews.get(item.id)?.let { return it }
+    if (item.type != MediaType.IMAGE || screen.width <= 0 || screen.height <= 0) return null
+    val ratio = item.ratio
+    val (w, h) = if (ratio >= screen.width.toFloat() / screen.height) {
+        screen.width to (screen.width / ratio).toInt()
+    } else {
+        (screen.height * ratio).toInt() to screen.height
+    }
+    return loadCover(context, previews, item, w.coerceAtLeast(1), h.coerceAtLeast(1))?.also { screenPreviews.put(item.id, it) }
+}
+
+/** [item]'s [screenPreview]: from memory at once when made ready ahead, else once loaded. */
+@Composable
+private fun rememberScreenPreview(item: MediaItem): android.graphics.Bitmap? {
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val screen = LocalWindowInfo.current.containerSize
+    val preview by produceState(screenPreviews.get(item.id), item.id) {
+        if (value == null) value = screenPreview(context, previews, item, screen)
+    }
+    return preview
+}
 
 /** [item]'s full image as the viewer shows it, fitted in [VIEWER_MAX_SIDE]: kept in [viewerImages], else loaded and kept. */
 private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPreviews?, item: MediaItem): android.graphics.Bitmap? {
@@ -247,6 +292,19 @@ internal fun ViewerScreen(
     Slideshow(set != null && playing, speed.millis, items.size, shownIndex, prepare = { i ->
         items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) }
     }) { setIndex = it }
+    // Swiping: once a photo is settled on, the three on each side are made ready at screen size, the way the swipes go
+    // first, so each slides in sharp (asked Nov 9, 2026); a swipe on cancels what was still to come.
+    val context = LocalContext.current
+    val screenSize = LocalWindowInfo.current.containerSize
+    val settledIndex = if (set != null) setIndex else pager.settledPage
+    var lastSettled by remember { mutableIntStateOf(settledIndex) }
+    LaunchedEffect(settledIndex, items.size) {
+        val way = if (settledIndex < lastSettled) -1 else 1
+        lastSettled = settledIndex
+        listOf(1, -1, 2, 3, -2, -3).forEach { step ->
+            items.getOrNull(settledIndex + step * way)?.let { screenPreview(context, previews, it, screenSize) }
+        }
+    }
     KeepScreenOn(set != null && playing)
     BackHandler(playing) { playing = false }
     var showInfo by rememberSaveable { mutableStateOf(false) }
@@ -363,12 +421,14 @@ internal fun ViewerScreen(
                     VideoPage(item, sharedKey(item), isCurrent = page == shownIndex, videos)
                 } else {
                     val pageZoom = zoomOf(item)
-                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
+                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom, shown = page == shownIndex)
                 }
             }
         } else HorizontalPager(
             pager,
             key = { items[it].id },
+            // The pages beside the one shown are composed, so their photos load before they slide in.
+            beyondViewportPageCount = 1,
             // Zoomed in, a drag moves the photo instead of swiping; double-taps step back to fitted.
             userScrollEnabled = !zoom.isZoomed,
             // A tap on the photo (not a swipe, nor one the play button or the player takes); the details panel and
@@ -404,7 +464,7 @@ internal fun ViewerScreen(
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage, videos)
             } else {
                 val pageZoom = zoomOf(item)
-                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
+                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom, shown = page == pager.settledPage)
             }
         }
 
@@ -653,19 +713,22 @@ private fun SetBarButton(glyph: String, label: String, modifier: Modifier = Modi
     }
 }
 
-/** [zoom] is the viewer's for the photo shown, null for the pages beside it. */
+/**
+ * A photo: at screen size at once when made ready ahead ([screenPreviews]), and, once it is the one [shown], its full
+ * image over it. [zoom] is the viewer's for the photo.
+ */
 @Composable
-private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
-    if (!item.hasOriginalHere) return ServerPhotoPage(item, sharedKey, crop, zoom)
+private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?, shown: Boolean = true) {
+    if (!item.hasOriginalHere) return ServerPhotoPage(item, sharedKey, crop, zoom, shown)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
-    // Already decoded when a slideshow made it ready: sharp from the first frame.
-    val full by produceState(viewerImages.get(item.id), item.id) {
-        if (value == null) value = viewerImage(resolver, previews, item)
-    }
+    val screen = rememberScreenPreview(item)
+    // Already decoded when a slideshow made it ready: sharp from the first frame. Else loaded once shown.
+    var full by remember(item.id) { mutableStateOf(viewerImages.get(item.id)) }
+    LaunchedEffect(item.id, shown) { if (shown && full == null) full = viewerImage(resolver, previews, item) }
     val sharp = rememberZoomedOriginal(item, zoom) { loadImage(resolver, previews, item, zoomDecodeSide(item)) }
-    val image = sharp ?: full?.asImageBitmap() ?: preview
+    val image = sharp ?: (full ?: screen)?.asImageBitmap() ?: preview
     val small = preview ?: remember(full) { full?.asImageBitmap() }
     SideEffect { zoom?.picture = small }
     val detail = rememberDetailLayer(item, zoom, shownSide = image?.let { maxOf(it.width, it.height) } ?: 0) {
@@ -697,20 +760,27 @@ private fun rememberZoomedOriginal(item: MediaItem, zoom: PhotoZoom?, load: susp
  * for instead; offline, the cached image stays.
  */
 @Composable
-private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
+private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?, shown: Boolean = true) {
     val previews = LocalServerPreviews.current
     val resolver = LocalContext.current.contentResolver
-    val cached by produceState<android.graphics.Bitmap?>(null, item.id) {
+    // The server's preview at screen size (made ready ahead while swiping), else the best image already on this phone.
+    val screen = rememberScreenPreview(item)
+    val kept by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) }
     }
+    val cached = screen ?: kept
     // The spinner is for a download only: an original already in the cache is just decoded, with nothing to wait for.
     var downloading by remember(item.id) { mutableStateOf(false) }
-    // Already decoded when a slideshow made it ready: sharp from the first frame.
-    val original by produceState(viewerImages.get(item.id), item.id) {
-        if (value != null) return@produceState
+    // Already decoded when a slideshow made it ready: sharp from the first frame. Else downloaded once shown.
+    var original by remember(item.id) { mutableStateOf(viewerImages.get(item.id)) }
+    LaunchedEffect(item.id, shown) {
+        if (!shown || original != null) return@LaunchedEffect
         if (item.sha256?.let { previews?.cachedOriginal(it) } == null) downloading = true
-        value = viewerImage(resolver, previews, item)
-        downloading = false
+        try {
+            original = viewerImage(resolver, previews, item)
+        } finally {
+            downloading = false
+        }
     }
     // Zoomed in: decoded again from the downloaded original, at its own size.
     val sharp = rememberZoomedOriginal(item, zoom) { serverOriginal(previews, item, zoomDecodeSide(item)) }

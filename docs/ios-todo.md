@@ -23,6 +23,10 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Swiping between screen-size photos** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): three photos on each
+  side of the one shown are made ready fitted to the screen (server previews at that size for photos only there), the
+  way the swipes go first, so each slides in sharp; the full image or original only for the photo shown. Android:
+  `screenPreviews`, `screenPreview`, the settled-page `LaunchedEffect` and `PhotoPage(shown)` in `ViewerScreen.kt`.
 - **Crop on and off glides** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the viewer's Show all / Show crop
   animates the part shown between the crop and the whole photo (0.3 s, ease), with the same image. Android: the frame
   `Animatable` in `ViewerImage` (`ViewerScreen.kt`).
