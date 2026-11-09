@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -356,6 +358,9 @@ private fun CropCanvas(item: MediaItem, frame: CropRect, locked: Float?, onChang
     val current by rememberUpdatedState(frame)
     val change by rememberUpdatedState(onChange)
     val photoRatio = item.ratio
+    // The frame is a part of the photo, left is left: laid out left to right in every language. In Hebrew the handles'
+    // offsets were mirrored, so each edge's handle sat on the other side and dragged the wrong edge (Nov 9, 2026).
+    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val boxRatio = maxWidth / maxHeight
         val width = if (photoRatio >= boxRatio) maxWidth else maxHeight * photoRatio
@@ -402,7 +407,7 @@ private fun CropCanvas(item: MediaItem, frame: CropRect, locked: Float?, onChang
                 )
             }
         }
-    }
+    }}
 }
 
 private fun DrawScope.drawFrame(frame: CropRect, free: Boolean) {
