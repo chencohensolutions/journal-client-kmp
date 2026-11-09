@@ -130,9 +130,7 @@ function clearNote() {
 /** The original's bytes: from its URL on the phone, else (blocked or unreachable) sent by the phone in chunks. */
 async function bytesOf(item) {
   try {
-    const response = await fetch(item.url, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return new Uint8Array(await response.arrayBuffer());
+    return await fetchWatched(item.url);
   } catch (e) {
     console.warn('fetch failed, asking for chunks', item.id, e);
     return new Promise((resolve, reject) => {
@@ -146,6 +144,43 @@ async function bytesOf(item) {
         }
       }, 120_000);
     });
+  }
+}
+
+/** How long the phone may stay silent before the fetch is given up: an unreachable phone isn't waited on. */
+const FETCH_SILENCE_MS = 10_000;
+
+/** The bytes at [url], given up (and so sent in chunks instead) when no answer or no new bytes come for a while. */
+async function fetchWatched(url) {
+  const abort = new AbortController();
+  let timer = setTimeout(() => abort.abort(), FETCH_SILENCE_MS);
+  const heard = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => abort.abort(), FETCH_SILENCE_MS);
+  };
+  try {
+    const response = await fetch(url, { cache: 'no-store', signal: abort.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    heard();
+    const reader = response.body.getReader();
+    const parts = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      heard();
+      parts.push(value);
+      total += value.length;
+    }
+    const bytes = new Uint8Array(total);
+    let at = 0;
+    for (const p of parts) {
+      bytes.set(p, at);
+      at += p.length;
+    }
+    return bytes;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -363,9 +398,20 @@ if (!local && window.cast && cast.framework) {
     }
     receive(data);
   });
-  context.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => hello());
+  // With the idle timeout off, the page must close itself when the phone is gone: at once when it stops casting, and
+  // after a minute when it just went away (out of Wi-Fi, the app closed), so a stale page never blocks the next cast.
+  let alone = 0;
+  context.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => {
+    clearTimeout(alone);
+    hello();
+  });
   context.addEventListener(cast.framework.system.EventType.SENDER_DISCONNECTED, (event) => {
-    if (context.getSenders().length === 0 && event.reason === cast.framework.system.DisconnectReason.REQUESTED_BY_SENDER) context.stop();
+    if (context.getSenders().length > 0) return;
+    if (event.reason === cast.framework.system.DisconnectReason.REQUESTED_BY_SENDER) return context.stop();
+    clearTimeout(alone);
+    alone = setTimeout(() => {
+      if (context.getSenders().length === 0) context.stop();
+    }, 60_000);
   });
   send = (data) => {
     try {
