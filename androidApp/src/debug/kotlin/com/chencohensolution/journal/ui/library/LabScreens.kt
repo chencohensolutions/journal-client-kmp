@@ -27,6 +27,27 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
+    // A set of many photos (Nov 9, 2026; the iOS lab's moment-set round): MomentSetLab.kt.
+    LabScreen("moment-set", "A set of photos", listOf(
+        current {
+            JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        },
+        LabOption("a", "a: Set page", "Main photo on top with Play, then every photo in a grid; hold a tile for more") {
+            LibraryTheme(dark = true) { MomentSetScreenA(MomentSetLab.beach()) }
+        },
+        LabOption("b", "b: Viewer with a scrubber", "Opens on the main photo; slide along the strip to flip through all 36") {
+            LibraryTheme(dark = true) { MomentSetScreenB(MomentSetLab.beach()) }
+        },
+        LabOption("b-recompose", "b: Recompose", "A frame per photo, the set's strip, Same frame for all") {
+            LibraryTheme(dark = true) { MomentSetScreenB(MomentSetLab.beach(), at = 14, recomposing = true) }
+        },
+        LabOption("c", "c: Flip in the feed", "The set stays one photo in Moments: hold and slide to flip, Play in place") {
+            LibraryTheme(dark = true) { MomentSetScreenC(MomentSetLab.beach()) }
+        },
+        LabOption("d", "d: Collect a weekend", "Pick photos over neighbouring days, a tray counts them, Make a moment") {
+            LibraryTheme(dark = true) { MomentSetScreenD() }
+        },
+    )),
     // Made-up data (KindsLab): unlocked, as the emulator has no screen lock; the switches work while it is open.
     LabScreen("private", "Private settings", listOf(
         current { PrivateSettingsLab() },
