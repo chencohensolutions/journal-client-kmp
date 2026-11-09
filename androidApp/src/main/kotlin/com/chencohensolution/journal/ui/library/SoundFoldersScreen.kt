@@ -98,7 +98,7 @@ internal fun SoundFoldersRoute(library: ServerLibrary, onState: (SoundFoldersSta
  */
 @Composable
 internal fun SoundFoldersScreen(state: SoundFoldersState, confirming: SoundFoldersChange?, actions: SoundFoldersActions) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

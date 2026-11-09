@@ -224,7 +224,7 @@ internal fun JournalHomeScreen(
             reveal = null
         }
     }
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
 
     // The storyline shows the photos written about; every photo is in the Moments tab, as the feed.
     val moments = tab == HomeTab.MOMENTS
@@ -505,7 +505,7 @@ internal fun JournalHomeScreen(
             BottomControls(
                 summary = null,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                insets = WindowInsets.navigationBars.union(WindowInsets.ime),
+                insets = navigationBarInsets().union(WindowInsets.ime),
             ) {
                 AnimatedContent(searchPicks.active, transitionSpec = { barSwap() }, contentAlignment = Alignment.BottomCenter, label = "search bar") { picking ->
                     if (picking) {
@@ -715,7 +715,7 @@ private fun TopBar(
     val shown = { if (titleHeight[0] > 0) 1f + titleShift() / titleHeight[0] else 1f }
     Box(modifier.fillMaxWidth()) {
         Box(Modifier.matchParentSize().graphicsLayer { alpha = fade() * shown() }.background(LibraryColors.TopFade))
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, bottom = 8.dp)) {
+        Column(Modifier.fillMaxWidth().statusBarRoom().padding(top = 8.dp, bottom = 8.dp)) {
             // The title row and the bar under it (the filter bar, Explore's) slide up and fade out together, whole.
             Column(
                 Modifier

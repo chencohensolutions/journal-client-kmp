@@ -62,7 +62,7 @@ internal fun SearchSettingsScreen(
     phoneSearch: PhoneSearchState?,
     actions: SearchSettingsActions,
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

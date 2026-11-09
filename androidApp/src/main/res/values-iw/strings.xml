@@ -59,6 +59,8 @@
     <string name="library_share">שיתוף</string>
     <string name="library_share_failed">לא ניתן להביא את המקור לשיתוף. יש לבדוק את החיבור לשרת.</string>
     <string name="library_viewer_play">הפעלת הסרטון</string>
+    <string name="library_viewer_pause">השהיית הסרטון</string>
+    <string name="set_autoplay_videos">▶ סרטונים</string>
     <string name="library_viewer_video_unavailable">אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך.</string>
     <string name="library_viewer_video_failed">אי אפשר להפעיל את הסרטון כרגע. האם יש חיבור לשרת?</string>
     <string name="library_info_file">קובץ</string>
@@ -510,6 +512,8 @@
     <string name="settings_first_image_body">תמונות שנמצאות רק בשרת מוצגות מיד בתמונה קטנה, והחדה מופיעה כשמפסיקים לגלול. תמונה קטנה יותר נטענת מהר יותר אבל רכה יותר.</string>
     <string name="settings_first_image_size">רוחב, מתוך רוחב המסך</string>
     <string name="settings_first_image_off">ללא</string>
+    <string name="settings_viewer_ahead">תמונות שמוכנות מראש בהחלקה</string>
+    <string name="settings_viewer_ahead_body">במציג התמונות, מספר התמונות בכל צד של התמונה המוצגת שמוכנות מראש בגודל המסך, כדי שיופיעו חדות בהחלקה. יותר צורך יותר זיכרון.</string>
     <string name="settings_first_image_percent">%1$d%%</string>
     <!-- Search: a sentence sent to the server, which answers with the photos it describes best. -->
     <string name="search_title">חיפוש</string>

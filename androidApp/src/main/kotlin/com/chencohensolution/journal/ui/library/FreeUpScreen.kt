@@ -62,7 +62,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Unit) {
     val context = LocalContext.current
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val freeUp = ui.freeUp
     val rule = freeUp.rule
     val plan = freeUp.plan

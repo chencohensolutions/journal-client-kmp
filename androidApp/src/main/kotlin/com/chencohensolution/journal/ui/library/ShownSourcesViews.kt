@@ -104,7 +104,7 @@ internal fun ShowingSheet(counts: Map<MediaSource, Int>, onDismiss: () -> Unit, 
 /** What the "Showing" sheet holds; drawn by itself in previews, where a sheet doesn't open. */
 @Composable
 internal fun ShowingSheetContent(pills: ShownSourcesPills, actions: ShownSourcesActions, whatsAppNote: Boolean = false) {
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = 16.dp)) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarRoom().padding(bottom = 16.dp)) {
         Text(
             stringResource(R.string.explore_sheet_title),
             color = LibraryColors.OnBackground,

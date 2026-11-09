@@ -160,7 +160,7 @@ internal fun CropScreen(
     screenRatio: Float,
     actions: CropActions,
 ) {
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Color.Black).statusBarRoom().navigationBarRoom()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = actions.close) {
                 Icon(LibraryIcons.Close, stringResource(R.string.library_cancel), tint = Color.White)
@@ -245,7 +245,7 @@ internal fun SetCropEditor(
     }
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val result = photos.associate { it.id to drafts[it.id] }
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Color.Black).statusBarRoom().navigationBarRoom()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) {
                 Icon(LibraryIcons.Close, stringResource(R.string.library_cancel), tint = Color.White)

@@ -286,7 +286,7 @@ internal fun PersonScreen(
     actions: PersonActions,
     initialSheet: PersonSheet? = null,
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     var sheet by remember { mutableStateOf(initialSheet) }
     var editing by remember { mutableStateOf(false) }
     var marked by remember { mutableStateOf(emptySet<String>()) }
@@ -336,7 +336,7 @@ internal fun PersonScreen(
         PageBack(actions.back)
         if (editing) {
             Row(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(LibraryColors.Background).navigationBarsPadding()
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(LibraryColors.Background).navigationBarRoom()
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -363,7 +363,7 @@ internal fun PersonScreen(
                 ) { Text(stringResource(R.string.face_done), color = LibraryColors.OnInverse, fontWeight = FontWeight.Bold) }
             }
         }
-        Box(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 8.dp, top = 8.dp)) {
+        Box(Modifier.align(Alignment.TopEnd).statusBarRoom().padding(end = 8.dp, top = 8.dp)) {
             IconButton(onClick = { sheet = PersonSheet.Menu }, modifier = Modifier.background(LibraryColors.PillScrim, CircleShape)) {
                 Icon(LibraryIcons.More, stringResource(R.string.person_more), tint = LibraryColors.PhotoText)
             }
@@ -561,7 +561,7 @@ private fun ConfirmSheet(
     onCancel: () -> Unit,
     photo: MediaItem? = null,
 ) {
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
+    Column(Modifier.fillMaxWidth().navigationBarRoom().padding(bottom = 16.dp)) {
         photo?.let {
             CroppedThumbnail(it, Modifier.padding(start = 24.dp, bottom = 14.dp).size(96.dp).clip(RoundedCornerShape(12.dp)))
         }
@@ -580,7 +580,7 @@ private fun ConfirmSheet(
 @Composable
 private fun RenameSheet(name: String, onRename: (String) -> Unit, onCancel: () -> Unit) {
     var text by remember { mutableStateOf(name) }
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(bottom = 16.dp)) {
+    Column(Modifier.fillMaxWidth().navigationBarRoom().imePadding().padding(bottom = 16.dp)) {
         SheetTitle(stringResource(R.string.person_rename))
         NameField(text, { text = it }, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.End) {
@@ -595,7 +595,7 @@ private fun RenameSheet(name: String, onRename: (String) -> Unit, onCancel: () -
 /** Merge with…: the other people, then the groups; a tap merges that one into this person. */
 @Composable
 private fun MergeSheet(name: String, others: List<Person>, onMerge: (Person) -> Unit) {
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 8.dp)) {
+    Column(Modifier.fillMaxWidth().navigationBarRoom().padding(bottom = 8.dp)) {
         SheetTitle(stringResource(R.string.person_merge_title, name))
         Text(stringResource(R.string.person_merge_body, name), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 8.dp))
         Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -665,7 +665,7 @@ internal class GroupActions(
  */
 @Composable
 internal fun GroupScreen(state: PersonState, actions: GroupActions) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val format = NumberFormat.getIntegerInstance()
     val faces = state.itemFaces
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -698,7 +698,7 @@ internal fun GroupScreen(state: PersonState, actions: GroupActions) {
 /** Looks like this › More: the similar photos, three to a row, most alike first. */
 @Composable
 internal fun SimilarScreen(items: List<MediaItem>, onOpen: (MediaItem) -> Unit, onBack: () -> Unit) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp)) {
             if (items.isEmpty()) item(key = "none") { PeopleMessage(stringResource(R.string.search_nothing)) }
@@ -727,7 +727,7 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
         modifier
             .fillMaxWidth()
             .background(LibraryColors.Background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .navigationBarsPadding()
+            .navigationBarRoom()
             .imePadding()
             .padding(top = 12.dp, bottom = 12.dp),
     ) {
@@ -802,7 +802,7 @@ internal fun FaceSheet(found: FoundFace, people: List<Person>, actions: FaceActi
     val person = found.person?.takeIf { !it.isGroup }
     var asking by remember(found.face.id) { mutableStateOf(initialAsking || person == null) }
     var newName by remember(found.face.id) { mutableStateOf("") }
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxWidth().navigationBarRoom().imePadding().padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         FaceAvatar(found.face, 112.dp)
         if (!asking && person != null) {
             Text(person.name.orEmpty(), color = LibraryColors.OnBackground, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))

@@ -23,6 +23,33 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Viewer bottom redone** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): Highlight · Play · Recompose in a
+  floating see-through bar (44 dp Play); reel 64 dp tall with ▶ and length on videos, 88 dp wide down the right in
+  landscape; the slideshow's bar hides and shows on a tap; video controls one slim 32 dp row with sound at its end; a
+  video's poster prepared ahead and faded over its first frame (no black).
+  The reel takes its own room: the photo is centred above it (left of it in landscape), and when the bars hide the
+  reel slides out and the photo glides to the screen's middle.
+- **Viewer videos: own controls, slideshow to their end, ▶ Videos, landscape reel** (Android Nov 9, 2026;
+  [viewer.md](screens/viewer.md)): the video's controls (play/pause, time, seek bar, length) drawn under the info line
+  above the reel; the slideshow plays a video to its end before going on; **▶ Videos** beside the speeds turns
+  autoplay off (`SettingsState.autoplayVideos`, shared); in landscape the set's reel is a column down the right edge.
+  Android: `VideoControls`, `Slideshow(hold)`, `SetBar(landscape)`, `SetReel(vertical)`. Strings: `library_viewer_pause`,
+  `set_autoplay_videos`.
+- **Setting: photos made ready while swiping** (Android Nov 9, 2026; [settings.md](screens/settings.md)): under Load
+  ahead in Loading while scrolling, chips 0, 2, **5**, 8, 10 for how many photos on each side the viewer prepares at
+  screen size (`MomentsPaging.viewerAhead`, shared; iOS has no such prefetch yet). Strings: `settings_viewer_ahead`,
+  `settings_viewer_ahead_body`.
+- **Swiping between screen-size photos** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): three photos on each
+  side of the one shown are made ready fitted to the screen (server previews at that size for photos only there), the
+  way the swipes go first, so each slides in sharp; the full image or original only for the photo shown. Android:
+  `screenPreviews`, `screenPreview`, the settled-page `LaunchedEffect` and `PhotoPage(shown)` in `ViewerScreen.kt`.
+- **Crop on and off glides** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the viewer's Show all / Show crop
+  animates the part shown between the crop and the whole photo (0.3 s, ease), with the same image. Android: the frame
+  `Animatable` in `ViewerImage` (`ViewerScreen.kt`).
+- **Viewer videos play at once, muted, and resume** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): a video
+  plays as soon as it is shown, muted, with a sound button (top right) for the viewer's videos; swiped away and back,
+  it goes on from where it was (positions by id while the viewer is open). Android: `VideoPage`, `ViewerVideos` in
+  `ViewerScreen.kt`. Strings: the feed's mute/unmute.
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.

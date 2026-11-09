@@ -181,10 +181,13 @@ internal class JournalSettings(private val store: KeyValueStore) {
                 ?: MomentsPaging.DEFAULT_ROWS_PER_PAGE,
             loadAhead = store.getString(KEY_MOMENTS_LOAD_AHEAD)?.toIntOrNull()?.takeIf { it in MomentsPaging.RANGE }
                 ?: MomentsPaging.DEFAULT_LOAD_AHEAD,
+            viewerAhead = store.getString(KEY_VIEWER_AHEAD)?.toIntOrNull()?.takeIf { it in MomentsPaging.VIEWER_AHEAD_RANGE }
+                ?: MomentsPaging.DEFAULT_VIEWER_AHEAD,
         )
         set(value) {
             store.putString(KEY_MOMENTS_ROWS_PER_PAGE, value.rowsPerPage.toString())
             store.putString(KEY_MOMENTS_LOAD_AHEAD, value.loadAhead.toString())
+            store.putString(KEY_VIEWER_AHEAD, value.viewerAhead.toString())
         }
 
     var previewCacheGigabytes: Int
@@ -275,6 +278,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
         set(value) = store.putString(KEY_SHOW_ON_PHONE_BADGE, value.toString())
 
+    /** Whether the viewer's videos play by themselves, muted, and a slideshow waits for each to end; on by default. */
+    var autoplayVideos: Boolean
+        get() = store.getString(KEY_AUTOPLAY_VIDEOS) != "false"
+        set(value) = store.putString(KEY_AUTOPLAY_VIDEOS, value.toString())
+
     /** Whether a JPEG XL photo is shared as the JPEG it was packed from (on until turned off). */
     var shareJpegXlAsJpeg: Boolean
         get() = store.getString(KEY_SHARE_JXL_AS_JPEG) != "false"
@@ -350,6 +358,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
         private const val KEY_MOMENTS_ROWS_PER_PAGE = "moments_rows_per_page"
         private const val KEY_MOMENTS_LOAD_AHEAD = "moments_load_ahead"
+        private const val KEY_VIEWER_AHEAD = "viewer_ahead"
         private const val KEY_FREE_UP_RULE = "free_up_rule"
         private const val KEY_FREE_UP_SOURCES = "free_up_sources"
         private const val KEY_FREE_UP_KEPT = "free_up_kept"
@@ -364,6 +373,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
+        private const val KEY_AUTOPLAY_VIDEOS = "autoplay_videos"
         private const val KEY_SHARE_JXL_AS_JPEG = "share_jxl_as_jpeg"
     }
 }

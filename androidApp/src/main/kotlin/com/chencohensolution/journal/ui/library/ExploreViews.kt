@@ -646,7 +646,7 @@ private fun <T> ExplorePageLayout(
     pagePhotos: List<MediaItem> = emptyList(),
     onOpenShown: (MediaItem) -> Unit = {},
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     val shown = stories.shownSources.shownAmong(counts)
     val list = rememberLazyListState()
@@ -681,7 +681,7 @@ private fun <T> ExplorePageLayout(
         // Slides up as picking starts, down as it ends.
         AnimatedVisibility(
             selection.active,
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
+            Modifier.align(Alignment.BottomCenter).navigationBarRoom().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
             enter = barIn,
             exit = barOut,
             label = "picking bar",
@@ -699,7 +699,7 @@ private fun <T> ExplorePageLayout(
 /** Across the top of a page, under the status bar: its photo with the title and [subtitle] written over it. */
 @Composable
 internal fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxWidth().height(260.dp + insets.calculateTopPadding()).background(LibraryColors.Raised)) {
         cover?.let { CroppedThumbnail(it, Modifier.fillMaxSize()) }
         Column(
@@ -721,7 +721,7 @@ internal fun PageBack(onBack: () -> Unit) {
     IconButton(
         onClick = onBack,
         modifier = Modifier
-            .statusBarsPadding()
+            .statusBarRoom()
             .padding(start = 8.dp, top = 8.dp)
             .background(LibraryColors.PillScrim, CircleShape),
     ) {
@@ -747,7 +747,7 @@ internal fun CountryScreen(
     val summary by produceState(if (preview) find(ItemsExploreReads.summaryOf(library, stories)) else null, library, stories.places, stories.shownSources, stories.home) {
         value = find(reads.summary(library, stories))
     }
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val (home, towns) = summary?.places.orEmpty().partition { it.home }
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(

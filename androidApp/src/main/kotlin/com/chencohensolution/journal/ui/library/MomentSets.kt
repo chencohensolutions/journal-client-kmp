@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -108,19 +109,31 @@ internal const val FLIP_STEP_DP = 10
 /**
  * While [playing], the next of [count] photos every [millis], round and round. With [prepare], the next photo is made
  * ready while the current one shows, and the switch waits for it (at most [PREPARE_MAX_MILLIS]), so it never shows
- * blurred first (asked Nov 9, 2026).
+ * blurred first (asked Nov 9, 2026). With [hold], the switch also waits for the item shown to be done: a video plays to
+ * its end first (asked Nov 9, 2026).
  */
 @Composable
-internal fun Slideshow(playing: Boolean, millis: Long, count: Int, index: Int, prepare: (suspend (Int) -> Unit)? = null, onIndex: (Int) -> Unit) {
+internal fun Slideshow(
+    playing: Boolean,
+    millis: Long,
+    count: Int,
+    index: Int,
+    prepare: (suspend (Int) -> Unit)? = null,
+    hold: (suspend (Int) -> Unit)? = null,
+    onIndex: (Int) -> Unit,
+) {
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
     val ready by rememberUpdatedState(prepare)
+    val done by rememberUpdatedState(hold)
     LaunchedEffect(playing, millis, count) {
         while (playing && count > 1) {
-            val next = (current + 1) % count
+            val shown = current
+            val next = (shown + 1) % count
             coroutineScope {
                 val prepared = async { withTimeoutOrNull(PREPARE_MAX_MILLIS) { ready?.invoke(next) } }
                 delay(millis)
+                done?.invoke(shown)
                 prepared.await()
             }
             change(next)
@@ -160,7 +173,15 @@ internal fun SetThumb(item: MediaItem, modifier: Modifier = Modifier) {
  * tick; a tap goes to that photo.
  */
 @Composable
-internal fun SetReel(items: List<MediaItem>, highlights: Set<String>, index: Int, cropOf: (MediaItem) -> CropRect?, onIndex: (Int) -> Unit) {
+internal fun SetReel(
+    items: List<MediaItem>,
+    highlights: Set<String>,
+    index: Int,
+    cropOf: (MediaItem) -> CropRect?,
+    /** Landscape: a column along the right edge, top to bottom (asked Nov 9, 2026); else a row under the photo. */
+    vertical: Boolean = false,
+    onIndex: (Int) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
@@ -199,29 +220,67 @@ internal fun SetReel(items: List<MediaItem>, highlights: Set<String>, index: Int
         }
     }
     LaunchedEffect(index) { if (!byHand) centerOn(index) }
-    BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
-        LazyRow(
-            state = state,
-            modifier = Modifier.fillMaxSize(),
-            // The first and the last photo can come to the middle too.
-            contentPadding = PaddingValues(horizontal = maxWidth / 2),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    @Composable
+    fun Thumb(i: Int, item: MediaItem) {
+        val crop = cropOf(item)
+        val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
+        val shown = i == index
+        // Across, each is the reel's height at its shape; down (landscape), the column's width.
+        val size = if (vertical) Modifier.width(REEL_SIDE_THUMB).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
+        Box(
+            size.clip(RoundedCornerShape(4.dp))
+                .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
+                .clickable { change(i) },
         ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { i, item ->
-                val crop = cropOf(item)
-                val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
-                val shown = i == index
-                Box(
-                    Modifier.height(REEL_HEIGHT).aspectRatio(ratio).clip(RoundedCornerShape(4.dp))
-                        .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
-                        .clickable { change(i) },
-                ) {
-                    ReelThumb(item, crop)
-                    if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
-                }
+            ReelThumb(item, crop)
+            if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
+            // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
+            item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
+        }
+    }
+    if (vertical) {
+        BoxWithConstraints(Modifier.fillMaxHeight().width(REEL_SIDE_WIDTH)) {
+            LazyColumn(
+                state = state,
+                modifier = Modifier.fillMaxSize(),
+                // The first and the last photo can come to the middle too.
+                contentPadding = PaddingValues(vertical = maxHeight / 2),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
             }
         }
+    } else {
+        BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
+            LazyRow(
+                state = state,
+                modifier = Modifier.fillMaxSize(),
+                // The first and the last photo can come to the middle too.
+                contentPadding = PaddingValues(horizontal = maxWidth / 2),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
+            }
+        }
+    }
+}
+
+/** Landscape: the reel's room along the right edge, which the bar under the photo keeps clear of; its photos' width. */
+internal val REEL_SIDE_WIDTH = 100.dp
+private val REEL_SIDE_THUMB = 88.dp
+
+/** On a video in the reel: ▶ and its length ("0:12"). */
+@Composable
+private fun ReelVideoMark(lengthMillis: Long, modifier: Modifier = Modifier) {
+    val seconds = lengthMillis / 1000
+    Row(
+        modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("▶", color = Color.White, fontSize = 7.sp, lineHeight = 9.sp)
+        Text(" %d:%02d".format(seconds / 60, seconds % 60), color = Color.White, fontSize = 9.sp, lineHeight = 10.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -244,7 +303,7 @@ private fun ReelThumb(item: MediaItem, crop: CropRect?) {
 }
 
 /** The reel's height, and the shapes its photos are kept within (a panorama would fill it). */
-private val REEL_HEIGHT = 52.dp
+private val REEL_HEIGHT = 64.dp
 private const val REEL_MIN_RATIO = 0.4f
 private const val REEL_MAX_RATIO = 2.5f
 
@@ -385,13 +444,40 @@ private fun HighlightOrder(highlights: List<MediaItem>, onPick: (MediaItem) -> U
 
 /** The slideshow's controls: a thin progress line, the speeds and Stop. */
 @Composable
-internal fun SlideshowBar(index: Int, count: Int, speed: SlideSpeed, onSpeed: (SlideSpeed) -> Unit, onStop: () -> Unit, modifier: Modifier = Modifier) {
+internal fun SlideshowBar(
+    index: Int,
+    count: Int,
+    speed: SlideSpeed,
+    onSpeed: (SlideSpeed) -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Videos playing by themselves (and to their end in the slideshow); null hides the button. */
+    autoplayVideos: Boolean? = null,
+    onAutoplayVideos: (Boolean) -> Unit = {},
+) {
     Column(modifier.fillMaxWidth().padding(16.dp)) {
         Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(50))) {
             Box(Modifier.fillMaxWidth((index + 1f) / count).fillMaxHeight().background(Color.White, RoundedCornerShape(50)))
         }
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SpeedPicker(speed, onSpeed)
+            // Beside the speeds (asked Nov 9, 2026): whether videos play, to their end, or show for a slide's time.
+            autoplayVideos?.let { on ->
+                Box(
+                    Modifier.padding(start = 8.dp).height(40.dp).clip(RoundedCornerShape(50))
+                        .background(if (on) Color.White else LibraryColors.PillScrim)
+                        .clickable(onClickLabel = stringResource(R.string.set_autoplay_videos)) { onAutoplayVideos(!on) }
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        stringResource(R.string.set_autoplay_videos),
+                        color = if (on) Color.Black else Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
             Box(Modifier.weight(1f))
             Box(
                 Modifier.height(40.dp).background(LibraryColors.PillScrim, RoundedCornerShape(50)).clickable(onClick = onStop).padding(horizontal = 18.dp),

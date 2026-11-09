@@ -104,7 +104,7 @@ internal class HiddenActions(
 /** Draws [state]; once unlocked. Switches are ignored while a change is on its way to the server. */
 @Composable
 internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions: HiddenActions, back: () -> Unit, showPrivate: Boolean = false) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

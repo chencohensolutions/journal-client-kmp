@@ -2,7 +2,8 @@
 
 One photo or video at a time, full screen on black. **Immersive** (asked for Oct 21, 2026): the status bar and the
 gesture bar are hidden while the viewer is open (a swipe from the edge shows them for a moment); the bars and buttons
-keep their room, so nothing moves when they show. Android tells the user once, the first time, how to bring them back.
+keep their room, so nothing moves when they show. The screens under it keep that room too (`BarsRoom.kt`, Nov 9, 2026): measured by the
+bars as they showed, Moments came back from the viewer laid out without them and dropped down a bit when they returned. Android tells the user once, the first time, how to bring them back.
 
 ## What it swipes through
 
@@ -39,11 +40,19 @@ Swiping is not a tap; a playing video's own controls take its taps.
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
   **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+  Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
+  in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
+  at once.
   The chip **stays on screen** over a cropped photo (not only with the bars) and toggles between the crop and the
   whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
   photo, asked for the same day.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
-  screen size on iOS).
+  screen size on iOS). Swiping moves between photos fitted to the screen (Nov 9, 2026, Android): once a photo is settled
+  on, the photos on each side (5 by default; Settings › Advanced › Loading while scrolling, 0 to 10) are made ready at screen size, the way the swipes go first (a photo only on the server:
+  the server's preview at that size, no original downloaded), into their own cache by bytes (`screenPreviews`), and the
+  pager composes its neighbours (`beyondViewportPageCount = 1`), so each slides in sharp instead of soft first. The full
+  image (or the downloaded original) is loaded for the photo shown only, once it is settled, and takes its place; a
+  swipe on cancels what was still to come. In a set the same, around the photo cross-faded to.
 - **Zoom** (asked for Oct 21, 2026, reworked the same day; iOS since Oct 22, see Platform notes):
   - **Double-taps step**: fitted → filling the screen (edges cut off) → the original's size (one photo pixel to one
     screen pixel) → back to fitted, zooming around the tap. A step that would add nothing is skipped (a small photo's
@@ -78,8 +87,21 @@ Swiping is not a tap; a playing video's own controls take its taps.
   - **In the note file** (`media/<id>.json`, format 4): `"zoom": {"x", "y", "w", "h", "aspect"}`, the part on screen
     as fractions of the upright photo, like a crop, with the screen's shape. On another screen shape it opens with the
     same middle, zoomed so that part fills the screen as far as it can.
-- **Videos:** the first frame with a play button. Play starts the player (Android: Media3 ExoPlayer's `PlayerView`
-  with its controls, streaming from the server through the video cache; iOS `VideoPlayer`). Swiping away stops it.
+- **Videos:** play as soon as they are the one shown, muted, over their first frame until the video's own first frame
+  shows (asked Nov 9, 2026; Android only, iOS still shows Play). Sound is turned on or off for the viewer's videos
+  (until it closes) from the video's controls. Swiping away stops a video; coming back to it goes on
+  from where it was (kept by id while the viewer is open; from the start once it played to its end). The player is
+  Media3 ExoPlayer's `PlayerView`, streaming from the server through the video cache (iOS `VideoPlayer`). Its controls
+  are the viewer's own (Nov 9, 2026: the player's sat behind the set's reel): with the bars, under the info line and
+  above the reel (or above Write and Share), one slim row about 32 dp tall: **play/pause**, the time, a thin bar to move
+  along it, its length and **sound** (`VideoControls`, `SlimSeekBar`). **▶ Videos** beside the slideshow's speeds (kept on the phone, `autoplay_videos`, on by default)
+  turns playing by themselves off: then a video shows its first frame with Play, and the slideshow shows it for a
+  slide's time. Sliding between videos never flashes black: a video's poster is made ready ahead at screen size with
+  the photos beside it, stays over the player until its first frame is drawn and then fades out over it (0.18 s), and
+  comes back in the same frame the player goes; the player draws into a TextureView (`res/layout/viewer_player.xml`),
+  which follows the cross-fade and the swipe; in the pager a video becomes the one playing once the
+  swipe settles, so the one slid away from plays on while it leaves. Android: `VideoPage`, `ViewerVideos`,
+  `VideoControls` in `ViewerScreen.kt`.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
   text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.
@@ -166,11 +188,20 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**.
+  The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
+  (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
+  lie over the photo above the reel. When a tap hides the bars, the reel slides out (down, or right in landscape) and
+  the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
+  the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
+  is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
+- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a rounded see-through bar floating above the
+  bottom edge (Nov 9, 2026; Play a 44 dp circle in it).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
-    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) and **Stop**. A tap on the photo or back stops it.
+    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A tap on the photo
+    hides that bar and another brings it back; the slideshow plays on (Stop or back stops it; Nov 9, 2026). A video plays to its
+    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off.
     The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
     the server) while the current one shows, and the switch waits for it, at most 15 s, so it never shows blurred
     first (Nov 9, 2026; Android only, iOS not built yet). The last 4 full images are kept in memory (`viewerImages`).

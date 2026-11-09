@@ -72,13 +72,25 @@ data class PrivateMedia(val show: Boolean = false) {
 /**
  * How Moments is read from the library database a page at a time (Settings › Advanced › Loading Moments):
  * [rowsPerPage] rows per page, and the next page starts once the list is [loadAhead] rows from the end of what is read.
+ * Beside them, [viewerAhead]: how many photos on each side of the one shown the viewer makes ready at screen size, so
+ * they slide in sharp (asked Nov 9, 2026).
  */
-data class MomentsPaging(val rowsPerPage: Int = DEFAULT_ROWS_PER_PAGE, val loadAhead: Int = DEFAULT_LOAD_AHEAD) {
-    val isDefault: Boolean get() = rowsPerPage == DEFAULT_ROWS_PER_PAGE && loadAhead == DEFAULT_LOAD_AHEAD
+data class MomentsPaging(
+    val rowsPerPage: Int = DEFAULT_ROWS_PER_PAGE,
+    val loadAhead: Int = DEFAULT_LOAD_AHEAD,
+    val viewerAhead: Int = DEFAULT_VIEWER_AHEAD,
+) {
+    val isDefault: Boolean
+        get() = rowsPerPage == DEFAULT_ROWS_PER_PAGE && loadAhead == DEFAULT_LOAD_AHEAD && viewerAhead == DEFAULT_VIEWER_AHEAD
 
     companion object {
         const val DEFAULT_ROWS_PER_PAGE = 30
         const val DEFAULT_LOAD_AHEAD = 40
+        const val DEFAULT_VIEWER_AHEAD = 5
+
+        /** The viewer's photos made ready ahead: none up to ten on each side. */
+        val VIEWER_AHEAD_RANGE: IntRange = 0..10
+        val VIEWER_AHEAD_OPTIONS: List<Int> = listOf(0, 2, 5, 8, 10)
 
         /** What the Settings screen offers. */
         val ROWS_PER_PAGE_OPTIONS: List<Int> = listOf(15, 30, 60, 120)
@@ -106,6 +118,11 @@ data class SettingsState(
      * photos still to upload, uploading or failed have a badge).
      */
     val showOnPhoneBadge: Boolean = false,
+    /**
+     * Whether the viewer's videos play by themselves (muted) when slid onto, and a slideshow plays each to its end; off,
+     * a video waits for Play and a slideshow shows it for a slide's time (asked Nov 9, 2026). On by default.
+     */
+    val autoplayVideos: Boolean = true,
     /**
      * Whether a JPEG XL photo is shared as the JPEG it was packed from, which every app opens (on by default); off, it
      * is shared as it is.
@@ -147,6 +164,7 @@ class SettingsController internal constructor(
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
+            autoplayVideos = settings.autoplayVideos,
             shareJpegXlAsJpeg = settings.shareJpegXlAsJpeg,
             searchPageSize = settings.searchPageSize,
             momentsPaging = settings.momentsPaging,
@@ -227,6 +245,12 @@ class SettingsController internal constructor(
         changeMomentsPaging { it.copy(loadAhead = rows) }
     }
 
+    /** Photos on each side the viewer makes ready; values outside [MomentsPaging.VIEWER_AHEAD_RANGE] are ignored. */
+    fun setViewerAhead(photos: Int) {
+        if (photos !in MomentsPaging.VIEWER_AHEAD_RANGE) return
+        changeMomentsPaging { it.copy(viewerAhead = photos) }
+    }
+
     fun resetMomentsPaging() = changeMomentsPaging { MomentsPaging() }
 
     private fun changeMomentsPaging(transform: (MomentsPaging) -> MomentsPaging) {
@@ -272,6 +296,12 @@ class SettingsController internal constructor(
         settings.privateMedia = privateMedia
         _state.update { it.copy(privateMedia = privateMedia) }
         _privateMedia.value = privateMedia
+    }
+
+    /** The viewer's videos playing by themselves (the slideshow bar's button), on or off. */
+    fun setAutoplayVideos(on: Boolean) {
+        settings.autoplayVideos = on
+        _state.update { it.copy(autoplayVideos = on) }
     }
 
     /** The phone badge on photos that are on this phone and backed up, on or off. */

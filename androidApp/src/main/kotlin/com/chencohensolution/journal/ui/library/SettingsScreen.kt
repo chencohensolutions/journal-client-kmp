@@ -92,6 +92,8 @@ internal class SettingsActions(
     /** Settings › Loading Moments: rows read at a time, how near the end the next are read, and both back to the defaults. */
     val setMomentsRowsPerPage: (Int) -> Unit = {},
     val setMomentsLoadAhead: (Int) -> Unit = {},
+    /** The viewer's photos made ready ahead, on each side. */
+    val setViewerAhead: (Int) -> Unit = {},
     val resetMomentsPaging: () -> Unit = {},
     /** Reads the server's address and id again (they change while the app runs). */
     val refreshServer: () -> Unit = {},
@@ -130,7 +132,7 @@ internal fun SettingsScreen(
     /** Models on this phone, for its row under Search; null or none listed: no row. */
     models: com.chencohensolution.journal.local.PhoneModelsState? = null,
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val title = when (page) {
         SettingsPage.MAIN -> R.string.library_settings
         SettingsPage.SHOWN -> R.string.settings_shown_title
