@@ -1243,4 +1243,6 @@
     <string name="cast_pause">השהיה בטלוויזיה</string>
     <string name="cast_no_wifi">הטלפון צריך להיות באותה רשת Wi-Fi כמו הטלוויזיה.</string>
     <string name="cast_failed">הטלוויזיה לא הצליחה להציג את זה.</string>
+    <string name="cast_not_on_this_tv">הטלוויזיה הזו עוד לא יכולה לפתוח את Journal: היא לא מוגדרת לכך ב-Cast Console.</string>
+    <string name="cast_start_failed">לא הצלחנו להתחיל להציג בטלוויזיה.</string>
 </resources>

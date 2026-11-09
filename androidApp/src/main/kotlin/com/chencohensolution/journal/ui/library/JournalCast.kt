@@ -7,7 +7,9 @@ import androidx.mediarouter.media.MediaRouter
 import com.chencohensolution.journal.cast.CAST_NAMESPACE
 import com.chencohensolution.journal.cast.CastChannel
 import com.chencohensolution.journal.cast.CastController
+import com.chencohensolution.journal.R
 import com.google.android.gms.cast.CastMediaControlIntent
+import com.google.android.gms.cast.CastStatusCodes
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.CastSession
@@ -173,6 +175,9 @@ internal object JournalCast {
         override fun onSessionStartFailed(session: CastSession, error: Int) {
             Log.w(TAG, "couldn't cast: $error")
             closed()
+            // Said, not left silent: 2004 is a TV that doesn't know our receiver (not published, or not a test device).
+            val text = if (error == CastStatusCodes.APPLICATION_NOT_FOUND) R.string.cast_not_on_this_tv else R.string.cast_start_failed
+            android.widget.Toast.makeText(app, text, android.widget.Toast.LENGTH_LONG).show()
         }
         override fun onSessionResumeFailed(session: CastSession, error: Int) = closed()
         override fun onSessionStarting(session: CastSession) {}

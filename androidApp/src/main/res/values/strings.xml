@@ -1189,4 +1189,6 @@
     <string name="cast_pause">Pause on TV</string>
     <string name="cast_no_wifi">The phone needs to be on the same Wi-Fi as the TV.</string>
     <string name="cast_failed">The TV couldn\'t show this one.</string>
+    <string name="cast_not_on_this_tv">This TV can\'t open Journal yet: it isn\'t set up for it in the Cast console.</string>
+    <string name="cast_start_failed">Couldn\'t start showing on the TV.</string>
 </resources>
