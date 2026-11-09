@@ -11,6 +11,9 @@ androidx-lifecycle = "2.11.0"
 androidx-navigation3 = "1.2.0"
 androidx-work = "2.12.0"
 jxl-coder = "2.6.1"
+# Casting to a TV with Google Cast (docs/cast.md).
+play-services-cast-framework = "22.1.0"
+androidx-mediarouter = "1.8.1"
 play-services-code-scanner = "16.1.0"
 # Swap with a friend: the invite's QR code (ZXing's encoder only) and the passphrase saved to Google Password Manager.
 zxing-core = "3.5.3"
@@ -61,6 +64,9 @@ zxing-core = { module = "com.google.zxing:core", version.ref = "zxing-core" }
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
 androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
 play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "play-services-code-scanner" }
+# Casting to a TV: Google Cast (the session with our receiver page) and MediaRouter (finding the TVs for our own picker).
+play-services-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "play-services-cast-framework" }
+androidx-mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "androidx-mediarouter" }
 # JPEG XL previews: Android has no JPEG XL decoder of its own.
 jxl-coder = { module = "io.github.awxkee:jxl-coder", version.ref = "jxl-coder" }
 # Videos: played with ExoPlayer, streamed from the server over mTLS (OkHttp) into a cache.

@@ -79,6 +79,10 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <!-- Casting to a TV (docs/cast.md): Google Cast reads the receiver's app id from here. -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.chencohensolution.journal.ui.library.JournalCastOptions" />
         <!-- Share in the viewer hands other apps a copy of an original that came from the server. -->
         <provider
             android:name="androidx.core.content.FileProvider"

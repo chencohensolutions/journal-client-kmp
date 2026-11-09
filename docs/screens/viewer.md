@@ -214,6 +214,22 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   the scrubber, slideshow and grid sheet in [MomentSets.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentSets.kt),
   wired in `LibraryApp.kt` (`openSet`).
 
+## Showing on a TV (Nov 9, 2026; Android only, iOS not built yet)
+
+A **Cast** button at the end of the top bar (shown once the receiver's app id is set, `JournalCast.APP_ID`) opens a
+sheet of the TVs with Google Cast on the Wi-Fi ("Looking for TVs on this Wi-Fi…" until one answers); a tap casts to
+it. While casting the button is lit, and the sheet names the TV with **Stop showing on TV**. See [cast.md](../cast.md).
+
+- The item shown goes to the TV as its original, with the next three photos and the one before fetched there ahead;
+  swiping, a set's cross-fades and the slideshow change the TV.
+- A photo shows **whole** on the phone (no crop chip, no phone zoom or minimap), with a white frame marked "TV" of
+  what the TV shows and the rest dimmed. Two fingers zoom the frame about them (up to 12×); zoomed in, one finger drags
+  it, and swiping waits until it is back to the whole photo (a double tap). The TV glides after the frame.
+- A video plays on the TV, with sound; the phone shows its poster, and under the info a Play/Pause button and a bar
+  of where the TV is (drag to go there). The slideshow waits for the TV to finish it.
+- What the TV couldn't show: "The TV couldn't show this one." A phone off the Wi-Fi: "The phone needs to be on the same
+  Wi-Fi as the TV." Closing the viewer leaves the TV on its quiet "Journal" screen until another photo is opened.
+
 ## Platform notes
 
 - **iOS zoom** (`ViewerZoom.swift`): UIKit's `UIScrollView` zooms the photo (pinching, panning and bouncing are its

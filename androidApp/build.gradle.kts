@@ -24,6 +24,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.work.runtime)
     implementation(libs.jxl.coder)
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.mediarouter)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.datasource.okhttp)

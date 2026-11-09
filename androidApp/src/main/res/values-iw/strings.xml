@@ -1230,4 +1230,17 @@
     <string name="make_moment_hint_each">כל יום מציג את התמונות שלו, עם קישור לרגע כולו.</string>
     <string name="make_moment_hint_one">התמונות עוזבות את הימים שלהן ומוצגות כאן יחד.</string>
     <string name="make_moment_make">יצירה</string>
+    <!-- Casting to a TV with Google Cast (docs/cast.md) -->
+    <string name="cast_button">הצגה בטלוויזיה</string>
+    <string name="cast_title">הצגה בטלוויזיה</string>
+    <string name="cast_on_tv">מוצג בטלוויזיה</string>
+    <string name="cast_a_tv">טלוויזיה</string>
+    <string name="cast_looking">מחפשים טלוויזיות ברשת ה-Wi-Fi הזו…</string>
+    <string name="cast_stop">הפסקת ההצגה בטלוויזיה</string>
+    <string name="cast_frame_label">TV</string>
+    <string name="cast_frame_hint">צביטה בתמונה מתקרבת בטלוויזיה; גרירת המסגרת מזיזה אותה.</string>
+    <string name="cast_play">הפעלה בטלוויזיה</string>
+    <string name="cast_pause">השהיה בטלוויזיה</string>
+    <string name="cast_no_wifi">הטלפון צריך להיות באותה רשת Wi-Fi כמו הטלוויזיה.</string>
+    <string name="cast_failed">הטלוויזיה לא הצליחה להציג את זה.</string>
 </resources>
