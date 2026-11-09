@@ -1133,6 +1133,7 @@
         <item quantity="other">%d photos in this set</item>
     </plurals>
     <string name="set_part_of">Part of %1$s</string>
+    <string name="set_part_of_unnamed">Part of a moment</string>
     <string name="set_play_here">Play here</string>
     <string name="set_highlight">Highlight</string>
     <string name="set_highlighted">Highlight</string>
@@ -1158,7 +1159,7 @@
     <string name="recompose_hint">Drag to move the frame, pinch to size it. Same frame for all gives every photo of this shape this frame.</string>
     <string name="make_moment">Make a moment</string>
     <string name="make_moment_title">New moment</string>
-    <string name="make_moment_name">Name</string>
+    <string name="make_moment_name">Name (optional)</string>
     <string name="make_moment_highlights">Highlights</string>
     <string name="make_moment_highlights_hint">Tap the photos Moments shows of it, in order. None: its best-looking photo.</string>
     <string name="make_moment_show_on">Show it in Moments on</string>

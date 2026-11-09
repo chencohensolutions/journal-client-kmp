@@ -26,6 +26,11 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Unnamed moments and the name's look** (Android Nov 9, 2026; [moments.md](screens/moments.md)): Make a moment
+  no longer needs a name (`makeMoment` saves `setInfo` with `""`; `NamedSet.name` is now null then). Over a moment in
+  Moments: the name not bold (17), its days on a line of their own under it, smaller and muted (12); nothing over an
+  unnamed one; its "Part of" link says "Part of a moment" (`set_part_of_unnamed`, Hebrew חלק מרגע). The name field is
+  "Name (optional)" / "שם (לא חובה)". Android: `SetName`, `PartOfLink` in `MomentsFeedViews.kt`, `MakeMomentSheet.kt`.
 - **Moment sets: highlights, flipping in the feed, the viewer's set mode, Recompose, Make a moment** (Android Nov 9,
   2026; [moments.md](screens/moments.md#sets-nov-9-2026), [viewer.md](screens/viewer.md#a-set-nov-9-2026),
   [crop.md](screens/crop.md#a-set-recompose-nov-9-2026); plan [plans/moment-sets.md](plans/moment-sets.md)). Shared
@@ -63,7 +68,7 @@ Still missing on iOS:
      cropped), "⧉ Same frame for all" (every photo of the same shape, within 0.01, gets the frame shown). Done:
      `StoriesController.setMomentsCrops(crops:)` with every photo's crop (null for none), or close if unchanged.
   4. **Make a moment** (`JournalHomeView.swift` picking bar; mirror `MakeMomentSheet.kt`): with two or more photos
-     picked in Moments, "Make a moment" opens a sheet: Name (required), Highlights (tap thumbnails, oldest first; the
+     picked in Moments, "Make a moment" opens a sheet: Name (optional; "Name (optional)", Make it always enabled), Highlights (tap thumbnails, oldest first; the
      order tapped, numbered), "Show it in Moments on" first day / last day / "Every day it has" (only first when all
      on one day) with its hint, **Make it** → `StoriesController.makeMoment(itemIds:name:highlightIds:showOn:)` (ids
      oldest first; `ShowOn.first/last/each`), then the viewer's set mode on its cover. **Merge** only when no picked

@@ -1186,6 +1186,7 @@
         <item quantity="other">%d תמונות בסט</item>
     </plurals>
     <string name="set_part_of">חלק מ%1$s</string>
+    <string name="set_part_of_unnamed">חלק מרגע</string>
     <string name="set_play_here">הפעלה כאן</string>
     <string name="set_highlight">הדגשה</string>
     <string name="set_highlighted">מודגשת</string>
@@ -1212,7 +1213,7 @@
     <string name="recompose_hint">גררו כדי להזיז את המסגרת, צבטו כדי לשנות את גודלה. אותה מסגרת לכולן נותנת אותה לכל התמונות בצורה הזו.</string>
     <string name="make_moment">יצירת רגע</string>
     <string name="make_moment_title">רגע חדש</string>
-    <string name="make_moment_name">שם</string>
+    <string name="make_moment_name">שם (לא חובה)</string>
     <string name="make_moment_highlights">הדגשות</string>
     <string name="make_moment_highlights_hint">הקישו על התמונות שהרגעים יציגו ממנו, לפי הסדר. בלי: התמונה היפה ביותר.</string>
     <string name="make_moment_show_on">להציג ברגעים ביום</string>

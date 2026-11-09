@@ -86,13 +86,15 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   - A small **▶** at the bottom corner plays it in place, muted, a photo every 0.5 s, round and round; again to stop.
   - A **tap** opens the viewer on the set only, at the photo shown.
   - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
-- **A moment made by hand** shows its name over it, "Beach weekend · Fri – Sun".
-- **Make a moment** (picking bar, two or more photos picked): a sheet with its **name**, its **highlights** (tap
+- **A moment made by hand** shows its name over it, not bold, with its days under it in smaller type ("Beach
+  weekend", then "Fri – Sun"); a moment made without a name shows none (Nov 9, 2026).
+- **Make a moment** (picking bar, two or more photos picked): a sheet with its **name** (optional since Nov 9, 2026: an unnamed
+  moment is saved with `"name": ""`), its **highlights** (tap
   several; the numbers are their order; none: its best-looking photo) and **Show it in Moments on**: its first day,
   its last day, or **every day it has** (first and last are the same with one day, and then only first is offered).
   **Make it** saves it (`StoriesController.makeMoment`: merged, highlights, `setInfo` on its cover) and opens the
   viewer on it. With "every day it has", each day shows its own photos of it as a set (or one photo), with a link
-  **"Part of Beach weekend ›"** under them that opens the whole moment.
+  **"Part of Beach weekend ›"** ("Part of a moment ›" without a name) under them that opens the whole moment.
 - Saved in each photo's note file (format 5): `"highlight": 1` (its place among the highlights; replaces format 4's
   `"front"`, which is read as highlight 1), and on the cover `"setInfo": {"name": "Beach weekend", "showOn":
   "first" | "last" | "each"}`. Taking a photo out of a set ends its highlight, and a name it carried moves to another

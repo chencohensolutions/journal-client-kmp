@@ -610,7 +610,8 @@ class StoriesController internal constructor(
         val set = newId()
         val order = highlightIds.distinct().filter { it in ids }
         val cover = order.firstOrNull() ?: ids.first()
-        val info = name.trim().takeIf { it.isNotEmpty() }?.let { SetInfo(it, showOn) }
+        // A name is optional (asked Nov 9, 2026): an unnamed moment keeps its setInfo with "" for where it shows.
+        val info = SetInfo(name.trim(), showOn)
         changeNotes(ids) { note ->
             note.copy(
                 feedSet = set,
