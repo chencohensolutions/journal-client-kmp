@@ -431,6 +431,7 @@ internal fun ViewerScreen(
         if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
     }
     LaunchedEffect(castState.error) {
+        castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
         if (castState.error != null) {
             Toast.makeText(castContext, R.string.cast_failed, Toast.LENGTH_SHORT).show()
             cast.errorSeen()
