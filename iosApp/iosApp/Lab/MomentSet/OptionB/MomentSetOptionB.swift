@@ -20,8 +20,12 @@ struct MomentSetScreenB: View {
     }
 
     var body: some View {
-        SetViewer(set: $set, index: start ?? set.mainIndex, strip: true, playing: playing, recomposing: recomposing) {}
+        // Over the lab's back button, as option a's viewer is, so it doesn't sit on the close button (shake goes back).
+        Color.black.ignoresSafeArea()
             .toolbar(.hidden, for: .navigationBar)
+            .fullScreenCover(isPresented: .constant(true)) {
+                SetViewer(set: $set, index: start ?? set.mainIndex, strip: true, playing: playing, recomposing: recomposing) {}
+            }
     }
 }
 
