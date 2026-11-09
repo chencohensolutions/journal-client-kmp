@@ -413,7 +413,7 @@ internal fun ViewerScreen(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                SetBar(items, set, shownIndex, onIndex = { setIndex = it }, onPlay = { playing = true })
+                SetBar(items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } }, onIndex = { setIndex = it }, onPlay = { playing = true })
             }
             AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, onStop = {
@@ -603,11 +603,11 @@ internal fun ViewerScreen(
 
 /** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
 @Composable
-private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
     Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
-        if (items.size > 1) SetScrubber(items, set.highlights.toSet(), index, onIndex, Modifier.padding(horizontal = 16.dp))
+        if (items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex)
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SetBarButton(
                 if (place >= 0) "★" else "☆",

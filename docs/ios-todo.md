@@ -26,6 +26,10 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **The set viewer's reel** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): the scrubber
+  became a scrolling row of every photo at its own shape (Moments crop, else whole; whole while Show all is on), the
+  shown one centered and outlined; dragging it shows the photo reaching the middle (selection haptic), a tap jumps.
+  Android: `SetReel` / `ReelThumb` in `MomentSets.kt`. No strings.
 - **Naming or renaming a moment** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): the set
   viewer's ⋯ menu ends with "Name this moment" / "Rename moment" (מתן שם לרגע / שינוי שם הרגע), opening an alert
   "Moment name" (שם הרגע) with a text field (placeholder "No name" / ללא שם), Save (שמירה) and Cancel →
