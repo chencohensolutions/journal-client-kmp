@@ -169,8 +169,21 @@ internal fun SetReel(items: List<MediaItem>, highlights: Set<String>, index: Int
     // From a drag until the fling after it ends, the reel picks the photo; otherwise it follows the photo shown.
     var byHand by remember { mutableStateOf(false) }
     LaunchedEffect(dragged) { if (dragged) byHand = true }
+    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two).
+    suspend fun centerOn(i: Int) {
+        if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), tween(SET_FADE_MILLIS * 2))
+    }
     LaunchedEffect(state) {
-        snapshotFlow { state.isScrollInProgress || dragged }.collect { moving -> if (!moving) byHand = false }
+        snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
+            if (!moving && byHand) {
+                byHand = false
+                centerOn(current)
+            }
+        }
     }
     fun middle(): Int? {
         val info = state.layoutInfo
@@ -185,14 +198,7 @@ internal fun SetReel(items: List<MediaItem>, highlights: Set<String>, index: Int
             }
         }
     }
-    LaunchedEffect(index) {
-        if (byHand) return@LaunchedEffect
-        if (state.layoutInfo.visibleItemsInfo.none { it.index == index }) state.scrollToItem(index)
-        val info = state.layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return@LaunchedEffect
-        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), tween(SET_FADE_MILLIS * 2))
-    }
+    LaunchedEffect(index) { if (!byHand) centerOn(index) }
     BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
         LazyRow(
             state = state,
