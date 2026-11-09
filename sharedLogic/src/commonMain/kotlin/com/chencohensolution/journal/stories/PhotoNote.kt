@@ -83,7 +83,10 @@ data class PhotoNote(
 }
 
 /** A set made into a moment by hand ([StoriesController.makeMoment]). */
-data class SetInfo(val name: String, val showOn: ShowOn = ShowOn.FIRST)
+data class SetInfo(val name: String, val showOn: ShowOn = ShowOn.FIRST) {
+    /** The name, or null for a moment made without one (saved as ""). */
+    val shownName: String? get() = name.takeIf { it.isNotBlank() }
+}
 
 /** Which days of a named set show it in Moments. */
 enum class ShowOn(val id: String) {

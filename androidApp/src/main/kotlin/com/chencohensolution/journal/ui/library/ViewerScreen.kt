@@ -22,7 +22,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -93,6 +95,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import android.content.ContentResolver
+import android.util.LruCache
+import com.chencohensolution.journal.server.ServerPreviews
 import androidx.compose.runtime.snapshotFlow
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import kotlinx.coroutines.flow.first
@@ -116,6 +121,20 @@ import kotlinx.coroutines.withContext
 
 /** Longest side of a photo decoded for the viewer. */
 private const val VIEWER_MAX_SIDE = 2560
+
+/**
+ * The viewer's full images of the last few photos, by id: a slideshow decodes the next one here before it switches,
+ * so the photo shows sharp at once (asked Nov 9, 2026). A few only: each is up to 2560 px, about 20 MB.
+ */
+private val viewerImages = LruCache<String, android.graphics.Bitmap>(4)
+
+/** [item]'s full image as the viewer shows it, fitted in [VIEWER_MAX_SIDE]: kept in [viewerImages], else loaded and kept. */
+private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPreviews?, item: MediaItem): android.graphics.Bitmap? {
+    viewerImages.get(item.id)?.let { return it }
+    return withContext(Dispatchers.IO) {
+        if (item.hasOriginalHere) loadImage(resolver, previews, item, VIEWER_MAX_SIDE) else serverOriginal(previews, item, VIEWER_MAX_SIDE)
+    }?.also { viewerImages.put(item.id, it) }
+}
 
 /** How long the bars and buttons stay after a tap on the photo. */
 private const val CHROME_MILLIS = 3_000L
@@ -174,6 +193,8 @@ internal class ViewerSet(
     val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
     /** The crop screen's set mode, on this photo. */
     val recompose: (itemId: String) -> Unit = {},
+    /** Names or renames it; blank: unnamed. */
+    val rename: (name: String) -> Unit = {},
 )
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
@@ -208,7 +229,13 @@ internal fun ViewerScreen(
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
-    Slideshow(set != null && playing, speed.millis, items.size, shownIndex) { setIndex = it }
+    var naming by rememberSaveable { mutableStateOf(false) }
+    val resolver = LocalContext.current.contentResolver
+    val previews = LocalServerPreviews.current
+    // The next photo's full image is decoded (downloaded when only on the server) before the slideshow shows it.
+    Slideshow(set != null && playing, speed.millis, items.size, shownIndex, prepare = { i ->
+        items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) }
+    }) { setIndex = it }
     KeepScreenOn(set != null && playing)
     BackHandler(playing) { playing = false }
     var showInfo by rememberSaveable { mutableStateOf(false) }
@@ -386,7 +413,7 @@ internal fun ViewerScreen(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                SetBar(items, set, shownIndex, onIndex = { setIndex = it }, onPlay = { playing = true })
+                SetBar(items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } }, onIndex = { setIndex = it }, onPlay = { playing = true })
             }
             AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, onStop = {
@@ -472,6 +499,17 @@ internal fun ViewerScreen(
                                     show(current.id)
                                 })
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (set.name != null) R.string.set_rename else R.string.set_name_it)) },
+                                onClick = {
+                                    menu = false
+                                    naming = true
+                                },
+                            )
+                        }
+                        if (naming) MomentNameDialog(set.name.orEmpty(), onDismiss = { naming = false }) { name ->
+                            naming = false
+                            set.rename(name)
                         }
                     }
                 } else if (showInMoments == null) {
@@ -565,11 +603,11 @@ internal fun ViewerScreen(
 
 /** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
 @Composable
-private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
     Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
-        if (items.size > 1) SetScrubber(items, set.highlights.toSet(), index, onIndex, Modifier.padding(horizontal = 16.dp))
+        if (items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex)
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SetBarButton(
                 if (place >= 0) "★" else "☆",
@@ -603,8 +641,9 @@ private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom:
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
-    val full by produceState<android.graphics.Bitmap?>(null, item.id) {
-        value = withContext(Dispatchers.IO) { loadImage(resolver, previews, item, VIEWER_MAX_SIDE) }
+    // Already decoded when a slideshow made it ready: sharp from the first frame.
+    val full by produceState(viewerImages.get(item.id), item.id) {
+        if (value == null) value = viewerImage(resolver, previews, item)
     }
     val sharp = rememberZoomedOriginal(item, zoom) { loadImage(resolver, previews, item, zoomDecodeSide(item)) }
     val image = sharp ?: full?.asImageBitmap() ?: preview
@@ -641,19 +680,21 @@ private fun rememberZoomedOriginal(item: MediaItem, zoom: PhotoZoom?, load: susp
 @Composable
 private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
     val previews = LocalServerPreviews.current
+    val resolver = LocalContext.current.contentResolver
     val cached by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) }
     }
     // The spinner is for a download only: an original already in the cache is just decoded, with nothing to wait for.
     var downloading by remember(item.id) { mutableStateOf(false) }
-    val original by produceState<android.graphics.Bitmap?>(null, item.id) {
+    // Already decoded when a slideshow made it ready: sharp from the first frame.
+    val original by produceState(viewerImages.get(item.id), item.id) {
+        if (value != null) return@produceState
         if (item.sha256?.let { previews?.cachedOriginal(it) } == null) downloading = true
-        value = withContext(Dispatchers.IO) { serverOriginal(previews, item, VIEWER_MAX_SIDE) }
+        value = viewerImage(resolver, previews, item)
         downloading = false
     }
     // Zoomed in: decoded again from the downloaded original, at its own size.
     val sharp = rememberZoomedOriginal(item, zoom) { serverOriginal(previews, item, zoomDecodeSide(item)) }
-    val resolver = LocalContext.current.contentResolver
     val drawn = sharp ?: (cached ?: original)?.asImageBitmap()
     val detail = rememberDetailLayer(item, zoom, shownSide = drawn?.let { maxOf(it.width, it.height) } ?: 0) {
         openOriginalRegions(resolver, previews, item)
@@ -963,4 +1004,19 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
         )
         failed?.let { Text(stringResource(it), color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
     }
+}
+
+/** A moment's name, to give or change (the set viewer's ⋯ menu); saved as typed, an empty one leaves it unnamed. */
+@Composable
+private fun MomentNameDialog(name: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var typed by rememberSaveable { mutableStateOf(name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.set_name_title)) },
+        text = {
+            OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+        },
+        confirmButton = { TextButton(onClick = { onSave(typed) }) { Text(stringResource(R.string.set_name_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
+    )
 }

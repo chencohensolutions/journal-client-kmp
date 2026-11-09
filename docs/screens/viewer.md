@@ -151,16 +151,21 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
 - **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", a **grid** button and **⋮** with
   **Write**, **Details**, **Share** (and Show in Moments when opened from elsewhere): they leave the bottom while in a
-  set (decided Nov 9, 2026: one row under the photo).
-- **Under the photo, the scrubber:** every photo of the set in one row (at most 48 squeezed in, each standing for its
-  share), the one shown raised above it, a dot over each highlight. Sliding a finger along it flips to the photo under
-  it, with a tick.
+  set (decided Nov 9, 2026: one row under the photo). Last in it, **Name this moment** (**Rename moment** when it has
+  a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
+  `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
+- **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
+  scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
+  all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
+  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
 - **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**.
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
     progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) and **Stop**. A tap on the photo or back stops it.
-    The screen stays on while it plays.
+    The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
+    the server) while the current one shows, and the switch waits for it, at most 15 s, so it never shows blurred
+    first (Nov 9, 2026; Android only, iOS not built yet). The last 4 full images are kept in memory (`viewerImages`).
   - **Recompose** opens the [crop screen's set mode](crop.md#a-set-recompose-nov-9-2026) on the photo shown
     (photos only).
 - **Grid sheet** (the grid button): every photo as squares, the one shown outlined, highlights numbered (★ the

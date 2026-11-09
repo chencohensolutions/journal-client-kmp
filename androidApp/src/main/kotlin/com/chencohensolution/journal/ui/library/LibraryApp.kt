@@ -691,6 +691,7 @@ private fun LibraryScreens(
                                         setHighlight = { id, on -> stories.setHighlight(ids, id, on) },
                                         moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
                                         recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
+                                        rename = { name -> stories.nameMoment(ids, name) },
                                     )
                                     if (reading) Box(Modifier.fillMaxSize().background(LibraryColors.Background)) else ViewerScreen(
                                         items = shownItems,

@@ -201,6 +201,49 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aMomentIsNamedAndRenamedLater() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "", listOf("s1"), ShowOn.LAST)
+        stories.nameMoment(weekend, " Beach weekend ")
+        assertEquals("Beach weekend", stories.currentState.namedSetOf("u")?.name)
+        // Its place in Moments and its cover stay.
+        assertEquals(ShowOn.LAST, stories.currentState.namedSetOf("u")?.showOn)
+        assertEquals("Beach weekend", stories.currentState.note("s1")?.setInfo?.name)
+        assertEquals(weekend.map { "set-1" }, weekend.map { stories.currentState.note(it)?.feedSet })
+
+        stories.nameMoment(weekend, "Sea")
+        assertEquals("Sea", stories.currentState.feed.blocks().single { it.items.size == 4 }.named?.name)
+        // Cleared: unnamed, still together.
+        stories.nameMoment(weekend, "  ")
+        assertNull(stories.currentState.feed.blocks().single { it.items.size == 4 }.named!!.name)
+
+        // Kept after a restart.
+        stories.nameMoment(weekend, "Sea")
+        assertEquals("Sea", setup(setup.fileSystem).stories.currentState.namedSetOf("f")?.name)
+    }
+
+    @Test
+    fun aMomentNeedsNoName() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "  ", emptyList(), ShowOn.LAST)
+        // Shown together where its newest photo is, as a named one would be, with no name.
+        val rows = stories.currentState.feed.rows()
+        assertTrue(weekend in rows.single { SUN in it.first }.second, "$rows")
+        val block = stories.currentState.feed.blocks().single { it.items.size == 4 }
+        assertNotNull(block.named)
+        assertNull(block.named!!.name)
+        assertEquals(weekend, stories.currentState.namedSetOf("f")?.itemIds)
+
+        // Kept after a restart.
+        val again = setup(setup.fileSystem).stories
+        assertNull(again.currentState.feed.blocks().single { it.items.size == 4 }.named!!.name)
+    }
+
+    @Test
     fun aNamedSetShowsOnItsFirstItsLastOrEachOfItsDays() = runTest {
         val stories = setup().stories
         val weekend = listOf("f", "s1", "s2", "u")

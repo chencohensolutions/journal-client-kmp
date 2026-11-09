@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalContext
+import com.chencohensolution.journal.library.MediaType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -815,29 +817,31 @@ private fun FeedActions.openNamed(named: NamedSet, block: FeedBlock, section: Fe
 
 /** "Part of Beach weekend ›" under one day's photos of a moment shown on each of its days. */
 @Composable
-private fun PartOfLink(name: String, onClick: () -> Unit) {
+private fun PartOfLink(name: String?, onClick: () -> Unit) {
     Row(
         Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 6.dp).clip(RoundedCornerShape(50))
             .background(LibraryColors.Raised).clickable(onClick = onClick).padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.Stack, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
-        Text(stringResource(R.string.set_part_of, name), Modifier.padding(start = 6.dp), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(if (name != null) stringResource(R.string.set_part_of, name) else stringResource(R.string.set_part_of_unnamed), Modifier.padding(start = 6.dp), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.padding(start = 2.dp).size(14.dp))
     }
 }
 
-/** A moment's name over it ("Beach weekend · Fri – Sun"), when made by hand ([NamedSet]). */
+/**
+ * A moment's name over it, when made by hand with a name ([NamedSet]): the name, not bold, and under it its days in
+ * smaller type ("Fri – Sun") (asked Nov 9, 2026).
+ */
 @Composable
 private fun SetName(name: String, items: List<MediaItem>) {
     val first = items.first().day
     val last = items.last().day
     val days = if (first == last) formatDate(first.toLocalDate(), "EEE") else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
-    Text(
-        "$name · $days",
-        Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
-        color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
-    )
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
+        Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(days, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
+    }
 }
 
 /**
@@ -860,7 +864,7 @@ private fun SetBlock(
 ) {
     val named = block.named
     Column(modifier) {
-        if (named != null && !named.isPartOf(block)) SetName(named.name, block.items)
+        if (named != null && !named.isPartOf(block)) named.name?.let { SetName(it, block.items) }
         if (block.highlights.isEmpty()) {
             SetCover(block, landing, notes, video, selected, onLongPress, onOpen)
         } else {
@@ -922,7 +926,19 @@ private fun SetCover(
     val cover = remember(block.key) { video.startPage(block).coerceIn(items.indices) }
     var scrubbing by remember { mutableStateOf(false) }
     var playing by remember(block.key) { mutableStateOf(false) }
-    Slideshow(playing, FEED_PLAY_MILLIS, items.size, shownIndex) { index = it }
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val coverRatio = items[cover].shownRatio(notes[items[cover].id]?.crops?.moments)
+    val feedPixels = feedWidth()
+    // The next photo is loaded at the exact size it shows at before it is switched to, so it shows sharp at once.
+    Slideshow(playing, FEED_PLAY_MILLIS, items.size, shownIndex, prepare = { i ->
+        val item = items[i]
+        val crop = notes[item.id]?.crops?.moments?.takeIf { item.durationMillis == null }
+        val ratio = item.shownRatio(crop)
+        val shownWidth = if (ratio >= coverRatio) feedPixels else (feedPixels / coverRatio * ratio).toInt()
+        val photoWidth = if (crop != null) (shownWidth / crop.w).toInt() else shownWidth
+        if (item.type == MediaType.IMAGE) loadCover(context, previews, item, photoWidth, (photoWidth / item.ratio).toInt())
+    }) { index = it }
     LaunchedEffect(landing) {
         val page = items.indexOfFirst { it.id == landing }
         if (page >= 0) index = page

@@ -610,7 +610,8 @@ class StoriesController internal constructor(
         val set = newId()
         val order = highlightIds.distinct().filter { it in ids }
         val cover = order.firstOrNull() ?: ids.first()
-        val info = name.trim().takeIf { it.isNotEmpty() }?.let { SetInfo(it, showOn) }
+        // A name is optional (asked Nov 9, 2026): an unnamed moment keeps its setInfo with "" for where it shows.
+        val info = SetInfo(name.trim(), showOn)
         changeNotes(ids) { note ->
             note.copy(
                 feedSet = set,
@@ -620,6 +621,22 @@ class StoriesController internal constructor(
             )
         }
         return set
+    }
+
+    /**
+     * Names the set [itemIds] (all its photos) [name], or renames it; a blank name leaves it unnamed (asked Nov 9,
+     * 2026). Its "Show it in Moments on" stays. A set the app made by itself becomes one made by hand, so it stays
+     * together with its name.
+     */
+    fun nameMoment(itemIds: List<String>, name: String) {
+        val ids = itemIds.distinct()
+        if (ids.size < 2) return
+        val old = ids.firstNotNullOfOrNull { notes[it]?.setInfo }
+        if (old == null && name.isBlank()) return
+        val set = ids.map { notes[it]?.feedSet }.toSet().singleOrNull() ?: newId()
+        val cover = highlightOrder(ids).firstOrNull() ?: ids.first()
+        val info = SetInfo(name.trim(), old?.showOn ?: ShowOn.FIRST)
+        changeNotes(ids) { note -> note.copy(feedSet = set, apart = false, setInfo = info.takeIf { note.deviceId == cover }) }
     }
 
     /**

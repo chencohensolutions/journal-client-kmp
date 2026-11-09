@@ -110,16 +110,16 @@ internal fun MakeMomentSheet(
                 color = LibraryColors.Muted,
                 fontSize = 12.sp,
             )
-            val ready = name.isNotBlank()
+            // The name is optional (asked Nov 9, 2026), so Make it is always ready.
             Box(
                 Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(12.dp))
-                    .background(if (ready) LibraryColors.Accent else LibraryColors.Raised)
-                    .clickable(enabled = ready) { onMake(name.trim(), highlights, showOn) },
+                    .background(LibraryColors.Accent)
+                    .clickable { onMake(name.trim(), highlights, showOn) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     stringResource(R.string.make_moment_make),
-                    color = if (ready) Color.White else LibraryColors.Muted,
+                    color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )

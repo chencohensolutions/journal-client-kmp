@@ -1,5 +1,16 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,7 +68,10 @@ import androidx.compose.ui.zIndex
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.stories.CropRect
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -91,18 +105,31 @@ internal const val SET_FADE_MILLIS = 120
 /** In the feed, holding and sliding moves one photo per this many dp. */
 internal const val FLIP_STEP_DP = 10
 
-/** While [playing], the next of [count] photos every [millis], round and round. */
+/**
+ * While [playing], the next of [count] photos every [millis], round and round. With [prepare], the next photo is made
+ * ready while the current one shows, and the switch waits for it (at most [PREPARE_MAX_MILLIS]), so it never shows
+ * blurred first (asked Nov 9, 2026).
+ */
 @Composable
-internal fun Slideshow(playing: Boolean, millis: Long, count: Int, index: Int, onIndex: (Int) -> Unit) {
+internal fun Slideshow(playing: Boolean, millis: Long, count: Int, index: Int, prepare: (suspend (Int) -> Unit)? = null, onIndex: (Int) -> Unit) {
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
+    val ready by rememberUpdatedState(prepare)
     LaunchedEffect(playing, millis, count) {
         while (playing && count > 1) {
-            delay(millis)
-            change((current + 1) % count)
+            val next = (current + 1) % count
+            coroutineScope {
+                val prepared = async { withTimeoutOrNull(PREPARE_MAX_MILLIS) { ready?.invoke(next) } }
+                delay(millis)
+                prepared.await()
+            }
+            change(next)
         }
     }
 }
+
+/** A slideshow waits this long at most for the next photo to be ready (a slow download, or offline). */
+private const val PREPARE_MAX_MILLIS = 15_000L
 
 /** The screen stays on while [on] (a slideshow playing). */
 @Composable
@@ -127,64 +154,99 @@ internal fun SetThumb(item: MediaItem, modifier: Modifier = Modifier) {
 }
 
 /**
- * Every photo of the set in one row (at most [SCRUBBER_CELLS] squeezed in, each standing for its share); sliding a
- * finger along it flips straight to the photo under it, with a tick. The photo shown stands out above the row; a dot
- * marks each highlight.
+ * The set's reel under the photo in the viewer (asked Nov 9, 2026): every photo in a row that scrolls, each at its own
+ * shape (its Moments crop as Moments shows it, from [cropOf], else the whole photo), a dot over each highlight. The
+ * photo shown sits in the middle, outlined. Scrolling it by hand shows the photo that comes to the middle, with a
+ * tick; a tap goes to that photo.
  */
 @Composable
-internal fun SetScrubber(items: List<MediaItem>, highlights: Set<String>, index: Int, onIndex: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun SetReel(items: List<MediaItem>, highlights: Set<String>, index: Int, cropOf: (MediaItem) -> CropRect?, onIndex: (Int) -> Unit) {
     val haptic = LocalHapticFeedback.current
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    BoxWithConstraints(modifier.fillMaxWidth().height(60.dp)) {
-        val widthPx = constraints.maxWidth.toFloat()
-        val cells = items.size.coerceAtMost(SCRUBBER_CELLS)
-        val cell = maxWidth / cells
-        fun pick(x: Float) {
-            val along = (if (rtl) widthPx - x else x) / widthPx
-            val i = (along * items.size).toInt().coerceIn(0, items.size - 1)
-            if (i != current) {
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = index)
+    val dragged by state.interactionSource.collectIsDraggedAsState()
+    // From a drag until the fling after it ends, the reel picks the photo; otherwise it follows the photo shown.
+    var byHand by remember { mutableStateOf(false) }
+    LaunchedEffect(dragged) { if (dragged) byHand = true }
+    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two).
+    suspend fun centerOn(i: Int) {
+        if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), tween(SET_FADE_MILLIS * 2))
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
+            if (!moving && byHand) {
+                byHand = false
+                centerOn(current)
+            }
+        }
+    }
+    fun middle(): Int? {
+        val info = state.layoutInfo
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+        return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }?.index
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { if (byHand) middle() else null }.collect { i ->
+            if (i != null && i != current) {
                 change(i)
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
         }
-        Row(Modifier.padding(top = 10.dp).fillMaxWidth().height(40.dp).clip(RoundedCornerShape(6.dp))) {
-            repeat(cells) { c ->
-                val item = items[c * items.size / cells]
-                Box(Modifier.width(cell).fillMaxHeight()) {
-                    SetThumb(item, Modifier.fillMaxSize())
-                    val stands = (c * items.size / cells until (c + 1) * items.size / cells).any { items[it].id in highlights }
-                    if (stands) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
+    }
+    LaunchedEffect(index) { if (!byHand) centerOn(index) }
+    BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
+        LazyRow(
+            state = state,
+            modifier = Modifier.fillMaxSize(),
+            // The first and the last photo can come to the middle too.
+            contentPadding = PaddingValues(horizontal = maxWidth / 2),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            itemsIndexed(items, key = { _, item -> item.id }) { i, item ->
+                val crop = cropOf(item)
+                val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
+                val shown = i == index
+                Box(
+                    Modifier.height(REEL_HEIGHT).aspectRatio(ratio).clip(RoundedCornerShape(4.dp))
+                        .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
+                        .clickable { change(i) },
+                ) {
+                    ReelThumb(item, crop)
+                    if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
                 }
             }
         }
-        val shown = 40.dp
-        val at = (maxWidth * ((index + 0.5f) / items.size) - shown / 2).coerceIn(0.dp, maxWidth - shown)
-        SetThumb(
-            items[index.coerceIn(items.indices)],
-            Modifier.offset(x = at).size(shown, 58.dp).clip(RoundedCornerShape(4.dp)).border(2.dp, Color.White, RoundedCornerShape(4.dp)),
-        )
-        Box(
-            Modifier.fillMaxSize().pointerInput(items.size, rtl) {
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    pick(down.position.x)
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val moved = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!moved.pressed) break
-                        pick(moved.position.x)
-                        moved.consume()
-                    }
-                }
-            },
-        )
     }
 }
 
-/** A set with more photos squeezes this many into its scrubber. */
-private const val SCRUBBER_CELLS = 48
+/** [item] in its box: at [crop] (its part filling the box) or, without one, the whole photo cropped to fill. */
+@Composable
+private fun ReelThumb(item: MediaItem, crop: CropRect?) {
+    if (crop == null || item.durationMillis != null) {
+        CroppedThumbnail(item, Modifier.fillMaxSize())
+        return
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+        val fullWidth = maxWidth / crop.w
+        val fullHeight = maxHeight / crop.h
+        Box(
+            Modifier.wrapContentSize(Alignment.TopStart, unbounded = true)
+                .offset(x = -fullWidth * crop.x, y = -fullHeight * crop.y)
+                .requiredSize(fullWidth, fullHeight),
+        ) { CroppedThumbnail(item, Modifier.fillMaxSize()) }
+    }
+}
+
+/** The reel's height, and the shapes its photos are kept within (a panorama would fill it). */
+private val REEL_HEIGHT = 52.dp
+private const val REEL_MIN_RATIO = 0.4f
+private const val REEL_MAX_RATIO = 2.5f
 
 /** Fast · Normal · Slow, the one on filled. */
 @Composable

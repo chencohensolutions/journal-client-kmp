@@ -49,7 +49,7 @@ sealed interface FeedBlock {
  * A set made into a moment by hand: its [name], the days that show it ([showOn]) and all its photos ([itemIds], oldest
  * first), for opening the whole set from one day's part of it.
  */
-data class NamedSet(val setId: String, val name: String, val showOn: ShowOn, val itemIds: List<String>) {
+data class NamedSet(val setId: String, val name: String?, val showOn: ShowOn, val itemIds: List<String>) {
     /** Whether [block] is only one day's photos of it ([ShowOn.EACH]): it shows a link "Part of <name> ›". */
     fun isPartOf(block: FeedBlock): Boolean = block.items.size < itemIds.size
 }
@@ -349,7 +349,7 @@ internal fun namedSetsIn(notes: Map<String, PhotoNote>): Map<String, NamedSet> {
     val members = notes.values.filter { it.feedSet != null }.groupBy { it.feedSet!! }
     return members.mapNotNull { (set, notes) ->
         val info = notes.sortedBy { it.highlight ?: Int.MAX_VALUE }.firstNotNullOfOrNull { it.setInfo } ?: return@mapNotNull null
-        set to NamedSet(set, info.name, info.showOn, notes.sortedBy { it.takenAtMillis }.map { it.deviceId })
+        set to NamedSet(set, info.shownName, info.showOn, notes.sortedBy { it.takenAtMillis }.map { it.deviceId })
     }.toMap()
 }
 
