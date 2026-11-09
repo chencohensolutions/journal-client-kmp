@@ -43,9 +43,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
   in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
   at once.
-  The chip **stays on screen** over a cropped photo (not only with the bars) and toggles between the crop and the
-  whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
-  photo, asked for the same day.
+  The chip toggles between the crop and the whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet;
+  it replaced holding a finger on the photo). It shows and hides with the bars: a tap hides it with the rest, and it is
+  hidden while a slideshow plays (Nov 9, 2026; for a while that day it stayed on screen).
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS). Swiping moves between photos fitted to the screen (Nov 9, 2026, Android): once a photo is settled
   on, the photos on each side (5 by default; Settings › Advanced › Loading while scrolling, 0 to 10) are made ready at screen size, the way the swipes go first (a photo only on the server:
@@ -190,12 +190,16 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
   The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
-  lie over the photo above the reel. When a tap hides the bars, the reel slides out (down, or right in landscape) and
+  lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
+  the bars, the reel slides out (down, or past its own edge in landscape: right, or left in Hebrew) and
   the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
   the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a rounded see-through bar floating above the
-  bottom edge (Nov 9, 2026; Play a 44 dp circle in it).
+- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a floating bar above the reel that looks as
+  the Moments feed's tabs (Nov 9, 2026: the same pill shape, background and shadow; Play the filled one); a single
+  photo has **Write** · **Share** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
+  line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
+  (`OverPhotoText`, `ShadowIcon`).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin

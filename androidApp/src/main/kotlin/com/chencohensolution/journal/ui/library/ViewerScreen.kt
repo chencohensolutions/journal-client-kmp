@@ -42,6 +42,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.blur
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -63,6 +66,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
@@ -601,8 +605,8 @@ internal fun ViewerScreen(
         }
 
         AnimatedVisibility(
-            // Always there over a cropped photo, not only with the bars (Nov 9, 2026: a toggle instead of holding).
-            currentCrop != null && !showInfo && !playing,
+            // Over a cropped photo with the bars, and hidden with them by a tap (Nov 9, 2026: it was always there).
+            chrome && currentCrop != null && !showInfo && !playing,
             Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),
@@ -640,15 +644,17 @@ internal fun ViewerScreen(
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            ProvideTextStyle(OverPhotoText) {
+            Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
                 if (current.type == MediaType.VIDEO && casting) {
                     CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
                 } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
-                    ShareButton(current, actions.share)
+                FloatingBar {
+                    BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
+                    ShareBarPill(current, actions.share)
                 }
+            }
             }
         }
 
@@ -666,16 +672,17 @@ internal fun ViewerScreen(
         }
 
         AnimatedVisibility(chrome && !playing, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
+            // No gradient behind them (asked Nov 9, 2026): a mild shadow keeps them readable on a bright photo.
+            ProvideTextStyle(OverPhotoText) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(LibraryColors.TopFade)
                     .statusBarRoom()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = Color.White)
+                    ShadowIcon(LibraryIcons.Back, stringResource(R.string.library_back))
                 }
                 val showInMoments = actions.showInMoments
                 if (set != null) {
@@ -688,11 +695,11 @@ internal fun ViewerScreen(
                         )
                     }
                     IconButton(onClick = { grid = true }) {
-                        Icon(LibraryIcons.Grid, stringResource(R.string.set_all_photos), tint = Color.White)
+                        ShadowIcon(LibraryIcons.Grid, stringResource(R.string.set_all_photos))
                     }
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(LibraryIcons.More, stringResource(R.string.set_more), tint = Color.White)
+                            ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
                         }
                         val context = LocalContext.current
                         val scope = rememberCoroutineScope()
@@ -743,6 +750,7 @@ internal fun ViewerScreen(
                     Box(Modifier.weight(1f))
                 }
                 CastButton()
+            }
             }
         }
 
@@ -838,15 +846,18 @@ private fun SetBar(
     modifier: Modifier = Modifier,
 ) {
     val slide = tween<androidx.compose.ui.unit.IntOffset>(BAR_SLIDE_MILLIS)
+    // Which way is the end side on screen: +1 right (left to right), -1 left (right to left).
+    val endward = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
     if (landscape) {
         Box(Modifier.fillMaxSize()) {
             if (items.size > 1) {
                 AnimatedVisibility(
                     visible, Modifier.align(Alignment.CenterEnd),
-                    enter = slideInHorizontally(slide) { it } + fadeIn(), exit = slideOutHorizontally(slide) { it } + fadeOut(),
+                    // Out past its own edge: the right in left-to-right, the left in Hebrew (asked Nov 9, 2026).
+                    enter = slideInHorizontally(slide) { it * endward } + fadeIn(), exit = slideOutHorizontally(slide) { it * endward } + fadeOut(),
                 ) {
                     Box(
-                        Modifier.fillMaxHeight().background(LibraryColors.PhotoFade).statusBarRoom().navigationBarRoom()
+                        Modifier.fillMaxHeight().statusBarRoom().navigationBarRoom()
                             .onSizeChanged { onRoom(androidx.compose.ui.unit.IntSize(it.width, 0)) },
                     ) {
                         SetReel(items, set.highlights.toSet(), index, cropOf, vertical = true, onIndex = onIndex)
@@ -902,51 +913,103 @@ private fun SetBarBottom(
         onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && reelTop >= 0) height - reelTop else 0))
     }
     Column(
-        modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 12.dp)
+        modifier.fillMaxWidth().navigationBarRoom().padding(top = 24.dp, bottom = 8.dp)
             .onSizeChanged { height = it.height },
     ) {
         // Keyed by the photo, so nothing of the one before is kept while swiping.
-        key(items[index].id) { brief(items[index]) }
+        ProvideTextStyle(OverPhotoText) { key(items[index].id) { brief(items[index]) } }
+        // The actions in a floating bar as the Moments feed has (asked Nov 9, 2026), above the reel.
+        FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp)) {
+            BarPill(
+                stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
+                glyph = if (place >= 0) "★" else "☆",
+            ) { set.setHighlight(item.id, place < 0) }
+            BarPill(stringResource(R.string.set_play), icon = LibraryIcons.Play, selected = true, onClick = onPlay)
+            BarPill(stringResource(R.string.set_recompose), glyph = "⌗", enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
+        }
+        // The reel last, along the bottom edge (asked Nov 9, 2026); the photo keeps clear of it.
         if (reel && items.size > 1) {
             Box(Modifier.onPlaced { reelTop = it.positionInParent().y.toInt() }) {
                 SetReel(items, set.highlights.toSet(), index, cropOf, onIndex = onIndex)
             }
         }
-        // The actions in a floating bar, Play a normal size among them (asked Nov 9, 2026: the round Play was too big).
-        FloatingBar(Modifier.padding(top = 10.dp)) {
-            SetBarButton(
-                if (place >= 0) "★" else "☆",
-                stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
-                Modifier.weight(1f),
-            ) { set.setHighlight(item.id, place < 0) }
-            Box(
-                Modifier.size(PLAY_SIZE).clip(CircleShape).background(Color.White).clickable(onClickLabel = stringResource(R.string.set_play), onClick = onPlay),
-                contentAlignment = Alignment.Center,
-            ) { Icon(LibraryIcons.Play, stringResource(R.string.set_play), tint = Color.Black, modifier = Modifier.size(20.dp)) }
-            SetBarButton("⌗", stringResource(R.string.set_recompose), Modifier.weight(1f), enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
-        }
     }
 }
 
-/** A rounded, see-through bar floating above the bottom edge, holding the viewer's actions in a row. */
+/** The viewer's actions in a bar floating over the photo, as the Moments feed's tabs (`SegmentedBar`): same shape and shadow. */
 @Composable
 private fun FloatingBar(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     Row(
         modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(60.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(LibraryColors.PillScrim)
-            .padding(horizontal = 8.dp),
+            .shadow(12.dp, RoundedCornerShape(50))
+            .background(LibraryColors.Raised.copy(alpha = 0.95f), RoundedCornerShape(50))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
         content = content,
     )
 }
 
-/** The set's Play in the floating bar. */
-private val PLAY_SIZE = 44.dp
+/** One action in the [FloatingBar], looking as the feed's tabs: [selected] is the filled one (Play). */
+@Composable
+private fun BarPill(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    glyph: String? = null,
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    busy: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val color = if (selected) LibraryColors.OnInverse else LibraryColors.OnBackground
+    Row(
+        Modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) LibraryColors.Inverse else Color.Transparent)
+            .clickable(enabled = enabled && !busy, onClick = onClick)
+            .padding(horizontal = 14.dp)
+            .alpha(if (enabled) 1f else 0.4f),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when {
+            busy -> CircularProgressIndicator(color = color, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            icon != null -> Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+            glyph != null -> Text(glyph, color = color, fontSize = 15.sp, style = androidx.compose.ui.text.TextStyle.Default)
+        }
+        Text(label, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, style = androidx.compose.ui.text.TextStyle.Default)
+    }
+}
+
+/** Share in the floating bar: the original to another app, a spinner while it is fetched. */
+@Composable
+private fun ShareBarPill(item: MediaItem, share: suspend (MediaItem) -> Boolean) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember(item.id) { mutableStateOf(false) }
+    BarPill(stringResource(R.string.library_share), icon = LibraryIcons.Share, busy = sharing) {
+        sharing = true
+        scope.launch {
+            if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+            sharing = false
+        }
+    }
+}
+
+/** Text over the photo without a gradient behind it: a mild shadow keeps it readable on a bright photo (Nov 9, 2026). */
+private val OverPhotoText = androidx.compose.ui.text.TextStyle(
+    shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.9f), Offset(0f, 1f), blurRadius = 8f),
+)
+
+/** A white icon over the photo with a mild shadow under it, as [OverPhotoText]. */
+@Composable
+private fun ShadowIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String?, modifier: Modifier = Modifier, size: androidx.compose.ui.unit.Dp = 24.dp) {
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.Black.copy(alpha = 0.8f), modifier = Modifier.matchParentSize().offset(y = 1.dp).blur(3.dp))
+        Icon(icon, description, tint = Color.White, modifier = Modifier.matchParentSize())
+    }
+}
 
 @Composable
 private fun SetBarButton(glyph: String, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
@@ -1484,7 +1547,7 @@ private fun VideoControls(player: Player, muted: Boolean, onToggleMute: () -> Un
 @Composable
 private fun SmallControl(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(modifier.size(32.dp).clip(CircleShape).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+        ShadowIcon(icon, label, size = 18.dp)
     }
 }
 
@@ -1562,13 +1625,13 @@ private fun PhotoBrief(item: MediaItem, stories: StoriesState, modifier: Modifie
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             place?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1)
+            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White, fontSize = 13.sp, maxLines = 1)
             if (tags.isNotEmpty()) {
                 Text(tags.joinToString("  ") { "#$it" }, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         IconButton(onClick = onInfo) {
-            Icon(LibraryIcons.Info, stringResource(R.string.library_viewer_details), tint = Color.White)
+            ShadowIcon(LibraryIcons.Info, stringResource(R.string.library_viewer_details))
         }
     }
 }

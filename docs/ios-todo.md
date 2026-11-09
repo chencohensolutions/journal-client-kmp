@@ -34,6 +34,10 @@ Still missing on iOS:
   button and TV list, `show` with `castAhead`, the frame overlay with `TvZoom.zoomBy`/`panBy` from a pinch and a drag,
   and `CastVideoControls`' equivalent. Strings: `cast_*` in `values/strings.xml` (and `values-iw/`).
 
+- **Viewer without gradients; feed-style floating bar; reel at the bottom** (Android Nov 9, 2026;
+  [viewer.md](screens/viewer.md)): no scrims; mild text and icon shadows over the photo; the actions in a bar styled as
+  the Moments tabs (Write · Share for a photo, Highlight · Play · Recompose in a set); the set's reel along the bottom
+  edge under it; in landscape the reel column slides out past its own edge (left in RTL). Check iOS mirrors RTL.
 - **Viewer bottom redone** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): Highlight · Play · Recompose in a
   floating see-through bar (44 dp Play); reel 64 dp tall with ▶ and length on videos, 88 dp wide down the right in
   landscape; the slideshow's bar hides and shows on a tap; video controls one slim 32 dp row with sound at its end; a
@@ -61,9 +65,9 @@ Still missing on iOS:
   plays as soon as it is shown, muted, with a sound button (top right) for the viewer's videos; swiped away and back,
   it goes on from where it was (positions by id while the viewer is open). Android: `VideoPage`, `ViewerVideos` in
   `ViewerScreen.kt`. Strings: the feed's mute/unmute.
-- **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
-  Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
-  over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Crop chip as a toggle** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
+  Show all chip toggles crop/whole (no hold-to-peek) and shows and hides with the bars (a tap hides it with the rest;
+  hidden during a slideshow); in a set it shows over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
 - **Swiping through all of Moments, and brief info** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the
   viewer opened from a Moments row swipes through every row read so far (`viewerItems`: all sections' items), calls
   `loadMoreMoments()` within 20 of the end and appends the new rows. Over the photo, with the bars: place (label, city,
