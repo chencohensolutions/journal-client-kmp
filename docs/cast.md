@@ -51,7 +51,9 @@ second and on each change; `ended` lets the slideshow go on), `error {id, messag
 ## If the TV can't fetch from the phone
 
 Seen on Nov 9, 2026: the phone's Wi-Fi dozes between packets and drops the TV's requests for seconds at a time, so
-`JournalCast` holds Wi-Fi locks (low latency, and high performance) while casting, and the receiver gives up a fetch
+`JournalCast` holds Wi-Fi locks (low latency, and high performance) while casting, with `CastService` (a
+foreground service with a "Showing on <TV>" notification and Stop) keeping the app counted as in front, as a
+low-latency lock does nothing for an app in the background; and the receiver gives up a fetch
 that is silent for 10 s and tries three times before asking for chunks. A receiver page the phone left without stopping
 closes itself after a minute, as a stale one blocks the next cast (error 2252 on the phone).
 

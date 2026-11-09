@@ -144,6 +144,7 @@ internal object JournalCast {
         val server = server ?: CastServer(app).also { server = it }
         server.start()
         keepWifiAwake(true)
+        CastService.start(app, cast.castDevice?.friendlyName)
         runCatching {
             cast.setMessageReceivedCallbacks(CAST_NAMESPACE) { _, namespace, message ->
                 if (namespace == CAST_NAMESPACE) controller.received(message)
@@ -157,6 +158,7 @@ internal object JournalCast {
         session = null
         server?.stop()
         keepWifiAwake(false)
+        if (::app.isInitialized) CastService.stop(app)
         controller.disconnected()
     }
 
@@ -173,8 +175,8 @@ internal object JournalCast {
         }
         if (wifiLocks.isNotEmpty()) return
         val wifi = app.getSystemService(WifiManager::class.java) ?: return
-        // Low latency works while the app is in front with the screen on; high performance covers the rest where the
-        // system still honours it.
+        // Low latency works only while the app counts as in front: CastService keeps it so while casting. High
+        // performance covers older Android, where the system still honours it.
         val modes = listOfNotNull(
             WifiManager.WIFI_MODE_FULL_LOW_LATENCY.takeIf { Build.VERSION.SDK_INT >= 29 },
             WifiManager.WIFI_MODE_FULL_HIGH_PERF,

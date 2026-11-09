@@ -19,6 +19,8 @@
     <!-- Backup: uploads run in the background with a progress notification (WorkManager's foreground service). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Casting: CastService keeps the app in the foreground while the TV fetches from the phone. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Backup "only on these Wi-Fi networks": Android tells an app the network's name only with location access,
@@ -81,6 +83,11 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <!-- Casting to a TV (docs/cast.md): runs while casting, so the Wi-Fi stays awake with the app in the background. -->
+        <service
+            android:name="com.chencohensolution.journal.ui.library.CastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
         <!-- Casting to a TV (docs/cast.md): Google Cast reads the receiver's app id from here. -->
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"

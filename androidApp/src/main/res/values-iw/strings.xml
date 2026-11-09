@@ -1233,6 +1233,9 @@
     <!-- Casting to a TV with Google Cast (docs/cast.md) -->
     <string name="cast_button">הצגה בטלוויזיה</string>
     <string name="cast_title">הצגה בטלוויזיה</string>
+    <string name="cast_notification_channel">הצגה בטלוויזיה</string>
+    <string name="cast_notification_on">מוצג ב־%1$s</string>
+    <string name="cast_notification_text">הטלפון שולח את התמונות והסרטונים לטלוויזיה</string>
     <string name="cast_on_tv">מוצג בטלוויזיה</string>
     <string name="cast_a_tv">טלוויזיה</string>
     <string name="cast_looking">מחפשים טלוויזיות ברשת ה-Wi-Fi הזו…</string>

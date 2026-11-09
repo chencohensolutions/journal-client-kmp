@@ -126,6 +126,7 @@ class PhotoSafetyTest {
             "android.permission.USE_BIOMETRIC",
             // Not about photos: keeps the Wi-Fi awake while casting to a TV, so the TV can reach the phone.
             "android.permission.WAKE_LOCK",
+            "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         )
         assertTrue(permissions.isNotEmpty() && allowed.containsAll(permissions), "unexpected permissions: ${permissions - allowed}")
     }
