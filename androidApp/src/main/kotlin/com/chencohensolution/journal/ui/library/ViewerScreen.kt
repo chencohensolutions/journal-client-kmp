@@ -131,6 +131,7 @@ import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.cast.castAhead
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
@@ -336,7 +337,13 @@ internal fun ViewerScreen(
     // couldn't play), for the slideshow to go on after it.
     val videoPlayer = remember { mutableStateOf<Player?>(null) }
     val videoDone = remember { mutableStateOf<String?>(null) }
-    val videos = ViewerVideos(videoPositions, videoMuted, { videoMuted = !videoMuted }, videoPlayer, videoDone, autoplayVideos)
+    // Casting to a TV (docs/cast.md): what is shown goes to the TV, videos play there, and the phone shows each photo
+    // whole with a frame of what the TV shows, which a pinch or drag moves.
+    val cast = JournalCast.controller
+    val castState by cast.state.collectAsState()
+    val casting = castState.connected
+    val castZooms = remember { mutableMapOf<String, CastZoom>() }
+    val videos = ViewerVideos(videoPositions, videoMuted, { videoMuted = !videoMuted }, videoPlayer, videoDone, autoplayVideos, casting)
     val autoplayNow by rememberUpdatedState(autoplayVideos)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
@@ -347,7 +354,13 @@ internal fun ViewerScreen(
         // A video plays to its end (or until it can't play) before the next item.
         hold = { i ->
             val item = items.getOrNull(i)
-            if (item?.type == MediaType.VIDEO && autoplayNow) snapshotFlow { videoDone.value }.first { it == item.id }
+            if (item?.type == MediaType.VIDEO && autoplayNow) {
+                if (cast.state.value.connected) {
+                    cast.state.first { s -> !s.connected || s.error?.id == item.id || s.video?.let { it.id == item.id && it.ended } == true }
+                } else {
+                    snapshotFlow { videoDone.value }.first { it == item.id }
+                }
+            }
         },
     ) { setIndex = it }
     // Swiping: once a photo is settled on, the photos on each side ([viewerAhead]; Settings › Advanced) are
@@ -390,8 +403,42 @@ internal fun ViewerScreen(
     val zooms = remember { mutableMapOf<String, PhotoZoom>() }
     fun zoomOf(item: MediaItem) = zooms.getOrPut(item.id) { PhotoZoom(zoomScope, stories.note(item.id)?.zoom) }
     val zoom = zoomOf(current)
-    val zoomNow by rememberUpdatedState(zoom.takeIf { current.type != MediaType.VIDEO })
-    val currentCrop = cropOf(current)?.takeIf { !zoom.isZoomed }
+    val zoomNow by rememberUpdatedState(zoom.takeIf { current.type != MediaType.VIDEO && !casting })
+    val currentCrop = cropOf(current)?.takeIf { !zoom.isZoomed && !casting }
+    fun castZoomOf(item: MediaItem) = castZooms.getOrPut(item.id) { CastZoom(item.ratio, castState.tvRatio) }
+    val castZoom = castZoomOf(current).takeIf { casting && current.type != MediaType.VIDEO }
+    val castZoomNow by rememberUpdatedState(castZoom)
+    val castZoomed = castZoom?.zoom?.isZoomed == true
+    // The TV tells its shape once connected: each photo's frame takes it.
+    LaunchedEffect(castState.tvRatio) { castZooms.values.forEach { it.zoom = it.zoom.onTv(castState.tvRatio) } }
+    // Each item shown goes to the TV (its original, from this phone's little web server), with the next few fetched
+    // there ahead; then the frame follows each pinch and drag.
+    val castContext = LocalContext.current
+    val castPreviews = LocalServerPreviews.current
+    LaunchedEffect(casting, current.id) {
+        if (!casting) return@LaunchedEffect
+        val server = JournalCast.server() ?: return@LaunchedEffect
+        val shownNow = current
+        val (item, ahead) = withContext(Dispatchers.IO) {
+            server.offer(shownNow, castPreviews) to castAhead(items, items.indexOf(shownNow)).mapNotNull { server.offer(it, castPreviews) }
+        }
+        if (item == null) {
+            Toast.makeText(castContext, R.string.cast_no_wifi, Toast.LENGTH_LONG).show()
+            return@LaunchedEffect
+        }
+        val holder = castZoomOf(shownNow).takeIf { shownNow.type != MediaType.VIDEO }
+        cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = autoplayNow, positionMillis = videoPositions[shownNow.id] ?: 0L)
+        if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
+    }
+    LaunchedEffect(castState.error) {
+        castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
+        if (castState.error != null) {
+            Toast.makeText(castContext, R.string.cast_failed, Toast.LENGTH_SHORT).show()
+            cast.errorSeen()
+        }
+    }
+    // Closing the viewer leaves the TV on its quiet screen; casting goes on for the next photo opened.
+    DisposableEffect(Unit) { onDispose { if (cast.state.value.connected) cast.clear() } }
     // Leaving a photo (a swipe, or closing the viewer): its zoom goes into its note when it changed.
     val latestStories by rememberUpdatedState(stories)
     DisposableEffect(current.id) {
@@ -440,6 +487,8 @@ internal fun ViewerScreen(
         if (setBarsShown) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
     )
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    fun roomBottomPx() = with(density) { roomBottom.toPx() }
+    fun roomEndPx() = with(density) { roomEnd.toPx() }
     // The swipe's gesture outlives a composition: it calls the latest.
     val besideNow by rememberUpdatedState(set?.beside)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -450,12 +499,17 @@ internal fun ViewerScreen(
                     chrome = false
                     showInfo = false
                 }
+                .castGestures({ castZoomNow }, area = { size -> castArea(size, roomBottomPx(), roomEndPx(), rtl) }) {
+                    chrome = false
+                    showInfo = false
+                }
                 .pointerInput(current.type == MediaType.VIDEO, playing) {
                     detectTapGestures(
                         onDoubleTap = { at ->
                             if (current.type == MediaType.VIDEO) return@detectTapGestures
                             chrome = false
                             showInfo = false
+                            castZoomNow?.let { it.zoom = it.zoom.whole() }
                             zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                         },
                         onTap = {
@@ -479,7 +533,7 @@ internal fun ViewerScreen(
                             if (next in items.indices) setIndex = next else besideNow?.invoke(forward)
                         }
                     }) { change, amount ->
-                        if (zoomNow?.isZoomed == true) return@detectHorizontalDragGestures
+                        if (zoomNow?.isZoomed == true || castZoomNow?.zoom?.isZoomed == true) return@detectHorizontalDragGestures
                         change.consume()
                         dragged += amount
                     }
@@ -494,7 +548,7 @@ internal fun ViewerScreen(
                     VideoPage(item, sharedKey(item), isCurrent = page == shownIndex, videos)
                 } else {
                     val pageZoom = zoomOf(item)
-                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom, shown = page == shownIndex)
+                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == shownIndex)
                 }
             }
         } else HorizontalPager(
@@ -503,13 +557,17 @@ internal fun ViewerScreen(
             // The pages beside the one shown are composed, so their photos load before they slide in.
             beyondViewportPageCount = 1,
             // Zoomed in, a drag moves the photo instead of swiping; double-taps step back to fitted.
-            userScrollEnabled = !zoom.isZoomed,
+            userScrollEnabled = if (casting) !castZoomed else !zoom.isZoomed,
             // A tap on the photo (not a swipe, nor one the play button or the player takes); the details panel and
             // the bars are drawn over it and keep their own taps. Double-taps on a photo step from fitted to filling the
             // screen, to its original size, and back.
             modifier = Modifier
                 .fillMaxSize()
                 .zoomGestures({ zoomNow }) {
+                    chrome = false
+                    showInfo = false
+                }
+                .castGestures({ castZoomNow }, area = { size -> castArea(size, 0f, 0f, rtl) }) {
                     chrome = false
                     showInfo = false
                 }
@@ -525,6 +583,7 @@ internal fun ViewerScreen(
                             onDoubleTap = { at ->
                                 chrome = false
                                 showInfo = false
+                                castZoomNow?.let { it.zoom = it.zoom.whole() }
                                 zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                             },
                             onTap = onTap,
@@ -537,8 +596,13 @@ internal fun ViewerScreen(
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.settledPage, videos)
             } else {
                 val pageZoom = zoomOf(item)
-                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom, shown = page == pager.settledPage)
+                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == pager.settledPage)
             }
+        }
+
+        // The TV's frame over the photo shown, in the same room as the photo.
+        castZoom?.let { holder ->
+            CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd))
         }
 
         AnimatedVisibility(
@@ -560,7 +624,9 @@ internal fun ViewerScreen(
                     brief = { shown ->
                         PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
                         // A video's controls: under the info, above the reel (asked Nov 9, 2026).
-                        if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
+                        if (shown.type == MediaType.VIDEO && casting) {
+                            CastVideoControls(castState.video?.takeIf { it.id == shown.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp))
+                        } else if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
                     },
                     onIndex = { setIndex = it }, onPlay = { playing = true },
                     landscape = screenRatio > 1f,
@@ -582,7 +648,9 @@ internal fun ViewerScreen(
             ProvideTextStyle(OverPhotoText) {
             Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
-                if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
+                if (current.type == MediaType.VIDEO && casting) {
+                    CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
+                } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
                 FloatingBar {
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
                     ShareBarPill(current, actions.share)
@@ -591,7 +659,7 @@ internal fun ViewerScreen(
             }
         }
 
-        if (current.type != MediaType.VIDEO) {
+        if (current.type != MediaType.VIDEO && !casting) {
             val small = zoom.picture
             val part = if (zoom.isZoomed) zoom.visibleRect(0f) else null
             AnimatedVisibility(
@@ -682,6 +750,7 @@ internal fun ViewerScreen(
                     MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
                     Box(Modifier.weight(1f))
                 }
+                CastButton()
             }
             }
         }
@@ -1287,6 +1356,8 @@ private class ViewerVideos(
     val done: androidx.compose.runtime.MutableState<String?>,
     /** Whether they play by themselves; off, each waits for Play. */
     val autoplay: Boolean = true,
+    /** Casting: videos play on the TV, and the phone shows their poster. */
+    val casting: Boolean = false,
 )
 
 /**
@@ -1309,7 +1380,7 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
         // Off by itself: Play over the poster starts it.
         var started by remember(item.id) { mutableStateOf(false) }
         LaunchedEffect(isCurrent) { if (!isCurrent) started = false }
-        if (isCurrent && (videos.autoplay || started)) {
+        if (isCurrent && !videos.casting && (videos.autoplay || started)) {
             // Shown again: not done any more, so a slideshow waits for it again.
             LaunchedEffect(item.id) { if (videos.done.value == item.id) videos.done.value = null }
             VideoPlayer(
@@ -1328,7 +1399,7 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
         // Covering again is at once, in this frame; only the fade out over the first frame is animated.
         val posterAlpha = if (covering) 1f else fading
         if (posterAlpha > 0f) poster?.let { Box(Modifier.fillMaxSize().alpha(posterAlpha), contentAlignment = Alignment.Center) { ViewerImage(it, sharedKey) } }
-        if (isCurrent && !videos.autoplay && !started) {
+        if (isCurrent && !videos.casting && !videos.autoplay && !started) {
             IconButton(
                 onClick = { started = true },
                 colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),

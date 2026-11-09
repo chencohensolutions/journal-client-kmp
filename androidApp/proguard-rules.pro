@@ -35,3 +35,5 @@
 # MediaPipe logs with Flogger, which finds its caller on the stack by the logger's class name: renamed, Graph's
 # static initializer throws "no caller found on the stack".
 -keep class com.google.common.flogger.** { *; }
+# Google Cast creates the options provider from its name in the manifest's meta-data, which R8 doesn't read.
+-keep class com.chencohensolution.journal.ui.library.JournalCastOptions { *; }

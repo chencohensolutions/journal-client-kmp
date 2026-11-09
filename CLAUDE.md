@@ -11,7 +11,7 @@ whenever a screen changes.
   (`JournalController` connection, `EnrollmentController`, `LibraryController` photo library, `StoriesController`
   the photos' notes (writing with history, tags, crops, Moments sets), the storyline and the Moments feed,
   `SettingsController` the Settings screen, `BackupController`, `FreeUpController`, `SearchController` text search on
-  the server). Stories were replaced by the
+  the server, `CastController` what the phone says to a TV while casting, in `cast/`). Stories were replaced by the
   storyline on Oct 21, 2026; `StoriesController`, `StoriesState` and the `stories/` package keep their names for now.
   The package is split by concern: `StoriesController.kt` (edits and the rebuild), `StoriesState.kt` (what is
   published and how it is built, the storyline among it), `PhotoNote.kt` (the note and its file store),
@@ -25,6 +25,7 @@ whenever a screen changes.
   shows, `LibraryActions.kt` the permission, system-prompt and server wiring the screens share, `Thumbnails.kt` the
   loading and caching of pictures, `JournalViewModel.kt` keeps the controllers alive. Strings in
   `res/values/strings.xml` (Hebrew in `values-iw/`).
+- `receiver/` — the Google Cast receiver page the TV runs while casting, served by GitHub Pages ([docs/cast.md](docs/cast.md)).
 - `iosApp/iosApp/` — SwiftUI UI. View models wrap the Kotlin controllers (`observe` + `currentState`). Strings in
   `Localizable.xcstrings`. The Xcode project uses synchronized folders: new Swift files are picked up automatically.
 

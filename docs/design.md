@@ -136,6 +136,10 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
   search without it, with the search model on ONNX Runtime). Each is offered only when `serverInfo` says the server
   has it.
 
+- Showing on a TV with Google Cast (Nov 9, 2026, Android; [cast.md](cast.md)): our own receiver page on GitHub
+  Pages, originals served from the phone on the Wi-Fi, swipes, the slideshow and a zoom frame on the phone driving the
+  TV. Waits for the receiver's app id from the Cast console and a try on the owner's Streamer.
+
 **Verified by hand** on the Android emulator (most flows) and installed on a physical Samsung (SM-S931B) over
 wireless debugging; enrollment against the real server on the phone was not yet confirmed. iOS builds and the
 shared logic passes on the simulator, but most iOS tap flows haven't been clicked through (WebDriverAgent +

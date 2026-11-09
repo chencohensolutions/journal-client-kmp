@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Keeps the Wi-Fi awake while casting, so the TV can always reach the phone (JournalCast). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 17+: the journal server is on the local network; without this, connections to it time out. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Photo library. VISUAL_USER_SELECTED is the "Select photos" (limited) answer. -->
@@ -17,6 +19,8 @@
     <!-- Backup: uploads run in the background with a progress notification (WorkManager's foreground service). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Casting: CastService keeps the app in the foreground while the TV fetches from the phone. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Backup "only on these Wi-Fi networks": Android tells an app the network's name only with location access,
@@ -79,6 +83,15 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <!-- Casting to a TV (docs/cast.md): runs while casting, so the Wi-Fi stays awake with the app in the background. -->
+        <service
+            android:name="com.chencohensolution.journal.ui.library.CastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+        <!-- Casting to a TV (docs/cast.md): Google Cast reads the receiver's app id from here. -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.chencohensolution.journal.ui.library.JournalCastOptions" />
         <!-- Share in the viewer hands other apps a copy of an original that came from the server. -->
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -123,6 +123,23 @@ internal object LibraryIcons {
     val Check = icon("Check", false, "M5 12l5 5 9-10")
     val Phone = icon("Phone", false, "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M11 18h2")
     val Play = icon("Play", true, "M7 4v16l13-8z")
+    val Pause = icon("Pause", true, "M7 5h3.5v14H7z", "M13.5 5H17v14h-3.5z")
+    /** A TV with Cast's waves in its corner: casting to a TV. */
+    val Cast = icon("Cast", false, "M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6", "M2 12a8 8 0 0 1 8 8", "M2 16a4 4 0 0 1 4 4", "M2 20h0.01")
+    /** [Cast] filled in, as Cast's own button is while connected: the screen solid beside its waves. */
+    val CastOn = ImageVector.Builder("CastOn", 24.dp, 24.dp, 24f, 24f).apply {
+        listOf("M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6", "M2 12a8 8 0 0 1 8 8", "M2 16a4 4 0 0 1 4 4", "M2 20h0.01").forEach {
+            addPath(
+                pathData = PathParser().parsePathString(it).toNodes(),
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+        }
+        // The screen's inside, clear of the outer wave.
+        addPath(pathData = PathParser().parsePathString("M6 8H18V16H12.25A11 11 0 0 0 6 9.75Z").toNodes(), fill = SolidColor(Color.Black))
+    }.build()
     val More = icon("More", true, "M12 3a2 2 0 1 0 0.01 0z", "M12 10a2 2 0 1 0 0.01 0z", "M12 17a2 2 0 1 0 0.01 0z")
     val Back = icon("Back", false, "M19 12H5", "M12 19l-7-7 7-7", mirrored = true)
     val Info = icon("Info", false, "M12 3a9 9 0 1 0 0.01 0", "M12 11v5", "M12 8h0.01")

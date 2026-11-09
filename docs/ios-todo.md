@@ -23,6 +23,17 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Showing on a TV with Google Cast** (Android Nov 9, 2026; [cast.md](cast.md), [viewer.md](screens/viewer.md)
+  "Showing on a TV"): the receiver page and the shared `CastController` / `TvZoom` (`sharedLogic/.../cast/`) are
+  ready. iOS needs: the Google Cast SDK for iOS (`GCKCastContext` with `JournalCast.APP_ID`'s id; `NSBonjourServices`
+  `_googlecast._tcp` and the receiver's `_<APP_ID>._googlecast._tcp`, and `NSLocalNetworkUsageDescription`, in
+  Info.plist); a `GCKGenericChannel` on `CAST_NAMESPACE` whose `didReceiveTextMessage` calls `controller.received` and
+  whose `sendTextMessage` is the `CastChannel`; `connected`/`disconnected` from the session manager's listener; a small
+  HTTP server on the Wi-Fi like `CastServer.kt` (Range, CORS, Private Network Access headers, PhotoKit's original via
+  `PHAssetResourceManager`, JPEG XL packed from a JPEG as that JPEG, DNG as a 3840 px JPEG); in the viewer a Cast
+  button and TV list, `show` with `castAhead`, the frame overlay with `TvZoom.zoomBy`/`panBy` from a pinch and a drag,
+  and `CastVideoControls`' equivalent. Strings: `cast_*` in `values/strings.xml` (and `values-iw/`).
+
 - **Viewer without gradients; feed-style floating bar; reel at the bottom** (Android Nov 9, 2026;
   [viewer.md](screens/viewer.md)): no scrims; mild text and icon shadows over the photo; the actions in a bar styled as
   the Moments tabs (Write · Share for a photo, Highlight · Play · Recompose in a set); the set's reel along the bottom

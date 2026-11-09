@@ -1176,4 +1176,22 @@
     <string name="make_moment_hint_each">Each day shows its own photos, with a link to the whole moment.</string>
     <string name="make_moment_hint_one">Its photos leave their days and show here together.</string>
     <string name="make_moment_make">Make it</string>
+    <!-- Casting to a TV with Google Cast (docs/cast.md) -->
+    <string name="cast_button">Show on TV</string>
+    <string name="cast_title">Show on a TV</string>
+    <string name="cast_notification_channel">Showing on a TV</string>
+    <string name="cast_notification_on">Showing on %1$s</string>
+    <string name="cast_notification_text">The phone sends the photos and videos to the TV</string>
+    <string name="cast_on_tv">Showing on TV</string>
+    <string name="cast_a_tv">A TV</string>
+    <string name="cast_looking">Looking for TVs on this Wi-Fi…</string>
+    <string name="cast_stop">Stop showing on TV</string>
+    <string name="cast_frame_label">TV</string>
+    <string name="cast_frame_hint">Pinch the photo to zoom in on the TV; drag the frame to move around.</string>
+    <string name="cast_play">Play on TV</string>
+    <string name="cast_pause">Pause on TV</string>
+    <string name="cast_no_wifi">The phone needs to be on the same Wi-Fi as the TV.</string>
+    <string name="cast_failed">The TV couldn\'t show this one.</string>
+    <string name="cast_not_on_this_tv">This TV can\'t open Journal yet: it isn\'t set up for it in the Cast console.</string>
+    <string name="cast_start_failed">Couldn\'t start showing on the TV.</string>
 </resources>
