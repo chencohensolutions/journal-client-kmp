@@ -222,7 +222,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 
 A **Cast** button at the end of the top bar (shown once the receiver's app id is set, `JournalCast.APP_ID`) opens a
 sheet of the TVs with Google Cast on the Wi-Fi ("Looking for TVs on this Wi-Fi…" until one answers); a tap casts to
-it. While casting the button is lit, and the sheet names the TV with **Stop showing on TV**. See [cast.md](../cast.md).
+it. While casting the button is filled in (Cast's own connected look), and the sheet names the TV with **Stop showing on TV**. See [cast.md](../cast.md).
 
 - The item shown goes to the TV as its original, with the next three photos and the one before fetched there ahead;
   swiping, a set's cross-fades and the slideshow change the TV.

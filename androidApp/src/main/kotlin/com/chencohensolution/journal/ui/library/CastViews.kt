@@ -168,9 +168,9 @@ internal fun CastButton() {
     var picking by remember { mutableStateOf(false) }
     IconButton(onClick = { picking = true }) {
         Icon(
-            LibraryIcons.Cast,
+            if (state.connected) LibraryIcons.CastOn else LibraryIcons.Cast,
             stringResource(if (state.connected) R.string.cast_on_tv else R.string.cast_button),
-            tint = if (state.connected) LibraryColors.Accent else Color.White,
+            tint = Color.White,
         )
     }
     if (picking) CastSheet(onDismiss = { picking = false })
