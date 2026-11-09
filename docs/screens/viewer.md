@@ -79,8 +79,12 @@ Swiping is not a tap; a playing video's own controls take its taps.
   - **In the note file** (`media/<id>.json`, format 4): `"zoom": {"x", "y", "w", "h", "aspect"}`, the part on screen
     as fractions of the upright photo, like a crop, with the screen's shape. On another screen shape it opens with the
     same middle, zoomed so that part fills the screen as far as it can.
-- **Videos:** the first frame with a play button. Play starts the player (Android: Media3 ExoPlayer's `PlayerView`
-  with its controls, streaming from the server through the video cache; iOS `VideoPlayer`). Swiping away stops it.
+- **Videos:** play as soon as they are the one shown, muted, over their first frame until the video's own first frame
+  shows (asked Nov 9, 2026; Android only, iOS still shows Play). A round **sound** button (top right, under the bar)
+  turns sound on or off for the viewer's videos until it closes. Swiping away stops a video; coming back to it goes on
+  from where it was (kept by id while the viewer is open; from the start once it played to its end). The player is
+  Media3 ExoPlayer's `PlayerView` with its controls, streaming from the server through the video cache (iOS
+  `VideoPlayer`). Android: `VideoPage`, `ViewerVideos` in `ViewerScreen.kt`.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
   text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.

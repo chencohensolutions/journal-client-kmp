@@ -234,6 +234,11 @@ internal fun ViewerScreen(
     var grid by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
+    // Videos play as soon as they are shown, muted until sound is turned on, and each picks up where it was left while
+    // the viewer is open (asked Nov 9, 2026).
+    val videoPositions = remember { mutableMapOf<String, Long>() }
+    var videoMuted by rememberSaveable { mutableStateOf(true) }
+    val videos = ViewerVideos(videoPositions, videoMuted) { videoMuted = !videoMuted }
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     // The next photo's full image is decoded (downloaded when only on the server) before the slideshow shows it.
@@ -353,7 +358,7 @@ internal fun ViewerScreen(
             Crossfade(shownIndex, Modifier.fillMaxSize(), animationSpec = tween(SET_FADE_MILLIS), label = "set photo") { page ->
                 val item = items[page]
                 if (item.type == MediaType.VIDEO) {
-                    VideoPage(item, sharedKey(item), isCurrent = page == shownIndex)
+                    VideoPage(item, sharedKey(item), isCurrent = page == shownIndex, videos)
                 } else {
                     val pageZoom = zoomOf(item)
                     PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
@@ -394,7 +399,7 @@ internal fun ViewerScreen(
         ) { page ->
             val item = items[page]
             if (item.type == MediaType.VIDEO) {
-                VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
+                VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage, videos)
             } else {
                 val pageZoom = zoomOf(item)
                 PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
@@ -930,30 +935,26 @@ private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
+/** The viewer's videos: where each was left (by id, while the viewer is open) and whether they play muted. */
+private class ViewerVideos(val positions: MutableMap<String, Long>, val muted: Boolean, val toggleMute: () -> Unit)
+
 /**
- * Shows the poster frame until Play is tapped; stops when swiped away, and continues from there when played again. A
- * video only on the server streams from its original, and what was fetched stays cached ([ServerVideos]).
+ * A video plays as soon as it is the one shown, muted until sound is turned on ([ViewerVideos.muted]), over its poster
+ * until its first frame; swiped away it stops, and back on it later it goes on from where it was. A video only on the
+ * server streams from its original, and what was fetched stays cached ([ServerVideos]).
  */
 @Composable
-private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
-    var playing by rememberSaveable(item.id) { mutableStateOf(false) }
-    var position by rememberSaveable(item.id) { mutableLongStateOf(0L) }
-    LaunchedEffect(isCurrent) { if (!isCurrent) playing = false }
-
-    if (playing) {
-        VideoPlayer(item, startAt = position, onStopped = { position = it })
-    } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            // A video only on the server shows the poster already kept (the feed's or a grid's), asking for no new size.
-            val poster = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
-            poster?.let { ViewerImage(it, sharedKey) }
-            IconButton(
-                onClick = { playing = true },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),
-                modifier = Modifier.size(72.dp),
-            ) {
-                Icon(LibraryIcons.Play, stringResource(R.string.library_viewer_play), tint = Color.White, modifier = Modifier.size(32.dp))
-            }
+private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, videos: ViewerVideos) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        // A video only on the server shows the poster already kept (the feed's or a grid's), asking for no new size.
+        val poster = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
+        poster?.let { ViewerImage(it, sharedKey) }
+        if (isCurrent) {
+            VideoPlayer(item, startAt = videos.positions[item.id] ?: 0L, muted = videos.muted, onStopped = { videos.positions[item.id] = it })
+            MuteButton(
+                videos.muted, videos.toggleMute,
+                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 8.dp),
+            )
         }
     }
 }
@@ -964,7 +965,7 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean) {
  */
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Unit) {
+private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStopped: (Long) -> Unit) {
     val context = LocalContext.current
     var player by remember(item.id) { mutableStateOf<ExoPlayer?>(null) }
     var failed by remember(item.id) { mutableStateOf<Int?>(null) }
@@ -983,16 +984,19 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
                         failed = R.string.library_viewer_video_failed
                     }
                 })
+                volume = if (muted) 0f else 1f
                 setMediaItem(playable.item, startAt)
                 prepare()
                 playWhenReady = true
             }
     }
+    LaunchedEffect(player, muted) { player?.volume = if (muted) 0f else 1f }
     val stopped by rememberUpdatedState(onStopped)
     DisposableEffect(item.id) {
         onDispose {
             player?.let {
-                stopped(it.currentPosition)
+                // Played to its end: next time it starts over.
+                stopped(if (it.playbackState == Player.STATE_ENDED) 0L else it.currentPosition)
                 it.release()
             }
             player = null
@@ -1000,7 +1004,13 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         AndroidView(
-            factory = { PlayerView(it).apply { setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING) } },
+            // Clear until the first frame, so the poster under it shows meanwhile instead of black.
+            factory = {
+                PlayerView(it).apply {
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                    setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
+            },
             update = { it.player = player },
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),

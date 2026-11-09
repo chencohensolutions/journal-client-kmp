@@ -23,6 +23,10 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Viewer videos play at once, muted, and resume** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): a video
+  plays as soon as it is shown, muted, with a sound button (top right) for the viewer's videos; swiped away and back,
+  it goes on from where it was (positions by id while the viewer is open). Android: `VideoPage`, `ViewerVideos` in
+  `ViewerScreen.kt`. Strings: the feed's mute/unmute.
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
