@@ -50,9 +50,9 @@ private const val MAX_WANTED = 2_000
 /**
  * Bumped when the way Moments' rows are made changes, so the database's rows are all made again once. 3: WhatsApp is the
  * folder "folder:WhatsApp" (Oct 27, 2026). 4: folder ids are in lower case ("folder:whatsapp"), and sound recordings
- * have their own sources, call and recording (Oct 27, 2026).
+ * have their own sources, call and recording (Oct 27, 2026). 5: a camera burst is a set of its own (Nov 9, 2026).
  */
-private const val FEED_VERSION = 4
+private const val FEED_VERSION = 5
 
 /**
  * What the user adds to their photos, kept on this device: each photo's writing (and its earlier versions), tags,
