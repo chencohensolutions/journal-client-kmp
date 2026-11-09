@@ -265,8 +265,10 @@ async function show({ item, frame, autoplay = true, muted = true, position = 0 }
   } catch (e) {
     clearTimeout(slow);
     if (shown === wanted) {
-      note('This photo couldn’t be shown');
-      send({ type: 'error', id: item.id, message: String(e && e.message || e) });
+      const why = String(e && e.message || e);
+      console.warn('photo not shown', item.id, e);
+      note(`This photo couldn’t be shown (${why})`, 8000);
+      send({ type: 'error', id: item.id, message: why });
     }
     return;
   }
