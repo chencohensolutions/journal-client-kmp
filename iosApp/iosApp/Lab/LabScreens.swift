@@ -31,6 +31,29 @@ let labScreens: [LabScreen] = [
             DatePadSuggestion()
         },
     ]),
+    // A set of many photos (Nov 9, 2026): a page for it, choosing its main photo, a composition per photo, swipes that
+    // cross-fade and a slideshow. Shared parts in MomentSet/MomentSetParts.swift; made-up pictures of one run on a beach.
+    LabScreen(id: "moment-set", title: "A set of photos", options: [
+        current { labHome(data.library, data.feedStories, tab: .moments) },
+        LabOption(id: "a", title: "a: Set page", note: "Main photo on top with Play, then every photo in a grid; hold a tile for more") {
+            MomentSetScreenA(set: MomentSetLab.beach())
+        },
+        LabOption(id: "a-viewer", title: "a: its viewer", note: "A tile opened: swipes cross-fade; Make main, Play, Recompose") {
+            MomentSetScreenA(set: MomentSetLab.beach(), viewerAt: 20)
+        },
+        LabOption(id: "b", title: "b: Viewer with a scrubber", note: "Opens on the main photo; slide along the strip to flip through all 36") {
+            MomentSetScreenB(set: MomentSetLab.beach())
+        },
+        LabOption(id: "b-play", title: "b: playing", note: "The slideshow: Fast · Normal · Slow and Stop") {
+            MomentSetScreenB(set: MomentSetLab.beach(), playing: true)
+        },
+        LabOption(id: "b-recompose", title: "b: Recompose", note: "A frame per photo, the set's strip, Same frame for all") {
+            MomentSetScreenB(set: MomentSetLab.beach(), at: 14, recomposing: true)
+        },
+        LabOption(id: "c", title: "c: Flip in the feed", note: "The set stays one photo in Moments: hold and slide to flip, Play in place") {
+            MomentSetScreenC(set: MomentSetLab.beach())
+        },
+    ]),
     LabScreen(id: "moments-filter", title: "Moments filter, many folders", options: [
         current { labHome(data.library, data.folderStories, tab: .moments) },
     ]),

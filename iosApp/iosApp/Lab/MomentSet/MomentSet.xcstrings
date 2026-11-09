@@ -1,0 +1,229 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld of %lld": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld מתוך %2$lld"
+          }
+        }
+      }
+    },
+    "%lld photos": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld תמונות"
+          }
+        }
+      }
+    },
+    "4:5": {
+      "shouldTranslate": false
+    },
+    "All photos": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כל התמונות"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סגירה"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סיום"
+          }
+        }
+      }
+    },
+    "Fast": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהיר"
+          }
+        }
+      }
+    },
+    "Hold a photo for more": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החזיקו תמונה לעוד"
+          }
+        }
+      }
+    },
+    "Hold and slide to flip": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החזיקו והחליקו כדי לדפדף"
+          }
+        }
+      }
+    },
+    "Main": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ראשית"
+          }
+        }
+      }
+    },
+    "Make main": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קבע כראשית"
+          }
+        }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רגיל"
+          }
+        }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מקורי"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הפעלה"
+          }
+        }
+      }
+    },
+    "Recompose": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסגור מחדש"
+          }
+        }
+      }
+    },
+    "Reset": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "איפוס"
+          }
+        }
+      }
+    },
+    "Same frame for all": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אותה מסגרת לכולן"
+          }
+        }
+      }
+    },
+    "Slow": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "איטי"
+          }
+        }
+      }
+    },
+    "Square": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ריבוע"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עצירה"
+          }
+        }
+      }
+    },
+    "Take out of this set": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוצאה מהסט"
+          }
+        }
+      }
+    },
+    "The photo itself isn’t changed.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התמונה עצמה לא משתנה."
+          }
+        }
+      }
+    },
+    "Wide": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רחב"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
