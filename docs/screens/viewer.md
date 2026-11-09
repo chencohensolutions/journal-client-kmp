@@ -190,12 +190,16 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
   The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
-  lie over the photo above the reel. When a tap hides the bars, the reel slides out (down, or right in landscape) and
+  lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
+  the bars, the reel slides out (down, or past its own edge in landscape: right, or left in Hebrew) and
   the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
   the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a rounded see-through bar floating above the
-  bottom edge (Nov 9, 2026; Play a 44 dp circle in it).
+- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a floating bar above the reel that looks as
+  the Moments feed's tabs (Nov 9, 2026: the same pill shape, background and shadow; Play the filled one); a single
+  photo has **Write** · **Share** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
+  line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
+  (`OverPhotoText`, `ShadowIcon`).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin

@@ -23,6 +23,10 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Viewer without gradients; feed-style floating bar; reel at the bottom** (Android Nov 9, 2026;
+  [viewer.md](screens/viewer.md)): no scrims; mild text and icon shadows over the photo; the actions in a bar styled as
+  the Moments tabs (Write · Share for a photo, Highlight · Play · Recompose in a set); the set's reel along the bottom
+  edge under it; in landscape the reel column slides out past its own edge (left in RTL). Check iOS mirrors RTL.
 - **Viewer bottom redone** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): Highlight · Play · Recompose in a
   floating see-through bar (44 dp Play); reel 64 dp tall with ▶ and length on videos, 88 dp wide down the right in
   landscape; the slideshow's bar hides and shows on a tap; video controls one slim 32 dp row with sound at its end; a

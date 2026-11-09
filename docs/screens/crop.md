@@ -20,7 +20,8 @@ leaves its near-duplicate set in Moments and shows on its own (unless merged int
 
 - **Top bar:** ✕ (leave without saving), "Crop", **Reset** (clears the crop of the mode shown), **Done**.
 - **The photo**, fitted on black, dimmed outside the frame, with thirds lines. **Drag** moves the frame, **pinch**
-  sizes it. The corners can be dragged; on Moments the middle of each side too. Portrait and Landscape keep the
+  sizes it. The corners can be dragged; on Moments the middle of each side too. The frame is laid out left to right
+  in every language (Nov 9, 2026: in Hebrew the handles were mirrored and dragged the opposite edge). Portrait and Landscape keep the
   screen's shape.
 - A line saying what the mode is for, and "The photo itself isn't changed."
 - **Moments · Portrait · Landscape** switch, each with its shape drawn and a dot once it has a crop.
