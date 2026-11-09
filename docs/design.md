@@ -85,10 +85,12 @@ folder alone is a complete, portable journal if the server is ever lost.
 ```
 journal/
   media/
-    22.json                       ← one note per photo (format v3): title, caption (the paragraph),
+    22.json                       ← one note per photo (format v5): title, caption (the paragraph),
                                     writtenAt, history [{title, text, savedAt}], "storyline": false
-                                    when removed from it, tags, crops, Moments set and the photo a set
-                                    opens on ("front") (device id; "/" etc. become "_")
+                                    when removed from it, tags, crops, zoom, Moments set, "highlight"
+                                    (its place among the set's highlights; v4's "front" is read as 1)
+                                    and on a named moment's cover "setInfo" {name, showOn}
+                                    (device id; "/" etc. become "_")
 ```
 
 - `stories/` (story.json, story.md) was deleted with stories on Oct 21, 2026. Set ids in Moments are still the UTC

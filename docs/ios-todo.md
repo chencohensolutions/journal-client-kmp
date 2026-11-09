@@ -23,6 +23,62 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Moment sets: highlights, flipping in the feed, the viewer's set mode, Recompose, Make a moment** (Android Nov 9,
+  2026; [moments.md](screens/moments.md#sets-nov-9-2026), [viewer.md](screens/viewer.md#a-set-nov-9-2026),
+  [crop.md](screens/crop.md#a-set-recompose-nov-9-2026); plan [plans/moment-sets.md](plans/moment-sets.md)). Shared
+  logic is done and already applies on iOS (notes format 5, `MomentSetsTest`); `turnSet` is gone (iOS's
+  `StoriesViewModel.turnSet` is a no-op for now: turning a set is kept in `playback.pages` while the app runs, and a
+  set opens on `note.highlight == 1`, else the best-looking). To build:
+  1. **Feed** (`MomentsFeedViews.swift`, mirror `SetBlock` / `SetCover` / `SetLine` / `PartOfLink` / `SetName` in
+     Android's `MomentsFeedViews.kt`): a `FeedBlockSimilar` with `highlights` (non-empty) draws each highlight as a
+     single full-width photo with its own title and paragraph, then the line "⧉ %d photos in this set ›" (a tap opens
+     the set on its first highlight). Without highlights: the cover only (no pager): `stories.currentState.frontOf(items:)`
+     unless turned while the feed shows; others fitted inside on black at their Moments crop
+     (`MediaItem.shownRatio`-like: `crop.ratioOn(photoRatio)`); "⧉ N" badge top right; a position line at the bottom
+     (`SetPositionLine`: a mark at the photo shown, a dot at the cover); **hold, then slide sideways** flips (10 pt per
+     photo, a selection haptic per photo, "12 of 36" pill while sliding; a hold released without sliding is the long
+     press = picking; a vertical move cancels it); a small ▶ bottom-left plays it in place every 0.5 s, muted;
+     flips cross-fade 0.12 s; a tap opens the viewer on the set. `block.named` (a `NamedSet`): when
+     `!named.isPartOf(block:)` the name over it, "Beach weekend · Fri – Sun" (weekday skeleton "EEE"); when it is a
+     part (each day of a moment shown on every day; also on a `FeedBlockSingle`), a pill "Part of Beach weekend ›"
+     under it that opens `named.itemIds` (read them first: `StoriesController.want(ids:)`).
+  2. **Viewer set mode** (`MediaViewerView.swift`; mirror `ViewerSet` / `SetBar` in Android's `ViewerScreen.kt` and
+     `MomentSets.kt`): opened with the set's ids (Android: `Route.Viewer(list = setListKey(ids))`, ids joined by ","
+     after "set:"). Swipes cross-fade 0.12 s (no slide); bars visible from the start, no auto-hide; top bar: back, the
+     name (`stories.currentState.namedSetOf(itemId:)?.name`), "12 of 36 · day", a grid button and a ⋯ menu with
+     Write, Details, Share (and Show in Moments). Bottom: the scrubber (at most 48 cells, the photo shown raised, dots
+     over highlights, slide to flip with a tick), then ☆ Highlight / ★ Highlight
+     (`StoriesController.setHighlight(itemIds:itemId:on:)`) · a big ▶ Play · ⌗ Recompose (photos only). Play: every
+     0.8 s (Fast 0.35, Slow 2), cross-fading, round and round, bars hidden, a thin progress line, the speed picker
+     and Stop; a tap stops; `UIApplication.shared.isIdleTimerDisabled` while it plays. Grid sheet: all photos as
+     squares (4 across), highlights numbered (★ the first), a tap goes there; above them the highlights in a row,
+     drag to reorder (`moveHighlight(itemIds:itemId:to:)`, `to` from 0). Photos in a set show at their **Moments**
+     crop. Highlights for the bar: `stories.currentState.highlightsOf(items:)`.
+  3. **Recompose** (`CropView.swift`; mirror `SetCropEditor` in Android's `CropScreen.kt`): every photo's Moments crop
+     (videos left out), the photo with its free frame, Reset and Done, shape chips Original / Square / 4:5 / Wide
+     (`CropRect.companion.largest(ratio:photoRatio:around:)` with `aspect` cleared), the set's strip (a dot on each
+     cropped), "⧉ Same frame for all" (every photo of the same shape, within 0.01, gets the frame shown). Done:
+     `StoriesController.setMomentsCrops(crops:)` with every photo's crop (null for none), or close if unchanged.
+  4. **Make a moment** (`JournalHomeView.swift` picking bar; mirror `MakeMomentSheet.kt`): with two or more photos
+     picked in Moments, "Make a moment" opens a sheet: Name (required), Highlights (tap thumbnails, oldest first; the
+     order tapped, numbered), "Show it in Moments on" first day / last day / "Every day it has" (only first when all
+     on one day) with its hint, **Make it** → `StoriesController.makeMoment(itemIds:name:highlightIds:showOn:)` (ids
+     oldest first; `ShowOn.first/last/each`), then the viewer's set mode on its cover. **Merge** only when no picked
+     set has `named`.
+  - Strings (English / Hebrew), as Android's `values/strings.xml` `set_*`, `recompose_*`, `make_moment_*`: Hold and
+    slide to flip / החזיקו והחליקו כדי לדפדף; %d photos in this set / %d תמונות בסט; Part of %@ / חלק מ%@; Highlight /
+    הדגשה; Play / הפעלה; Stop / עצירה; Recompose / מסגור מחדש; Fast / Normal / Slow = מהיר / רגיל / איטי; All photos /
+    כל התמונות; Highlights / הדגשות; Hold one and drag to change the order / החזיקו אחת וגררו כדי לשנות את הסדר; Same
+    frame for all / אותה מסגרת לכולן; Original / Square / 4:5 / Wide = מקורי / ריבוע / 4:5 / רחב; Make a moment / יצירת
+    רגע; New moment / רגע חדש; Name / שם; Show it in Moments on / להציג ברגעים ביום; Every day it has / בכל יום שלו;
+    Each day shows its own photos, with a link to the whole moment. / כל יום מציג את התמונות שלו, עם קישור לרגע כולו.;
+    Its photos leave their days and show here together. / התמונות עוזבות את הימים שלהן ומוצגות כאן יחד.; Make it /
+    יצירה.
+  - Head start: the iOS lab's SwiftUI parts (`SetScrubber`, `SetSlideshow`, `SetSpeedPicker`, `SetFadePhoto`,
+    `SetRecompose`, option d's naming screen) at the tag `ux/moment-set/2026-11-09`:
+    `git checkout ux/moment-set/2026-11-09 -- iosApp/iosApp/Lab/MomentSet` (deleted from the lab after promotion).
+  - Left to decide on the device: whether the feed's flipping should start without the hold.
+
 - **Tucked away and long-press picking** (Android Nov 8, 2026; [moments.md](screens/moments.md#tucked-away-nov-8-2026),
   [journal-home.md](screens/journal-home.md), [search.md](screens/search.md), [viewer.md](screens/viewer.md),
   [explore.md](screens/explore.md)). Shared logic is done and already applies on iOS: tucked photos leave Moments, the

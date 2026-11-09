@@ -9,6 +9,8 @@ keep their room, so nothing moves when they show. Android tells the user once, t
 - Opened from a tag: the photos with that tag.
 - Opened from the Storyline tab: the storyline's photos, newest first.
 - Opened from a row of the Moments tab: that row's photos as shown.
+- Opened from a set in Moments (Nov 9, 2026, Android only): that set's photos only, oldest first, in its set mode
+  ([below](#a-set-nov-9-2026)). A moment's "Part of … ›" link opens the whole moment.
 
 The list is fixed when the viewer opens, so tagging a photo or removing it from the storyline doesn't pull it out
 from under you. If the open item is deleted from the device, the viewer closes.
@@ -133,6 +135,37 @@ Swiping is not a tap; a playing video's own controls take its taps.
   "This video can only be played once the phone is registered with your server."; can't reach the server: "The
   video can't be played right now. Is the server reachable?" over the poster, with Play to try again. The info
   panel's Kept on this phone adds "Video · 12 MB of 25 MB cached".
+
+## A set (Nov 9, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the UI lab round
+[moment-set](../ux-history/moment-set/2026-11-09-viewing-sets.md) (option b). A tap on a set in [Moments](moments.md#sets-nov-9-2026)
+opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey`), at the photo shown there.
+
+- **Swipes cross-fade** in 0.12 s instead of sliding (a swipe of 40 dp or more). Pinch and double-tap zoom as
+  elsewhere; zoomed in, a drag moves the photo. Photos show at their Moments crop (Recompose), so the set flips as
+  composed.
+- The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
+- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", a **grid** button and **⋮** with
+  **Write**, **Details**, **Share** (and Show in Moments when opened from elsewhere): they leave the bottom while in a
+  set (decided Nov 9, 2026: one row under the photo).
+- **Under the photo, the scrubber:** every photo of the set in one row (at most 48 squeezed in, each standing for its
+  share), the one shown raised above it, a dot over each highlight. Sliding a finger along it flips to the photo under
+  it, with a tick.
+- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**.
+  - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
+    [Moments](moments.md#sets-nov-9-2026).
+  - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
+    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) and **Stop**. A tap on the photo or back stops it.
+    The screen stays on while it plays.
+  - **Recompose** opens the [crop screen's set mode](crop.md#a-set-recompose-nov-9-2026) on the photo shown
+    (photos only).
+- **Grid sheet** (the grid button): every photo as squares, the one shown outlined, highlights numbered (★ the
+  cover); a tap goes to it. Above them the highlights in a row: hold one and drag it sideways to change their order
+  (`moveHighlight`).
+- Code: `ViewerSet` and `SetBar` in [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt),
+  the scrubber, slideshow and grid sheet in [MomentSets.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentSets.kt),
+  wired in `LibraryApp.kt` (`openSet`).
 
 ## Platform notes
 
