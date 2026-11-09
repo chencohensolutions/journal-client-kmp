@@ -101,6 +101,8 @@ cd iosApp && xcodebuild -project iosApp.xcodeproj -scheme iosApp \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
 ```
 
+Releases: `git push origin main:release/<version>` builds and publishes the APK on GitHub ([docs/releases.md](docs/releases.md)).
+
 Test results land in `sharedLogic/build/test-results/<task>/*.xml`.
 
 ## Gotchas

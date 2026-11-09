@@ -1,0 +1,100 @@
+# Publishes the Android app (docs/releases.md): push a branch named release/<version>, such as release/1.4.0, and
+# this builds the arm64 APK signed with the release key and puts it on the GitHub Release v<version>.
+#
+#   git push origin main:release/1.4.0
+#
+# The latest APK is always at
+#   https://github.com/chencohensolutions/journal-client-kmp/releases/latest/download/journal-android.apk
+#
+# Needs the repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS
+# (and ANDROID_KEY_PASSWORD when the key's password differs from the keystore's).
+name: Android release
+
+on:
+  push:
+    branches: ["release/**"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#release/}"
+          version="${version#v}"
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)(\.([0-9]+))?$ ]]; then
+            echo "The branch must be release/<major>.<minor>[.<patch>], such as release/1.4.0, not $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}" minor="${BASH_REMATCH[2]}" patch="${BASH_REMATCH[4]:-0}"
+          if [ "$minor" -gt 999 ] || [ "$patch" -gt 999 ]; then
+            echo "Minor and patch must be below 1000" >&2
+            exit 1
+          fi
+          # Android installs an APK over another only when its versionCode is higher: 1.4.0 is 1004000.
+          echo "name=$major.$minor.$patch" >> "$GITHUB_OUTPUT"
+          echo "code=$((major * 1000000 + minor * 1000 + patch))" >> "$GITHUB_OUTPUT"
+
+      - name: Release key
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "The release key isn't set up: add the secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD" \
+              "and ANDROID_KEY_ALIAS (docs/releases.md)" >&2
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        run: ./gradlew :sharedLogic:testAndroidHostTest
+
+      - name: Build
+        run: |
+          ./gradlew :androidApp:assembleRelease -Pabi=arm64-v8a \
+            -PversionName=${{ steps.version.outputs.name }} -PversionCode=${{ steps.version.outputs.code }}
+          mkdir -p dist
+          cp androidApp/build/outputs/apk/release/androidApp-release.apk dist/journal-android.apk
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs dist/journal-android.apk | head -3
+          (cd dist && sha256sum journal-android.apk > journal-android.apk.sha256 && cat journal-android.apk.sha256)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      # Pushing the branch again replaces the APK of that release (same version: phones that have it don't update;
+      # push a higher version for that).
+      - name: Publish
+        run: |
+          tag="v${{ steps.version.outputs.name }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release delete "$tag" --yes --cleanup-tag
+          fi
+          gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "Journal for Android ${{ steps.version.outputs.name }}" \
+            --notes "Install on an Android phone (arm64): download **journal-android.apk** below and open it.
+
+          The latest version is always at https://github.com/${{ github.repository }}/releases/latest/download/journal-android.apk"
+        env:
+          GH_TOKEN: ${{ github.token }}

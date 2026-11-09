@@ -1,0 +1,54 @@
+# Releasing the Android app
+
+GitHub builds and publishes the app (`.github/workflows/android-release.yml`). To release version 1.4.0 from main:
+
+```sh
+git push origin main:release/1.4.0
+```
+
+GitHub Actions then runs the shared tests, builds the arm64 release APK (R8, compressed native libraries, about
+33 MB) signed with the release key, and publishes it as `journal-android.apk` on the GitHub Release `v1.4.0`, with
+its sha256 beside it. It takes about 15 minutes; follow it in the repository's Actions tab. The newest APK is always
+at <https://github.com/chencohensolutions/journal-client-kmp/releases/latest/download/journal-android.apk>.
+
+- The branch name is the version: `release/<major>.<minor>[.<patch>]`. It becomes `versionName`, and
+  `versionCode` is `major × 1 000 000 + minor × 1 000 + patch` (1.4.0 is 1004000). A phone installs an APK over the
+  one it has only when the versionCode is higher, so each release needs a higher version.
+- Pushing the same release branch again rebuilds it and replaces that release's APK. Phones that already installed
+  that version won't see it as an update; push a new version for that.
+- Only arm64 phones (every phone of the last years). Emulators and old 32-bit phones use a debug build.
+
+## The release key (once)
+
+Every published APK must be signed with the same key, or a phone refuses to install it over the one it has. Keep
+the keystore and its password somewhere safe (a password manager): losing it means users have to uninstall the app
+(and lose its data on the phone) to install the next one. On any machine with a JDK:
+
+```sh
+keytool -genkeypair -v -keystore journal-release.jks -alias journal -keyalg RSA -keysize 4096 -validity 36500 \
+  -dname "CN=Journal"
+base64 -w0 journal-release.jks > journal-release.jks.base64   # macOS: base64 -i journal-release.jks -o journal-release.jks.base64
+```
+
+On Windows PowerShell the second line is
+`[Convert]::ToBase64String([IO.File]::ReadAllBytes("journal-release.jks")) > journal-release.jks.base64`.
+
+Then in the repository's Settings › Secrets and variables › Actions, add:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | the contents of `journal-release.jks.base64` |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password keytool asked for |
+| `ANDROID_KEY_ALIAS` | `journal` |
+| `ANDROID_KEY_PASSWORD` | only if you gave the key a different password |
+
+Without them the workflow stops at "Release key" and publishes nothing.
+
+The release APK is signed with another key than debug and `profile` builds, so the first time, uninstall the
+debug-signed app on a phone before installing a release.
+
+## Locally
+
+`./gradlew :androidApp:assembleRelease -PversionName=1.4.0 -PversionCode=1004000` builds the same APK when
+`ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` are set; without them the release
+build is unsigned. The `profile` build stays debug-signed for measuring on a phone.
