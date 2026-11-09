@@ -79,6 +79,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -418,7 +419,7 @@ internal fun ViewerScreen(
             ) {
                 SetBar(
                     items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } },
-                    brief = { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true } },
+                    brief = { shown -> PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true } },
                     onIndex = { setIndex = it }, onPlay = { playing = true },
                 )
             }
@@ -436,7 +437,7 @@ internal fun ViewerScreen(
             exit = fadeOut(),
         ) {
             Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true }
+                key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
                     ShareButton(current, actions.share)
@@ -612,11 +613,12 @@ internal fun ViewerScreen(
 
 /** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
 @Composable
-private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, brief: @Composable () -> Unit, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, brief: @Composable (MediaItem) -> Unit, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
     Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
-        brief()
+        // Keyed by the photo, so nothing of the one before is kept while swiping.
+        key(items[index].id) { brief(items[index]) }
         if (items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex)
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SetBarButton(
