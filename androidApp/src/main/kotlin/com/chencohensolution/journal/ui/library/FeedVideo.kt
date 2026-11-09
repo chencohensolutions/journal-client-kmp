@@ -332,7 +332,7 @@ private class InlinePlayer(
 }
 
 /** Speaker icons, drawn like [LibraryIcons]. */
-private object SoundIcons {
+internal object SoundIcons {
     private fun icon(name: String, vararg paths: String) =
         ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
             paths.forEach { data ->

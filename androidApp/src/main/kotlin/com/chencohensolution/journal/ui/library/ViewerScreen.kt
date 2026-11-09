@@ -20,6 +20,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +38,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -156,7 +159,8 @@ private val screenPreviews = object : LruCache<String, android.graphics.Bitmap>(
  */
 private suspend fun screenPreview(context: android.content.Context, previews: ServerPreviews?, item: MediaItem, screen: IntSize): android.graphics.Bitmap? {
     screenPreviews.get(item.id)?.let { return it }
-    if (item.type != MediaType.IMAGE || screen.width <= 0 || screen.height <= 0) return null
+    // A video too: its poster, made ready ahead so sliding onto it shows it at once, never black (Nov 9, 2026).
+    if (screen.width <= 0 || screen.height <= 0) return null
     val ratio = item.ratio
     val (w, h) = if (ratio >= screen.width.toFloat() / screen.height) {
         screen.width to (screen.width / ratio).toInt()
@@ -308,6 +312,9 @@ internal fun ViewerScreen(
     var setIndex by rememberSaveable { mutableIntStateOf(items.indexOfFirst { it.id == startId }.coerceAtLeast(0)) }
     val shownIndex = (if (set != null) setIndex else pager.currentPage).coerceIn(items.indices)
     var playing by rememberSaveable { mutableStateOf(false) }
+    // While a slideshow plays, a tap hides its bar (and another brings it back); it plays on (asked Nov 9, 2026).
+    var slideBarHidden by remember { mutableStateOf(false) }
+    LaunchedEffect(playing) { if (playing) slideBarHidden = false }
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
@@ -434,8 +441,7 @@ internal fun ViewerScreen(
                         onTap = {
                             showInfo = false
                             if (playing) {
-                                playing = false
-                                chrome = true
+                                slideBarHidden = !slideBarHidden
                             } else {
                                 chrome = !chrome
                             }
@@ -533,13 +539,13 @@ internal fun ViewerScreen(
                     brief = { shown ->
                         PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
                         // A video's controls: under the info, above the reel (asked Nov 9, 2026).
-                        if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, Modifier.padding(start = 12.dp, end = 16.dp, bottom = 6.dp)) }
+                        if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
                     },
                     onIndex = { setIndex = it }, onPlay = { playing = true },
                     landscape = screenRatio > 1f,
                 )
             }
-            AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(playing && !slideBarHidden, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos, onAutoplayVideos = setAutoplayVideos, onStop = {
                     playing = false
                     chrome = true
@@ -554,7 +560,7 @@ internal fun ViewerScreen(
         ) {
             Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
-                if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, Modifier.padding(start = 12.dp, end = 16.dp, bottom = 8.dp)) }
+                if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
                     ShareButton(current, actions.share)
@@ -774,33 +780,54 @@ private fun SetBarBottom(
 ) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
-    Column(modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
+    Column(modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 12.dp)) {
         // Keyed by the photo, so nothing of the one before is kept while swiping.
         key(items[index].id) { brief(items[index]) }
         if (reel && items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex = onIndex)
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The actions in a floating bar, Play a normal size among them (asked Nov 9, 2026: the round Play was too big).
+        FloatingBar(Modifier.padding(top = 10.dp)) {
             SetBarButton(
                 if (place >= 0) "★" else "☆",
                 stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
                 Modifier.weight(1f),
             ) { set.setHighlight(item.id, place < 0) }
             Box(
-                Modifier.size(60.dp).clip(CircleShape).background(Color.White).clickable(onClickLabel = stringResource(R.string.set_play), onClick = onPlay),
+                Modifier.size(PLAY_SIZE).clip(CircleShape).background(Color.White).clickable(onClickLabel = stringResource(R.string.set_play), onClick = onPlay),
                 contentAlignment = Alignment.Center,
-            ) { Icon(LibraryIcons.Play, stringResource(R.string.set_play), tint = Color.Black, modifier = Modifier.size(26.dp)) }
+            ) { Icon(LibraryIcons.Play, stringResource(R.string.set_play), tint = Color.Black, modifier = Modifier.size(20.dp)) }
             SetBarButton("⌗", stringResource(R.string.set_recompose), Modifier.weight(1f), enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
         }
     }
 }
 
+/** A rounded, see-through bar floating above the bottom edge, holding the viewer's actions in a row. */
+@Composable
+private fun FloatingBar(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(60.dp)
+            .clip(RoundedCornerShape(30.dp))
+            .background(LibraryColors.PillScrim)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        content = content,
+    )
+}
+
+/** The set's Play in the floating bar. */
+private val PLAY_SIZE = 44.dp
+
 @Composable
 private fun SetBarButton(glyph: String, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Column(
-        modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 6.dp).alpha(if (enabled) 1f else 0.4f),
+        modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.4f),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(glyph, color = Color.White, fontSize = 22.sp)
-        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(glyph, color = Color.White, fontSize = 17.sp, lineHeight = 18.sp)
+        Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 13.sp)
     }
 }
 
@@ -1122,6 +1149,9 @@ private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
+/** How long a video's poster takes to fade out over its first frame. */
+private const val POSTER_FADE_MILLIS = 180
+
 /**
  * The viewer's videos: where each was left (by id, while the viewer is open), whether they play muted, the [player] of
  * the one shown (for its controls under the info) and the last one [done] (for the slideshow).
@@ -1145,7 +1175,10 @@ private class ViewerVideos(
 private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, videos: ViewerVideos) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // A video only on the server shows the poster already kept (the feed's or a grid's), asking for no new size.
-        val poster = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
+        // Made ready ahead at screen size like the photos beside it, so it shows the moment it is slid onto.
+        val ready = rememberScreenPreview(item)?.asImageBitmap()
+        val kept = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
+        val poster = ready ?: kept
         // Its first frame drawn by the player: until then the poster stays over it (the player's surface is black until
         // a frame), so sliding onto a video never flashes black (Nov 9, 2026).
         var rendered by remember(item.id) { mutableStateOf(false) }
@@ -1165,8 +1198,13 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
                 onFirstFrame = { rendered = true },
             )
         }
-        // Decided in the same frame the player goes, so the poster is back before its surface is: no black frame.
-        if (!(isCurrent && rendered)) poster?.let { ViewerImage(it, sharedKey) }
+        // Decided in the same frame the player goes, so the poster is back before its surface is: no black frame. Once the
+        // first frame is drawn, the poster fades out over it rather than being cut away (a start reads as one move).
+        val covering = !(isCurrent && rendered)
+        val fading by animateFloatAsState(if (covering) 1f else 0f, if (covering) snap() else tween(POSTER_FADE_MILLIS), label = "poster")
+        // Covering again is at once, in this frame; only the fade out over the first frame is animated.
+        val posterAlpha = if (covering) 1f else fading
+        if (posterAlpha > 0f) poster?.let { Box(Modifier.fillMaxSize().alpha(posterAlpha), contentAlignment = Alignment.Center) { ViewerImage(it, sharedKey) } }
         if (isCurrent && !videos.autoplay && !started) {
             IconButton(
                 onClick = { started = true },
@@ -1175,12 +1213,6 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
             ) {
                 Icon(LibraryIcons.Play, stringResource(R.string.library_viewer_play), tint = Color.White, modifier = Modifier.size(32.dp))
             }
-        }
-        if (isCurrent && (videos.autoplay || started)) {
-            MuteButton(
-                videos.muted, videos.toggleMute,
-                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 8.dp),
-            )
         }
     }
 }
@@ -1253,14 +1285,9 @@ private fun VideoPlayer(
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         AndroidView(
             // Clear until the first frame, so the poster under it shows meanwhile instead of black.
-            factory = {
-                PlayerView(it).apply {
-                    // Its controls are drawn under the info instead, where the set's reel doesn't cover them.
-                    useController = false
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                    setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
-                }
-            },
+            // A TextureView, no controls of its own, clear until the first frame (res/layout/viewer_player.xml): its controls
+            // are drawn under the info, and the poster over it shows until its first frame without a black flash.
+            factory = { android.view.LayoutInflater.from(it).inflate(R.layout.viewer_player, null) as PlayerView },
             update = { it.player = player },
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
@@ -1271,10 +1298,10 @@ private fun VideoPlayer(
 
 /**
  * The video shown's controls, under its info (asked Nov 9, 2026: the player's own sat behind the set's reel): play or
- * pause, where it is with a bar to move it, and how long it is.
+ * pause, where it is with a bar to move it, how long it is, and sound on or off.
  */
 @Composable
-private fun VideoControls(player: Player, modifier: Modifier = Modifier) {
+private fun VideoControls(player: Player, muted: Boolean, onToggleMute: () -> Unit, modifier: Modifier = Modifier) {
     var position by remember(player) { mutableLongStateOf(player.currentPosition) }
     var duration by remember(player) { mutableLongStateOf(player.duration.coerceAtLeast(0L)) }
     var playingNow by remember(player) { mutableStateOf(player.isPlaying) }
@@ -1287,8 +1314,12 @@ private fun VideoControls(player: Player, modifier: Modifier = Modifier) {
             delay(VIDEO_CONTROLS_TICK_MILLIS)
         }
     }
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = {
+    // One slim row, about 32 dp (asked Nov 9, 2026: the bar and the times stood too tall).
+    Row(modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
+        SmallControl(
+            if (playingNow) AudioIcons.Pause else LibraryIcons.Play,
+            stringResource(if (playingNow) R.string.library_viewer_pause else R.string.library_viewer_play),
+        ) {
             if (player.isPlaying) {
                 player.pause()
             } else {
@@ -1296,30 +1327,68 @@ private fun VideoControls(player: Player, modifier: Modifier = Modifier) {
                 player.play()
             }
             playingNow = player.isPlaying
-        }) {
-            Icon(
-                if (playingNow) AudioIcons.Pause else LibraryIcons.Play,
-                stringResource(if (playingNow) R.string.library_viewer_pause else R.string.library_viewer_play),
-                tint = Color.White,
-            )
         }
-        Text(formatClock(dragging?.toLong() ?: position), color = Color.White, fontSize = 12.sp)
-        androidx.compose.material3.Slider(
-            value = (dragging ?: position.toFloat()).coerceIn(0f, duration.toFloat().coerceAtLeast(1f)),
-            onValueChange = { dragging = it },
-            onValueChangeFinished = {
+        Text(formatClock(dragging?.toLong() ?: position), color = Color.White, fontSize = 11.sp)
+        val length = duration.toFloat().coerceAtLeast(1f)
+        SlimSeekBar(
+            fraction = ((dragging ?: position.toFloat()) / length).coerceIn(0f, 1f),
+            onDrag = { dragging = it * length },
+            onDone = {
                 dragging?.let { player.seekTo(it.toLong()) }
                 dragging = null
             },
-            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-            colors = androidx.compose.material3.SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f),
-            ),
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
         )
-        Text(formatClock(duration), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+        Text(formatClock(duration), color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+        // Sound, with the rest of the video's controls (asked Nov 9, 2026: it floated apart from them).
+        SmallControl(
+            if (muted) SoundIcons.Off else SoundIcons.On,
+            stringResource(if (muted) R.string.feed_unmute else R.string.feed_mute),
+            Modifier.padding(start = 4.dp),
+            onClick = onToggleMute,
+        )
+    }
+}
+
+/** A small white icon button of the video controls (32 dp, the icon 18 dp). */
+@Composable
+private fun SmallControl(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(modifier.size(32.dp).clip(CircleShape).clickable(onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, tint = Color.White, modifier = Modifier.size(18.dp))
+    }
+}
+
+/**
+ * A thin seek bar: a 3 dp line, the part played white, a 10 dp dot where it is. The whole row's height takes the
+ * finger: a tap or a drag moves along it ([onDrag], 0 to 1), letting go seeks ([onDone]).
+ */
+@Composable
+private fun SlimSeekBar(fraction: Float, onDrag: (Float) -> Unit, onDone: () -> Unit, modifier: Modifier = Modifier) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val drag by rememberUpdatedState(onDrag)
+    val done by rememberUpdatedState(onDone)
+    androidx.compose.foundation.Canvas(
+        modifier.fillMaxHeight().pointerInput(rtl) {
+            fun at(x: Float) = ((if (rtl) size.width - x else x) / size.width).coerceIn(0f, 1f)
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                drag(at(down.position.x))
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) break
+                    drag(at(change.position.x))
+                    change.consume()
+                }
+                done()
+            }
+        },
+    ) {
+        val line = 3.dp.toPx()
+        val y = size.height / 2
+        val x = size.width * (if (rtl) 1f - fraction else fraction)
+        drawLine(Color.White.copy(alpha = 0.3f), Offset(0f, y), Offset(size.width, y), strokeWidth = line, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        drawLine(Color.White, Offset(if (rtl) size.width else 0f, y), Offset(x, y), strokeWidth = line, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(x, y))
     }
 }
 

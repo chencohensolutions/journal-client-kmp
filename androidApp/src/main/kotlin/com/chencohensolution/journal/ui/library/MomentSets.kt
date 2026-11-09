@@ -225,8 +225,8 @@ internal fun SetReel(
         val crop = cropOf(item)
         val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
         val shown = i == index
-        // Across, each is the reel's height at its shape; down, the reel's width.
-        val size = if (vertical) Modifier.width(REEL_HEIGHT).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
+        // Across, each is the reel's height at its shape; down (landscape), the column's width.
+        val size = if (vertical) Modifier.width(REEL_SIDE_THUMB).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
         Box(
             size.clip(RoundedCornerShape(4.dp))
                 .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
@@ -234,10 +234,12 @@ internal fun SetReel(
         ) {
             ReelThumb(item, crop)
             if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
+            // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
+            item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
     }
     if (vertical) {
-        BoxWithConstraints(Modifier.fillMaxHeight().width(REEL_HEIGHT + 8.dp)) {
+        BoxWithConstraints(Modifier.fillMaxHeight().width(REEL_SIDE_WIDTH)) {
             LazyColumn(
                 state = state,
                 modifier = Modifier.fillMaxSize(),
@@ -265,8 +267,22 @@ internal fun SetReel(
     }
 }
 
-/** Landscape: the reel's room along the right edge, which the bar under the photo keeps clear of. */
-internal val REEL_SIDE_WIDTH = 60.dp
+/** Landscape: the reel's room along the right edge, which the bar under the photo keeps clear of; its photos' width. */
+internal val REEL_SIDE_WIDTH = 100.dp
+private val REEL_SIDE_THUMB = 88.dp
+
+/** On a video in the reel: ▶ and its length ("0:12"). */
+@Composable
+private fun ReelVideoMark(lengthMillis: Long, modifier: Modifier = Modifier) {
+    val seconds = lengthMillis / 1000
+    Row(
+        modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("▶", color = Color.White, fontSize = 7.sp, lineHeight = 9.sp)
+        Text(" %d:%02d".format(seconds / 60, seconds % 60), color = Color.White, fontSize = 9.sp, lineHeight = 10.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
 
 /** [item] in its box: at [crop] (its part filling the box) or, without one, the whole photo cropped to fill. */
 @Composable
@@ -287,7 +303,7 @@ private fun ReelThumb(item: MediaItem, crop: CropRect?) {
 }
 
 /** The reel's height, and the shapes its photos are kept within (a panorama would fill it). */
-private val REEL_HEIGHT = 52.dp
+private val REEL_HEIGHT = 64.dp
 private const val REEL_MIN_RATIO = 0.4f
 private const val REEL_MAX_RATIO = 2.5f
 

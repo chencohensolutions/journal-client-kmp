@@ -23,6 +23,10 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Viewer bottom redone** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): Highlight · Play · Recompose in a
+  floating see-through bar (44 dp Play); reel 64 dp tall with ▶ and length on videos, 88 dp wide down the right in
+  landscape; the slideshow's bar hides and shows on a tap; video controls one slim 32 dp row with sound at its end; a
+  video's poster prepared ahead and faded over its first frame (no black).
 - **Viewer videos: own controls, slideshow to their end, ▶ Videos, landscape reel** (Android Nov 9, 2026;
   [viewer.md](screens/viewer.md)): the video's controls (play/pause, time, seek bar, length) drawn under the info line
   above the reel; the slideshow plays a video to its end before going on; **▶ Videos** beside the speeds turns
