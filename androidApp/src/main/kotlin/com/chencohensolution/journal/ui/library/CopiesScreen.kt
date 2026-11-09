@@ -95,7 +95,7 @@ internal fun CopiesRow(copies: ServerCopiesState, open: () -> Unit) {
  */
 @Composable
 internal fun CopiesScreen(copies: ServerCopiesState, actions: CopiesActions, back: () -> Unit) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

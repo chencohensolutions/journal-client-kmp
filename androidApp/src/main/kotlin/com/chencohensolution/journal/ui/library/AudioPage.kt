@@ -86,7 +86,7 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
     val strip = rememberLazyListState()
     LaunchedEffect(nowIndex) { if (nowIndex >= 0) strip.animateScrollToItem(nowIndex) }
     var editing by rememberSaveable { mutableStateOf(false) }
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Column(
         Modifier.fillMaxSize().background(LibraryColors.Background)
             .padding(top = insets.calculateTopPadding(), bottom = insets.calculateBottomPadding() + 16.dp),

@@ -93,7 +93,7 @@ internal fun CamerasRoute(library: ServerLibrary, onState: (CamerasState) -> Uni
  */
 @Composable
 internal fun CamerasScreen(state: CamerasState, confirming: CameraGroup?, actions: CamerasActions) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

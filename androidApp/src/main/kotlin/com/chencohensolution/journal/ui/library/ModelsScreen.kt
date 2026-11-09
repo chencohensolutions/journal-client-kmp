@@ -51,7 +51,7 @@ internal class ModelsActions(
  */
 @Composable
 internal fun ModelsScreen(state: PhoneModelsState, actions: ModelsActions) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

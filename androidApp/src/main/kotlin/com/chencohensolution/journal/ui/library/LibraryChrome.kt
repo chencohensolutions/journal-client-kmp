@@ -112,7 +112,7 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
 internal fun BottomControls(
     summary: String?,
     modifier: Modifier = Modifier,
-    insets: WindowInsets = WindowInsets.navigationBars,
+    insets: WindowInsets = navigationBarInsets(),
     summaryHidden: Boolean = false,
     bar: @Composable () -> Unit,
 ) {

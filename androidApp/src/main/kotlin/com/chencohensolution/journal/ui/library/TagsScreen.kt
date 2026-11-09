@@ -50,7 +50,7 @@ import com.chencohensolution.journal.library.MediaItem
 internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBack: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val tags = if (query.isBlank()) stories.tags else stories.searchTags(query)
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp)) {
@@ -106,7 +106,7 @@ internal fun TagScreen(
     landing: String? = null,
 ) {
     val days = stories.tagged(tag)
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val list = rememberLazyListState()
     val rows = remember(days) { dayGridRows(days) }
     list.LandOn(landing, rows.size) { id -> rows.indexOfFirst { id in it } }
@@ -142,7 +142,7 @@ internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mo
         modifier
             .fillMaxWidth()
             .background(LibraryColors.TopFade)
-            .statusBarsPadding()
+            .statusBarRoom()
             .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

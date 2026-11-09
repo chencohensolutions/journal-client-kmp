@@ -775,15 +775,6 @@ private fun DownloadCloud(progress: Float) {
     }
 }
 
-/** The status bar's room, kept while the viewer hides it, so nothing moves when it shows for a moment. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun Modifier.statusBarRoom() = windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
-
-/** The same for the gesture bar at the bottom. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun Modifier.navigationBarRoom() = windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
 
 /**
  * Immersive while the viewer is open: the status bar and the gesture bar are hidden (a swipe from the edge shows them

@@ -116,7 +116,7 @@ private class MapLook(val area: GeoArea, val zoom: Double)
 internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: MapActions, at: GeoPoint? = null) {
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val density = LocalDensity.current
     // The located photos' years and boxes, never the photos themselves: those around what is in view are read as the
     // map moves (docs/plans/library-on-disk.md, step 6c).
@@ -231,7 +231,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
         IconButton(
             onClick = actions.back,
             modifier = Modifier
-                .statusBarsPadding()
+                .statusBarRoom()
                 .padding(start = 8.dp, top = 8.dp)
                 .background(LibraryColors.PillScrim, CircleShape),
         ) {
@@ -242,7 +242,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(LibraryColors.Background, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .navigationBarsPadding()
+                .navigationBarRoom()
                 .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         ) {
             ShowingLine(shownSources, presentSources(counts, shownSources), onChange = { sheetOpen = true }, Modifier.padding(end = 8.dp, bottom = 8.dp))
@@ -298,7 +298,7 @@ private fun MapEmpty(loaded: Boolean, actions: MapActions, line: @Composable () 
                 line()
             }
         }
-        IconButton(onClick = actions.back, modifier = Modifier.statusBarsPadding().padding(start = 8.dp, top = 8.dp)) {
+        IconButton(onClick = actions.back, modifier = Modifier.statusBarRoom().padding(start = 8.dp, top = 8.dp)) {
             Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
         }
     }

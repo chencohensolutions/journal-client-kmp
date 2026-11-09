@@ -113,7 +113,7 @@ internal fun BackupSettingsScreen(
     swap: SwapState? = null,
     openSwap: () -> Unit = {},
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         Column(
             Modifier

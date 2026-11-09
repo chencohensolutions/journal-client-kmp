@@ -2,7 +2,8 @@
 
 One photo or video at a time, full screen on black. **Immersive** (asked for Oct 21, 2026): the status bar and the
 gesture bar are hidden while the viewer is open (a swipe from the edge shows them for a moment); the bars and buttons
-keep their room, so nothing moves when they show. Android tells the user once, the first time, how to bring them back.
+keep their room, so nothing moves when they show. The screens under it keep that room too (`BarsRoom.kt`, Nov 9, 2026): measured by the
+bars as they showed, Moments came back from the viewer laid out without them and dropped down a bit when they returned. Android tells the user once, the first time, how to bring them back.
 
 ## What it swipes through
 

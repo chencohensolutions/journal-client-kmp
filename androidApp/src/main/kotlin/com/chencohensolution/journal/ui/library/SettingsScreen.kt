@@ -130,7 +130,7 @@ internal fun SettingsScreen(
     /** Models on this phone, for its row under Search; null or none listed: no row. */
     models: com.chencohensolution.journal.local.PhoneModelsState? = null,
 ) {
-    val insets = WindowInsets.systemBars.asPaddingValues()
+    val insets = barsRoom()
     val title = when (page) {
         SettingsPage.MAIN -> R.string.library_settings
         SettingsPage.SHOWN -> R.string.settings_shown_title
