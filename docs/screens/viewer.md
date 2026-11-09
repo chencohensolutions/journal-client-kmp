@@ -188,7 +188,11 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
-  The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
+  The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
+  (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
+  lie over the photo above the reel. When a tap hides the bars, the reel slides out (down, or right in landscape) and
+  the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
+  the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
 - **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a rounded see-through bar floating above the
   bottom edge (Nov 9, 2026; Play a 44 dp circle in it).

@@ -27,6 +27,8 @@ Still missing on iOS:
   floating see-through bar (44 dp Play); reel 64 dp tall with ▶ and length on videos, 88 dp wide down the right in
   landscape; the slideshow's bar hides and shows on a tap; video controls one slim 32 dp row with sound at its end; a
   video's poster prepared ahead and faded over its first frame (no black).
+  The reel takes its own room: the photo is centred above it (left of it in landscape), and when the bars hide the
+  reel slides out and the photo glides to the screen's middle.
 - **Viewer videos: own controls, slideshow to their end, ▶ Videos, landscape reel** (Android Nov 9, 2026;
   [viewer.md](screens/viewer.md)): the video's controls (play/pause, time, seek bar, length) drawn under the info line
   above the reel; the slideshow plays a video to its end before going on; **▶ Videos** beside the speeds turns

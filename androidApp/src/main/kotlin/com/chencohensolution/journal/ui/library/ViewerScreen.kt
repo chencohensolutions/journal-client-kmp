@@ -15,6 +15,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -419,6 +424,17 @@ internal fun ViewerScreen(
         }
     }
 
+    // A set's reel takes its own room (asked Nov 9, 2026): the photo is centred above it in portrait, left of it in
+    // landscape. When a tap hides the bars the reel slides away and the photo glides to the middle of the whole screen.
+    val setBarsShown = set != null && chrome && !showInfo && !playing
+    var reelRoom by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val density = LocalDensity.current
+    val roomBottom by androidx.compose.animation.core.animateDpAsState(
+        if (setBarsShown) with(density) { reelRoom.height.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room",
+    )
+    val roomEnd by androidx.compose.animation.core.animateDpAsState(
+        if (setBarsShown) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
+    )
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     // The swipe's gesture outlives a composition: it calls the latest.
     val besideNow by rememberUpdatedState(set?.beside)
@@ -465,7 +481,10 @@ internal fun ViewerScreen(
                     }
                 },
         ) {
-            Crossfade(shownIndex, Modifier.fillMaxSize(), animationSpec = tween(SET_FADE_MILLIS), label = "set photo") { page ->
+            Crossfade(
+                shownIndex, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd),
+                animationSpec = tween(SET_FADE_MILLIS), label = "set photo",
+            ) { page ->
                 val item = items[page]
                 if (item.type == MediaType.VIDEO) {
                     VideoPage(item, sharedKey(item), isCurrent = page == shownIndex, videos)
@@ -528,14 +547,12 @@ internal fun ViewerScreen(
             CropChip(showingWhole = whole, onToggle = { showWhole = !showWhole })
         }
         if (set != null) {
-            AnimatedVisibility(
-                chrome && !showInfo && !playing,
-                Modifier.align(Alignment.BottomCenter),
-                enter = fadeIn(),
-                exit = fadeOut(),
-            ) {
+            run {
                 SetBar(
                     items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } },
+                    visible = setBarsShown,
+                    onRoom = { reelRoom = it },
+                    modifier = Modifier.align(Alignment.BottomCenter),
                     brief = { shown ->
                         PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
                         // A video's controls: under the info, above the reel (asked Nov 9, 2026).
@@ -746,24 +763,53 @@ private fun SetBar(
     onPlay: () -> Unit,
     /** Landscape: the reel down the right edge, the info and buttons at the bottom left of it (asked Nov 9, 2026). */
     landscape: Boolean = false,
+    /** Shown: the bars slide in (the reel from its edge), hidden they slide out. */
+    visible: Boolean = true,
+    /** The room the reel takes (pixels): from its top to the bottom edge in portrait, its width in landscape. */
+    onRoom: (androidx.compose.ui.unit.IntSize) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
+    val slide = tween<androidx.compose.ui.unit.IntOffset>(BAR_SLIDE_MILLIS)
     if (landscape) {
         Box(Modifier.fillMaxSize()) {
             if (items.size > 1) {
-                Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().background(LibraryColors.PhotoFade).statusBarRoom().navigationBarRoom()) {
-                    SetReel(items, set.highlights.toSet(), index, cropOf, vertical = true, onIndex = onIndex)
+                AnimatedVisibility(
+                    visible, Modifier.align(Alignment.CenterEnd),
+                    enter = slideInHorizontally(slide) { it } + fadeIn(), exit = slideOutHorizontally(slide) { it } + fadeOut(),
+                ) {
+                    Box(
+                        Modifier.fillMaxHeight().background(LibraryColors.PhotoFade).statusBarRoom().navigationBarRoom()
+                            .onSizeChanged { onRoom(androidx.compose.ui.unit.IntSize(it.width, 0)) },
+                    ) {
+                        SetReel(items, set.highlights.toSet(), index, cropOf, vertical = true, onIndex = onIndex)
+                    }
                 }
+            } else {
+                LaunchedEffect(Unit) { onRoom(androidx.compose.ui.unit.IntSize.Zero) }
             }
-            SetBarBottom(
-                items, set, index, brief, onPlay, reel = false,
-                cropOf = cropOf, onIndex = onIndex,
-                modifier = Modifier.align(Alignment.BottomStart).padding(end = if (items.size > 1) REEL_SIDE_WIDTH + 8.dp else 0.dp),
-            )
+            AnimatedVisibility(
+                visible, Modifier.align(Alignment.BottomStart),
+                enter = slideInVertically(slide) { it } + fadeIn(), exit = slideOutVertically(slide) { it } + fadeOut(),
+            ) {
+                SetBarBottom(
+                    items, set, index, brief, onPlay, reel = false,
+                    cropOf = cropOf, onIndex = onIndex,
+                    modifier = Modifier.padding(end = if (items.size > 1) REEL_SIDE_WIDTH + 8.dp else 0.dp),
+                )
+            }
         }
     } else {
-        SetBarBottom(items, set, index, brief, onPlay, reel = true, cropOf = cropOf, onIndex = onIndex)
+        AnimatedVisibility(
+            visible, modifier,
+            enter = slideInVertically(slide) { it } + fadeIn(), exit = slideOutVertically(slide) { it } + fadeOut(),
+        ) {
+            SetBarBottom(items, set, index, brief, onPlay, reel = true, cropOf = cropOf, onIndex = onIndex, onRoom = onRoom)
+        }
     }
 }
+
+/** How long the set's bars and reel take to slide in or out, and the photo to glide to its new middle. */
+private const val BAR_SLIDE_MILLIS = 250
 
 /** Under the photo: the info, the reel ([reel]: in portrait), and ☆ Highlight · ▶ Play · ⌗ Recompose. */
 @Composable
@@ -777,13 +823,27 @@ private fun SetBarBottom(
     cropOf: (MediaItem) -> CropRect?,
     onIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** In portrait, the room from the reel's top to the bottom edge, which the photo keeps clear of. */
+    onRoom: (androidx.compose.ui.unit.IntSize) -> Unit = {},
 ) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
-    Column(modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 12.dp)) {
+    var height by remember { mutableIntStateOf(0) }
+    var reelTop by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(height, reelTop, reel, items.size) {
+        onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && reelTop >= 0) height - reelTop else 0))
+    }
+    Column(
+        modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 12.dp)
+            .onSizeChanged { height = it.height },
+    ) {
         // Keyed by the photo, so nothing of the one before is kept while swiping.
         key(items[index].id) { brief(items[index]) }
-        if (reel && items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex = onIndex)
+        if (reel && items.size > 1) {
+            Box(Modifier.onPlaced { reelTop = it.positionInParent().y.toInt() }) {
+                SetReel(items, set.highlights.toSet(), index, cropOf, onIndex = onIndex)
+            }
+        }
         // The actions in a floating bar, Play a normal size among them (asked Nov 9, 2026: the round Play was too big).
         FloatingBar(Modifier.padding(top = 10.dp)) {
             SetBarButton(
