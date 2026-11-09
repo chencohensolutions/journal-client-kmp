@@ -57,7 +57,10 @@ import androidx.compose.ui.zIndex
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.stories.CropRect
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -91,18 +94,31 @@ internal const val SET_FADE_MILLIS = 120
 /** In the feed, holding and sliding moves one photo per this many dp. */
 internal const val FLIP_STEP_DP = 10
 
-/** While [playing], the next of [count] photos every [millis], round and round. */
+/**
+ * While [playing], the next of [count] photos every [millis], round and round. With [prepare], the next photo is made
+ * ready while the current one shows, and the switch waits for it (at most [PREPARE_MAX_MILLIS]), so it never shows
+ * blurred first (asked Nov 9, 2026).
+ */
 @Composable
-internal fun Slideshow(playing: Boolean, millis: Long, count: Int, index: Int, onIndex: (Int) -> Unit) {
+internal fun Slideshow(playing: Boolean, millis: Long, count: Int, index: Int, prepare: (suspend (Int) -> Unit)? = null, onIndex: (Int) -> Unit) {
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
+    val ready by rememberUpdatedState(prepare)
     LaunchedEffect(playing, millis, count) {
         while (playing && count > 1) {
-            delay(millis)
-            change((current + 1) % count)
+            val next = (current + 1) % count
+            coroutineScope {
+                val prepared = async { withTimeoutOrNull(PREPARE_MAX_MILLIS) { ready?.invoke(next) } }
+                delay(millis)
+                prepared.await()
+            }
+            change(next)
         }
     }
 }
+
+/** A slideshow waits this long at most for the next photo to be ready (a slow download, or offline). */
+private const val PREPARE_MAX_MILLIS = 15_000L
 
 /** The screen stays on while [on] (a slideshow playing). */
 @Composable

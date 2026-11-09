@@ -160,7 +160,9 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
     progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) and **Stop**. A tap on the photo or back stops it.
-    The screen stays on while it plays.
+    The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
+    the server) while the current one shows, and the switch waits for it, at most 15 s, so it never shows blurred
+    first (Nov 9, 2026; Android only, iOS not built yet). The last 4 full images are kept in memory (`viewerImages`).
   - **Recompose** opens the [crop screen's set mode](crop.md#a-set-recompose-nov-9-2026) on the photo shown
     (photos only).
 - **Grid sheet** (the grid button): every photo as squares, the one shown outlined, highlights numbered (★ the

@@ -26,6 +26,10 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Slideshow waits for the next photo** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)):
+  while one photo shows, the next is decoded at the viewer's full size (downloaded if server-only), and the switch
+  waits for it (at most 15 s), so it never shows blurred first; the photo page starts from those kept images.
+  Android: `Slideshow(prepare:)` in `MomentSets.kt`, `viewerImages` / `viewerImage` in `ViewerScreen.kt`. No strings.
 - **Unnamed moments and the name's look** (Android Nov 9, 2026; [moments.md](screens/moments.md)): Make a moment
   no longer needs a name (`makeMoment` saves `setInfo` with `""`; `NamedSet.name` is now null then). Over a moment in
   Moments: the name not bold (17), its days on a line of their own under it, smaller and muted (12); nothing over an

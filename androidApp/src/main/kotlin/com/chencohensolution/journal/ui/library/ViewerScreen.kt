@@ -93,6 +93,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import android.content.ContentResolver
+import android.util.LruCache
+import com.chencohensolution.journal.server.ServerPreviews
 import androidx.compose.runtime.snapshotFlow
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import kotlinx.coroutines.flow.first
@@ -116,6 +119,20 @@ import kotlinx.coroutines.withContext
 
 /** Longest side of a photo decoded for the viewer. */
 private const val VIEWER_MAX_SIDE = 2560
+
+/**
+ * The viewer's full images of the last few photos, by id: a slideshow decodes the next one here before it switches,
+ * so the photo shows sharp at once (asked Nov 9, 2026). A few only: each is up to 2560 px, about 20 MB.
+ */
+private val viewerImages = LruCache<String, android.graphics.Bitmap>(4)
+
+/** [item]'s full image as the viewer shows it, fitted in [VIEWER_MAX_SIDE]: kept in [viewerImages], else loaded and kept. */
+private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPreviews?, item: MediaItem): android.graphics.Bitmap? {
+    viewerImages.get(item.id)?.let { return it }
+    return withContext(Dispatchers.IO) {
+        if (item.hasOriginalHere) loadImage(resolver, previews, item, VIEWER_MAX_SIDE) else serverOriginal(previews, item, VIEWER_MAX_SIDE)
+    }?.also { viewerImages.put(item.id, it) }
+}
 
 /** How long the bars and buttons stay after a tap on the photo. */
 private const val CHROME_MILLIS = 3_000L
@@ -208,7 +225,12 @@ internal fun ViewerScreen(
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
-    Slideshow(set != null && playing, speed.millis, items.size, shownIndex) { setIndex = it }
+    val resolver = LocalContext.current.contentResolver
+    val previews = LocalServerPreviews.current
+    // The next photo's full image is decoded (downloaded when only on the server) before the slideshow shows it.
+    Slideshow(set != null && playing, speed.millis, items.size, shownIndex, prepare = { i ->
+        items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) }
+    }) { setIndex = it }
     KeepScreenOn(set != null && playing)
     BackHandler(playing) { playing = false }
     var showInfo by rememberSaveable { mutableStateOf(false) }
@@ -603,8 +625,9 @@ private fun PhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom:
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     val preview = rememberThumbnail(item, THUMB_LARGE)
-    val full by produceState<android.graphics.Bitmap?>(null, item.id) {
-        value = withContext(Dispatchers.IO) { loadImage(resolver, previews, item, VIEWER_MAX_SIDE) }
+    // Already decoded when a slideshow made it ready: sharp from the first frame.
+    val full by produceState(viewerImages.get(item.id), item.id) {
+        if (value == null) value = viewerImage(resolver, previews, item)
     }
     val sharp = rememberZoomedOriginal(item, zoom) { loadImage(resolver, previews, item, zoomDecodeSide(item)) }
     val image = sharp ?: full?.asImageBitmap() ?: preview
@@ -641,19 +664,21 @@ private fun rememberZoomedOriginal(item: MediaItem, zoom: PhotoZoom?, load: susp
 @Composable
 private fun ServerPhotoPage(item: MediaItem, sharedKey: String, crop: CropRect?, zoom: PhotoZoom?) {
     val previews = LocalServerPreviews.current
+    val resolver = LocalContext.current.contentResolver
     val cached by produceState<android.graphics.Bitmap?>(null, item.id) {
         value = withContext(Dispatchers.IO) { cachedServerImage(previews, item) }
     }
     // The spinner is for a download only: an original already in the cache is just decoded, with nothing to wait for.
     var downloading by remember(item.id) { mutableStateOf(false) }
-    val original by produceState<android.graphics.Bitmap?>(null, item.id) {
+    // Already decoded when a slideshow made it ready: sharp from the first frame.
+    val original by produceState(viewerImages.get(item.id), item.id) {
+        if (value != null) return@produceState
         if (item.sha256?.let { previews?.cachedOriginal(it) } == null) downloading = true
-        value = withContext(Dispatchers.IO) { serverOriginal(previews, item, VIEWER_MAX_SIDE) }
+        value = viewerImage(resolver, previews, item)
         downloading = false
     }
     // Zoomed in: decoded again from the downloaded original, at its own size.
     val sharp = rememberZoomedOriginal(item, zoom) { serverOriginal(previews, item, zoomDecodeSide(item)) }
-    val resolver = LocalContext.current.contentResolver
     val drawn = sharp ?: (cached ?: original)?.asImageBitmap()
     val detail = rememberDetailLayer(item, zoom, shownSide = drawn?.let { maxOf(it.width, it.height) } ?: 0) {
         openOriginalRegions(resolver, previews, item)
