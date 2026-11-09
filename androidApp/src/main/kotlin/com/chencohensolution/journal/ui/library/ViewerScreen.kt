@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.OutlinedTextField
@@ -78,6 +79,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -195,6 +197,8 @@ internal class ViewerSet(
     val recompose: (itemId: String) -> Unit = {},
     /** Names or renames it; blank: unnamed. */
     val rename: (name: String) -> Unit = {},
+    /** A swipe past its last ([forward]) or first photo: the photo or set beside it in Moments, if any. */
+    val beside: (forward: Boolean) -> Unit = {},
 )
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
@@ -300,6 +304,8 @@ internal fun ViewerScreen(
     }
 
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // The swipe's gesture outlives a composition: it calls the latest.
+    val besideNow by rememberUpdatedState(set?.beside)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (set != null) Box(
             Modifier
@@ -334,10 +340,8 @@ internal fun ViewerScreen(
                         if (abs(dragged) > SET_SWIPE.toPx()) {
                             val forward = (dragged < 0) != rtl
                             val next = setIndex + if (forward) 1 else -1
-                            if (next in items.indices) {
-                                playing = false
-                                setIndex = next
-                            }
+                            playing = false
+                            if (next in items.indices) setIndex = next else besideNow?.invoke(forward)
                         }
                     }) { change, amount ->
                         if (zoomNow?.isZoomed == true) return@detectHorizontalDragGestures
@@ -413,7 +417,11 @@ internal fun ViewerScreen(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                SetBar(items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } }, onIndex = { setIndex = it }, onPlay = { playing = true })
+                SetBar(
+                    items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } },
+                    brief = { shown -> PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true } },
+                    onIndex = { setIndex = it }, onPlay = { playing = true },
+                )
             }
             AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, onStop = {
@@ -428,10 +436,12 @@ internal fun ViewerScreen(
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
-                ViewerAction(LibraryIcons.Info, stringResource(R.string.library_viewer_details)) { showInfo = true }
-                ShareButton(current, actions.share)
+            Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
+                    ShareButton(current, actions.share)
+                }
             }
         }
 
@@ -603,10 +613,12 @@ internal fun ViewerScreen(
 
 /** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
 @Composable
-private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, brief: @Composable (MediaItem) -> Unit, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
     Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
+        // Keyed by the photo, so nothing of the one before is kept while swiping.
+        key(items[index].id) { brief(items[index]) }
         if (items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex)
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SetBarButton(
@@ -1019,4 +1031,28 @@ private fun MomentNameDialog(name: String, onDismiss: () -> Unit, onSave: (Strin
         confirmButton = { TextButton(onClick = { onSave(typed) }) { Text(stringResource(R.string.set_name_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
     )
+}
+
+/**
+ * A photo's brief info over it, with the bars (asked Nov 9, 2026): where it was taken, its date and time, its tags,
+ * and ⓘ for the details panel.
+ */
+@Composable
+private fun PhotoBrief(item: MediaItem, stories: StoriesState, modifier: Modifier = Modifier, onInfo: () -> Unit) {
+    val place = stories.places.location(item)?.let { stories.places.name(it) }
+        ?.let { name -> listOfNotNull(name.label, name.city, name.country).distinct().joinToString(", ") }?.takeIf { it.isNotEmpty() }
+    val taken = java.time.Instant.ofEpochMilli(item.takenAtMillis).atZone(java.time.ZoneId.systemDefault())
+    val tags = stories.note(item.id)?.tags.orEmpty()
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            place?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1)
+            if (tags.isNotEmpty()) {
+                Text(tags.joinToString("  ") { "#$it" }, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        IconButton(onClick = onInfo) {
+            Icon(LibraryIcons.Info, stringResource(R.string.library_viewer_details), tint = Color.White)
+        }
+    }
 }

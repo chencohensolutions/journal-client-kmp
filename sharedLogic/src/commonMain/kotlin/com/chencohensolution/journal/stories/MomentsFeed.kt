@@ -185,6 +185,22 @@ data class MomentsFeed(
     fun section(key: String): FeedSection? =
         entries.firstNotNullOfOrNull { (it as? FeedEntry.Section)?.section?.takeIf { section -> section.key == key } }
 
+    /**
+     * The photo or set shown just after ([forward]) or just before the set of [itemIds], in the feed's order (rows
+     * newest first, each as shown), with its row: where swiping past a set's last or first photo in the viewer goes
+     * (asked Nov 9, 2026). Null at either end of the rows read so far, or when the set isn't in them.
+     */
+    fun beside(itemIds: Collection<String>, forward: Boolean): Pair<FeedSection, FeedBlock>? {
+        val ids = itemIds.toSet()
+        val shown = entries.flatMap { entry ->
+            val section = (entry as FeedEntry.Section).section
+            section.moments.flatMap { moment -> moment.shownBlocks.map { section to it } }
+        }
+        val holding = shown.indices.filter { i -> shown[i].second.items.any { it.id in ids } }
+        if (holding.isEmpty()) return null
+        return shown.getOrNull(if (forward) holding.last() + 1 else holding.first() - 1)
+    }
+
     /** The sources its filter bar offers: the fixed ones and those with photos, in order. */
     val choices: List<MediaSource> get() = MediaSource.choices(counts.keys)
 
