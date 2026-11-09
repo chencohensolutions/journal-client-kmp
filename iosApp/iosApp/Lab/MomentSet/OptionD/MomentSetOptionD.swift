@@ -8,7 +8,7 @@ import SwiftUI
 struct MomentSetScreenD: View {
     enum Step { case picking, naming, made }
 
-    @State private var picked: [SetPhoto]
+    @State private var picked: [MomentSetLab.DayPhoto]
     @State private var step: Step
     @State private var name = "Beach weekend"
     @State private var mainId: String?
