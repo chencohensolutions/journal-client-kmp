@@ -203,20 +203,19 @@ internal class CastServer(private val context: Context) {
 
     private fun uriBody(uri: android.net.Uri, mime: String): Body? {
         if (uri.scheme == "file") return FileBody(File(uri.path ?: return null), mime)
-        val length = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: return null
+        // Read-only, as everything here (PhotoSafetyTest): an asset descriptor gives the length and a stream to seek in.
+        val length = context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { fd ->
+            fd.length.takeIf { it >= 0 } ?: fd.parcelFileDescriptor.statSize
+        } ?: return null
         return object : Body {
             override val length = length
             override val mimeType = mime
             override fun open(from: Long): InputStream {
-                val fd = context.contentResolver.openFileDescriptor(uri, "r") ?: error("gone")
-                val stream = FileInputStream(fd.fileDescriptor)
-                stream.channel.position(from)
-                return object : java.io.FilterInputStream(stream) {
-                    override fun close() {
-                        super.close()
-                        fd.close()
-                    }
-                }
+                val fd = context.contentResolver.openAssetFileDescriptor(uri, "r") ?: error("gone")
+                // Closing the stream closes the descriptor.
+                val stream = fd.createInputStream()
+                stream.channel.position(fd.startOffset + from)
+                return stream
             }
         }
     }

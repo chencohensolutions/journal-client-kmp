@@ -125,6 +125,8 @@ internal fun Modifier.castGestures(cast: () -> CastZoom?, area: (IntSize) -> Rec
 internal fun CastFrameOverlay(zoom: TvZoom, modifier: Modifier = Modifier) {
     val label = stringResource(R.string.cast_frame_label)
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    // Read here: the palette is read in composition, not while drawing.
+    val pill = LibraryColors.PillScrim
     Canvas(modifier) {
         val area = Rect(Offset.Zero, size)
         val photo = fittedPhoto(area, zoom.photoRatio)
@@ -150,7 +152,7 @@ internal fun CastFrameOverlay(zoom: TvZoom, modifier: Modifier = Modifier) {
             (frame.top + pad).coerceIn(pad, size.height - text.size.height - pad),
         )
         drawRoundRect(
-            LibraryColors.PillScrim, at - Offset(pad, pad / 2), Size(text.size.width + 2 * pad, text.size.height + pad),
+            pill, at - Offset(pad, pad / 2), Size(text.size.width + 2 * pad, text.size.height + pad),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(text.size.height.toFloat()),
         )
         drawText(text, topLeft = at)
