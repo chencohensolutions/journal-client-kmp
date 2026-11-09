@@ -84,6 +84,7 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
     "12 of 36" at the top while sliding. Letting go keeps it there until the feed is left (never saved: notes keep
     highlights, not turns). A hold let go without sliding is the long press (picking); a vertical move scrolls.
   - A small **▶** at the bottom corner plays it in place, muted, a photo every 0.5 s, round and round; again to stop.
+    The next photo is loaded at the size it shows at before the switch, which waits for it (Nov 9, 2026).
   - A **tap** opens the viewer on the set only, at the photo shown.
   - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
 - **A moment made by hand** shows its name over it, not bold, with its days under it in smaller type ("Beach

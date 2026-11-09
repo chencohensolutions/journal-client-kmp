@@ -307,40 +307,50 @@ private fun rememberCoverThumbnail(item: MediaItem, width: Int, height: Int): Im
         return remember(source, item, width, height) { source.thumbnail(item, maxOf(width, height)) }
     }
     val context = LocalContext.current
-    val resolver = context.contentResolver
     val previews = LocalServerPreviews.current
     val key = "${item.id}@${width}x$height"
     val bitmap by produceState(thumbnailCache.get(key), key) {
-        value = thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
-            val kept = item.keptOriginal
-            if (kept != null) {
-                withContext(fullDecodes) { decodeKept(kept, item) { w, h -> coverDimensions(w, h, width, height) } }
-            } else if (item.isOnDevice && item.isJxl) {
-                withContext(fullDecodes) { decodeJxl(readDevice(resolver, item)) { w, h -> coverDimensions(w, h, width, height) } }
-            } else if (!item.isOnDevice) {
-                // The server's preview at the size that covers the box, so the caller crops and zooms it as a local one.
-                val (w, h) = coverSize(item, width, height)
-                serverBitmap(previews, item, w, h) { ow, oh -> coverDimensions(ow, oh, width, height) }
-            } else if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
-                val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
-                deviceThumbnail(context, item, size)?.let { loaded ->
-                    coverDimensions(loaded.width, loaded.height, width, height)
-                        ?.let { (w, h) -> Bitmap.createScaledBitmap(loaded, w, h, true) }
-                        ?: loaded
-                }
-            } else {
-                // A few at a time: a fast scroll asks for many, and those scrolled past are cancelled before they start.
-                withContext(fullDecodes) {
-                    runCatching {
-                        ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
-                            coverDimensions(info.size.width, info.size.height, width, height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
-                        }
-                    }.getOrNull()
-                }
-            }
-        }?.forDrawing()?.also { thumbnailCache.put(key, it) }
+        if (value == null) value = loadCover(context, previews, item, width, height)
     }
     return bitmap?.asImageBitmap()
+}
+
+/**
+ * [item] cropped to cover a [width] × [height] pixel box, as [SizedThumbnail] draws it: from memory, else loaded and
+ * kept there. Called ahead by the feed's in-place play, so the next photo shows sharp at once (asked Nov 9, 2026).
+ */
+internal suspend fun loadCover(context: Context, previews: ServerPreviews?, item: MediaItem, width: Int, height: Int): Bitmap? {
+    if (width <= 0 || height <= 0) return null
+    val resolver = context.contentResolver
+    val key = "${item.id}@${width}x$height"
+    return thumbnailCache.get(key) ?: withContext(Dispatchers.IO) {
+        val kept = item.keptOriginal
+        if (kept != null) {
+            withContext(fullDecodes) { decodeKept(kept, item) { w, h -> coverDimensions(w, h, width, height) } }
+        } else if (item.isOnDevice && item.isJxl) {
+            withContext(fullDecodes) { decodeJxl(readDevice(resolver, item)) { w, h -> coverDimensions(w, h, width, height) } }
+        } else if (!item.isOnDevice) {
+            // The server's preview at the size that covers the box, so the caller crops and zooms it as a local one.
+            val (w, h) = coverSize(item, width, height)
+            serverBitmap(previews, item, w, h) { ow, oh -> coverDimensions(ow, oh, width, height) }
+        } else if (item.type == MediaType.VIDEO || coverLonger(item, width, height) <= STORE_THUMBNAIL_MAX) {
+            val size = Size(STORE_THUMBNAIL_MAX, STORE_THUMBNAIL_MAX)
+            deviceThumbnail(context, item, size)?.let { loaded ->
+                coverDimensions(loaded.width, loaded.height, width, height)
+                    ?.let { (w, h) -> Bitmap.createScaledBitmap(loaded, w, h, true) }
+                    ?: loaded
+            }
+        } else {
+            // A few at a time: a fast scroll asks for many, and those scrolled past are cancelled before they start.
+            withContext(fullDecodes) {
+                runCatching {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, item.contentUri())) { decoder, info, _ ->
+                        coverDimensions(info.size.width, info.size.height, width, height)?.let { (w, h) -> decoder.setTargetSize(w, h) }
+                    }
+                }.getOrNull()
+            }
+        }
+    }?.forDrawing()?.also { thumbnailCache.put(key, it) }
 }
 
 /**

@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalContext
+import com.chencohensolution.journal.library.MediaType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -924,7 +926,19 @@ private fun SetCover(
     val cover = remember(block.key) { video.startPage(block).coerceIn(items.indices) }
     var scrubbing by remember { mutableStateOf(false) }
     var playing by remember(block.key) { mutableStateOf(false) }
-    Slideshow(playing, FEED_PLAY_MILLIS, items.size, shownIndex) { index = it }
+    val context = LocalContext.current
+    val previews = LocalServerPreviews.current
+    val coverRatio = items[cover].shownRatio(notes[items[cover].id]?.crops?.moments)
+    val feedPixels = feedWidth()
+    // The next photo is loaded at the exact size it shows at before it is switched to, so it shows sharp at once.
+    Slideshow(playing, FEED_PLAY_MILLIS, items.size, shownIndex, prepare = { i ->
+        val item = items[i]
+        val crop = notes[item.id]?.crops?.moments?.takeIf { item.durationMillis == null }
+        val ratio = item.shownRatio(crop)
+        val shownWidth = if (ratio >= coverRatio) feedPixels else (feedPixels / coverRatio * ratio).toInt()
+        val photoWidth = if (crop != null) (shownWidth / crop.w).toInt() else shownWidth
+        if (item.type == MediaType.IMAGE) loadCover(context, previews, item, photoWidth, (photoWidth / item.ratio).toInt())
+    }) { index = it }
     LaunchedEffect(landing) {
         val page = items.indexOfFirst { it.id == landing }
         if (page >= 0) index = page
