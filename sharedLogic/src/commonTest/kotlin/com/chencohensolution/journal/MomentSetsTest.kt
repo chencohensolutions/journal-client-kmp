@@ -201,6 +201,20 @@ class MomentSetsTest {
     }
 
     @Test
+    fun swipingPastASetGoesToWhatIsShownBesideIt() = runTest {
+        val stories = setup().stories
+        val feed = stories.currentState.feed
+        val shown = feed.entries.flatMap { (it as FeedEntry.Section).section.moments.flatMap { m -> m.shownBlocks } }
+        assertTrue(shown.size >= 3, "$shown")
+        val middle = shown[1]
+        assertEquals(shown[2], feed.beside(middle.items.map { it.id }, forward = true)?.second)
+        assertEquals(shown[0], feed.beside(middle.items.map { it.id }, forward = false)?.second)
+        assertNull(feed.beside(shown.first().items.map { it.id }, forward = false))
+        assertNull(feed.beside(shown.last().items.map { it.id }, forward = true))
+        assertNull(feed.beside(listOf("nowhere"), forward = true))
+    }
+
+    @Test
     fun aMomentIsNamedAndRenamedLater() = runTest {
         val setup = setup()
         val stories = setup.stories

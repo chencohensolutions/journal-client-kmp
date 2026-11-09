@@ -148,6 +148,10 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - **Swipes cross-fade** in 0.12 s instead of sliding (a swipe of 40 dp or more). Pinch and double-tap zoom as
   elsewhere; zoomed in, a drag moves the photo. Photos show at their Moments crop (Recompose), so the set flips as
   composed.
+- **Past either end** (Nov 9, 2026): a swipe past the last photo goes to what Moments shows after the set, past the
+  first to what it shows before (`MomentsFeed.beside`): another set opens in this mode at its first (or last) photo,
+  a single photo in the usual viewer on its row. It takes the set's place, so back still returns to Moments. At the
+  ends of the rows read so far nothing happens.
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
 - **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", a **grid** button and **⋮** with
   **Write**, **Details**, **Share** (and Show in Moments when opened from elsewhere): they leave the bottom while in a

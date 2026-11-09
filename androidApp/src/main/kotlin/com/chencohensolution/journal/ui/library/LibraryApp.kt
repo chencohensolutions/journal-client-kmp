@@ -50,6 +50,7 @@ import com.chencohensolution.journal.local.PhoneModels
 import com.chencohensolution.journal.local.ModelsOnboarding
 import com.chencohensolution.journal.people.PageSort
 import com.chencohensolution.journal.people.PeopleController
+import com.chencohensolution.journal.stories.FeedBlock
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.FeedSection
 import com.chencohensolution.journal.stories.bestFirst
@@ -692,6 +693,21 @@ private fun LibraryScreens(
                                         moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
                                         recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
                                         rename = { name -> stories.nameMoment(ids, name) },
+                                        // Past either end: what Moments shows beside the set, in its place on the stack.
+                                        beside = { forward ->
+                                            storiesState.feed.beside(ids, forward)?.let { (section, block) ->
+                                                val item = if (forward) block.items.first() else block.items.last()
+                                                val next = if (block is FeedBlock.Similar) {
+                                                    val key = setListKey(block.items.map { it.id })
+                                                    pageLists[key] = block.items
+                                                    Route.Viewer(null, item.id, list = key)
+                                                } else {
+                                                    Route.Viewer(section.key, item.id)
+                                                }
+                                                landing = null
+                                                stack = stack.dropLast(1) + next
+                                            }
+                                        },
                                     )
                                     if (reading) Box(Modifier.fillMaxSize().background(LibraryColors.Background)) else ViewerScreen(
                                         items = shownItems,

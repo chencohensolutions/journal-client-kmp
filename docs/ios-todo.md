@@ -26,6 +26,10 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Swiping past a set's ends** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): in the
+  set viewer, a swipe past the last photo (first, backwards) asks `feed.beside(itemIds:forward:)` and replaces the
+  viewer with that neighbour: a `FeedBlockSimilar` in set mode at its first (last) photo, a single photo in the usual
+  viewer on `section.key`. Android: `ViewerSet.beside` in `ViewerScreen.kt`, wired in `LibraryApp.kt`. No strings.
 - **The set viewer's reel** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): the scrubber
   became a scrolling row of every photo at its own shape (Moments crop, else whole; whole while Show all is on), the
   shown one centered and outlined; dragging it shows the photo reaching the middle (selection haptic), a tap jumps.

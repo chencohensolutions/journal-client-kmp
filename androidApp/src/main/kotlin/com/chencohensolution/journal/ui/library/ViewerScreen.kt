@@ -195,6 +195,8 @@ internal class ViewerSet(
     val recompose: (itemId: String) -> Unit = {},
     /** Names or renames it; blank: unnamed. */
     val rename: (name: String) -> Unit = {},
+    /** A swipe past its last ([forward]) or first photo: the photo or set beside it in Moments, if any. */
+    val beside: (forward: Boolean) -> Unit = {},
 )
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
@@ -300,6 +302,8 @@ internal fun ViewerScreen(
     }
 
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // The swipe's gesture outlives a composition: it calls the latest.
+    val besideNow by rememberUpdatedState(set?.beside)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (set != null) Box(
             Modifier
@@ -334,10 +338,8 @@ internal fun ViewerScreen(
                         if (abs(dragged) > SET_SWIPE.toPx()) {
                             val forward = (dragged < 0) != rtl
                             val next = setIndex + if (forward) 1 else -1
-                            if (next in items.indices) {
-                                playing = false
-                                setIndex = next
-                            }
+                            playing = false
+                            if (next in items.indices) setIndex = next else besideNow?.invoke(forward)
                         }
                     }) { change, amount ->
                         if (zoomNow?.isZoomed == true) return@detectHorizontalDragGestures
