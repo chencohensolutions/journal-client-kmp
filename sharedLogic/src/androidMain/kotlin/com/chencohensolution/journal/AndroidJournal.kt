@@ -193,7 +193,7 @@ private fun onWifi(context: Context): Boolean {
 private var photoModel: PhoneModel? = null
 
 /**
- * The photo embedder's model ([AndroidPhotoAnalyzer]), downloaded from the server into `files/models` on first use
+ * The photo embedder's model ([AndroidPhotoAnalyzer]), downloaded from Google (else the server) into `files/models` on first use
  * or from Settings › Models on this phone; it follows On device search's Only on Wi-Fi. One per process.
  */
 @Synchronized
@@ -208,6 +208,7 @@ fun photoModel(context: Context): PhoneModel =
             app.filesDir.toOkioPath() / "models",
             wifiOnly = { settings.phoneIndexesWifiOnly },
             onWifi = { onWifi(app) },
+            builtIn = AndroidPhotoAnalyzer.MODEL,
         )
     }.also { photoModel = it }
 

@@ -1127,7 +1127,7 @@
 
     <!-- Settings › Models on this phone (ModelsScreen.kt) -->
     <string name="models_title">מודלים בטלפון הזה</string>
-    <string name="models_intro">האפליקציה מריצה את המודלים האלה בטלפון. הם מגיעים מהשרת שלך, לא עם האפליקציה. עד שמודל מגיע, התכונה שלו עובדת בדרך פשוטה יותר או דרך השרת.</string>
+    <string name="models_intro">האפליקציה מריצה את המודלים האלה בטלפון. הם יורדים פעם אחת מהמקום שבו פורסמו (Hugging Face, Google) או מהשרת שלך, ולא מגיעים עם האפליקציה. עד שמודל מגיע, התכונה שלו עובדת בדרך פשוטה יותר או דרך השרת.</string>
     <string name="models_photos_title">דמיון בין תמונות</string>
     <string name="models_photos_body">מוצא תמונות של אותה סצנה לסטים ברגעים</string>
     <string name="models_words_title">חיפוש לפי מילים</string>
@@ -1155,7 +1155,7 @@
 
     <!-- Onboarding › Models on this phone (ModelsOnboardingScreen.kt) -->
     <string name="models_onboarding_title">מכינים את הטלפון</string>
-    <string name="models_onboarding_body">האפליקציה מריצה כמה מודלים בטלפון הזה. הם מגיעים מהשרת שלך, לא עם האפליקציה.</string>
+    <string name="models_onboarding_body">האפליקציה מריצה כמה מודלים בטלפון הזה. הם יורדים פעם אחת מהמקום שבו פורסמו (Hugging Face, Google) או מהשרת שלך, ולא מגיעים עם האפליקציה.</string>
     <string name="models_onboarding_checking">שואלים את השרת שלך מה הוא מציע…</string>
     <string name="models_onboarding_words_size">מודל %1$s והאינדקס שלו %2$s</string>
     <string name="models_onboarding_wifi_body">חיפוש לפי מילים ממתין ל-Wi-Fi. דמיון בין תמונות קטן ויורד עכשיו.</string>

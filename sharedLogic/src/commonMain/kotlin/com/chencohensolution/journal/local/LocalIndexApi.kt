@@ -4,6 +4,7 @@ import com.chencohensolution.journal.graphql.LocalIndexesQuery
 import com.chencohensolution.journal.graphql.PhoneModelsQuery
 import com.chencohensolution.journal.server.ServerHttp
 import com.chencohensolution.journal.server.firstServerError
+import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
@@ -13,6 +14,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.readFully
 import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okio.FileSystem
@@ -25,8 +27,19 @@ import okio.use
 // (`localIndexes`), each index as a stream of what was added since a cursor (`GET /index/{name}`), the people whole
 // (`GET /index/people`, with an ETag) and the model files a phone runs (`GET /models/{index}/{name}`, with Range).
 
-/** A model file an index needs on the phone: [precision] fp32 or q8 for a model, "" for one every precision needs. */
-data class ModelFileInfo(val name: String, val precision: String, val bytes: Long, val sha256: String, val url: String)
+/**
+ * A model file an index needs on the phone: [precision] fp32 or q8 for a model, "" for one every precision needs.
+ * [url] is its path on the server; [source], when known, the pinned Hugging Face or Google link it came from, which
+ * the phone downloads from first to spare the server's upload (checked against [sha256] all the same).
+ */
+data class ModelFileInfo(
+    val name: String,
+    val precision: String,
+    val bytes: Long,
+    val sha256: String,
+    val url: String,
+    val source: String? = null,
+)
 
 /** An index the server lets this phone keep (its `localIndexes`). */
 data class LocalIndexInfo(
@@ -98,13 +111,21 @@ internal interface LocalIndexApi {
     suspend fun people(etag: String?): Pair<PeopleDoc, String?>?
 
     /**
-     * Downloads [file] into [target], going on from what [target] already has (Range), and checks its sha256. Calls
-     * [progress] with the bytes it has. False when it broke (the next try goes on), throws when the bytes are wrong.
+     * Downloads [file] into [target], going on from what [target] already has (Range), and checks its sha256: from
+     * its [ModelFileInfo.source] first when it has one, else (or when that fails or doesn't match) from the server.
+     * Calls [progress] with the bytes it has. False when it broke (the next try goes on), throws when the bytes are wrong.
      */
     suspend fun model(file: ModelFileInfo, fileSystem: FileSystem, target: Path, progress: (Long) -> Unit): Boolean
 }
 
-internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi, PhoneModelApi {
+/**
+ * [internet]: a plain HTTPS client for a model's [ModelFileInfo.source] (Hugging Face, Google), made when first needed;
+ * the server's own client is mTLS and pinned to it.
+ */
+internal class HttpLocalIndexApi(
+    private val http: ServerHttp,
+    private val internet: () -> HttpClient = { publicClient },
+) : LocalIndexApi, PhoneModelApi {
     override suspend fun manifest(): List<LocalIndexInfo> = http.graphql { apollo ->
         val response = apollo.query(LocalIndexesQuery()).execute()
         response.exception?.let { throw it }
@@ -117,7 +138,7 @@ internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi, 
                 dim = x.dim,
                 files = x.files,
                 bytes = x.bytes,
-                models = x.models.map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url) },
+                models = x.models.map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url, it.source) },
             )
         }
     } ?: throw StreamBroke("This device isn't registered")
@@ -126,7 +147,7 @@ internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi, 
         val response = apollo.query(PhoneModelsQuery()).execute()
         response.exception?.let { throw it }
         firstServerError(response.errors)?.let { throw it }
-        response.data?.phoneModels.orEmpty().map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url) }
+        response.data?.phoneModels.orEmpty().map { ModelFileInfo(it.name, it.precision, it.bytes, it.sha256, it.url, it.source) }
     } ?: throw StreamBroke("This device isn't registered")
 
     override suspend fun stream(name: String, cursor: String?, sink: StreamSink): String {
@@ -152,44 +173,69 @@ internal class HttpLocalIndexApi(private val http: ServerHttp) : LocalIndexApi, 
     }
 
     override suspend fun model(file: ModelFileInfo, fileSystem: FileSystem, target: Path, progress: (Long) -> Unit): Boolean {
-        val client = http.client() ?: return false
         fileSystem.createDirectories(target.parent!!)
-        val have = fileSystem.metadataOrNull(target)?.size ?: 0
-        if (have < file.bytes) {
-            val done = client.prepareGet(http.url(file.url)) {
-                if (have > 0) header("Range", "bytes=$have-")
-            }.execute { response ->
-                val append = response.status == HttpStatusCode.PartialContent
-                if (!append && response.status != HttpStatusCode.OK) return@execute false
-                val sink = if (append) fileSystem.appendingSink(target) else fileSystem.sink(target)
-                var received = if (append) have else 0
-                sink.buffer().use { out ->
-                    val channel = response.bodyAsChannel()
-                    val buffer = ByteArray(256 * 1024)
-                    while (true) {
-                        val n = channel.readAvailable(buffer)
-                        if (n == -1) break
-                        out.write(buffer, 0, n)
-                        received += n
-                        progress(received)
-                    }
-                }
-                received >= file.bytes
+        file.source?.let { source ->
+            // A source that can't be reached, breaks or answers otherwise leaves what came; the server goes on from
+            // there (the same file, by its sha256). One that sent other bytes is downloaded again from the server.
+            val whole = try {
+                download(internet(), source, file, fileSystem, target, progress)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
             }
-            if (!done) return false
+            if (whole) {
+                if (matches(file, fileSystem, target)) return true
+                fileSystem.delete(target)
+            }
         }
+        val client = http.client() ?: return false
+        if (!download(client, http.url(file.url), file, fileSystem, target, progress)) return false
         // Checked whole: a file that doesn't match is deleted and downloaded again next time.
-        val hashing = HashingSink.sha256(okio.blackholeSink())
-        hashing.buffer().use { out -> fileSystem.read(target) { readAll(out) } }
-        if (hashing.hash.hex() != file.sha256) {
+        if (!matches(file, fileSystem, target)) {
             fileSystem.delete(target)
             throw StreamBroke("${file.name} didn't match its sha256")
         }
         return true
     }
 
+    private fun matches(file: ModelFileInfo, fileSystem: FileSystem, target: Path): Boolean {
+        val hashing = HashingSink.sha256(okio.blackholeSink())
+        hashing.buffer().use { out -> fileSystem.read(target) { readAll(out) } }
+        return hashing.hash.hex().equals(file.sha256, ignoreCase = true)
+    }
+
+    /** Downloads [url] into [target] from what it has (Range); whether it has [file]'s bytes now. */
+    private suspend fun download(client: HttpClient, url: String, file: ModelFileInfo, fileSystem: FileSystem, target: Path, progress: (Long) -> Unit): Boolean {
+        val have = fileSystem.metadataOrNull(target)?.size ?: 0
+        if (have >= file.bytes) return true
+        return client.prepareGet(url) {
+            if (have > 0) header("Range", "bytes=$have-")
+        }.execute { response ->
+            val append = response.status == HttpStatusCode.PartialContent
+            if (!append && response.status != HttpStatusCode.OK) return@execute false
+            val sink = if (append) fileSystem.appendingSink(target) else fileSystem.sink(target)
+            var received = if (append) have else 0
+            sink.buffer().use { out ->
+                val channel = response.bodyAsChannel()
+                val buffer = ByteArray(256 * 1024)
+                while (true) {
+                    val n = channel.readAvailable(buffer)
+                    if (n == -1) break
+                    out.write(buffer, 0, n)
+                    received += n
+                    progress(received)
+                }
+            }
+            received >= file.bytes
+        }
+    }
+
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
+
+        /** The platform's own engine (OkHttp, Darwin), with the system's trust: for public sources only. */
+        val publicClient: HttpClient by lazy { HttpClient() }
     }
 }
 

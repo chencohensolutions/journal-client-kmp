@@ -56,6 +56,10 @@ data class PhoneModelState(
  * beside it once downloaded whole and checked. A broken download goes on from where it broke next time; a file that
  * doesn't match its sha256 is deleted and downloaded again. One download at a time, shared by whoever asks; with
  * [wifiOnly] (On device search's Only on Wi-Fi, one setting for every download) it waits for Wi-Fi unless forced.
+ *
+ * [builtIn], when the app knows the file itself (its pinned source and sha256), is downloaded from that source even
+ * when the server doesn't list it or can't be reached, and gives the server's entry its source when the server has
+ * the same file without one.
  */
 class PhoneModel internal constructor(
     private val name: String,
@@ -67,6 +71,7 @@ class PhoneModel internal constructor(
     /** Whether the phone is on Wi-Fi (or another network that costs nothing). */
     private val onWifi: () -> Boolean = { true },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val builtIn: ModelFileInfo? = null,
 ) {
     private val file = directory / name
     private val ok = directory / "$name.ok"
@@ -88,12 +93,15 @@ class PhoneModel internal constructor(
         if (_state.value.here || _state.value.downloading) return
         scope.launch {
             val info = try {
-                api.phoneModels().firstOrNull { it.name == name }
+                offer(api.phoneModels())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(unreachable = true) }
-                return@launch
+                if (builtIn == null) {
+                    _state.update { it.copy(unreachable = true) }
+                    return@launch
+                }
+                builtIn
             }
             _state.update { if (it.here || it.downloading) it else it.copy(offered = info != null, bytes = info?.bytes ?: it.bytes, unreachable = false) }
         }
@@ -142,17 +150,30 @@ class PhoneModel internal constructor(
         }
     }
 
+    /**
+     * What to download: the server's entry (with [builtIn]'s source when it is the same file and the server knows none),
+     * else [builtIn]; null when neither has it.
+     */
+    private fun offer(offered: List<ModelFileInfo>): ModelFileInfo? {
+        val served = offered.firstOrNull { it.name == name } ?: return builtIn
+        val known = builtIn ?: return served
+        return if (served.source == null && served.sha256.equals(known.sha256, ignoreCase = true)) served.copy(source = known.source) else served
+    }
+
     private suspend fun downloadNow(): Path? = lock.withLock {
         path()?.let { return it }
         _state.update { it.copy(waitingForWifi = false, failed = false) }
         try {
             val info = try {
-                api.phoneModels().firstOrNull { it.name == name }
+                offer(api.phoneModels())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(unreachable = true, failed = true) }
-                return null
+                if (builtIn == null) {
+                    _state.update { it.copy(unreachable = true, failed = true) }
+                    return null
+                }
+                builtIn
             }
             if (info == null) {
                 _state.update { it.copy(offered = false, unreachable = false) }

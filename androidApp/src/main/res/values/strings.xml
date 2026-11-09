@@ -1076,7 +1076,7 @@
 
     <!-- Settings › Models on this phone (ModelsScreen.kt) -->
     <string name="models_title">Models on this phone</string>
-    <string name="models_intro">The app runs these models on this phone. They come from your server, not with the app. Until one is here, its feature uses a simpler way or your server.</string>
+    <string name="models_intro">The app runs these models on this phone. They're downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app. Until one is here, its feature uses a simpler way or your server.</string>
     <string name="models_photos_title">Photo similarity</string>
     <string name="models_photos_body">Finds photos of the same scene for sets in Moments</string>
     <string name="models_words_title">Search by words</string>
@@ -1104,7 +1104,7 @@
 
     <!-- Onboarding › Models on this phone (ModelsOnboardingScreen.kt) -->
     <string name="models_onboarding_title">Get this phone ready</string>
-    <string name="models_onboarding_body">The app runs a few models on this phone. They come from your server, not with the app.</string>
+    <string name="models_onboarding_body">The app runs a few models on this phone. They're downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app.</string>
     <string name="models_onboarding_checking">Asking your server what it offers…</string>
     <string name="models_onboarding_words_size">%1$s model and its %2$s index</string>
     <string name="models_onboarding_wifi_body">Search by words waits for Wi-Fi. Photo similarity is small and downloads now.</string>

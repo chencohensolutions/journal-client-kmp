@@ -21,7 +21,7 @@ After enrolling and [photo access](photo-access.md), one more step (`ModelsOnboa
 `ModelsOnboarding` in `local/ModelsOnboarding.kt`, with `ModelsOnboardingTest`), on the same state and downloads as
 Settings › [Models on this phone](settings.md#models-on-this-phone):
 
-- **Get this phone ready**, "The app runs a few models on this phone. They come from your server, not with the app."
+- **Get this phone ready**, "The app runs a few models on this phone. They're downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app."
   ("Asking your server what it offers…" until it answers.)
 - A card per model the server offers, with what it does, its size and a bar: **Photo similarity** (11 MB) starts
   downloading as the step shows, whatever the network; **Search by words** ("290 MB model and its 440 MB index") has
