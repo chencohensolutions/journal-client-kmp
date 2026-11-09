@@ -1,6 +1,8 @@
 package com.chencohensolution.journal.ui.library
 
 import android.content.Context
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
@@ -60,6 +62,7 @@ internal object JournalCast {
     private var castContext: CastContext? = null
     private var server: CastServer? = null
     private var session: CastSession? = null
+    private val wifiLocks = mutableListOf<WifiManager.WifiLock>()
 
     /** What is said to the TV, and what it said back. */
     val controller = CastController(scope) { id -> withContext(Dispatchers.IO) { server?.bytesOf(id) } }
@@ -140,6 +143,7 @@ internal object JournalCast {
         session = cast
         val server = server ?: CastServer(app).also { server = it }
         server.start()
+        keepWifiAwake(true)
         runCatching {
             cast.setMessageReceivedCallbacks(CAST_NAMESPACE) { _, namespace, message ->
                 if (namespace == CAST_NAMESPACE) controller.received(message)
@@ -152,7 +156,34 @@ internal object JournalCast {
         session?.let { cast -> runCatching { cast.removeMessageReceivedCallbacks(CAST_NAMESPACE) } }
         session = null
         server?.stop()
+        keepWifiAwake(false)
         controller.disconnected()
+    }
+
+    /**
+     * Holds the Wi-Fi awake while casting. Without it the phone's Wi-Fi dozes between packets and drops the TV's
+     * requests to [CastServer] for seconds at a time (seen Nov 9, 2026): photos then fail and videos stall.
+     */
+    @Suppress("DEPRECATION")
+    private fun keepWifiAwake(awake: Boolean) {
+        if (!awake) {
+            wifiLocks.forEach { if (it.isHeld) it.release() }
+            wifiLocks.clear()
+            return
+        }
+        if (wifiLocks.isNotEmpty()) return
+        val wifi = app.getSystemService(WifiManager::class.java) ?: return
+        // Low latency works while the app is in front with the screen on; high performance covers the rest where the
+        // system still honours it.
+        val modes = listOfNotNull(
+            WifiManager.WIFI_MODE_FULL_LOW_LATENCY.takeIf { Build.VERSION.SDK_INT >= 29 },
+            WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+        )
+        for (mode in modes) {
+            runCatching { wifi.createWifiLock(mode, "$TAG:$mode").apply { setReferenceCounted(false); acquire() } }
+                .onSuccess(wifiLocks::add)
+                .onFailure { Log.w(TAG, "can't keep the Wi-Fi awake", it) }
+        }
     }
 
     private suspend fun send(cast: CastSession, message: String): Boolean = suspendCancellableCoroutine { done ->

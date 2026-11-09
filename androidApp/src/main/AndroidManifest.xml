@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Keeps the Wi-Fi awake while casting, so the TV can always reach the phone (JournalCast). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 17+: the journal server is on the local network; without this, connections to it time out. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Photo library. VISUAL_USER_SELECTED is the "Select photos" (limited) answer. -->

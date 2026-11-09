@@ -50,6 +50,11 @@ second and on each change; `ended` lets the slideshow go on), `error {id, messag
 
 ## If the TV can't fetch from the phone
 
+Seen on Nov 9, 2026: the phone's Wi-Fi dozes between packets and drops the TV's requests for seconds at a time, so
+`JournalCast` holds Wi-Fi locks (low latency, and high performance) while casting, and the receiver gives up a fetch
+that is silent for 10 s and tries three times before asking for chunks. A receiver page the phone left without stopping
+closes itself after a minute, as a stale one blocks the next cast (error 2252 on the phone).
+
 The receiver page is https and the phone's server plain http on the home network. Whether the TV's browser lets the
 page fetch from it (mixed content, and Chrome's Private Network Access) was not known when this was built, and can only
 be tried on a real TV. If the fetch fails, the receiver sends `need`, and the phone sends the photo's bytes over the

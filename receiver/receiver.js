@@ -130,7 +130,15 @@ function clearNote() {
 /** The original's bytes: from its URL on the phone, else (blocked or unreachable) sent by the phone in chunks. */
 async function bytesOf(item) {
   try {
-    return await fetchWatched(item.url);
+    // The phone's Wi-Fi may doze and miss a request: tried three times before the slow way.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await fetchWatched(item.url);
+      } catch (e) {
+        if (attempt >= 3) throw e;
+        console.warn('fetch failed, trying again', item.id, e);
+      }
+    }
   } catch (e) {
     console.warn('fetch failed, asking for chunks', item.id, e);
     return new Promise((resolve, reject) => {
