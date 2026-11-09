@@ -28,7 +28,10 @@ phone (viewer)                                   TV (Cast receiver page)
   random token; it answers `GET`/`HEAD` with `Range` (videos seek), and `OPTIONS` with CORS and
   `Access-Control-Allow-Private-Network`, as the page is on GitHub Pages and the phone on the home network. It serves
   the library's file, an original the app kept, or a server photo's original downloaded now (`ServerPreviews.original`);
-  a video only on the server streams through the video cache (`ServerVideos.playable`). A JPEG XL the server packed
+  a video only on the server is downloaded whole into the cast folder, in order and as fast as the server
+  sends it, while the TV plays it (`VideoDownload`: the TV reads what has arrived and waits at the edge; a jump far
+  ahead streams from the server through the video cache, `ServerVideos.playable`). One at a time; it goes when the
+  next video is cast or casting stops, and without 1 GB free beside it the video streams as the TV reads. A JPEG XL the server packed
   from a JPEG goes as that JPEG, byte for byte (`JpegXl.unpack`): it is the original, and the TV decodes JPEG itself.
   A photo the TV can't read (DNG, other raw files) goes as a JPEG made on the phone at 3840 px.
 - **The receiver decodes**: JPEG, PNG, WebP, GIF and AVIF by the TV's browser; HEIC/HEIF with libheif-js 1.23.5 and

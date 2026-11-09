@@ -9,6 +9,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.CacheDataSource
 import com.chencohensolution.journal.backup.JpegXl
 import com.chencohensolution.journal.cast.CastItem
 import com.chencohensolution.journal.library.MediaItem
@@ -19,6 +20,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.RandomAccessFile
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -71,8 +73,13 @@ internal class CastServer(private val context: Context) {
         }
     }
 
+    /** The video only on the server being downloaded whole while the TV plays it (one at a time). */
+    private var download: VideoDownload? = null
+
     @Synchronized
     fun stop() {
+        download?.cancel()
+        download = null
         socket?.close()
         socket = null
         offered.clear()
@@ -181,7 +188,10 @@ internal class CastServer(private val context: Context) {
             val playable = ServerVideos.playable(context, item) ?: return null
             val uri = playable.item.localConfiguration?.uri ?: return null
             val key = playable.item.localConfiguration?.customCacheKey
-            return StreamedBody(playable.dataSource, uri, key, item.sizeBytes, mime)
+            // Read from the video cache, but not written into it: the whole video goes into its own file below.
+            (playable.dataSource as? CacheDataSource.Factory)?.setCacheWriteDataSinkFactory(null)
+            val streamed = StreamedBody(playable.dataSource, uri, key, item.sizeBytes, mime)
+            return downloadWhole(item, streamed) ?: streamed
         }
         if (!tvReads(mime, item.fileName)) {
             val bitmap = loadImage(context.contentResolver, previews, item, TV_JPEG_SIDE) ?: return null
@@ -199,6 +209,24 @@ internal class CastServer(private val context: Context) {
             JpegXl.unpack(bytes ?: return null)?.let { return MemoryBody(it, "image/jpeg") }
         }
         return if (file != null) FileBody(file, mime) else uriBody(item.contentUri(), mime)
+    }
+
+    /**
+     * A video only on the server, downloaded whole into the cast folder, in order and as fast as the server sends it,
+     * while the TV plays it: the TV reads what has arrived, waits briefly at the edge, and only a jump far ahead goes
+     * to the server directly. The previous video's download stops and its file goes. Null when there is no room.
+     */
+    @Synchronized
+    private fun downloadWhole(item: MediaItem, streamed: StreamedBody): Body? {
+        download?.cancel()
+        download = null
+        val folder = File(context.cacheDir, CAST_DIR).apply { mkdirs() }
+        if (folder.usableSpace < streamed.length + KEEP_FREE_BYTES) return null
+        val file = File(folder, "${item.id.hashCode().toUInt()}.video")
+        return VideoDownload(streamed, file).also {
+            download = it
+            pool.execute(it::run)
+        }
     }
 
     private fun uriBody(uri: android.net.Uri, mime: String): Body? {
@@ -284,6 +312,9 @@ internal class CastServer(private val context: Context) {
         /** Where photos the TV can't read are made into JPEGs while casting; emptied when it stops. */
         private const val CAST_DIR = "cast"
 
+        /** Room left on the phone after downloading a video whole for the TV; else it is streamed as the TV reads. */
+        private const val KEEP_FREE_BYTES = 1L shl 30
+
         /** The longest side of a JPEG made for the TV from a photo it can't read: 4K. */
         private const val TV_JPEG_SIDE = 3840
 
@@ -339,6 +370,98 @@ private class StreamedBody(
             }
             override fun close() = source.close()
         }
+    }
+}
+
+/**
+ * A video downloaded whole from the server into [file], from the start and in order, while the TV reads it: a read
+ * within what has arrived comes from the file; at the edge it waits for the download; a read far past the edge (the TV
+ * jumped ahead) or after the download failed goes to the server through [streamed].
+ */
+private class VideoDownload(private val streamed: StreamedBody, private val file: File) : Body {
+    override val length: Long = streamed.length
+    override val mimeType: String = streamed.mimeType
+
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+    private val lock = java.lang.Object()
+    @Volatile private var written = 0L
+    @Volatile private var failed = false
+    @Volatile private var cancelled = false
+
+    fun run() {
+        val started = System.nanoTime()
+        try {
+            streamed.open(0).use { input ->
+                file.outputStream().use { out ->
+                    val buffer = ByteArray(1 shl 20)
+                    while (!cancelled) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        out.write(buffer, 0, n)
+                        synchronized(lock) {
+                            written += n
+                            lock.notifyAll()
+                        }
+                    }
+                }
+            }
+            if (written < length && !cancelled) error("the video ended at $written of $length bytes")
+            val seconds = (System.nanoTime() - started) / 1e9
+            if (!cancelled) Log.i(TAG, "video downloaded: ${written shr 20} MB in ${"%.1f".format(seconds)} s")
+        } catch (e: Exception) {
+            if (!cancelled) Log.w(TAG, "video download stopped at ${written shr 20} MB", e)
+            failed = true
+        } finally {
+            synchronized(lock) { lock.notifyAll() }
+            if (cancelled) file.delete()
+        }
+    }
+
+    fun cancel() {
+        cancelled = true
+        synchronized(lock) { lock.notifyAll() }
+    }
+
+    override fun open(from: Long): InputStream = object : InputStream() {
+        private var position = from
+        private var reader: RandomAccessFile? = null
+        private var direct: InputStream? = null
+        private val one = ByteArray(1)
+
+        override fun read(): Int = if (read(one, 0, 1) <= 0) -1 else one[0].toInt() and 0xff
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            if (position >= length) return -1
+            direct?.let { stream -> return stream.read(b, off, len).also { if (it > 0) position += it } }
+            synchronized(lock) {
+                while (position >= written && !failed && !cancelled && position - written < WAIT_AHEAD_BYTES && written < length) {
+                    lock.wait(500)
+                }
+            }
+            if (position >= written || cancelled) {
+                // Far past the download, or it stopped (or another video took its place and its file went): straight
+                // from the server from here on.
+                val stream = streamed.open(position).also { direct = it }
+                return stream.read(b, off, len).also { if (it > 0) position += it }
+            }
+            val file = reader ?: RandomAccessFile(this@VideoDownload.file, "r").also { reader = it }
+            file.seek(position)
+            val n = file.read(b, off, minOf(len.toLong(), written - position).toInt())
+            if (n > 0) position += n
+            return n
+        }
+
+        override fun close() {
+            reader?.close()
+            direct?.close()
+        }
+    }
+
+    companion object {
+        private const val TAG = "CastServer"
+
+        /** How far past the download the TV may ask and still wait for it rather than go to the server: 64 MB. */
+        private const val WAIT_AHEAD_BYTES = 64L shl 20
     }
 }
 
