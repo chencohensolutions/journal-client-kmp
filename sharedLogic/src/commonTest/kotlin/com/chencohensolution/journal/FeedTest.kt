@@ -248,6 +248,24 @@ class FeedTest {
     }
 
     @Test
+    fun aBurstIsASetOfItsOwn() {
+        // Every photo looks alike, but the burst's shots make one set and the photos before and after it others.
+        val same = PhotoFingerprint(longArrayOf(0L), listOf(byteArrayOf(1, 2, 3)))
+        val looks = PhotoLooks(listOf("a1", "a2", "b1", "b2", "b3", "c1", "c2").associateWith { same }, 0.9f)
+        val items = arrayOf(
+            pic("a1", 0), pic("a2", 1),
+            pic("b1", 2, burst = "x"), pic("b2", 2, burst = "x", second = 1), pic("b3", 2, burst = "x", second = 2),
+            pic("c1", 3), pic("c2", 4),
+        )
+        val blocks = feed(*items, looks = looks).sections().single().moments.single().blocks
+        assertEquals(listOf(listOf("a1", "a2"), listOf("b1", "b2", "b3"), listOf("c1", "c2")), blocks.map { block -> block.items.map { it.id } }.sortedBy { it.first() })
+        // Two bursts one after the other stay two sets.
+        val two = feed(pic("p1", 0, burst = "p"), pic("p2", 0, burst = "p", second = 1), pic("q1", 0, burst = "q", second = 3), pic("q2", 0, burst = "q", second = 4))
+            .sections().single().moments.single().blocks
+        assertEquals(2, two.size)
+    }
+
+    @Test
     fun momentsAreNamedByTheirPlaces() {
         val places = Places(
             emptyMap(),

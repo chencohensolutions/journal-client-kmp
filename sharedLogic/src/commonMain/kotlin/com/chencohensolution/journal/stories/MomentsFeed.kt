@@ -480,12 +480,15 @@ internal fun blocksOf(
         val first = run?.first()
         val joins = run != null && closed.none { it === run } && first != null && item.type == MediaType.IMAGE && first.type == MediaType.IMAGE &&
             item.id !in alone && first.id !in alone && (
-            (first.burstId != null && first.burstId == item.burstId) ||
-                (if (looks.canCompare(first) && looks.canCompare(item)) {
-                    looks.similar(first, item)
-                } else {
-                    item.takenAtMillis - run.last().takenAtMillis <= BURST_GAP_MILLIS
-                })
+            // A camera burst is a set of its own (asked Nov 9, 2026): its shots join only each other, and a photo
+            // that looks like them stays out, before or after it.
+            if (first.burstId != null || item.burstId != null) {
+                first.burstId == item.burstId
+            } else if (looks.canCompare(first) && looks.canCompare(item)) {
+                looks.similar(first, item)
+            } else {
+                item.takenAtMillis - run.last().takenAtMillis <= BURST_GAP_MILLIS
+            }
             )
         if (joins) run += item else runs += mutableListOf(item)
     }

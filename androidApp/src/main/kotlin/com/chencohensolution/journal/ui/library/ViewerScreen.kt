@@ -219,6 +219,7 @@ internal fun ViewerScreen(
     var editingCaption by rememberSaveable { mutableStateOf(false) }
     // The whole photo instead of its crop, until turned back (kept while swiping).
     var showWhole by rememberSaveable { mutableStateOf(false) }
+    val whole = showWhole
     // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
     val window = LocalWindowInfo.current.containerSize
     val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
@@ -324,7 +325,7 @@ internal fun ViewerScreen(
                     VideoPage(item, sharedKey(item), isCurrent = page == shownIndex)
                 } else {
                     val pageZoom = zoomOf(item)
-                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole && !pageZoom.isZoomed }, pageZoom)
+                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
                 }
             }
         } else HorizontalPager(
@@ -365,17 +366,18 @@ internal fun ViewerScreen(
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage)
             } else {
                 val pageZoom = zoomOf(item)
-                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !showWhole && !pageZoom.isZoomed }, pageZoom)
+                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom)
             }
         }
 
         AnimatedVisibility(
-            chrome && set == null && currentCrop != null && !showInfo,
+            // Always there over a cropped photo, not only with the bars (Nov 9, 2026: a toggle instead of holding).
+            currentCrop != null && !showInfo && !playing,
             Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            CropChip(showingWhole = showWhole, onToggle = { showWhole = !showWhole })
+            CropChip(showingWhole = whole, onToggle = { showWhole = !showWhole })
         }
         if (set != null) {
             AnimatedVisibility(

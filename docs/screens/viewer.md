@@ -17,8 +17,8 @@ from under you. If the open item is deleted from the device, the viewer closes.
 
 ## Layout
 
-The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar, the bottom buttons and the
-crop chip for 3 seconds, and another tap hides them sooner. They stay while the details panel, a sheet or the note
+The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar and the bottom buttons
+for 3 seconds, and another tap hides them sooner. They stay while the details panel, a sheet or the note
 editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
@@ -34,7 +34,10 @@ Swiping is not a tap; a playing video's own controls take its taps.
   without the original: "Couldn’t get the original to share." Hidden while the details panel is open; back or a tap on the photo closes the panel. The
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
 - **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
-  **Cropped · Show all** at the top.
+  **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+  The chip **stays on screen** over a cropped photo (not only with the bars) and toggles between the crop and the
+  whole photo, in a set too (Nov 9, 2026, Android only; iOS not built yet). It replaced holding a finger on the
+  photo, asked for the same day.
 - **Photos:** a small version appears at once, then the full image (at most 2560 px on the longer side on Android,
   screen size on iOS).
 - **Zoom** (asked for Oct 21, 2026, reworked the same day; iOS since Oct 22, see Platform notes):

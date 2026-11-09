@@ -307,7 +307,8 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
   from the last located one. A walk stays one moment; a drive to another town doesn't. Photos without GPS stay with
   their neighbors.
 - **Near-duplicates:** a photo joins the set before it when it looks like the set's first photo or is from the same
-  camera burst. Photos not fingerprinted yet join when taken within 10 seconds (`BURST_GAP_MILLIS`).
+  camera burst. A **camera burst is a set of its own** (Nov 9, 2026): its shots join only each other, so a photo
+  that looks like them, taken just before or after, makes another set. Photos not fingerprinted yet join when taken within 10 seconds (`BURST_GAP_MILLIS`).
   - Two photos look alike when their **dHash** (64-bit difference hash of a 9×8 grayscale copy) differs in at most 10
     bits, when the cosine similarity of the platform's image embedding reaches the **How alike** threshold in
     [Settings](settings.md), or when they share the camera's burst id (iOS `burstIdentifier`; Samsung

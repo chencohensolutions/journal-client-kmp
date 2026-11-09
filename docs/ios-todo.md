@@ -23,6 +23,9 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
+  Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
+  over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
 - **Moment sets: highlights, flipping in the feed, the viewer's set mode, Recompose, Make a moment** (Android Nov 9,
   2026; [moments.md](screens/moments.md#sets-nov-9-2026), [viewer.md](screens/viewer.md#a-set-nov-9-2026),
   [crop.md](screens/crop.md#a-set-recompose-nov-9-2026); plan [plans/moment-sets.md](plans/moment-sets.md)). Shared
