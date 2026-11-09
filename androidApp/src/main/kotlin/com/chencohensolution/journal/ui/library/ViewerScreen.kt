@@ -29,8 +29,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.abs
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.PressGestureScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.alpha
@@ -221,9 +219,7 @@ internal fun ViewerScreen(
     var editingCaption by rememberSaveable { mutableStateOf(false) }
     // The whole photo instead of its crop, until turned back (kept while swiping).
     var showWhole by rememberSaveable { mutableStateOf(false) }
-    // Held: a finger kept on the photo shows the whole photo until it lets go (Nov 9, 2026).
-    var peeking by remember { mutableStateOf(false) }
-    val whole = showWhole || peeking
+    val whole = showWhole
     // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
     val window = LocalWindowInfo.current.containerSize
     val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
@@ -287,7 +283,6 @@ internal fun ViewerScreen(
                 }
                 .pointerInput(current.type == MediaType.VIDEO, playing) {
                     detectTapGestures(
-                        onPress = { peekWhileHeld { peeking = it } },
                         onDoubleTap = { at ->
                             if (current.type == MediaType.VIDEO) return@detectTapGestures
                             chrome = false
@@ -356,7 +351,6 @@ internal fun ViewerScreen(
                         detectTapGestures(onTap = onTap)
                     } else {
                         detectTapGestures(
-                            onPress = { peekWhileHeld { peeking = it } },
                             onDoubleTap = { at ->
                                 chrome = false
                                 showInfo = false
@@ -377,7 +371,8 @@ internal fun ViewerScreen(
         }
 
         AnimatedVisibility(
-            (chrome || peeking) && currentCrop != null && !showInfo && !playing,
+            // Always there over a cropped photo, not only with the bars (Nov 9, 2026: a toggle instead of holding).
+            currentCrop != null && !showInfo && !playing,
             Modifier.align(Alignment.TopCenter).statusBarRoom().padding(top = 60.dp),
             enter = fadeIn(),
             exit = fadeOut(),
@@ -798,24 +793,6 @@ private fun ViewerImage(
         }
     }
 }
-
-/**
- * A press held on the photo for [PEEK_MILLIS] without moving shows the whole photo until the finger lets go; a tap,
- * a swipe or a pinch never does.
- */
-private suspend fun PressGestureScope.peekWhileHeld(onPeek: (Boolean) -> Unit) {
-    coroutineScope {
-        val held = launch {
-            delay(PEEK_MILLIS)
-            onPeek(true)
-        }
-        tryAwaitRelease()
-        held.cancel()
-        onPeek(false)
-    }
-}
-
-private const val PEEK_MILLIS = 300L
 
 /** "Cropped · Show all" over a cropped photo, or "Show crop" while the whole photo shows. */
 @Composable
