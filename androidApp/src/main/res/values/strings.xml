@@ -1125,4 +1125,45 @@
     <string name="picking_write">Write</string>
     <string name="picking_edit">Edit</string>
     <string name="picking_take_out">Take out</string>
+    <!-- Moment sets (docs/screens/moments.md, viewer.md, crop.md) -->
+    <string name="set_position">%1$d of %2$d</string>
+    <string name="set_hold_to_flip">Hold and slide to flip</string>
+    <plurals name="set_line">
+        <item quantity="one">%d photo in this set</item>
+        <item quantity="other">%d photos in this set</item>
+    </plurals>
+    <string name="set_part_of">Part of %1$s</string>
+    <string name="set_play_here">Play here</string>
+    <string name="set_highlight">Highlight</string>
+    <string name="set_highlighted">Highlight</string>
+    <string name="set_play">Play</string>
+    <string name="set_stop">Stop</string>
+    <string name="set_recompose">Recompose</string>
+    <string name="set_speed_fast">Fast</string>
+    <string name="set_speed_normal">Normal</string>
+    <string name="set_speed_slow">Slow</string>
+    <string name="set_all_photos">All photos</string>
+    <plurals name="set_photos">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+    <string name="set_highlights">Highlights</string>
+    <string name="set_highlights_hint">Hold one and drag to change the order</string>
+    <string name="set_more">More</string>
+    <string name="recompose_same_frame">Same frame for all</string>
+    <string name="recompose_shape_original">Original</string>
+    <string name="recompose_shape_square">Square</string>
+    <string name="recompose_shape_portrait">4:5</string>
+    <string name="recompose_shape_wide">Wide</string>
+    <string name="recompose_hint">Drag to move the frame, pinch to size it. Same frame for all gives every photo of this shape this frame.</string>
+    <string name="make_moment">Make a moment</string>
+    <string name="make_moment_title">New moment</string>
+    <string name="make_moment_name">Name</string>
+    <string name="make_moment_highlights">Highlights</string>
+    <string name="make_moment_highlights_hint">Tap the photos Moments shows of it, in order. None: its best-looking photo.</string>
+    <string name="make_moment_show_on">Show it in Moments on</string>
+    <string name="make_moment_every_day">Every day it has</string>
+    <string name="make_moment_hint_each">Each day shows its own photos, with a link to the whole moment.</string>
+    <string name="make_moment_hint_one">Its photos leave their days and show here together.</string>
+    <string name="make_moment_make">Make it</string>
 </resources>

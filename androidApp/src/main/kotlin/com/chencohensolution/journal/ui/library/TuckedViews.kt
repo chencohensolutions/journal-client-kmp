@@ -175,6 +175,8 @@ internal class PickingExtras(
     val merge: (() -> Unit)? = null,
     /** Moments, one set picked: the photo it is turned to leaves it. */
     val takeOut: (() -> Unit)? = null,
+    /** Moments, two or more photos picked: Make a moment's sheet (a name, highlights, the days it shows on). */
+    val makeMoment: (() -> Unit)? = null,
 )
 
 /**
@@ -226,6 +228,7 @@ internal fun PickingBar(
                 extras.crop?.let { add(R.string.feed_menu_crop to it) }
                 extras.tag?.let { add(R.string.library_tag to it) }
             }
+            extras.makeMoment?.let { add(R.string.make_moment to it) }
             extras.merge?.let { add(R.string.feed_merge to it) }
             extras.takeOut?.let { add(R.string.picking_take_out to it) }
         }

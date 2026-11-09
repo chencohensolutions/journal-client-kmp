@@ -27,25 +27,21 @@ internal val labScreens: List<LabScreen> = listOf(
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
     )),
-    // A set of many photos (Nov 9, 2026; the iOS lab's moment-set round): MomentSetLab.kt.
+    // A set of photos (promoted from the moment-set round, Nov 9, 2026): the app's screens with the preview data.
     LabScreen("moment-set", "A set of photos", listOf(
         current {
             JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
         },
-        LabOption("a", "a: Set page", "Main photo on top with Play, then every photo in a grid; hold a tile for more") {
-            LibraryTheme(dark = true) { MomentSetScreenA(MomentSetLab.beach()) }
+        LabOption("viewer", "Viewer on a set", "Cross-fading swipes, the scrubber, Highlight · Play · Recompose") {
+            val set = labSet()
+            ViewerScreen(set, set.first().id, PreviewData.feedStories, ViewerActions(), set = ViewerSet(highlights = listOf(set[1].id)))
         },
-        LabOption("b", "b: Viewer with a scrubber", "Opens on the main photo; slide along the strip to flip through all 36") {
-            LibraryTheme(dark = true) { MomentSetScreenB(MomentSetLab.beach()) }
+        LabOption("recompose", "Recompose", "The crop screen's set mode: the strip, shapes, Same frame for all") {
+            val set = labSet()
+            SetCropEditor(set, emptyMap(), set.first().id, onDone = {}, onClose = {})
         },
-        LabOption("b-recompose", "b: Recompose", "A frame per photo, the set's strip, Same frame for all") {
-            LibraryTheme(dark = true) { MomentSetScreenB(MomentSetLab.beach(), at = 14, recomposing = true) }
-        },
-        LabOption("c", "c: Flip in the feed", "The set stays one photo in Moments: hold and slide to flip, Play in place") {
-            LibraryTheme(dark = true) { MomentSetScreenC(MomentSetLab.beach()) }
-        },
-        LabOption("d", "d: Collect a weekend", "Pick photos over neighbouring days, a tray counts them, Make a moment") {
-            LibraryTheme(dark = true) { MomentSetScreenD() }
+        LabOption("make", "Make a moment", "The sheet from the picking bar: name, highlights, the days it shows on") {
+            LibraryTheme(dark = true) { MakeMomentSheet(labSet(), onMake = { _, _, _ -> }, onDismiss = {}) }
         },
     )),
     // Made-up data (KindsLab): unlocked, as the emulator has no screen lock; the switches work while it is open.
@@ -252,3 +248,10 @@ internal val labScreens: List<LabScreen> = listOf(
         },
     )),
 )
+
+/** The first set of the preview feed's photos. */
+private fun labSet(): List<com.chencohensolution.journal.library.MediaItem> =
+    PreviewData.feedStories.feed.entries.asSequence()
+        .flatMap { (it as com.chencohensolution.journal.stories.FeedEntry.Section).section.moments }
+        .flatMap { it.blocks }
+        .first { it is com.chencohensolution.journal.stories.FeedBlock.Similar }.items

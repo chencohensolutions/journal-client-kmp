@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalDensity
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.stories.FeedBlock
+import com.chencohensolution.journal.stories.ShowOn
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.FeedReveal
 import com.chencohensolution.journal.stories.RevealedPhotos
@@ -126,6 +127,10 @@ internal class HomeActions(
     val registerAgain: () -> Unit = {},
     /** Moments: the photos of the sets and photos picked become one set; a photo leaves its set. */
     val merge: (itemIds: List<String>) -> Unit = {},
+    /** Moments: a set (its photos' ids in order, and those at hand) opens in the viewer on its own, at a photo. */
+    val openSet: (itemIds: List<String>, items: List<MediaItem>, item: MediaItem) -> Unit = { _, _, _ -> },
+    /** Make a moment: the photos picked become one named set ([StoriesController.makeMoment]); then it opens. */
+    val makeMoment: (items: List<MediaItem>, name: String, highlightIds: List<String>, showOn: ShowOn) -> Unit = { _, _, _, _ -> },
     val takeOutOfSet: (itemId: String) -> Unit = {},
     /** From a photo's long-press menu in Moments, by item id. */
     val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
@@ -200,6 +205,8 @@ internal fun JournalHomeScreen(
     // The photo being written about or tagged from the picking bar.
     var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
     var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
+    // The photos picked for Make a moment while its sheet is open.
+    var makingMoment by remember { mutableStateOf<List<MediaItem>?>(null) }
     // Photos and sets picked (a long press in Moments or the storyline); back stops picking.
     val selection = remember { FeedSelection().apply { initialSelection.forEach(::toggle) } }
     BackHandler(enabled = selection.active) { selection.clear() }
@@ -409,6 +416,7 @@ internal fun JournalHomeScreen(
     val feedActions = remember {
         FeedActions(
             openItem = { section, item -> currentActions.openItem(section, item) },
+            openSet = { ids, items, item -> currentActions.openSet(ids, items, item) },
             openStoryline = { currentActions.openStoryline(it) },
             toggleTucked = { days -> currentLock { currentTucked.toggleDays(days) } },
             showOnRow = { section, source ->
@@ -558,7 +566,9 @@ internal fun JournalHomeScreen(
                             written = one?.let { stories.notes[it.id]?.hasWriting } == true,
                             crop = one?.takeIf { it.durationMillis == null }?.let { item -> then { actions.crop(item.id) } },
                             tag = one?.let { item -> then { tagFor = item.id } },
-                            merge = if (pickedBlocks.size >= 2) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
+                            // Merge stays for sets without a name; a moment made by hand is made again with Make a moment.
+                            merge = if (pickedBlocks.size >= 2 && pickedBlocks.none { it.named != null }) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
+                            makeMoment = if (moments && picked.size >= 2) then { makingMoment = picked } else null,
                             takeOut = if (setOfPressed != null && pressed != null) then { actions.takeOutOfSet(pressed) } else null,
                         ),
                     )
@@ -626,6 +636,16 @@ internal fun JournalHomeScreen(
 
     }
 
+    makingMoment?.let { picked ->
+        MakeMomentSheet(
+            picked,
+            onMake = { name, highlights, showOn ->
+                makingMoment = null
+                actions.makeMoment(picked, name, highlights, showOn)
+            },
+            onDismiss = { makingMoment = null },
+        )
+    }
     writingFor?.let { id ->
         NoteEditor(
             note = stories.notes[id],
