@@ -22,7 +22,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -191,6 +193,8 @@ internal class ViewerSet(
     val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
     /** The crop screen's set mode, on this photo. */
     val recompose: (itemId: String) -> Unit = {},
+    /** Names or renames it; blank: unnamed. */
+    val rename: (name: String) -> Unit = {},
 )
 
 /** One photo or video at a time, swiping through [items]. See docs/screens/viewer.md. */
@@ -225,6 +229,7 @@ internal fun ViewerScreen(
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var naming by rememberSaveable { mutableStateOf(false) }
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     // The next photo's full image is decoded (downloaded when only on the server) before the slideshow shows it.
@@ -494,6 +499,17 @@ internal fun ViewerScreen(
                                     show(current.id)
                                 })
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (set.name != null) R.string.set_rename else R.string.set_name_it)) },
+                                onClick = {
+                                    menu = false
+                                    naming = true
+                                },
+                            )
+                        }
+                        if (naming) MomentNameDialog(set.name.orEmpty(), onDismiss = { naming = false }) { name ->
+                            naming = false
+                            set.rename(name)
                         }
                     }
                 } else if (showInMoments == null) {
@@ -988,4 +1004,19 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, onStopped: (Long) -> Uni
         )
         failed?.let { Text(stringResource(it), color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
     }
+}
+
+/** A moment's name, to give or change (the set viewer's ⋯ menu); saved as typed, an empty one leaves it unnamed. */
+@Composable
+private fun MomentNameDialog(name: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var typed by rememberSaveable { mutableStateOf(name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.set_name_title)) },
+        text = {
+            OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+        },
+        confirmButton = { TextButton(onClick = { onSave(typed) }) { Text(stringResource(R.string.set_name_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
+    )
 }

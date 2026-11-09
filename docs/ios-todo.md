@@ -26,6 +26,11 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Naming or renaming a moment** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): the set
+  viewer's ⋯ menu ends with "Name this moment" / "Rename moment" (מתן שם לרגע / שינוי שם הרגע), opening an alert
+  "Moment name" (שם הרגע) with a text field (placeholder "No name" / ללא שם), Save (שמירה) and Cancel →
+  `StoriesController.nameMoment(itemIds:name:)` with the set's ids; blank leaves it unnamed. Android: `MomentNameDialog`
+  and `ViewerSet.rename` in `ViewerScreen.kt`, wired in `LibraryApp.kt`.
 - **Slideshow waits for the next photo** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)):
   while one photo shows, the next is decoded at the viewer's full size (downloaded if server-only), and the switch
   waits for it (at most 15 s), so it never shows blurred first; the photo page starts from those kept images.

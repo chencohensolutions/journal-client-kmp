@@ -624,6 +624,22 @@ class StoriesController internal constructor(
     }
 
     /**
+     * Names the set [itemIds] (all its photos) [name], or renames it; a blank name leaves it unnamed (asked Nov 9,
+     * 2026). Its "Show it in Moments on" stays. A set the app made by itself becomes one made by hand, so it stays
+     * together with its name.
+     */
+    fun nameMoment(itemIds: List<String>, name: String) {
+        val ids = itemIds.distinct()
+        if (ids.size < 2) return
+        val old = ids.firstNotNullOfOrNull { notes[it]?.setInfo }
+        if (old == null && name.isBlank()) return
+        val set = ids.map { notes[it]?.feedSet }.toSet().singleOrNull() ?: newId()
+        val cover = highlightOrder(ids).firstOrNull() ?: ids.first()
+        val info = SetInfo(name.trim(), old?.showOn ?: ShowOn.FIRST)
+        changeNotes(ids) { note -> note.copy(feedSet = set, apart = false, setInfo = info.takeIf { note.deviceId == cover }) }
+    }
+
+    /**
      * ☆ Highlight: [itemId] of the set [itemIds] becomes its last highlight ([on]), or stops being one; the others are
      * numbered again from 1. A moment's name moves with its cover (the first highlight).
      */

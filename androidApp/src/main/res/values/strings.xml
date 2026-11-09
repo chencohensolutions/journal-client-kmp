@@ -1134,6 +1134,11 @@
     </plurals>
     <string name="set_part_of">Part of %1$s</string>
     <string name="set_part_of_unnamed">Part of a moment</string>
+    <string name="set_name_it">Name this moment</string>
+    <string name="set_rename">Rename moment</string>
+    <string name="set_name_title">Moment name</string>
+    <string name="set_name_hint">No name</string>
+    <string name="set_name_save">Save</string>
     <string name="set_play_here">Play here</string>
     <string name="set_highlight">Highlight</string>
     <string name="set_highlighted">Highlight</string>

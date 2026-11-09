@@ -1187,6 +1187,11 @@
     </plurals>
     <string name="set_part_of">חלק מ%1$s</string>
     <string name="set_part_of_unnamed">חלק מרגע</string>
+    <string name="set_name_it">מתן שם לרגע</string>
+    <string name="set_rename">שינוי שם הרגע</string>
+    <string name="set_name_title">שם הרגע</string>
+    <string name="set_name_hint">ללא שם</string>
+    <string name="set_name_save">שמירה</string>
     <string name="set_play_here">הפעלה כאן</string>
     <string name="set_highlight">הדגשה</string>
     <string name="set_highlighted">מודגשת</string>

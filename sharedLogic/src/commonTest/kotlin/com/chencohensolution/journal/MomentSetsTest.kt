@@ -201,6 +201,30 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aMomentIsNamedAndRenamedLater() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "", listOf("s1"), ShowOn.LAST)
+        stories.nameMoment(weekend, " Beach weekend ")
+        assertEquals("Beach weekend", stories.currentState.namedSetOf("u")?.name)
+        // Its place in Moments and its cover stay.
+        assertEquals(ShowOn.LAST, stories.currentState.namedSetOf("u")?.showOn)
+        assertEquals("Beach weekend", stories.currentState.note("s1")?.setInfo?.name)
+        assertEquals(weekend.map { "set-1" }, weekend.map { stories.currentState.note(it)?.feedSet })
+
+        stories.nameMoment(weekend, "Sea")
+        assertEquals("Sea", stories.currentState.feed.blocks().single { it.items.size == 4 }.named?.name)
+        // Cleared: unnamed, still together.
+        stories.nameMoment(weekend, "  ")
+        assertNull(stories.currentState.feed.blocks().single { it.items.size == 4 }.named!!.name)
+
+        // Kept after a restart.
+        stories.nameMoment(weekend, "Sea")
+        assertEquals("Sea", setup(setup.fileSystem).stories.currentState.namedSetOf("f")?.name)
+    }
+
+    @Test
     fun aMomentNeedsNoName() = runTest {
         val setup = setup()
         val stories = setup.stories
