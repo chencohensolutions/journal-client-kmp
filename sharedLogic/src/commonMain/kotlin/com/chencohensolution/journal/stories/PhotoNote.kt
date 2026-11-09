@@ -31,8 +31,11 @@ data class PhotoNote(
     val feedSet: String? = null,
     /** Taken out of a set in Moments: never put in one by itself again. */
     val apart: Boolean = false,
-    /** The photo its set in Moments opens on: the one it was last turned to (never its first, where it opens anyway). */
-    val front: Boolean = false,
+    /**
+     * Its place among its set's highlights (1, 2, 3…), what Moments shows of the set; the first is the set's cover, where
+     * it opens. Null: not a highlight.
+     */
+    val highlight: Int? = null,
     /** Shown above the photo in Moments. */
     val title: String = "",
     /** When [title] and [caption] were saved (RFC 3339); null for a note written before titles existed. */
@@ -46,10 +49,12 @@ data class PhotoNote(
      * photo, with the screen's shape as its aspect. It opens there next time. Null: fitted.
      */
     val zoom: CropRect? = null,
+    /** A moment made by hand ("Make a moment"): its name and which days show it; on its cover, or on any of its photos. */
+    val setInfo: SetInfo? = null,
 ) {
     val isEmpty: Boolean
         get() = caption.isBlank() && title.isBlank() && history.isEmpty() && tags.isEmpty() && crops.isEmpty &&
-            feedSet == null && !apart && !front && zoom == null
+            feedSet == null && !apart && highlight == null && zoom == null && setInfo == null
 
     val hasWriting: Boolean get() = title.isNotBlank() || caption.isNotBlank()
 
@@ -74,6 +79,25 @@ data class PhotoNote(
     companion object {
         /** Saves closer together than this are one version. */
         val VERSION_GAP = 10.minutes
+    }
+}
+
+/** A set made into a moment by hand ([StoriesController.makeMoment]). */
+data class SetInfo(val name: String, val showOn: ShowOn = ShowOn.FIRST)
+
+/** Which days of a named set show it in Moments. */
+enum class ShowOn(val id: String) {
+    /** Where its oldest photo is. */
+    FIRST("first"),
+
+    /** Where its newest photo is. */
+    LAST("last"),
+
+    /** Every day it has: each day its own photos, with a link to the whole set. */
+    EACH("each");
+
+    companion object {
+        fun of(id: String?): ShowOn = entries.firstOrNull { it.id == id } ?: FIRST
     }
 }
 
@@ -186,7 +210,7 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
         /** The fields this version writes; everything else in a file is kept as it was. */
         val NOTE_KEYS = setOf(
             "v", "deviceId", "fileName", "takenAt", "title", "caption", "writtenAt", "history", "storyline", "tags", "crops", "set",
-            "apart", "front", "zoom", "updatedAt",
+            "apart", "front", "highlight", "setInfo", "zoom", "updatedAt",
         )
         val CROP_KEYS = setOf("moments", "portrait", "landscape")
 
@@ -215,13 +239,14 @@ internal class FilePhotoNoteStore(private val fileSystem: FileSystem, root: Path
 }
 
 /**
- * media/<id>.json, format version 4 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt,
- * history or storyline; version 3 no zoom). "caption" is the paragraph; "storyline": false once removed from the
+ * media/<id>.json, format version 5 (version 1 had no crops, sets, apart or front; version 2 no title, writtenAt,
+ * history or storyline; version 3 no zoom; version 4 had "front", the photo a set opens on, read as highlight 1, and no
+ * "highlight" or "setInfo"). "caption" is the paragraph; "storyline": false once removed from the
  * storyline; "zoom": the part of the photo the viewer showed when last left, like a crop.
  */
 @Serializable
 private data class NoteFile(
-    val v: Int = 4,
+    val v: Int = 5,
     val deviceId: String,
     val fileName: String? = null,
     val takenAt: Long = 0,
@@ -235,18 +260,23 @@ private data class NoteFile(
     /** The set merged by hand in Moments; "apart": taken out of one. */
     val set: String? = null,
     val apart: Boolean? = null,
-    /** The photo its set opens on. */
+    /** Format 4: the photo its set opens on; read as highlight 1, never written. */
     val front: Boolean? = null,
+    /** Its place among its set's highlights, from 1. */
+    val highlight: Int? = null,
+    val setInfo: SetInfoFile? = null,
     val zoom: RectFile? = null,
     val updatedAt: String = "",
 ) {
     fun toNote() = PhotoNote(
-        deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true, front == true,
+        deviceId, fileName, takenAt, caption, tags, updatedAt, crops?.toCrops() ?: PhotoCrops(), set, apart == true,
+        highlight = highlight ?: 1.takeIf { front == true },
         title = title.orEmpty(),
         writtenAt = writtenAt,
         history = history.orEmpty().map { NoteVersion(it.title.orEmpty(), it.text.orEmpty(), it.savedAt) },
         inStoryline = storyline != false,
         zoom = zoom?.toRect(),
+        setInfo = setInfo?.let { SetInfo(it.name, ShowOn.of(it.showOn)) },
     )
 
     companion object {
@@ -263,12 +293,17 @@ private data class NoteFile(
             crops = note.crops.takeIf { !it.isEmpty }?.let(CropsFile::of),
             set = note.feedSet,
             apart = note.apart.takeIf { it },
-            front = note.front.takeIf { it },
+            highlight = note.highlight,
+            setInfo = note.setInfo?.let { SetInfoFile(it.name, it.showOn.id) },
             zoom = note.zoom?.let(RectFile::of),
             updatedAt = note.updatedAt,
         )
     }
 }
+
+/** "setInfo": {"name": "Beach weekend", "showOn": "first" | "last" | "each"}. */
+@Serializable
+private data class SetInfoFile(val name: String, val showOn: String = "first")
 
 /** One of "history": an earlier title and paragraph and when they were saved. */
 @Serializable

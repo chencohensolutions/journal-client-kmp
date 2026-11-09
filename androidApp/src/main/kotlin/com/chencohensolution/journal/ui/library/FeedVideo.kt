@@ -57,9 +57,8 @@ internal class FeedVideo(
     private val playingId: () -> String? = { null },
     private val isMuted: () -> Boolean = { true },
     val toggleMute: () -> Unit = {},
-    /** The photo a set was last turned to, kept in its note across launches, and remembering it. */
+    /** The photo a set opens on: its cover (its first highlight, else its best-looking photo). */
     private val savedPage: (FeedBlock) -> String? = { null },
-    private val savePage: (FeedBlock, itemId: String) -> Unit = { _, _ -> },
 ) {
     /** Videos only on the server play too, streamed into the video cache ([ServerVideos]). */
     fun isPlaying(item: MediaItem): Boolean = item.type == MediaType.VIDEO && playingId() == item.id
@@ -69,16 +68,12 @@ internal class FeedVideo(
     /** The item each swipe set shows, by the set's key: a set plays the video it is turned to. */
     private val pages = mutableStateMapOf<String, String>()
 
+    /** [block] was turned to [itemId]: kept while the feed is shown, never saved (notes keep highlights instead). */
     fun showPage(block: FeedBlock, itemId: String) {
-        if (pages[block.key] == itemId) return
-        // A set scrolling into view reports the page it opened on, which is already saved (or is its first): only a
-        // turn is saved.
-        val openedOn = if (block.key in pages) null else block.items[startPage(block)].id
-        pages[block.key] = itemId
-        if (itemId != openedOn) savePage(block, itemId)
+        if (pages[block.key] != itemId) pages[block.key] = itemId
     }
 
-    /** The page [block] opens on: the one it was last turned to, else its first. */
+    /** The page [block] opens on: the one it was last turned to, else its cover, else its first. */
     fun startPage(block: FeedBlock): Int =
         (pages[block.key] ?: savedPage(block))?.let { id -> block.items.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
 

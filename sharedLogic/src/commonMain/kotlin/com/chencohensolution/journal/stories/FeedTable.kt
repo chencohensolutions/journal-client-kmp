@@ -34,6 +34,8 @@ internal class FeedContext(
      * (FeedPager), never saved; the rows kept only count them.
      */
     val tuckedShown: Set<LocalDay> = emptySet(),
+    /** Where the named sets show ([placementsIn]). */
+    val placements: Map<String, ShowOn> = emptyMap(),
 )
 
 /**
@@ -156,7 +158,7 @@ internal class FeedTable(
     }
 
     private fun build(window: DayWindow, source: FeedSource, context: FeedContext): List<FeedSection> =
-        buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds)
+        buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds, placements = context.placements)
 
     /** [table] keeping the items it read last: a span is read once more to widen it, and again to make its rows. */
     private class LastItems(private val table: FeedTable) : FeedSource by table {

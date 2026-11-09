@@ -403,18 +403,6 @@ class FeedControllerTest {
         advanceUntilIdle()
         assertEquals(5, stories.currentState.feed.sections().single().items.size)
 
-        // The photo a set was turned to is kept in its note file, so it syncs; turning back to its first forgets it.
-        stories.turnSet(listOf("a", "b"), "b")
-        assertEquals(true, stories.currentState.note("b")?.front)
-        assertEquals(true, FilePhotoNoteStore(fileSystem, "/data/journal".toPath()).loadAll().single { it.deviceId == "b" }.front)
-        stories.turnSet(listOf("a", "b"), "a")
-        assertEquals(null, stories.currentState.note("b"))
-        assertEquals(null, stories.currentState.note("a"))
-        // A set scrolling into view reports the page it already shows: no new state, which would redraw the screen.
-        val before = stories.currentState
-        stories.turnSet(listOf("a", "b"), "a")
-        assertSame(before, stories.currentState)
-
         // Merged by hand, then one taken out: kept in the note files, so they survive a restart.
         stories.mergeInFeed(listOf("c", "w"))
         advanceUntilIdle()

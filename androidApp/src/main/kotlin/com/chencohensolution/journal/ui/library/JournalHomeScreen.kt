@@ -127,8 +127,6 @@ internal class HomeActions(
     /** Moments: the photos of the sets and photos picked become one set; a photo leaves its set. */
     val merge: (itemIds: List<String>) -> Unit = {},
     val takeOutOfSet: (itemId: String) -> Unit = {},
-    /** A swipe set (its photos, in order) was turned to a photo: it opens there next time. */
-    val turnSet: (itemIds: List<String>, itemId: String) -> Unit = { _, _ -> },
     /** From a photo's long-press menu in Moments, by item id. */
     val setWriting: (itemId: String, title: String, text: String) -> Unit = { _, _, _ -> },
     val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
@@ -371,7 +369,6 @@ internal fun JournalHomeScreen(
             isMuted = { muted.value },
             toggleMute = { muted.value = !muted.value },
             savedPage = { block -> currentStories.frontOf(block.items) },
-            savePage = { block, id -> currentActions.turnSet(block.items.map { it.id }, id) },
         )
     }
     LaunchedEffect(list, canPlay) {

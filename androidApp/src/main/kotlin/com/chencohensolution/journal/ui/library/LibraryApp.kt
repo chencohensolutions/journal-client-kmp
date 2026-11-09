@@ -318,7 +318,6 @@ private fun LibraryScreens(
                                         crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
                                         merge = stories::mergeInFeed,
                                         takeOutOfSet = stories::takeOutOfSet,
-                                        turnSet = stories::turnSet,
                                         setInStoryline = stories::setInStoryline,
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
