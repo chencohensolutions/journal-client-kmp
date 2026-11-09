@@ -684,7 +684,25 @@ private fun LibraryScreens(
                                     var shownId by remember(route.encode()) { mutableStateOf(route.itemId) }
                                     // The photo shown and its neighbours, read from the database as it is swiped.
                                     LaunchedEffect(ids, shownId) { stories.want(ids.around(shownId)) }
-                                    val shownItems = ids.mapNotNull { id -> storiesState.itemsById[id] ?: openedById[id]?.takeUnless { storiesState.gone(id) } }
+                                    // From Moments: near the last row read, the next ones are read, and swiping goes on into them.
+                                    val fromMoments = route.moment != null && route.revealed == null
+                                    LaunchedEffect(shownId, ids.size) {
+                                        if (fromMoments && ids.indexOf(shownId) >= ids.size - MOMENTS_AHEAD) stories.loadMoreMoments()
+                                    }
+                                    // The rows read since are added at the end (older photos); the ones opened keep their places.
+                                    var added by remember(route.encode()) { mutableStateOf(emptyMap<String, MediaItem>()) }
+                                    LaunchedEffect(storiesState.feed.entries.size) {
+                                        if (!fromMoments) return@LaunchedEffect
+                                        val had = ids.toHashSet()
+                                        val more = viewerItems(libraryState, storiesState, route, searchState, pageLists).filter { it.id !in had }
+                                        if (more.isNotEmpty()) {
+                                            added = added + more.associateBy { it.id }
+                                            ids = ids + more.map { it.id }
+                                        }
+                                    }
+                                    val shownItems = ids.mapNotNull { id ->
+                                        storiesState.itemsById[id] ?: (openedById[id] ?: added[id])?.takeUnless { storiesState.gone(id) }
+                                    }
                                     // A set: its own controls (highlights, Play, Recompose).
                                     val viewerSet = if (!route.isSet) null else ViewerSet(
                                         name = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.name },
@@ -860,3 +878,6 @@ private fun RecordingScreen(sha256: String, stories: com.chencohensolution.journ
         ),
     )
 }
+
+/** In the viewer opened from Moments, the next rows are read when this few photos are left. */
+private const val MOMENTS_AHEAD = 20

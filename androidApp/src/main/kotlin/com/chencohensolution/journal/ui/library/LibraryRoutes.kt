@@ -6,6 +6,7 @@ import java.net.URLEncoder
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
+import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
@@ -230,7 +231,9 @@ internal fun viewerItems(library: LibraryState, stories: StoriesState, route: Ro
     route.storyline -> stories.storyline
     route.moment != null && route.revealed != null ->
         stories.feed.section(route.moment)?.revealed?.firstOrNull { it.source == route.revealed }?.items.orEmpty()
-    route.moment != null -> stories.feed.section(route.moment)?.items.orEmpty()
+    // Opened from Moments: every row read so far, as shown, so swiping goes on past the row's day (asked Nov 9, 2026);
+    // more rows are read as it nears the end (LibraryApp).
+    route.moment != null -> stories.feed.entries.flatMap { (it as FeedEntry.Section).section.items }
     else -> emptyList()
 }
 

@@ -26,6 +26,11 @@ Still missing on iOS:
 - **Crop chip always on screen** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): in the viewer, the Cropped ·
   Show all chip stays over a cropped photo instead of showing only with the bars (no hold-to-peek); in a set it shows
   over a recomposed photo too. Android: the `CropChip` visibility in `ViewerScreen.kt`. No new strings.
+- **Swiping through all of Moments, and brief info** (Android Nov 9, 2026; [viewer.md](screens/viewer.md)): the
+  viewer opened from a Moments row swipes through every row read so far (`viewerItems`: all sections' items), calls
+  `loadMoreMoments()` within 20 of the end and appends the new rows. Over the photo, with the bars: place (label, city,
+  country from `places`), date and time, `#tags`, and an ⓘ for the details panel (replaces the Details button); in a
+  set above the reel. Android: `PhotoBrief` in `ViewerScreen.kt`, `LibraryApp.kt`, `LibraryRoutes.kt`. No new strings.
 - **Swiping past a set's ends** (Android Nov 9, 2026; [viewer.md](screens/viewer.md#a-set-nov-9-2026)): in the
   set viewer, a swipe past the last photo (first, backwards) asks `feed.beside(itemIds:forward:)` and replaces the
   viewer with that neighbour: a `FeedBlockSimilar` in set mode at its first (last) photo, a single photo in the usual

@@ -8,7 +8,8 @@ keep their room, so nothing moves when they show. Android tells the user once, t
 
 - Opened from a tag: the photos with that tag.
 - Opened from the Storyline tab: the storyline's photos, newest first.
-- Opened from a row of the Moments tab: that row's photos as shown.
+- Opened from a row of the Moments tab: every row read so far, as shown, so swiping goes on past the row's day; near
+  the end the next rows are read and added (Nov 9, 2026, Android only; before, it was the row's photos only).
 - Opened from a set in Moments (Nov 9, 2026, Android only): that set's photos only, oldest first, in its set mode
   ([below](#a-set-nov-9-2026)). A moment's "Part of … ›" link opens the whole moment.
 
@@ -26,8 +27,11 @@ Swiping is not a tap; a playing video's own controls take its taps.
   is a chip, "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab,
   scrolled to the photo (Oct 22, 2026; chosen in the UI lab over a third pill, a link under the pills, a toolbar and
   an icon).
-- **Bottom:** **Write** (the note editor, below), **Details** (the details panel; Oct 22, 2026 it moved here
-  from an ⓘ at the top), and a round **Share** button (Oct 22, 2026, chosen in the UI lab): the system share sheet
+- **Brief info** (Nov 9, 2026, Android only): with the bars, over a dark fade at the bottom, where it was taken
+  ("Florentin, Tel Aviv, Israel"), its date and time, its tags ("#beach #family"), and an **ⓘ** that opens the details
+  panel (`PhotoBrief`); in a set it sits above the reel.
+- **Bottom:** **Write** (the note editor, below), the details panel (the brief info's ⓘ since Nov 9, 2026; before,
+  a **Details** button), and a round **Share** button (Oct 22, 2026, chosen in the UI lab): the system share sheet
   with the original. A gallery photo shares the gallery's own file; one only on the server shares the original the
   viewer downloaded (downloaded now when it isn't here, with a spinner on the button), as a copy named as the photo
   (`cache/shared/`, only the latest kept, `ShareOriginal.kt`; iOS through `UIActivityViewController`). Offline
