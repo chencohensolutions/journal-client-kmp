@@ -23,6 +23,12 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Viewer videos: own controls, slideshow to their end, ▶ Videos, landscape reel** (Android Nov 9, 2026;
+  [viewer.md](screens/viewer.md)): the video's controls (play/pause, time, seek bar, length) drawn under the info line
+  above the reel; the slideshow plays a video to its end before going on; **▶ Videos** beside the speeds turns
+  autoplay off (`SettingsState.autoplayVideos`, shared); in landscape the set's reel is a column down the right edge.
+  Android: `VideoControls`, `Slideshow(hold)`, `SetBar(landscape)`, `SetReel(vertical)`. Strings: `library_viewer_pause`,
+  `set_autoplay_videos`.
 - **Setting: photos made ready while swiping** (Android Nov 9, 2026; [settings.md](screens/settings.md)): under Load
   ahead in Loading while scrolling, chips 0, 2, **5**, 8, 10 for how many photos on each side the viewer prepares at
   screen size (`MomentsPaging.viewerAhead`, shared; iOS has no such prefetch yet). Strings: `settings_viewer_ahead`,

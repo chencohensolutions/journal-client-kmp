@@ -732,6 +732,8 @@ private fun LibraryScreens(
                                         items = shownItems,
                                         set = viewerSet,
                                         viewerAhead = settingsState.momentsPaging.viewerAhead,
+                                        autoplayVideos = settingsState.autoplayVideos,
+                                        setAutoplayVideos = settings::setAutoplayVideos,
                                         startId = route.itemId,
                                         stories = storiesState,
                                         actions = ViewerActions(

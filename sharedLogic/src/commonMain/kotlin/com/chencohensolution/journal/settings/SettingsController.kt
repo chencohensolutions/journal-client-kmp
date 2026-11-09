@@ -119,6 +119,11 @@ data class SettingsState(
      */
     val showOnPhoneBadge: Boolean = false,
     /**
+     * Whether the viewer's videos play by themselves (muted) when slid onto, and a slideshow plays each to its end; off,
+     * a video waits for Play and a slideshow shows it for a slide's time (asked Nov 9, 2026). On by default.
+     */
+    val autoplayVideos: Boolean = true,
+    /**
      * Whether a JPEG XL photo is shared as the JPEG it was packed from, which every app opens (on by default); off, it
      * is shared as it is.
      */
@@ -159,6 +164,7 @@ class SettingsController internal constructor(
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
+            autoplayVideos = settings.autoplayVideos,
             shareJpegXlAsJpeg = settings.shareJpegXlAsJpeg,
             searchPageSize = settings.searchPageSize,
             momentsPaging = settings.momentsPaging,
@@ -290,6 +296,12 @@ class SettingsController internal constructor(
         settings.privateMedia = privateMedia
         _state.update { it.copy(privateMedia = privateMedia) }
         _privateMedia.value = privateMedia
+    }
+
+    /** The viewer's videos playing by themselves (the slideshow bar's button), on or off. */
+    fun setAutoplayVideos(on: Boolean) {
+        settings.autoplayVideos = on
+        _state.update { it.copy(autoplayVideos = on) }
     }
 
     /** The phone badge on photos that are on this phone and backed up, on or off. */

@@ -278,6 +278,11 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
         set(value) = store.putString(KEY_SHOW_ON_PHONE_BADGE, value.toString())
 
+    /** Whether the viewer's videos play by themselves, muted, and a slideshow waits for each to end; on by default. */
+    var autoplayVideos: Boolean
+        get() = store.getString(KEY_AUTOPLAY_VIDEOS) != "false"
+        set(value) = store.putString(KEY_AUTOPLAY_VIDEOS, value.toString())
+
     /** Whether a JPEG XL photo is shared as the JPEG it was packed from (on until turned off). */
     var shareJpegXlAsJpeg: Boolean
         get() = store.getString(KEY_SHARE_JXL_AS_JPEG) != "false"
@@ -368,6 +373,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
+        private const val KEY_AUTOPLAY_VIDEOS = "autoplay_videos"
         private const val KEY_SHARE_JXL_AS_JPEG = "share_jxl_as_jpeg"
     }
 }

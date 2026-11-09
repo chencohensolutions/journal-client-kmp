@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -290,6 +291,9 @@ internal fun ViewerScreen(
     people: List<com.chencohensolution.journal.people.Person> = emptyList(),
     /** Photos on each side of the one shown made ready at screen size while swiping (Settings › Advanced). */
     viewerAhead: Int = com.chencohensolution.journal.settings.MomentsPaging.DEFAULT_VIEWER_AHEAD,
+    /** Videos play by themselves, muted, and a slideshow plays each to its end; off, they wait for Play. */
+    autoplayVideos: Boolean = true,
+    setAutoplayVideos: (Boolean) -> Unit = {},
 ) {
     var faceSheet by remember { mutableStateOf<com.chencohensolution.journal.people.FoundFace?>(null) }
     val onBack = actions.back
@@ -312,13 +316,24 @@ internal fun ViewerScreen(
     // the viewer is open (asked Nov 9, 2026).
     val videoPositions = remember { mutableMapOf<String, Long>() }
     var videoMuted by rememberSaveable { mutableStateOf(true) }
-    val videos = ViewerVideos(videoPositions, videoMuted) { videoMuted = !videoMuted }
+    // The video shown's player, for the controls under the info; and the last video that finished (played to its end, or
+    // couldn't play), for the slideshow to go on after it.
+    val videoPlayer = remember { mutableStateOf<Player?>(null) }
+    val videoDone = remember { mutableStateOf<String?>(null) }
+    val videos = ViewerVideos(videoPositions, videoMuted, { videoMuted = !videoMuted }, videoPlayer, videoDone, autoplayVideos)
+    val autoplayNow by rememberUpdatedState(autoplayVideos)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
     // The next photo's full image is decoded (downloaded when only on the server) before the slideshow shows it.
-    Slideshow(set != null && playing, speed.millis, items.size, shownIndex, prepare = { i ->
-        items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) }
-    }) { setIndex = it }
+    Slideshow(
+        set != null && playing, speed.millis, items.size, shownIndex,
+        prepare = { i -> items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) } },
+        // A video plays to its end (or until it can't play) before the next item.
+        hold = { i ->
+            val item = items.getOrNull(i)
+            if (item?.type == MediaType.VIDEO && autoplayNow) snapshotFlow { videoDone.value }.first { it == item.id }
+        },
+    ) { setIndex = it }
     // Swiping: once a photo is settled on, the photos on each side ([viewerAhead]; Settings › Advanced) are
     // made ready at screen size, the way the swipes go first, so each slides in sharp (asked Nov 9, 2026); a swipe on
     // cancels what was still to come.
@@ -490,7 +505,7 @@ internal fun ViewerScreen(
         ) { page ->
             val item = items[page]
             if (item.type == MediaType.VIDEO) {
-                VideoPage(item, sharedKey(item), isCurrent = page == pager.currentPage, videos)
+                VideoPage(item, sharedKey(item), isCurrent = page == pager.settledPage, videos)
             } else {
                 val pageZoom = zoomOf(item)
                 PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed }, pageZoom, shown = page == pager.settledPage)
@@ -515,12 +530,17 @@ internal fun ViewerScreen(
             ) {
                 SetBar(
                     items, set, shownIndex, cropOf = { cropOf(it)?.takeIf { !whole } },
-                    brief = { shown -> PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true } },
+                    brief = { shown ->
+                        PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
+                        // A video's controls: under the info, above the reel (asked Nov 9, 2026).
+                        if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, Modifier.padding(start = 12.dp, end = 16.dp, bottom = 6.dp)) }
+                    },
                     onIndex = { setIndex = it }, onPlay = { playing = true },
+                    landscape = screenRatio > 1f,
                 )
             }
             AnimatedVisibility(playing, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
-                SlideshowBar(shownIndex, items.size, speed, { speed = it }, onStop = {
+                SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos, onAutoplayVideos = setAutoplayVideos, onStop = {
                     playing = false
                     chrome = true
                 })
@@ -534,6 +554,7 @@ internal fun ViewerScreen(
         ) {
             Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 key(current.id) { PhotoBrief(current, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 12.dp)) { showInfo = true } }
+                if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, Modifier.padding(start = 12.dp, end = 16.dp, bottom = 8.dp)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ViewerAction(LibraryIcons.Edit, stringResource(R.string.viewer_write)) { editingCaption = true }
                     ShareButton(current, actions.share)
@@ -709,13 +730,54 @@ internal fun ViewerScreen(
 
 /** Under a set's photo: the scrubber, then ☆ Highlight · ▶ Play · Recompose. */
 @Composable
-private fun SetBar(items: List<MediaItem>, set: ViewerSet, index: Int, cropOf: (MediaItem) -> CropRect?, brief: @Composable (MediaItem) -> Unit, onIndex: (Int) -> Unit, onPlay: () -> Unit) {
+private fun SetBar(
+    items: List<MediaItem>,
+    set: ViewerSet,
+    index: Int,
+    cropOf: (MediaItem) -> CropRect?,
+    brief: @Composable (MediaItem) -> Unit,
+    onIndex: (Int) -> Unit,
+    onPlay: () -> Unit,
+    /** Landscape: the reel down the right edge, the info and buttons at the bottom left of it (asked Nov 9, 2026). */
+    landscape: Boolean = false,
+) {
+    if (landscape) {
+        Box(Modifier.fillMaxSize()) {
+            if (items.size > 1) {
+                Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().background(LibraryColors.PhotoFade).statusBarRoom().navigationBarRoom()) {
+                    SetReel(items, set.highlights.toSet(), index, cropOf, vertical = true, onIndex = onIndex)
+                }
+            }
+            SetBarBottom(
+                items, set, index, brief, onPlay, reel = false,
+                cropOf = cropOf, onIndex = onIndex,
+                modifier = Modifier.align(Alignment.BottomStart).padding(end = if (items.size > 1) REEL_SIDE_WIDTH + 8.dp else 0.dp),
+            )
+        }
+    } else {
+        SetBarBottom(items, set, index, brief, onPlay, reel = true, cropOf = cropOf, onIndex = onIndex)
+    }
+}
+
+/** Under the photo: the info, the reel ([reel]: in portrait), and ☆ Highlight · ▶ Play · ⌗ Recompose. */
+@Composable
+private fun SetBarBottom(
+    items: List<MediaItem>,
+    set: ViewerSet,
+    index: Int,
+    brief: @Composable (MediaItem) -> Unit,
+    onPlay: () -> Unit,
+    reel: Boolean,
+    cropOf: (MediaItem) -> CropRect?,
+    onIndex: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val item = items[index]
     val place = set.highlights.indexOf(item.id)
-    Column(Modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
+    Column(modifier.fillMaxWidth().background(LibraryColors.PhotoFade).navigationBarRoom().padding(top = 24.dp, bottom = 10.dp)) {
         // Keyed by the photo, so nothing of the one before is kept while swiping.
         key(items[index].id) { brief(items[index]) }
-        if (items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex)
+        if (reel && items.size > 1) SetReel(items, set.highlights.toSet(), index, cropOf, onIndex = onIndex)
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SetBarButton(
                 if (place >= 0) "★" else "☆",
@@ -1060,8 +1122,19 @@ private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
-/** The viewer's videos: where each was left (by id, while the viewer is open) and whether they play muted. */
-private class ViewerVideos(val positions: MutableMap<String, Long>, val muted: Boolean, val toggleMute: () -> Unit)
+/**
+ * The viewer's videos: where each was left (by id, while the viewer is open), whether they play muted, the [player] of
+ * the one shown (for its controls under the info) and the last one [done] (for the slideshow).
+ */
+private class ViewerVideos(
+    val positions: MutableMap<String, Long>,
+    val muted: Boolean,
+    val toggleMute: () -> Unit,
+    val player: androidx.compose.runtime.MutableState<Player?>,
+    val done: androidx.compose.runtime.MutableState<String?>,
+    /** Whether they play by themselves; off, each waits for Play. */
+    val autoplay: Boolean = true,
+)
 
 /**
  * A video plays as soon as it is the one shown, muted until sound is turned on ([ViewerVideos.muted]), over its poster
@@ -1073,9 +1146,37 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // A video only on the server shows the poster already kept (the feed's or a grid's), asking for no new size.
         val poster = if (item.hasOriginalHere) rememberThumbnail(item, THUMB_LARGE) else rememberCachedServerImage(item)
-        poster?.let { ViewerImage(it, sharedKey) }
-        if (isCurrent) {
-            VideoPlayer(item, startAt = videos.positions[item.id] ?: 0L, muted = videos.muted, onStopped = { videos.positions[item.id] = it })
+        // Its first frame drawn by the player: until then the poster stays over it (the player's surface is black until
+        // a frame), so sliding onto a video never flashes black (Nov 9, 2026).
+        var rendered by remember(item.id) { mutableStateOf(false) }
+        LaunchedEffect(isCurrent) { if (!isCurrent) rendered = false }
+        // Off by itself: Play over the poster starts it.
+        var started by remember(item.id) { mutableStateOf(false) }
+        LaunchedEffect(isCurrent) { if (!isCurrent) started = false }
+        if (isCurrent && (videos.autoplay || started)) {
+            // Shown again: not done any more, so a slideshow waits for it again.
+            LaunchedEffect(item.id) { if (videos.done.value == item.id) videos.done.value = null }
+            VideoPlayer(
+                item, startAt = videos.positions[item.id] ?: 0L, muted = videos.muted,
+                // Only the player that has the controls takes them back, so a video swiped to keeps its own.
+                onPlayer = { player, on -> if (on) videos.player.value = player else if (videos.player.value === player) videos.player.value = null },
+                onDone = { videos.done.value = item.id },
+                onStopped = { videos.positions[item.id] = it },
+                onFirstFrame = { rendered = true },
+            )
+        }
+        // Decided in the same frame the player goes, so the poster is back before its surface is: no black frame.
+        if (!(isCurrent && rendered)) poster?.let { ViewerImage(it, sharedKey) }
+        if (isCurrent && !videos.autoplay && !started) {
+            IconButton(
+                onClick = { started = true },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),
+                modifier = Modifier.size(72.dp),
+            ) {
+                Icon(LibraryIcons.Play, stringResource(R.string.library_viewer_play), tint = Color.White, modifier = Modifier.size(32.dp))
+            }
+        }
+        if (isCurrent && (videos.autoplay || started)) {
             MuteButton(
                 videos.muted, videos.toggleMute,
                 Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 8.dp),
@@ -1085,12 +1186,24 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
 }
 
 /**
- * ExoPlayer with its controls, playing [item] from [startAt] (ms). Released when it leaves the screen, which stops a
- * stream from downloading further; [onStopped] gets where it was.
+ * ExoPlayer playing [item] from [startAt] (ms), its controls drawn by the viewer under the info ([VideoControls], given
+ * the player through [onPlayer]). Released when it leaves the screen, which stops a stream from downloading further;
+ * [onStopped] gets where it was. [onDone] once it played to its end, or when it can't play.
  */
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStopped: (Long) -> Unit) {
+private fun VideoPlayer(
+    item: MediaItem,
+    startAt: Long,
+    muted: Boolean,
+    onPlayer: (Player, Boolean) -> Unit,
+    onDone: () -> Unit,
+    onStopped: (Long) -> Unit,
+    onFirstFrame: () -> Unit = {},
+) {
+    val done by rememberUpdatedState(onDone)
+    val firstFrame by rememberUpdatedState(onFirstFrame)
+    val handOver by rememberUpdatedState(onPlayer)
     val context = LocalContext.current
     var player by remember(item.id) { mutableStateOf<ExoPlayer?>(null) }
     var failed by remember(item.id) { mutableStateOf<Int?>(null) }
@@ -1098,6 +1211,7 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
         val playable = withContext(Dispatchers.IO) { runCatching { ServerVideos.playable(context, item) }.getOrNull() }
         if (playable == null) {
             failed = R.string.library_viewer_video_unavailable
+            done()
             return@LaunchedEffect
         }
         player = ExoPlayer.Builder(context)
@@ -1107,7 +1221,14 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
                 addListener(object : Player.Listener {
                     override fun onPlayerError(error: PlaybackException) {
                         failed = R.string.library_viewer_video_failed
+                        done()
                     }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_ENDED) done()
+                    }
+
+                    override fun onRenderedFirstFrame() = firstFrame()
                 })
                 volume = if (muted) 0f else 1f
                 setMediaItem(playable.item, startAt)
@@ -1116,6 +1237,7 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
             }
     }
     LaunchedEffect(player, muted) { player?.volume = if (muted) 0f else 1f }
+    LaunchedEffect(player) { player?.let { handOver(it, true) } }
     val stopped by rememberUpdatedState(onStopped)
     DisposableEffect(item.id) {
         onDispose {
@@ -1124,6 +1246,7 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
                 stopped(if (it.playbackState == Player.STATE_ENDED) 0L else it.currentPosition)
                 it.release()
             }
+            player?.let { handOver(it, false) }
             player = null
         }
     }
@@ -1132,6 +1255,8 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
             // Clear until the first frame, so the poster under it shows meanwhile instead of black.
             factory = {
                 PlayerView(it).apply {
+                    // Its controls are drawn under the info instead, where the set's reel doesn't cover them.
+                    useController = false
                     setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                 }
@@ -1142,6 +1267,72 @@ private fun VideoPlayer(item: MediaItem, startAt: Long, muted: Boolean, onStoppe
         )
         failed?.let { Text(stringResource(it), color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
     }
+}
+
+/**
+ * The video shown's controls, under its info (asked Nov 9, 2026: the player's own sat behind the set's reel): play or
+ * pause, where it is with a bar to move it, and how long it is.
+ */
+@Composable
+private fun VideoControls(player: Player, modifier: Modifier = Modifier) {
+    var position by remember(player) { mutableLongStateOf(player.currentPosition) }
+    var duration by remember(player) { mutableLongStateOf(player.duration.coerceAtLeast(0L)) }
+    var playingNow by remember(player) { mutableStateOf(player.isPlaying) }
+    var dragging by remember(player) { mutableStateOf<Float?>(null) }
+    LaunchedEffect(player) {
+        while (true) {
+            position = player.currentPosition
+            duration = player.duration.coerceAtLeast(0L)
+            playingNow = player.isPlaying
+            delay(VIDEO_CONTROLS_TICK_MILLIS)
+        }
+    }
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = {
+            if (player.isPlaying) {
+                player.pause()
+            } else {
+                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0)
+                player.play()
+            }
+            playingNow = player.isPlaying
+        }) {
+            Icon(
+                if (playingNow) AudioIcons.Pause else LibraryIcons.Play,
+                stringResource(if (playingNow) R.string.library_viewer_pause else R.string.library_viewer_play),
+                tint = Color.White,
+            )
+        }
+        Text(formatClock(dragging?.toLong() ?: position), color = Color.White, fontSize = 12.sp)
+        androidx.compose.material3.Slider(
+            value = (dragging ?: position.toFloat()).coerceIn(0f, duration.toFloat().coerceAtLeast(1f)),
+            onValueChange = { dragging = it },
+            onValueChangeFinished = {
+                dragging?.let { player.seekTo(it.toLong()) }
+                dragging = null
+            },
+            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+            colors = androidx.compose.material3.SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+            ),
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+        )
+        Text(formatClock(duration), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+    }
+}
+
+/** How often the video controls read where the video is. */
+private const val VIDEO_CONTROLS_TICK_MILLIS = 250L
+
+/** "1:05", "12:40", "1:02:03". */
+private fun formatClock(millis: Long): String {
+    val seconds = millis / 1000
+    val h = seconds / 3600
+    val m = seconds % 3600 / 60
+    val s = seconds % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
 /** A moment's name, to give or change (the set viewer's ⋯ menu); saved as typed, an empty one leaves it unnamed. */

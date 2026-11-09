@@ -91,8 +91,15 @@ Swiping is not a tap; a playing video's own controls take its taps.
   shows (asked Nov 9, 2026; Android only, iOS still shows Play). A round **sound** button (top right, under the bar)
   turns sound on or off for the viewer's videos until it closes. Swiping away stops a video; coming back to it goes on
   from where it was (kept by id while the viewer is open; from the start once it played to its end). The player is
-  Media3 ExoPlayer's `PlayerView` with its controls, streaming from the server through the video cache (iOS
-  `VideoPlayer`). Android: `VideoPage`, `ViewerVideos` in `ViewerScreen.kt`.
+  Media3 ExoPlayer's `PlayerView`, streaming from the server through the video cache (iOS `VideoPlayer`). Its controls
+  are the viewer's own (Nov 9, 2026: the player's sat behind the set's reel): with the bars, under the info line and
+  above the reel (or above Write and Share), **play/pause**, the time, a bar to move along it, and its length
+  (`VideoControls`). **▶ Videos** beside the slideshow's speeds (kept on the phone, `autoplay_videos`, on by default)
+  turns playing by themselves off: then a video shows its first frame with Play, and the slideshow shows it for a
+  slide's time. Sliding between videos never flashes black: the poster stays over the player until its first frame
+  is drawn, and comes back in the same frame the player goes; in the pager a video becomes the one playing once the
+  swipe settles, so the one slid away from plays on while it leaves. Android: `VideoPage`, `ViewerVideos`,
+  `VideoControls` in `ViewerScreen.kt`.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
   text color, so they read in light and dark.
   - The date ("Friday, October 16, 2026") and time.
@@ -179,11 +186,14 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
+  **In landscape** (Nov 9, 2026) the reel is a column down the right edge, the photos top to bottom (each the reel's
+  width at its shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
 - **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**.
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
-    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) and **Stop**. A tap on the photo or back stops it.
+    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A video plays to its
+    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. A tap on the photo or back stops it.
     The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
     the server) while the current one shows, and the switch waits for it, at most 15 s, so it never shows blurred
     first (Nov 9, 2026; Android only, iOS not built yet). The last 4 full images are kept in memory (`viewerImages`).

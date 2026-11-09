@@ -57,6 +57,8 @@
     <string name="library_share">Share</string>
     <string name="library_share_failed">Couldn’t get the original to share. Check the connection to your server.</string>
     <string name="library_viewer_play">Play video</string>
+    <string name="library_viewer_pause">Pause video</string>
+    <string name="set_autoplay_videos">▶ Videos</string>
     <string name="library_viewer_video_unavailable">This video can only be played once the phone is registered with your server.</string>
     <string name="library_viewer_video_failed">The video can’t be played right now. Is the server reachable?</string>
     <string name="library_info_file">File</string>

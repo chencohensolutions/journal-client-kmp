@@ -59,6 +59,8 @@
     <string name="library_share">שיתוף</string>
     <string name="library_share_failed">לא ניתן להביא את המקור לשיתוף. יש לבדוק את החיבור לשרת.</string>
     <string name="library_viewer_play">הפעלת הסרטון</string>
+    <string name="library_viewer_pause">השהיית הסרטון</string>
+    <string name="set_autoplay_videos">▶ סרטונים</string>
     <string name="library_viewer_video_unavailable">אפשר להפעיל את הסרטון רק אחרי שהטלפון רשום בשרת שלך.</string>
     <string name="library_viewer_video_failed">אי אפשר להפעיל את הסרטון כרגע. האם יש חיבור לשרת?</string>
     <string name="library_info_file">קובץ</string>
