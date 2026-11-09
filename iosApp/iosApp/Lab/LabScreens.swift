@@ -53,6 +53,15 @@ let labScreens: [LabScreen] = [
         LabOption(id: "c", title: "c: Flip in the feed", note: "The set stays one photo in Moments: hold and slide to flip, Play in place") {
             MomentSetScreenC(set: MomentSetLab.beach())
         },
+        LabOption(id: "d", title: "d: Collect a weekend", note: "Pick photos over neighbouring days, a tray counts them, Make a moment") {
+            MomentSetScreenD()
+        },
+        LabOption(id: "d-name", title: "d: naming it", note: "Name, main photo, and the day it shows on in Moments") {
+            MomentSetScreenD(step: .naming)
+        },
+        LabOption(id: "d-made", title: "d: the moment made", note: "Its page, as option a") {
+            MomentSetScreenD(step: .made)
+        },
     ]),
     LabScreen(id: "moments-filter", title: "Moments filter, many folders", options: [
         current { labHome(data.library, data.folderStories, tab: .moments) },

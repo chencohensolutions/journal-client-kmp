@@ -21,6 +21,16 @@
         }
       }
     },
+    "%lld photos · %lld days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld תמונות · %2$lld ימים"
+          }
+        }
+      }
+    },
     "4:5": {
       "shouldTranslate": false
     },
@@ -30,6 +40,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "כל התמונות"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ביטול"
           }
         }
       }
@@ -50,6 +70,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "סיום"
+          }
+        }
+      }
+    },
+    "Each day shows its own photos, with a link to the whole moment.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כל יום מציג את התמונות שלו, עם קישור לרגע כולו."
+          }
+        }
+      }
+    },
+    "Every day it has": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בכל יום שלו"
           }
         }
       }
@@ -84,6 +124,16 @@
         }
       }
     },
+    "Its photos leave their days and show here together.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התמונות עוזבות את הימים שלהן ומוצגות כאן יחד."
+          }
+        }
+      }
+    },
     "Main": {
       "localizations": {
         "he": {
@@ -94,12 +144,62 @@
         }
       }
     },
+    "Main photo": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תמונה ראשית"
+          }
+        }
+      }
+    },
+    "Make a moment": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יצירת רגע"
+          }
+        }
+      }
+    },
+    "Make it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יצירה"
+          }
+        }
+      }
+    },
     "Make main": {
       "localizations": {
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "קבע כראשית"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שם"
+          }
+        }
+      }
+    },
+    "New moment": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רגע חדש"
           }
         }
       }
@@ -160,6 +260,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "אותה מסגרת לכולן"
+          }
+        }
+      }
+    },
+    "Show it in Moments on": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להציג ברגעים ביום"
           }
         }
       }
