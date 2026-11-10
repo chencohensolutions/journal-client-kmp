@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The viewer's video player. A TextureView, not the default SurfaceView: a SurfaceView is a hole through the window to
-  a layer of its own, black until the first frame and deaf to Compose's alpha and movement, so a video starting (in a
-  cross-fade or a swipe) flashed black over its poster (Nov 9, 2026). The viewer draws the controls itself.
+  The viewer's video player. A SurfaceView (the default), which the display places on screen by itself: a TextureView
+  (Nov 9 to Nov 10, 2026) made the app redraw, and the GPU sample a 4K picture, for every frame of the video, so videos
+  stuttered (as in the feed, FeedVideo.kt). A SurfaceView is black until its first frame and deaf to Compose's alpha,
+  so the viewer keeps the poster over it until that frame (VideoPage), which is what stops a black flash on a start.
+  The viewer draws the controls itself.
 -->
 <androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:surface_type="texture_view"
+    app:surface_type="surface_view"
     app:use_controller="false"
     app:shutter_background_color="@android:color/transparent"
     app:show_buffering="when_playing" />

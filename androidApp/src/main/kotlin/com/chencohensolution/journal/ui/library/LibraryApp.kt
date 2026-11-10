@@ -68,8 +68,6 @@ import com.chencohensolution.journal.server.ServerLibrary
 import com.chencohensolution.journal.server.ServerPreviews
 import com.chencohensolution.journal.settings.KindsStatus
 import com.chencohensolution.journal.settings.SettingsController
-import com.chencohensolution.journal.stories.CropKind
-import com.chencohensolution.journal.stories.PhotoCrops
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.storage.FreeUpController
 import com.chencohensolution.journal.storage.PhoneStorage
@@ -285,7 +283,7 @@ private fun LibraryScreens(
     // The library follows the system theme; the viewer is always dark, like a photo app. Each screen gets its own
     // theme so the viewer turns dark with its transition, not the screen it opens from.
     val systemDark = isSystemInDarkTheme()
-    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Crop || it is Route.Recompose || it is Route.Audio } || systemDark)
+    SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Recompose || it is Route.Audio } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
     SharedTransitionLayout {
         CompositionLocalProvider(
@@ -311,7 +309,7 @@ private fun LibraryScreens(
                     NavEntry(entry, contentKey = entry.contentKey, metadata = if (opensFromTile) FadeAroundSharedElements else emptyMap()) {
                         val route = entry.route
                         val landingHere = landing?.takeIf { it.depth == entry.depth }?.itemId
-                        LibraryTheme(dark = route is Route.Viewer || route is Route.Crop || route is Route.Recompose || route is Route.Audio || systemDark) {
+                        LibraryTheme(dark = route is Route.Viewer || route is Route.Recompose || route is Route.Audio || systemDark) {
                             when (route) {
                                 Route.Journal -> JournalHomeScreen(
                                     // Moments first and opened on start (asked Oct 24, 2026); previews keep the storyline.
@@ -331,7 +329,7 @@ private fun LibraryScreens(
                                         registerAgain = onRegisterAgain,
                                         setWriting = stories::setWriting,
                                         restoreWriting = stories::restoreWriting,
-                                        crop = { push(Route.Crop(it, CropKind.MOMENTS)) },
+                                        crop = { push(Route.Recompose(setListKey(listOf(it)), it)) },
                                         merge = stories::mergeInFeed,
                                         openSet = openSet,
                                         makeMoment = { picked, name, highlights, showOn ->
@@ -707,11 +705,14 @@ private fun LibraryScreens(
                                     // A set: its own controls (highlights, Play, Recompose).
                                     val viewerSet = if (!route.isSet) null else ViewerSet(
                                         name = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.name },
+                                        description = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.description },
                                         highlights = storiesState.highlightsOf(shownItems).map { it.id },
                                         setHighlight = { id, on -> stories.setHighlight(ids, id, on) },
                                         moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
                                         recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
-                                        rename = { name -> stories.nameMoment(ids, name) },
+                                        coverId = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.coverId },
+                                        setCover = { id -> stories.setMomentCover(ids, id) },
+                                        rename = { name, description -> stories.nameMoment(ids, name, description) },
                                         // Past either end: what Moments shows beside the set, in its place on the stack.
                                         beside = { forward ->
                                             storiesState.feed.beside(ids, forward)?.let { (section, block) ->
@@ -760,6 +761,12 @@ private fun LibraryScreens(
                                             setPrivate = actions.setPrivate,
                                             openMap = { push(Route.Map(it)) },
                                             share = actions.share,
+                                            // A single photo's ⌗: the crop screen on it alone (its list kept for a photo only on the server).
+                                            crop = { id ->
+                                                val key = setListKey(listOf(id))
+                                                shownItems.firstOrNull { it.id == id }?.let { pageLists[key] = listOf(it) }
+                                                push(Route.Recompose(key, id))
+                                            },
                                             showInMoments = { itemId: String ->
                                                 landing = null
                                                 showInMoments = ShowInMoments(itemId)
@@ -799,25 +806,6 @@ private fun LibraryScreens(
                                             startId = route.itemId,
                                             onDone = { crops ->
                                                 stories.setMomentsCrops(crops)
-                                                pop()
-                                            },
-                                            onClose = pop,
-                                        )
-                                    }
-                                }
-                                is Route.Crop -> {
-                                    LaunchedEffect(route.itemId) { stories.want(listOf(route.itemId)) }
-                                    val item = storiesState.itemsById[route.itemId]
-                                    if (item == null) {
-                                        // Deleted from the device while open; else it is still being read.
-                                        if (storiesState.gone(route.itemId)) LaunchedEffect(Unit) { pop() }
-                                    } else {
-                                        CropEditor(
-                                            item = item,
-                                            saved = storiesState.note(item.id)?.crops ?: PhotoCrops(),
-                                            startKind = route.kind,
-                                            onDone = { crops ->
-                                                stories.setCrops(item.id, crops)
                                                 pop()
                                             },
                                             onClose = pop,

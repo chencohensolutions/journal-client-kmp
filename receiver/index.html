@@ -30,6 +30,35 @@
       max-width: 70vw; text-align: center;
     }
     #note.shown { opacity: 1; }
+    /* A small turning ring in the top corner while a photo or video comes. */
+    #busy {
+      position: absolute; top: 4vh; right: 3vw; width: 34px; height: 34px; border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.25); border-top-color: rgba(255, 255, 255, 0.9);
+      opacity: 0; transition: opacity 250ms ease; animation: turn 0.9s linear infinite;
+    }
+    #busy.shown { opacity: 1; }
+    @keyframes turn { to { transform: rotate(360deg); } }
+    /* The photo's note, when and where, over its bottom (the phone's info button). */
+    #info {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 12vh 5vw 6vh;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.7));
+      color: #fff; font-family: system-ui, sans-serif; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+      opacity: 0; transition: opacity 300ms ease;
+    }
+    #info.shown { opacity: 1; }
+    #info .text { font-size: 34px; line-height: 1.35; max-width: 60vw; white-space: pre-line; margin-bottom: 10px; }
+    #info .when { font-size: 24px; color: rgba(255, 255, 255, 0.8); }
+    /* Where it was taken, on a map in the corner (the phone's map button). */
+    #map {
+      position: absolute; right: 4vw; top: 6vh; width: 34vw; height: 42vh; border-radius: 18px; overflow: hidden;
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5); opacity: 0; transition: opacity 300ms ease;
+    }
+    #map.shown { opacity: 1; }
+    #map canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 1; transition: none; }
+    #map .credit {
+      position: absolute; right: 0; bottom: 0; padding: 3px 8px; background: rgba(255, 255, 255, 0.75);
+      color: #333; font: 13px system-ui, sans-serif; border-top-left-radius: 8px;
+    }
   </style>
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
@@ -38,7 +67,10 @@
   <canvas id="a"></canvas>
   <canvas id="b"></canvas>
   <video id="video" playsinline preload="auto"></video>
+  <div id="info"></div>
+  <div id="map"><canvas></canvas><div class="credit">© OpenStreetMap contributors</div></div>
   <div id="note"></div>
+  <div id="busy"></div>
   <script type="module" src="receiver.js"></script>
 </body>
 </html>

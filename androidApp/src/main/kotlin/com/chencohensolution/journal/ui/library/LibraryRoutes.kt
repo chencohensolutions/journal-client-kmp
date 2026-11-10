@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import com.chencohensolution.journal.stories.FeedEntry
-import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.ExploreScope
 import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
@@ -75,10 +74,10 @@ internal sealed interface Route {
     /** A sound recording's page, by its sha256. */
     data class Audio(val sha256: String) : Route
 
-    /** The crop screen for one photo, opened on [kind]. */
-    data class Crop(val itemId: String, val kind: CropKind) : Route
-
-    /** The crop screen's set mode (Recompose): the set's Moments crops, [list] its viewer list ([setListKey]), on [itemId]. */
+    /**
+     * The crop screen (Recompose): the Moments crops of a set, or of one photo ([list] of one id), [list] its viewer
+     * list ([setListKey]), on [itemId]. The old crop screen of three crops went on Nov 10, 2026.
+     */
     data class Recompose(val list: String, val itemId: String) : Route
 
     /**
@@ -123,7 +122,6 @@ internal sealed interface Route {
         CopyPassphrase -> "copy-passphrase"
         is Person -> "person|$id"
         is Similar -> "similar|$itemId"
-        is Crop -> "crop|$kind|$itemId"
         is Recompose -> "recompose|${URLEncoder.encode(list, "UTF-8")}|$itemId"
         is Audio -> "audio|$sha256"
         is Country -> "country|${country?.let { URLEncoder.encode(it, "UTF-8") }.orEmpty()}"
@@ -162,7 +160,8 @@ internal sealed interface Route {
                 "person" -> Person(parts[1])
                 "similar" -> Similar(parts.drop(1).joinToString("|"))
                 "audio" -> Audio(parts[1])
-                "crop" -> Crop(parts.drop(2).joinToString("|"), CropKind.valueOf(parts[1]))
+                // The old crop screen (until Nov 10, 2026): the one photo's Recompose.
+                "crop" -> parts.drop(2).joinToString("|").let { Recompose(setListKey(listOf(it)), it) }
                 "recompose" -> Recompose(URLDecoder.decode(parts[1], "UTF-8"), parts.drop(2).joinToString("|"))
                 "country" -> Country(parts[1].ifEmpty { null }?.let { URLDecoder.decode(it, "UTF-8") })
                 "place" -> Place(URLDecoder.decode(parts[1], "UTF-8"))

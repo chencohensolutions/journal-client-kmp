@@ -1,6 +1,6 @@
 // Decodes HEIC/HEIF photos off the page's thread (decode.js). libheif-js compiles its WebAssembly synchronously,
 // which the TV's Cast browser (Chromium 92, seen Nov 9, 2026) refuses on the page's thread for anything over 4 KB, but
-// allows in a worker. Gets {id, bytes}; answers {id, width, height, data} (RGBA, transferred) or {id, error}.
+// allows in a worker. Gets {warm} once at start (compile now), then {id, bytes}; answers {id, width, height, data} (RGBA, transferred) or {id, error}.
 
 import factory from './vendor/libheif/libheif-bundle.mjs';
 
@@ -18,7 +18,12 @@ async function library() {
   return lib;
 }
 
-self.onmessage = async ({ data: { id, bytes } }) => {
+self.onmessage = async ({ data: { id, bytes, warm } }) => {
+  // Sent once the page loads: libheif compiled now, before the first photo waits on it.
+  if (warm) {
+    library().catch((e) => console.warn('libheif could not start', e));
+    return;
+  }
   try {
     const heif = await library();
     const decoder = new heif.HeifDecoder();

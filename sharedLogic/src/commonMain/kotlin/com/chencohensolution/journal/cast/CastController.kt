@@ -8,9 +8,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
@@ -46,6 +49,20 @@ data class CastItem(
 /** The video the TV plays, as it last told: where it is and whether it plays. */
 data class CastVideo(val id: String, val positionMillis: Long, val durationMillis: Long, val playing: Boolean, val ended: Boolean)
 
+/**
+ * What the TV may show over a photo or video ([CastController.info]): its note, when it was taken and where (as the
+ * phone words them), and the place's coordinates for the map. Empty strings and nulls are left out.
+ */
+data class CastInfo(
+    val text: String = "",
+    val time: String = "",
+    val place: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+) {
+    val hasPlace: Boolean get() = latitude != null && longitude != null
+}
+
 /** Something the TV couldn't show: the photo or video's id, and why (for the log). */
 data class CastError(val id: String, val message: String)
 
@@ -61,6 +78,10 @@ data class CastState(
     val video: CastVideo? = null,
     /** The last thing the TV couldn't show; [CastController.errorSeen] clears it. */
     val error: CastError? = null,
+    /** The TV shows the info ([CastInfo]) over what is shown: the phone's toggle, off with each new session. */
+    val infoOnTv: Boolean = false,
+    /** The TV shows the place of what is shown on a map. */
+    val mapOnTv: Boolean = false,
 )
 
 /** The open session's way to the TV: sends one message on [CAST_NAMESPACE]; false when it didn't go. */
@@ -88,6 +109,10 @@ class CastController(
     private var jobs: List<Job> = emptyList()
     private val frames = MutableStateFlow<Pair<String, CastFrame>?>(null)
     private var shownItem: String? = null
+    private val infosSent = mutableMapOf<String, CastInfo>()
+
+    /** The item the TV last couldn't show, kept after [errorSeen] (which the viewer calls at once) for [videoDone]. */
+    private val failedId = MutableStateFlow<String?>(null)
 
     /** A session opened with the TV called [device]: says hello, and from now on sends through [channel]. */
     fun connected(channel: CastChannel, device: String?) {
@@ -96,6 +121,7 @@ class CastController(
         outbox = box
         frames.value = null
         shownItem = null
+        infosSent.clear()
         _state.value = CastState(connected = true, device = device)
         jobs = listOf(
             scope.launch { for (message in box) channel.send(message) },
@@ -140,6 +166,7 @@ class CastController(
         if (shownItem != item.id) {
             shownItem = item.id
             frames.value = null
+            failedId.value = null
             _state.update { it.copy(video = null) }
             box.trySend(message("show") {
                 put("item", item.json())
@@ -165,12 +192,67 @@ class CastController(
 
     fun seek(positionMillis: Long) = send(message("video") { put("action", "seek"); put("position", positionMillis) })
 
+    /** What the TV may show over the item [id] (sent again only when it changed). */
+    fun info(id: String, info: CastInfo) {
+        val box = outbox ?: return
+        if (infosSent[id] == info) return
+        infosSent[id] = info
+        box.trySend(message("info") {
+            put("id", id)
+            if (info.text.isNotBlank()) put("text", info.text)
+            if (info.time.isNotBlank()) put("time", info.time)
+            if (info.place.isNotBlank()) put("place", info.place)
+            info.latitude?.let { put("latitude", it) }
+            info.longitude?.let { put("longitude", it) }
+        })
+    }
+
+    /** The info over the photo on the TV, on or off. */
+    fun showInfo(on: Boolean) = overlay(on, _state.value.mapOnTv)
+
+    /** The place on a map on the TV, on or off. */
+    fun showMap(on: Boolean) = overlay(_state.value.infoOnTv, on)
+
+    private fun overlay(info: Boolean, map: Boolean) {
+        if (outbox == null) return
+        _state.update { it.copy(infoOnTv = info, mapOnTv = map) }
+        send(message("overlay") { put("info", info); put("map", map) })
+    }
+
     fun mute(muted: Boolean) = send(message("mute") { put("muted", muted) })
 
     /** The TV back to its quiet screen (the viewer closed, casting goes on). */
     fun clear() {
         shownItem = null
         send(message("stop") {})
+    }
+
+    /**
+     * Returns once the video [id] on the TV is done, for a slideshow to go on: it ended (or stopped within
+     * [VIDEO_END_SLACK_MILLIS] of its end), the TV couldn't play it, or the session closed. A video that stops moving
+     * while it should play (its stream broke, the TV's last word was lost) counts as done after [VIDEO_STALL_MILLIS],
+     * and one the TV never starts after [VIDEO_START_MILLIS]; one paused with the controls waits for as long as it is.
+     */
+    suspend fun videoDone(id: String) {
+        var waited = 0L
+        var last: CastVideo? = null
+        while (true) {
+            val news = withTimeoutOrNull(VIDEO_STALL_MILLIS) {
+                combine(_state, failedId) { s, f -> s to f }
+                    .first { (s, f) -> !s.connected || f == id || s.video?.takeIf { it.id == id } != last }
+            }
+            if (news == null) {
+                waited += VIDEO_STALL_MILLIS
+                val mine = last ?: if (waited >= VIDEO_START_MILLIS) return else continue
+                if (mine.playing) return
+                continue
+            }
+            val (s, f) = news
+            if (!s.connected || f == id) return
+            val v = s.video?.takeIf { it.id == id } ?: continue
+            if (v.ended || (!v.playing && v.durationMillis > 0 && v.positionMillis >= v.durationMillis - VIDEO_END_SLACK_MILLIS)) return
+            last = v
+        }
     }
 
     /** The error was shown to the user. */
@@ -198,6 +280,7 @@ class CastController(
             }
             "error" -> {
                 val id = m.string("id") ?: return
+                failedId.value = id
                 _state.update { it.copy(error = CastError(id, m.string("message").orEmpty())) }
             }
             "need" -> m.string("id")?.let(::sendBytes)
@@ -226,6 +309,15 @@ class CastController(
          * A multiple of 3, so each piece is base64 on its own.
          */
         const val CHUNK_BYTES = 45_000
+
+        /** A playing video on the TV that says nothing new for this long has stalled: the slideshow goes on. */
+        const val VIDEO_STALL_MILLIS = 15_000L
+
+        /** A video the TV says nothing about for this long never started: the slideshow goes on. */
+        const val VIDEO_START_MILLIS = 30_000L
+
+        /** A video stopped this close to its end has ended (a stream a little shorter than its stated duration). */
+        const val VIDEO_END_SLACK_MILLIS = 1_000L
 
         /** [bytes] as the "chunk" messages the receiver puts back together. */
         fun chunks(id: String, bytes: ByteArray): List<String> {

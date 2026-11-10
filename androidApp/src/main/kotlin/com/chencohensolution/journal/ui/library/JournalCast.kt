@@ -75,6 +75,23 @@ internal object JournalCast {
     /** Whether casting can be offered: the receiver is registered and Google Play services has Cast. */
     fun available(context: Context): Boolean = start(context)
 
+    /**
+     * The phone's volume buttons while casting (asked Nov 10, 2026): the TV's volume a step up or down. False when not
+     * casting, so the phone's own volume changes as usual.
+     */
+    fun stepVolume(up: Boolean): Boolean {
+        val cast = session?.takeIf { it.isConnected } ?: return false
+        return runCatching {
+            cast.volume = (cast.volume + if (up) VOLUME_STEP else -VOLUME_STEP).coerceIn(0.0, 1.0)
+        }.onFailure { Log.w(TAG, "Couldn't change the TV's volume", it) }.isSuccess
+    }
+
+    /** Whether a TV is being cast to now. */
+    fun casting(): Boolean = session?.isConnected == true
+
+    /** One press of a volume button on the TV: 1/20 of its range, like a phone's own steps. */
+    private const val VOLUME_STEP = 0.05
+
     /** The phone's web server for the originals, while casting. */
     fun server(): CastServer? = server?.takeIf { session != null }
 

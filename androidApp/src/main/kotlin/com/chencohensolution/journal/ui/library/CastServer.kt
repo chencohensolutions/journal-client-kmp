@@ -73,13 +73,13 @@ internal class CastServer(private val context: Context) {
         }
     }
 
-    /** The video only on the server being downloaded whole while the TV plays it (one at a time). */
-    private var download: VideoDownload? = null
+    /** Videos only on the server downloaded whole for the TV, by item id: the one shown and, in a slideshow, ahead. */
+    private val downloads = ConcurrentHashMap<String, VideoDownload>()
 
     @Synchronized
     fun stop() {
-        download?.cancel()
-        download = null
+        downloads.values.forEach { it.cancel() }
+        downloads.clear()
         socket?.close()
         socket = null
         offered.clear()
@@ -106,6 +106,34 @@ internal class CastServer(private val context: Context) {
             width = item.width,
             height = item.height,
         )
+    }
+
+    /**
+     * Gets [item] ready for the TV before it is shown (a slideshow does this for the items ahead, one at a time):
+     * downloads its original from the server, or a video only there whole, and returns once it is here. Returns its
+     * size in bytes, or 0 when it couldn't be had.
+     */
+    suspend fun prepare(item: MediaItem, previews: ServerPreviews?): Long = kotlinx.coroutines.runInterruptible(kotlinx.coroutines.Dispatchers.IO) {
+        offer(item, previews) ?: return@runInterruptible 0L
+        val offer = numbers[item.id]?.let { offered[it] } ?: return@runInterruptible 0L
+        val body = bodyOf(offer) ?: return@runInterruptible 0L
+        (body as? VideoDownload)?.awaitDone()
+        body.length
+    }
+
+    /**
+     * Stops and deletes the videos downloaded for the TV other than [ids] (the one shown, and in a slideshow those
+     * ahead): asked for again, they download again.
+     */
+    @Synchronized
+    fun keepOnly(ids: Collection<String>) {
+        val keep = ids.toSet()
+        for ((id, download) in downloads) {
+            if (id in keep) continue
+            download.cancel()
+            downloads.remove(id)
+            numbers[id]?.let { offered[it] }?.let { offer -> if (offer.body === download) offer.body = null }
+        }
     }
 
     /** The original's bytes whole, for a TV that couldn't fetch its address (they go over the Cast session). */
@@ -214,17 +242,18 @@ internal class CastServer(private val context: Context) {
     /**
      * A video only on the server, downloaded whole into the cast folder, in order and as fast as the server sends it,
      * while the TV plays it: the TV reads what has arrived, waits briefly at the edge, and only a jump far ahead goes
-     * to the server directly. The previous video's download stops and its file goes. Null when there is no room.
+     * to the server directly. Downloads go on until [keepOnly] lets them go (the viewer moved on, the slideshow
+     * stopped). Null when there is no room.
      */
     @Synchronized
     private fun downloadWhole(item: MediaItem, streamed: StreamedBody): Body? {
-        download?.cancel()
-        download = null
+        downloads[item.id]?.takeIf { it.usable }?.let { return it }
         val folder = File(context.cacheDir, CAST_DIR).apply { mkdirs() }
-        if (folder.usableSpace < streamed.length + KEEP_FREE_BYTES) return null
+        val coming = downloads.values.sumOf { it.left }
+        if (folder.usableSpace < streamed.length + coming + KEEP_FREE_BYTES) return null
         val file = File(folder, "${item.id.hashCode().toUInt()}.video")
         return VideoDownload(streamed, file).also {
-            download = it
+            downloads[item.id] = it
             pool.execute(it::run)
         }
     }
@@ -420,6 +449,19 @@ private class VideoDownload(private val streamed: StreamedBody, private val file
     fun cancel() {
         cancelled = true
         synchronized(lock) { lock.notifyAll() }
+    }
+
+    /** Not stopped nor failed: what is downloaded (or still coming) can be read. */
+    val usable: Boolean get() = !cancelled && !failed
+
+    /** Bytes still to come. */
+    val left: Long get() = if (usable) (length - written).coerceAtLeast(0) else 0
+
+    /** Waits until the whole video is here, or the download stopped. */
+    fun awaitDone() {
+        synchronized(lock) {
+            while (written < length && !failed && !cancelled) lock.wait(500)
+        }
     }
 
     override fun open(from: Long): InputStream = object : InputStream() {

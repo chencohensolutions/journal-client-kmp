@@ -85,6 +85,19 @@ function heifDecoder() {
   return heifWorker;
 }
 
+/**
+ * Starts the decoders before the first photo needs them: the HEIF worker and its WebAssembly (seconds on a TV), and
+ * jxl-oxide. Called once the page loads, so the first HEIC shows as soon as its bytes are in.
+ */
+export function warmUp() {
+  try {
+    heifDecoder().postMessage({ warm: true });
+  } catch (e) {
+    console.warn('the HEIF decoder could not start', e);
+  }
+  jxlLibrary().catch((e) => console.warn('the JPEG XL decoder could not start', e));
+}
+
 async function decodeHeif(bytes) {
   const id = ++heifAsked;
   const { width, height, data } = await new Promise((resolve, reject) => {
@@ -106,6 +119,8 @@ async function jxlLibrary() {
       await module.default();
       return module;
     })();
+    // A failed start is tried again by the next photo.
+    jxl.catch(() => { jxl = null; });
   }
   return jxl;
 }

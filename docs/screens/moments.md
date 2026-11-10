@@ -87,7 +87,9 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   - A **tap** opens the viewer on the set only, at the photo shown.
   - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
 - **A moment made by hand** shows its name over it, not bold, with its days under it in smaller type ("Beach
-  weekend", then "Fri – Sun"); a moment made without a name shows none (Nov 9, 2026).
+  weekend", then "Fri – Sun"); a moment made without a name shows none (Nov 9, 2026). A moment of one day shows no
+  day under its name: the row's heading says it (Nov 10, 2026). Its description, when it has one, is right under the
+  name (Nov 10, 2026).
 - **Make a moment** (picking bar, two or more photos picked): a sheet with its **name** (optional since Nov 9, 2026: an unnamed
   moment is saved with `"name": ""`), its **highlights** (tap
   several; the numbers are their order; none: its best-looking photo) and **Show it in Moments on**: its first day,
@@ -200,10 +202,14 @@ month or day with one finger. Android and iOS.
 - **Tapping the name** grows the pill into the **ruler**, still above the tabs:
   - the month and its counts ("88 photos · 14 days") and a ⌄ to fold it;
   - the month's **days** in a line, lit where there are photos: tap one or slide along it, and the feed goes to the lit
-    day nearest the finger;
+    day nearest the finger. The whole strip takes the finger, its day numbers too, and a tap always goes, even to the
+    day picked last (Nov 10, 2026; before, only the line of dots did, and a tap on the same day again did nothing);
+    it lands on that day itself, its first moment of the day, even when the day is inside a row of several days, and
+    the pill names the day at the top of the feed, not its row's newest;
   - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January, a
     needle in the middle. Drag it and the feed follows; a flick keeps it turning, and it settles on a month.
-- **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident), as
+- **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident); a
+  touch on the ruler never does, even between its controls (Nov 10, 2026: such a touch fell through and folded it), as
   do ⌄, back (Android), changing tabs, search and picking photos. The backup summary hides while it is open.
 - **Where it lands:** a month lands on its newest day with photos, the top of the month in a feed read newest first; a
   day lands on its row's divider, just under the sources bar. A row over two days (grouping by gaps) is landed on for

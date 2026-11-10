@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import com.chencohensolution.journal.enrollment.parseEnrollmentLink
 import com.chencohensolution.journal.ui.EnrollmentWizard
 import com.chencohensolution.journal.swap.parseSwapLink
 import com.chencohensolution.journal.ui.JournalTheme
+import com.chencohensolution.journal.ui.library.JournalCast
 import com.chencohensolution.journal.ui.library.LibraryApp
 import com.chencohensolution.journal.work.freeUp
 
@@ -30,6 +32,21 @@ class MainActivity : ComponentActivity() {
 
     /** A swap link opened from a friend's message (journal://swap?…), for Swap with a friend. */
     private var swapLink by mutableStateOf<String?>(null)
+
+    // Casting, the volume buttons change the TV's volume (asked Nov 10, 2026); otherwise the phone's, as usual.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val up = when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> true
+            KeyEvent.KEYCODE_VOLUME_DOWN -> false
+            else -> return super.dispatchKeyEvent(event)
+        }
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            if (JournalCast.stepVolume(up)) return true
+        } else if (JournalCast.casting()) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

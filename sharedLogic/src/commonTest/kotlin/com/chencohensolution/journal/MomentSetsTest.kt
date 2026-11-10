@@ -249,6 +249,60 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aMomentHasADescription() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "Sea", listOf("s1"), ShowOn.LAST)
+        stories.nameMoment(weekend, "Sea", "  Two days at the beach ")
+        assertEquals("Two days at the beach", stories.currentState.namedSetOf("u")?.description)
+        assertEquals("Sea", stories.currentState.namedSetOf("u")?.name)
+        // Renamed alone: the description stays.
+        stories.nameMoment(weekend, "Beach")
+        assertEquals("Two days at the beach", stories.currentState.namedSetOf("u")?.description)
+        // Kept after a restart.
+        assertEquals("Two days at the beach", setup(setup.fileSystem).stories.currentState.namedSetOf("f")?.description)
+        // Cleared.
+        stories.nameMoment(weekend, "Beach", " ")
+        assertNull(stories.currentState.namedSetOf("u")?.description)
+    }
+
+    @Test
+    fun aMomentIsInTheStoryline() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "Sea", listOf("s1"), ShowOn.LAST)
+        // By its cover, once, standing for the moment.
+        assertEquals(listOf("s1"), stories.currentState.storyline.map { it.id }.filter { it in weekend })
+        assertEquals("Sea", stories.currentState.storylineMomentOf("s1")?.name)
+        assertNull(stories.currentState.storylineMomentOf("s2"))
+        // Removed from it like a photo.
+        stories.setInStoryline("s1", false)
+        assertEquals(emptyList<String>(), stories.currentState.storyline.map { it.id }.filter { it in weekend })
+    }
+
+    @Test
+    fun aMomentsCoverIsChosen() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "Sea", listOf("s1"), ShowOn.LAST)
+        stories.setMomentCover(weekend, "u")
+        assertEquals("u", stories.currentState.namedSetOf("f")?.coverId)
+        assertEquals(listOf("u"), stories.currentState.storyline.map { it.id }.filter { it in weekend })
+        assertEquals("Sea", stories.currentState.storylineMomentOf("u")?.name)
+        assertNull(stories.currentState.storylineMomentOf("s1"))
+        // The name, a highlight and a restart keep it.
+        stories.nameMoment(weekend, "Beach")
+        stories.setHighlight(weekend, "s2", true)
+        assertEquals("u", setup(setup.fileSystem).stories.currentState.namedSetOf("f")?.coverId)
+        // Again on the cover: back to the first highlight.
+        stories.setMomentCover(weekend, "u")
+        assertEquals("s1", stories.currentState.namedSetOf("f")?.coverId)
+    }
+
+    @Test
     fun aMomentNeedsNoName() = runTest {
         val setup = setup()
         val stories = setup.stories

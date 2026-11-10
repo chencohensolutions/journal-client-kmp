@@ -102,6 +102,8 @@ internal class FeedActions(
     val openSet: ((itemIds: List<String>, items: List<MediaItem>, item: MediaItem) -> Unit)? = null,
     /** A photo of the storyline; the viewer swipes through the storyline. */
     val openStoryline: (MediaItem) -> Unit = {},
+    /** A moment made by hand in the storyline (its cover [MediaItem]): the viewer on the whole moment. */
+    val openMoment: ((NamedSet, MediaItem) -> Unit)? = null,
     /** Long press on a photo: Write about it, Crop, Tag, Remove from storyline. */
     val itemMenu: (MediaItem) -> Unit = {},
     /** A "+6 WhatsApp" chip: that source's hidden photos of the row, in a band under it; "Hide WhatsApp" again. */
@@ -177,8 +179,16 @@ internal sealed interface FeedRow {
         override val key get() = "story-day-$day"
     }
 
-    /** The storyline: one photo with its writing. */
-    data class StoryPhoto(val item: MediaItem) : FeedRow {
+    /** The storyline: one photo with its writing, or a moment made by hand by its cover ([moment]). */
+    data class StoryPhoto(
+        val item: MediaItem,
+        val moment: NamedSet? = null,
+        /** The moment's first and last days, for its line of days under the name. */
+        val momentDays: Pair<LocalDay, LocalDay>? = null,
+        /** The moment's photos and videos (Nov 10, 2026: "12 photos · 3 videos" with its days). */
+        val momentPhotos: Int = 0,
+        val momentVideos: Int = 0,
+    ) : FeedRow {
         override val key get() = "story-${item.id}"
     }
 }
@@ -267,8 +277,25 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
 }
 
 /** The storyline by day as list items: each day (with its tucked-away pill), then its photos shown. */
-internal fun storylineDayRows(days: List<StorylineDay>): List<FeedRow> =
-    days.flatMap { day -> listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map(FeedRow::StoryPhoto) }
+internal fun storylineDayRows(
+    days: List<StorylineDay>,
+    momentOf: (String) -> NamedSet? = { null },
+    itemOf: (String) -> MediaItem? = { null },
+): List<FeedRow> =
+    days.flatMap { day ->
+        listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { item ->
+            val moment = momentOf(item.id)
+            val known = moment?.itemIds?.mapNotNull(itemOf).orEmpty()
+            val momentDays = known.map { it.day }.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
+            // Photos not read yet count as photos.
+            val videos = known.count { it.type == MediaType.VIDEO }
+            FeedRow.StoryPhoto(
+                item, moment, momentDays ?: moment?.let { item.day to item.day },
+                momentPhotos = (moment?.itemIds?.size ?: 0) - videos - known.count { it.type == MediaType.AUDIO },
+                momentVideos = videos,
+            )
+        }
+    }
 
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
@@ -314,7 +341,15 @@ internal fun LazyListScope.feedItems(
             is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
                 val note = notes[row.item.id]
                 val picked = if (picking) row.item.id in selection!!.keys else null
-                PhotoTitle(note?.title)
+                // A moment made by hand stands in the storyline by its cover (asked Nov 10, 2026): its name over it, its
+                // description under it, "⧉ 36" in the corner, and a tap opens the whole moment.
+                val moment = row.moment
+                // Its name as Moments shows it (asked Nov 10, 2026): not bold, its days under it.
+                val momentName = moment?.name
+                if (momentName != null && row.momentDays != null) {
+                    SetName(momentName, row.momentDays.first, row.momentDays.second, momentCounts(row.momentPhotos, row.momentVideos), moment.description)
+                }
+                else PhotoTitle(note?.title)
                 Box(Modifier.pickedInset(picked)) {
                     FullWidthPhoto(
                         row.item,
@@ -322,9 +357,23 @@ internal fun LazyListScope.feedItems(
                         note?.crops?.moments,
                         Modifier.combinedClickable(
                             onLongClick = { if (selection != null) selection.press(row.item.id, row.item.id) else actions.itemMenu(row.item) },
-                            onClick = { if (picking) selection?.toggle(row.item.id) else actions.openStoryline(row.item) }),
+                            onClick = {
+                                when {
+                                    picking -> selection?.toggle(row.item.id)
+                                    moment != null && actions.openMoment != null -> actions.openMoment.invoke(moment, row.item)
+                                    else -> actions.openStoryline(row.item)
+                                }
+                            }),
                     )
                     PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
+                    if (moment != null) {
+                        Text(
+                            "⧉ ${row.momentPhotos + row.momentVideos}",
+                            Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
                 PhotoNoteText(note?.caption)
             }
@@ -667,18 +716,13 @@ private fun MomentLabel(label: FeedRow.Label) {
 private fun timeRange(start: String, end: String): String =
     if (start == end) start else stringResource(R.string.feed_time_range, start, end)
 
-/** The title of the photo's writing, above it. Nothing when it has none. */
+/**
+ * The title of the photo's writing, above it: not shown any more (asked Nov 10, 2026: a photo has only its paragraph;
+ * Write lost the title box, and saving clears an old title, which History keeps).
+ */
+@Suppress("UNUSED_PARAMETER")
 @Composable
-private fun PhotoTitle(title: String?) {
-    if (title.isNullOrBlank()) return
-    Text(
-        title,
-        color = LibraryColors.OnBackground,
-        fontSize = 19.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
-    )
-}
+private fun PhotoTitle(title: String?) = Unit
 
 /**
  * The paragraph of the photo's writing, under it, in the serif of written text: up to four lines, then "more" (tap to
@@ -834,13 +878,31 @@ private fun PartOfLink(name: String?, onClick: () -> Unit) {
  * smaller type ("Fri – Sun") (asked Nov 9, 2026).
  */
 @Composable
-private fun SetName(name: String, items: List<MediaItem>) {
-    val first = items.first().day
-    val last = items.last().day
-    val days = if (first == last) formatDate(first.toLocalDate(), "EEE") else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
+private fun SetName(name: String, items: List<MediaItem>, description: String? = null) =
+    SetName(name, items.first().day, items.last().day, description = description)
+
+/** "12 photos · 3 videos", each left out at none. */
+@Composable
+private fun momentCounts(photos: Int, videos: Int): String = listOfNotNull(
+    photos.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.set_photos, it, it) },
+    videos.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.set_videos, it, it) },
+).joinToString(" · ")
+
+/**
+ * [SetName] from its first and last days; [counts] after them ("Fri – Sun · 12 photos · 3 videos"), when given; its
+ * [description] right under the name (asked Nov 10, 2026: under the title, not under the photo).
+ */
+@Composable
+private fun SetName(name: String, first: LocalDay, last: LocalDay, counts: String = "", description: String? = null) {
+    // One day: the day heading above already says it (asked Nov 10, 2026), so only the days of a longer moment.
+    val days = if (first == last) null else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
+    val line = listOfNotNull(days, counts.ifEmpty { null }).joinToString(" · ")
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
         Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(days, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
+        description?.let {
+            Text(it, color = LibraryColors.OnBackground.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        }
+        if (line.isNotEmpty()) Text(line, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
     }
 }
 
@@ -864,7 +926,7 @@ private fun SetBlock(
 ) {
     val named = block.named
     Column(modifier) {
-        if (named != null && !named.isPartOf(block)) named.name?.let { SetName(it, block.items) }
+        if (named != null && !named.isPartOf(block)) named.name?.let { SetName(it, block.items, named.description) }
         if (block.highlights.isEmpty()) {
             SetCover(block, landing, notes, video, selected, onLongPress, onOpen)
         } else {

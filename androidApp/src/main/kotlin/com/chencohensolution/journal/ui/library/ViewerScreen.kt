@@ -31,9 +31,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -58,12 +56,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
@@ -130,10 +130,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chencohensolution.journal.R
-import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.cast.CastInfo
 import com.chencohensolution.journal.cast.castAhead
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
@@ -233,8 +233,11 @@ private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPrevi
 /** Cast: a slideshow waits this long at most for the TV to show a photo before its time starts. */
 private const val CAST_PHOTO_WAIT_MILLIS = 10_000L
 
-/** How long the bars and buttons stay after a tap on the photo. */
-private const val CHROME_MILLIS = 3_000L
+/** At most this much of a casting slideshow's items is downloaded ahead to the phone at once: 3 GB. */
+private const val CAST_AHEAD_BYTES = 3L shl 30
+
+/** How long the bars and buttons stay after a tap on the photo, or going to another (5 s since Nov 10, 2026; was 3). */
+private const val CHROME_MILLIS = 5_000L
 
 /** How long the zoom's minimap stays after the photo stops moving. */
 private const val MINIMAP_MILLIS = 1_500L
@@ -268,6 +271,8 @@ internal class ViewerActions(
     val showInMoments: ((itemId: String) -> Unit)? = null,
     /** Shares the original with another app through the share sheet; false when it can't be had (offline). */
     val share: suspend (MediaItem) -> Boolean = { false },
+    /** A single photo's ⌗: the crop screen on it (its Moments crop), as a set's Recompose. */
+    val crop: (itemId: String) -> Unit = {},
     /** The map screen, on where the photo was taken (a tap on the details panel's map). */
     val openMap: (GeoPoint) -> Unit = {},
     /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
@@ -284,19 +289,25 @@ internal class ViewerActions(
 
 /**
  * The viewer opened on a set ([Route.Viewer.list] a set's): its photos cross-fade instead of sliding, under the photo
- * the scrubber and ☆ Highlight · ▶ Play · Recompose; Write, Details and Share move to the top bar's menu.
+ * the reel and ☆ Highlight · ▶ Play · ✎ Write · ⌗ Recompose; the moment's name over the photo's date.
  */
 internal class ViewerSet(
     /** Its name, when it is a moment made by hand. */
     val name: String? = null,
+    /** A few words about it, when given. */
+    val description: String? = null,
     /** Its highlights' ids in order; the first is its cover. */
     val highlights: List<String> = emptyList(),
     val setHighlight: (itemId: String, on: Boolean) -> Unit = { _, _ -> },
     val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
     /** The crop screen's set mode, on this photo. */
     val recompose: (itemId: String) -> Unit = {},
-    /** Names or renames it; blank: unnamed. */
-    val rename: (name: String) -> Unit = {},
+    /** Its cover, where Moments and the storyline show it; null when it has none of its own (a set the app made). */
+    val coverId: String? = null,
+    /** Make cover: this photo becomes its cover; again on the cover, back to its first highlight. */
+    val setCover: (itemId: String) -> Unit = {},
+    /** Names or renames it and gives its description; blank: unnamed, no description. */
+    val rename: (name: String, description: String) -> Unit = { _, _ -> },
     /** A swipe past its last ([forward]) or first photo: the photo or set beside it in Moments, if any. */
     val beside: (forward: Boolean) -> Unit = {},
 )
@@ -340,7 +351,6 @@ internal fun ViewerScreen(
     LaunchedEffect(playing) { if (playing) slideBarHidden = false }
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
-    var menu by remember { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
     // Videos play as soon as they are shown, muted until sound is turned on, and each picks up where it was left while
     // the viewer is open (asked Nov 9, 2026).
@@ -356,6 +366,9 @@ internal fun ViewerScreen(
     val castState by cast.state.collectAsState()
     val casting = castState.connected
     val castZooms = remember { mutableMapOf<String, CastZoom>() }
+    // A double-tap that fills the TV with the photo keeps filling it with the next ones, until one goes back to the
+    // whole photo (asked Nov 10, 2026).
+    var castFill by rememberSaveable { mutableStateOf(false) }
     // ▶ Videos is the slideshow's (asked Nov 10, 2026): outside it videos always play by themselves; in it, off, a video
     // shows its poster for a slide's time. Cast to a TV, a slideshow plays every video to its end.
     val inSlideshow = set != null && playing
@@ -384,7 +397,7 @@ internal fun ViewerScreen(
             val item = items.getOrNull(i)
             if (item?.type == MediaType.VIDEO) {
                 if (cast.state.value.connected) {
-                    cast.state.first { s -> !s.connected || s.error?.id == item.id || s.video?.let { it.id == item.id && it.ended } == true }
+                    cast.videoDone(item.id)
                 } else if (autoplayNow) {
                     snapshotFlow { videoDone.value }.first { it == item.id }
                 }
@@ -417,13 +430,12 @@ internal fun ViewerScreen(
     // The whole photo instead of its crop, until turned back (kept while swiping).
     var showWhole by rememberSaveable { mutableStateOf(false) }
     val whole = showWhole
-    // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
+    // The screen's shape (upright or sideways): the landscape layout.
     val window = LocalWindowInfo.current.containerSize
     val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
-    val cropKind = if (screenRatio <= 1f) CropKind.PORTRAIT else CropKind.LANDSCAPE
-    // In a set, its Moments crops (Recompose), so it flips as composed.
-    fun cropOf(item: MediaItem) = if (set != null) stories.note(item.id)?.crops?.moments?.takeIf { item.type != MediaType.VIDEO }
-    else stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
+    // Its Moments crop (Crop, or a set's Recompose), as Moments shows it: a single photo as a set's (Nov 10, 2026; before,
+    // a single photo showed its portrait or landscape crop, from the old crop screen).
+    fun cropOf(item: MediaItem) = stories.note(item.id)?.crops?.moments?.takeIf { item.type != MediaType.VIDEO }
     val current = items[shownIndex]
     // Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open;
     // zoomed, the whole photo shows instead of its crop.
@@ -433,7 +445,15 @@ internal fun ViewerScreen(
     val zoom = zoomOf(current)
     val zoomNow by rememberUpdatedState(zoom.takeIf { current.type != MediaType.VIDEO && !casting })
     val currentCrop = cropOf(current)?.takeIf { !zoom.isZoomed && !casting }
-    fun castZoomOf(item: MediaItem) = castZooms.getOrPut(item.id) { CastZoom(item.ratio, castState.tvRatio) }
+    fun castZoomOf(item: MediaItem) = castZooms.getOrPut(item.id) {
+        CastZoom(item.ratio, castState.tvRatio).also { if (castFill) it.zoom = it.zoom.filled() }
+    }
+    LaunchedEffect(castFill) {
+        castZooms.values.forEach {
+            if (castFill && !it.zoom.isZoomed) it.zoom = it.zoom.filled()
+            else if (!castFill && it.zoom == it.zoom.filled()) it.zoom = it.zoom.whole()
+        }
+    }
     val castZoom = castZoomOf(current).takeIf { casting && current.type != MediaType.VIDEO }
     val castZoomNow by rememberUpdatedState(castZoom)
     val castZoomed = castZoom?.zoom?.isZoomed == true
@@ -458,6 +478,36 @@ internal fun ViewerScreen(
         cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = true, positionMillis = videoPositions[shownNow.id] ?: 0L)
         if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
     }
+    // In a slideshow, the items ahead are got ready for the TV one at a time, in the slideshow's order, from the one
+    // shown round to the one before it (originals and videos only on the server downloaded to this phone), until
+    // the slideshow stops or all are here (asked Nov 10, 2026); at most CAST_AHEAD_BYTES of them at once. Outside a
+    // slideshow only the item shown is kept.
+    LaunchedEffect(casting, inSlideshow, current.id, items.size) {
+        if (!casting) return@LaunchedEffect
+        val server = JournalCast.server() ?: return@LaunchedEffect
+        val from = items.indexOf(current).coerceAtLeast(0)
+        val order = if (inSlideshow) List(items.size) { items[(from + it) % items.size] } else listOf(current)
+        var bytes = 0L
+        val ahead = order.takeWhile { item ->
+            (bytes < CAST_AHEAD_BYTES).also { bytes += item.sizeBytes ?: 0L }
+        }
+        server.keepOnly(ahead.map { it.id })
+        for (item in ahead) server.prepare(item, castPreviews)
+    }
+    // What the TV shows over the photo when the info or map button is on: the note, when and where.
+    val castInfo = if (!casting) null else {
+        val point = stories.places.location(current)
+        val name = point?.let { stories.places.name(it) }
+        val taken = java.time.Instant.ofEpochMilli(current.takenAtMillis).atZone(java.time.ZoneId.systemDefault())
+        CastInfo(
+            text = stories.note(current.id)?.caption.orEmpty().trim(),
+            time = formatDate(taken, "EEEEMMMMdyyyy") + " · " + formatDate(taken, "jmm"),
+            place = listOfNotNull(name?.label, name?.city, name?.country).distinct().joinToString(", "),
+            latitude = point?.latitude,
+            longitude = point?.longitude,
+        )
+    }
+    LaunchedEffect(castInfo, current.id) { castInfo?.let { cast.info(current.id, it) } }
     LaunchedEffect(castState.error) {
         castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
         if (castState.error != null) {
@@ -503,8 +553,10 @@ internal fun ViewerScreen(
     }
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
-    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption) {
-        if (chrome && set == null && !showInfo && !choosingTag && !editingCaption) {
+    // A set's too (asked Nov 10, 2026; before, they stayed), and going to another photo starts the time again.
+    // Casting, they stay (asked Nov 10, 2026): the phone is the remote.
+    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption, naming, grid, current.id, casting) {
+        if (chrome && !casting && !playing && !showInfo && !choosingTag && !editingCaption && !naming && !grid) {
             delay(CHROME_MILLIS)
             chrome = false
         }
@@ -514,16 +566,35 @@ internal fun ViewerScreen(
     // landscape. When a tap hides the bars the reel slides away and the photo glides to the middle of the whole screen.
     val setBarsShown = set != null && chrome && !showInfo && !playing
     var reelRoom by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    // The top bar's height with the status bar: a set's photo is centred between it and the button bar.
+    var headerHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    // Only a photo that fits in the room left moves to its middle (asked Nov 10, 2026): one that fills more stays where
+    // it is when the bars come and go, and a zoomed one never moves (its last place is kept while zoomed).
+    val fitsInRoom = run {
+        if (window.width <= 0 || window.height <= 0) return@run true
+        val ratio = current.shownRatio(currentCrop?.takeIf { !whole }).coerceAtLeast(0.01f)
+        val w = window.width.toFloat()
+        val h = window.height.toFloat()
+        if (reelRoom.width > 0) minOf(w, h * ratio) <= w - reelRoom.width else minOf(h, w / ratio) <= h - reelRoom.height - headerHeight
+    }
+    val zoomedNow = zoom.isZoomed || castZoomed
+    var roomOn by remember(current.id) { mutableStateOf(setBarsShown && fitsInRoom && !zoomedNow) }
+    LaunchedEffect(setBarsShown, fitsInRoom, zoomedNow) { if (!zoomedNow) roomOn = setBarsShown && fitsInRoom }
     val roomBottom by androidx.compose.animation.core.animateDpAsState(
-        if (setBarsShown) with(density) { reelRoom.height.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room",
+        if (roomOn) with(density) { reelRoom.height.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room",
     )
     val roomEnd by androidx.compose.animation.core.animateDpAsState(
-        if (setBarsShown) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
+        if (roomOn) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
+    )
+    // In portrait, below the top bar too (asked Nov 10, 2026: the middle between the header and the button bar).
+    val roomTop by androidx.compose.animation.core.animateDpAsState(
+        if (roomOn && reelRoom.width == 0) with(density) { headerHeight.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "header room",
     )
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     fun roomBottomPx() = with(density) { roomBottom.toPx() }
     fun roomEndPx() = with(density) { roomEnd.toPx() }
+    fun roomTopPx() = with(density) { roomTop.toPx() }
     // The swipe's gesture outlives a composition: it calls the latest.
     val besideNow by rememberUpdatedState(set?.beside)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -534,7 +605,7 @@ internal fun ViewerScreen(
                     chrome = false
                     showInfo = false
                 }
-                .castGestures({ castZoomNow }, area = { size -> castArea(size, roomBottomPx(), roomEndPx(), rtl) }) {
+                .castGestures({ castZoomNow }, area = { size -> castArea(size, roomBottomPx(), roomEndPx(), rtl, roomTopPx()) }) {
                     chrome = false
                     showInfo = false
                 }
@@ -544,7 +615,10 @@ internal fun ViewerScreen(
                             if (current.type == MediaType.VIDEO) return@detectTapGestures
                             chrome = false
                             showInfo = false
-                            castZoomNow?.let { it.zoom = it.zoom.toggled() }
+                            castZoomNow?.let {
+                                    castFill = !it.zoom.isZoomed
+                                    it.zoom = it.zoom.toggled()
+                                }
                             zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                         },
                         onTap = {
@@ -575,7 +649,7 @@ internal fun ViewerScreen(
                 },
         ) {
             Crossfade(
-                shownIndex, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd),
+                shownIndex, Modifier.fillMaxSize().padding(top = roomTop, bottom = roomBottom, end = roomEnd),
                 animationSpec = tween(SET_FADE_MILLIS), label = "set photo",
             ) { page ->
                 val item = items[page]
@@ -620,7 +694,10 @@ internal fun ViewerScreen(
                             onDoubleTap = { at ->
                                 chrome = false
                                 showInfo = false
-                                castZoomNow?.let { it.zoom = it.zoom.toggled() }
+                                castZoomNow?.let {
+                                    castFill = !it.zoom.isZoomed
+                                    it.zoom = it.zoom.toggled()
+                                }
                                 zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                             },
                             onTap = onTap,
@@ -639,8 +716,9 @@ internal fun ViewerScreen(
             }
         }
 
-        // A highlight shows a ★ over it, also while the slideshow plays (asked Nov 10, 2026).
-        if (set != null && current.id in set.highlights && !zoom.isZoomed) {
+        // A highlight shows a ★ over it only while the slideshow plays, when the bar's ★ is hidden (asked Nov 10, 2026:
+        // with the bar on screen it said the same twice).
+        if (set != null && playing && current.id in set.highlights && !zoom.isZoomed) {
             val highlighted = stringResource(R.string.set_highlighted)
             Text(
                 "★",
@@ -653,7 +731,7 @@ internal fun ViewerScreen(
 
         // The TV's screen over the photo shown, in the same room as the photo.
         castZoom?.let { holder ->
-            CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd))
+            CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(top = roomTop, bottom = roomBottom, end = roomEnd))
         }
 
         AnimatedVisibility(
@@ -673,6 +751,12 @@ internal fun ViewerScreen(
                     onRoom = { reelRoom = it },
                     modifier = Modifier.align(Alignment.BottomCenter),
                     brief = { shown ->
+                        MomentTitle(
+                            set.name, set.description,
+                            Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
+                            onClick = { actions.showInMoments?.invoke(shown.id) ?: onBack() },
+                            onLongClick = { naming = true },
+                        )
                         PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
                         // A video's controls: under the info, above the reel (asked Nov 9, 2026).
                         if (shown.type == MediaType.VIDEO && casting) {
@@ -684,11 +768,19 @@ internal fun ViewerScreen(
                 )
             }
             AnimatedVisibility(playing && !slideBarHidden, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // A video playing in the slideshow shows its controls and where it is above the bar (asked Nov 10, 2026).
+                if (current.type == MediaType.VIDEO) ProvideTextStyle(OverPhotoText) {
+                    if (casting) {
+                        CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp))
+                    } else videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
+                }
                 // Cast to a TV, every video plays to its end: no ▶ Videos.
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos.takeUnless { casting }, onAutoplayVideos = setAutoplayVideos, onStop = {
                     playing = false
                     chrome = true
                 })
+                }
             }
         }
         if (set == null) AnimatedVisibility(
@@ -704,8 +796,10 @@ internal fun ViewerScreen(
                     CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
                 } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
                 // Icons only, Share in the top bar (asked Nov 10, 2026).
+                // As a set's bar (asked Nov 10, 2026): ✎ Write · ⌗ Crop.
                 FloatingBar {
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
+                    BarPill(stringResource(R.string.crop_title), glyph = "⌗", enabled = current.type != MediaType.VIDEO) { actions.crop(current.id) }
                 }
             }
             }
@@ -730,6 +824,7 @@ internal fun ViewerScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { headerHeight = it.height }
                     .statusBarRoom()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -739,64 +834,36 @@ internal fun ViewerScreen(
                 }
                 val showInMoments = actions.showInMoments
                 if (set != null) {
-                    Column(Modifier.weight(1f)) {
-                        set.name?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
-                        Text(
-                            stringResource(R.string.set_position, shownIndex + 1, items.size) + " · " + dayLabel(current.day),
-                            color = PositionColor,
-                            fontSize = 13.sp,
-                        )
-                    }
+                    // Only where it is: the name is at the bottom over the photo's date, and there is no ⋮ (asked Nov 10,
+                    // 2026: a long press on the name renames it, a tap shows it in Moments).
+                    Text(
+                        stringResource(R.string.set_position, shownIndex + 1, items.size),
+                        color = PositionColor,
+                        fontSize = 13.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     ShareTopButton(current, actions.share)
                     IconButton(onClick = { grid = true }) {
                         ShadowIcon(LibraryIcons.Grid, stringResource(R.string.set_all_photos))
                     }
-                    Box {
-                        IconButton(onClick = { menu = true }) {
-                            ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
-                        }
-                        // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026). The menu and the name
-                        // dialog take a plain text style: the top bar's shadow over the photo is not for them (Nov 10, 2026).
-                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
-                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
-                                menu = false
-                                showInfo = true
-                            })
-                            showInMoments?.let { show ->
-                                DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
-                                    menu = false
-                                    show(current.id)
-                                })
-                            }
-                            DropdownMenuItem(
-                                text = { Text(stringResource(if (set.name != null) R.string.set_rename else R.string.set_name_it)) },
-                                onClick = {
-                                    menu = false
-                                    naming = true
-                                },
-                            )
-                        }
-                        if (naming) MomentNameDialog(set.name.orEmpty(), onDismiss = { naming = false }) { name ->
-                            naming = false
-                            set.rename(name)
-                        }
-                        }
-                    }
-                } else if (showInMoments == null) {
-                    Text(
-                        stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
-                        color = PositionColor,
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f),
-                    )
                 } else {
-                    // Opened from elsewhere: the day is a chip that shows the photo in Moments.
-                    Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 14.sp)
-                    MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
-                    Box(Modifier.weight(1f))
+                    // As a set's top bar (asked Nov 10, 2026): where it is and Share; Details is the info line's ⓘ, so no ⋮
+                    // (asked Nov 10, 2026). Opened from elsewhere, the day is a chip that shows the photo in Moments.
+                    if (showInMoments == null) {
+                        Text(
+                            stringResource(R.string.set_position, pager.currentPage + 1, items.size) + " · " + dayLabel(current.day),
+                            color = PositionColor,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 13.sp)
+                        MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
+                        Box(Modifier.weight(1f))
+                    }
+                    ShareTopButton(current, actions.share)
                 }
-                if (set == null) ShareTopButton(current, actions.share)
+                CastOverlayButtons(hasPlace = castInfo?.hasPlace == true)
                 CastButton()
             }
             }
@@ -832,6 +899,12 @@ internal fun ViewerScreen(
         }
     }
 
+    if (naming && set != null) {
+        MomentNameDialog(set.name.orEmpty(), set.description.orEmpty(), onDismiss = { naming = false }) { name, description ->
+            naming = false
+            set.rename(name, description)
+        }
+    }
     if (grid && set != null) {
         SetGridSheet(
             items,
@@ -959,8 +1032,10 @@ private fun SetBarBottom(
     val place = set.highlights.indexOf(item.id)
     var height by remember { mutableIntStateOf(0) }
     var reelTop by remember { mutableIntStateOf(-1) }
-    LaunchedEffect(height, reelTop, reel, items.size) {
-        onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && reelTop >= 0) height - reelTop else 0))
+    var barTop by remember { mutableIntStateOf(-1) }
+    // The room is from the top of the button bar down (asked Nov 10, 2026; before, from the reel's top).
+    LaunchedEffect(height, reelTop, barTop, reel, items.size) {
+        onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && barTop >= 0) height - barTop else 0))
     }
     Column(
         modifier.fillMaxWidth().navigationBarRoom().padding(top = 24.dp, bottom = 8.dp)
@@ -969,11 +1044,16 @@ private fun SetBarBottom(
         // Keyed by the photo, so nothing of the one before is kept while swiping.
         ProvideTextStyle(OverPhotoText) { key(items[index].id) { brief(items[index]) } }
         // The actions in a floating bar as the Moments feed has (asked Nov 9, 2026), above the reel.
-        FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp)) {
+        FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp).onPlaced { barTop = it.positionInParent().y.toInt() }) {
             BarPill(
                 stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
                 glyph = if (place >= 0) "★" else "☆",
             ) { set.setHighlight(item.id, place < 0) }
+            // Make cover (asked Nov 10, 2026): filled on the cover.
+            val isCover = set.coverId == item.id
+            BarPill(stringResource(if (isCover) R.string.set_is_cover else R.string.set_make_cover), icon = LibraryIcons.Photo, selected = isCover) {
+                set.setCover(item.id)
+            }
             BarPill(stringResource(R.string.set_play), icon = LibraryIcons.Play, selected = true, onClick = onPlay)
             BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit, onClick = onWrite)
             BarPill(stringResource(R.string.set_recompose), glyph = "⌗", enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
@@ -1534,9 +1614,8 @@ private fun VideoPlayer(
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         AndroidView(
-            // Clear until the first frame, so the poster under it shows meanwhile instead of black.
-            // A TextureView, no controls of its own, clear until the first frame (res/layout/viewer_player.xml): its controls
-            // are drawn under the info, and the poster over it shows until its first frame without a black flash.
+            // A SurfaceView with no controls of its own (res/layout/viewer_player.xml): its controls are drawn under the
+            // info, and VideoPage keeps the poster over it until its first frame, so it never shows black.
             factory = { android.view.LayoutInflater.from(it).inflate(R.layout.viewer_player, null) as PlayerView },
             update = { it.player = player },
             onRelease = { it.player = null },
@@ -1654,19 +1733,55 @@ private fun formatClock(millis: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** A moment's name, to give or change (the set viewer's ⋯ menu); saved as typed, an empty one leaves it unnamed. */
+/** A moment's name and description, to give or change (a long press on its name); empty ones leave it without. */
 @Composable
-private fun MomentNameDialog(name: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+private fun MomentNameDialog(name: String, description: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var typed by rememberSaveable { mutableStateOf(name) }
+    var about by rememberSaveable { mutableStateOf(description) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.set_name_title)) },
         text = {
-            OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+            Column {
+                OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+                OutlinedTextField(
+                    about, { about = it }, Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 96.dp),
+                    placeholder = { Text(stringResource(R.string.set_description_hint)) },
+                )
+            }
         },
-        confirmButton = { TextButton(onClick = { onSave(typed) }) { Text(stringResource(R.string.set_name_save)) } },
+        confirmButton = { TextButton(onClick = { onSave(typed, about) }) { Text(stringResource(R.string.set_name_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
     )
+}
+
+/**
+ * Over the photo's date at the bottom of a set (asked Nov 10, 2026): the moment's name and its description. A tap
+ * shows the moment in Moments ([onClick]); a long press renames it and changes the description ([onLongClick]). An
+ * unnamed moment shows "Name this moment", which a tap names too.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun MomentTitle(name: String?, description: String?, modifier: Modifier = Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Column(
+        modifier.fillMaxWidth().combinedClickable(
+            onClickLabel = stringResource(if (name != null) R.string.library_show_in_moments else R.string.set_name_it),
+            onLongClickLabel = stringResource(R.string.set_rename),
+            onClick = if (name != null) onClick else onLongClick,
+            onLongClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onLongClick()
+            },
+        ),
+    ) {
+        if (name != null) {
+            Text(name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else {
+            Text(stringResource(R.string.set_name_it), color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, maxLines = 1)
+        }
+        description?.let { Text(it, color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+    }
 }
 
 /**

@@ -1195,6 +1195,7 @@
     <string name="set_rename">שינוי שם הרגע</string>
     <string name="set_name_title">שם הרגע</string>
     <string name="set_name_hint">ללא שם</string>
+    <string name="set_description_hint">כמה מילים על הרגע</string>
     <string name="set_name_save">שמירה</string>
     <string name="set_highlight">הדגשה</string>
     <string name="set_highlighted">מודגשת</string>
@@ -1210,6 +1211,13 @@
         <item quantity="two">%d תמונות</item>
         <item quantity="other">%d תמונות</item>
     </plurals>
+    <plurals name="set_videos">
+        <item quantity="one">סרטון אחד</item>
+        <item quantity="two">%d סרטונים</item>
+        <item quantity="other">%d סרטונים</item>
+    </plurals>
+    <string name="set_make_cover">קבע כתמונת שער</string>
+    <string name="set_is_cover">תמונת שער</string>
     <string name="set_highlights">הדגשות</string>
     <string name="set_highlights_hint">החזיקו אחת וגררו כדי לשנות את הסדר</string>
     <string name="set_more">עוד</string>
@@ -1239,6 +1247,10 @@
     <string name="cast_a_tv">טלוויזיה</string>
     <string name="cast_looking">מחפשים טלוויזיות ברשת ה-Wi-Fi הזו…</string>
     <string name="cast_stop">הפסקת ההצגה בטלוויזיה</string>
+    <string name="cast_info_on">הצגת הכיתוב, התאריך והמקום בטלוויזיה</string>
+    <string name="cast_info_off">הסתרת הכיתוב בטלוויזיה</string>
+    <string name="cast_map_on">הצגת המקום על מפה בטלוויזיה</string>
+    <string name="cast_map_off">הסתרת המפה בטלוויזיה</string>
     <string name="cast_frame_label">TV</string>
     <string name="cast_frame_hint">המסגרת היא הטלוויזיה. צביטה מתקרבת בשתיהן, גרירה מזיזה, הקשה כפולה ממלאת את הטלוויזיה.</string>
     <string name="cast_play">הפעלה בטלוויזיה</string>

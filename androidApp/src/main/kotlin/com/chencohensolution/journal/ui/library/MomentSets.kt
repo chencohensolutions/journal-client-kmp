@@ -191,26 +191,35 @@ internal fun SetReel(
     // From a drag until the fling after it ends, the reel picks the photo; otherwise it follows the photo shown.
     var byHand by remember { mutableStateOf(false) }
     LaunchedEffect(dragged) { if (dragged) byHand = true }
-    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two).
-    suspend fun centerOn(i: Int) {
-        if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+    fun middle(): Int? {
         val info = state.layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
         val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
+        return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }?.index
+    }
+    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two). A finger
+    // that touches the reel mid-glide stops the glide; that is not the end of the effect that asked for it (Nov 10, 2026:
+    // the stop ended the watcher below, so later slides by hand stayed where they stopped, between two photos).
+    suspend fun centerOn(i: Int) {
+        try {
+            if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+            val info = state.layoutInfo
+            val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
+        } catch (stopped: kotlinx.coroutines.CancellationException) {
+            if (!kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!.isActive) throw stopped
+        }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
             if (!moving && byHand) {
                 byHand = false
-                centerOn(current)
+                // The photo in the middle where it stopped, not the one last told: the screen may not have caught up yet.
+                val i = middle() ?: current
+                if (i != current) change(i)
+                centerOn(i)
             }
         }
-    }
-    fun middle(): Int? {
-        val info = state.layoutInfo
-        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }?.index
     }
     LaunchedEffect(state) {
         snapshotFlow { if (byHand) middle() else null }.collect { i ->
@@ -234,7 +243,15 @@ internal fun SetReel(
                 .clickable { change(i) },
         ) {
             ReelThumb(item, crop)
-            if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
+            // A highlight: the photo's gold ★, small, in the top corner (asked Nov 10, 2026: the white dot was too easy to miss).
+            if (item.id in highlights) {
+                Text(
+                    "★",
+                    Modifier.align(Alignment.TopEnd).padding(2.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        .padding(horizontal = 3.dp),
+                    color = Color(0xFFFFD54F), fontSize = 11.sp, lineHeight = 13.sp,
+                )
+            }
             // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
             item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
@@ -332,8 +349,8 @@ private fun ReelThumb(item: MediaItem, crop: CropRect?) {
     }
 }
 
-/** The reel's height, and the shapes its photos are kept within (a panorama would fill it). */
-private val REEL_HEIGHT = 64.dp
+/** The reel's height (76 dp since Nov 10, 2026, asked a little higher; was 64), and the shapes its photos are kept within. */
+private val REEL_HEIGHT = 76.dp
 private const val REEL_MIN_RATIO = 0.4f
 private const val REEL_MAX_RATIO = 2.5f
 

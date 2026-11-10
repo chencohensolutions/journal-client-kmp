@@ -23,6 +23,53 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Casting: fill kept, info and map on the TV** (Android Nov 10, 2026; [cast.md](cast.md#info-and-map),
+  [viewer.md](screens/viewer.md) "Showing on a TV"): when casting is built on iOS, a double tap that fills the TV
+  keeps filling for the next photos (Android: `castFill` in `ViewerScreen.kt`); call `cast.info(id, CastInfo(text,
+  time, place, latitude, longitude))` for the item shown, and add ⓘ and map buttons before the Cast button that
+  call `showInfo(!infoOnTv)` / `showMap(!mapOnTv)` (map only with a place; Android: `CastOverlayButtons` in
+  `CastViews.kt`). Strings: `cast_info_on`, `cast_info_off`, `cast_map_on`, `cast_map_off`.
+- **Volume buttons while casting** (Android Nov 10, 2026; [cast.md](cast.md#volume)): the phone's volume buttons
+  set the Cast session's volume (steps of 0.05) while casting. On iOS, when casting is built, set
+  `GCKCastOptions.physicalVolumeButtonsWillControlDeviceVolume = true`.
+
+- **Make cover, counts in the storyline, no repeated day** (Android Nov 10, 2026): the set viewer's bar has Make
+  cover (photo icon, filled on the cover) calling `StoriesController.setMomentCover(itemIds, itemId)`; `NamedSet.coverId`
+  is the cover, which the storyline shows and `frontOf` prefers. The storyline's moment line reads "Fri – Sun · 12
+  photos · 3 videos" (`set_photos`, `set_videos`); in Moments and the storyline a one-day moment shows no day under
+  its name. Strings `set_make_cover`, `set_is_cover`.
+
+- **Moments made by hand in the storyline** (Android Nov 10, 2026; [journal-home.md](screens/journal-home.md)): the
+  shared storyline now holds each hand-made moment's cover (a note with `setInfo`, unless `inStoryline` is false);
+  `StoriesState.storylineMomentOf(itemId)` gives its `NamedSet`. Draw that row with the moment's name as the title,
+  its description and the photo's caption under it, "⧉ N" in the corner, and open the set viewer on tap (as Moments
+  opens a set). Android: `FeedRow.StoryPhoto(item, moment)`, `FeedActions.openMoment` in `MomentsFeedViews.kt`.
+
+- **Set viewer header, the moment's name and description; Write without a title** (Android Nov 10, 2026;
+  [viewer.md](screens/viewer.md)): the set's top bar is back, "12 of 36" (no date), Share and the grid; no ⋮. Over
+  the photo's info at the bottom, the moment's name (17 pt semibold) and its description (up to 3 lines); unnamed,
+  "Name this moment". Tap: Show in Moments (from Moments: back); long press: a dialog with the name and a description
+  field (`set_description_hint`), saved with the new `StoriesController.nameMoment(itemIds, name, description)`
+  (`NamedSet.description`, note `setInfo.description`, additive). The note editor has only the paragraph box (the title
+  field went; saving clears an old title), and photos' titles are no longer shown anywhere (feed, storyline). A single photo shows the highlight ★ over the photo only while a slideshow plays.
+  Android: `MomentTitle`, `MomentNameDialog` in `ViewerScreen.kt`, `NoteEditor.kt`.
+
+- **A single photo's viewer as a set's; one crop screen** (Android Nov 10, 2026; [viewer.md](screens/viewer.md),
+  [crop.md](screens/crop.md)): the viewer of a single photo has the set's top bar (position "4 of 29 · day" in white,
+  Share, no ⋮; the Moments day chip stays when opened from elsewhere; the set's ⋮ lost Details, the ⓘ opens it) and floating bar (✎ Write · ⌗ Crop). It shows
+  each photo at its Moments crop (no more portrait/landscape crops). The old crop screen (Moments · Portrait ·
+  Landscape) is gone: Moments' long press Crop and the viewer's ⌗ open the set's Recompose editor on that one photo
+  (title Crop, hint `crop_hint_moments`, no strip or Same frame for all), saving with `setMomentsCrops`. Android:
+  `ViewerScreen.kt` (top bar, `ViewerActions.crop`), `SetCropEditor` in `CropScreen.kt`, `LibraryApp.kt`.
+
+- **Moments' month ruler fixes** (Android Nov 10, 2026; [moments.md](screens/moments.md)): a touch anywhere on the
+  ruler is the ruler's (never folds it); the day strip takes touches over its whole height, day numbers included, and
+  the touch going down always goes, even to the day picked last; the touch handlers call the latest callbacks (on
+  Android they kept old ones, which looked for the day in rows from before more were read). The month shown after a
+  jump waits 10 s (was 4) for the feed to get there. A feed row can hold several days: a day lands on that
+  day's first moment label or photo in its row (Android `rowOfDay`), not the row's heading, and the pill and ruler
+  name the day of the row at the top (`rowDays`), not its row's newest day. Check the SwiftUI ruler for the same.
+
 - **Moment screen polish** (Android Nov 10, 2026; [viewer.md](screens/viewer.md), [moments.md](screens/moments.md)):
   - Moments' set cover: no ▶ (play in place) and no position line; only "⧉ 36" stays. Hold-and-slide and tap as before.
   - The viewer's floating bars are icons only (each with an accessibility label): a set has ☆/★ Highlight · ▶ Play ·
@@ -32,7 +79,7 @@ Still missing on iOS:
   - Slideshow bar: "12 of 36" (`set_position`) instead of the progress line. ▶ Videos (`SettingsState.autoplayVideos`)
     now only rules the slideshow: outside it videos always play by themselves; in it, off, a video shows its poster
     for a slide's time with no Play button.
-  - Casting a slideshow: every video plays to its end on the TV (`show(autoplay = true)`, wait for `CastVideo.ended`),
+  - Casting a slideshow: every video plays to its end on the TV (`show(autoplay = true)`, then `await cast.videoDone(id)`),
     ▶ Videos is hidden, and a photo's slide time starts once the TV reports `shownId` (at most 10 s). Android:
     `Slideshow(shownBy = …)` in `MomentSets.kt`.
   - Cast zoom: the phone shows the TV's frame as large as fits (`PhoneRect.fitted(w, h, tvRatio)`), the photo drawn at

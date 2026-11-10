@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -37,10 +36,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -48,7 +45,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -64,7 +60,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * A photo's writing: a title and a paragraph, and its History (earlier versions, each with what the next one changed,
+ * A photo's writing: its paragraph (the title field went on Nov 10, 2026; saving clears a title written before), and its History (earlier versions, each with what the next one changed,
  * and Restore). Cancel with changes asks first. See docs/screens/viewer.md.
  */
 @Composable
@@ -74,12 +70,13 @@ internal fun NoteEditor(
     onRestore: (NoteVersion) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var title by rememberSaveable { mutableStateOf(note?.title.orEmpty()) }
+    // No title any more (asked Nov 10, 2026): saving clears one written before (History keeps it).
+    var title by rememberSaveable { mutableStateOf("") }
     var text by rememberSaveable { mutableStateOf(note?.caption.orEmpty()) }
     // null: writing; -1: the History list; otherwise the version shown, by its index in note.history.
     var historyAt by rememberSaveable { mutableStateOf<Int?>(null) }
     var askingDiscard by remember { mutableStateOf(false) }
-    val changed = title.trim() != note?.title.orEmpty() || text.trim() != note?.caption.orEmpty()
+    val changed = text.trim() != note?.caption.orEmpty()
     val close = { if (changed) askingDiscard = true else onDismiss() }
     val history = note?.history.orEmpty()
 
@@ -138,7 +135,6 @@ private fun ColumnScope.Writing(
     onHistory: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) { focus.requestFocus() }
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
@@ -146,22 +142,13 @@ private fun ColumnScope.Writing(
         TextButton(onClick = onSave) { Text(stringResource(R.string.library_save), color = LibraryColors.Warning, fontWeight = FontWeight.Bold) }
     }
     OutlinedTextField(
-        value = title,
-        onValueChange = { onTitle(it.replace("\n", " ")) },
-        placeholder = { Text(stringResource(R.string.note_title_hint)) },
-        singleLine = true,
-        textStyle = TextStyle(color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
-        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).focusRequester(focus),
-    )
-    OutlinedTextField(
         value = text,
         onValueChange = onText,
         placeholder = { Text(stringResource(R.string.library_note_prompt)) },
         textStyle = TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 18.sp, lineHeight = 27.sp),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-        modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp),
+        // Only the photo's paragraph (asked Nov 10, 2026: no title field; saving clears a title written before).
+        modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp).focusRequester(focus),
     )
     if (history.isNotEmpty()) {
         Row(

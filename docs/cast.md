@@ -52,9 +52,17 @@ phone (viewer)                                   TV (Cast receiver page)
 
 JSON on `urn:x-cast:com.chencohensolution.journal`, listed at the top of `receiver/receiver.js` and built by
 `CastController` (`CAST_NAMESPACE`). Phone to TV: `hi`, `show {item, frame?, autoplay, muted, position}`,
-`preload {items}`, `frame {id, x, y, w, h}`, `video {action, position?}`, `mute`, `chunk`, `stop`. TV to phone:
+`preload {items}`, `frame {id, x, y, w, h}`, `video {action, position?}`, `mute`, `chunk`, `stop`,
+`info {id, text?, time?, place?, latitude?, longitude?}` (`CastController.info`, sent for each item shown) and
+`overlay {info, map}` (`showInfo`, `showMap`). TV to phone:
 `hello {width, height}` (the frame's shape), `shown {id}`, `video {id, position, duration, playing, ended}` (each
 second and on each change; `ended` lets the slideshow go on), `error {id, message}`, `need {id}`.
+
+A slideshow goes on after a video when `CastController.videoDone` returns: the TV says `ended` (also sent when the
+video stops for data in its last half second, as a stream a little shorter than its stated duration does), it stopped
+paused within a second of its end, an `error` came (a refused `play()` is one too), or the session closed. Since a
+broken stream from the phone fires neither `ended` nor `error`, a video that should play but says nothing new for
+15 s counts as done, and one the TV says nothing about for 30 s never started; a video paused with the controls waits.
 
 ## If the TV can't fetch from the phone
 
@@ -87,3 +95,30 @@ play, that is the cause, and another route is needed (the TV can't trust the jou
 - `androidApp/.../ui/library/`: `JournalCast.kt` (app id, `JournalCastOptions`, finding TVs with MediaRouter, the
   session), `CastServer.kt`, `CastViews.kt` (Cast button and TV picker, the frame overlay and its gestures, a video's
   TV controls); the viewer's wiring in `ViewerScreen.kt`.
+
+## Speed on the TV
+
+The page starts the HEIF worker (and compiles libheif) and jxl-oxide as soon as it loads (`warmUp` in `decode.js`),
+so the first HEIC waits only for its bytes. Photos go through fetching (two at once) and decoding (one at a time),
+each taking the photo shown first and then the phone's latest `preload` in its order; a photo swiped past is no
+longer wanted, so its fetch is stopped and it isn't decoded (Nov 10, 2026: quick swipes kept the TV busy for a long
+time with photos already gone). While a photo or a video comes, a small turning ring shows in the top corner instead
+of "Loading…".
+
+In a slideshow the phone also gets the items ahead ready, one at a time in the slideshow's order, from the one shown
+round to the one before it (`CastServer.prepare`): originals only on the server are downloaded, and videos only there
+are downloaded whole into the cast folder, until the slideshow stops or all are here, at most 3 GB ahead at once
+(`CAST_AHEAD_BYTES`). Videos behind the one shown, or ahead once the slideshow stops, are let go (`keepOnly`).
+
+## Info and map
+
+`info` carries what the phone knows of an item (the note's text, the date and time and the place as the phone words
+them, and the coordinates). With `overlay`'s `info` on, the page shows them over the bottom of what is shown; with
+`map` on, it draws OpenStreetMap's tiles (zoom 15, fetched by the TV from `tile.openstreetmap.org`, credited in the
+corner) around the place in its top corner, with the place marked. Both follow each item shown until turned off.
+
+## Volume
+
+While casting, the phone's volume buttons change the TV's volume, a twentieth of its range a press (Nov 10, 2026,
+Android only): `MainActivity.dispatchKeyEvent` calls `JournalCast.stepVolume`, which sets the Cast session's volume.
+Not casting, they change the phone's volume as usual.

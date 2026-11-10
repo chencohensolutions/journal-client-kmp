@@ -226,7 +226,7 @@ internal fun TimelineBar(
 private const val MORPH_MILLIS = 360
 
 /** How long the month gone to is shown when the feed doesn't get there. */
-private const val SENT_GIVE_UP_MILLIS = 4_000L
+private const val SENT_GIVE_UP_MILLIS = 10_000L
 private const val PILL_TITLE_SP = 15f
 private const val RULER_TITLE_SP = 20f
 private val PILL_RADIUS = 20.dp
@@ -246,10 +246,14 @@ private class WindowShape(private val visible: androidx.compose.ui.geometry.Rect
 private fun TimelinePill(timeline: FeedTimeline, month: Int, name: String, modifier: Modifier, step: (Int) -> Unit, open: () -> Unit) {
     val view = LocalView.current
     val currentMonth by rememberUpdatedState(month)
+    // The swipe outlives a composition (and the timeline, which is made again as rows are read): it calls the latest,
+    // and isn't cut off when the timeline changes under the finger (Nov 10, 2026).
+    val currentStep by rememberUpdatedState(step)
+    val currentTimeline by rememberUpdatedState(timeline)
     val go = { to: Int ->
         if (to != currentMonth) {
-            view.tick(timeline, currentMonth, to)
-            step(to)
+            view.tick(currentTimeline, currentMonth, to)
+            currentStep(to)
         }
     }
     val swipeStep = with(LocalDensity.current) { 22.dp.toPx() }
@@ -271,7 +275,7 @@ private fun TimelinePill(timeline: FeedTimeline, month: Int, name: String, modif
                 .weight(1f)
                 .fillMaxHeight()
                 .alpha(if (swiping) 0.8f else 1f)
-                .pointerInput(timeline) {
+                .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {
                             swiping = true
@@ -283,7 +287,7 @@ private fun TimelinePill(timeline: FeedTimeline, month: Int, name: String, modif
                     ) { change, amount ->
                         change.consume()
                         dragged += if (rtl) -amount else amount
-                        go(timeline.step(start, (dragged / swipeStep).roundToInt()))
+                        go(currentTimeline.step(start, (dragged / swipeStep).roundToInt()))
                     }
                 }
                 .clickable(role = Role.Button, onClickLabel = stringResource(R.string.timeline_open), onClick = open),
@@ -345,7 +349,9 @@ private fun TimelineArrow(icon: ImageVector, label: String, pointsBack: Boolean,
 @Composable
 private fun TimelinePanel(timeline: FeedTimeline, month: Int, onDay: (TimelineDay) -> Unit, onMonth: (Int) -> Unit, onClose: () -> Unit) {
     val shown = timeline.months[month]
-    Box(Modifier.fillMaxWidth()) {
+    // Every touch on the ruler is the ruler's: one between its controls (the title, the day numbers, the gaps) used to
+    // fall through to the scrim under it and fold it (Nov 10, 2026: "it collapses unexpectedly").
+    Box(Modifier.fillMaxWidth().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }) {
         Column(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -394,41 +400,46 @@ private fun DayStrip(timeline: FeedTimeline, month: Int, onDay: (TimelineDay) ->
     val shown = timeline.months[month]
     var picked by remember(month) { mutableStateOf<Int?>(null) }
     val currentMonth by rememberUpdatedState(month)
+    // The touch handler outlives a composition: it calls the latest (the feed's rows change as more are read, and an old
+    // go() looked for the day in rows from before: sometimes nothing happened, Nov 10, 2026).
+    val currentOnDay by rememberUpdatedState(onDay)
+    val currentTimeline by rememberUpdatedState(timeline)
     val accent = LibraryColors.Accent
     val dim = LibraryColors.Muted.copy(alpha = 0.25f)
     val ring = LibraryColors.OnBackground
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    BoxWithConstraints(Modifier.fillMaxWidth().height(32.dp)) {
-        val count = shown.length
-        val pick = { x: Float, width: Float ->
-            val fromStart = if (rtl) width - x else x
-            val day = (fromStart / (width / count)).toInt().coerceIn(0, count - 1) + 1
-            timeline.nearestDay(currentMonth, day)?.let { nearest ->
-                if (nearest.day.day != picked) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                    picked = nearest.day.day
-                    onDay(nearest)
-                }
+    val count = shown.length
+    // A touch anywhere on the strip, its day numbers too (only the 14 dp line of dots took it, so a tap on a number did
+    // nothing; Nov 10, 2026). The touch going down always goes, even to the day picked last (the feed may have moved
+    // since); sliding goes on each new day.
+    val pick = { x: Float, width: Float, always: Boolean ->
+        val fromStart = if (rtl) width - x else x
+        val day = (fromStart / (width / count)).toInt().coerceIn(0, count - 1) + 1
+        currentTimeline.nearestDay(currentMonth, day)?.let { nearest ->
+            if (always || nearest.day.day != picked) {
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                picked = nearest.day.day
+                currentOnDay(nearest)
             }
         }
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(14.dp)
-                .pointerInput(month) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        pick(down.position.x, size.width.toFloat())
-                        do {
-                            val event = awaitPointerEvent()
-                            event.changes.forEach { change ->
-                                pick(change.position.x, size.width.toFloat())
-                                change.consume()
-                            }
-                        } while (event.changes.any { it.pressed })
+    }
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(32.dp).pointerInput(month) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                pick(down.position.x, size.width.toFloat(), true)
+                down.consume()
+                do {
+                    val event = awaitPointerEvent()
+                    event.changes.forEach { change ->
+                        if (change.pressed) pick(change.position.x, size.width.toFloat(), false)
+                        change.consume()
                     }
-                },
-        ) {
+                } while (event.changes.any { it.pressed })
+            }
+        },
+    ) {
+        Canvas(Modifier.fillMaxWidth().height(14.dp)) {
             val w = size.width / count
             for (day in 1..count) {
                 val x = (if (rtl) count - day else day - 1) * w + w / 2
@@ -467,6 +478,8 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
     val at = remember { Animatable((count - 1 - month).toFloat()) }
     var dragging by remember { mutableStateOf(false) }
     val currentMonth by rememberUpdatedState(month)
+    // As the day strip: the drag outlives a composition and calls the latest.
+    val currentOnMonth by rememberUpdatedState(onMonth)
     LaunchedEffect(month) {
         if (!dragging && !at.isRunning) at.snapTo((count - 1 - month).toFloat())
     }
@@ -476,7 +489,7 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
         val to = count - 1 - position.roundToInt().coerceIn(0, count - 1)
         if (to != currentMonth) {
             view.tick(timeline, currentMonth, to)
-            onMonth(to)
+            currentOnMonth(to)
         }
     }
     val peak = timeline.peak.coerceAtLeast(1).toFloat()
@@ -595,4 +608,40 @@ internal fun List<FeedRow>.sectionKeys(): List<String?> {
         }
         section
     }
+}
+
+/** The newest day a row shows (a heading its row's newest day), or null for rows that show no photos of their own. */
+private fun FeedRow.newestDay(): LocalDay? = when (this) {
+    is FeedRow.Heading -> section.span.newestDay
+    is FeedRow.Label -> moment.items.maxByOrNull { it.takenAtMillis }?.day
+    is FeedRow.RecordingBar -> moment.items.maxByOrNull { it.takenAtMillis }?.day
+    is FeedRow.Photo -> block.items.maxByOrNull { it.takenAtMillis }?.day
+    else -> null
+}
+
+/** Each feed row's day: its own newest, or the one above it for rows without photos. The pill's day at the top. */
+internal fun List<FeedRow>.rowDays(): List<LocalDay?> {
+    var day: LocalDay? = null
+    return map { row -> row.newestDay()?.let { day = it }; day }
+}
+
+/**
+ * Where going to [day] lands in the row [sectionKey]: a row can hold several days, so the first moment label or photo
+ * of that day in it (newest first, as the feed reads), or the row's heading when the day is its newest or not found.
+ * -1 when the row is not in the list.
+ */
+internal fun List<FeedRow>.rowOfDay(sectionKey: String, day: LocalDay): Int {
+    val heading = indexOfFirst { it.key == "heading-$sectionKey" }
+    if (heading < 0) return -1
+    if ((this[heading] as FeedRow.Heading).section.span.newestDay == day) return heading
+    for (i in heading + 1 until size) {
+        when (val row = this[i]) {
+            is FeedRow.Heading -> break
+            is FeedRow.Label -> if (row.newestDay() == day) return i
+            is FeedRow.RecordingBar -> if (row.newestDay() == day) return i
+            is FeedRow.Photo -> if (row.block.items.any { it.day == day }) return i
+            else -> Unit
+        }
+    }
+    return heading
 }

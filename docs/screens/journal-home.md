@@ -25,10 +25,14 @@ Photos fill the screen on the page background (light or dark with the system); t
   - **Journal can see N photos and videos · Change**: limited access. Opens the system picker to change the
     selection.
 - **Storyline:** every photo or video with a title or a paragraph (see the [note editor](viewer.md)), one each and
-  never a set, newest first by the date taken. A small day heading comes before each new day; then the title above
-  the photo, the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
+  never a set, newest first by the date taken. A small day heading comes before each new day; then (no title since Nov 10, 2026)
+  the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
   Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to
-  have one photo of a set here, open that photo and write on it. Tapping opens the [viewer](viewer.md), swiping
+  have one photo of a set here, open that photo and write on it. Every **moment made by hand** is here too (Nov 10,
+  2026, Android only), by its cover: its name over it as Moments shows it (not bold), and under it its days when more than one and how many photos and
+  videos ("Fri – Sun · 12 photos · 3 videos"), its description right under the name, "⧉ 36" in the corner, and a tap opens
+  the whole moment in the set viewer (`StoriesState.storylineMomentOf`); Remove from storyline on the cover takes it
+  out. Tapping opens the [viewer](viewer.md), swiping
   through the storyline; a long press starts picking, as in Moments (Android, Nov 8, 2026; iOS: its menu, with Remove
   from storyline). **Remove from storyline** (the writing stays and still shows in Moments; `"storyline": false` in
   its note file), or once removed **Add to storyline**, is in the viewer's details panel. A photo

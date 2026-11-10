@@ -20,18 +20,19 @@ from under you. If the open item is deleted from the device, the viewer closes.
 ## Layout
 
 The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar and the bottom buttons
-for 3 seconds, and another tap hides them sooner. They stay while the details panel, a sheet or the note
-editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
+for 5 seconds (3 until Nov 10, 2026), counted again on each photo gone to, and another tap hides them sooner. While casting they stay until a tap hides them (Nov 10, 2026). They stay while the details panel, a sheet or the note
+editor is open, and fade 5 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
-- **Top bar:** back and the position ("4 of 29 · Yesterday"). When the viewer wasn't opened from Moments, the day
-  is a chip, "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab,
-  scrolled to the photo (Oct 22, 2026; chosen in the UI lab over a third pill, a link under the pills, a toolbar and
-  an icon).
+- **Top bar** (as a set's since Nov 10, 2026, Android only): back, the position ("4 of 29 · Yesterday", white) and
+  **Share**; no ⋮ (Details is the info line's ⓘ). When the viewer wasn't opened from Moments, the day is a chip,
+  "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab, scrolled to the
+  photo (Oct 22, 2026).
 - **Brief info** (Nov 9, 2026, Android only): with the bars, over a dark fade at the bottom, where it was taken
   ("Florentin, Tel Aviv, Israel"), its date and time, its tags ("#beach #family"), and an **ⓘ** that opens the details
   panel (`PhotoBrief`); in a set it sits above the reel.
-- **Bottom:** **Write** (the note editor, below) as an icon in a floating bar (icons only since Nov 10, 2026), and the
+- **Bottom:** **✎ Write** (the note editor, below) and **⌗ Crop** (the [crop screen](crop.md) on the photo, its
+  Moments crop; photos only; Nov 10, 2026, Android only) as icons in a floating bar, as a set's, and the
   details panel (the brief info's ⓘ since Nov 9, 2026; before, a **Details** button). **Share** is in the top bar
   (Nov 10, 2026, Android only; before, a round button at the bottom, Oct 22, 2026): the system share sheet
   with the original. A gallery photo shares the gallery's own file; one only on the server shares the original the
@@ -39,8 +40,8 @@ Swiping is not a tap; a playing video's own controls take its taps.
   (`cache/shared/`, only the latest kept, `ShareOriginal.kt`; iOS through `UIActivityViewController`). Offline
   without the original: "Couldn’t get the original to share." Hidden while the details panel is open; back or a tap on the photo closes the panel. The
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
-- **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
-  **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+- **Crops:** a photo shows at its Moments crop, as in Moments and in a set (Nov 10, 2026; before, a single photo
+  showed its portrait or landscape crop from the old crop screen, now gone), with **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
   Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
   in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
   at once.
@@ -99,8 +100,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   is the slideshow's only (Nov 10, 2026; before, it also stopped videos playing by themselves outside it): off, the
   slideshow shows a video's poster for a slide's time instead of playing it to its end. Sliding between videos never flashes black: a video's poster is made ready ahead at screen size with
   the photos beside it, stays over the player until its first frame is drawn and then fades out over it (0.18 s), and
-  comes back in the same frame the player goes; the player draws into a TextureView (`res/layout/viewer_player.xml`),
-  which follows the cross-fade and the swipe; in the pager a video becomes the one playing once the
+  comes back in the same frame the player goes; the player draws into a SurfaceView (`res/layout/viewer_player.xml`;
+  a TextureView from Nov 9 made 4K videos stutter, so it went back on Nov 10, 2026), which follows the swipe but not a
+  cross-fade's alpha; in the pager a video becomes the one playing once the
   swipe settles, so the one slid away from plays on while it leaves. Android: `VideoPage`, `ViewerVideos`,
   `VideoControls` in `ViewerScreen.kt`.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's
@@ -113,8 +115,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
     **More** a page of all of them). Asked when the panel opens (`media(sha256:)`, `similarMedia`); offline, from
     what On device search keeps.
   - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
-- **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
-  box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save
+- **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save and the
+  **paragraph** box only (Nov 10, 2026, Android only: the **Title** box went; titles are no longer shown anywhere, and
+  saving clears one written before, which History keeps). Cancel with changes asks "Discard changes?". Each save
   keeps what was written before as a version, unless it was saved less than 10 minutes earlier (a quick fix is the
   same version). With versions, a line under the boxes, "Edited 3 times · last Oct 21, 14:02", opens **History**:
   the versions newest first (when, title or "No title", the start of the paragraph). One opens in full, with what
@@ -181,36 +184,44 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   ends of the rows read so far nothing happens. The other way too (Nov 10, 2026, Android only): swiping the usual
   viewer from Moments onto a photo of a set opens the set in this mode there once the swipe settles
   (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
-- The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
-- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7" (white; grey until Nov 10, 2026), **Share**, a **grid** button and **⋮**
-  with **Details** (and Show in Moments when opened from elsewhere); the menu's text has no shadow (Nov 10, 2026). Write and Share were in ⋮ until Nov 10, 2026,
-  when Share moved to the top bar and Write to the bottom bar. Last in it, **Name this moment** (**Rename moment** when it has
-  a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
-  `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
+- The bars show from the start and fade after 5 seconds as a single photo's (Nov 10, 2026; before, they stayed); the reel slides out with them; a tap hides or shows them. They stay while the name box or the grid is open and while nothing else hides them.
+- **Top bar** (Nov 10, 2026, Android only): back, "12 of 36" (white), **Share** and a **grid** button. No date and no
+  ⋮: the date is in the info line, Details is its ⓘ, and the moment's name moved to the bottom. Until Nov 10, 2026 it
+  showed the name, "12 of 36 · Sat, Nov 7" and a ⋮ with Details, Show in Moments and Name this moment.
+- **The moment's name** (Nov 10, 2026, Android only), over the photo's info at the bottom, with its **description**
+  under it (up to three lines) when it has one. A **tap** shows the moment in Moments (from elsewhere, the journal on
+  its Moments tab at the photo; opened from Moments, back to it). A **long press** opens a box with the name and the
+  description (a few words about it), **Save**: an emptied name leaves the moment unnamed, an emptied description
+  removes it (`StoriesController.nameMoment(ids, name, description)`, the note's `setInfo.description`). An unnamed
+  moment shows "Name this moment", which a tap names too. Its "Show it in Moments on" stays; a set the app made
+  becomes one made by hand.
 - **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
-  all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
-  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline stays fixed in the reel's middle: the reel slides under it and the outline takes the new photo's width, in one 0.3 s ease-in-out move (Nov 10, 2026, Android only; before, it jumped, then a spring wobbled).
-  The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
+  all** is on); a small gold ★ in the top corner of each highlight (Nov 10, 2026; before, a white dot). The photo shown sits in the middle, outlined. Scrolling the reel by hand
+  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline stays fixed in the reel's middle: the reel slides under it and the outline takes the new photo's width, in one 0.3 s ease-in-out move (Nov 10, 2026, Android only; before, it jumped, then a spring wobbled). A slide by hand always ends with the photo in the middle glided to (Nov 10, 2026: a touch during a glide used to stop the snapping for good).
+  The reel takes its own room (Nov 9, 2026): the photo is centred between the top of the button bar and the bottom of the top bar (Nov 10, 2026; before, between the reel's top and the top of the screen)
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
   lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
   the bars, the reel slides out (down, or past its own edge in landscape: right, or left in Hebrew) and
-  the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
-  the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
+  the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (only a photo that fits in the room left moves, since Nov 10, 2026: one that fills more of the screen, or a zoomed one, stays put while the bars come and go) (`SetBar(visible, onRoom)`,
+  the photo's animated padding). The photos are 76 dp tall (64 until Nov 10, 2026), and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
+- **☆ Highlight** (★ when it is one) · **Make cover** (a photo icon, filled on the cover; Nov 10, 2026, Android
+  only: the moment's cover in Moments and the storyline, `StoriesController.setMomentCover`, the note's
+  `setInfo.cover`; again on the cover, back to the first highlight; a set the app made becomes a moment, unnamed) ·
+  **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
   names itself to TalkBack), in a floating bar above the reel that looks as the Moments feed's tabs (Nov 9, 2026: the
   same pill shape, background and shadow; Play the filled one); a single photo has **✎ Write** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
   line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
   (`OverPhotoText`, `ShadowIcon`).
-  - A highlight shows a gold **★** at the top right of the photo, also while the slideshow plays (Nov 10, 2026,
-    Android only).
+  - While the slideshow plays, a highlight shows a gold **★** at the top right of the photo (Nov 10, 2026, Android
+    only); otherwise the bar's filled ★ says so (for a while that day the photo's star showed always).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom where it is
     ("12 of 36"; a progress line until Nov 10, 2026), **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A tap on the photo
     hides that bar and another brings it back; the slideshow plays on (Stop or back stops it; Nov 9, 2026). A video plays to its
-    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. Cast to a TV, every video
+    end before the next item, with its controls and where it is above the slideshow's bar (Nov 10, 2026) (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. Cast to a TV, every video
     plays to its end there and ▶ Videos is hidden, and a photo's time starts once the TV shows it (at most 10 s'
     wait; Nov 10, 2026).
     The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
@@ -238,7 +249,12 @@ it. While casting the button is filled in (Cast's own connected look), and the s
   shows inside it exactly what the TV shows, the rest of the photo around it dimmed (no crop chip, minimap or the
   phone's own zoom). Two fingers zoom both about them (up to 12×); zoomed in, one finger drags the photo, and swiping
   waits until it is back to the whole photo. A **double tap** zooms to fill the TV with the photo (no black bars,
-  `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone.
+  `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone. Filling stays on for
+  the next photos until a double tap goes back to the whole photo (Nov 10, 2026).
+- **ⓘ and the map on the TV** (Nov 10, 2026): while casting, two buttons sit before the Cast button. ⓘ shows the
+  photo's note, its date and time, and its place over the bottom of the TV; the map button (only for a photo with a
+  place) shows the place on an OpenStreetMap map in the TV's top corner. Each is lit while on and stays on for the
+  next photos until tapped again; a new cast starts with both off.
 - A video plays on the TV, with sound; the phone shows its poster, and under the info a Play/Pause button and a bar
   of where the TV is (drag to go there). The slideshow waits for the TV to finish it.
 - What the TV couldn't show: "The TV couldn't show this one." A phone off the Wi-Fi: "The phone needs to be on the same
