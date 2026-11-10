@@ -191,26 +191,35 @@ internal fun SetReel(
     // From a drag until the fling after it ends, the reel picks the photo; otherwise it follows the photo shown.
     var byHand by remember { mutableStateOf(false) }
     LaunchedEffect(dragged) { if (dragged) byHand = true }
-    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two).
-    suspend fun centerOn(i: Int) {
-        if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+    fun middle(): Int? {
         val info = state.layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
         val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
+        return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }?.index
+    }
+    // The photo shown comes to the middle (a swipe, Play, a tap, or a scroll by hand that stopped between two). A finger
+    // that touches the reel mid-glide stops the glide; that is not the end of the effect that asked for it (Nov 10, 2026:
+    // the stop ended the watcher below, so later slides by hand stayed where they stopped, between two photos).
+    suspend fun centerOn(i: Int) {
+        try {
+            if (state.layoutInfo.visibleItemsInfo.none { it.index == i }) state.scrollToItem(i)
+            val info = state.layoutInfo
+            val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
+        } catch (stopped: kotlinx.coroutines.CancellationException) {
+            if (!kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!.isActive) throw stopped
+        }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
             if (!moving && byHand) {
                 byHand = false
-                centerOn(current)
+                // The photo in the middle where it stopped, not the one last told: the screen may not have caught up yet.
+                val i = middle() ?: current
+                if (i != current) change(i)
+                centerOn(i)
             }
         }
-    }
-    fun middle(): Int? {
-        val info = state.layoutInfo
-        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        return info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - center) }?.index
     }
     LaunchedEffect(state) {
         snapshotFlow { if (byHand) middle() else null }.collect { i ->
