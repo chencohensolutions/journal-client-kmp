@@ -58,7 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -234,14 +234,19 @@ internal fun JournalHomeScreen(
     val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
     // A feed that changes mid-scroll (fingerprints and places keep arriving while a library is read) is shown once the
     // scroll stops, and its list items are worked out off the main thread.
-    var shownFeed by remember { mutableStateOf(stories.feed) }
+    var shownFeed by remember { mutableStateOf(stories.feed, referentialEqualityPolicy()) }
     LaunchedEffect(stories.feed) {
         snapshotFlow { list.isScrollInProgress }.first { !it }
         shownFeed = stories.feed
     }
-    val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
-        value = withContext(Dispatchers.Default) { shownFeed.rows() }
+    // Held by identity: produceState compared each new list with the last item by item, on the main thread, and every
+    // row carries its moment's photos, so that took seconds with a large library and froze the feed (an ANR, Nov 10, 2026).
+    val feedRowsState = remember { mutableStateOf(shownFeed.rows(), referentialEqualityPolicy()) }
+    LaunchedEffect(shownFeed) {
+        val feed = shownFeed
+        feedRowsState.value = withContext(Dispatchers.Default) { feed.rows() }
     }
+    val feedRows by feedRowsState
     // Measuring (debug builds; docs/plans/library-on-disk.md): how long after the process started Moments first drew rows.
     if (Measure.log != null) {
         LaunchedEffect(feedRows.isNotEmpty()) {
@@ -255,10 +260,14 @@ internal fun JournalHomeScreen(
     // Made off the main thread for each new state (compared by identity), showing the last rows meanwhile (Nov 10, 2026:
     // made while drawing, with the notes compared on each recomposition, it froze the feed). The first are made here
     // once, as the feed's are, so the tab never flashes empty; with the moments worked out already, that is quick.
-    val storyRows by produceState(remember { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }, stories) {
-        val state = stories
-        value = withContext(Dispatchers.Default) { storylineDayRows(state.storylineDays, state::storylineMomentOf) { state.itemsById[it] } }
+    val storyRowsState = remember {
+        mutableStateOf(storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] }, referentialEqualityPolicy())
     }
+    LaunchedEffect(stories) {
+        val state = stories
+        storyRowsState.value = withContext(Dispatchers.Default) { storylineDayRows(state.storylineDays, state::storylineMomentOf) { state.itemsById[it] } }
+    }
+    val storyRows by storyRowsState
     // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
     val tucked = LocalTucked.current
     val tuckedLock = rememberTuckedLock()
