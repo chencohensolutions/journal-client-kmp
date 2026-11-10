@@ -282,6 +282,10 @@ internal fun JournalHomeScreen(
     // A row going to a date asked for before it was read: gone to once it is in the list (the list's rows follow the
     // feed only once a scroll stops).
     var jumpTo by remember { mutableStateOf<Pair<String, LocalDay>?>(null) }
+    // The row a day tap went to and that day (by the row's key): while that row is at the top, the pill and the ruler
+    // say the day tapped, not the row's newest (a row holds several days, so they showed a later day, even the next
+    // month, and the dial turned back to it; Nov 10, 2026).
+    var landed by remember { mutableStateOf<Pair<String, LocalDay>?>(null) }
     // Which tap asked last: a read that comes back after a later tap doesn't go anywhere.
     val jumpsAsked = remember { IntArray(1) }
     LaunchedEffect(jumpTo, feedRows) {
@@ -289,6 +293,7 @@ internal fun JournalHomeScreen(
         val row = feedRows.rowOfDay(key, day)
         if (row < 0) return@LaunchedEffect
         jumpTo = null
+        landed = feedRows[row].key to day
         list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row)
     }
     // The row at the top, under the title: the first whose bottom is below the list's top padding (the row behind the
@@ -306,7 +311,8 @@ internal fun JournalHomeScreen(
         derivedStateOf {
             val info = list.layoutInfo
             val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
-            rowDays.getOrNull(top - (info.totalItemsCount - feedRows.size))
+            val index = top - (info.totalItemsCount - feedRows.size)
+            landed?.takeIf { (key, _) -> feedRows.getOrNull(index)?.key == key }?.second ?: rowDays.getOrNull(index)
         }
     }
     val topDay = topRowDay ?: topSection?.let { shownFeed.section(it)?.span?.newestDay }
@@ -628,6 +634,7 @@ internal fun JournalHomeScreen(
                                     jumpTo = null
                                     val asked = ++jumpsAsked[0]
                                     if (row >= 0) {
+                                        landed = feedRows[row].key to day.day
                                         scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
                                     } else {
                                         actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key?.let { it to day.day } }

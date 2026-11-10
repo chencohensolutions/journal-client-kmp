@@ -84,6 +84,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlin.math.sqrt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -511,10 +512,15 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
                         val startAt = at.value
                         val startX = down.position.x
                         scope.launch { at.stop() }
+                        // Which way the finger last moved: a flick never goes the other way (Nov 10, 2026: the finger
+                        // easing back as it lifts gave a velocity backwards, and the dial spun back).
+                        var lastWay = 0f
                         do {
                             val event = awaitPointerEvent()
                             val change = event.changes.first()
                             tracker.addPosition(change.uptimeMillis, change.position)
+                            val dx = change.position.x - change.previousPosition.x
+                            if (abs(dx) > 0.5f) lastWay = sign(dx)
                             val moved = (change.position.x - startX) * if (rtl) -1 else 1
                             val position = (startAt - moved / stepPx).coerceIn(0f, (count - 1).toFloat())
                             scope.launch { at.snapTo(position) }
@@ -522,7 +528,8 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
                             change.consume()
                         } while (event.changes.any { it.pressed })
                         // A flick goes on as far as it would have slid, then settles on a month.
-                        val velocity = tracker.calculateVelocity().x * if (rtl) -1 else 1
+                        val raw = tracker.calculateVelocity().x
+                        val velocity = (if (lastWay == 0f || sign(raw) != lastWay) 0f else raw) * if (rtl) -1 else 1
                         val target = (at.value - velocity * 0.25f / stepPx).roundToInt().coerceIn(0, count - 1)
                         dragging = false
                         scope.launch { at.animateTo(target.toFloat(), tween(450)) }
