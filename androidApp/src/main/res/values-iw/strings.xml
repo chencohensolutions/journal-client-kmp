@@ -1195,6 +1195,7 @@
     <string name="set_rename">שינוי שם הרגע</string>
     <string name="set_name_title">שם הרגע</string>
     <string name="set_name_hint">ללא שם</string>
+    <string name="set_description_hint">כמה מילים על הרגע</string>
     <string name="set_name_save">שמירה</string>
     <string name="set_highlight">הדגשה</string>
     <string name="set_highlighted">מודגשת</string>

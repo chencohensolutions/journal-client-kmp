@@ -628,14 +628,18 @@ class StoriesController internal constructor(
      * 2026). Its "Show it in Moments on" stays. A set the app made by itself becomes one made by hand, so it stays
      * together with its name.
      */
-    fun nameMoment(itemIds: List<String>, name: String) {
+    fun nameMoment(itemIds: List<String>, name: String) =
+        nameMoment(itemIds, name, itemIds.firstNotNullOfOrNull { notes[it]?.setInfo }?.description.orEmpty())
+
+    /** [nameMoment] with a [description] too: a few words about the moment, blank for none (asked Nov 10, 2026). */
+    fun nameMoment(itemIds: List<String>, name: String, description: String) {
         val ids = itemIds.distinct()
         if (ids.size < 2) return
         val old = ids.firstNotNullOfOrNull { notes[it]?.setInfo }
-        if (old == null && name.isBlank()) return
+        if (old == null && name.isBlank() && description.isBlank()) return
         val set = ids.map { notes[it]?.feedSet }.toSet().singleOrNull() ?: newId()
         val cover = highlightOrder(ids).firstOrNull() ?: ids.first()
-        val info = SetInfo(name.trim(), old?.showOn ?: ShowOn.FIRST)
+        val info = SetInfo(name.trim(), old?.showOn ?: ShowOn.FIRST, description.trim())
         changeNotes(ids) { note -> note.copy(feedSet = set, apart = false, setInfo = info.takeIf { note.deviceId == cover }) }
     }
 

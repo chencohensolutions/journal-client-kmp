@@ -115,8 +115,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
     **More** a page of all of them). Asked when the panel opens (`media(sha256:)`, `similarMedia`); offline, from
     what On device search keeps.
   - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
-- **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save, a **Title**
-  box (one line; Enter moves on) and the **paragraph** box. Cancel with changes asks "Discard changes?". Each save
+- **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save and the
+  **paragraph** box only (Nov 10, 2026, Android only: the **Title** box went; a title written before is kept, and
+  History still shows it). Cancel with changes asks "Discard changes?". Each save
   keeps what was written before as a version, unless it was saved less than 10 minutes earlier (a quick fix is the
   same version). With versions, a line under the boxes, "Edited 3 times · last Oct 21, 14:02", opens **History**:
   the versions newest first (when, title or "No title", the start of the paragraph). One opens in full, with what
@@ -184,11 +185,16 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   viewer from Moments onto a photo of a set opens the set in this mode there once the swipe settles
   (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
-- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7" (white; grey until Nov 10, 2026), **Share**, a **grid** button and **⋮**
-  with Show in Moments when opened from elsewhere (Details went on Nov 10, 2026: the info line's ⓘ opens it); the menu's text has no shadow (Nov 10, 2026). Write and Share were in ⋮ until Nov 10, 2026,
-  when Share moved to the top bar and Write to the bottom bar. Last in it, **Name this moment** (**Rename moment** when it has
-  a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
-  `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
+- **Top bar** (Nov 10, 2026, Android only): back, "12 of 36" (white), **Share** and a **grid** button. No date and no
+  ⋮: the date is in the info line, Details is its ⓘ, and the moment's name moved to the bottom. Until Nov 10, 2026 it
+  showed the name, "12 of 36 · Sat, Nov 7" and a ⋮ with Details, Show in Moments and Name this moment.
+- **The moment's name** (Nov 10, 2026, Android only), over the photo's info at the bottom, with its **description**
+  under it (up to three lines) when it has one. A **tap** shows the moment in Moments (from elsewhere, the journal on
+  its Moments tab at the photo; opened from Moments, back to it). A **long press** opens a box with the name and the
+  description (a few words about it), **Save**: an emptied name leaves the moment unnamed, an emptied description
+  removes it (`StoriesController.nameMoment(ids, name, description)`, the note's `setInfo.description`). An unnamed
+  moment shows "Name this moment", which a tap names too. Its "Show it in Moments on" stays; a set the app made
+  becomes one made by hand.
 - **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a small gold ★ in the top corner of each highlight (Nov 10, 2026; before, a white dot). The photo shown sits in the middle, outlined. Scrolling the reel by hand

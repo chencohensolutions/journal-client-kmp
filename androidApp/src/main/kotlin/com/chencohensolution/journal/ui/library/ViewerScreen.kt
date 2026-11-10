@@ -31,9 +31,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -58,12 +56,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
@@ -285,19 +285,21 @@ internal class ViewerActions(
 
 /**
  * The viewer opened on a set ([Route.Viewer.list] a set's): its photos cross-fade instead of sliding, under the photo
- * the scrubber and ☆ Highlight · ▶ Play · Recompose; Write, Details and Share move to the top bar's menu.
+ * the reel and ☆ Highlight · ▶ Play · ✎ Write · ⌗ Recompose; the moment's name over the photo's date.
  */
 internal class ViewerSet(
     /** Its name, when it is a moment made by hand. */
     val name: String? = null,
+    /** A few words about it, when given. */
+    val description: String? = null,
     /** Its highlights' ids in order; the first is its cover. */
     val highlights: List<String> = emptyList(),
     val setHighlight: (itemId: String, on: Boolean) -> Unit = { _, _ -> },
     val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
     /** The crop screen's set mode, on this photo. */
     val recompose: (itemId: String) -> Unit = {},
-    /** Names or renames it; blank: unnamed. */
-    val rename: (name: String) -> Unit = {},
+    /** Names or renames it and gives its description; blank: unnamed, no description. */
+    val rename: (name: String, description: String) -> Unit = { _, _ -> },
     /** A swipe past its last ([forward]) or first photo: the photo or set beside it in Moments, if any. */
     val beside: (forward: Boolean) -> Unit = {},
 )
@@ -341,7 +343,6 @@ internal fun ViewerScreen(
     LaunchedEffect(playing) { if (playing) slideBarHidden = false }
     var speed by rememberSaveable { mutableStateOf(SlideSpeed.NORMAL) }
     var grid by rememberSaveable { mutableStateOf(false) }
-    var menu by remember { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
     // Videos play as soon as they are shown, muted until sound is turned on, and each picks up where it was left while
     // the viewer is open (asked Nov 9, 2026).
@@ -674,6 +675,12 @@ internal fun ViewerScreen(
                     onRoom = { reelRoom = it },
                     modifier = Modifier.align(Alignment.BottomCenter),
                     brief = { shown ->
+                        MomentTitle(
+                            set.name, set.description,
+                            Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
+                            onClick = { actions.showInMoments?.invoke(shown.id) ?: onBack() },
+                            onLongClick = { naming = true },
+                        )
                         PhotoBrief(shown, stories, Modifier.padding(start = 20.dp, end = 8.dp, bottom = 8.dp)) { showInfo = true }
                         // A video's controls: under the info, above the reel (asked Nov 9, 2026).
                         if (shown.type == MediaType.VIDEO && casting) {
@@ -742,46 +749,17 @@ internal fun ViewerScreen(
                 }
                 val showInMoments = actions.showInMoments
                 if (set != null) {
-                    Column(Modifier.weight(1f)) {
-                        set.name?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
-                        Text(
-                            stringResource(R.string.set_position, shownIndex + 1, items.size) + " · " + dayLabel(current.day),
-                            color = PositionColor,
-                            fontSize = 13.sp,
-                        )
-                    }
+                    // Only where it is: the name is at the bottom over the photo's date, and there is no ⋮ (asked Nov 10,
+                    // 2026: a long press on the name renames it, a tap shows it in Moments).
+                    Text(
+                        stringResource(R.string.set_position, shownIndex + 1, items.size),
+                        color = PositionColor,
+                        fontSize = 13.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     ShareTopButton(current, actions.share)
                     IconButton(onClick = { grid = true }) {
                         ShadowIcon(LibraryIcons.Grid, stringResource(R.string.set_all_photos))
-                    }
-                    Box {
-                        IconButton(onClick = { menu = true }) {
-                            ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
-                        }
-                        // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026). The menu and the name
-                        // dialog take a plain text style: the top bar's shadow over the photo is not for them (Nov 10, 2026).
-                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
-                        // Details is the info line's ⓘ (asked Nov 10, 2026: not twice).
-                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                            showInMoments?.let { show ->
-                                DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
-                                    menu = false
-                                    show(current.id)
-                                })
-                            }
-                            DropdownMenuItem(
-                                text = { Text(stringResource(if (set.name != null) R.string.set_rename else R.string.set_name_it)) },
-                                onClick = {
-                                    menu = false
-                                    naming = true
-                                },
-                            )
-                        }
-                        if (naming) MomentNameDialog(set.name.orEmpty(), onDismiss = { naming = false }) { name ->
-                            naming = false
-                            set.rename(name)
-                        }
-                        }
                     }
                 } else {
                     // As a set's top bar (asked Nov 10, 2026): where it is and Share; Details is the info line's ⓘ, so no ⋮
@@ -835,6 +813,12 @@ internal fun ViewerScreen(
         }
     }
 
+    if (naming && set != null) {
+        MomentNameDialog(set.name.orEmpty(), set.description.orEmpty(), onDismiss = { naming = false }) { name, description ->
+            naming = false
+            set.rename(name, description)
+        }
+    }
     if (grid && set != null) {
         SetGridSheet(
             items,
@@ -1656,19 +1640,55 @@ private fun formatClock(millis: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** A moment's name, to give or change (the set viewer's ⋯ menu); saved as typed, an empty one leaves it unnamed. */
+/** A moment's name and description, to give or change (a long press on its name); empty ones leave it without. */
 @Composable
-private fun MomentNameDialog(name: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+private fun MomentNameDialog(name: String, description: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var typed by rememberSaveable { mutableStateOf(name) }
+    var about by rememberSaveable { mutableStateOf(description) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.set_name_title)) },
         text = {
-            OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+            Column {
+                OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+                OutlinedTextField(
+                    about, { about = it }, Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 96.dp),
+                    placeholder = { Text(stringResource(R.string.set_description_hint)) },
+                )
+            }
         },
-        confirmButton = { TextButton(onClick = { onSave(typed) }) { Text(stringResource(R.string.set_name_save)) } },
+        confirmButton = { TextButton(onClick = { onSave(typed, about) }) { Text(stringResource(R.string.set_name_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
     )
+}
+
+/**
+ * Over the photo's date at the bottom of a set (asked Nov 10, 2026): the moment's name and its description. A tap
+ * shows the moment in Moments ([onClick]); a long press renames it and changes the description ([onLongClick]). An
+ * unnamed moment shows "Name this moment", which a tap names too.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun MomentTitle(name: String?, description: String?, modifier: Modifier = Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Column(
+        modifier.fillMaxWidth().combinedClickable(
+            onClickLabel = stringResource(if (name != null) R.string.library_show_in_moments else R.string.set_name_it),
+            onLongClickLabel = stringResource(R.string.set_rename),
+            onClick = if (name != null) onClick else onLongClick,
+            onLongClick = {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onLongClick()
+            },
+        ),
+    ) {
+        if (name != null) {
+            Text(name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else {
+            Text(stringResource(R.string.set_name_it), color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, maxLines = 1)
+        }
+        description?.let { Text(it, color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+    }
 }
 
 /**

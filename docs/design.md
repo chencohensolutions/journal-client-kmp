@@ -97,7 +97,7 @@ journal/
                                     writtenAt, history [{title, text, savedAt}], "storyline": false
                                     when removed from it, tags, crops, zoom, Moments set, "highlight"
                                     (its place among the set's highlights; v4's "front" is read as 1)
-                                    and on a named moment's cover "setInfo" {name, showOn}
+                                    and on a named moment's cover "setInfo" {name, showOn, description (since Nov 10, 2026)}
                                     (device id; "/" etc. become "_")
 ```
 

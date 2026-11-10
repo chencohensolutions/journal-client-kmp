@@ -705,11 +705,12 @@ private fun LibraryScreens(
                                     // A set: its own controls (highlights, Play, Recompose).
                                     val viewerSet = if (!route.isSet) null else ViewerSet(
                                         name = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.name },
+                                        description = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.description },
                                         highlights = storiesState.highlightsOf(shownItems).map { it.id },
                                         setHighlight = { id, on -> stories.setHighlight(ids, id, on) },
                                         moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
                                         recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
-                                        rename = { name -> stories.nameMoment(ids, name) },
+                                        rename = { name, description -> stories.nameMoment(ids, name, description) },
                                         // Past either end: what Moments shows beside the set, in its place on the stack.
                                         beside = { forward ->
                                             storiesState.feed.beside(ids, forward)?.let { (section, block) ->

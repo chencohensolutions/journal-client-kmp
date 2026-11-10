@@ -23,6 +23,15 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Set viewer header, the moment's name and description; Write without a title** (Android Nov 10, 2026;
+  [viewer.md](screens/viewer.md)): the set's top bar is back, "12 of 36" (no date), Share and the grid; no ⋮. Over
+  the photo's info at the bottom, the moment's name (17 pt semibold) and its description (up to 3 lines); unnamed,
+  "Name this moment". Tap: Show in Moments (from Moments: back); long press: a dialog with the name and a description
+  field (`set_description_hint`), saved with the new `StoriesController.nameMoment(itemIds, name, description)`
+  (`NamedSet.description`, note `setInfo.description`, additive). The note editor has only the paragraph box (the title
+  field went; an old title is kept). A single photo shows the highlight ★ over the photo only while a slideshow plays.
+  Android: `MomentTitle`, `MomentNameDialog` in `ViewerScreen.kt`, `NoteEditor.kt`.
+
 - **A single photo's viewer as a set's; one crop screen** (Android Nov 10, 2026; [viewer.md](screens/viewer.md),
   [crop.md](screens/crop.md)): the viewer of a single photo has the set's top bar (position "4 of 29 · day" in white,
   Share, no ⋮; the Moments day chip stays when opened from elsewhere; the set's ⋮ lost Details, the ⓘ opens it) and floating bar (✎ Write · ⌗ Crop). It shows

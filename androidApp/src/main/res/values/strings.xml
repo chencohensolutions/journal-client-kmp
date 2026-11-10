@@ -1142,6 +1142,7 @@
     <string name="set_rename">Rename moment</string>
     <string name="set_name_title">Moment name</string>
     <string name="set_name_hint">No name</string>
+    <string name="set_description_hint">A few words about it</string>
     <string name="set_name_save">Save</string>
     <string name="set_highlight">Highlight</string>
     <string name="set_highlighted">Highlight</string>

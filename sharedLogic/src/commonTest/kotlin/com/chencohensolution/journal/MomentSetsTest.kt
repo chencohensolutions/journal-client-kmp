@@ -249,6 +249,25 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aMomentHasADescription() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "Sea", listOf("s1"), ShowOn.LAST)
+        stories.nameMoment(weekend, "Sea", "  Two days at the beach ")
+        assertEquals("Two days at the beach", stories.currentState.namedSetOf("u")?.description)
+        assertEquals("Sea", stories.currentState.namedSetOf("u")?.name)
+        // Renamed alone: the description stays.
+        stories.nameMoment(weekend, "Beach")
+        assertEquals("Two days at the beach", stories.currentState.namedSetOf("u")?.description)
+        // Kept after a restart.
+        assertEquals("Two days at the beach", setup(setup.fileSystem).stories.currentState.namedSetOf("f")?.description)
+        // Cleared.
+        stories.nameMoment(weekend, "Beach", " ")
+        assertNull(stories.currentState.namedSetOf("u")?.description)
+    }
+
+    @Test
     fun aMomentNeedsNoName() = runTest {
         val setup = setup()
         val stories = setup.stories

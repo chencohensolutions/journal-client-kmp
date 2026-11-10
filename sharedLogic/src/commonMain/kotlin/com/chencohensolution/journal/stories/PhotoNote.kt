@@ -83,9 +83,12 @@ data class PhotoNote(
 }
 
 /** A set made into a moment by hand ([StoriesController.makeMoment]). */
-data class SetInfo(val name: String, val showOn: ShowOn = ShowOn.FIRST) {
+data class SetInfo(val name: String, val showOn: ShowOn = ShowOn.FIRST, val description: String = "") {
     /** The name, or null for a moment made without one (saved as ""). */
     val shownName: String? get() = name.takeIf { it.isNotBlank() }
+
+    /** A few words about the moment (Nov 10, 2026), or null without them. */
+    val shownDescription: String? get() = description.takeIf { it.isNotBlank() }
 }
 
 /** Which days of a named set show it in Moments. */
@@ -279,7 +282,7 @@ private data class NoteFile(
         history = history.orEmpty().map { NoteVersion(it.title.orEmpty(), it.text.orEmpty(), it.savedAt) },
         inStoryline = storyline != false,
         zoom = zoom?.toRect(),
-        setInfo = setInfo?.let { SetInfo(it.name, ShowOn.of(it.showOn)) },
+        setInfo = setInfo?.let { SetInfo(it.name, ShowOn.of(it.showOn), it.description.orEmpty()) },
     )
 
     companion object {
@@ -297,16 +300,19 @@ private data class NoteFile(
             set = note.feedSet,
             apart = note.apart.takeIf { it },
             highlight = note.highlight,
-            setInfo = note.setInfo?.let { SetInfoFile(it.name, it.showOn.id) },
+            setInfo = note.setInfo?.let { SetInfoFile(it.name, it.showOn.id, it.description.ifBlank { null }) },
             zoom = note.zoom?.let(RectFile::of),
             updatedAt = note.updatedAt,
         )
     }
 }
 
-/** "setInfo": {"name": "Beach weekend", "showOn": "first" | "last" | "each"}. */
+/**
+ * "setInfo": {"name": "Beach weekend", "showOn": "first" | "last" | "each", "description": "..."}; "description" since
+ * Nov 10, 2026, left out when empty.
+ */
 @Serializable
-private data class SetInfoFile(val name: String, val showOn: String = "first")
+private data class SetInfoFile(val name: String, val showOn: String = "first", val description: String? = null)
 
 /** One of "history": an earlier title and paragraph and when they were saved. */
 @Serializable
