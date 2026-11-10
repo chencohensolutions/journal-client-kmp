@@ -99,8 +99,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
   is the slideshow's only (Nov 10, 2026; before, it also stopped videos playing by themselves outside it): off, the
   slideshow shows a video's poster for a slide's time instead of playing it to its end. Sliding between videos never flashes black: a video's poster is made ready ahead at screen size with
   the photos beside it, stays over the player until its first frame is drawn and then fades out over it (0.18 s), and
-  comes back in the same frame the player goes; the player draws into a TextureView (`res/layout/viewer_player.xml`),
-  which follows the cross-fade and the swipe; in the pager a video becomes the one playing once the
+  comes back in the same frame the player goes; the player draws into a SurfaceView (`res/layout/viewer_player.xml`;
+  a TextureView from Nov 9 made 4K videos stutter, so it went back on Nov 10, 2026), which follows the swipe but not a
+  cross-fade's alpha; in the pager a video becomes the one playing once the
   swipe settles, so the one slid away from plays on while it leaves. Android: `VideoPage`, `ViewerVideos`,
   `VideoControls` in `ViewerScreen.kt`.
 - **Details panel** (**Details**, hidden by default; redone Oct 22, 2026). Its cards are a 6% tint of the panel's

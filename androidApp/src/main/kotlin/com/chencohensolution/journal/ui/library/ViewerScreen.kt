@@ -1534,9 +1534,8 @@ private fun VideoPlayer(
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         AndroidView(
-            // Clear until the first frame, so the poster under it shows meanwhile instead of black.
-            // A TextureView, no controls of its own, clear until the first frame (res/layout/viewer_player.xml): its controls
-            // are drawn under the info, and the poster over it shows until its first frame without a black flash.
+            // A SurfaceView with no controls of its own (res/layout/viewer_player.xml): its controls are drawn under the
+            // info, and VideoPage keeps the poster over it until its first frame, so it never shows black.
             factory = { android.view.LayoutInflater.from(it).inflate(R.layout.viewer_player, null) as PlayerView },
             update = { it.player = player },
             onRelease = { it.player = null },
