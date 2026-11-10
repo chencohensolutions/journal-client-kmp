@@ -155,8 +155,10 @@ internal class HomeActions(
     val openRecording: (sha256: String) -> Unit = {},
     /** Moments is read a page at a time: the next page, as the list nears its end. */
     val loadMoreMoments: () -> Unit = {},
+    /** The page above, as the list nears its top while the rows read don't start at the newest (after going to a date). */
+    val loadNewerMoments: () -> Unit = {},
     /**
-     * Moments' rows down to the row of a day, for going to a date: calls back with that row's key once it is read (null
+     * Moments' rows around the row of a day, for going to a date: calls back with that row's key once it is read (null
      * when no row has the day).
      */
     val loadMomentsTo: (LocalDay, (String?) -> Unit) -> Unit = { _, done -> done(null) },
@@ -381,6 +383,15 @@ internal fun JournalHomeScreen(
         snapshotFlow { list.layoutInfo.let { (it.visibleItemsInfo.lastOrNull()?.index ?: 0) >= it.totalItemsCount - loadAhead } }
             .distinctUntilChanged()
             .collect { near -> if (near) actions.loadMoreMoments() }
+    }
+    // …and the page above, once it is near the top of what is read and that isn't the newest (after going to a date). The
+    // rows come in above those shown, which stay where they are: the list keeps its first visible row by its key.
+    val hasNewer = moments && shownFeed.hasNewer
+    LaunchedEffect(list, hasNewer, loadAhead, feedRows) {
+        if (!hasNewer) return@LaunchedEffect
+        snapshotFlow { list.layoutInfo.let { (it.visibleItemsInfo.firstOrNull()?.index ?: 0) <= it.totalItemsCount - feedRows.size + loadAhead } }
+            .distinctUntilChanged()
+            .collect { near -> if (near) actions.loadNewerMoments() }
     }
     list.LandOn(shownPhoto ?: landing.takeUnless { searching }, rows.size) { id -> rows.rowOf(id) }
     // Sharp photos decode once the list slows down; until then each shows its quick image, loaded ahead of the scroll.

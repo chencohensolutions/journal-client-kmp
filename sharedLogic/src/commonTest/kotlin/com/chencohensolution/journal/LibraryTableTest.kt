@@ -20,6 +20,7 @@ import com.chencohensolution.journal.search.resolverOf
 import com.chencohensolution.journal.settings.SettingsController
 import com.chencohensolution.journal.stories.FeedEntry
 import com.chencohensolution.journal.stories.FeedPager
+import com.chencohensolution.journal.stories.MAX_PAGES
 import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.StoriesController
@@ -547,6 +548,105 @@ class LibraryTableTest {
         advanceUntilIdle()
         assertEquals<List<String?>>(listOf(days[180].sectionKey), called)
         assertTrue(days[180].sectionKey in keys())
+        stories.close()
+        settings.close()
+        library.close()
+    }
+
+    /**
+     * Moments' window (asked Nov 10, 2026: going to the oldest day read every row of the library): with a library much
+     * larger than a window, going to the oldest day reads about a window, not the rows above it; scrolling up and down
+     * reads a page at a time and lets the far pages go, so the feed never holds more than [MAX_PAGES] pages; a refresh
+     * reads the same window again; and going to a day of the window reads nothing.
+     */
+    @Test
+    fun momentsKeepAWindowWhateverTheLibrarysSize() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val first = LocalDay(2020, 1, 1)
+        val device = (0 until 600).map { n ->
+            val day = first.plusDays((n / 2).toLong())
+            MediaItem("$n", MediaType.IMAGE, day.toEpochDay() * 86_400_000 + n * 60_000L, day, null, 10, 10, 100L + n, "IMG_$n.jpg", modifiedMillis = 1)
+        }
+        val database = testLibraryDatabase()
+        fun store() = object : KeyValueStore {
+            private val values = mutableMapOf<String, String>()
+            override fun getString(key: String): String? = values[key]
+            override fun putString(key: String, value: String?) {
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+        val library = LibraryController(
+            StoredMediaLibrary(TableTestLibrary(device), database, dispatcher), JournalSettings(store()), dispatcher, table = LibraryTable(database),
+        )
+        val settings = SettingsController(JournalSettings(store()), dispatcher)
+        val page = 3
+        val stories = StoriesController(
+            noteStore = FilePhotoNoteStore(FakeFileSystem(), "/data/journal".toPath()),
+            library = library,
+            settings = settings,
+            newId = { "set" },
+            dispatcher = dispatcher,
+            feed = FeedPager(FeedTable(database), LibraryTable(database), dispatcher, pageSize = { page }),
+            shownRow = library::shownRow,
+        )
+        library.refresh()
+        advanceUntilIdle()
+        fun feed() = stories.currentState.feed
+        fun keys() = feed().entries.map { (it as FeedEntry.Section).section.key }
+        val days = feed().timeline.months.flatMap { it.days }
+        val all = days.map { it.sectionKey }.distinct()
+        assertEquals(300, all.size, "a row a day")
+        assertEquals(all.take(page), keys(), "the first page")
+        assertTrue(!feed().hasNewer && feed().hasOlder)
+
+        // The oldest day: a page above it and its row, nothing else.
+        var landed: String? = null
+        stories.loadMomentsTo(days.last().day) { landed = it }
+        advanceUntilIdle()
+        assertEquals(all.last(), landed)
+        assertEquals(all.takeLast(page + 1), keys())
+        assertTrue(feed().hasNewer && !feed().hasOlder)
+        assertTrue(stories.currentState.itemsById.size < 30, "only the window's photos: ${stories.currentState.itemsById.size}")
+
+        // Going to a day of the window reads nothing: the feed stays the one shown.
+        val shown = feed()
+        stories.loadMomentsTo(days[days.size - 2].day) { landed = it }
+        advanceUntilIdle()
+        assertEquals(all[all.size - 2], landed)
+        assertTrue(feed() === shown, "nothing read")
+
+        // Up to the top a page at a time: never more than the window holds, rows in the feed's order, the far ones let go.
+        var seen = keys().toSet()
+        while (feed().hasNewer) {
+            stories.loadNewerMoments()
+            advanceUntilIdle()
+            val now = keys()
+            assertTrue(now.size <= MAX_PAGES * page, "at most a window: ${now.size}")
+            assertEquals(all.filter { it in now }, now, "in order, none missing between")
+            seen = seen + now
+        }
+        assertEquals(all.take(MAX_PAGES * page), keys(), "the top window")
+        assertEquals(all.toSet(), seen, "every row on the way")
+        assertTrue(feed().hasOlder)
+
+        // And down again to the end.
+        while (feed().hasOlder) {
+            stories.loadMoreMoments()
+            advanceUntilIdle()
+            assertTrue(keys().size <= MAX_PAGES * page)
+        }
+        assertEquals(all.takeLast(MAX_PAGES * page), keys(), "the bottom window")
+        assertTrue(feed().hasNewer)
+
+        // A day in the middle, then a refresh (a hidden source shown on a row): the same window, read again.
+        stories.loadMomentsTo(days[150].day) {}
+        advanceUntilIdle()
+        val middle = keys()
+        assertTrue(days[150].sectionKey in middle && middle.size <= 3 * page + 1, "about a window: $middle")
+        stories.showOnRow(middle.first(), MediaSource.WHATSAPP)
+        advanceUntilIdle()
+        assertEquals(middle, keys(), "the window kept")
+        assertTrue(feed().hasNewer && feed().hasOlder)
         stories.close()
         settings.close()
         library.close()

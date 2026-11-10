@@ -101,17 +101,25 @@ SELECT * FROM feed_section WHERE newest_millis < ? ORDER BY newest_millis DESC, 
 sectionCount:
 SELECT count(*) FROM feed_section;
 
+-- Moments' window (FeedPager): the rows whose newest moments are newest..oldest, both included, in the feed's order.
+sectionsBetween:
+SELECT * FROM feed_section WHERE newest_millis <= :newest AND newest_millis >= :oldest ORDER BY newest_millis DESC, key ASC;
+
+-- The newest moments of up to n rows older than a moment, newest first: where a window reaching further down ends.
+millisBefore:
+SELECT newest_millis FROM feed_section WHERE newest_millis < ? ORDER BY newest_millis DESC LIMIT ?;
+
+-- The newest moments of up to n rows newer than a moment, oldest first: where a window reaching further up ends.
+millisAfter:
+SELECT newest_millis FROM feed_section WHERE newest_millis > ? ORDER BY newest_millis ASC LIMIT ?;
+
+-- A row's newest moment: where its window is.
+millisOfSection:
+SELECT newest_millis FROM feed_section WHERE key = ?;
+
 -- Every row's newest moment, key and photos per day, newest first: the timeline of the whole feed.
 timelineRows:
 SELECT key, day_counts FROM feed_section ORDER BY newest_millis DESC, key ASC;
-
--- The rows from the newest down to the one with this key, which is read with them.
-sectionsDownTo:
-SELECT * FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM feed_section WHERE key = ?) ORDER BY newest_millis DESC, key ASC;
-
--- How many rows sectionsDownTo reads, without reading them: what a jump to a date needs to know first.
-countDownTo:
-SELECT COUNT(*) FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM feed_section WHERE key = ?);
 
 -- The rows whose days reach over this day, in the feed's order, with their photos per day: the one a photo is in (its
 -- own day, or the day of the set it was merged into) is the first with photos of the day, as the timeline has it.

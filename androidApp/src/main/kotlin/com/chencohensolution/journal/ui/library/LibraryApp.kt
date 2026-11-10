@@ -357,6 +357,7 @@ private fun LibraryScreens(
                                         ),
                                         showOnRow = stories::showOnRow,
                                         loadMoreMoments = stories::loadMoreMoments,
+                                        loadNewerMoments = stories::loadNewerMoments,
                                         loadMomentsTo = stories::loadMomentsTo,
                                         loadMomentsToItem = stories::loadMomentsToItem,
                                         hideOnRow = stories::hideOnRow,
@@ -687,16 +688,25 @@ private fun LibraryScreens(
                                     val fromMoments = route.moment != null && route.revealed == null
                                     LaunchedEffect(shownId, ids.size) {
                                         if (fromMoments && ids.indexOf(shownId) >= ids.size - MOMENTS_AHEAD) stories.loadMoreMoments()
+                                        // Near the first, when Moments' rows read don't start at the newest (after going to a date).
+                                        if (fromMoments && storiesState.feed.hasNewer && ids.indexOf(shownId) in 0 until MOMENTS_AHEAD) stories.loadNewerMoments()
                                     }
-                                    // The rows read since are added at the end (older photos); the ones opened keep their places.
+                                    // The rows read since are added at the end (older photos) or, newer ones, at the start; the
+                                    // ones opened keep their places (the pager keeps the photo shown by its id). Rows Moments
+                                    // lets go of stay here.
                                     var added by remember(route.encode()) { mutableStateOf(emptyMap<String, MediaItem>()) }
-                                    LaunchedEffect(storiesState.feed.entries.size) {
+                                    LaunchedEffect(storiesState.feed) {
                                         if (!fromMoments) return@LaunchedEffect
                                         val had = ids.toHashSet()
-                                        val more = viewerItems(libraryState, storiesState, route, searchState, pageLists).filter { it.id !in had }
+                                        val now = viewerItems(libraryState, storiesState, route, searchState, pageLists)
+                                        val more = now.filter { it.id !in had }
                                         if (more.isNotEmpty()) {
+                                            val firstHad = now.indexOfFirst { it.id in had }
+                                            val newer = if (firstHad < 0) emptyList() else now.subList(0, firstHad).filter { it.id !in had }
+                                            val newerIds = newer.mapTo(HashSet()) { it.id }
+                                            val older = more.filter { it.id !in newerIds }
                                             added = added + more.associateBy { it.id }
-                                            ids = ids + more.map { it.id }
+                                            ids = newer.map { it.id } + ids + older.map { it.id }
                                         }
                                     }
                                     val shownItems = ids.mapNotNull { id ->

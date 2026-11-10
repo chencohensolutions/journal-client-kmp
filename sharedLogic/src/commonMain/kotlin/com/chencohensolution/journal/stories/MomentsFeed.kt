@@ -185,6 +185,10 @@ data class MomentsFeed(
     val importedShown: Boolean = true,
     /** The kinds under Imported in the sheet, the most photos first; empty while nothing imported has photos. */
     val importedSheet: List<MediaSource> = MediaSource.importedChoices(counts),
+    /** Read from the database: newer rows above [entries], read once the list nears its top (FeedPager's window). */
+    val hasNewer: Boolean = false,
+    /** Read from the database: older rows below [entries], read once the list nears its end. */
+    val hasOlder: Boolean = false,
 ) {
     // Compared by identity, like StoriesState: screens key on it, and a field-by-field comparison is slow.
     override fun equals(other: Any?): Boolean = this === other
