@@ -52,7 +52,9 @@ phone (viewer)                                   TV (Cast receiver page)
 
 JSON on `urn:x-cast:com.chencohensolution.journal`, listed at the top of `receiver/receiver.js` and built by
 `CastController` (`CAST_NAMESPACE`). Phone to TV: `hi`, `show {item, frame?, autoplay, muted, position}`,
-`preload {items}`, `frame {id, x, y, w, h}`, `video {action, position?}`, `mute`, `chunk`, `stop`. TV to phone:
+`preload {items}`, `frame {id, x, y, w, h}`, `video {action, position?}`, `mute`, `chunk`, `stop`,
+`info {id, text?, time?, place?, latitude?, longitude?}` (`CastController.info`, sent for each item shown) and
+`overlay {info, map}` (`showInfo`, `showMap`). TV to phone:
 `hello {width, height}` (the frame's shape), `shown {id}`, `video {id, position, duration, playing, ended}` (each
 second and on each change; `ended` lets the slideshow go on), `error {id, message}`, `need {id}`.
 
@@ -93,6 +95,22 @@ play, that is the cause, and another route is needed (the TV can't trust the jou
 - `androidApp/.../ui/library/`: `JournalCast.kt` (app id, `JournalCastOptions`, finding TVs with MediaRouter, the
   session), `CastServer.kt`, `CastViews.kt` (Cast button and TV picker, the frame overlay and its gestures, a video's
   TV controls); the viewer's wiring in `ViewerScreen.kt`.
+
+## Speed on the TV
+
+The page starts the HEIF worker (and compiles libheif) and jxl-oxide as soon as it loads (`warmUp` in `decode.js`),
+so the first HEIC waits only for its bytes. Photos go through fetching (two at once) and decoding (one at a time),
+each taking the photo shown first and then the phone's latest `preload` in its order; a photo swiped past is no
+longer wanted, so its fetch is stopped and it isn't decoded (Nov 10, 2026: quick swipes kept the TV busy for a long
+time with photos already gone). While a photo or a video comes, a small turning ring shows in the top corner instead
+of "Loading…".
+
+## Info and map
+
+`info` carries what the phone knows of an item (the note's text, the date and time and the place as the phone words
+them, and the coordinates). With `overlay`'s `info` on, the page shows them over the bottom of what is shown; with
+`map` on, it draws OpenStreetMap's tiles (zoom 15, fetched by the TV from `tile.openstreetmap.org`, credited in the
+corner) around the place in its top corner, with the place marked. Both follow each item shown until turned off.
 
 ## Volume
 

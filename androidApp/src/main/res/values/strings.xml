@@ -1192,6 +1192,10 @@
     <string name="cast_a_tv">A TV</string>
     <string name="cast_looking">Looking for TVs on this Wi-Fi…</string>
     <string name="cast_stop">Stop showing on TV</string>
+    <string name="cast_info_on">Show the note, date and place on the TV</string>
+    <string name="cast_info_off">Hide the note on the TV</string>
+    <string name="cast_map_on">Show the place on a map on the TV</string>
+    <string name="cast_map_off">Hide the map on the TV</string>
     <string name="cast_frame_label">TV</string>
     <string name="cast_frame_hint">The frame is the TV. Pinch to zoom on both, drag to move around, double tap to fill the TV.</string>
     <string name="cast_play">Play on TV</string>

@@ -49,6 +49,20 @@ data class CastItem(
 /** The video the TV plays, as it last told: where it is and whether it plays. */
 data class CastVideo(val id: String, val positionMillis: Long, val durationMillis: Long, val playing: Boolean, val ended: Boolean)
 
+/**
+ * What the TV may show over a photo or video ([CastController.info]): its note, when it was taken and where (as the
+ * phone words them), and the place's coordinates for the map. Empty strings and nulls are left out.
+ */
+data class CastInfo(
+    val text: String = "",
+    val time: String = "",
+    val place: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+) {
+    val hasPlace: Boolean get() = latitude != null && longitude != null
+}
+
 /** Something the TV couldn't show: the photo or video's id, and why (for the log). */
 data class CastError(val id: String, val message: String)
 
@@ -64,6 +78,10 @@ data class CastState(
     val video: CastVideo? = null,
     /** The last thing the TV couldn't show; [CastController.errorSeen] clears it. */
     val error: CastError? = null,
+    /** The TV shows the info ([CastInfo]) over what is shown: the phone's toggle, off with each new session. */
+    val infoOnTv: Boolean = false,
+    /** The TV shows the place of what is shown on a map. */
+    val mapOnTv: Boolean = false,
 )
 
 /** The open session's way to the TV: sends one message on [CAST_NAMESPACE]; false when it didn't go. */
@@ -91,6 +109,7 @@ class CastController(
     private var jobs: List<Job> = emptyList()
     private val frames = MutableStateFlow<Pair<String, CastFrame>?>(null)
     private var shownItem: String? = null
+    private val infosSent = mutableMapOf<String, CastInfo>()
 
     /** The item the TV last couldn't show, kept after [errorSeen] (which the viewer calls at once) for [videoDone]. */
     private val failedId = MutableStateFlow<String?>(null)
@@ -102,6 +121,7 @@ class CastController(
         outbox = box
         frames.value = null
         shownItem = null
+        infosSent.clear()
         _state.value = CastState(connected = true, device = device)
         jobs = listOf(
             scope.launch { for (message in box) channel.send(message) },
@@ -171,6 +191,33 @@ class CastController(
     fun pause() = send(message("video") { put("action", "pause") })
 
     fun seek(positionMillis: Long) = send(message("video") { put("action", "seek"); put("position", positionMillis) })
+
+    /** What the TV may show over the item [id] (sent again only when it changed). */
+    fun info(id: String, info: CastInfo) {
+        val box = outbox ?: return
+        if (infosSent[id] == info) return
+        infosSent[id] = info
+        box.trySend(message("info") {
+            put("id", id)
+            if (info.text.isNotBlank()) put("text", info.text)
+            if (info.time.isNotBlank()) put("time", info.time)
+            if (info.place.isNotBlank()) put("place", info.place)
+            info.latitude?.let { put("latitude", it) }
+            info.longitude?.let { put("longitude", it) }
+        })
+    }
+
+    /** The info over the photo on the TV, on or off. */
+    fun showInfo(on: Boolean) = overlay(on, _state.value.mapOnTv)
+
+    /** The place on a map on the TV, on or off. */
+    fun showMap(on: Boolean) = overlay(_state.value.infoOnTv, on)
+
+    private fun overlay(info: Boolean, map: Boolean) {
+        if (outbox == null) return
+        _state.update { it.copy(infoOnTv = info, mapOnTv = map) }
+        send(message("overlay") { put("info", info); put("map", map) })
+    }
 
     fun mute(muted: Boolean) = send(message("mute") { put("muted", muted) })
 

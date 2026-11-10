@@ -199,6 +199,37 @@ internal fun CastButton() {
     if (picking) CastSheet(onDismiss = { picking = false })
 }
 
+/**
+ * While casting, beside the Cast button: ⓘ shows the photo's note, date and place over it on the TV, and the map
+ * button its place on a map there (only for a photo with a place). Each stays on for the next photos until tapped again.
+ */
+@Composable
+internal fun CastOverlayButtons(hasPlace: Boolean) {
+    val cast = JournalCast.controller
+    val state by cast.state.collectAsState()
+    if (!state.connected) return
+    OverlayButton(LibraryIcons.Info, if (state.infoOnTv) R.string.cast_info_off else R.string.cast_info_on, state.infoOnTv) {
+        cast.showInfo(!state.infoOnTv)
+    }
+    if (hasPlace || state.mapOnTv) {
+        OverlayButton(LibraryIcons.Map, if (state.mapOnTv) R.string.cast_map_off else R.string.cast_map_on, state.mapOnTv) {
+            cast.showMap(!state.mapOnTv)
+        }
+    }
+}
+
+@Composable
+private fun OverlayButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Int, on: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            icon, stringResource(label), tint = Color.White,
+            modifier = Modifier
+                .background(if (on) LibraryColors.Accent.copy(alpha = 0.55f) else Color.Transparent, androidx.compose.foundation.shape.CircleShape)
+                .padding(6.dp),
+        )
+    }
+}
+
 /** The TVs on the Wi-Fi to cast to, or the TV cast to with Stop. */
 @Composable
 private fun CastSheet(onDismiss: () -> Unit) {

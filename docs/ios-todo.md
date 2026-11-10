@@ -23,6 +23,12 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Casting: fill kept, info and map on the TV** (Android Nov 10, 2026; [cast.md](cast.md#info-and-map),
+  [viewer.md](screens/viewer.md) "Showing on a TV"): when casting is built on iOS, a double tap that fills the TV
+  keeps filling for the next photos (Android: `castFill` in `ViewerScreen.kt`); call `cast.info(id, CastInfo(text,
+  time, place, latitude, longitude))` for the item shown, and add ⓘ and map buttons before the Cast button that
+  call `showInfo(!infoOnTv)` / `showMap(!mapOnTv)` (map only with a place; Android: `CastOverlayButtons` in
+  `CastViews.kt`). Strings: `cast_info_on`, `cast_info_off`, `cast_map_on`, `cast_map_off`.
 - **Volume buttons while casting** (Android Nov 10, 2026; [cast.md](cast.md#volume)): the phone's volume buttons
   set the Cast session's volume (steps of 0.05) while casting. On iOS, when casting is built, set
   `GCKCastOptions.physicalVolumeButtonsWillControlDeviceVolume = true`.

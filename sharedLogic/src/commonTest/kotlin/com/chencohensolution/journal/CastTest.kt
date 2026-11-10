@@ -2,6 +2,7 @@ package com.chencohensolution.journal
 
 import com.chencohensolution.journal.cast.CastController
 import com.chencohensolution.journal.cast.CastError
+import com.chencohensolution.journal.cast.CastInfo
 import com.chencohensolution.journal.cast.CastItem
 import com.chencohensolution.journal.cast.PhoneRect
 import com.chencohensolution.journal.cast.TvZoom
@@ -234,6 +235,41 @@ class CastTest {
         cast.received("""{"type":"error","id":"v1","message":"media error 2"}""")
         cast.errorSeen()
         assertTrue(done())
+    }
+
+    @Test
+    fun theInfoAndTheMapGoToTheTvWhenAsked() = runTest {
+        val sent = mutableListOf<String>()
+        val cast = CastController(backgroundScope)
+        cast.connected({ sent += it; true }, null)
+        runCurrent()
+        sent.clear()
+        val info = CastInfo(text = "At the beach", time = "Sunday, 10 November 2026 14:05", place = "Tel Aviv", latitude = 32.08, longitude = 34.78)
+        cast.info("p1", info)
+        cast.info("p1", info)
+        cast.info("p2", CastInfo(time = "Monday"))
+        runCurrent()
+        assertEquals(listOf("info", "info"), sent.map { read(it).type() })
+        val first = read(sent[0])
+        assertEquals("At the beach", first["text"]!!.jsonPrimitive.content)
+        assertEquals("32.08", first["latitude"]!!.jsonPrimitive.content)
+        // Nothing empty goes.
+        assertNull(read(sent[1])["text"])
+        assertNull(read(sent[1])["latitude"])
+
+        sent.clear()
+        cast.showInfo(true)
+        cast.showMap(true)
+        cast.showInfo(false)
+        runCurrent()
+        assertEquals(listOf("overlay", "overlay", "overlay"), sent.map { read(it).type() })
+        assertEquals("false", read(sent.last())["info"]!!.jsonPrimitive.content)
+        assertEquals("true", read(sent.last())["map"]!!.jsonPrimitive.content)
+        assertFalse(cast.state.value.infoOnTv)
+        assertTrue(cast.state.value.mapOnTv)
+        // A new session starts with both off.
+        cast.connected({ true }, null)
+        assertFalse(cast.state.value.mapOnTv)
     }
 
     @Test

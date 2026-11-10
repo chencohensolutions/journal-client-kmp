@@ -1247,6 +1247,10 @@
     <string name="cast_a_tv">טלוויזיה</string>
     <string name="cast_looking">מחפשים טלוויזיות ברשת ה-Wi-Fi הזו…</string>
     <string name="cast_stop">הפסקת ההצגה בטלוויזיה</string>
+    <string name="cast_info_on">הצגת הכיתוב, התאריך והמקום בטלוויזיה</string>
+    <string name="cast_info_off">הסתרת הכיתוב בטלוויזיה</string>
+    <string name="cast_map_on">הצגת המקום על מפה בטלוויזיה</string>
+    <string name="cast_map_off">הסתרת המפה בטלוויזיה</string>
     <string name="cast_frame_label">TV</string>
     <string name="cast_frame_hint">המסגרת היא הטלוויזיה. צביטה מתקרבת בשתיהן, גרירה מזיזה, הקשה כפולה ממלאת את הטלוויזיה.</string>
     <string name="cast_play">הפעלה בטלוויזיה</string>

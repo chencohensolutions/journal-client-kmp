@@ -249,7 +249,12 @@ it. While casting the button is filled in (Cast's own connected look), and the s
   shows inside it exactly what the TV shows, the rest of the photo around it dimmed (no crop chip, minimap or the
   phone's own zoom). Two fingers zoom both about them (up to 12×); zoomed in, one finger drags the photo, and swiping
   waits until it is back to the whole photo. A **double tap** zooms to fill the TV with the photo (no black bars,
-  `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone.
+  `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone. Filling stays on for
+  the next photos until a double tap goes back to the whole photo (Nov 10, 2026).
+- **ⓘ and the map on the TV** (Nov 10, 2026): while casting, two buttons sit before the Cast button. ⓘ shows the
+  photo's note, its date and time, and its place over the bottom of the TV; the map button (only for a photo with a
+  place) shows the place on an OpenStreetMap map in the TV's top corner. Each is lit while on and stays on for the
+  next photos until tapped again; a new cast starts with both off.
 - A video plays on the TV, with sound; the phone shows its poster, and under the info a Play/Pause button and a bar
   of where the TV is (drag to go there). The slideshow waits for the TV to finish it.
 - What the TV couldn't show: "The TV couldn't show this one." A phone off the Wi-Fi: "The phone needs to be on the same

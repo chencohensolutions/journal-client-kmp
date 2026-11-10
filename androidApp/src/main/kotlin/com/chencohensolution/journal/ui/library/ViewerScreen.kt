@@ -133,6 +133,7 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.cast.CastInfo
 import com.chencohensolution.journal.cast.castAhead
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.MediaItem
@@ -362,6 +363,9 @@ internal fun ViewerScreen(
     val castState by cast.state.collectAsState()
     val casting = castState.connected
     val castZooms = remember { mutableMapOf<String, CastZoom>() }
+    // A double-tap that fills the TV with the photo keeps filling it with the next ones, until one goes back to the
+    // whole photo (asked Nov 10, 2026).
+    var castFill by rememberSaveable { mutableStateOf(false) }
     // ▶ Videos is the slideshow's (asked Nov 10, 2026): outside it videos always play by themselves; in it, off, a video
     // shows its poster for a slide's time. Cast to a TV, a slideshow plays every video to its end.
     val inSlideshow = set != null && playing
@@ -438,7 +442,15 @@ internal fun ViewerScreen(
     val zoom = zoomOf(current)
     val zoomNow by rememberUpdatedState(zoom.takeIf { current.type != MediaType.VIDEO && !casting })
     val currentCrop = cropOf(current)?.takeIf { !zoom.isZoomed && !casting }
-    fun castZoomOf(item: MediaItem) = castZooms.getOrPut(item.id) { CastZoom(item.ratio, castState.tvRatio) }
+    fun castZoomOf(item: MediaItem) = castZooms.getOrPut(item.id) {
+        CastZoom(item.ratio, castState.tvRatio).also { if (castFill) it.zoom = it.zoom.filled() }
+    }
+    LaunchedEffect(castFill) {
+        castZooms.values.forEach {
+            if (castFill && !it.zoom.isZoomed) it.zoom = it.zoom.filled()
+            else if (!castFill && it.zoom == it.zoom.filled()) it.zoom = it.zoom.whole()
+        }
+    }
     val castZoom = castZoomOf(current).takeIf { casting && current.type != MediaType.VIDEO }
     val castZoomNow by rememberUpdatedState(castZoom)
     val castZoomed = castZoom?.zoom?.isZoomed == true
@@ -463,6 +475,20 @@ internal fun ViewerScreen(
         cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = true, positionMillis = videoPositions[shownNow.id] ?: 0L)
         if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
     }
+    // What the TV shows over the photo when the info or map button is on: the note, when and where.
+    val castInfo = if (!casting) null else {
+        val point = stories.places.location(current)
+        val name = point?.let { stories.places.name(it) }
+        val taken = java.time.Instant.ofEpochMilli(current.takenAtMillis).atZone(java.time.ZoneId.systemDefault())
+        CastInfo(
+            text = stories.note(current.id)?.caption.orEmpty().trim(),
+            time = formatDate(taken, "EEEEMMMMdyyyy") + " · " + formatDate(taken, "jmm"),
+            place = listOfNotNull(name?.label, name?.city, name?.country).distinct().joinToString(", "),
+            latitude = point?.latitude,
+            longitude = point?.longitude,
+        )
+    }
+    LaunchedEffect(castInfo, current.id) { castInfo?.let { cast.info(current.id, it) } }
     LaunchedEffect(castState.error) {
         castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
         if (castState.error != null) {
@@ -570,7 +596,10 @@ internal fun ViewerScreen(
                             if (current.type == MediaType.VIDEO) return@detectTapGestures
                             chrome = false
                             showInfo = false
-                            castZoomNow?.let { it.zoom = it.zoom.toggled() }
+                            castZoomNow?.let {
+                                    castFill = !it.zoom.isZoomed
+                                    it.zoom = it.zoom.toggled()
+                                }
                             zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                         },
                         onTap = {
@@ -646,7 +675,10 @@ internal fun ViewerScreen(
                             onDoubleTap = { at ->
                                 chrome = false
                                 showInfo = false
-                                castZoomNow?.let { it.zoom = it.zoom.toggled() }
+                                castZoomNow?.let {
+                                    castFill = !it.zoom.isZoomed
+                                    it.zoom = it.zoom.toggled()
+                                }
                                 zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                             },
                             onTap = onTap,
@@ -812,6 +844,7 @@ internal fun ViewerScreen(
                     }
                     ShareTopButton(current, actions.share)
                 }
+                CastOverlayButtons(hasPlace = castInfo?.hasPlace == true)
                 CastButton()
             }
             }
