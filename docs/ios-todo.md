@@ -24,8 +24,7 @@ owner's team must have it).
 Still missing on iOS:
 
 - **Volume buttons while casting** (Android Nov 10, 2026; [cast.md](cast.md#volume)): the phone's volume buttons
-  set the Cast session's volume (steps of 0.05) while casting. On iOS, when casting is built, the Cast SDK's
-  `GCKCastContext.sharedInstance().useDefaultExpandedMediaControls` isn't needed; set
+  set the Cast session's volume (steps of 0.05) while casting. On iOS, when casting is built, set
   `GCKCastOptions.physicalVolumeButtonsWillControlDeviceVolume = true`.
 
 - **Make cover, counts in the storyline, no repeated day** (Android Nov 10, 2026): the set viewer's bar has Make
