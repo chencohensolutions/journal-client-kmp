@@ -58,7 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -234,14 +234,19 @@ internal fun JournalHomeScreen(
     val list = rememberLazyListState(cacheWindow = remember { LazyLayoutCacheWindow(ahead = 1200.dp, behind = 400.dp) })
     // A feed that changes mid-scroll (fingerprints and places keep arriving while a library is read) is shown once the
     // scroll stops, and its list items are worked out off the main thread.
-    var shownFeed by remember { mutableStateOf(stories.feed) }
+    var shownFeed by remember { mutableStateOf(stories.feed, referentialEqualityPolicy()) }
     LaunchedEffect(stories.feed) {
         snapshotFlow { list.isScrollInProgress }.first { !it }
         shownFeed = stories.feed
     }
-    val feedRows by produceState(remember { shownFeed.rows() }, shownFeed) {
-        value = withContext(Dispatchers.Default) { shownFeed.rows() }
+    // Held by identity: produceState compared each new list with the last item by item, on the main thread, and every
+    // row carries its moment's photos, so that took seconds with a large library and froze the feed (an ANR, Nov 10, 2026).
+    val feedRowsState = remember { mutableStateOf(shownFeed.rows(), referentialEqualityPolicy()) }
+    LaunchedEffect(shownFeed) {
+        val feed = shownFeed
+        feedRowsState.value = withContext(Dispatchers.Default) { feed.rows() }
     }
+    val feedRows by feedRowsState
     // Measuring (debug builds; docs/plans/library-on-disk.md): how long after the process started Moments first drew rows.
     if (Measure.log != null) {
         LaunchedEffect(feedRows.isNotEmpty()) {
@@ -252,7 +257,17 @@ internal fun JournalHomeScreen(
         }
     }
     // A moment made by hand shows by its cover, with its name and description (asked Nov 10, 2026).
-    val storyRows = remember(stories.storylineDays, stories.notes) { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }
+    // Made off the main thread for each new state (compared by identity), showing the last rows meanwhile (Nov 10, 2026:
+    // made while drawing, with the notes compared on each recomposition, it froze the feed). The first are made here
+    // once, as the feed's are, so the tab never flashes empty; with the moments worked out already, that is quick.
+    val storyRowsState = remember {
+        mutableStateOf(storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] }, referentialEqualityPolicy())
+    }
+    LaunchedEffect(stories) {
+        val state = stories
+        storyRowsState.value = withContext(Dispatchers.Default) { storylineDayRows(state.storylineDays, state::storylineMomentOf) { state.itemsById[it] } }
+    }
+    val storyRows by storyRowsState
     // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
     val tucked = LocalTucked.current
     val tuckedLock = rememberTuckedLock()
@@ -267,6 +282,10 @@ internal fun JournalHomeScreen(
     // A row going to a date asked for before it was read: gone to once it is in the list (the list's rows follow the
     // feed only once a scroll stops).
     var jumpTo by remember { mutableStateOf<Pair<String, LocalDay>?>(null) }
+    // The row a day tap went to and that day (by the row's key): while that row is at the top, the pill and the ruler
+    // say the day tapped, not the row's newest (a row holds several days, so they showed a later day, even the next
+    // month, and the dial turned back to it; Nov 10, 2026).
+    var landed by remember { mutableStateOf<Pair<String, LocalDay>?>(null) }
     // Which tap asked last: a read that comes back after a later tap doesn't go anywhere.
     val jumpsAsked = remember { IntArray(1) }
     LaunchedEffect(jumpTo, feedRows) {
@@ -274,6 +293,7 @@ internal fun JournalHomeScreen(
         val row = feedRows.rowOfDay(key, day)
         if (row < 0) return@LaunchedEffect
         jumpTo = null
+        landed = feedRows[row].key to day
         list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row)
     }
     // The row at the top, under the title: the first whose bottom is below the list's top padding (the row behind the
@@ -291,7 +311,8 @@ internal fun JournalHomeScreen(
         derivedStateOf {
             val info = list.layoutInfo
             val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
-            rowDays.getOrNull(top - (info.totalItemsCount - feedRows.size))
+            val index = top - (info.totalItemsCount - feedRows.size)
+            landed?.takeIf { (key, _) -> feedRows.getOrNull(index)?.key == key }?.second ?: rowDays.getOrNull(index)
         }
     }
     val topDay = topRowDay ?: topSection?.let { shownFeed.section(it)?.span?.newestDay }
@@ -613,6 +634,7 @@ internal fun JournalHomeScreen(
                                     jumpTo = null
                                     val asked = ++jumpsAsked[0]
                                     if (row >= 0) {
+                                        landed = feedRows[row].key to day.day
                                         scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
                                     } else {
                                         actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key?.let { it to day.day } }

@@ -66,6 +66,11 @@ data class StoriesState(
      * spinner until then, so it draws once (asked by the owner, Oct 25, 2026).
      */
     val ready: Boolean = false,
+    /**
+     * The moments made by hand, by set id: worked out with the rest of the state off the main thread, as the storyline
+     * asks for each of its photos ([namedSetOf]).
+     */
+    val namedSets: Map<String, NamedSet> = emptyMap(),
     /** Explore's home from the library database; null without one (Explore works it out from the items, see [placesOf]). */
     val home: ExploreHome? = null,
 ) {
@@ -111,7 +116,7 @@ data class StoriesState(
     fun highlightsOf(items: List<MediaItem>): List<MediaItem> = highlightsOf(items, notes)
 
     /** The moment made by hand that [itemId] is in, if any ([StoriesController.makeMoment]). */
-    fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSetsIn(notes)[it] }
+    fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSets[it] }
 
     /**
      * The moment made by hand whose cover [itemId] is: in the storyline it stands for the moment (its name and
@@ -169,12 +174,12 @@ internal fun buildState(
             )
         }
         .sortedByDescending { it.lastUsed }
+    val named = namedSetsIn(notes)
     val storylineDays = storylineDays(
         // Every moment made by hand is there too, by its cover (asked Nov 10, 2026), unless removed from it.
         // Its cover is the one chosen (Make cover) or the photo that keeps its name; Remove from storyline on either
         // takes it out.
         run {
-            val named = namedSetsIn(notes)
             val moments = notes.values.filter { it.setInfo != null && it.inStoryline }
                 .mapNotNull { holder -> named[holder.feedSet]?.coverId }
                 .filter { notes[it]?.inStoryline != false }
@@ -208,6 +213,7 @@ internal fun buildState(
         )).withSets(notes),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,
+        namedSets = named,
         home = home,
         error = error,
     )

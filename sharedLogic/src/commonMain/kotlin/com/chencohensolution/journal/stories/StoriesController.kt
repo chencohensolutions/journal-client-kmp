@@ -252,7 +252,12 @@ class StoriesController internal constructor(
             item?.let { feed.markDays(setOf(it.day)) }
             outsideChanges.value++
         }
-        publish()
+        // Built off the main thread (Nov 10, 2026: notes arriving from the server rebuilt the whole state there, one by
+        // one, and froze the feed); shown unless something newer was published meanwhile.
+        val startedAt = ++version
+        val inputs = inputs()
+        val built = withContext(background) { inputs.build() }
+        if (version == startedAt) show(built)
     }
 
     // MARK: Moments from the database
@@ -494,21 +499,31 @@ class StoriesController internal constructor(
      */
     fun loadMomentsTo(day: LocalDay, onLoaded: (String?) -> Unit) {
         val pager = feed ?: return onLoaded(null)
-        // A later date cancels one still being read: dragging the ruler's dial asks for every month it passes, and read
-        // one after another the last one came long after the finger stopped (Oct 26, 2026). The one cancelled never
-        // calls back; the screens only follow the last one anyway.
-        jumpJob?.cancel()
+        // Only the latest date asked for is read next and called back: dragging the ruler's dial asks for every month it
+        // passes (Oct 26, 2026). The read going on is let finish rather than cancelled: the database read under it
+        // can't be stopped, so cancelling threw its rows away while the next read waited for it and then read them all
+        // again (Nov 10, 2026: a day tapped just after the dial settled took 5.7 s). The next read starts from the rows
+        // read, so a day near the month the dial asked for is there at once. One asked for and replaced never calls
+        // back; the screens only follow the last one anyway. On the controller's dispatcher (the main thread), so no
+        // lock is needed.
+        wantedJump = day to onLoaded
+        if (jumpJob?.isActive == true) return
         jumpJob = scope.launch {
-            val key = Measure.time({ "Moments: went to $day" }) {
-                val jump = pager.loadTo(day, feedContext(), revealed, shownRow)
-                jump.feed?.let { showPaged(it) }
-                jump.key
+            while (true) {
+                val (wanted, done) = wantedJump ?: break
+                wantedJump = null
+                val key = Measure.time({ "Moments: went to $wanted" }) {
+                    val jump = pager.loadTo(wanted, feedContext(), revealed, shownRow)
+                    jump.feed?.let { showPaged(it) }
+                    jump.key
+                }
+                if (wantedJump == null) done(key)
             }
-            onLoaded(key)
         }
     }
 
     private var jumpJob: Job? = null
+    private var wantedJump: Pair<LocalDay, (String?) -> Unit>? = null
 
     /**
      * Publishes the rows read [more], built off the main thread like a rebuild. A rebuild already going, made from the
