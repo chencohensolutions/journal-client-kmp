@@ -200,10 +200,12 @@ month or day with one finger. Android and iOS.
 - **Tapping the name** grows the pill into the **ruler**, still above the tabs:
   - the month and its counts ("88 photos · 14 days") and a ⌄ to fold it;
   - the month's **days** in a line, lit where there are photos: tap one or slide along it, and the feed goes to the lit
-    day nearest the finger;
+    day nearest the finger. The whole strip takes the finger, its day numbers too, and a tap always goes, even to the
+    day picked last (Nov 10, 2026; before, only the line of dots did, and a tap on the same day again did nothing);
   - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January, a
     needle in the middle. Drag it and the feed follows; a flick keeps it turning, and it settles on a month.
-- **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident), as
+- **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident); a
+  touch on the ruler never does, even between its controls (Nov 10, 2026: such a touch fell through and folded it), as
   do ⌄, back (Android), changing tabs, search and picking photos. The backup summary hides while it is open.
 - **Where it lands:** a month lands on its newest day with photos, the top of the month in a feed read newest first; a
   day lands on its row's divider, just under the sources bar. A row over two days (grouping by gaps) is landed on for

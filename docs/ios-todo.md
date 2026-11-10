@@ -23,6 +23,12 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Moments' month ruler fixes** (Android Nov 10, 2026; [moments.md](screens/moments.md)): a touch anywhere on the
+  ruler is the ruler's (never folds it); the day strip takes touches over its whole height, day numbers included, and
+  the touch going down always goes, even to the day picked last; the touch handlers call the latest callbacks (on
+  Android they kept old ones, which looked for the day in rows from before more were read). The month shown after a
+  jump waits 10 s (was 4) for the feed to get there. Check the SwiftUI ruler for the same.
+
 - **Moment screen polish** (Android Nov 10, 2026; [viewer.md](screens/viewer.md), [moments.md](screens/moments.md)):
   - Moments' set cover: no ▶ (play in place) and no position line; only "⧉ 36" stays. Hold-and-slide and tap as before.
   - The viewer's floating bars are icons only (each with an accessibility label): a set has ☆/★ Highlight · ▶ Play ·
