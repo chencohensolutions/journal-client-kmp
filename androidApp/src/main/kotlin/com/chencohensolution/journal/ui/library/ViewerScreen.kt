@@ -639,8 +639,9 @@ internal fun ViewerScreen(
             }
         }
 
-        // A highlight shows a ★ over it, also while the slideshow plays (asked Nov 10, 2026).
-        if (set != null && current.id in set.highlights && !zoom.isZoomed) {
+        // A highlight shows a ★ over it only while the slideshow plays, when the bar's ★ is hidden (asked Nov 10, 2026:
+        // with the bar on screen it said the same twice).
+        if (set != null && playing && current.id in set.highlights && !zoom.isZoomed) {
             val highlighted = stringResource(R.string.set_highlighted)
             Text(
                 "★",
