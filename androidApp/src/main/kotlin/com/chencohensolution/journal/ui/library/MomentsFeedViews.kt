@@ -102,6 +102,8 @@ internal class FeedActions(
     val openSet: ((itemIds: List<String>, items: List<MediaItem>, item: MediaItem) -> Unit)? = null,
     /** A photo of the storyline; the viewer swipes through the storyline. */
     val openStoryline: (MediaItem) -> Unit = {},
+    /** A moment made by hand in the storyline (its cover [MediaItem]): the viewer on the whole moment. */
+    val openMoment: ((NamedSet, MediaItem) -> Unit)? = null,
     /** Long press on a photo: Write about it, Crop, Tag, Remove from storyline. */
     val itemMenu: (MediaItem) -> Unit = {},
     /** A "+6 WhatsApp" chip: that source's hidden photos of the row, in a band under it; "Hide WhatsApp" again. */
@@ -177,8 +179,8 @@ internal sealed interface FeedRow {
         override val key get() = "story-day-$day"
     }
 
-    /** The storyline: one photo with its writing. */
-    data class StoryPhoto(val item: MediaItem) : FeedRow {
+    /** The storyline: one photo with its writing, or a moment made by hand by its cover ([moment]). */
+    data class StoryPhoto(val item: MediaItem, val moment: NamedSet? = null) : FeedRow {
         override val key get() = "story-${item.id}"
     }
 }
@@ -267,8 +269,8 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
 }
 
 /** The storyline by day as list items: each day (with its tucked-away pill), then its photos shown. */
-internal fun storylineDayRows(days: List<StorylineDay>): List<FeedRow> =
-    days.flatMap { day -> listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map(FeedRow::StoryPhoto) }
+internal fun storylineDayRows(days: List<StorylineDay>, momentOf: (String) -> NamedSet? = { null }): List<FeedRow> =
+    days.flatMap { day -> listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { FeedRow.StoryPhoto(it, momentOf(it.id)) } }
 
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
@@ -314,7 +316,10 @@ internal fun LazyListScope.feedItems(
             is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
                 val note = notes[row.item.id]
                 val picked = if (picking) row.item.id in selection!!.keys else null
-                PhotoTitle(note?.title)
+                // A moment made by hand stands in the storyline by its cover (asked Nov 10, 2026): its name over it, its
+                // description under it, "⧉ 36" in the corner, and a tap opens the whole moment.
+                val moment = row.moment
+                PhotoTitle(moment?.name ?: note?.title)
                 Box(Modifier.pickedInset(picked)) {
                     FullWidthPhoto(
                         row.item,
@@ -322,10 +327,25 @@ internal fun LazyListScope.feedItems(
                         note?.crops?.moments,
                         Modifier.combinedClickable(
                             onLongClick = { if (selection != null) selection.press(row.item.id, row.item.id) else actions.itemMenu(row.item) },
-                            onClick = { if (picking) selection?.toggle(row.item.id) else actions.openStoryline(row.item) }),
+                            onClick = {
+                                when {
+                                    picking -> selection?.toggle(row.item.id)
+                                    moment != null && actions.openMoment != null -> actions.openMoment.invoke(moment, row.item)
+                                    else -> actions.openStoryline(row.item)
+                                }
+                            }),
                     )
                     PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
+                    if (moment != null) {
+                        Text(
+                            "⧉ ${moment.itemIds.size}",
+                            Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
+                moment?.description?.let { PhotoNoteText(it) }
                 PhotoNoteText(note?.caption)
             }
 

@@ -268,6 +268,21 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aMomentIsInTheStoryline() = runTest {
+        val setup = setup()
+        val stories = setup.stories
+        val weekend = listOf("f", "s1", "s2", "u")
+        stories.makeMoment(weekend, "Sea", listOf("s1"), ShowOn.LAST)
+        // By its cover, once, standing for the moment.
+        assertEquals(listOf("s1"), stories.currentState.storyline.map { it.id }.filter { it in weekend })
+        assertEquals("Sea", stories.currentState.storylineMomentOf("s1")?.name)
+        assertNull(stories.currentState.storylineMomentOf("s2"))
+        // Removed from it like a photo.
+        stories.setInStoryline("s1", false)
+        assertEquals(emptyList<String>(), stories.currentState.storyline.map { it.id }.filter { it in weekend })
+    }
+
+    @Test
     fun aMomentNeedsNoName() = runTest {
         val setup = setup()
         val stories = setup.stories

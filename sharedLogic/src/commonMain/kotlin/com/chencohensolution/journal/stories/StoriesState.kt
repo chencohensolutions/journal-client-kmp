@@ -107,6 +107,12 @@ data class StoriesState(
     /** The moment made by hand that [itemId] is in, if any ([StoriesController.makeMoment]). */
     fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSetsIn(notes)[it] }
 
+    /**
+     * The moment made by hand whose cover [itemId] is: in the storyline it stands for the moment (its name and
+     * description, opening the whole set). Null for any other photo.
+     */
+    fun storylineMomentOf(itemId: String): NamedSet? = notes[itemId]?.takeIf { it.setInfo != null }?.let { namedSetOf(itemId) }
+
     /** Photos and videos tagged [tag] (ignoring case) that [shownSources] shows, by day, newest first. */
     fun tagged(tag: String): List<DayGroup> = notes.values
         .filter { note -> note.tags.any { it.equals(tag, ignoreCase = true) } }
@@ -158,7 +164,9 @@ internal fun buildState(
         }
         .sortedByDescending { it.lastUsed }
     val storylineDays = storylineDays(
-        notes.values.filter { it.onStoryline }.mapNotNull { itemsById[it.deviceId] }.sortedByDescending { it.takenAtMillis },
+        // Every moment made by hand is there too, by its cover (asked Nov 10, 2026), unless removed from it.
+        notes.values.filter { it.onStoryline || (it.setInfo != null && it.inStoryline) }.mapNotNull { itemsById[it.deviceId] }
+            .sortedByDescending { it.takenAtMillis },
         TuckedSession(days = tuckedShown),
     )
     return StoriesState(

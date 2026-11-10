@@ -250,7 +250,8 @@ internal fun JournalHomeScreen(
             Measure.log?.invoke("First Moments frame ${SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()} ms after start")
         }
     }
-    val storyRows = remember(stories.storylineDays) { storylineDayRows(stories.storylineDays) }
+    // A moment made by hand shows by its cover, with its name and description (asked Nov 10, 2026).
+    val storyRows = remember(stories.storylineDays, stories.notes) { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) }
     // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
     val tucked = LocalTucked.current
     val tuckedLock = rememberTuckedLock()
@@ -428,6 +429,7 @@ internal fun JournalHomeScreen(
             openItem = { section, item -> currentActions.openItem(section, item) },
             openSet = { ids, items, item -> currentActions.openSet(ids, items, item) },
             openStoryline = { currentActions.openStoryline(it) },
+            openMoment = { moment, cover -> currentActions.openSet(moment.itemIds, listOf(cover), cover) },
             toggleTucked = { days -> currentLock { currentTucked.toggleDays(days) } },
             showOnRow = { section, source ->
                 reveal = FeedReveal(section.key, source)

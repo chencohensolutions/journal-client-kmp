@@ -23,6 +23,12 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Moments made by hand in the storyline** (Android Nov 10, 2026; [journal-home.md](screens/journal-home.md)): the
+  shared storyline now holds each hand-made moment's cover (a note with `setInfo`, unless `inStoryline` is false);
+  `StoriesState.storylineMomentOf(itemId)` gives its `NamedSet`. Draw that row with the moment's name as the title,
+  its description and the photo's caption under it, "⧉ N" in the corner, and open the set viewer on tap (as Moments
+  opens a set). Android: `FeedRow.StoryPhoto(item, moment)`, `FeedActions.openMoment` in `MomentsFeedViews.kt`.
+
 - **Set viewer header, the moment's name and description; Write without a title** (Android Nov 10, 2026;
   [viewer.md](screens/viewer.md)): the set's top bar is back, "12 of 36" (no date), Share and the grid; no ⋮. Over
   the photo's info at the bottom, the moment's name (17 pt semibold) and its description (up to 3 lines); unnamed,
