@@ -256,7 +256,7 @@ class StoriesController internal constructor(
         // one, and froze the feed); shown unless something newer was published meanwhile.
         val startedAt = ++version
         val inputs = inputs()
-        val built = withContext(background) { inputs.build() }
+        val built = withContext(background) { Measure.time({ "Moments: rows read shown" }) { inputs.build() } }
         if (version == startedAt) show(built)
     }
 
@@ -545,7 +545,7 @@ class StoriesController internal constructor(
         pagedFeed = more
         val startedAt = ++version
         val inputs = inputs()
-        val built = withContext(background) { inputs.build() }
+        val built = withContext(background) { Measure.time({ "Moments: rows read shown" }) { inputs.build() } }
         if (version == startedAt) show(built)
     }
 

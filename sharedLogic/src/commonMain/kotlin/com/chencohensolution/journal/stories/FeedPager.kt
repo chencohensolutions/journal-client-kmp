@@ -112,8 +112,10 @@ internal class FeedPager(
      * and two below, in place of the one read (whatever it is, a far day reads no more than that). The row is looked
      * up and read in one turn, so a refresh making the rows again (with new keys) can't come between.
      */
-    suspend fun loadTo(day: LocalDay, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): FeedJump = mutex.withLock {
-        withContext(io) {
+    suspend fun loadTo(day: LocalDay, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): FeedJump {
+        val asked = TimeSource.Monotonic.markNow()
+        return mutex.withLock { withContext(io) {
+            Measure.log?.invoke("Moments: $day waited ${asked.elapsedNow().inWholeMilliseconds} ms to be read")
             val key = table.sectionOf(day) ?: return@withContext FeedJump(null, null)
             // By the rows' keys as the database has them: a row that shows nothing is in the window too (counting the
             // rows shown read the whole feed again on every jump to the oldest day, Nov 10, 2026).
@@ -122,8 +124,8 @@ internal class FeedPager(
             val above = table.millisAfter(at, pageSize())
             newest = if (above.size < pageSize()) null else above.last()
             oldest = table.millisBefore(at, 2 * pageSize()).lastOrNull() ?: at
-            FeedJump(key, read(context, revealed, shown))
-        }
+            FeedJump(key, Measure.time({ "Moments: a window around $day read (${windowKeys.size} rows)" }) { read(context, revealed, shown) })
+        } }
     }
 
     /** Notes [days] for the next [refresh]: what changed outside the library (a note, a place, a fingerprint). */
