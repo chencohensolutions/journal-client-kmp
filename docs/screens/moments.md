@@ -217,13 +217,19 @@ month or day with one finger. Android and iOS.
 - **A page at a time:** Moments reads 30 rows from the database at first, and the next 30 once the list is 40 rows
   from the end of what is read. Both numbers are in Settings › [Loading while scrolling](settings.md) (Android; iOS keeps 40
   ahead until it has the page).
-- **A day further down than what is read** (Moments is read from the database a page at a time) reads the rows down to
-  it first (`StoriesController.loadMomentsTo`), then lands on the row the read names once the list has it. The row is
+- **A window of rows** (Nov 10, 2026): Moments holds at most six pages of rows (`FeedPager`'s window). Scrolling down
+  reads the next page and lets the newest go past six; after going to a date, scrolling up reads the page above once
+  the list is 40 rows from the top of what is read (the rows shown stay where they are), and lets the oldest go.
+  Swiping in the viewer does the same at either end. Memory and a jump's time are the same whatever the library's size.
+- **A day outside what is read** reads a window around it first, a page above its row and two below, in place of the
+  rows read (`StoriesController.loadMomentsTo`); a day in the window reads nothing. It then lands on the row the read
+  names once the list has it. The row is
   the one the timeline gives the day: the newest with photos of it, not a row that only reaches over it with a recording
   or photos of a hidden source (until Oct 26, 2026 such a row was landed on, the day beside the one tapped). The row is
   looked up and read in one turn, so rows made again meanwhile (with other keys) can't send it elsewhere, and a state
   made from the rows read before never takes the new rows away again. A later tap cancels a jump still waiting.
-  Tested in `FeedPagerTest.everyDayOfTheTimelineGoesToItsRow` and `goingToADayKeepsItsRowsThroughARebuild`.
+  Tested in `FeedPagerTest.everyDayOfTheTimelineGoesToItsRow`, `goingToADayKeepsItsRowsThroughARebuild` and
+  `momentsKeepAWindowWhateverTheLibrarysSize`.
 - A light tick per month or day, a firmer one when the year changes.
 - It hides while picking photos, while a "Showing 6 from WhatsApp" note shows, and when the feed is empty.
 - Nothing is saved: the months and days are worked out from the feed shown (`MomentsFeed.timeline`, a

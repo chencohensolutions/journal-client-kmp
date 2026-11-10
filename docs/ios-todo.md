@@ -34,6 +34,12 @@ Still missing on iOS:
   set the Cast session's volume (steps of 0.05) while casting. On iOS, when casting is built, set
   `GCKCastOptions.physicalVolumeButtonsWillControlDeviceVolume = true`.
 
+- **Moments' window** (Android Nov 10, 2026; [moments.md](screens/moments.md)): the shared pager now holds a window
+  of rows, so after going to a date the rows above it aren't read. iOS must call `StoriesController.loadNewerMoments()`
+  when the list nears the top of what is read while `feed.hasNewer` (as it calls `loadMoreMoments()` near the end),
+  keeping the rows shown in place as rows come in above them; the viewer likewise near its first photo, putting the
+  newer photos first. Until then, on iOS, scrolling up after a jump stops at the window's top.
+
 - **Make cover, counts in the storyline, no repeated day** (Android Nov 10, 2026): the set viewer's bar has Make
   cover (photo icon, filled on the cover) calling `StoriesController.setMomentCover(itemIds, itemId)`; `NamedSet.coverId`
   is the cover, which the storyline shows and `frontOf` prefers. The storyline's moment line reads "Fri – Sun · 12

@@ -298,6 +298,22 @@ Confirmed by the owner on Oct 25, 2026:
        3 seconds. Now it fingerprints only the photos Moments shows, as before.
      - The Advanced settings for page size are built since Oct 26, 2026 (below). The heap is not lower yet
        (about 410 MB just after start): the whole library list is still read for the other screens until phase 6.
+   - **5c built Nov 10, 2026: a window of rows, not the rows scrolled through.** On the owner's phone (92,727 photos,
+     2,169 rows) going to the oldest day read every row above it: 6.7 s on the old build, 3.5 s with the rows above
+     counted in SQL, and the Java heap 120 MB above a fresh start, growing with the library. Now:
+     - `FeedPager` keeps a window by its rows' newest moments (`newest_millis`, both ends included, so rows made again
+       with other keys still fall in it); `newest` is null while it starts at the top, so new photos come into it.
+     - `loadMore` reads a page older, `loadNewer` a page newer; past `MAX_PAGES` (6) pages the far end is let go.
+       `loadTo(day)` reads nothing when the day's row is in the window (by the database's keys: counting the rows
+       shown, which leaves out rows that show nothing, read the whole feed again on a second jump), else a window of
+       its own, a page above the row and two below. `refresh` reads the same window again; at the top it takes the
+       rows it holds from the newest down, and a window left empty goes back to the top.
+     - `MomentsFeed.hasNewer` / `hasOlder` say what is beyond the window; the Android list reads the page above near
+       its top (the `LazyColumn` keeps its first visible row by key), and the viewer near its first photo, putting
+       the newer photos before those it has.
+     - Queries `sectionsBetween`, `millisBefore`, `millisAfter`, `millisOfSection` (Feed.sq); `sectionsDownTo` and
+       `countDownTo` went.
+     - Tested in `LibraryTableTest.momentsKeepAWindowWhateverTheLibrarysSize` (300 rows, pages of 3).
    - **On app start** (owner, Oct 25, 2026): the first page of Moments is shown at once from the database. The
      sync with the server (and the phone's library) goes on in the background, off the main thread, and updates
      only the rows it changes.
