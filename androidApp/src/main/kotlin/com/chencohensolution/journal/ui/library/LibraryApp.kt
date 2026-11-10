@@ -710,6 +710,8 @@ private fun LibraryScreens(
                                         setHighlight = { id, on -> stories.setHighlight(ids, id, on) },
                                         moveHighlight = { id, to -> stories.moveHighlight(ids, id, to) },
                                         recompose = { id -> push(Route.Recompose(setListKey(ids), id)) },
+                                        coverId = ids.firstOrNull()?.let { storiesState.namedSetOf(it)?.coverId },
+                                        setCover = { id -> stories.setMomentCover(ids, id) },
                                         rename = { name, description -> stories.nameMoment(ids, name, description) },
                                         // Past either end: what Moments shows beside the set, in its place on the stack.
                                         beside = { forward ->

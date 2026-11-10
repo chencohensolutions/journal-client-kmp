@@ -56,6 +56,8 @@ data class NamedSet(
     val itemIds: List<String>,
     /** A few words about it (Nov 10, 2026), or null. */
     val description: String? = null,
+    /** Its cover: the photo chosen ([SetInfo.cover]) while it is one of [itemIds], else the photo that keeps its name. */
+    val coverId: String? = null,
 ) {
     /** Whether [block] is only one day's photos of it ([ShowOn.EACH]): it shows a link "Part of <name> ›". */
     fun isPartOf(block: FeedBlock): Boolean = block.items.size < itemIds.size
@@ -381,8 +383,11 @@ internal fun highlightsOf(items: List<MediaItem>, notes: Map<String, PhotoNote>)
 internal fun namedSetsIn(notes: Map<String, PhotoNote>): Map<String, NamedSet> {
     val members = notes.values.filter { it.feedSet != null }.groupBy { it.feedSet!! }
     return members.mapNotNull { (set, notes) ->
-        val info = notes.sortedBy { it.highlight ?: Int.MAX_VALUE }.firstNotNullOfOrNull { it.setInfo } ?: return@mapNotNull null
-        set to NamedSet(set, info.shownName, info.showOn, notes.sortedBy { it.takenAtMillis }.map { it.deviceId }, info.shownDescription)
+        val holder = notes.sortedBy { it.highlight ?: Int.MAX_VALUE }.firstOrNull { it.setInfo != null } ?: return@mapNotNull null
+        val info = holder.setInfo!!
+        val ids = notes.sortedBy { it.takenAtMillis }.map { it.deviceId }
+        val cover = info.cover?.takeIf { it in ids } ?: holder.deviceId
+        set to NamedSet(set, info.shownName, info.showOn, ids, info.shownDescription, cover)
     }.toMap()
 }
 

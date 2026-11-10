@@ -298,6 +298,10 @@ internal class ViewerSet(
     val moveHighlight: (itemId: String, to: Int) -> Unit = { _, _ -> },
     /** The crop screen's set mode, on this photo. */
     val recompose: (itemId: String) -> Unit = {},
+    /** Its cover, where Moments and the storyline show it; null when it has none of its own (a set the app made). */
+    val coverId: String? = null,
+    /** Make cover: this photo becomes its cover; again on the cover, back to its first highlight. */
+    val setCover: (itemId: String) -> Unit = {},
     /** Names or renames it and gives its description; blank: unnamed, no description. */
     val rename: (name: String, description: String) -> Unit = { _, _ -> },
     /** A swipe past its last ([forward]) or first photo: the photo or set beside it in Moments, if any. */
@@ -961,6 +965,11 @@ private fun SetBarBottom(
                 stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
                 glyph = if (place >= 0) "★" else "☆",
             ) { set.setHighlight(item.id, place < 0) }
+            // Make cover (asked Nov 10, 2026): filled on the cover.
+            val isCover = set.coverId == item.id
+            BarPill(stringResource(if (isCover) R.string.set_is_cover else R.string.set_make_cover), icon = LibraryIcons.Photo, selected = isCover) {
+                set.setCover(item.id)
+            }
             BarPill(stringResource(R.string.set_play), icon = LibraryIcons.Play, selected = true, onClick = onPlay)
             BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit, onClick = onWrite)
             BarPill(stringResource(R.string.set_recompose), glyph = "⌗", enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }

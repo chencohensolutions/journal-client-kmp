@@ -185,6 +185,9 @@ internal sealed interface FeedRow {
         val moment: NamedSet? = null,
         /** The moment's first and last days, for its line of days under the name. */
         val momentDays: Pair<LocalDay, LocalDay>? = null,
+        /** The moment's photos and videos (Nov 10, 2026: "12 photos · 3 videos" with its days). */
+        val momentPhotos: Int = 0,
+        val momentVideos: Int = 0,
     ) : FeedRow {
         override val key get() = "story-${item.id}"
     }
@@ -277,13 +280,20 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
 internal fun storylineDayRows(
     days: List<StorylineDay>,
     momentOf: (String) -> NamedSet? = { null },
-    dayOf: (String) -> LocalDay? = { null },
+    itemOf: (String) -> MediaItem? = { null },
 ): List<FeedRow> =
     days.flatMap { day ->
         listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { item ->
             val moment = momentOf(item.id)
-            val momentDays = moment?.itemIds?.mapNotNull(dayOf)?.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
-            FeedRow.StoryPhoto(item, moment, momentDays ?: moment?.let { item.day to item.day })
+            val known = moment?.itemIds?.mapNotNull(itemOf).orEmpty()
+            val momentDays = known.map { it.day }.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
+            // Photos not read yet count as photos.
+            val videos = known.count { it.type == MediaType.VIDEO }
+            FeedRow.StoryPhoto(
+                item, moment, momentDays ?: moment?.let { item.day to item.day },
+                momentPhotos = (moment?.itemIds?.size ?: 0) - videos - known.count { it.type == MediaType.AUDIO },
+                momentVideos = videos,
+            )
         }
     }
 
@@ -336,7 +346,9 @@ internal fun LazyListScope.feedItems(
                 val moment = row.moment
                 // Its name as Moments shows it (asked Nov 10, 2026): not bold, its days under it.
                 val momentName = moment?.name
-                if (momentName != null && row.momentDays != null) SetName(momentName, row.momentDays.first, row.momentDays.second)
+                if (momentName != null && row.momentDays != null) {
+                    SetName(momentName, row.momentDays.first, row.momentDays.second, momentCounts(row.momentPhotos, row.momentVideos))
+                }
                 else PhotoTitle(note?.title)
                 Box(Modifier.pickedInset(picked)) {
                     FullWidthPhoto(
@@ -356,7 +368,7 @@ internal fun LazyListScope.feedItems(
                     PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
                     if (moment != null) {
                         Text(
-                            "⧉ ${moment.itemIds.size}",
+                            "⧉ ${row.momentPhotos + row.momentVideos}",
                             Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
                                 .padding(horizontal = 8.dp, vertical = 3.dp),
                             color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
@@ -869,13 +881,22 @@ private fun PartOfLink(name: String?, onClick: () -> Unit) {
 @Composable
 private fun SetName(name: String, items: List<MediaItem>) = SetName(name, items.first().day, items.last().day)
 
-/** [SetName] from its first and last days. */
+/** "12 photos · 3 videos", each left out at none. */
 @Composable
-private fun SetName(name: String, first: LocalDay, last: LocalDay) {
-    val days = if (first == last) formatDate(first.toLocalDate(), "EEE") else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
+private fun momentCounts(photos: Int, videos: Int): String = listOfNotNull(
+    photos.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.set_photos, it, it) },
+    videos.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.set_videos, it, it) },
+).joinToString(" · ")
+
+/** [SetName] from its first and last days; [counts] after them ("Fri – Sun · 12 photos · 3 videos"), when given. */
+@Composable
+private fun SetName(name: String, first: LocalDay, last: LocalDay, counts: String = "") {
+    // One day: the day heading above already says it (asked Nov 10, 2026), so only the days of a longer moment.
+    val days = if (first == last) null else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
+    val line = listOfNotNull(days, counts.ifEmpty { null }).joinToString(" · ")
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
         Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(days, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
+        if (line.isNotEmpty()) Text(line, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
     }
 }
 

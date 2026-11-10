@@ -206,7 +206,10 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
   the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
+- **☆ Highlight** (★ when it is one) · **Make cover** (a photo icon, filled on the cover; Nov 10, 2026, Android
+  only: the moment's cover in Moments and the storyline, `StoriesController.setMomentCover`, the note's
+  `setInfo.cover`; again on the cover, back to the first highlight; a set the app made becomes a moment, unnamed) ·
+  **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
   names itself to TalkBack), in a floating bar above the reel that looks as the Moments feed's tabs (Nov 9, 2026: the
   same pill shape, background and shadow; Play the filled one); a single photo has **✎ Write** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
   line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons

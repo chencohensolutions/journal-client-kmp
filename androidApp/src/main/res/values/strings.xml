@@ -1157,6 +1157,12 @@
         <item quantity="one">%d photo</item>
         <item quantity="other">%d photos</item>
     </plurals>
+    <plurals name="set_videos">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+    <string name="set_make_cover">Make cover</string>
+    <string name="set_is_cover">Cover</string>
     <string name="set_highlights">Highlights</string>
     <string name="set_highlights_hint">Hold one and drag to change the order</string>
     <string name="set_more">More</string>

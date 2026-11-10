@@ -639,7 +639,7 @@ class StoriesController internal constructor(
         if (old == null && name.isBlank() && description.isBlank()) return
         val set = ids.map { notes[it]?.feedSet }.toSet().singleOrNull() ?: newId()
         val cover = highlightOrder(ids).firstOrNull() ?: ids.first()
-        val info = SetInfo(name.trim(), old?.showOn ?: ShowOn.FIRST, description.trim())
+        val info = old?.copy(name = name.trim(), description = description.trim()) ?: SetInfo(name.trim(), ShowOn.FIRST, description.trim())
         changeNotes(ids) { note -> note.copy(feedSet = set, apart = false, setInfo = info.takeIf { note.deviceId == cover }) }
     }
 
@@ -659,6 +659,22 @@ class StoriesController internal constructor(
         val order = (current - itemId).toMutableList()
         order.add(to.coerceIn(0, order.size), itemId)
         writeHighlights(itemIds, order)
+    }
+
+    /**
+     * Make cover: [itemId] becomes the cover of the moment [itemIds] (all its photos), where Moments and the storyline
+     * show it and its viewer opens (asked Nov 10, 2026; before, always its first highlight). A set the app made becomes
+     * one made by hand, unnamed, so the choice stays. Again on the cover: back to its first highlight.
+     */
+    fun setMomentCover(itemIds: List<String>, itemId: String) {
+        val ids = itemIds.distinct()
+        if (ids.size < 2 || itemId !in ids) return
+        val old = ids.firstNotNullOfOrNull { notes[it]?.setInfo }
+        val set = ids.map { notes[it]?.feedSet }.toSet().singleOrNull() ?: newId()
+        val holder = ids.firstOrNull { notes[it]?.setInfo != null } ?: highlightOrder(ids).firstOrNull() ?: ids.first()
+        val cover = itemId.takeUnless { old?.cover == itemId }
+        val info = (old ?: SetInfo("", ShowOn.FIRST)).copy(cover = cover)
+        changeNotes(ids) { note -> note.copy(feedSet = set, apart = false, setInfo = info.takeIf { note.deviceId == holder }) }
     }
 
     /** Of [itemIds], the highlights in their order. */

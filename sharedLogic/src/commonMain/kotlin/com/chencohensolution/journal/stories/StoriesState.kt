@@ -99,7 +99,13 @@ data class StoriesState(
      * The cover of a set of [items], where it opens and what shows of it with no highlights: its first highlight
      * ([PhotoNote.highlight]), else the best-looking (the server's aesthetic score), else null (the first).
      */
-    fun frontOf(items: List<MediaItem>): String? = highlightsOf(items).firstOrNull()?.id ?: bestLooking(items)?.id
+    fun frontOf(items: List<MediaItem>): String? = chosenCoverOf(items) ?: highlightsOf(items).firstOrNull()?.id ?: bestLooking(items)?.id
+
+    /** The cover chosen for the moment [items] are (Make cover, Nov 10, 2026), if one is and it is among them. */
+    private fun chosenCoverOf(items: List<MediaItem>): String? {
+        val info = items.firstNotNullOfOrNull { notes[it.id]?.setInfo } ?: return null
+        return info.cover?.takeIf { cover -> items.any { it.id == cover } }
+    }
 
     /** Of [items] (a set), its highlights in their order. */
     fun highlightsOf(items: List<MediaItem>): List<MediaItem> = highlightsOf(items, notes)
@@ -111,7 +117,7 @@ data class StoriesState(
      * The moment made by hand whose cover [itemId] is: in the storyline it stands for the moment (its name and
      * description, opening the whole set). Null for any other photo.
      */
-    fun storylineMomentOf(itemId: String): NamedSet? = notes[itemId]?.takeIf { it.setInfo != null }?.let { namedSetOf(itemId) }
+    fun storylineMomentOf(itemId: String): NamedSet? = namedSetOf(itemId)?.takeIf { it.coverId == itemId }
 
     /** Photos and videos tagged [tag] (ignoring case) that [shownSources] shows, by day, newest first. */
     fun tagged(tag: String): List<DayGroup> = notes.values
@@ -165,8 +171,17 @@ internal fun buildState(
         .sortedByDescending { it.lastUsed }
     val storylineDays = storylineDays(
         // Every moment made by hand is there too, by its cover (asked Nov 10, 2026), unless removed from it.
-        notes.values.filter { it.onStoryline || (it.setInfo != null && it.inStoryline) }.mapNotNull { itemsById[it.deviceId] }
-            .sortedByDescending { it.takenAtMillis },
+        // Its cover is the one chosen (Make cover) or the photo that keeps its name; Remove from storyline on either
+        // takes it out.
+        run {
+            val named = namedSetsIn(notes)
+            val moments = notes.values.filter { it.setInfo != null && it.inStoryline }
+                .mapNotNull { holder -> named[holder.feedSet]?.coverId }
+                .filter { notes[it]?.inStoryline != false }
+            (notes.values.filter { it.onStoryline }.map { it.deviceId } + moments)
+                .distinct().mapNotNull { itemsById[it] }
+                .sortedByDescending { it.takenAtMillis }
+        },
         TuckedSession(days = tuckedShown),
     )
     return StoriesState(

@@ -23,6 +23,12 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Make cover, counts in the storyline, no repeated day** (Android Nov 10, 2026): the set viewer's bar has Make
+  cover (photo icon, filled on the cover) calling `StoriesController.setMomentCover(itemIds, itemId)`; `NamedSet.coverId`
+  is the cover, which the storyline shows and `frontOf` prefers. The storyline's moment line reads "Fri – Sun · 12
+  photos · 3 videos" (`set_photos`, `set_videos`); in Moments and the storyline a one-day moment shows no day under
+  its name. Strings `set_make_cover`, `set_is_cover`.
+
 - **Moments made by hand in the storyline** (Android Nov 10, 2026; [journal-home.md](screens/journal-home.md)): the
   shared storyline now holds each hand-made moment's cover (a note with `setInfo`, unless `inStoryline` is false);
   `StoriesState.storylineMomentOf(itemId)` gives its `NamedSet`. Draw that row with the moment's name as the title,

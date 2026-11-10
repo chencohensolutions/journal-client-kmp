@@ -1211,6 +1211,13 @@
         <item quantity="two">%d תמונות</item>
         <item quantity="other">%d תמונות</item>
     </plurals>
+    <plurals name="set_videos">
+        <item quantity="one">סרטון אחד</item>
+        <item quantity="two">%d סרטונים</item>
+        <item quantity="other">%d סרטונים</item>
+    </plurals>
+    <string name="set_make_cover">קבע כתמונת שער</string>
+    <string name="set_is_cover">תמונת שער</string>
     <string name="set_highlights">הדגשות</string>
     <string name="set_highlights_hint">החזיקו אחת וגררו כדי לשנות את הסדר</string>
     <string name="set_more">עוד</string>
