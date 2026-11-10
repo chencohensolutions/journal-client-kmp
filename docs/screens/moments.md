@@ -202,6 +202,8 @@ month or day with one finger. Android and iOS.
   - the month's **days** in a line, lit where there are photos: tap one or slide along it, and the feed goes to the lit
     day nearest the finger. The whole strip takes the finger, its day numbers too, and a tap always goes, even to the
     day picked last (Nov 10, 2026; before, only the line of dots did, and a tap on the same day again did nothing);
+    it lands on that day itself, its first moment of the day, even when the day is inside a row of several days, and
+    the pill names the day at the top of the feed, not its row's newest;
   - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January, a
     needle in the middle. Drag it and the feed follows; a flick keeps it turning, and it settles on a month.
 - **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident); a

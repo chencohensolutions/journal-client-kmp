@@ -264,12 +264,12 @@ internal fun JournalHomeScreen(
     val rowSections = remember(feedRows) { feedRows.sectionKeys() }
     // A row going to a date asked for before it was read: gone to once it is in the list (the list's rows follow the
     // feed only once a scroll stops).
-    var jumpTo by remember { mutableStateOf<String?>(null) }
+    var jumpTo by remember { mutableStateOf<Pair<String, LocalDay>?>(null) }
     // Which tap asked last: a read that comes back after a later tap doesn't go anywhere.
     val jumpsAsked = remember { IntArray(1) }
     LaunchedEffect(jumpTo, feedRows) {
-        val key = jumpTo ?: return@LaunchedEffect
-        val row = feedRows.indexOfFirst { it.key == "heading-$key" }
+        val (key, day) = jumpTo ?: return@LaunchedEffect
+        val row = feedRows.rowOfDay(key, day)
         if (row < 0) return@LaunchedEffect
         jumpTo = null
         list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row)
@@ -283,8 +283,18 @@ internal fun JournalHomeScreen(
             rowSections.getOrNull(top - (info.totalItemsCount - feedRows.size))
         }
     }
-    val topMonth = topSection?.let(timeline::monthOf)
-    val topDay = topSection?.let { shownFeed.section(it)?.span?.newestDay }
+    // A row can hold several days (and months): the pill names the day of the row at the top, not the row's newest.
+    val rowDays = remember(feedRows) { feedRows.rowDays() }
+    val topRowDay by remember(feedRows) {
+        derivedStateOf {
+            val info = list.layoutInfo
+            val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
+            rowDays.getOrNull(top - (info.totalItemsCount - feedRows.size))
+        }
+    }
+    val topDay = topRowDay ?: topSection?.let { shownFeed.section(it)?.span?.newestDay }
+    val topMonth = topDay?.let { day -> timeline.months.indexOfFirst { it.year == day.year && it.month == day.month }.takeIf { it >= 0 } }
+        ?: topSection?.let(timeline::monthOf)
     val scope = rememberCoroutineScope()
     // The title row and the bar under it slide away while the list scrolls down, and back as it scrolls up (asked Oct 24,
     // 2026).
@@ -589,7 +599,7 @@ internal fun JournalHomeScreen(
                             // Slides down with the tabs into their place at the bottom, and back up with them.
                             Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
                                 TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
-                                    val row = feedRows.indexOfFirst { it.key == "heading-${day.sectionKey}" }
+                                    val row = feedRows.rowOfDay(day.sectionKey, day.day)
                                     // The feed's rows come last in the list, after its banners. A row not in the list yet is
                                     // read first (down to it), then gone to by the key the read names: the rows may have been
                                     // made again since this timeline, with other keys.
@@ -598,7 +608,7 @@ internal fun JournalHomeScreen(
                                     if (row >= 0) {
                                         scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - feedRows.size + row) }
                                     } else {
-                                        actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key }
+                                        actions.loadMomentsTo(day.day) { key -> if (asked == jumpsAsked[0]) jumpTo = key?.let { it to day.day } }
                                     }
                                 }
                             }

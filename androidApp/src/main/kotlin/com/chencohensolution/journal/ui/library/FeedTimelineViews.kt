@@ -609,3 +609,39 @@ internal fun List<FeedRow>.sectionKeys(): List<String?> {
         section
     }
 }
+
+/** The newest day a row shows (a heading its row's newest day), or null for rows that show no photos of their own. */
+private fun FeedRow.newestDay(): LocalDay? = when (this) {
+    is FeedRow.Heading -> section.span.newestDay
+    is FeedRow.Label -> moment.items.maxByOrNull { it.takenAtMillis }?.day
+    is FeedRow.RecordingBar -> moment.items.maxByOrNull { it.takenAtMillis }?.day
+    is FeedRow.Photo -> block.items.maxByOrNull { it.takenAtMillis }?.day
+    else -> null
+}
+
+/** Each feed row's day: its own newest, or the one above it for rows without photos. The pill's day at the top. */
+internal fun List<FeedRow>.rowDays(): List<LocalDay?> {
+    var day: LocalDay? = null
+    return map { row -> row.newestDay()?.let { day = it }; day }
+}
+
+/**
+ * Where going to [day] lands in the row [sectionKey]: a row can hold several days, so the first moment label or photo
+ * of that day in it (newest first, as the feed reads), or the row's heading when the day is its newest or not found.
+ * -1 when the row is not in the list.
+ */
+internal fun List<FeedRow>.rowOfDay(sectionKey: String, day: LocalDay): Int {
+    val heading = indexOfFirst { it.key == "heading-$sectionKey" }
+    if (heading < 0) return -1
+    if ((this[heading] as FeedRow.Heading).section.span.newestDay == day) return heading
+    for (i in heading + 1 until size) {
+        when (val row = this[i]) {
+            is FeedRow.Heading -> break
+            is FeedRow.Label -> if (row.newestDay() == day) return i
+            is FeedRow.RecordingBar -> if (row.newestDay() == day) return i
+            is FeedRow.Photo -> if (row.block.items.any { it.day == day }) return i
+            else -> Unit
+        }
+    }
+    return heading
+}
