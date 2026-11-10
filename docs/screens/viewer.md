@@ -191,7 +191,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
 - **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
-  all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
+  all** is on); a small gold ★ in the top corner of each highlight (Nov 10, 2026; before, a white dot). The photo shown sits in the middle, outlined. Scrolling the reel by hand
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline stays fixed in the reel's middle: the reel slides under it and the outline takes the new photo's width, in one 0.3 s ease-in-out move (Nov 10, 2026, Android only; before, it jumped, then a spring wobbled). A slide by hand always ends with the photo in the middle glided to (Nov 10, 2026: a touch during a glide used to stop the snapping for good).
   The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar

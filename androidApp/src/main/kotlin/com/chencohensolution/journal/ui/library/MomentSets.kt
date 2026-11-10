@@ -243,7 +243,15 @@ internal fun SetReel(
                 .clickable { change(i) },
         ) {
             ReelThumb(item, crop)
-            if (item.id in highlights) Box(Modifier.align(Alignment.TopCenter).padding(top = 3.dp).size(5.dp).background(Color.White, CircleShape))
+            // A highlight: the photo's gold ★, small, in the top corner (asked Nov 10, 2026: the white dot was too easy to miss).
+            if (item.id in highlights) {
+                Text(
+                    "★",
+                    Modifier.align(Alignment.TopEnd).padding(2.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        .padding(horizontal = 3.dp),
+                    color = Color(0xFFFFD54F), fontSize = 11.sp, lineHeight = 13.sp,
+                )
+            }
             // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
             item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
