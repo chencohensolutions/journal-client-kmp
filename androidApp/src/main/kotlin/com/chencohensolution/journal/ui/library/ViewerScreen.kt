@@ -509,8 +509,9 @@ internal fun ViewerScreen(
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
     // A set's too (asked Nov 10, 2026; before, they stayed), and going to another photo starts the time again.
-    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption, naming, grid, current.id) {
-        if (chrome && !playing && !showInfo && !choosingTag && !editingCaption && !naming && !grid) {
+    // Casting, they stay (asked Nov 10, 2026): the phone is the remote.
+    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption, naming, grid, current.id, casting) {
+        if (chrome && !casting && !playing && !showInfo && !choosingTag && !editingCaption && !naming && !grid) {
             delay(CHROME_MILLIS)
             chrome = false
         }

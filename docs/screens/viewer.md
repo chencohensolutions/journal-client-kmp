@@ -20,7 +20,7 @@ from under you. If the open item is deleted from the device, the viewer closes.
 ## Layout
 
 The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar and the bottom buttons
-for 5 seconds (3 until Nov 10, 2026), counted again on each photo gone to, and another tap hides them sooner. They stay while the details panel, a sheet or the note
+for 5 seconds (3 until Nov 10, 2026), counted again on each photo gone to, and another tap hides them sooner. While casting they stay until a tap hides them (Nov 10, 2026). They stay while the details panel, a sheet or the note
 editor is open, and fade 5 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
