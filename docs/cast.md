@@ -87,3 +87,9 @@ play, that is the cause, and another route is needed (the TV can't trust the jou
 - `androidApp/.../ui/library/`: `JournalCast.kt` (app id, `JournalCastOptions`, finding TVs with MediaRouter, the
   session), `CastServer.kt`, `CastViews.kt` (Cast button and TV picker, the frame overlay and its gestures, a video's
   TV controls); the viewer's wiring in `ViewerScreen.kt`.
+
+## Volume
+
+While casting, the phone's volume buttons change the TV's volume, a twentieth of its range a press (Nov 10, 2026,
+Android only): `MainActivity.dispatchKeyEvent` calls `JournalCast.stepVolume`, which sets the Cast session's volume.
+Not casting, they change the phone's volume as usual.
