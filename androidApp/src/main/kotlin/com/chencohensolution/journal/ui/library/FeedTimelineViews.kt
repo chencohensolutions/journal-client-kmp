@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,7 +51,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -84,7 +84,6 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sign
 import kotlin.math.sqrt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -225,6 +224,9 @@ internal fun TimelineBar(
 }
 
 private const val MORPH_MILLIS = 360
+
+/** How far back a flick's speed is measured. */
+private const val FLICK_WINDOW_MILLIS = 100L
 
 /** How long the month gone to is shown when the feed doesn't get there. */
 private const val SENT_GIVE_UP_MILLIS = 10_000L
@@ -486,10 +488,19 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
     }
     val stepPx = with(LocalDensity.current) { 16.dp.toPx() }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // Where the finger has the dial while it drags. Drawn from this, not from [at]: snapping [at] from the drag took a
+    // launch per move, and those ran frames behind, so the dial lagged the finger, and on lift it settled from where it
+    // had been, months back toward the drag's start (Nov 10, 2026, logged: at 154.4 while the finger was at 145.0).
+    var dragAt by remember { mutableFloatStateOf(0f) }
+    // The month this dial last asked for: [currentMonth] only catches up on the next composition, which a drag's
+    // moves don't wait for, so the lift's month was taken as already asked and never went.
+    val asked = remember { IntArray(1) { month } }
+    LaunchedEffect(month) { if (!dragging) asked[0] = month }
     val pick = { position: Float ->
         val to = count - 1 - position.roundToInt().coerceIn(0, count - 1)
-        if (to != currentMonth) {
-            view.tick(timeline, currentMonth, to)
+        if (to != asked[0]) {
+            view.tick(timeline, asked[0], to)
+            asked[0] = to
             currentOnMonth(to)
         }
     }
@@ -504,41 +515,54 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
                 .fillMaxWidth()
                 .height(50.dp)
                 .pointerInput(count) {
-                    val tracker = VelocityTracker()
                     awaitEachGesture {
                         val down = awaitFirstDown()
-                        dragging = true
-                        tracker.resetTracking()
                         val startAt = at.value
+                        dragAt = startAt
+                        dragging = true
+                        asked[0] = currentMonth
                         val startX = down.position.x
                         scope.launch { at.stop() }
-                        // Which way the finger last moved: a flick never goes the other way (Nov 10, 2026: the finger
-                        // easing back as it lifts gave a velocity backwards, and the dial spun back).
-                        var lastWay = 0f
+                        // The dial's own positions over the last moments, for the flick: in the dial's units, so its
+                        // direction is the drag's by construction (Compose's tracker gave +5321 px/s while the finger
+                        // was going the other way, in a right-to-left layout; Nov 10, 2026).
+                        val times = ArrayDeque<Long>()
+                        val positions = ArrayDeque<Float>()
+                        times.addLast(down.uptimeMillis)
+                        positions.addLast(startAt)
+                        var latest = startAt
                         do {
                             val event = awaitPointerEvent()
                             val change = event.changes.first()
-                            tracker.addPosition(change.uptimeMillis, change.position)
-                            val dx = change.position.x - change.previousPosition.x
-                            if (abs(dx) > 0.5f) lastWay = sign(dx)
                             val moved = (change.position.x - startX) * if (rtl) -1 else 1
-                            val position = (startAt - moved / stepPx).coerceIn(0f, (count - 1).toFloat())
-                            scope.launch { at.snapTo(position) }
-                            pick(position)
+                            latest = (startAt - moved / stepPx).coerceIn(0f, (count - 1).toFloat())
+                            dragAt = latest
+                            times.addLast(change.uptimeMillis)
+                            positions.addLast(latest)
+                            while (times.size > 2 && change.uptimeMillis - times.first() > FLICK_WINDOW_MILLIS) {
+                                times.removeFirst()
+                                positions.removeFirst()
+                            }
+                            pick(latest)
                             change.consume()
                         } while (event.changes.any { it.pressed })
-                        // A flick goes on as far as it would have slid, then settles on a month.
-                        val raw = tracker.calculateVelocity().x
-                        val velocity = (if (lastWay == 0f || sign(raw) != lastWay) 0f else raw) * if (rtl) -1 else 1
-                        val target = (at.value - velocity * 0.25f / stepPx).roundToInt().coerceIn(0, count - 1)
-                        dragging = false
-                        scope.launch { at.animateTo(target.toFloat(), tween(450)) }
+                        // A flick goes on as far as it would have slid, then settles on a month. Months per second
+                        // over the last [FLICK_WINDOW_MILLIS]; a finger that stopped before lifting doesn't flick.
+                        val span = (times.last() - times.first()).coerceAtLeast(1L)
+                        val stoppedFor = times.last() - (if (times.size > 1) times[times.size - 2] else times.last())
+                        val perSecond = if (stoppedFor > FLICK_WINDOW_MILLIS) 0f else (positions.last() - positions.first()) * 1000f / span
+                        val target = (latest + perSecond * 0.25f).roundToInt().coerceIn(0, count - 1)
+                        scope.launch {
+                            at.snapTo(latest)
+                            dragging = false
+                            at.animateTo(target.toFloat(), tween(450))
+                        }
                         pick(target.toFloat())
                     }
                 },
         ) {
             val mid = size.width / 2
-            val current = at.value
+            val current = if (dragging) dragAt else at.value
             val reach = (mid / stepPx).toInt() + 2
             val lo = (current.toInt() - reach).coerceAtLeast(0)
             val hi = (current.toInt() + reach).coerceAtMost(count - 1)
@@ -567,7 +591,7 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
             timeline.months.forEachIndexed { index, shown ->
                 if (shown.month != 1) return@forEachIndexed
                 val i = count - 1 - index
-                val offset = (i - at.value) * stepPx
+                val offset = (i - (if (dragging) dragAt else at.value)) * stepPx
                 val x = mid + if (rtl) -offset else offset
                 if (abs(x - mid) < mid) {
                     Text(
