@@ -202,6 +202,9 @@ internal class FeedTable(
     fun sectionsDownTo(key: String, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> =
         decode(queries.sectionsDownTo(key).executeAsList(), sounds, shown)
 
+    /** How many rows [sectionsDownTo] would read, counted in the database without decoding any. */
+    fun countDownTo(key: String): Long = queries.countDownTo(key).executeAsOne()
+
     /** The items of days [first]..[last] as shown ([shown]: scores, kept originals, statuses laid over). */
     fun shownItems(first: LocalDay, last: LocalDay, shown: (LibraryRow) -> MediaItem): List<MediaItem> =
         queries.itemsOfDays(first.toEpochDay(), last.toEpochDay(), ::libraryRow).executeAsList().map(shown)

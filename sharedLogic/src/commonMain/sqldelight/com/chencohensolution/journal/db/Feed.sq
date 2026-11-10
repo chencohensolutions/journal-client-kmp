@@ -109,6 +109,10 @@ SELECT key, day_counts FROM feed_section ORDER BY newest_millis DESC, key ASC;
 sectionsDownTo:
 SELECT * FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM feed_section WHERE key = ?) ORDER BY newest_millis DESC, key ASC;
 
+-- How many rows sectionsDownTo reads, without reading them: what a jump to a date needs to know first.
+countDownTo:
+SELECT COUNT(*) FROM feed_section WHERE newest_millis >= (SELECT newest_millis FROM feed_section WHERE key = ?);
+
 -- The rows whose days reach over this day, in the feed's order, with their photos per day: the one a photo is in (its
 -- own day, or the day of the set it was merged into) is the first with photos of the day, as the timeline has it.
 sectionsOfDay:

@@ -71,7 +71,8 @@ internal class FeedPager(
     suspend fun loadTo(day: LocalDay, context: FeedContext, revealed: Set<FeedReveal>, shown: (LibraryRow) -> MediaItem): FeedJump = mutex.withLock {
         withContext(io) {
             val key = table.sectionOf(day) ?: return@withContext FeedJump(null, null)
-            val down = table.sectionsDownTo(key, context.sounds.associateBy { it.sha256 }, shown).size
+            // Counted, not read: decoding every row down to it just to count them doubled a far jump's time.
+            val down = table.countDownTo(key).toInt()
             FeedJump(key, if (down == 0 || down <= loaded) null else read(down + pageSize(), context, revealed, shown))
         }
     }
