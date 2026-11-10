@@ -60,6 +60,30 @@ data class TvZoom(
     fun whole(): TvZoom = TvZoom(photoRatio, tvRatio)
 
     /**
+     * As close as the TV is filled with the photo, no black bars (a double tap, asked Nov 10, 2026): the frame as large
+     * as fits inside the photo, about where it is now.
+     */
+    fun filled(): TvZoom {
+        val (w1, h1) = wholeSize()
+        return copy(scale = max(w1, h1).coerceIn(1f, MAX_SCALE)).held()
+    }
+
+    /** A double tap: filled when it shows the whole photo, else back to the whole photo. */
+    fun toggled(): TvZoom = if (isZoomed) whole() else filled()
+
+    /**
+     * Where the photo is drawn on the phone (asked Nov 10, 2026: the phone zooms with the TV): the TV's frame fills
+     * [tv], the TV's shape as large as fits on the phone ([PhoneRect.fitted]), and the photo sits around it as the frame
+     * says. Fractions or pixels alike: the result is in [tv]'s units.
+     */
+    fun photoOn(tv: PhoneRect): PhoneRect {
+        val f = frame
+        val width = tv.width / f.w
+        val height = tv.height / f.h
+        return PhoneRect(tv.left - f.x * width, tv.top - f.y * height, width, height)
+    }
+
+    /**
      * The frame's size at scale 1, in fractions of the photo: all of the photo fits, and the frame reaches past it on
      * the sides that don't fill the TV.
      */
@@ -89,5 +113,22 @@ data class TvZoom(
 
         /** As close as the frame goes: a twelfth of the photo across. */
         const val MAX_SCALE = 12f
+    }
+}
+
+/** A rectangle on the phone's screen: its top left corner and size. */
+data class PhoneRect(val left: Float, val top: Float, val width: Float, val height: Float) {
+    companion object {
+        /** A rectangle of [ratio] (width over height) as large as fits in [width] × [height], in the middle. */
+        fun fitted(width: Float, height: Float, ratio: Float, left: Float = 0f, top: Float = 0f): PhoneRect {
+            if (width <= 0f || height <= 0f || ratio <= 0f) return PhoneRect(left, top, width, height)
+            return if (ratio >= width / height) {
+                val h = width / ratio
+                PhoneRect(left, top + (height - h) / 2, width, h)
+            } else {
+                val w = height * ratio
+                PhoneRect(left + (width - w) / 2, top, w, height)
+            }
+        }
     }
 }

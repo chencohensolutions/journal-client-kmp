@@ -1143,7 +1143,6 @@
     <string name="set_name_title">Moment name</string>
     <string name="set_name_hint">No name</string>
     <string name="set_name_save">Save</string>
-    <string name="set_play_here">Play here</string>
     <string name="set_highlight">Highlight</string>
     <string name="set_highlighted">Highlight</string>
     <string name="set_play">Play</string>
@@ -1187,7 +1186,7 @@
     <string name="cast_looking">Looking for TVs on this Wi-Fi…</string>
     <string name="cast_stop">Stop showing on TV</string>
     <string name="cast_frame_label">TV</string>
-    <string name="cast_frame_hint">Pinch the photo to zoom in on the TV; drag the frame to move around.</string>
+    <string name="cast_frame_hint">The frame is the TV. Pinch to zoom on both, drag to move around, double tap to fill the TV.</string>
     <string name="cast_play">Play on TV</string>
     <string name="cast_pause">Pause on TV</string>
     <string name="cast_no_wifi">The phone needs to be on the same Wi-Fi as the TV.</string>

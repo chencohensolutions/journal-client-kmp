@@ -3,6 +3,7 @@ package com.chencohensolution.journal
 import com.chencohensolution.journal.cast.CastController
 import com.chencohensolution.journal.cast.CastError
 import com.chencohensolution.journal.cast.CastItem
+import com.chencohensolution.journal.cast.PhoneRect
 import com.chencohensolution.journal.cast.TvZoom
 import com.chencohensolution.journal.cast.castAhead
 import kotlin.io.encoding.Base64
@@ -24,7 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** Casting to a TV (docs/cast.md): the frame the phone moves, and what is said to the TV. */
 class CastTest {
-    private fun near(expected: Float, actual: Float) = assertTrue(abs(expected - actual) < 1e-4f, "expected $expected, was $actual")
+    private fun near(expected: Float, actual: Float) = assertTrue(abs(expected - actual) < 1e-4f * maxOf(1f, abs(expected)), "expected $expected, was $actual")
 
     @Test
     fun aWidePhotoFillsTheTvsWidthWithBlackAboveAndBelow() {
@@ -43,6 +44,40 @@ class CastTest {
         near(1f, frame.h)
         near((16f / 9f) / (3f / 4f), frame.w)
         near(0.5f, frame.x + frame.w / 2)
+    }
+
+    @Test
+    fun aDoubleTapFillsTheTvAndAnotherShowsTheWholePhoto() {
+        val portrait = TvZoom(photoRatio = 3f / 4f)
+        val filled = portrait.toggled()
+        assertTrue(filled.isZoomed)
+        // The photo's whole width across the TV, no black bars, its middle shown.
+        near(0f, filled.frame.x)
+        near(1f, filled.frame.w)
+        near(0.5f, filled.frame.y + filled.frame.h / 2)
+        assertTrue(filled.frame.h < 1f)
+        assertFalse(filled.toggled().isZoomed)
+        // A photo of the TV's own shape fills it already.
+        assertFalse(TvZoom(photoRatio = 16f / 9f).filled().isZoomed)
+    }
+
+    @Test
+    fun thePhoneShowsWhatTheTvShowsInTheLargestTvRectangle() {
+        // A portrait phone, 1000 × 2000: the TV's 16:9 is the full width, in the middle.
+        val tv = PhoneRect.fitted(1000f, 2000f, 16f / 9f)
+        near(0f, tv.left)
+        near(1000f, tv.width)
+        near(562.5f, tv.height)
+        near((2000f - 562.5f) / 2, tv.top)
+        // The whole of a 16:9 photo is the rectangle itself.
+        val whole = TvZoom(photoRatio = 16f / 9f).photoOn(tv)
+        near(tv.left, whole.left)
+        near(tv.width, whole.width)
+        // Twice as close on its middle: the photo is twice as large, around the rectangle.
+        val close = TvZoom(photoRatio = 16f / 9f).zoomBy(2f, 0.5f, 0.5f).photoOn(tv)
+        near(2000f, close.width)
+        near(-500f, close.left)
+        near(tv.top - tv.height / 2, close.top)
     }
 
     @Test

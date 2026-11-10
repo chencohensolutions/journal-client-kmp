@@ -215,6 +215,16 @@ class MomentSetsTest {
     }
 
     @Test
+    fun aPhotoOfASetIsFoundInItsSet() = runTest {
+        val feed = setup().stories.currentState.feed
+        val blocks = feed.entries.flatMap { (it as FeedEntry.Section).section.moments.flatMap { m -> m.shownBlocks } }
+        val set = blocks.filterIsInstance<FeedBlock.Similar>().first()
+        set.items.forEach { assertEquals(set, feed.setShowing(it.id)) }
+        blocks.filterIsInstance<FeedBlock.Single>().forEach { assertNull(feed.setShowing(it.item.id)) }
+        assertNull(feed.setShowing("nowhere"))
+    }
+
+    @Test
     fun aMomentIsNamedAndRenamedLater() = runTest {
         val setup = setup()
         val stories = setup.stories

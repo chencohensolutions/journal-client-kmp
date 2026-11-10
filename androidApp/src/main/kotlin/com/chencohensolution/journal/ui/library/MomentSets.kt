@@ -97,9 +97,6 @@ internal enum class SlideSpeed(val millis: Long, val label: Int) {
     SLOW(2_000, R.string.set_speed_slow),
 }
 
-/** In the feed a set plays at this pace. */
-internal const val FEED_PLAY_MILLIS = 500L
-
 /** Swipes and flips within a set cross-fade, this long. */
 internal const val SET_FADE_MILLIS = 120
 
@@ -120,18 +117,22 @@ internal fun Slideshow(
     index: Int,
     prepare: (suspend (Int) -> Unit)? = null,
     hold: (suspend (Int) -> Unit)? = null,
+    /** Waits until the item shown is on screen (on the TV, while casting) before its time starts. */
+    shownBy: (suspend (Int) -> Unit)? = null,
     onIndex: (Int) -> Unit,
 ) {
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
     val ready by rememberUpdatedState(prepare)
     val done by rememberUpdatedState(hold)
+    val arrived by rememberUpdatedState(shownBy)
     LaunchedEffect(playing, millis, count) {
         while (playing && count > 1) {
             val shown = current
             val next = (shown + 1) % count
             coroutineScope {
                 val prepared = async { withTimeoutOrNull(PREPARE_MAX_MILLIS) { ready?.invoke(next) } }
+                arrived?.invoke(shown)
                 delay(millis)
                 done?.invoke(shown)
                 prepared.await()
@@ -324,17 +325,6 @@ internal fun SpeedPicker(speed: SlideSpeed, onSpeed: (SlideSpeed) -> Unit) {
     }
 }
 
-/** A thin line of the set with a mark at the photo shown ([index]) and a dot at its cover ([cover]). */
-@Composable
-internal fun SetPositionLine(count: Int, index: Int, cover: Int?, modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier.height(12.dp)) {
-        val step = maxWidth / maxOf(count - 1, 1)
-        Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(50)))
-        cover?.let { Box(Modifier.align(Alignment.CenterStart).offset(x = step * it - 2.5.dp).size(5.dp).background(Color.White.copy(alpha = 0.8f), CircleShape)) }
-        Box(Modifier.align(Alignment.CenterStart).offset(x = step * index - 1.5.dp).size(3.dp, 12.dp).background(Color.White, RoundedCornerShape(50)))
-    }
-}
-
 /**
  * The whole set as squares in a sheet (the viewer's grid button): a tap goes to that photo. Above them its highlights
  * in their order: holding one and dragging it sideways moves it ([onMove], its new place from 0).
@@ -442,7 +432,7 @@ private fun HighlightOrder(highlights: List<MediaItem>, onPick: (MediaItem) -> U
     }
 }
 
-/** The slideshow's controls: a thin progress line, the speeds and Stop. */
+/** The slideshow's controls: where it is ("4 of 29"; no progress line, asked Nov 10, 2026), the speeds and Stop. */
 @Composable
 internal fun SlideshowBar(
     index: Int,
@@ -456,9 +446,11 @@ internal fun SlideshowBar(
     onAutoplayVideos: (Boolean) -> Unit = {},
 ) {
     Column(modifier.fillMaxWidth().padding(16.dp)) {
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(50))) {
-            Box(Modifier.fillMaxWidth((index + 1f) / count).fillMaxHeight().background(Color.White, RoundedCornerShape(50)))
-        }
+        Text(
+            stringResource(R.string.set_position, index + 1, count),
+            color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.9f), androidx.compose.ui.geometry.Offset(0f, 1f), blurRadius = 8f)),
+        )
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SpeedPicker(speed, onSpeed)
             // Beside the speeds (asked Nov 9, 2026): whether videos play, to their end, or show for a slide's time.

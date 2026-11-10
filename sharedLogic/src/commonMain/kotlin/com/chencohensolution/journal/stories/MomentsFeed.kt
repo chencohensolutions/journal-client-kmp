@@ -201,6 +201,16 @@ data class MomentsFeed(
         return shown.getOrNull(if (forward) holding.last() + 1 else holding.first() - 1)
     }
 
+    /**
+     * The set [itemId] is shown in, in the rows read so far; null when it shows on its own. Swiping through Moments in the
+     * viewer turns into the set's viewer when it lands on one, so a set always shows as a set (asked Nov 10, 2026).
+     */
+    fun setShowing(itemId: String): FeedBlock.Similar? = entries.firstNotNullOfOrNull { entry ->
+        (entry as FeedEntry.Section).section.moments.firstNotNullOfOrNull { moment ->
+            moment.blocks.firstOrNull { block -> block is FeedBlock.Similar && block.items.any { it.id == itemId } } as FeedBlock.Similar?
+        }
+    }
+
     /** The sources its filter bar offers: the fixed ones and those with photos, in order. */
     val choices: List<MediaSource> get() = MediaSource.choices(counts.keys)
 

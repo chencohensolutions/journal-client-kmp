@@ -53,10 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.cast.CastVideo
+import com.chencohensolution.journal.cast.PhoneRect
 import com.chencohensolution.journal.cast.TvZoom
+import androidx.compose.ui.graphics.graphicsLayer
 
-// The viewer while casting (docs/cast.md, docs/screens/viewer.md): the Cast button and its TV picker, the whole photo
-// on the phone with a frame of what the TV shows (a pinch or a drag moves it), and a video's controls for the TV.
+// The viewer while casting (docs/cast.md, docs/screens/viewer.md): the Cast button and its TV picker, the TV's screen
+// on the phone as large as fits with the photo zoomed as the TV shows it (a pinch or a drag zooms both), and a video's
+// controls for the TV.
 
 /** The TV's frame on one photo while the viewer is open: [zoom] changes with each pinch or drag. */
 @Stable
@@ -80,10 +83,38 @@ internal fun fittedPhoto(area: Rect, ratio: Float): Rect {
     }
 }
 
+/** The TV's screen on the phone: its shape as large as fits in [area] (asked Nov 10, 2026). */
+internal fun tvRect(area: Rect, tvRatio: Float): Rect =
+    PhoneRect.fitted(area.width, area.height, tvRatio, area.left, area.top).toRect()
+
+/** Where the photo is drawn in [area] at [zoom]: what the TV shows fills [tvRect], the rest of the photo around it. */
+internal fun castPhoto(area: Rect, zoom: TvZoom): Rect = zoom.photoOn(tvRect(area, zoom.tvRatio).toPhoneRect()).toRect()
+
+private fun PhoneRect.toRect() = Rect(left, top, left + width, top + height)
+private fun Rect.toPhoneRect() = PhoneRect(left, top, width, height)
+
 /**
- * Pinches and drags move the TV's frame on the photo while casting: two fingers zoom it about their middle, one finger
- * drags it once it is zoomed in (at the whole photo, one finger swipes to the next photo as usual). [area] is where the
- * photo is laid out inside this element, for its size; [cast] null leaves every touch to the rest.
+ * The photo page under it drawn where [castPhoto] puts it while casting: the phone zooms and moves with the TV. The
+ * page lays the photo out fitted in its middle; this scales and moves it there.
+ */
+internal fun Modifier.castPlaced(zoom: TvZoom?): Modifier = if (zoom == null) this else graphicsLayer {
+    val area = Rect(Offset.Zero, size)
+    val fitted = fittedPhoto(area, zoom.photoRatio)
+    val placed = castPhoto(area, zoom)
+    if (fitted.width > 0f) {
+        val k = placed.width / fitted.width
+        scaleX = k
+        scaleY = k
+        translationX = placed.center.x - fitted.center.x
+        translationY = placed.center.y - fitted.center.y
+    }
+}
+
+/**
+ * Pinches and drags while casting zoom and move the photo on the phone and the TV alike: two fingers zoom about their
+ * middle, one finger drags the photo once it is zoomed in (at the whole photo, one finger swipes to the next photo as
+ * usual). [area] is where the photo is laid out inside this element, for its size; [cast] null leaves every touch to
+ * the rest.
  */
 internal fun Modifier.castGestures(cast: () -> CastZoom?, area: (IntSize) -> Rect, onStart: () -> Unit = {}): Modifier = pointerInput(Unit) {
     awaitEachGesture {
@@ -102,15 +133,16 @@ internal fun Modifier.castGestures(cast: () -> CastZoom?, area: (IntSize) -> Rec
             if ((factor == 1f && pan == Offset.Zero) || !(started || fingers >= 2 || dragged > viewConfiguration.touchSlop)) continue
             if (!started) onStart()
             started = true
-            val photo = fittedPhoto(area(size), zoom.photoRatio)
+            val photo = castPhoto(area(size), zoom)
             if (photo.width <= 0f || photo.height <= 0f) continue
             val centroid = event.calculateCentroid()
             var next = zoom
             if (fingers >= 2 && factor != 1f) {
                 next = next.zoomBy(factor, (centroid.x - photo.left) / photo.width, (centroid.y - photo.top) / photo.height)
             }
-            // The frame follows the fingers: dragging it right shows more of the photo's right on the TV.
-            next = next.panBy(pan.x / photo.width, pan.y / photo.height)
+            // The photo follows the fingers, as when zooming without a TV: dragging it right shows more of its left.
+            val moved = castPhoto(area(size), next)
+            next = next.panBy(-pan.x / moved.width, -pan.y / moved.height)
             holder.zoom = next
             event.changes.forEach { if (it.positionChanged()) it.consume() }
         } while (event.changes.any { it.pressed })
@@ -118,8 +150,8 @@ internal fun Modifier.castGestures(cast: () -> CastZoom?, area: (IntSize) -> Rec
 }
 
 /**
- * The TV's frame on the whole photo: everything outside it dimmed, the frame outlined, "TV" in its corner. Fills the
- * same room as the photo page under it; the frame may reach past the photo into the black, as the TV shows it.
+ * The TV's screen on the phone: the TV's shape as large as fits ([tvRect]), outlined, "TV" in its corner, and the
+ * photo outside it dimmed. Fills the same room as the photo page under it.
  */
 @Composable
 internal fun CastFrameOverlay(zoom: TvZoom, modifier: Modifier = Modifier) {
@@ -128,28 +160,19 @@ internal fun CastFrameOverlay(zoom: TvZoom, modifier: Modifier = Modifier) {
     // Read here: the palette is read in composition, not while drawing.
     val pill = LibraryColors.PillScrim
     Canvas(modifier) {
-        val area = Rect(Offset.Zero, size)
-        val photo = fittedPhoto(area, zoom.photoRatio)
-        val f = zoom.frame
-        val frame = Rect(
-            photo.left + f.x * photo.width,
-            photo.top + f.y * photo.height,
-            photo.left + (f.x + f.w) * photo.width,
-            photo.top + (f.y + f.h) * photo.height,
-        )
-        val shown = frame.intersect(area)
-        val dim = Color.Black.copy(alpha = if (zoom.isZoomed) 0.55f else 0.25f)
-        drawRect(dim, Offset.Zero, Size(size.width, shown.top.coerceAtLeast(0f)))
-        drawRect(dim, Offset(0f, shown.bottom), Size(size.width, (size.height - shown.bottom).coerceAtLeast(0f)))
-        drawRect(dim, Offset(0f, shown.top), Size(shown.left.coerceAtLeast(0f), shown.height.coerceAtLeast(0f)))
-        drawRect(dim, Offset(shown.right, shown.top), Size((size.width - shown.right).coerceAtLeast(0f), shown.height.coerceAtLeast(0f)))
+        val frame = tvRect(Rect(Offset.Zero, size), zoom.tvRatio)
+        val dim = Color.Black.copy(alpha = 0.6f)
+        drawRect(dim, Offset.Zero, Size(size.width, frame.top.coerceAtLeast(0f)))
+        drawRect(dim, Offset(0f, frame.bottom), Size(size.width, (size.height - frame.bottom).coerceAtLeast(0f)))
+        drawRect(dim, Offset(0f, frame.top), Size(frame.left.coerceAtLeast(0f), frame.height.coerceAtLeast(0f)))
+        drawRect(dim, Offset(frame.right, frame.top), Size((size.width - frame.right).coerceAtLeast(0f), frame.height.coerceAtLeast(0f)))
         val stroke = 2.dp.toPx()
-        drawRect(Color.White, frame.topLeft, frame.size, style = Stroke(stroke))
+        drawRect(Color.White.copy(alpha = 0.8f), frame.topLeft, frame.size, style = Stroke(stroke))
         val text = measurer.measure(label, androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold))
         val pad = 6.dp.toPx()
         val at = Offset(
-            (frame.left + pad).coerceIn(pad, size.width - text.size.width - pad),
-            (frame.top + pad).coerceIn(pad, size.height - text.size.height - pad),
+            (frame.left + 2 * pad).coerceIn(pad, size.width - text.size.width - pad),
+            (frame.top + 2 * pad).coerceIn(pad, size.height - text.size.height - pad),
         )
         drawRoundRect(
             pill, at - Offset(pad, pad / 2), Size(text.size.width + 2 * pad, text.size.height + pad),

@@ -1196,7 +1196,6 @@
     <string name="set_name_title">שם הרגע</string>
     <string name="set_name_hint">ללא שם</string>
     <string name="set_name_save">שמירה</string>
-    <string name="set_play_here">הפעלה כאן</string>
     <string name="set_highlight">הדגשה</string>
     <string name="set_highlighted">מודגשת</string>
     <string name="set_play">הפעלה</string>
@@ -1241,7 +1240,7 @@
     <string name="cast_looking">מחפשים טלוויזיות ברשת ה-Wi-Fi הזו…</string>
     <string name="cast_stop">הפסקת ההצגה בטלוויזיה</string>
     <string name="cast_frame_label">TV</string>
-    <string name="cast_frame_hint">צביטה בתמונה מתקרבת בטלוויזיה; גרירת המסגרת מזיזה אותה.</string>
+    <string name="cast_frame_hint">המסגרת היא הטלוויזיה. צביטה מתקרבת בשתיהן, גרירה מזיזה, הקשה כפולה ממלאת את הטלוויזיה.</string>
     <string name="cast_play">הפעלה בטלוויזיה</string>
     <string name="cast_pause">השהיה בטלוויזיה</string>
     <string name="cast_no_wifi">הטלפון צריך להיות באותה רשת Wi-Fi כמו הטלוויזיה.</string>

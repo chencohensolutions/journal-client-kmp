@@ -78,13 +78,12 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   marked, changed by dragging in the viewer's grid sheet. The first highlight is the set's **cover**: where it opens.
 - **A set without highlights shows its cover**: the photo it was turned to while the feed shows, else its best-looking
   photo (the server's aesthetic score), else its first (`StoriesState.frontOf`). At the cover's shape, the others
-  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner and a thin line near the bottom with a
-  mark where the photo shown is (a dot at the cover).
+  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner. The thin line marking where the
+  photo shown is and the ▶ that played it in place were removed on Nov 10, 2026 (the owner didn't like them; the
+  slideshow is the viewer's; Android only, iOS still has them).
   - **Hold and slide** flips through it in place: hold, then slide sideways, a tick per photo, 10 dp each, with
     "12 of 36" at the top while sliding. Letting go keeps it there until the feed is left (never saved: notes keep
     highlights, not turns). A hold let go without sliding is the long press (picking); a vertical move scrolls.
-  - A small **▶** at the bottom corner plays it in place, muted, a photo every 0.5 s, round and round; again to stop.
-    The next photo is loaded at the size it shows at before the switch, which waits for it (Nov 9, 2026).
   - A **tap** opens the viewer on the set only, at the photo shown.
   - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
 - **A moment made by hand** shows its name over it, not bold, with its days under it in smaller type ("Beach
