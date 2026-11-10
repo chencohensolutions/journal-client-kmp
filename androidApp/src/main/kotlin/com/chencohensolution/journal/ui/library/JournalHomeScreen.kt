@@ -53,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -470,6 +471,9 @@ internal fun JournalHomeScreen(
             )
         } else CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
             val hiding = rowsHiding(remember(rows) { rows.map { it.key } })
+            // A list of its own per tab (asked Nov 10, 2026): in one list, the storyline's rows faded out over Moments'
+            // when switching, as rows a change took away.
+            key(tab) {
             LazyColumn(
                 state = list,
                 contentPadding = PaddingValues(
@@ -509,6 +513,7 @@ internal fun JournalHomeScreen(
                 }
                 // Last, so landing from the viewer can count them from the end.
                 if (!momentsWaiting) feedItems(rows, feedActions, landing, video, stories.notes, selection, audio, hiding)
+            }
             }
         }
 
