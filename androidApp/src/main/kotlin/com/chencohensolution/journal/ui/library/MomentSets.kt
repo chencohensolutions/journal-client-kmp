@@ -349,8 +349,8 @@ private fun ReelThumb(item: MediaItem, crop: CropRect?) {
     }
 }
 
-/** The reel's height, and the shapes its photos are kept within (a panorama would fill it). */
-private val REEL_HEIGHT = 64.dp
+/** The reel's height (76 dp since Nov 10, 2026, asked a little higher; was 64), and the shapes its photos are kept within. */
+private val REEL_HEIGHT = 76.dp
 private const val REEL_MIN_RATIO = 0.4f
 private const val REEL_MAX_RATIO = 2.5f
 

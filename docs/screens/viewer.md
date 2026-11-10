@@ -204,7 +204,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
   the bars, the reel slides out (down, or past its own edge in landscape: right, or left in Hebrew) and
   the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
-  the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
+  the photo's animated padding). The photos are 76 dp tall (64 until Nov 10, 2026), and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
 - **☆ Highlight** (★ when it is one) · **Make cover** (a photo icon, filled on the cover; Nov 10, 2026, Android
   only: the moment's cover in Moments and the storyline, `StoriesController.setMomentCover`, the note's
