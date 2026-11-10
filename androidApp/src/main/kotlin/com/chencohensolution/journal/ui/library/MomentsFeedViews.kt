@@ -347,7 +347,7 @@ internal fun LazyListScope.feedItems(
                 // Its name as Moments shows it (asked Nov 10, 2026): not bold, its days under it.
                 val momentName = moment?.name
                 if (momentName != null && row.momentDays != null) {
-                    SetName(momentName, row.momentDays.first, row.momentDays.second, momentCounts(row.momentPhotos, row.momentVideos))
+                    SetName(momentName, row.momentDays.first, row.momentDays.second, momentCounts(row.momentPhotos, row.momentVideos), moment.description)
                 }
                 else PhotoTitle(note?.title)
                 Box(Modifier.pickedInset(picked)) {
@@ -375,7 +375,6 @@ internal fun LazyListScope.feedItems(
                         )
                     }
                 }
-                moment?.description?.let { PhotoNoteText(it) }
                 PhotoNoteText(note?.caption)
             }
 
@@ -879,7 +878,8 @@ private fun PartOfLink(name: String?, onClick: () -> Unit) {
  * smaller type ("Fri – Sun") (asked Nov 9, 2026).
  */
 @Composable
-private fun SetName(name: String, items: List<MediaItem>) = SetName(name, items.first().day, items.last().day)
+private fun SetName(name: String, items: List<MediaItem>, description: String? = null) =
+    SetName(name, items.first().day, items.last().day, description = description)
 
 /** "12 photos · 3 videos", each left out at none. */
 @Composable
@@ -888,14 +888,20 @@ private fun momentCounts(photos: Int, videos: Int): String = listOfNotNull(
     videos.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.set_videos, it, it) },
 ).joinToString(" · ")
 
-/** [SetName] from its first and last days; [counts] after them ("Fri – Sun · 12 photos · 3 videos"), when given. */
+/**
+ * [SetName] from its first and last days; [counts] after them ("Fri – Sun · 12 photos · 3 videos"), when given; its
+ * [description] right under the name (asked Nov 10, 2026: under the title, not under the photo).
+ */
 @Composable
-private fun SetName(name: String, first: LocalDay, last: LocalDay, counts: String = "") {
+private fun SetName(name: String, first: LocalDay, last: LocalDay, counts: String = "", description: String? = null) {
     // One day: the day heading above already says it (asked Nov 10, 2026), so only the days of a longer moment.
     val days = if (first == last) null else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
     val line = listOfNotNull(days, counts.ifEmpty { null }).joinToString(" · ")
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
         Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        description?.let {
+            Text(it, color = LibraryColors.OnBackground.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        }
         if (line.isNotEmpty()) Text(line, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
     }
 }
@@ -920,7 +926,7 @@ private fun SetBlock(
 ) {
     val named = block.named
     Column(modifier) {
-        if (named != null && !named.isPartOf(block)) named.name?.let { SetName(it, block.items) }
+        if (named != null && !named.isPartOf(block)) named.name?.let { SetName(it, block.items, named.description) }
         if (block.highlights.isEmpty()) {
             SetCover(block, landing, notes, video, selected, onLongPress, onOpen)
         } else {

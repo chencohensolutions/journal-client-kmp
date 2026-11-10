@@ -88,7 +88,8 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   - Each flip cross-fades in 0.12 s. The photo shown is the one a video set plays.
 - **A moment made by hand** shows its name over it, not bold, with its days under it in smaller type ("Beach
   weekend", then "Fri – Sun"); a moment made without a name shows none (Nov 9, 2026). A moment of one day shows no
-  day under its name: the row's heading says it (Nov 10, 2026).
+  day under its name: the row's heading says it (Nov 10, 2026). Its description, when it has one, is right under the
+  name (Nov 10, 2026).
 - **Make a moment** (picking bar, two or more photos picked): a sheet with its **name** (optional since Nov 9, 2026: an unnamed
   moment is saved with `"name": ""`), its **highlights** (tap
   several; the numbers are their order; none: its best-looking photo) and **Show it in Moments on**: its first day,

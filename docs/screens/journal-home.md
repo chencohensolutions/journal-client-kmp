@@ -30,7 +30,7 @@ Photos fill the screen on the page background (light or dark with the system); t
   Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to
   have one photo of a set here, open that photo and write on it. Every **moment made by hand** is here too (Nov 10,
   2026, Android only), by its cover: its name over it as Moments shows it (not bold), and under it its days when more than one and how many photos and
-  videos ("Fri – Sun · 12 photos · 3 videos"), its description under the photo, "⧉ 36" in the corner, and a tap opens
+  videos ("Fri – Sun · 12 photos · 3 videos"), its description right under the name, "⧉ 36" in the corner, and a tap opens
   the whole moment in the set viewer (`StoriesState.storylineMomentOf`); Remove from storyline on the cover takes it
   out. Tapping opens the [viewer](viewer.md), swiping
   through the storyline; a long press starts picking, as in Moments (Android, Nov 8, 2026; iOS: its menu, with Remove
