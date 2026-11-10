@@ -180,7 +180,12 @@ internal sealed interface FeedRow {
     }
 
     /** The storyline: one photo with its writing, or a moment made by hand by its cover ([moment]). */
-    data class StoryPhoto(val item: MediaItem, val moment: NamedSet? = null) : FeedRow {
+    data class StoryPhoto(
+        val item: MediaItem,
+        val moment: NamedSet? = null,
+        /** The moment's first and last days, for its line of days under the name. */
+        val momentDays: Pair<LocalDay, LocalDay>? = null,
+    ) : FeedRow {
         override val key get() = "story-${item.id}"
     }
 }
@@ -269,8 +274,18 @@ internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
 }
 
 /** The storyline by day as list items: each day (with its tucked-away pill), then its photos shown. */
-internal fun storylineDayRows(days: List<StorylineDay>, momentOf: (String) -> NamedSet? = { null }): List<FeedRow> =
-    days.flatMap { day -> listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { FeedRow.StoryPhoto(it, momentOf(it.id)) } }
+internal fun storylineDayRows(
+    days: List<StorylineDay>,
+    momentOf: (String) -> NamedSet? = { null },
+    dayOf: (String) -> LocalDay? = { null },
+): List<FeedRow> =
+    days.flatMap { day ->
+        listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { item ->
+            val moment = momentOf(item.id)
+            val momentDays = moment?.itemIds?.mapNotNull(dayOf)?.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
+            FeedRow.StoryPhoto(item, moment, momentDays ?: moment?.let { item.day to item.day })
+        }
+    }
 
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
@@ -319,7 +334,10 @@ internal fun LazyListScope.feedItems(
                 // A moment made by hand stands in the storyline by its cover (asked Nov 10, 2026): its name over it, its
                 // description under it, "⧉ 36" in the corner, and a tap opens the whole moment.
                 val moment = row.moment
-                PhotoTitle(moment?.name ?: note?.title)
+                // Its name as Moments shows it (asked Nov 10, 2026): not bold, its days under it.
+                val momentName = moment?.name
+                if (momentName != null && row.momentDays != null) SetName(momentName, row.momentDays.first, row.momentDays.second)
+                else PhotoTitle(note?.title)
                 Box(Modifier.pickedInset(picked)) {
                     FullWidthPhoto(
                         row.item,
@@ -854,9 +872,11 @@ private fun PartOfLink(name: String?, onClick: () -> Unit) {
  * smaller type ("Fri – Sun") (asked Nov 9, 2026).
  */
 @Composable
-private fun SetName(name: String, items: List<MediaItem>) {
-    val first = items.first().day
-    val last = items.last().day
+private fun SetName(name: String, items: List<MediaItem>) = SetName(name, items.first().day, items.last().day)
+
+/** [SetName] from its first and last days. */
+@Composable
+private fun SetName(name: String, first: LocalDay, last: LocalDay) {
     val days = if (first == last) formatDate(first.toLocalDate(), "EEE") else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
         Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
