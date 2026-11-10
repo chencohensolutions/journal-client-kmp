@@ -520,6 +520,8 @@ internal fun ViewerScreen(
     // landscape. When a tap hides the bars the reel slides away and the photo glides to the middle of the whole screen.
     val setBarsShown = set != null && chrome && !showInfo && !playing
     var reelRoom by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    // The top bar's height with the status bar: a set's photo is centred between it and the button bar.
+    var headerHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     // Only a photo that fits in the room left moves to its middle (asked Nov 10, 2026): one that fills more stays where
     // it is when the bars come and go, and a zoomed one never moves (its last place is kept while zoomed).
@@ -528,7 +530,7 @@ internal fun ViewerScreen(
         val ratio = current.shownRatio(currentCrop?.takeIf { !whole }).coerceAtLeast(0.01f)
         val w = window.width.toFloat()
         val h = window.height.toFloat()
-        if (reelRoom.width > 0) minOf(w, h * ratio) <= w - reelRoom.width else minOf(h, w / ratio) <= h - reelRoom.height
+        if (reelRoom.width > 0) minOf(w, h * ratio) <= w - reelRoom.width else minOf(h, w / ratio) <= h - reelRoom.height - headerHeight
     }
     val zoomedNow = zoom.isZoomed || castZoomed
     var roomOn by remember(current.id) { mutableStateOf(setBarsShown && fitsInRoom && !zoomedNow) }
@@ -538,6 +540,10 @@ internal fun ViewerScreen(
     )
     val roomEnd by androidx.compose.animation.core.animateDpAsState(
         if (roomOn) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
+    )
+    // In portrait, below the top bar too (asked Nov 10, 2026: the middle between the header and the button bar).
+    val roomTop by androidx.compose.animation.core.animateDpAsState(
+        if (roomOn && reelRoom.width == 0) with(density) { headerHeight.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "header room",
     )
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     fun roomBottomPx() = with(density) { roomBottom.toPx() }
@@ -593,7 +599,7 @@ internal fun ViewerScreen(
                 },
         ) {
             Crossfade(
-                shownIndex, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd),
+                shownIndex, Modifier.fillMaxSize().padding(top = roomTop, bottom = roomBottom, end = roomEnd),
                 animationSpec = tween(SET_FADE_MILLIS), label = "set photo",
             ) { page ->
                 val item = items[page]
@@ -757,6 +763,7 @@ internal fun ViewerScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { headerHeight = it.height }
                     .statusBarRoom()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -963,8 +970,10 @@ private fun SetBarBottom(
     val place = set.highlights.indexOf(item.id)
     var height by remember { mutableIntStateOf(0) }
     var reelTop by remember { mutableIntStateOf(-1) }
-    LaunchedEffect(height, reelTop, reel, items.size) {
-        onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && reelTop >= 0) height - reelTop else 0))
+    var barTop by remember { mutableIntStateOf(-1) }
+    // The room is from the top of the button bar down (asked Nov 10, 2026; before, from the reel's top).
+    LaunchedEffect(height, reelTop, barTop, reel, items.size) {
+        onRoom(androidx.compose.ui.unit.IntSize(0, if (reel && items.size > 1 && barTop >= 0) height - barTop else 0))
     }
     Column(
         modifier.fillMaxWidth().navigationBarRoom().padding(top = 24.dp, bottom = 8.dp)
@@ -973,7 +982,7 @@ private fun SetBarBottom(
         // Keyed by the photo, so nothing of the one before is kept while swiping.
         ProvideTextStyle(OverPhotoText) { key(items[index].id) { brief(items[index]) } }
         // The actions in a floating bar as the Moments feed has (asked Nov 9, 2026), above the reel.
-        FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp)) {
+        FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp).onPlaced { barTop = it.positionInParent().y.toInt() }) {
             BarPill(
                 stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
                 glyph = if (place >= 0) "★" else "☆",

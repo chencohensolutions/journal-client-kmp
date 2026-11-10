@@ -199,7 +199,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a small gold ★ in the top corner of each highlight (Nov 10, 2026; before, a white dot). The photo shown sits in the middle, outlined. Scrolling the reel by hand
   shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline stays fixed in the reel's middle: the reel slides under it and the outline takes the new photo's width, in one 0.3 s ease-in-out move (Nov 10, 2026, Android only; before, it jumped, then a spring wobbled). A slide by hand always ends with the photo in the middle glided to (Nov 10, 2026: a touch during a glide used to stop the snapping for good).
-  The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
+  The reel takes its own room (Nov 9, 2026): the photo is centred between the top of the button bar and the bottom of the top bar (Nov 10, 2026; before, between the reel's top and the top of the screen)
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
   lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
   the bars, the reel slides out (down, or past its own edge in landscape: right, or left in Hebrew) and
