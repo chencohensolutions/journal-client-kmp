@@ -197,7 +197,7 @@ internal fun SetReel(
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
         val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), tween(SET_FADE_MILLIS * 2))
+        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
     }
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
@@ -239,30 +239,27 @@ internal fun SetReel(
             item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
     }
-    // The white outline of the photo shown is one, over the reel, gliding from photo to photo as it changes and as the
-    // reel scrolls (asked Nov 10, 2026: it jumped). It chases where the photo shown is on screen, with a spring.
+    // The white outline of the photo shown is one, fixed in the reel's middle, where the photo shown always comes to
+    // rest: the reel slides under it and the outline only takes the new photo's width, both in one ease-in-out move of
+    // the same length (asked Nov 10, 2026: it jumped, then a spring that chased the photo wobbled).
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val target by remember(state) {
-        androidx.compose.runtime.derivedStateOf {
-            val info = state.layoutInfo
-            info.visibleItemsInfo.firstOrNull { it.index == current }?.let { (it.offset - info.viewportStartOffset).toFloat() to it.size.toFloat() }
-        }
+    val shownSize by remember(state) {
+        androidx.compose.runtime.derivedStateOf { state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == current }?.size?.toFloat() }
     }
-    var outlineAt by remember { mutableStateOf<Pair<Float, Float>?>(null) }
-    LaunchedEffect(target) { target?.let { outlineAt = it } }
-    val glide = androidx.compose.animation.core.spring<Float>(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
-    val outlineStart by androidx.compose.animation.core.animateFloatAsState(outlineAt?.first ?: 0f, glide, label = "reel outline")
-    val outlineSize by androidx.compose.animation.core.animateFloatAsState(outlineAt?.second ?: 0f, glide, label = "reel outline size")
+    var outlineTarget by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(shownSize) { shownSize?.let { outlineTarget = it } }
+    val outlineSize by androidx.compose.animation.core.animateFloatAsState(outlineTarget ?: 0f, REEL_GLIDE, label = "reel outline size")
     @Composable
     fun Outline() {
-        if (outlineAt == null) return
-        val start = with(density) { outlineStart.toDp() }
+        if (outlineTarget == null) return
+        val viewport = state.layoutInfo.viewportSize
+        val middle = with(density) { ((if (vertical) viewport.height else viewport.width) / 2f).toDp() }
         val length = with(density) { outlineSize.toDp() }
         val shape = RoundedCornerShape(4.dp)
         val frame = if (vertical) {
-            Modifier.offset(x = (REEL_SIDE_WIDTH - REEL_SIDE_THUMB) / 2, y = start).size(REEL_SIDE_THUMB, length)
+            Modifier.offset(x = (REEL_SIDE_WIDTH - REEL_SIDE_THUMB) / 2, y = middle - length / 2).size(REEL_SIDE_THUMB, length)
         } else {
-            Modifier.offset(x = start, y = 4.dp).size(length, REEL_HEIGHT)
+            Modifier.offset(x = middle - length / 2, y = 4.dp).size(length, REEL_HEIGHT)
         }
         Box(frame.border(2.dp, Color.White, shape))
     }
@@ -296,6 +293,9 @@ internal fun SetReel(
         }
     }
 }
+
+/** The reel's glide to the photo shown, and its outline's change of width: one ease-in-out move. */
+private val REEL_GLIDE = tween<Float>(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
 
 /** Landscape: the reel's room along the right edge, which the bar under the photo keeps clear of; its photos' width. */
 internal val REEL_SIDE_WIDTH = 100.dp

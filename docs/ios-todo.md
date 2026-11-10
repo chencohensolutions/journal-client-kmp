@@ -42,7 +42,7 @@ Still missing on iOS:
   - Swiping the Moments viewer onto a photo of a set (once settled, not on opening) replaces it with the set's viewer
     at that photo: `MomentsFeed.setShowing(id)`; Android `ViewerActions.settled` wired in `LibraryApp.kt`.
   - A set's highlight shows a gold ★ (on a small scrim) at the top right of the photo, also during the slideshow.
-  - The reel's white outline is one overlay that springs to where the photo shown is (`SetReel` `Outline`).
+  - The reel's white outline is one overlay fixed in the reel's middle; the reel scrolls under it and the outline's width changes, both 0.3 s ease-in-out (`SetReel` `Outline`, `REEL_GLIDE`).
   - Strings: `cast_frame_hint` reworded; `set_play_here` removed.
 
 - **Showing on a TV with Google Cast** (Android Nov 9, 2026; [cast.md](cast.md), [viewer.md](screens/viewer.md)
