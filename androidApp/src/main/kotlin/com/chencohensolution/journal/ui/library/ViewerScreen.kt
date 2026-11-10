@@ -232,8 +232,8 @@ private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPrevi
 /** Cast: a slideshow waits this long at most for the TV to show a photo before its time starts. */
 private const val CAST_PHOTO_WAIT_MILLIS = 10_000L
 
-/** How long the bars and buttons stay after a tap on the photo. */
-private const val CHROME_MILLIS = 3_000L
+/** How long the bars and buttons stay after a tap on the photo, or going to another (5 s since Nov 10, 2026; was 3). */
+private const val CHROME_MILLIS = 5_000L
 
 /** How long the zoom's minimap stays after the photo stops moving. */
 private const val MINIMAP_MILLIS = 1_500L
@@ -508,8 +508,9 @@ internal fun ViewerScreen(
     }
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
-    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption) {
-        if (chrome && set == null && !showInfo && !choosingTag && !editingCaption) {
+    // A set's too (asked Nov 10, 2026; before, they stayed), and going to another photo starts the time again.
+    LaunchedEffect(chrome, showInfo, choosingTag, editingCaption, naming, grid, current.id) {
+        if (chrome && !playing && !showInfo && !choosingTag && !editingCaption && !naming && !grid) {
             delay(CHROME_MILLIS)
             chrome = false
         }

@@ -20,8 +20,8 @@ from under you. If the open item is deleted from the device, the viewer closes.
 ## Layout
 
 The photo opens alone on black (asked for Oct 21, 2026): a tap on it shows the top bar and the bottom buttons
-for 3 seconds, and another tap hides them sooner. They stay while the details panel, a sheet or the note
-editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
+for 5 seconds (3 until Nov 10, 2026), counted again on each photo gone to, and another tap hides them sooner. They stay while the details panel, a sheet or the note
+editor is open, and fade 5 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
 - **Top bar** (as a set's since Nov 10, 2026, Android only): back, the position ("4 of 29 · Yesterday", white) and
@@ -184,7 +184,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   ends of the rows read so far nothing happens. The other way too (Nov 10, 2026, Android only): swiping the usual
   viewer from Moments onto a photo of a set opens the set in this mode there once the swipe settles
   (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
-- The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
+- The bars show from the start and fade after 5 seconds as a single photo's (Nov 10, 2026; before, they stayed); the reel slides out with them; a tap hides or shows them. They stay while the name box or the grid is open and while nothing else hides them.
 - **Top bar** (Nov 10, 2026, Android only): back, "12 of 36" (white), **Share** and a **grid** button. No date and no
   ⋮: the date is in the info line, Details is its ⓘ, and the moment's name moved to the bottom. Until Nov 10, 2026 it
   showed the name, "12 of 36 · Sat, Nov 7" and a ⋮ with Details, Show in Moments and Name this moment.
