@@ -182,8 +182,8 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   viewer from Moments onto a photo of a set opens the set in this mode there once the swipe settles
   (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
-- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", **Share**, a **grid** button and **⋮**
-  with **Details** (and Show in Moments when opened from elsewhere). Write and Share were in ⋮ until Nov 10, 2026,
+- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7" (white; grey until Nov 10, 2026), **Share**, a **grid** button and **⋮**
+  with **Details** (and Show in Moments when opened from elsewhere); the menu's text has no shadow (Nov 10, 2026). Write and Share were in ⋮ until Nov 10, 2026,
   when Share moved to the top bar and Write to the bottom bar. Last in it, **Name this moment** (**Rename moment** when it has
   a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
   `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
