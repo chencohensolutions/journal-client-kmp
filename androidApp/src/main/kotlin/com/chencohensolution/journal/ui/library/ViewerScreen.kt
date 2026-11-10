@@ -755,7 +755,9 @@ internal fun ViewerScreen(
                         IconButton(onClick = { menu = true }) {
                             ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
                         }
-                        // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026).
+                        // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026). The menu and the name
+                        // dialog take a plain text style: the top bar's shadow over the photo is not for them (Nov 10, 2026).
+                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
                         DropdownMenu(menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
                                 menu = false
@@ -778,6 +780,7 @@ internal fun ViewerScreen(
                         if (naming) MomentNameDialog(set.name.orEmpty(), onDismiss = { naming = false }) { name ->
                             naming = false
                             set.rename(name)
+                        }
                         }
                     }
                 } else if (showInMoments == null) {
@@ -1326,8 +1329,8 @@ private fun CropChip(showingWhole: Boolean, onToggle: () -> Unit, modifier: Modi
 /** How long the details panel takes to slide in or out. */
 private const val PANEL_MILLIS = 250
 
-/** The top bar's position and day ("4 of 29 · Yesterday"). */
-private val PositionColor = Color(0xFFB8C2BF)
+/** The top bar's position and day ("4 of 29 · Yesterday"): white, as grey read muddy over its shadow (Nov 10, 2026). */
+private val PositionColor = Color.White
 
 /** The top bar's day as a chip ("Thu, Oct 8 ›"): a tap shows the photo in Moments. */
 @Composable

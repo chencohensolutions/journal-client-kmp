@@ -43,6 +43,7 @@ Still missing on iOS:
     at that photo: `MomentsFeed.setShowing(id)`; Android `ViewerActions.settled` wired in `LibraryApp.kt`.
   - A set's highlight shows a gold ★ (on a small scrim) at the top right of the photo, also during the slideshow.
   - The reel's white outline is one overlay fixed in the reel's middle; the reel scrolls under it and the outline's width changes, both 0.3 s ease-in-out (`SetReel` `Outline`, `REEL_GLIDE`).
+  - The top bar's position line is white (was grey), and the ⋯ menu's text has no shadow.
   - Strings: `cast_frame_hint` reworded; `set_play_here` removed.
 
 - **Showing on a TV with Google Cast** (Android Nov 9, 2026; [cast.md](cast.md), [viewer.md](screens/viewer.md)
