@@ -760,11 +760,8 @@ internal fun ViewerScreen(
                         // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026). The menu and the name
                         // dialog take a plain text style: the top bar's shadow over the photo is not for them (Nov 10, 2026).
                         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
+                        // Details is the info line's ⓘ (asked Nov 10, 2026: not twice).
                         DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
-                                menu = false
-                                showInfo = true
-                            })
                             showInMoments?.let { show ->
                                 DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
                                     menu = false
@@ -786,34 +783,21 @@ internal fun ViewerScreen(
                         }
                     }
                 } else {
-                    // As a set's top bar (asked Nov 10, 2026): where it is, Share, and ⋮ with Details and Show in Moments
-                    // (before, the day was a chip that showed it in Moments).
-                    Text(
-                        stringResource(R.string.set_position, pager.currentPage + 1, items.size) + " · " + dayLabel(current.day),
-                        color = PositionColor,
-                        fontSize = 13.sp,
-                        modifier = Modifier.weight(1f),
-                    )
-                    ShareTopButton(current, actions.share)
-                    Box {
-                        IconButton(onClick = { menu = true }) {
-                            ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
-                        }
-                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
-                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
-                                menu = false
-                                showInfo = true
-                            })
-                            showInMoments?.let { show ->
-                                DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
-                                    menu = false
-                                    show(current.id)
-                                })
-                            }
-                        }
-                        }
+                    // As a set's top bar (asked Nov 10, 2026): where it is and Share; Details is the info line's ⓘ, so no ⋮
+                    // (asked Nov 10, 2026). Opened from elsewhere, the day is a chip that shows the photo in Moments.
+                    if (showInMoments == null) {
+                        Text(
+                            stringResource(R.string.set_position, pager.currentPage + 1, items.size) + " · " + dayLabel(current.day),
+                            color = PositionColor,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 13.sp)
+                        MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
+                        Box(Modifier.weight(1f))
                     }
+                    ShareTopButton(current, actions.share)
                 }
                 CastButton()
             }
@@ -1349,6 +1333,24 @@ private const val PANEL_MILLIS = 250
 
 /** The top bar's position and day ("4 of 29 · Yesterday"): white, as grey read muddy over its shadow (Nov 10, 2026). */
 private val PositionColor = Color.White
+
+/** The top bar's day as a chip ("Thu, Oct 8 ›"): a tap shows the photo in Moments. */
+@Composable
+private fun MomentsDayChip(day: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val label = stringResource(R.string.library_show_in_moments)
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.14f))
+            .clickable(onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = "$label, $day" }
+            .padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(day, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Icon(LibraryIcons.ChevronRight, null, tint = Color.White, modifier = Modifier.padding(start = 2.dp).size(14.dp))
+    }
+}
 
 /** A round Share button after the pills; a spinner while an original only on the server is fetched to share. */
 @Composable

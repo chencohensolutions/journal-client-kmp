@@ -24,10 +24,10 @@ for 3 seconds, and another tap hides them sooner. They stay while the details pa
 editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
-- **Top bar** (as a set's since Nov 10, 2026, Android only): back, the position ("4 of 29 · Yesterday", white),
-  **Share**, and **⋮** with **Details** and, when the viewer wasn't opened from Moments, **Show in Moments** (back to
-  the journal on its Moments tab, scrolled to the photo). From Oct 22 to Nov 10, 2026 the day was a chip,
-  "4 of 29 · [Thu, Oct 8 ›]", that did the same.
+- **Top bar** (as a set's since Nov 10, 2026, Android only): back, the position ("4 of 29 · Yesterday", white) and
+  **Share**; no ⋮ (Details is the info line's ⓘ). When the viewer wasn't opened from Moments, the day is a chip,
+  "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab, scrolled to the
+  photo (Oct 22, 2026).
 - **Brief info** (Nov 9, 2026, Android only): with the bars, over a dark fade at the bottom, where it was taken
   ("Florentin, Tel Aviv, Israel"), its date and time, its tags ("#beach #family"), and an **ⓘ** that opens the details
   panel (`PhotoBrief`); in a set it sits above the reel.
@@ -185,7 +185,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
 - **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7" (white; grey until Nov 10, 2026), **Share**, a **grid** button and **⋮**
-  with **Details** (and Show in Moments when opened from elsewhere); the menu's text has no shadow (Nov 10, 2026). Write and Share were in ⋮ until Nov 10, 2026,
+  with Show in Moments when opened from elsewhere (Details went on Nov 10, 2026: the info line's ⓘ opens it); the menu's text has no shadow (Nov 10, 2026). Write and Share were in ⋮ until Nov 10, 2026,
   when Share moved to the top bar and Write to the bottom bar. Last in it, **Name this moment** (**Rename moment** when it has
   a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
   `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.

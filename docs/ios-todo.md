@@ -25,7 +25,7 @@ Still missing on iOS:
 
 - **A single photo's viewer as a set's; one crop screen** (Android Nov 10, 2026; [viewer.md](screens/viewer.md),
   [crop.md](screens/crop.md)): the viewer of a single photo has the set's top bar (position "4 of 29 · day" in white,
-  Share, ⋮ with Details and Show in Moments; the Moments day chip went) and floating bar (✎ Write · ⌗ Crop). It shows
+  Share, no ⋮; the Moments day chip stays when opened from elsewhere; the set's ⋮ lost Details, the ⓘ opens it) and floating bar (✎ Write · ⌗ Crop). It shows
   each photo at its Moments crop (no more portrait/landscape crops). The old crop screen (Moments · Portrait ·
   Landscape) is gone: Moments' long press Crop and the viewer's ⌗ open the set's Recompose editor on that one photo
   (title Crop, hint `crop_hint_moments`, no strip or Same frame for all), saving with `setMomentsCrops`. Android:
