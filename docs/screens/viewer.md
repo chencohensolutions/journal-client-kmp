@@ -190,7 +190,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
-  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
+  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline glides from photo to photo with a spring as the photo shown changes (Nov 10, 2026, Android only; before, it jumped).
   The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
   lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides

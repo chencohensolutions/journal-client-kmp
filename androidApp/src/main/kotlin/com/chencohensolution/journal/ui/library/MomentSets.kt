@@ -225,12 +225,11 @@ internal fun SetReel(
     fun Thumb(i: Int, item: MediaItem) {
         val crop = cropOf(item)
         val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
-        val shown = i == index
         // Across, each is the reel's height at its shape; down (landscape), the column's width.
         val size = if (vertical) Modifier.width(REEL_SIDE_THUMB).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
         Box(
             size.clip(RoundedCornerShape(4.dp))
-                .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
+                .then(if (shown) Modifier else Modifier.alpha(0.7f))
                 .clickable { change(i) },
         ) {
             ReelThumb(item, crop)
@@ -238,6 +237,33 @@ internal fun SetReel(
             // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
             item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
+    }
+    // The white outline of the photo shown is one, over the reel, gliding from photo to photo as it changes and as the
+    // reel scrolls (asked Nov 10, 2026: it jumped). It chases where the photo shown is on screen, with a spring.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val target by remember(state) {
+        androidx.compose.runtime.derivedStateOf {
+            val info = state.layoutInfo
+            info.visibleItemsInfo.firstOrNull { it.index == current }?.let { (it.offset - info.viewportStartOffset).toFloat() to it.size.toFloat() }
+        }
+    }
+    var outlineAt by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+    LaunchedEffect(target) { target?.let { outlineAt = it } }
+    val glide = androidx.compose.animation.core.spring<Float>(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+    val outlineStart by androidx.compose.animation.core.animateFloatAsState(outlineAt?.first ?: 0f, glide, label = "reel outline")
+    val outlineSize by androidx.compose.animation.core.animateFloatAsState(outlineAt?.second ?: 0f, glide, label = "reel outline size")
+    @Composable
+    fun Outline() {
+        if (outlineAt == null) return
+        val start = with(density) { outlineStart.toDp() }
+        val length = with(density) { outlineSize.toDp() }
+        val shape = RoundedCornerShape(4.dp)
+        val frame = if (vertical) {
+            Modifier.offset(x = (REEL_SIDE_WIDTH - REEL_SIDE_THUMB) / 2, y = start).size(REEL_SIDE_THUMB, length)
+        } else {
+            Modifier.offset(x = start, y = 4.dp).size(length, REEL_HEIGHT)
+        }
+        Box(frame.border(2.dp, Color.White, shape))
     }
     if (vertical) {
         BoxWithConstraints(Modifier.fillMaxHeight().width(REEL_SIDE_WIDTH)) {
@@ -251,6 +277,7 @@ internal fun SetReel(
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
             }
+            Outline()
         }
     } else {
         BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
@@ -264,6 +291,7 @@ internal fun SetReel(
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
             }
+            Outline()
         }
     }
 }
