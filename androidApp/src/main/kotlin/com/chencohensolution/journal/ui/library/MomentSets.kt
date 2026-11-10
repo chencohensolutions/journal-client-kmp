@@ -225,6 +225,7 @@ internal fun SetReel(
     fun Thumb(i: Int, item: MediaItem) {
         val crop = cropOf(item)
         val ratio = item.shownRatio(crop).coerceIn(REEL_MIN_RATIO, REEL_MAX_RATIO)
+        val shown = i == index
         // Across, each is the reel's height at its shape; down (landscape), the column's width.
         val size = if (vertical) Modifier.width(REEL_SIDE_THUMB).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
         Box(
