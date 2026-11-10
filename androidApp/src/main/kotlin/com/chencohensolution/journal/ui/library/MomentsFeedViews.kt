@@ -239,8 +239,18 @@ internal fun List<FeedRow>.picked(selection: FeedSelection): List<MediaItem> {
 /** The key a block is picked by: its first photo's id. */
 internal val FeedBlock.key: String get() = items.first().id
 
+/**
+ * A list of feed rows equal only to itself. Compose compares a list it is given (a key, a parameter, a remembered
+ * state) with the last one, and two lists of rows were compared row by row down to every photo of every moment, on
+ * the main thread: half-second stalls each time the feed changed (Nov 10, 2026). Each list is made once, so being the
+ * same list is what matters. Delegation leaves equals and hashCode as identity.
+ */
+internal class FeedRows(rows: List<FeedRow>) : List<FeedRow> by rows
+
 /** The feed as list items; worked out once per feed, off the main thread. */
-internal fun MomentsFeed.rows(): List<FeedRow> = entries.flatMap { entry ->
+internal fun MomentsFeed.rows(): List<FeedRow> = FeedRows(rows(entries))
+
+private fun rows(entries: List<FeedEntry>): List<FeedRow> = entries.flatMap { entry ->
     when (entry) {
         is FeedEntry.Section -> {
             var place: String? = null
@@ -281,7 +291,7 @@ internal fun storylineDayRows(
     days: List<StorylineDay>,
     momentOf: (String) -> NamedSet? = { null },
     itemOf: (String) -> MediaItem? = { null },
-): List<FeedRow> =
+): List<FeedRow> = FeedRows(
     days.flatMap { day ->
         listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { item ->
             val moment = momentOf(item.id)
@@ -295,7 +305,8 @@ internal fun storylineDayRows(
                 momentVideos = videos,
             )
         }
-    }
+    },
+)
 
 /** Its photos, counted without listing them ([FeedMoment.items] builds a new list). */
 private fun FeedMoment.count(): Int = blocks.sumOf { if (it is FeedBlock.Single) 1 else it.items.size }
