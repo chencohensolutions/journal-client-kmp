@@ -23,6 +23,14 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **A single photo's viewer as a set's; one crop screen** (Android Nov 10, 2026; [viewer.md](screens/viewer.md),
+  [crop.md](screens/crop.md)): the viewer of a single photo has the set's top bar (position "4 of 29 · day" in white,
+  Share, ⋮ with Details and Show in Moments; the Moments day chip went) and floating bar (✎ Write · ⌗ Crop). It shows
+  each photo at its Moments crop (no more portrait/landscape crops). The old crop screen (Moments · Portrait ·
+  Landscape) is gone: Moments' long press Crop and the viewer's ⌗ open the set's Recompose editor on that one photo
+  (title Crop, hint `crop_hint_moments`, no strip or Same frame for all), saving with `setMomentsCrops`. Android:
+  `ViewerScreen.kt` (top bar, `ViewerActions.crop`), `SetCropEditor` in `CropScreen.kt`, `LibraryApp.kt`.
+
 - **Moments' month ruler fixes** (Android Nov 10, 2026; [moments.md](screens/moments.md)): a touch anywhere on the
   ruler is the ruler's (never folds it); the day strip takes touches over its whole height, day numbers included, and
   the touch going down always goes, even to the day picked last; the touch handlers call the latest callbacks (on

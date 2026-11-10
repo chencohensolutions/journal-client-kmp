@@ -1,35 +1,25 @@
 # Crop
 
-Crops are **only for looking**: the photo itself is never changed. Each photo can have three, saved with its note:
+Crops are **only for looking**: the photo itself is never changed. Each photo has one crop, its **Moments** crop, any
+shape between 3:1 and 1:3, saved with its note: Moments, the storyline and the [viewer](viewer.md) show the photo at
+it. A photo without a crop shows whole. Videos aren't cropped (yet). A cropped photo leaves its near-duplicate set in
+Moments and shows on its own (unless merged into a set by hand).
 
-| Crop | Shape | Shown in |
-|---|---|---|
-| **Moments** | Any shape, between 3:1 and 1:3 | The [Moments](moments.md) feed |
-| **Portrait** | This phone's screen, upright | The [viewer](viewer.md) with the phone upright |
-| **Landscape** | This phone's screen, sideways | The viewer with the phone sideways |
-
-A photo without a crop shows whole there. Videos aren't cropped (yet). The storyline shows a photo at its Moments crop. A cropped photo
-leaves its near-duplicate set in Moments and shows on its own (unless merged into a set by hand).
+Until Nov 10, 2026 a single photo had a crop screen of its own with three crops (**Moments**, **Portrait** and
+**Landscape**, the last two at the screen's shape for the viewer). On Android it is gone (asked Nov 10, 2026: one crop
+screen, the set's): one photo opens the same screen as a set's Recompose, alone. Portrait and landscape crops already
+saved stay in the notes (`PhotoCrops`) but nothing shows or edits them on Android; iOS still has the old screen
+([ios-todo.md](../ios-todo.md)).
 
 ## Opening it
 
-- Moments: long press a photo → **Crop** (opens on Moments). iOS: `LibraryRootView` sets
-  `crop = CropRequest(itemId:, kind: .moments)` and presents it with `.cropCover`.
+- Moments: long press a photo → **Crop**; the viewer of a single photo: **⌗** in its floating bar (Android:
+  `Route.Recompose` with a list of one id). A set: **Recompose** in its viewer.
 
-## Layout
+## One photo
 
-- **Top bar:** ✕ (leave without saving), "Crop", **Reset** (clears the crop of the mode shown), **Done**.
-- **The photo**, fitted on black, dimmed outside the frame, with thirds lines. **Drag** moves the frame, **pinch**
-  sizes it. The corners can be dragged; on Moments the middle of each side too. The frame is laid out left to right
-  in every language (Nov 9, 2026: in Hebrew the handles were mirrored and dragged the opposite edge). Portrait and Landscape keep the
-  screen's shape.
-- A line saying what the mode is for, and "The photo itself isn't changed."
-- **Moments · Portrait · Landscape** switch, each with its shape drawn and a dot once it has a crop.
-- An unset mode starts from a suggestion: Moments from the whole photo; Portrait and Landscape from the largest frame
-  of their shape, centered where the other crop is, so it usually takes one adjustment.
-
-**Done** saves at once every mode opened here, as shown (a Portrait or Landscape suggestion too), and clears the ones
-reset; nothing is saved before it. A dot marks each mode that will be saved.
+The screen below with only that photo: titled **Crop**, the hint "Any shape. This is how the photo shows in Moments.",
+no strip and no Same frame for all.
 
 ## A set: Recompose (Nov 9, 2026)
 

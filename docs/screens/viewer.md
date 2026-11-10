@@ -24,14 +24,15 @@ for 3 seconds, and another tap hides them sooner. They stay while the details pa
 editor is open, and fade 3 seconds after it closes. A tap while the details panel is open closes it with them.
 Swiping is not a tap; a playing video's own controls take its taps.
 
-- **Top bar:** back and the position ("4 of 29 · Yesterday"). When the viewer wasn't opened from Moments, the day
-  is a chip, "4 of 29 · [Thu, Oct 8 ›]", that shows the photo in Moments: back to the journal on its Moments tab,
-  scrolled to the photo (Oct 22, 2026; chosen in the UI lab over a third pill, a link under the pills, a toolbar and
-  an icon).
+- **Top bar** (as a set's since Nov 10, 2026, Android only): back, the position ("4 of 29 · Yesterday", white),
+  **Share**, and **⋮** with **Details** and, when the viewer wasn't opened from Moments, **Show in Moments** (back to
+  the journal on its Moments tab, scrolled to the photo). From Oct 22 to Nov 10, 2026 the day was a chip,
+  "4 of 29 · [Thu, Oct 8 ›]", that did the same.
 - **Brief info** (Nov 9, 2026, Android only): with the bars, over a dark fade at the bottom, where it was taken
   ("Florentin, Tel Aviv, Israel"), its date and time, its tags ("#beach #family"), and an **ⓘ** that opens the details
   panel (`PhotoBrief`); in a set it sits above the reel.
-- **Bottom:** **Write** (the note editor, below) as an icon in a floating bar (icons only since Nov 10, 2026), and the
+- **Bottom:** **✎ Write** (the note editor, below) and **⌗ Crop** (the [crop screen](crop.md) on the photo, its
+  Moments crop; photos only; Nov 10, 2026, Android only) as icons in a floating bar, as a set's, and the
   details panel (the brief info's ⓘ since Nov 9, 2026; before, a **Details** button). **Share** is in the top bar
   (Nov 10, 2026, Android only; before, a round button at the bottom, Oct 22, 2026): the system share sheet
   with the original. A gallery photo shares the gallery's own file; one only on the server shares the original the
@@ -39,8 +40,8 @@ Swiping is not a tap; a playing video's own controls take its taps.
   (`cache/shared/`, only the latest kept, `ShareOriginal.kt`; iOS through `UIActivityViewController`). Offline
   without the original: "Couldn’t get the original to share." Hidden while the details panel is open; back or a tap on the photo closes the panel. The
   viewer's **Crop** button went the same day: the [crop screen](crop.md) opens from Moments.
-- **Crops:** a photo with a portrait (upright) or landscape (sideways) crop fills the screen at it, with
-  **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
+- **Crops:** a photo shows at its Moments crop, as in Moments and in a set (Nov 10, 2026; before, a single photo
+  showed its portrait or landscape crop from the old crop screen, now gone), with **Cropped · Show all** at the top. In a set the same chip shows over a recomposed photo (its Moments crop).
   Turning the crop off or on glides (Nov 9, 2026): the same image opens out from the crop to the whole photo, or closes
   in on the crop, in 0.3 s (`ViewerImage`'s frame, an animated `CropRect`); a zoom, which also drops the crop, takes over
   at once.

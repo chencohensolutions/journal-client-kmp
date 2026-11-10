@@ -5,8 +5,6 @@ import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.server.CamerasState
 import com.chencohensolution.journal.server.SoundFoldersState
-import com.chencohensolution.journal.stories.CropKind
-import com.chencohensolution.journal.stories.PhotoCrops
 
 // The UI lab's library (UiLabActivity): every screen, each with the app's current version first and then the
 // suggestions for it. A suggestion is a composable in <Screen>Suggestions.kt next to this file, added to its
@@ -182,12 +180,6 @@ internal val labScreens: List<LabScreen> = listOf(
         },
         LabOption("findings", "With people, text, similar", "Proposed: what the server found, above the map") {
             LabInfoBackdrop { modifier -> LabFindingsPanel(modifier) }
-        },
-    )),
-    LabScreen("crop", "Crop", listOf(
-        current {
-            val crops = PreviewData.marketCrops
-            CropScreen(PreviewData.croppedPhoto, CropKind.MOMENTS, crops.moments!!, PhotoCrops(moments = crops.moments), PreviewData.SCREEN_RATIO, CropActions())
         },
     )),
     LabScreen("settings", "Settings", listOf(

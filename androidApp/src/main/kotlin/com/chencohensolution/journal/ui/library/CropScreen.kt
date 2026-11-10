@@ -32,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,7 +50,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -66,164 +64,16 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.stories.CropHandle
-import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
-import com.chencohensolution.journal.stories.PhotoCrops
 import kotlin.math.roundToInt
 
 // Crops are only for looking: the photo itself is never changed. See docs/screens/crop.md; the geometry (moving,
 // pinching, dragging a corner, fitting another screen) is PhotoCrops.kt in the shared logic.
 
-internal class CropActions(
-    val close: () -> Unit = {},
-    val select: (CropKind) -> Unit = {},
-    /** Clears the crop of the mode shown. */
-    val reset: () -> Unit = {},
-    val done: () -> Unit = {},
-    /** The frame moved, pinched or dragged by a handle. */
-    val change: (CropRect) -> Unit = {},
-)
-
-/** This phone's screen held upright (width / height), whichever way it is held now. */
-@Composable
-internal fun uprightScreenRatio(): Float {
-    val size = LocalWindowInfo.current.containerSize
-    if (size.width <= 0 || size.height <= 0) return 9f / 19.5f
-    return minOf(size.width, size.height).toFloat() / maxOf(size.width, size.height)
-}
-
-/** The shape (width / height) a crop of [kind] is locked to on a screen of [screenRatio] upright, or null for any. */
-internal fun lockedRatio(kind: CropKind, screenRatio: Float): Float? = when (kind) {
-    CropKind.MOMENTS -> null
-    CropKind.PORTRAIT -> screenRatio
-    CropKind.LANDSCAPE -> 1 / screenRatio
-}
-
 /**
- * The crop screen with its state: [saved] are the photo's crops, edited here until Done hands back the new ones
- * ([onDone]). A mode opened here is saved as shown, its suggestion too, unless it was reset; Moments' suggestion (the
- * whole photo) is no crop. Opens on [startKind].
- */
-@Composable
-internal fun CropEditor(item: MediaItem, saved: PhotoCrops, startKind: CropKind, onDone: (PhotoCrops) -> Unit, onClose: () -> Unit) {
-    val screenRatio = uprightScreenRatio()
-    var kind by rememberSaveable { mutableStateOf(startKind) }
-    var drafts by rememberSaveable(stateSaver = CropsSaver) { mutableStateOf(saved) }
-    // The modes opened here (and not reset since): their suggestion is kept on Done.
-    var opened by rememberSaveable { mutableStateOf(listOf(startKind.name)) }
-    val photoRatio = item.ratio
-    fun suggestion(mode: CropKind) = when (mode) {
-        CropKind.MOMENTS -> CropRect.WHOLE
-        CropKind.PORTRAIT -> CropRect.largest(screenRatio, photoRatio, around = drafts.moments ?: drafts.landscape)
-        CropKind.LANDSCAPE -> CropRect.largest(1 / screenRatio, photoRatio, around = drafts.moments ?: drafts.portrait)
-    }
-    // A saved crop made for another screen is shown fitted to this one; an unset one starts from a suggestion.
-    val frame = drafts[kind]?.let { rect -> lockedRatio(kind, screenRatio)?.let { rect.fittedTo(it, photoRatio) } ?: rect }
-        ?: suggestion(kind)
-    val result = CropKind.entries.fold(drafts) { crops, mode ->
-        if (crops[mode] != null || mode.name !in opened || mode == CropKind.MOMENTS) crops else crops.with(mode, suggestion(mode))
-    }
-    CropScreen(
-        item,
-        kind,
-        frame,
-        result,
-        screenRatio,
-        CropActions(
-            close = onClose,
-            select = {
-                kind = it
-                if (it.name !in opened) opened = opened + it.name
-            },
-            reset = {
-                drafts = drafts.with(kind, null)
-                opened = opened - kind.name
-            },
-            done = { if (result == saved) onClose() else onDone(result) },
-            change = {
-                drafts = drafts.with(kind, it)
-                if (kind.name !in opened) opened = opened + kind.name
-            },
-        ),
-    )
-}
-
-/**
- * The crop screen: [item] fitted on black with [frame] (the crop for [kind]) over it, and a switch between the three
- * crops, a dot on each one set in [saved]. [screenRatio] is this phone's screen held upright (width / height), which
- * Portrait and Landscape are locked to.
- */
-@Composable
-internal fun CropScreen(
-    item: MediaItem,
-    kind: CropKind,
-    frame: CropRect,
-    saved: PhotoCrops,
-    screenRatio: Float,
-    actions: CropActions,
-) {
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarRoom().navigationBarRoom()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = actions.close) {
-                Icon(LibraryIcons.Close, stringResource(R.string.library_cancel), tint = Color.White)
-            }
-            Text(
-                stringResource(R.string.crop_title),
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = actions.reset, enabled = saved[kind] != null) {
-                Text(
-                    stringResource(R.string.crop_reset),
-                    color = if (saved[kind] != null) Color.White else Color.White.copy(alpha = 0.35f),
-                )
-            }
-            Box(
-                Modifier
-                    .padding(end = 8.dp)
-                    .height(36.dp)
-                    .background(LibraryColors.Accent, RoundedCornerShape(50))
-                    .clickable(onClick = actions.done)
-                    .padding(horizontal = 18.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(stringResource(R.string.crop_done), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
-
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
-            CropCanvas(item, frame, lockedRatio(kind, screenRatio), actions.change)
-        }
-
-        Text(
-            stringResource(
-                when (kind) {
-                    CropKind.MOMENTS -> R.string.crop_hint_moments
-                    CropKind.PORTRAIT -> R.string.crop_hint_portrait
-                    CropKind.LANDSCAPE -> R.string.crop_hint_landscape
-                },
-            ),
-            color = Color(0xFFB8C2BF),
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        )
-        Text(
-            stringResource(R.string.crop_untouched),
-            color = Color(0xFF7E8987),
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
-        )
-
-        CropModes(kind, saved, screenRatio, actions.select, Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
-    }
-}
-
-/**
- * The crop screen's set mode (Recompose, from the viewer of a set): each photo's Moments crop, the set's strip to go
+ * The crop screen (since Nov 10, 2026 the only one; before, one photo had its own with Moments, Portrait and Landscape
+ * crops): Recompose from the viewer of a set, or Crop for one photo (Moments' long press, the viewer's ⌗). Each photo's
+ * Moments crop; with more than one photo, the set's strip to go
  * between its photos without leaving, the shape chips (Original, Square, 4:5, Wide) and Same frame for all (every photo
  * of the same shape gets the frame shown, so the set flips without jumping). [saved] are the photos' Moments crops;
  * Done hands back all of them ([onDone]), or just closes when nothing changed.
@@ -252,8 +102,9 @@ internal fun SetCropEditor(
             IconButton(onClick = onClose) {
                 Icon(LibraryIcons.Close, stringResource(R.string.library_cancel), tint = Color.White)
             }
+            // One photo (from Moments or the viewer of a single photo) is a Crop; a set's photos a Recompose.
             Text(
-                stringResource(R.string.set_recompose),
+                stringResource(if (photos.size > 1) R.string.set_recompose else R.string.crop_title),
                 color = Color.White,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
@@ -278,7 +129,7 @@ internal fun SetCropEditor(
             CropCanvas(item, frame, null) { set(it) }
         }
         Text(
-            stringResource(R.string.recompose_hint),
+            stringResource(if (photos.size > 1) R.string.recompose_hint else R.string.crop_hint_moments),
             color = Color(0xFFB8C2BF),
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
@@ -451,71 +302,6 @@ private fun DrawScope.drawFrame(frame: CropRect, free: Boolean) {
     }
 }
 
-/** Moments (any shape), Portrait and Landscape (the screen's shape), each with its shape drawn and a dot once set. */
-@Composable
-private fun CropModes(kind: CropKind, saved: PhotoCrops, screenRatio: Float, onSelect: (CropKind) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp)).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        CropKind.entries.forEach { mode ->
-            val on = mode == kind
-            Column(
-                Modifier
-                    .weight(1f)
-                    .background(if (on) Color.White else Color.Transparent, RoundedCornerShape(14.dp))
-                    .clickable { onSelect(mode) }
-                    .semantics {
-                        role = Role.Tab
-                        selected = on
-                    }
-                    .padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                val ink = if (on) Color(0xFF17201F) else Color.White
-                Canvas(Modifier.size(24.dp)) { drawShapeIcon(lockedRatio(mode, screenRatio), ink) }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(
-                        stringResource(
-                            when (mode) {
-                                CropKind.MOMENTS -> R.string.crop_mode_moments
-                                CropKind.PORTRAIT -> R.string.crop_mode_portrait
-                                CropKind.LANDSCAPE -> R.string.crop_mode_landscape
-                            },
-                        ),
-                        color = ink,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (saved[mode] != null) Box(Modifier.size(6.dp).background(if (on) LibraryColors.Accent else Color(0xFF8FD3C7), CircleShape))
-                }
-            }
-        }
-    }
-}
-
-/** A rectangle of [ratio] (width / height); null draws a free shape: four corners only. */
-private fun DrawScope.drawShapeIcon(ratio: Float?, color: Color) {
-    val stroke = 1.8.dp.toPx()
-    if (ratio == null) {
-        val w = size.width * 0.9f
-        val h = size.height * 0.68f
-        val left = (size.width - w) / 2
-        val top = (size.height - h) / 2
-        val arm = size.width * 0.22f
-        listOf(Offset(left, top) to Offset(1f, 1f), Offset(left + w, top) to Offset(-1f, 1f), Offset(left, top + h) to Offset(1f, -1f), Offset(left + w, top + h) to Offset(-1f, -1f))
-            .forEach { (corner, dir) ->
-                drawLine(color, corner, corner + Offset(arm * dir.x, 0f), stroke, StrokeCap.Round)
-                drawLine(color, corner, corner + Offset(0f, arm * dir.y), stroke, StrokeCap.Round)
-            }
-        return
-    }
-    val w = if (ratio >= 1f) size.width else size.height * ratio
-    val h = if (ratio >= 1f) size.width / ratio else size.height
-    drawRoundRect(color, Offset((size.width - w) / 2, (size.height - h) / 2), Size(w, h), CornerRadius(2.dp.toPx()), style = Stroke(stroke))
-}
-
 /**
  * Shows the [frame] part of [content] filling this box, which must have the frame's shape: the content is laid out at
  * the whole photo's size and moved so the frame lands on the box.
@@ -538,17 +324,3 @@ internal fun CropBox(frame: CropRect, modifier: Modifier = Modifier, content: @C
 internal val MediaItem.ratio: Float
     get() = if (width > 0 && height > 0) width.toFloat() / height else 4f / 3f
 
-/** Kept across rotation: 15 numbers, NaN for a crop not set. */
-private val CropsSaver = Saver<PhotoCrops, FloatArray>(
-    save = { crops ->
-        CropKind.entries.flatMap { kind ->
-            crops[kind]?.let { listOf(it.x, it.y, it.w, it.h, it.aspect ?: -1f) } ?: List(5) { Float.NaN }
-        }.toFloatArray()
-    },
-    restore = { values ->
-        CropKind.entries.foldIndexed(PhotoCrops()) { i, crops, kind ->
-            val v = values.copyOfRange(i * 5, i * 5 + 5)
-            if (v[0].isNaN()) crops else crops.with(kind, CropRect(v[0], v[1], v[2], v[3], v[4].takeIf { it > 0 }))
-        }
-    },
-)

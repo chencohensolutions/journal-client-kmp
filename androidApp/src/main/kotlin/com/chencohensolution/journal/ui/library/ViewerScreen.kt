@@ -130,7 +130,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.chencohensolution.journal.R
-import com.chencohensolution.journal.stories.CropKind
 import com.chencohensolution.journal.stories.CropRect
 import com.chencohensolution.journal.stories.NoteVersion
 import com.chencohensolution.journal.stories.StoriesState
@@ -268,6 +267,8 @@ internal class ViewerActions(
     val showInMoments: ((itemId: String) -> Unit)? = null,
     /** Shares the original with another app through the share sheet; false when it can't be had (offline). */
     val share: suspend (MediaItem) -> Boolean = { false },
+    /** A single photo's ⌗: the crop screen on it (its Moments crop), as a set's Recompose. */
+    val crop: (itemId: String) -> Unit = {},
     /** The map screen, on where the photo was taken (a tap on the details panel's map). */
     val openMap: (GeoPoint) -> Unit = {},
     /** Marks the photo private on the server (true), or no longer private. False when the server couldn't be reached. */
@@ -417,13 +418,12 @@ internal fun ViewerScreen(
     // The whole photo instead of its crop, until turned back (kept while swiping).
     var showWhole by rememberSaveable { mutableStateOf(false) }
     val whole = showWhole
-    // A photo's portrait crop shows with the phone upright, its landscape one sideways, fitted to this screen.
+    // The screen's shape (upright or sideways): the landscape layout.
     val window = LocalWindowInfo.current.containerSize
     val screenRatio = if (window.width > 0 && window.height > 0) window.width.toFloat() / window.height else 9f / 19.5f
-    val cropKind = if (screenRatio <= 1f) CropKind.PORTRAIT else CropKind.LANDSCAPE
-    // In a set, its Moments crops (Recompose), so it flips as composed.
-    fun cropOf(item: MediaItem) = if (set != null) stories.note(item.id)?.crops?.moments?.takeIf { item.type != MediaType.VIDEO }
-    else stories.note(item.id)?.crops?.get(cropKind)?.takeIf { item.type != MediaType.VIDEO }?.fittedTo(screenRatio, item.ratio)
+    // Its Moments crop (Crop, or a set's Recompose), as Moments shows it: a single photo as a set's (Nov 10, 2026; before,
+    // a single photo showed its portrait or landscape crop, from the old crop screen).
+    fun cropOf(item: MediaItem) = stories.note(item.id)?.crops?.moments?.takeIf { item.type != MediaType.VIDEO }
     val current = items[shownIndex]
     // Each photo's zoom, starting where it was left last time (kept in its note) and kept while the viewer is open;
     // zoomed, the whole photo shows instead of its crop.
@@ -704,8 +704,10 @@ internal fun ViewerScreen(
                     CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
                 } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
                 // Icons only, Share in the top bar (asked Nov 10, 2026).
+                // As a set's bar (asked Nov 10, 2026): ✎ Write · ⌗ Crop.
                 FloatingBar {
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
+                    BarPill(stringResource(R.string.crop_title), glyph = "⌗", enabled = current.type != MediaType.VIDEO) { actions.crop(current.id) }
                 }
             }
             }
@@ -783,20 +785,36 @@ internal fun ViewerScreen(
                         }
                         }
                     }
-                } else if (showInMoments == null) {
+                } else {
+                    // As a set's top bar (asked Nov 10, 2026): where it is, Share, and ⋮ with Details and Show in Moments
+                    // (before, the day was a chip that showed it in Moments).
                     Text(
-                        stringResource(R.string.library_viewer_position, pager.currentPage + 1, items.size, dayLabel(current.day)),
+                        stringResource(R.string.set_position, pager.currentPage + 1, items.size) + " · " + dayLabel(current.day),
                         color = PositionColor,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         modifier = Modifier.weight(1f),
                     )
-                } else {
-                    // Opened from elsewhere: the day is a chip that shows the photo in Moments.
-                    Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 14.sp)
-                    MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
-                    Box(Modifier.weight(1f))
+                    ShareTopButton(current, actions.share)
+                    Box {
+                        IconButton(onClick = { menu = true }) {
+                            ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
+                        }
+                        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle.Default) {
+                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
+                                menu = false
+                                showInfo = true
+                            })
+                            showInMoments?.let { show ->
+                                DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
+                                    menu = false
+                                    show(current.id)
+                                })
+                            }
+                        }
+                        }
+                    }
                 }
-                if (set == null) ShareTopButton(current, actions.share)
                 CastButton()
             }
             }
@@ -1331,24 +1349,6 @@ private const val PANEL_MILLIS = 250
 
 /** The top bar's position and day ("4 of 29 · Yesterday"): white, as grey read muddy over its shadow (Nov 10, 2026). */
 private val PositionColor = Color.White
-
-/** The top bar's day as a chip ("Thu, Oct 8 ›"): a tap shows the photo in Moments. */
-@Composable
-private fun MomentsDayChip(day: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val label = stringResource(R.string.library_show_in_moments)
-    Row(
-        modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.14f))
-            .clickable(onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = "$label, $day" }
-            .padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(day, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-        Icon(LibraryIcons.ChevronRight, null, tint = Color.White, modifier = Modifier.padding(start = 2.dp).size(14.dp))
-    }
-}
 
 /** A round Share button after the pills; a spinner while an original only on the server is fetched to share. */
 @Composable
