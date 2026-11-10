@@ -233,6 +233,9 @@ private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPrevi
 /** Cast: a slideshow waits this long at most for the TV to show a photo before its time starts. */
 private const val CAST_PHOTO_WAIT_MILLIS = 10_000L
 
+/** At most this much of a casting slideshow's items is downloaded ahead to the phone at once: 3 GB. */
+private const val CAST_AHEAD_BYTES = 3L shl 30
+
 /** How long the bars and buttons stay after a tap on the photo, or going to another (5 s since Nov 10, 2026; was 3). */
 private const val CHROME_MILLIS = 5_000L
 
@@ -474,6 +477,22 @@ internal fun ViewerScreen(
         val holder = castZoomOf(shownNow).takeIf { shownNow.type != MediaType.VIDEO }
         cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = true, positionMillis = videoPositions[shownNow.id] ?: 0L)
         if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
+    }
+    // In a slideshow, the items ahead are got ready for the TV one at a time, in the slideshow's order, from the one
+    // shown round to the one before it (originals and videos only on the server downloaded to this phone), until
+    // the slideshow stops or all are here (asked Nov 10, 2026); at most CAST_AHEAD_BYTES of them at once. Outside a
+    // slideshow only the item shown is kept.
+    LaunchedEffect(casting, inSlideshow, current.id, items.size) {
+        if (!casting) return@LaunchedEffect
+        val server = JournalCast.server() ?: return@LaunchedEffect
+        val from = items.indexOf(current).coerceAtLeast(0)
+        val order = if (inSlideshow) List(items.size) { items[(from + it) % items.size] } else listOf(current)
+        var bytes = 0L
+        val ahead = order.takeWhile { item ->
+            (bytes < CAST_AHEAD_BYTES).also { bytes += item.sizeBytes ?: 0L }
+        }
+        server.keepOnly(ahead.map { it.id })
+        for (item in ahead) server.prepare(item, castPreviews)
     }
     // What the TV shows over the photo when the info or map button is on: the note, when and where.
     val castInfo = if (!casting) null else {

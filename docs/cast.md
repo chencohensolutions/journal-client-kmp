@@ -105,6 +105,11 @@ longer wanted, so its fetch is stopped and it isn't decoded (Nov 10, 2026: quick
 time with photos already gone). While a photo or a video comes, a small turning ring shows in the top corner instead
 of "Loading…".
 
+In a slideshow the phone also gets the items ahead ready, one at a time in the slideshow's order, from the one shown
+round to the one before it (`CastServer.prepare`): originals only on the server are downloaded, and videos only there
+are downloaded whole into the cast folder, until the slideshow stops or all are here, at most 3 GB ahead at once
+(`CAST_AHEAD_BYTES`). Videos behind the one shown, or ahead once the slideshow stops, are let go (`keepOnly`).
+
 ## Info and map
 
 `info` carries what the phone knows of an item (the note's text, the date and time and the place as the phone words
