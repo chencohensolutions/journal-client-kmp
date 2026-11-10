@@ -549,6 +549,7 @@ internal fun ViewerScreen(
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     fun roomBottomPx() = with(density) { roomBottom.toPx() }
     fun roomEndPx() = with(density) { roomEnd.toPx() }
+    fun roomTopPx() = with(density) { roomTop.toPx() }
     // The swipe's gesture outlives a composition: it calls the latest.
     val besideNow by rememberUpdatedState(set?.beside)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -559,7 +560,7 @@ internal fun ViewerScreen(
                     chrome = false
                     showInfo = false
                 }
-                .castGestures({ castZoomNow }, area = { size -> castArea(size, roomBottomPx(), roomEndPx(), rtl) }) {
+                .castGestures({ castZoomNow }, area = { size -> castArea(size, roomBottomPx(), roomEndPx(), rtl, roomTopPx()) }) {
                     chrome = false
                     showInfo = false
                 }
@@ -679,7 +680,7 @@ internal fun ViewerScreen(
 
         // The TV's screen over the photo shown, in the same room as the photo.
         castZoom?.let { holder ->
-            CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd))
+            CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(top = roomTop, bottom = roomBottom, end = roomEnd))
         }
 
         AnimatedVisibility(

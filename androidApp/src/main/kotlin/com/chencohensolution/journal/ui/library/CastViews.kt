@@ -67,9 +67,9 @@ internal class CastZoom(photoRatio: Float, tvRatio: Float) {
     var zoom by mutableStateOf(TvZoom(photoRatio, tvRatio))
 }
 
-/** The room the photo shows in, inside an element of [size]: less [bottom] and [end] (pixels) where a set's reel is. */
-internal fun castArea(size: IntSize, bottom: Float, end: Float, rtl: Boolean): Rect =
-    if (rtl) Rect(end, 0f, size.width.toFloat(), size.height - bottom) else Rect(0f, 0f, size.width - end, size.height - bottom)
+/** The room the photo shows in, inside an element of [size]: less [bottom] and [end] (pixels) where a set's reel is, and [top] under the header. */
+internal fun castArea(size: IntSize, bottom: Float, end: Float, rtl: Boolean, top: Float = 0f): Rect =
+    if (rtl) Rect(end, top, size.width.toFloat(), size.height - bottom) else Rect(0f, top, size.width - end, size.height - bottom)
 
 /** Where a photo of [ratio] (width over height) shows fitted in [area], in the middle. */
 internal fun fittedPhoto(area: Rect, ratio: Float): Rect {
