@@ -116,8 +116,8 @@ Swiping is not a tap; a playing video's own controls take its taps.
     what On device search keeps.
   - The photo's note (title and paragraph) is no longer in the panel: **Write** edits it.
 - **Note editor** (asked for Oct 21, 2026; also from Moments' long-press menu): Cancel · "Writing" · Save and the
-  **paragraph** box only (Nov 10, 2026, Android only: the **Title** box went; a title written before is kept, and
-  History still shows it). Cancel with changes asks "Discard changes?". Each save
+  **paragraph** box only (Nov 10, 2026, Android only: the **Title** box went; titles are no longer shown anywhere, and
+  saving clears one written before, which History keeps). Cancel with changes asks "Discard changes?". Each save
   keeps what was written before as a version, unless it was saved less than 10 minutes earlier (a quick fix is the
   same version). With versions, a line under the boxes, "Edited 3 times · last Oct 21, 14:02", opens **History**:
   the versions newest first (when, title or "No title", the start of the paragraph). One opens in full, with what

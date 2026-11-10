@@ -35,7 +35,7 @@ Still missing on iOS:
   "Name this moment". Tap: Show in Moments (from Moments: back); long press: a dialog with the name and a description
   field (`set_description_hint`), saved with the new `StoriesController.nameMoment(itemIds, name, description)`
   (`NamedSet.description`, note `setInfo.description`, additive). The note editor has only the paragraph box (the title
-  field went; an old title is kept). A single photo shows the highlight ★ over the photo only while a slideshow plays.
+  field went; saving clears an old title), and photos' titles are no longer shown anywhere (feed, storyline). A single photo shows the highlight ★ over the photo only while a slideshow plays.
   Android: `MomentTitle`, `MomentNameDialog` in `ViewerScreen.kt`, `NoteEditor.kt`.
 
 - **A single photo's viewer as a set's; one crop screen** (Android Nov 10, 2026; [viewer.md](screens/viewer.md),

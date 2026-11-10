@@ -705,18 +705,13 @@ private fun MomentLabel(label: FeedRow.Label) {
 private fun timeRange(start: String, end: String): String =
     if (start == end) start else stringResource(R.string.feed_time_range, start, end)
 
-/** The title of the photo's writing, above it. Nothing when it has none. */
+/**
+ * The title of the photo's writing, above it: not shown any more (asked Nov 10, 2026: a photo has only its paragraph;
+ * Write lost the title box, and saving clears an old title, which History keeps).
+ */
+@Suppress("UNUSED_PARAMETER")
 @Composable
-private fun PhotoTitle(title: String?) {
-    if (title.isNullOrBlank()) return
-    Text(
-        title,
-        color = LibraryColors.OnBackground,
-        fontSize = 19.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
-    )
-}
+private fun PhotoTitle(title: String?) = Unit
 
 /**
  * The paragraph of the photo's writing, under it, in the serif of written text: up to four lines, then "more" (tap to

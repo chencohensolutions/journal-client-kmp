@@ -60,7 +60,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * A photo's writing: its paragraph (the title field went on Nov 10, 2026; a title written before is kept), and its History (earlier versions, each with what the next one changed,
+ * A photo's writing: its paragraph (the title field went on Nov 10, 2026; saving clears a title written before), and its History (earlier versions, each with what the next one changed,
  * and Restore). Cancel with changes asks first. See docs/screens/viewer.md.
  */
 @Composable
@@ -70,12 +70,13 @@ internal fun NoteEditor(
     onRestore: (NoteVersion) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var title by rememberSaveable { mutableStateOf(note?.title.orEmpty()) }
+    // No title any more (asked Nov 10, 2026): saving clears one written before (History keeps it).
+    var title by rememberSaveable { mutableStateOf("") }
     var text by rememberSaveable { mutableStateOf(note?.caption.orEmpty()) }
     // null: writing; -1: the History list; otherwise the version shown, by its index in note.history.
     var historyAt by rememberSaveable { mutableStateOf<Int?>(null) }
     var askingDiscard by remember { mutableStateOf(false) }
-    val changed = title.trim() != note?.title.orEmpty() || text.trim() != note?.caption.orEmpty()
+    val changed = text.trim() != note?.caption.orEmpty()
     val close = { if (changed) askingDiscard = true else onDismiss() }
     val history = note?.history.orEmpty()
 
@@ -146,7 +147,7 @@ private fun ColumnScope.Writing(
         placeholder = { Text(stringResource(R.string.library_note_prompt)) },
         textStyle = TextStyle(color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 18.sp, lineHeight = 27.sp),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-        // Only the photo's paragraph (asked Nov 10, 2026: no title field; a title written before is kept as it is).
+        // Only the photo's paragraph (asked Nov 10, 2026: no title field; saving clears a title written before).
         modifier = Modifier.fillMaxWidth().weight(1f).padding(16.dp).focusRequester(focus),
     )
     if (history.isNotEmpty()) {

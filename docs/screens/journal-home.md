@@ -25,8 +25,8 @@ Photos fill the screen on the page background (light or dark with the system); t
   - **Journal can see N photos and videos · Change**: limited access. Opens the system picker to change the
     selection.
 - **Storyline:** every photo or video with a title or a paragraph (see the [note editor](viewer.md)), one each and
-  never a set, newest first by the date taken. A small day heading comes before each new day; then the title above
-  the photo, the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
+  never a set, newest first by the date taken. A small day heading comes before each new day; then (no title since Nov 10, 2026)
+  the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
   Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to
   have one photo of a set here, open that photo and write on it. Every **moment made by hand** is here too (Nov 10,
   2026, Android only), by its cover: its name over it as Moments shows it (not bold, its days under it, "Fri – Sun"), its description under the photo, "⧉ 36" in the corner, and a tap opens
