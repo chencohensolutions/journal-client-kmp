@@ -2,7 +2,8 @@
 
 Asked for on Nov 9, 2026: photos and videos from the viewer on the owner's Google TV Streamer, and on any TV with
 Google Cast, without installing anything on the TV. Swiping and the slideshow on the phone change the TV; zooming on
-the phone zooms the TV, and the phone shows the whole photo with a frame of what the TV shows. The originals go to the
+the phone zooms the TV and the phone alike: the phone shows the TV's screen as large as fits, with the rest of the
+photo dimmed around it (Nov 10, 2026). The originals go to the
 TV unchanged (the owner didn't want them re-encoded); the TV decodes them itself.
 
 Android only; iOS not built yet ([ios-todo.md](ios-todo.md)).
@@ -42,8 +43,10 @@ phone (viewer)                                   TV (Cast receiver page)
   zooming stays sharp on a 4K TV; the one shown, the next three and the one before are kept decoded.
 - **The frame** (`TvZoom` in `sharedLogic/.../cast/CastFrame.kt`) is a rectangle of the TV's shape in fractions of the
   upright photo. At scale 1 it shows the whole photo (reaching past it where the TV has black bars); a pinch zooms it
-  about the fingers (up to 12×), one finger drags it once zoomed, a double tap goes back to the whole photo. Frames go
-  at most every 40 ms; the TV glides to each.
+  about the fingers (up to 12×), one finger drags it once zoomed, a double tap fills the TV with the photo
+  (`filled`) or goes back to the whole photo. The phone draws the photo so the frame fills the TV's shape as large as
+  fits on it (`PhoneRect.fitted`, `TvZoom.photoOn`; `castPlaced` in `CastViews.kt`). Frames go at most every 40 ms;
+  the TV glides to each.
 
 ## Messages
 

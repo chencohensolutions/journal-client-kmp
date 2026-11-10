@@ -748,6 +748,15 @@ private fun LibraryScreens(
                                                 shownId = it
                                                 landing = Landing(entry.depth - 1, it)
                                             },
+                                            // Swiping through Moments onto a set: the set's viewer, in its place on the stack.
+                                            settled = { id ->
+                                                if (fromMoments && route.scope == null && !route.isSet) storiesState.feed.setShowing(id)?.let { block ->
+                                                    val key = setListKey(block.items.map { it.id })
+                                                    pageLists[key] = block.items
+                                                    landing = null
+                                                    stack = stack.dropLast(1) + Route.Viewer(null, id, list = key)
+                                                }
+                                            },
                                             setPrivate = actions.setPrivate,
                                             openMap = { push(Route.Map(it)) },
                                             share = actions.share,

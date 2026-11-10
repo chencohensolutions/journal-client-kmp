@@ -23,6 +23,28 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Moment screen polish** (Android Nov 10, 2026; [viewer.md](screens/viewer.md), [moments.md](screens/moments.md)):
+  - Moments' set cover: no ▶ (play in place) and no position line; only "⧉ 36" stays. Hold-and-slide and tap as before.
+  - The viewer's floating bars are icons only (each with an accessibility label): a set has ☆/★ Highlight · ▶ Play ·
+    ✎ Write · ⌗ Recompose; a single photo ✎ Write. **Share** is an icon in the top bar of both (a spinner while the
+    original is fetched); the set's ⋯ menu lost Write and Share. Android: `BarPill`, `ShareTopButton` in
+    `ViewerScreen.kt`.
+  - Slideshow bar: "12 of 36" (`set_position`) instead of the progress line. ▶ Videos (`SettingsState.autoplayVideos`)
+    now only rules the slideshow: outside it videos always play by themselves; in it, off, a video shows its poster
+    for a slide's time with no Play button.
+  - Casting a slideshow: every video plays to its end on the TV (`show(autoplay = true)`, wait for `CastVideo.ended`),
+    ▶ Videos is hidden, and a photo's slide time starts once the TV reports `shownId` (at most 10 s). Android:
+    `Slideshow(shownBy = …)` in `MomentSets.kt`.
+  - Cast zoom: the phone shows the TV's frame as large as fits (`PhoneRect.fitted(w, h, tvRatio)`), the photo drawn at
+    `TvZoom.photoOn(thatRect)` and dimmed outside it; pinch/drag map to the photo's rect there (drag moves the photo,
+    so the frame pans by `-pan / photoWidth`). Double tap: `TvZoom.toggled()` (fill the TV, or back to whole).
+    Android: `castPlaced`, `castGestures`, `CastFrameOverlay` in `CastViews.kt`.
+  - Swiping the Moments viewer onto a photo of a set (once settled, not on opening) replaces it with the set's viewer
+    at that photo: `MomentsFeed.setShowing(id)`; Android `ViewerActions.settled` wired in `LibraryApp.kt`.
+  - A set's highlight shows a gold ★ (on a small scrim) at the top right of the photo, also during the slideshow.
+  - The reel's white outline is one overlay fixed in the reel's middle; the reel scrolls under it and the outline's width changes, both 0.3 s ease-in-out (`SetReel` `Outline`, `REEL_GLIDE`).
+  - Strings: `cast_frame_hint` reworded; `set_play_here` removed.
+
 - **Showing on a TV with Google Cast** (Android Nov 9, 2026; [cast.md](cast.md), [viewer.md](screens/viewer.md)
   "Showing on a TV"): the receiver page and the shared `CastController` / `TvZoom` (`sharedLogic/.../cast/`) are
   ready. iOS needs: the Google Cast SDK for iOS (`GCKCastContext` with `JournalCast.APP_ID`'s id; `NSBonjourServices`

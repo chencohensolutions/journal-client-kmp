@@ -31,8 +31,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
 - **Brief info** (Nov 9, 2026, Android only): with the bars, over a dark fade at the bottom, where it was taken
   ("Florentin, Tel Aviv, Israel"), its date and time, its tags ("#beach #family"), and an **ⓘ** that opens the details
   panel (`PhotoBrief`); in a set it sits above the reel.
-- **Bottom:** **Write** (the note editor, below), the details panel (the brief info's ⓘ since Nov 9, 2026; before,
-  a **Details** button), and a round **Share** button (Oct 22, 2026, chosen in the UI lab): the system share sheet
+- **Bottom:** **Write** (the note editor, below) as an icon in a floating bar (icons only since Nov 10, 2026), and the
+  details panel (the brief info's ⓘ since Nov 9, 2026; before, a **Details** button). **Share** is in the top bar
+  (Nov 10, 2026, Android only; before, a round button at the bottom, Oct 22, 2026): the system share sheet
   with the original. A gallery photo shares the gallery's own file; one only on the server shares the original the
   viewer downloaded (downloaded now when it isn't here, with a spinner on the button), as a copy named as the photo
   (`cache/shared/`, only the latest kept, `ShareOriginal.kt`; iOS through `UIActivityViewController`). Offline
@@ -95,8 +96,8 @@ Swiping is not a tap; a playing video's own controls take its taps.
   are the viewer's own (Nov 9, 2026: the player's sat behind the set's reel): with the bars, under the info line and
   above the reel (or above Write and Share), one slim row about 32 dp tall: **play/pause**, the time, a thin bar to move
   along it, its length and **sound** (`VideoControls`, `SlimSeekBar`). **▶ Videos** beside the slideshow's speeds (kept on the phone, `autoplay_videos`, on by default)
-  turns playing by themselves off: then a video shows its first frame with Play, and the slideshow shows it for a
-  slide's time. Sliding between videos never flashes black: a video's poster is made ready ahead at screen size with
+  is the slideshow's only (Nov 10, 2026; before, it also stopped videos playing by themselves outside it): off, the
+  slideshow shows a video's poster for a slide's time instead of playing it to its end. Sliding between videos never flashes black: a video's poster is made ready ahead at screen size with
   the photos beside it, stays over the player until its first frame is drawn and then fades out over it (0.18 s), and
   comes back in the same frame the player goes; the player draws into a TextureView (`res/layout/viewer_player.xml`),
   which follows the cross-fade and the swipe; in the pager a video becomes the one playing once the
@@ -177,17 +178,19 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - **Past either end** (Nov 9, 2026): a swipe past the last photo goes to what Moments shows after the set, past the
   first to what it shows before (`MomentsFeed.beside`): another set opens in this mode at its first (or last) photo,
   a single photo in the usual viewer on its row. It takes the set's place, so back still returns to Moments. At the
-  ends of the rows read so far nothing happens.
+  ends of the rows read so far nothing happens. The other way too (Nov 10, 2026, Android only): swiping the usual
+  viewer from Moments onto a photo of a set opens the set in this mode there once the swipe settles
+  (`MomentsFeed.setShowing`, `ViewerActions.settled`), so sets always show as sets with their reel.
 - The bars show from the start and stay (no 3-second fade); a tap hides or shows them.
-- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", a **grid** button and **⋮** with
-  **Write**, **Details**, **Share** (and Show in Moments when opened from elsewhere): they leave the bottom while in a
-  set (decided Nov 9, 2026: one row under the photo). Last in it, **Name this moment** (**Rename moment** when it has
+- **Top bar:** back, the moment's name if it has one, "12 of 36 · Sat, Nov 7", **Share**, a **grid** button and **⋮**
+  with **Details** (and Show in Moments when opened from elsewhere). Write and Share were in ⋮ until Nov 10, 2026,
+  when Share moved to the top bar and Write to the bottom bar. Last in it, **Name this moment** (**Rename moment** when it has
   a name): a box with the name, **Save**; emptied, the moment is unnamed (Nov 9, 2026, Android only;
   `StoriesController.nameMoment`). Its "Show it in Moments on" stays; a set the app made becomes one made by hand.
 - **Under the photo, the reel** (Nov 9, 2026, replacing a squeezed scrubber): every photo of the set in a row that
   scrolls, each at its own shape: its Moments crop as Moments shows it, or the whole photo (and whole while **Show
   all** is on); a dot over each highlight. The photo shown sits in the middle, outlined. Scrolling the reel by hand
-  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`.
+  shows the photo that comes to the middle, with a tick; a tap goes to a photo. `SetReel` in `MomentSets.kt`. The white outline stays fixed in the reel's middle: the reel slides under it and the outline takes the new photo's width, in one 0.3 s ease-in-out move (Nov 10, 2026, Android only; before, it jumped, then a spring wobbled).
   The reel takes its own room (Nov 9, 2026): the photo is centred between the reel's top and the top of the screen
   (in landscape, between the column's left edge and the screen's); the info, a video's controls and the floating bar
   lie over the photo above the reel; the reel is last, along the bottom edge, under the floating bar. When a tap hides
@@ -195,17 +198,21 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   the photo glides to the middle of the whole screen in 0.25 s; showing them reverses it (`SetBar(visible, onRoom)`,
   the photo's animated padding). The photos are 64 dp tall, and a video shows ▶ and its length in its corner. **In landscape** (Nov 9, 2026) the reel
   is a column down the right edge, the photos top to bottom (88 dp wide at their shape), and the info, a video's controls and the buttons stay at the bottom, left of it.
-- **☆ Highlight** (★ when it is one) · **▶ Play** · **⌗ Recompose**, in a floating bar above the reel that looks as
-  the Moments feed's tabs (Nov 9, 2026: the same pill shape, background and shadow; Play the filled one); a single
-  photo has **Write** · **Share** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
+- **☆ Highlight** (★ when it is one) · **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
+  names itself to TalkBack), in a floating bar above the reel that looks as the Moments feed's tabs (Nov 9, 2026: the
+  same pill shape, background and shadow; Play the filled one); a single photo has **✎ Write** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
   line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
   (`OverPhotoText`, `ShadowIcon`).
+  - A highlight shows a gold **★** at the top right of the photo, also while the slideshow plays (Nov 10, 2026,
+    Android only).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
-  - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom a thin
-    progress line, **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A tap on the photo
+  - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom where it is
+    ("12 of 36"; a progress line until Nov 10, 2026), **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A tap on the photo
     hides that bar and another brings it back; the slideshow plays on (Stop or back stops it; Nov 9, 2026). A video plays to its
-    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off.
+    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. Cast to a TV, every video
+    plays to its end there and ▶ Videos is hidden, and a photo's time starts once the TV shows it (at most 10 s'
+    wait; Nov 10, 2026).
     The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
     the server) while the current one shows, and the switch waits for it, at most 15 s, so it never shows blurred
     first (Nov 9, 2026; Android only, iOS not built yet). The last 4 full images are kept in memory (`viewerImages`).
@@ -226,9 +233,12 @@ it. While casting the button is filled in (Cast's own connected look), and the s
 
 - The item shown goes to the TV as its original, with the next three photos and the one before fetched there ahead;
   swiping, a set's cross-fades and the slideshow change the TV.
-- A photo shows **whole** on the phone (no crop chip, no phone zoom or minimap), with a white frame marked "TV" of
-  what the TV shows and the rest dimmed. Two fingers zoom the frame about them (up to 12×); zoomed in, one finger drags
-  it, and swiping waits until it is back to the whole photo (a double tap). The TV glides after the frame.
+- **The phone zooms with the TV** (Nov 10, 2026; before, the phone showed the whole photo with a small frame on
+  it): the TV's screen is a frame marked "TV", of the TV's shape and as large as fits on the phone, and the phone
+  shows inside it exactly what the TV shows, the rest of the photo around it dimmed (no crop chip, minimap or the
+  phone's own zoom). Two fingers zoom both about them (up to 12×); zoomed in, one finger drags the photo, and swiping
+  waits until it is back to the whole photo. A **double tap** zooms to fill the TV with the photo (no black bars,
+  `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone.
 - A video plays on the TV, with sound; the phone shows its poster, and under the info a Play/Pause button and a bar
   of where the TV is (drag to go there). The slideshow waits for the TV to finish it.
 - What the TV couldn't show: "The TV couldn't show this one." A phone off the Wi-Fi: "The phone needs to be on the same

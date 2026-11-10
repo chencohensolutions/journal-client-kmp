@@ -905,10 +905,10 @@ private fun SetLine(count: Int, onClick: () -> Unit) {
 
 /**
  * A set as one photo at its cover's shape ([FeedVideo.startPage]: where it was turned to while the feed shows, else its
- * cover), with "⧉ 36" in the corner and a thin line marking where in the set the photo shown is. Holding it, then
- * sliding sideways, flips through the set in place (a tick per photo, [FLIP_STEP_DP] each); letting go keeps it there.
- * A hold let go without sliding is the long press (picking). The small ▶ plays it in place, muted. Each photo fits
- * inside at its own shape (its Moments crop), cross-fading.
+ * cover), with "⧉ 36" in the corner. Holding it, then sliding sideways, flips through the set in place (a tick per
+ * photo, [FLIP_STEP_DP] each); letting go keeps it there. A hold let go without sliding is the long press (picking).
+ * Each photo fits inside at its own shape (its Moments crop), cross-fading. No ▶ nor position line (removed Nov 10,
+ * 2026): the slideshow is the viewer's.
  */
 @Composable
 private fun SetCover(
@@ -925,20 +925,6 @@ private fun SetCover(
     val shownIndex = index.coerceIn(items.indices)
     val cover = remember(block.key) { video.startPage(block).coerceIn(items.indices) }
     var scrubbing by remember { mutableStateOf(false) }
-    var playing by remember(block.key) { mutableStateOf(false) }
-    val context = LocalContext.current
-    val previews = LocalServerPreviews.current
-    val coverRatio = items[cover].shownRatio(notes[items[cover].id]?.crops?.moments)
-    val feedPixels = feedWidth()
-    // The next photo is loaded at the exact size it shows at before it is switched to, so it shows sharp at once.
-    Slideshow(playing, FEED_PLAY_MILLIS, items.size, shownIndex, prepare = { i ->
-        val item = items[i]
-        val crop = notes[item.id]?.crops?.moments?.takeIf { item.durationMillis == null }
-        val ratio = item.shownRatio(crop)
-        val shownWidth = if (ratio >= coverRatio) feedPixels else (feedPixels / coverRatio * ratio).toInt()
-        val photoWidth = if (crop != null) (shownWidth / crop.w).toInt() else shownWidth
-        if (item.type == MediaType.IMAGE) loadCover(context, previews, item, photoWidth, (photoWidth / item.ratio).toInt())
-    }) { index = it }
     LaunchedEffect(landing) {
         val page = items.indexOfFirst { it.id == landing }
         if (page >= 0) index = page
@@ -974,7 +960,7 @@ private fun SetCover(
                     }
                     if (cancelled) return@awaitEachGesture
                     if (up != null) {
-                        // A tap (the Play button takes its own).
+                        // A tap opens it.
                         if (!up.isConsumed) {
                             up.consume()
                             open(items[current])
@@ -983,7 +969,6 @@ private fun SetCover(
                     }
                     // Held: sliding sideways flips; let go without sliding, it is the long press.
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    playing = false
                     val from = current
                     var flipping = false
                     while (true) {
@@ -1039,17 +1024,6 @@ private fun SetCover(
                 color = LibraryColors.PhotoText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
             )
         }
-        if (selected == null) {
-            Box(
-                Modifier.align(Alignment.BottomStart).padding(10.dp).size(36.dp).clip(CircleShape).background(LibraryColors.BadgeScrim)
-                    .clickable(onClickLabel = stringResource(if (playing) R.string.set_stop else R.string.set_play_here)) { playing = !playing },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (playing) Text("❚❚", color = LibraryColors.PhotoText, fontSize = 12.sp)
-                else Icon(LibraryIcons.Play, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(14.dp))
-            }
-        }
-        SetPositionLine(items.size, shownIndex, cover, Modifier.align(Alignment.BottomCenter).padding(start = 60.dp, end = 60.dp, bottom = 22.dp).fillMaxWidth())
         PickMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
     }
     PhotoNoteText(notes[shown.id]?.caption)

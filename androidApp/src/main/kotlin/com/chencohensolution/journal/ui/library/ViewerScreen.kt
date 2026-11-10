@@ -118,6 +118,9 @@ import com.chencohensolution.journal.server.ServerPreviews
 import androidx.compose.runtime.snapshotFlow
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -137,6 +140,8 @@ import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.library.MediaType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.foundation.layout.widthIn
 
 /** Longest side of a photo decoded for the viewer. */
 private const val VIEWER_MAX_SIDE = 2560
@@ -225,6 +230,9 @@ private suspend fun viewerImage(resolver: ContentResolver, previews: ServerPrevi
     }?.also { viewerImages.put(item.id, it) }
 }
 
+/** Cast: a slideshow waits this long at most for the TV to show a photo before its time starts. */
+private const val CAST_PHOTO_WAIT_MILLIS = 10_000L
+
 /** How long the bars and buttons stay after a tap on the photo. */
 private const val CHROME_MILLIS = 3_000L
 
@@ -248,6 +256,11 @@ internal class ViewerActions(
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
     /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
     val showing: (itemId: String) -> Unit = {},
+    /**
+     * A swipe came to rest on this photo (not on opening, not in a set): from Moments, a photo of a set opens the set's
+     * viewer there, so swiping through Moments always shows sets as sets (asked Nov 10, 2026).
+     */
+    val settled: (itemId: String) -> Unit = {},
     /**
      * Back to the Moments tab, scrolled to the photo: the day in the top bar, as a chip. Null when the viewer was
      * opened from Moments (closing it lands there already).
@@ -343,7 +356,13 @@ internal fun ViewerScreen(
     val castState by cast.state.collectAsState()
     val casting = castState.connected
     val castZooms = remember { mutableMapOf<String, CastZoom>() }
-    val videos = ViewerVideos(videoPositions, videoMuted, { videoMuted = !videoMuted }, videoPlayer, videoDone, autoplayVideos, casting)
+    // ▶ Videos is the slideshow's (asked Nov 10, 2026): outside it videos always play by themselves; in it, off, a video
+    // shows its poster for a slide's time. Cast to a TV, a slideshow plays every video to its end.
+    val inSlideshow = set != null && playing
+    val videos = ViewerVideos(
+        videoPositions, videoMuted, { videoMuted = !videoMuted }, videoPlayer, videoDone,
+        autoplay = !inSlideshow || autoplayVideos, casting = casting, slideshow = inSlideshow,
+    )
     val autoplayNow by rememberUpdatedState(autoplayVideos)
     val resolver = LocalContext.current.contentResolver
     val previews = LocalServerPreviews.current
@@ -351,13 +370,22 @@ internal fun ViewerScreen(
     Slideshow(
         set != null && playing, speed.millis, items.size, shownIndex,
         prepare = { i -> items.getOrNull(i)?.takeIf { it.type == MediaType.IMAGE }?.let { viewerImage(resolver, previews, it) } },
-        // A video plays to its end (or until it can't play) before the next item.
+        // Cast: a photo's time starts once the TV shows it (a large original takes the TV a while to decode).
+        shownBy = { i ->
+            val item = items.getOrNull(i)
+            if (item != null && item.type != MediaType.VIDEO && cast.state.value.connected) {
+                withTimeoutOrNull(CAST_PHOTO_WAIT_MILLIS) {
+                    cast.state.first { s -> !s.connected || s.shownId == item.id || s.error?.id == item.id }
+                }
+            }
+        },
+        // A video plays to its end (or until it can't play) before the next item: on the TV always, here with ▶ Videos.
         hold = { i ->
             val item = items.getOrNull(i)
-            if (item?.type == MediaType.VIDEO && autoplayNow) {
+            if (item?.type == MediaType.VIDEO) {
                 if (cast.state.value.connected) {
                     cast.state.first { s -> !s.connected || s.error?.id == item.id || s.video?.let { it.id == item.id && it.ended } == true }
-                } else {
+                } else if (autoplayNow) {
                     snapshotFlow { videoDone.value }.first { it == item.id }
                 }
             }
@@ -427,7 +455,7 @@ internal fun ViewerScreen(
             return@LaunchedEffect
         }
         val holder = castZoomOf(shownNow).takeIf { shownNow.type != MediaType.VIDEO }
-        cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = autoplayNow, positionMillis = videoPositions[shownNow.id] ?: 0L)
+        cast.show(item, ahead, frame = holder?.zoom?.frame, autoplay = true, positionMillis = videoPositions[shownNow.id] ?: 0L)
         if (holder != null) snapshotFlow { holder.zoom.frame }.collect { cast.frame(shownNow.id, it) }
     }
     LaunchedEffect(castState.error) {
@@ -466,6 +494,13 @@ internal fun ViewerScreen(
         zoomMoving = false
     }
     LaunchedEffect(current.id) { actions.showing(current.id) }
+    val settledNow by rememberUpdatedState(actions.settled)
+    LaunchedEffect(set == null) {
+        if (set != null) return@LaunchedEffect
+        snapshotFlow { if (pager.isScrollInProgress) null else items.getOrNull(pager.settledPage)?.id }
+            .filterNotNull().distinctUntilChanged().drop(1)
+            .collect { settledNow(it) }
+    }
     fun sharedKey(item: MediaItem) = SharedKey.item(item.id)
     // They stay while the details panel, a sheet or the note editor is open, and for the full time again after it closes.
     LaunchedEffect(chrome, showInfo, choosingTag, editingCaption) {
@@ -509,7 +544,7 @@ internal fun ViewerScreen(
                             if (current.type == MediaType.VIDEO) return@detectTapGestures
                             chrome = false
                             showInfo = false
-                            castZoomNow?.let { it.zoom = it.zoom.whole() }
+                            castZoomNow?.let { it.zoom = it.zoom.toggled() }
                             zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                         },
                         onTap = {
@@ -548,7 +583,9 @@ internal fun ViewerScreen(
                     VideoPage(item, sharedKey(item), isCurrent = page == shownIndex, videos)
                 } else {
                     val pageZoom = zoomOf(item)
-                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == shownIndex)
+                    Box(Modifier.fillMaxSize().castPlaced(castZoomOf(item).zoom.takeIf { casting })) {
+                        PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == shownIndex)
+                    }
                 }
             }
         } else HorizontalPager(
@@ -583,7 +620,7 @@ internal fun ViewerScreen(
                             onDoubleTap = { at ->
                                 chrome = false
                                 showInfo = false
-                                castZoomNow?.let { it.zoom = it.zoom.whole() }
+                                castZoomNow?.let { it.zoom = it.zoom.toggled() }
                                 zoomNow?.step(at - Offset(size.width / 2f, size.height / 2f))
                             },
                             onTap = onTap,
@@ -596,11 +633,25 @@ internal fun ViewerScreen(
                 VideoPage(item, sharedKey(item), isCurrent = page == pager.settledPage, videos)
             } else {
                 val pageZoom = zoomOf(item)
-                PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == pager.settledPage)
+                Box(Modifier.fillMaxSize().castPlaced(castZoomOf(item).zoom.takeIf { casting })) {
+                    PhotoPage(item, sharedKey(item), cropOf(item)?.takeIf { !whole && !pageZoom.isZoomed && !casting }, pageZoom.takeIf { !casting }, shown = page == pager.settledPage)
+                }
             }
         }
 
-        // The TV's frame over the photo shown, in the same room as the photo.
+        // A highlight shows a ★ over it, also while the slideshow plays (asked Nov 10, 2026).
+        if (set != null && current.id in set.highlights && !zoom.isZoomed) {
+            val highlighted = stringResource(R.string.set_highlighted)
+            Text(
+                "★",
+                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 14.dp)
+                    .background(LibraryColors.PillScrim, CircleShape).padding(horizontal = 9.dp, vertical = 4.dp)
+                    .semantics { contentDescription = highlighted },
+                color = Color(0xFFFFD54F), fontSize = 18.sp, style = OverPhotoText,
+            )
+        }
+
+        // The TV's screen over the photo shown, in the same room as the photo.
         castZoom?.let { holder ->
             CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd))
         }
@@ -628,12 +679,13 @@ internal fun ViewerScreen(
                             CastVideoControls(castState.video?.takeIf { it.id == shown.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp))
                         } else if (shown.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
                     },
-                    onIndex = { setIndex = it }, onPlay = { playing = true },
+                    onIndex = { setIndex = it }, onPlay = { playing = true }, onWrite = { editingCaption = true },
                     landscape = screenRatio > 1f,
                 )
             }
             AnimatedVisibility(playing && !slideBarHidden, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
-                SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos, onAutoplayVideos = setAutoplayVideos, onStop = {
+                // Cast to a TV, every video plays to its end: no ▶ Videos.
+                SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos.takeUnless { casting }, onAutoplayVideos = setAutoplayVideos, onStop = {
                     playing = false
                     chrome = true
                 })
@@ -651,9 +703,9 @@ internal fun ViewerScreen(
                 if (current.type == MediaType.VIDEO && casting) {
                     CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
                 } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
+                // Icons only, Share in the top bar (asked Nov 10, 2026).
                 FloatingBar {
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
-                    ShareBarPill(current, actions.share)
                 }
             }
             }
@@ -695,6 +747,7 @@ internal fun ViewerScreen(
                             fontSize = 13.sp,
                         )
                     }
+                    ShareTopButton(current, actions.share)
                     IconButton(onClick = { grid = true }) {
                         ShadowIcon(LibraryIcons.Grid, stringResource(R.string.set_all_photos))
                     }
@@ -702,21 +755,11 @@ internal fun ViewerScreen(
                         IconButton(onClick = { menu = true }) {
                             ShadowIcon(LibraryIcons.More, stringResource(R.string.set_more))
                         }
-                        val context = LocalContext.current
-                        val scope = rememberCoroutineScope()
+                        // Write is in the bottom bar and Share in this bar now (asked Nov 10, 2026).
                         DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.viewer_write)) }, onClick = {
-                                menu = false
-                                editingCaption = true
-                            })
                             DropdownMenuItem(text = { Text(stringResource(R.string.library_viewer_details)) }, onClick = {
                                 menu = false
                                 showInfo = true
-                            })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.library_share)) }, onClick = {
-                                menu = false
-                                val item = current
-                                scope.launch { if (!actions.share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show() }
                             })
                             showInMoments?.let { show ->
                                 DropdownMenuItem(text = { Text(stringResource(R.string.library_show_in_moments)) }, onClick = {
@@ -750,6 +793,7 @@ internal fun ViewerScreen(
                     MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
                     Box(Modifier.weight(1f))
                 }
+                if (set == null) ShareTopButton(current, actions.share)
                 CastButton()
             }
             }
@@ -838,6 +882,7 @@ private fun SetBar(
     brief: @Composable (MediaItem) -> Unit,
     onIndex: (Int) -> Unit,
     onPlay: () -> Unit,
+    onWrite: () -> Unit,
     /** Landscape: the reel down the right edge, the info and buttons at the bottom left of it (asked Nov 9, 2026). */
     landscape: Boolean = false,
     /** Shown: the bars slide in (the reel from its edge), hidden they slide out. */
@@ -872,7 +917,7 @@ private fun SetBar(
                 enter = slideInVertically(slide) { it } + fadeIn(), exit = slideOutVertically(slide) { it } + fadeOut(),
             ) {
                 SetBarBottom(
-                    items, set, index, brief, onPlay, reel = false,
+                    items, set, index, brief, onPlay, onWrite, reel = false,
                     cropOf = cropOf, onIndex = onIndex,
                     modifier = Modifier.padding(end = if (items.size > 1) REEL_SIDE_WIDTH + 8.dp else 0.dp),
                 )
@@ -883,7 +928,7 @@ private fun SetBar(
             visible, modifier,
             enter = slideInVertically(slide) { it } + fadeIn(), exit = slideOutVertically(slide) { it } + fadeOut(),
         ) {
-            SetBarBottom(items, set, index, brief, onPlay, reel = true, cropOf = cropOf, onIndex = onIndex, onRoom = onRoom)
+            SetBarBottom(items, set, index, brief, onPlay, onWrite, reel = true, cropOf = cropOf, onIndex = onIndex, onRoom = onRoom)
         }
     }
 }
@@ -891,7 +936,7 @@ private fun SetBar(
 /** How long the set's bars and reel take to slide in or out, and the photo to glide to its new middle. */
 private const val BAR_SLIDE_MILLIS = 250
 
-/** Under the photo: the info, the reel ([reel]: in portrait), and ☆ Highlight · ▶ Play · ⌗ Recompose. */
+/** Under the photo: the info, the reel ([reel]: in portrait), and ☆ Highlight · ▶ Play · ✎ Write · ⌗ Recompose, icons only. */
 @Composable
 private fun SetBarBottom(
     items: List<MediaItem>,
@@ -899,6 +944,7 @@ private fun SetBarBottom(
     index: Int,
     brief: @Composable (MediaItem) -> Unit,
     onPlay: () -> Unit,
+    onWrite: () -> Unit,
     reel: Boolean,
     cropOf: (MediaItem) -> CropRect?,
     onIndex: (Int) -> Unit,
@@ -926,6 +972,7 @@ private fun SetBarBottom(
                 glyph = if (place >= 0) "★" else "☆",
             ) { set.setHighlight(item.id, place < 0) }
             BarPill(stringResource(R.string.set_play), icon = LibraryIcons.Play, selected = true, onClick = onPlay)
+            BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit, onClick = onWrite)
             BarPill(stringResource(R.string.set_recompose), glyph = "⌗", enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
         }
         // The reel last, along the bottom edge (asked Nov 9, 2026); the photo keeps clear of it.
@@ -951,7 +998,10 @@ private fun FloatingBar(modifier: Modifier = Modifier, content: @Composable andr
     )
 }
 
-/** One action in the [FloatingBar], looking as the feed's tabs: [selected] is the filled one (Play). */
+/**
+ * One action in the [FloatingBar], looking as the feed's tabs: [selected] is the filled one (Play). An icon only (asked
+ * Nov 10, 2026); [label] is what it says to TalkBack.
+ */
 @Composable
 private fun BarPill(
     label: String,
@@ -959,42 +1009,43 @@ private fun BarPill(
     glyph: String? = null,
     selected: Boolean = false,
     enabled: Boolean = true,
-    busy: Boolean = false,
     onClick: () -> Unit,
 ) {
     val color = if (selected) LibraryColors.OnInverse else LibraryColors.OnBackground
-    Row(
+    Box(
         Modifier
             .height(40.dp)
+            .widthIn(min = 52.dp)
             .clip(RoundedCornerShape(50))
             .background(if (selected) LibraryColors.Inverse else Color.Transparent)
-            .clickable(enabled = enabled && !busy, onClick = onClick)
+            .clickable(enabled = enabled, onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label }
             .padding(horizontal = 14.dp)
             .alpha(if (enabled) 1f else 0.4f),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
         when {
-            busy -> CircularProgressIndicator(color = color, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-            icon != null -> Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
-            glyph != null -> Text(glyph, color = color, fontSize = 15.sp, style = androidx.compose.ui.text.TextStyle.Default)
+            icon != null -> Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            glyph != null -> Text(glyph, color = color, fontSize = 19.sp, style = androidx.compose.ui.text.TextStyle.Default)
         }
-        Text(label, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, style = androidx.compose.ui.text.TextStyle.Default)
     }
 }
 
-/** Share in the floating bar: the original to another app, a spinner while it is fetched. */
+/** Share in the top bar (asked Nov 10, 2026): the original to another app, a spinner while it is fetched. */
 @Composable
-private fun ShareBarPill(item: MediaItem, share: suspend (MediaItem) -> Boolean) {
+private fun ShareTopButton(item: MediaItem, share: suspend (MediaItem) -> Boolean) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var sharing by remember(item.id) { mutableStateOf(false) }
-    BarPill(stringResource(R.string.library_share), icon = LibraryIcons.Share, busy = sharing) {
+    IconButton(enabled = !sharing, onClick = {
         sharing = true
         scope.launch {
             if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
             sharing = false
         }
+    }) {
+        if (sharing) CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+        else ShadowIcon(LibraryIcons.Share, stringResource(R.string.library_share))
     }
 }
 
@@ -1358,6 +1409,8 @@ private class ViewerVideos(
     val autoplay: Boolean = true,
     /** Casting: videos play on the TV, and the phone shows their poster. */
     val casting: Boolean = false,
+    /** A slideshow plays: a video that doesn't play by itself shows only its poster, no Play over it. */
+    val slideshow: Boolean = false,
 )
 
 /**
@@ -1399,7 +1452,7 @@ private fun VideoPage(item: MediaItem, sharedKey: String, isCurrent: Boolean, vi
         // Covering again is at once, in this frame; only the fade out over the first frame is animated.
         val posterAlpha = if (covering) 1f else fading
         if (posterAlpha > 0f) poster?.let { Box(Modifier.fillMaxSize().alpha(posterAlpha), contentAlignment = Alignment.Center) { ViewerImage(it, sharedKey) } }
-        if (isCurrent && !videos.casting && !videos.autoplay && !started) {
+        if (isCurrent && !videos.casting && !videos.slideshow && !videos.autoplay && !started) {
             IconButton(
                 onClick = { started = true },
                 colors = IconButtonDefaults.iconButtonColors(containerColor = LibraryColors.BadgeScrim),

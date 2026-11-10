@@ -97,9 +97,6 @@ internal enum class SlideSpeed(val millis: Long, val label: Int) {
     SLOW(2_000, R.string.set_speed_slow),
 }
 
-/** In the feed a set plays at this pace. */
-internal const val FEED_PLAY_MILLIS = 500L
-
 /** Swipes and flips within a set cross-fade, this long. */
 internal const val SET_FADE_MILLIS = 120
 
@@ -120,18 +117,22 @@ internal fun Slideshow(
     index: Int,
     prepare: (suspend (Int) -> Unit)? = null,
     hold: (suspend (Int) -> Unit)? = null,
+    /** Waits until the item shown is on screen (on the TV, while casting) before its time starts. */
+    shownBy: (suspend (Int) -> Unit)? = null,
     onIndex: (Int) -> Unit,
 ) {
     val current by rememberUpdatedState(index)
     val change by rememberUpdatedState(onIndex)
     val ready by rememberUpdatedState(prepare)
     val done by rememberUpdatedState(hold)
+    val arrived by rememberUpdatedState(shownBy)
     LaunchedEffect(playing, millis, count) {
         while (playing && count > 1) {
             val shown = current
             val next = (shown + 1) % count
             coroutineScope {
                 val prepared = async { withTimeoutOrNull(PREPARE_MAX_MILLIS) { ready?.invoke(next) } }
+                arrived?.invoke(shown)
                 delay(millis)
                 done?.invoke(shown)
                 prepared.await()
@@ -196,7 +197,7 @@ internal fun SetReel(
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.index == i } ?: return
         val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), tween(SET_FADE_MILLIS * 2))
+        state.animateScrollBy((item.offset + item.size / 2 - center).toFloat(), REEL_GLIDE)
     }
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress || dragged }.collect { moving ->
@@ -229,7 +230,7 @@ internal fun SetReel(
         val size = if (vertical) Modifier.width(REEL_SIDE_THUMB).aspectRatio(ratio) else Modifier.height(REEL_HEIGHT).aspectRatio(ratio)
         Box(
             size.clip(RoundedCornerShape(4.dp))
-                .then(if (shown) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier.alpha(0.7f))
+                .then(if (shown) Modifier else Modifier.alpha(0.7f))
                 .clickable { change(i) },
         ) {
             ReelThumb(item, crop)
@@ -237,6 +238,30 @@ internal fun SetReel(
             // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
             item.durationMillis?.let { length -> ReelVideoMark(length, Modifier.align(Alignment.BottomStart).padding(2.dp)) }
         }
+    }
+    // The white outline of the photo shown is one, fixed in the reel's middle, where the photo shown always comes to
+    // rest: the reel slides under it and the outline only takes the new photo's width, both in one ease-in-out move of
+    // the same length (asked Nov 10, 2026: it jumped, then a spring that chased the photo wobbled).
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val shownSize by remember(state) {
+        androidx.compose.runtime.derivedStateOf { state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == current }?.size?.toFloat() }
+    }
+    var outlineTarget by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(shownSize) { shownSize?.let { outlineTarget = it } }
+    val outlineSize by androidx.compose.animation.core.animateFloatAsState(outlineTarget ?: 0f, REEL_GLIDE, label = "reel outline size")
+    @Composable
+    fun Outline() {
+        if (outlineTarget == null) return
+        val viewport = state.layoutInfo.viewportSize
+        val middle = with(density) { ((if (vertical) viewport.height else viewport.width) / 2f).toDp() }
+        val length = with(density) { outlineSize.toDp() }
+        val shape = RoundedCornerShape(4.dp)
+        val frame = if (vertical) {
+            Modifier.offset(x = (REEL_SIDE_WIDTH - REEL_SIDE_THUMB) / 2, y = middle - length / 2).size(REEL_SIDE_THUMB, length)
+        } else {
+            Modifier.offset(x = middle - length / 2, y = 4.dp).size(length, REEL_HEIGHT)
+        }
+        Box(frame.border(2.dp, Color.White, shape))
     }
     if (vertical) {
         BoxWithConstraints(Modifier.fillMaxHeight().width(REEL_SIDE_WIDTH)) {
@@ -250,6 +275,7 @@ internal fun SetReel(
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
             }
+            Outline()
         }
     } else {
         BoxWithConstraints(Modifier.fillMaxWidth().height(REEL_HEIGHT + 8.dp)) {
@@ -263,9 +289,13 @@ internal fun SetReel(
             ) {
                 itemsIndexed(items, key = { _, item -> item.id }) { i, item -> Thumb(i, item) }
             }
+            Outline()
         }
     }
 }
+
+/** The reel's glide to the photo shown, and its outline's change of width: one ease-in-out move. */
+private val REEL_GLIDE = tween<Float>(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
 
 /** Landscape: the reel's room along the right edge, which the bar under the photo keeps clear of; its photos' width. */
 internal val REEL_SIDE_WIDTH = 100.dp
@@ -321,17 +351,6 @@ internal fun SpeedPicker(speed: SlideSpeed, onSpeed: (SlideSpeed) -> Unit) {
                 Text(stringResource(option.label), color = if (on) Color.Black else Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-    }
-}
-
-/** A thin line of the set with a mark at the photo shown ([index]) and a dot at its cover ([cover]). */
-@Composable
-internal fun SetPositionLine(count: Int, index: Int, cover: Int?, modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier.height(12.dp)) {
-        val step = maxWidth / maxOf(count - 1, 1)
-        Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(50)))
-        cover?.let { Box(Modifier.align(Alignment.CenterStart).offset(x = step * it - 2.5.dp).size(5.dp).background(Color.White.copy(alpha = 0.8f), CircleShape)) }
-        Box(Modifier.align(Alignment.CenterStart).offset(x = step * index - 1.5.dp).size(3.dp, 12.dp).background(Color.White, RoundedCornerShape(50)))
     }
 }
 
@@ -442,7 +461,7 @@ private fun HighlightOrder(highlights: List<MediaItem>, onPick: (MediaItem) -> U
     }
 }
 
-/** The slideshow's controls: a thin progress line, the speeds and Stop. */
+/** The slideshow's controls: where it is ("4 of 29"; no progress line, asked Nov 10, 2026), the speeds and Stop. */
 @Composable
 internal fun SlideshowBar(
     index: Int,
@@ -456,9 +475,11 @@ internal fun SlideshowBar(
     onAutoplayVideos: (Boolean) -> Unit = {},
 ) {
     Column(modifier.fillMaxWidth().padding(16.dp)) {
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(50))) {
-            Box(Modifier.fillMaxWidth((index + 1f) / count).fillMaxHeight().background(Color.White, RoundedCornerShape(50)))
-        }
+        Text(
+            stringResource(R.string.set_position, index + 1, count),
+            color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.9f), androidx.compose.ui.geometry.Offset(0f, 1f), blurRadius = 8f)),
+        )
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             SpeedPicker(speed, onSpeed)
             // Beside the speeds (asked Nov 9, 2026): whether videos play, to their end, or show for a slide's time.
