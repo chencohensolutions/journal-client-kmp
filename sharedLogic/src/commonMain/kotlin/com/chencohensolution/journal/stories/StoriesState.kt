@@ -111,7 +111,10 @@ data class StoriesState(
     fun highlightsOf(items: List<MediaItem>): List<MediaItem> = highlightsOf(items, notes)
 
     /** The moment made by hand that [itemId] is in, if any ([StoriesController.makeMoment]). */
-    fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSetsIn(notes)[it] }
+    fun namedSetOf(itemId: String): NamedSet? = notes[itemId]?.feedSet?.let { namedSets[it] }
+
+    /** The moments made by hand, worked out once per state: the storyline asks for each of its photos. */
+    private val namedSets: Map<String, NamedSet> by lazy { namedSetsIn(notes) }
 
     /**
      * The moment made by hand whose cover [itemId] is: in the storyline it stands for the moment (its name and

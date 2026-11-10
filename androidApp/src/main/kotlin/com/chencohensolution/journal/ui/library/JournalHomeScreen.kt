@@ -252,7 +252,8 @@ internal fun JournalHomeScreen(
         }
     }
     // A moment made by hand shows by its cover, with its name and description (asked Nov 10, 2026).
-    val storyRows = remember(stories.storylineDays, stories.notes) { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }
+    // Keyed on the state itself (compared by identity): keying on its notes compared every note on each recomposition.
+    val storyRows = remember(stories) { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }
     // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
     val tucked = LocalTucked.current
     val tuckedLock = rememberTuckedLock()
