@@ -14,6 +14,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -190,6 +191,49 @@ class CastTest {
         cast.received("""{"type":"something new"}""")
         cast.disconnected()
         assertFalse(cast.state.value.connected)
+    }
+
+    @Test
+    fun aSlideshowGoesOnWhenTheVideoOnTheTvIsDone() = runTest {
+        val cast = CastController(backgroundScope)
+        cast.connected({ true }, null)
+        fun status(position: Long, playing: Boolean, ended: Boolean = false) =
+            cast.received("""{"type":"video","id":"v1","position":$position,"duration":60000,"playing":$playing,"ended":$ended}""")
+        suspend fun done(): Boolean {
+            val waiting = backgroundScope.async { cast.videoDone("v1") }
+            runCurrent()
+            return waiting.isCompleted.also { waiting.cancel() }
+        }
+        cast.show(clip)
+        status(1000, true)
+        assertFalse(done())
+        status(60000, false, ended = true)
+        assertTrue(done())
+
+        // Stopped a moment before its stated end: done.
+        status(59500, false)
+        assertTrue(done())
+
+        // Paused halfway with the controls: it waits, however long.
+        status(30000, false)
+        val paused = backgroundScope.async { cast.videoDone("v1") }
+        advanceTimeBy(CastController.VIDEO_START_MILLIS * 4)
+        runCurrent()
+        assertFalse(paused.isCompleted)
+        paused.cancel()
+
+        // Playing but nothing new from the TV (the stream broke): done after the stall time.
+        status(31000, true)
+        val stalled = backgroundScope.async { cast.videoDone("v1") }
+        advanceTimeBy(CastController.VIDEO_STALL_MILLIS + 1)
+        runCurrent()
+        assertTrue(stalled.isCompleted)
+
+        // An error the viewer has already seen still ends the wait.
+        status(32000, true)
+        cast.received("""{"type":"error","id":"v1","message":"media error 2"}""")
+        cast.errorSeen()
+        assertTrue(done())
     }
 
     @Test

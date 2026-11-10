@@ -73,7 +73,7 @@ Still missing on iOS:
   - Slideshow bar: "12 of 36" (`set_position`) instead of the progress line. ▶ Videos (`SettingsState.autoplayVideos`)
     now only rules the slideshow: outside it videos always play by themselves; in it, off, a video shows its poster
     for a slide's time with no Play button.
-  - Casting a slideshow: every video plays to its end on the TV (`show(autoplay = true)`, wait for `CastVideo.ended`),
+  - Casting a slideshow: every video plays to its end on the TV (`show(autoplay = true)`, then `await cast.videoDone(id)`),
     ▶ Videos is hidden, and a photo's slide time starts once the TV reports `shownId` (at most 10 s). Android:
     `Slideshow(shownBy = …)` in `MomentSets.kt`.
   - Cast zoom: the phone shows the TV's frame as large as fits (`PhoneRect.fitted(w, h, tvRatio)`), the photo drawn at

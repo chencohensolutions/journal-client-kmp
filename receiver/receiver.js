@@ -296,6 +296,8 @@ function onFrame({ id, x, y, w, h }) {
 
 let videoId = null;
 let lastStatus = 0;
+/** The video stopped for data at its very end ('waiting' or 'stalled' there): it counts as ended. */
+let stuckAtEnd = false;
 
 function showVideo(item, autoplay, muted, position) {
   shown = { id: item.id, kind: 'video' };
@@ -303,12 +305,27 @@ function showVideo(item, autoplay, muted, position) {
   for (const c of canvases) c.classList.remove('front');
   clearNote();
   videoId = item.id;
+  stuckAtEnd = false;
   video.muted = muted;
   video.src = item.url;
   video.currentTime = Math.max(0, position / 1000);
   video.classList.add('front');
-  if (autoplay) video.play().catch(() => videoStatus(true));
+  if (autoplay) playVideo();
   else videoStatus(true);
+}
+
+/** Plays the video; if the TV refuses (not because another item came), the phone hears why, so a slideshow goes on. */
+function playVideo() {
+  const id = videoId;
+  video.play().catch((e) => {
+    videoStatus(true);
+    if (videoId === id && e && e.name !== 'AbortError') send({ type: 'error', id, message: `play refused: ${e.name}` });
+  });
+}
+
+/** Within half a second of its end: a stream a little shorter than its stated duration stops there without 'ended'. */
+function atEnd() {
+  return Number.isFinite(video.duration) && video.duration > 0 && video.duration - video.currentTime < 0.5;
 }
 
 function stopVideo() {
@@ -330,13 +347,22 @@ function videoStatus(force = false) {
     id: videoId,
     position: Math.round(video.currentTime * 1000),
     duration: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : 0,
-    playing: !video.paused && !video.ended,
-    ended: video.ended,
+    playing: !video.paused && !video.ended && !stuckAtEnd,
+    ended: video.ended || stuckAtEnd,
   });
 }
 
 for (const event of ['play', 'pause', 'seeked', 'loadedmetadata', 'ended']) video.addEventListener(event, () => videoStatus(true));
 video.addEventListener('timeupdate', () => videoStatus());
+for (const event of ['waiting', 'stalled']) {
+  video.addEventListener(event, () => {
+    if (!stuckAtEnd && atEnd()) {
+      stuckAtEnd = true;
+      videoStatus(true);
+    }
+  });
+}
+video.addEventListener('seeking', () => { stuckAtEnd = false; });
 video.addEventListener('error', () => {
   if (!videoId) return;
   note('This video couldn’t be played');
@@ -346,7 +372,7 @@ video.addEventListener('error', () => {
 
 function onVideo({ action, position }) {
   if (!videoId) return;
-  if (action === 'play') video.play().catch(() => videoStatus(true));
+  if (action === 'play') playVideo();
   else if (action === 'pause') video.pause();
   else if (action === 'seek' && typeof position === 'number') video.currentTime = Math.max(0, position / 1000);
 }

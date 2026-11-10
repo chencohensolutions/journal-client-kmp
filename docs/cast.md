@@ -56,6 +56,12 @@ JSON on `urn:x-cast:com.chencohensolution.journal`, listed at the top of `receiv
 `hello {width, height}` (the frame's shape), `shown {id}`, `video {id, position, duration, playing, ended}` (each
 second and on each change; `ended` lets the slideshow go on), `error {id, message}`, `need {id}`.
 
+A slideshow goes on after a video when `CastController.videoDone` returns: the TV says `ended` (also sent when the
+video stops for data in its last half second, as a stream a little shorter than its stated duration does), it stopped
+paused within a second of its end, an `error` came (a refused `play()` is one too), or the session closed. Since a
+broken stream from the phone fires neither `ended` nor `error`, a video that should play but says nothing new for
+15 s counts as done, and one the TV says nothing about for 30 s never started; a video paused with the controls waits.
+
 ## If the TV can't fetch from the phone
 
 Seen on Nov 9, 2026: the phone's Wi-Fi dozes between packets and drops the TV's requests for seconds at a time, so

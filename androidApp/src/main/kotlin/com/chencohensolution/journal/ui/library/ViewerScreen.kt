@@ -390,7 +390,7 @@ internal fun ViewerScreen(
             val item = items.getOrNull(i)
             if (item?.type == MediaType.VIDEO) {
                 if (cast.state.value.connected) {
-                    cast.state.first { s -> !s.connected || s.error?.id == item.id || s.video?.let { it.id == item.id && it.ended } == true }
+                    cast.videoDone(item.id)
                 } else if (autoplayNow) {
                     snapshotFlow { videoDone.value }.first { it == item.id }
                 }

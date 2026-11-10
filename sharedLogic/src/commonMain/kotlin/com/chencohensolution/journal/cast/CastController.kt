@@ -8,9 +8,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
@@ -89,6 +92,9 @@ class CastController(
     private val frames = MutableStateFlow<Pair<String, CastFrame>?>(null)
     private var shownItem: String? = null
 
+    /** The item the TV last couldn't show, kept after [errorSeen] (which the viewer calls at once) for [videoDone]. */
+    private val failedId = MutableStateFlow<String?>(null)
+
     /** A session opened with the TV called [device]: says hello, and from now on sends through [channel]. */
     fun connected(channel: CastChannel, device: String?) {
         stopJobs()
@@ -140,6 +146,7 @@ class CastController(
         if (shownItem != item.id) {
             shownItem = item.id
             frames.value = null
+            failedId.value = null
             _state.update { it.copy(video = null) }
             box.trySend(message("show") {
                 put("item", item.json())
@@ -173,6 +180,34 @@ class CastController(
         send(message("stop") {})
     }
 
+    /**
+     * Returns once the video [id] on the TV is done, for a slideshow to go on: it ended (or stopped within
+     * [VIDEO_END_SLACK_MILLIS] of its end), the TV couldn't play it, or the session closed. A video that stops moving
+     * while it should play (its stream broke, the TV's last word was lost) counts as done after [VIDEO_STALL_MILLIS],
+     * and one the TV never starts after [VIDEO_START_MILLIS]; one paused with the controls waits for as long as it is.
+     */
+    suspend fun videoDone(id: String) {
+        var waited = 0L
+        var last: CastVideo? = null
+        while (true) {
+            val news = withTimeoutOrNull(VIDEO_STALL_MILLIS) {
+                combine(_state, failedId) { s, f -> s to f }
+                    .first { (s, f) -> !s.connected || f == id || s.video?.takeIf { it.id == id } != last }
+            }
+            if (news == null) {
+                waited += VIDEO_STALL_MILLIS
+                val mine = last ?: if (waited >= VIDEO_START_MILLIS) return else continue
+                if (mine.playing) return
+                continue
+            }
+            val (s, f) = news
+            if (!s.connected || f == id) return
+            val v = s.video?.takeIf { it.id == id } ?: continue
+            if (v.ended || (!v.playing && v.durationMillis > 0 && v.positionMillis >= v.durationMillis - VIDEO_END_SLACK_MILLIS)) return
+            last = v
+        }
+    }
+
     /** The error was shown to the user. */
     fun errorSeen() = _state.update { it.copy(error = null) }
 
@@ -198,6 +233,7 @@ class CastController(
             }
             "error" -> {
                 val id = m.string("id") ?: return
+                failedId.value = id
                 _state.update { it.copy(error = CastError(id, m.string("message").orEmpty())) }
             }
             "need" -> m.string("id")?.let(::sendBytes)
@@ -226,6 +262,15 @@ class CastController(
          * A multiple of 3, so each piece is base64 on its own.
          */
         const val CHUNK_BYTES = 45_000
+
+        /** A playing video on the TV that says nothing new for this long has stalled: the slideshow goes on. */
+        const val VIDEO_STALL_MILLIS = 15_000L
+
+        /** A video the TV says nothing about for this long never started: the slideshow goes on. */
+        const val VIDEO_START_MILLIS = 30_000L
+
+        /** A video stopped this close to its end has ended (a stream a little shorter than its stated duration). */
+        const val VIDEO_END_SLACK_MILLIS = 1_000L
 
         /** [bytes] as the "chunk" messages the receiver puts back together. */
         fun chunks(id: String, bytes: ByteArray): List<String> {
