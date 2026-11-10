@@ -716,11 +716,19 @@ internal fun ViewerScreen(
                 )
             }
             AnimatedVisibility(playing && !slideBarHidden, Modifier.align(Alignment.BottomCenter).navigationBarRoom(), enter = fadeIn(), exit = fadeOut()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // A video playing in the slideshow shows its controls and where it is above the bar (asked Nov 10, 2026).
+                if (current.type == MediaType.VIDEO) ProvideTextStyle(OverPhotoText) {
+                    if (casting) {
+                        CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp))
+                    } else videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp)) }
+                }
                 // Cast to a TV, every video plays to its end: no ▶ Videos.
                 SlideshowBar(shownIndex, items.size, speed, { speed = it }, autoplayVideos = autoplayVideos.takeUnless { casting }, onAutoplayVideos = setAutoplayVideos, onStop = {
                     playing = false
                     chrome = true
                 })
+                }
             }
         }
         if (set == null) AnimatedVisibility(

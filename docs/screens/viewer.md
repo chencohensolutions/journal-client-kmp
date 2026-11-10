@@ -221,7 +221,7 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom where it is
     ("12 of 36"; a progress line until Nov 10, 2026), **Fast** (0.35 s) · **Normal** · **Slow** (2 s) · **▶ Videos** and **Stop**. A tap on the photo
     hides that bar and another brings it back; the slideshow plays on (Stop or back stops it; Nov 9, 2026). A video plays to its
-    end before the next item (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. Cast to a TV, every video
+    end before the next item, with its controls and where it is above the slideshow's bar (Nov 10, 2026) (or until it can't play; Nov 9, 2026), unless ▶ Videos is off. Cast to a TV, every video
     plays to its end there and ▶ Videos is hidden, and a photo's time starts once the TV shows it (at most 10 s'
     wait; Nov 10, 2026).
     The screen stays on while it plays. The next photo is decoded at full size (downloaded first when it is only on
