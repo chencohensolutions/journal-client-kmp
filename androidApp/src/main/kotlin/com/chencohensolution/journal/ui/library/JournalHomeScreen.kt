@@ -252,8 +252,13 @@ internal fun JournalHomeScreen(
         }
     }
     // A moment made by hand shows by its cover, with its name and description (asked Nov 10, 2026).
-    // Keyed on the state itself (compared by identity): keying on its notes compared every note on each recomposition.
-    val storyRows = remember(stories) { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }
+    // Made off the main thread for each new state (compared by identity), showing the last rows meanwhile (Nov 10, 2026:
+    // made while drawing, with the notes compared on each recomposition, it froze the feed). The first are made here
+    // once, as the feed's are, so the tab never flashes empty; with the moments worked out already, that is quick.
+    val storyRows by produceState(remember { storylineDayRows(stories.storylineDays, stories::storylineMomentOf) { stories.itemsById[it] } }, stories) {
+        val state = stories
+        value = withContext(Dispatchers.Default) { storylineDayRows(state.storylineDays, state::storylineMomentOf) { state.itemsById[it] } }
+    }
     // A day's "3 tucked away" pill asks for the phone's lock the first time in a session.
     val tucked = LocalTucked.current
     val tuckedLock = rememberTuckedLock()

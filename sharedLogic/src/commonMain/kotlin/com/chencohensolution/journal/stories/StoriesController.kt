@@ -252,7 +252,12 @@ class StoriesController internal constructor(
             item?.let { feed.markDays(setOf(it.day)) }
             outsideChanges.value++
         }
-        publish()
+        // Built off the main thread (Nov 10, 2026: notes arriving from the server rebuilt the whole state there, one by
+        // one, and froze the feed); shown unless something newer was published meanwhile.
+        val startedAt = ++version
+        val inputs = inputs()
+        val built = withContext(background) { inputs.build() }
+        if (version == startedAt) show(built)
     }
 
     // MARK: Moments from the database
