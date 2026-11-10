@@ -203,6 +203,8 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
   same pill shape, background and shadow; Play the filled one); a single photo has **✎ Write** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
   line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
   (`OverPhotoText`, `ShadowIcon`).
+  - A highlight shows a gold **★** at the top right of the photo, also while the slideshow plays (Nov 10, 2026,
+    Android only).
   - Highlight marks the photo shown as the set's last highlight, or unmarks it (`setHighlight`); see
     [Moments](moments.md#sets-nov-9-2026).
   - **Play**: the next photo every 0.8 s, cross-fading, round and round; the bars hide, and at the bottom where it is

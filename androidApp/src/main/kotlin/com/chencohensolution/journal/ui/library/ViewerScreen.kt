@@ -639,6 +639,18 @@ internal fun ViewerScreen(
             }
         }
 
+        // A highlight shows a ★ over it, also while the slideshow plays (asked Nov 10, 2026).
+        if (set != null && current.id in set.highlights && !zoom.isZoomed) {
+            val highlighted = stringResource(R.string.set_highlighted)
+            Text(
+                "★",
+                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 14.dp)
+                    .background(LibraryColors.PillScrim, CircleShape).padding(horizontal = 9.dp, vertical = 4.dp)
+                    .semantics { contentDescription = highlighted },
+                color = Color(0xFFFFD54F), fontSize = 18.sp, style = OverPhotoText,
+            )
+        }
+
         // The TV's screen over the photo shown, in the same room as the photo.
         castZoom?.let { holder ->
             CastFrameOverlay(holder.zoom, Modifier.fillMaxSize().padding(bottom = roomBottom, end = roomEnd))

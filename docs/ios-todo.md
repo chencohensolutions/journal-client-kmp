@@ -41,6 +41,7 @@ Still missing on iOS:
     Android: `castPlaced`, `castGestures`, `CastFrameOverlay` in `CastViews.kt`.
   - Swiping the Moments viewer onto a photo of a set (once settled, not on opening) replaces it with the set's viewer
     at that photo: `MomentsFeed.setShowing(id)`; Android `ViewerActions.settled` wired in `LibraryApp.kt`.
+  - A set's highlight shows a gold ★ (on a small scrim) at the top right of the photo, also during the slideshow.
   - Strings: `cast_frame_hint` reworded; `set_play_here` removed.
 
 - **Showing on a TV with Google Cast** (Android Nov 9, 2026; [cast.md](cast.md), [viewer.md](screens/viewer.md)
