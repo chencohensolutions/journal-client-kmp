@@ -521,11 +521,23 @@ internal fun ViewerScreen(
     val setBarsShown = set != null && chrome && !showInfo && !playing
     var reelRoom by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val density = LocalDensity.current
+    // Only a photo that fits in the room left moves to its middle (asked Nov 10, 2026): one that fills more stays where
+    // it is when the bars come and go, and a zoomed one never moves (its last place is kept while zoomed).
+    val fitsInRoom = run {
+        if (window.width <= 0 || window.height <= 0) return@run true
+        val ratio = current.shownRatio(currentCrop?.takeIf { !whole }).coerceAtLeast(0.01f)
+        val w = window.width.toFloat()
+        val h = window.height.toFloat()
+        if (reelRoom.width > 0) minOf(w, h * ratio) <= w - reelRoom.width else minOf(h, w / ratio) <= h - reelRoom.height
+    }
+    val zoomedNow = zoom.isZoomed || castZoomed
+    var roomOn by remember(current.id) { mutableStateOf(setBarsShown && fitsInRoom && !zoomedNow) }
+    LaunchedEffect(setBarsShown, fitsInRoom, zoomedNow) { if (!zoomedNow) roomOn = setBarsShown && fitsInRoom }
     val roomBottom by androidx.compose.animation.core.animateDpAsState(
-        if (setBarsShown) with(density) { reelRoom.height.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room",
+        if (roomOn) with(density) { reelRoom.height.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room",
     )
     val roomEnd by androidx.compose.animation.core.animateDpAsState(
-        if (setBarsShown) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
+        if (roomOn) with(density) { reelRoom.width.toDp() } else 0.dp, tween(BAR_SLIDE_MILLIS), label = "reel room side",
     )
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     fun roomBottomPx() = with(density) { roomBottom.toPx() }
