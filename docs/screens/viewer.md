@@ -251,7 +251,8 @@ it. While casting the button is filled in (Cast's own connected look), and the s
   waits until it is back to the whole photo. A **double tap** zooms to fill the TV with the photo (no black bars,
   `TvZoom.filled`), and another goes back to the whole photo. The TV glides after the phone. Filling stays on for
   the next photos until a double tap goes back to the whole photo (Nov 10, 2026).
-- **ⓘ and the map on the TV** (Nov 10, 2026): while casting, two buttons sit before the Cast button. ⓘ shows the
+- **Info and Map on the TV** (Nov 10, 2026): while casting, a bar under the header (moved there from the top bar,
+  where they pushed the Cast button out of view) has two pills, filled while on. Info shows the
   photo's note, its date and time, and its place over the bottom of the TV; the map button (only for a photo with a
   place) shows the place on an OpenStreetMap map in the TV's top corner. Each is lit while on and stays on for the
   next photos until tapped again; a new cast starts with both off.
