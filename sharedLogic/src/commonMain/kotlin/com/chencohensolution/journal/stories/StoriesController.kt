@@ -256,7 +256,7 @@ class StoriesController internal constructor(
         // one, and froze the feed); shown unless something newer was published meanwhile.
         val startedAt = ++version
         val inputs = inputs()
-        val built = withContext(background) { inputs.build() }
+        val built = withContext(background) { Measure.time({ "Moments: rows read shown" }) { inputs.build() } }
         if (version == startedAt) show(built)
     }
 
@@ -494,8 +494,20 @@ class StoriesController internal constructor(
     }
 
     /**
-     * Reads Moments' rows down to the row of [day] (going to a date, showing a photo in Moments); calls [onLoaded]
-     * with that row's key once it is in the feed, null when no row has that day.
+     * Reads the page of Moments' rows above those read, if the rows read don't start at the newest (the screen scrolled
+     * near their top after going to a date).
+     */
+    fun loadNewerMoments() {
+        val pager = feed ?: return
+        scope.launch {
+            val more = pager.loadNewer(feedContext(), revealed, shownRow) ?: return@launch
+            showPaged(more)
+        }
+    }
+
+    /**
+     * Reads Moments' rows around the row of [day] (going to a date, showing a photo in Moments), unless they are read
+     * already; calls [onLoaded] with that row's key once it is in the feed, null when no row has that day.
      */
     fun loadMomentsTo(day: LocalDay, onLoaded: (String?) -> Unit) {
         val pager = feed ?: return onLoaded(null)
@@ -533,7 +545,7 @@ class StoriesController internal constructor(
         pagedFeed = more
         val startedAt = ++version
         val inputs = inputs()
-        val built = withContext(background) { inputs.build() }
+        val built = withContext(background) { Measure.time({ "Moments: rows read shown" }) { inputs.build() } }
         if (version == startedAt) show(built)
     }
 

@@ -821,11 +821,12 @@ internal fun ViewerScreen(
         AnimatedVisibility(chrome && !playing, Modifier.align(Alignment.TopCenter), enter = fadeIn(), exit = fadeOut()) {
             // No gradient behind them (asked Nov 9, 2026): a mild shadow keeps them readable on a bright photo.
             ProvideTextStyle(OverPhotoText) {
+            // The header, and while casting a bar under it with the TV's info and map (asked Nov 10, 2026: beside the
+            // Cast button they pushed it off a full top bar). Measured together: the photo's room starts below both.
+            Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height }.statusBarRoom()) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .onSizeChanged { headerHeight = it.height }
-                    .statusBarRoom()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -863,8 +864,9 @@ internal fun ViewerScreen(
                     }
                     ShareTopButton(current, actions.share)
                 }
-                CastOverlayButtons(hasPlace = castInfo?.hasPlace == true)
                 CastButton()
+            }
+            CastOverlayBar(hasPlace = castInfo?.hasPlace == true)
             }
             }
         }

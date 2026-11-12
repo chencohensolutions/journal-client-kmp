@@ -198,9 +198,27 @@ internal class FeedTable(
     fun sections(beforeMillis: Long, limit: Long, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> =
         decode(queries.sectionsBefore(beforeMillis, limit).executeAsList(), sounds, shown)
 
-    /** The rows from the newest down to the one keyed [key], with it; none when there is no such row. */
-    fun sectionsDownTo(key: String, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): List<FeedSection> =
-        decode(queries.sectionsDownTo(key).executeAsList(), sounds, shown)
+    /**
+     * The rows whose newest moments are [newest]..[oldest] (both included), newest first, decoded as [sections] does:
+     * Moments' window (FeedPager). With the keys and newest moments of all of them as the database has them, also of
+     * rows that show nothing once decoded.
+     */
+    fun window(newest: Long, oldest: Long, sounds: Map<String, SoundRecording>, shown: (LibraryRow) -> MediaItem): WindowRows {
+        val rows = queries.sectionsBetween(newest = newest, oldest = oldest).executeAsList()
+        return WindowRows(rows.mapTo(HashSet()) { it.key }, rows.map { it.newest_millis }, decode(rows, sounds, shown))
+    }
+
+    /** The rows of a window ([window]). */
+    class WindowRows(val keys: Set<String>, val millis: List<Long>, val sections: List<FeedSection>)
+
+    /** The newest moments of up to [count] rows older than [millis], newest first. */
+    fun millisBefore(millis: Long, count: Int): List<Long> = queries.millisBefore(millis, count.toLong()).executeAsList()
+
+    /** The newest moments of up to [count] rows newer than [millis], oldest first. */
+    fun millisAfter(millis: Long, count: Int): List<Long> = queries.millisAfter(millis, count.toLong()).executeAsList()
+
+    /** The newest moment of the row keyed [key]; null when there is no such row. */
+    fun millisOf(key: String): Long? = queries.millisOfSection(key).executeAsOneOrNull()
 
     /** The items of days [first]..[last] as shown ([shown]: scores, kept originals, statuses laid over). */
     fun shownItems(first: LocalDay, last: LocalDay, shown: (LibraryRow) -> MediaItem): List<MediaItem> =

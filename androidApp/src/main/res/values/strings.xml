@@ -1196,6 +1196,8 @@
     <string name="cast_info_off">Hide the note on the TV</string>
     <string name="cast_map_on">Show the place on a map on the TV</string>
     <string name="cast_map_off">Hide the map on the TV</string>
+    <string name="cast_info_chip">Info on TV</string>
+    <string name="cast_map_chip">Map</string>
     <string name="cast_frame_label">TV</string>
     <string name="cast_frame_hint">The frame is the TV. Pinch to zoom on both, drag to move around, double tap to fill the TV.</string>
     <string name="cast_play">Play on TV</string>

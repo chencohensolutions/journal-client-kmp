@@ -1251,6 +1251,8 @@
     <string name="cast_info_off">הסתרת הכיתוב בטלוויזיה</string>
     <string name="cast_map_on">הצגת המקום על מפה בטלוויזיה</string>
     <string name="cast_map_off">הסתרת המפה בטלוויזיה</string>
+    <string name="cast_info_chip">מידע בטלוויזיה</string>
+    <string name="cast_map_chip">מפה</string>
     <string name="cast_frame_label">TV</string>
     <string name="cast_frame_hint">המסגרת היא הטלוויזיה. צביטה מתקרבת בשתיהן, גרירה מזיזה, הקשה כפולה ממלאת את הטלוויזיה.</string>
     <string name="cast_play">הפעלה בטלוויזיה</string>
