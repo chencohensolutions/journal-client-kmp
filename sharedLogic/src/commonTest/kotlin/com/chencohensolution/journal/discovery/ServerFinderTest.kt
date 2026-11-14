@@ -199,5 +199,15 @@ class SettingsServerTest {
         assertEquals("MFZWI3D-BONSGYC", controller.currentState.serverId)
         controller.close()
     }
-}
 
+    @Test
+    fun settingsShowsTheServersVersionOnceItAnswered() {
+        val settings = JournalSettings(MapStore()).apply { serverUrl = "https://journal.example.com:56398/query" }
+        val controller = com.chencohensolution.journal.settings.SettingsController(settings, kotlinx.coroutines.Dispatchers.Unconfined)
+        assertNull(controller.currentState.serverVersion)
+        settings.serverFeatures = com.chencohensolution.journal.server.ServerFeatures(api = 1, version = "2026.11.14 (3f2a9c1 2026-11-14)")
+        controller.refreshServer()
+        assertEquals("2026.11.14 (3f2a9c1 2026-11-14)", controller.currentState.serverVersion)
+        controller.close()
+    }
+}

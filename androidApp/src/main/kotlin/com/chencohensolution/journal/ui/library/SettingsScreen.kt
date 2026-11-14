@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -229,15 +230,38 @@ private fun MainPage(
     }
     AdvancedSection(settings.momentsPaging) { actions.openPage(SettingsPage.LOADING_MOMENTS) }
     LaunchedEffect(Unit) { actions.refreshServer() }
-    ServerSection(settings.serverAddress, settings.serverId)
+    ServerSection(settings.serverAddress, settings.serverId, settings.serverVersion)
+    AppVersionLine(appVersion())
+}
+
+/** This app's version (versionName: the build's date, as the server's; docs/releases.md), under Your server. */
+@Composable
+private fun appVersion(): String {
+    val context = LocalContext.current
+    return remember(context) {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
+}
+
+@Composable
+private fun AppVersionLine(version: String) {
+    if (version.isEmpty()) return
+    SelectionContainer {
+        Text(
+            stringResource(R.string.settings_app_version, version),
+            color = LibraryColors.Muted,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp),
+        )
+    }
 }
 
 /**
  * Your server: where the app reaches it now and, under it, its id (docs/plans/discovery.md): the server is known by it
- * wherever it is. Both can be selected to copy.
+ * wherever it is, and its version once it answered. All can be selected to copy.
  */
 @Composable
-private fun ServerSection(address: String, id: String?) {
+private fun ServerSection(address: String, id: String?, version: String?) {
     SectionTitle(stringResource(R.string.settings_server_title))
     SettingsCard {
         SelectionContainer {
@@ -249,6 +273,7 @@ private fun ServerSection(address: String, id: String?) {
                     fontSize = 13.sp,
                     fontFamily = if (id != null) FontFamily.Monospace else null,
                 )
+                if (version != null) Text(stringResource(R.string.settings_server_version, version), color = LibraryColors.Muted, fontSize = 13.sp)
             }
         }
     }

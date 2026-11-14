@@ -23,6 +23,14 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
+  in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
+  `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from
+  `CFBundleShortVersionString`. Versions are dates now (`2026.11.14`, `.2` for a second that day; docs/releases.md),
+  so set the Xcode project's MARKETING_VERSION that way too and CURRENT_PROJECT_VERSION to the date's digits times
+  100 plus that number. Mirror `ServerSection` and `AppVersionLine` in `SettingsScreen.kt`; Hebrew strings are in
+  `values-iw/strings.xml` (`settings_server_version`, `settings_app_version`).
+
 - **Casting: fill kept, info and map on the TV** (Android Nov 10, 2026; [cast.md](cast.md#info-and-map),
   [viewer.md](screens/viewer.md) "Showing on a TV"): when casting is built on iOS, a double tap that fills the TV
   keeps filling for the next photos (Android: `castFill` in `ViewerScreen.kt`); call `cast.info(id, CastInfo(text,

@@ -1,19 +1,22 @@
 # Releasing the Android app
 
-GitHub builds and publishes the app (`.github/workflows/android-release.yml`). To release version 1.4.0 from main:
+GitHub builds and publishes the app (`.github/workflows/android-release.yml`). To release today's version from main:
 
 ```sh
-git push origin main:release/1.4.0
+git push origin main:release/2026.11.14
 ```
 
 GitHub Actions then runs the shared tests, builds the arm64 release APK (R8, compressed native libraries, about
-33 MB) signed with the release key, and publishes it as `journal-android.apk` on the GitHub Release `v1.4.0`, with
+33 MB) signed with the release key, and publishes it as `journal-android.apk` on the GitHub Release `v2026.11.14`, with
 its sha256 beside it. It takes about 15 minutes; follow it in the repository's Actions tab. The newest APK is always
 at <https://github.com/chencohensolutions/journal-client-kmp/releases/latest/download/journal-android.apk>.
 
-- The branch name is the version: `release/<major>.<minor>[.<patch>]`. It becomes `versionName`, and
-  `versionCode` is `major × 1 000 000 + minor × 1 000 + patch` (1.4.0 is 1004000). A phone installs an APK over the
-  one it has only when the versionCode is higher, so each release needs a higher version.
+- The branch name is the version. The app and the server share one scheme since Nov 14, 2026: the day it was
+  made, `YYYY.MM.DD`, with `.2`, `.3`, ... for a second or third version that day (`release/2026.11.14.2`). It
+  becomes `versionName` (shown at the bottom of Settings, under Your server, beside the server's own version), and
+  `versionCode` is the date's digits times 100 plus that number (2026.11.14 is 2026111400, 2026.11.14.2 is
+  2026111402). A phone installs an APK over the one it has only when the versionCode is higher, so each release
+  needs a later date or number. Which app works with which server: `releases/README.md`.
 - Pushing the same release branch again rebuilds it and replaces that release's APK. Phones that already installed
   that version won't see it as an update; push a new version for that.
 - Only arm64 phones (every phone of the last years). Emulators and old 32-bit phones use a debug build.
@@ -49,6 +52,6 @@ debug-signed app on a phone before installing a release.
 
 ## Locally
 
-`./gradlew :androidApp:assembleRelease -PversionName=1.4.0 -PversionCode=1004000` builds the same APK when
+`./gradlew :androidApp:assembleRelease -Pabi=arm64-v8a -PversionName=2026.11.14 -PversionCode=2026111400` builds the same APK when
 `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` are set; without them the release
 build is unsigned. The `profile` build stays debug-signed for measuring on a phone.
