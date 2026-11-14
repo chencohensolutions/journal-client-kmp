@@ -1,8 +1,9 @@
-# Publishes the Android app (docs/releases.md): push a branch named release/<version>, the day's date such as
-# release/2026.11.14 (release/2026.11.14.2 for a second one that day), and this builds the arm64 APK signed with the
-# release key and puts it on the GitHub Release v<version>.
+# Publishes the Android app (docs/releases.md) on the GitHub Release v<version>: the arm64 APK signed with the
+# release key. It runs by itself on every push to main and releases the version in the VERSION file once (raise it
+# with scripts/bump-version.sh); a version already released is skipped in seconds. A branch named release/<version>,
+# such as release/2026.11.14.2, releases that version from any commit:
 #
-#   git push origin main:release/2026.11.14
+#   git push origin main:release/2026.11.14.2
 #
 # The latest APK is always at
 #   https://github.com/chencohensolutions/journal-client-kmp/releases/latest/download/journal-android.apk
@@ -13,14 +14,15 @@ name: Android release
 
 on:
   push:
-    branches: ["release/**"]
+    branches: ["release/**", main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
   group: android-release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -31,8 +33,18 @@ jobs:
       - name: Version
         id: version
         run: |
-          version="${GITHUB_REF_NAME#release/}"
-          version="${version#v}"
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            # A push to main releases the VERSION file's version, once: a version already released is skipped.
+            version="$(tr -d ' \r\n' < VERSION)"
+            if gh release view "v$version" >/dev/null 2>&1; then
+              echo "Release v$version exists already: nothing to do (scripts/bump-version.sh makes a new version)"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            version="${GITHUB_REF_NAME#release/}"
+            version="${version#v}"
+          fi
           if ! [[ "$version" =~ ^(20[0-9][0-9])\.([0-9]{2})\.([0-9]{2})(\.([0-9]+))?$ ]]; then
             echo "The branch must be release/YYYY.MM.DD[.N], such as release/2026.11.14, not $GITHUB_REF_NAME" >&2
             exit 1
@@ -46,8 +58,11 @@ jobs:
           # 2026.11.14.2 is 2026111402 (below Android's limit of 2100000000 until 2099).
           echo "name=$version" >> "$GITHUB_OUTPUT"
           echo "code=$((10#$year$month$day * 100 + n))" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Release key
+        if: steps.version.outputs.skip != 'true'
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
             echo "The release key isn't set up: add the secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD" \
@@ -62,18 +77,23 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
 
       - uses: actions/setup-java@v4
+        if: steps.version.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: 21
 
       - uses: android-actions/setup-android@v3
+        if: steps.version.outputs.skip != 'true'
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.version.outputs.skip != 'true'
 
       - name: Test
+        if: steps.version.outputs.skip != 'true'
         run: ./gradlew :sharedLogic:testAndroidHostTest
 
       - name: Build
+        if: steps.version.outputs.skip != 'true'
         run: |
           ./gradlew :androidApp:assembleRelease -Pabi=arm64-v8a \
             -PversionName=${{ steps.version.outputs.name }} -PversionCode=${{ steps.version.outputs.code }}
@@ -89,6 +109,7 @@ jobs:
       # Pushing the branch again replaces the APK of that release (same version: phones that have it don't update;
       # push a higher version for that).
       - name: Publish
+        if: steps.version.outputs.skip != 'true'
         run: |
           tag="v${{ steps.version.outputs.name }}"
           if gh release view "$tag" >/dev/null 2>&1; then

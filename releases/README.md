@@ -1,5 +1,8 @@
 # Releases kept in the repository
 
+From 2026.11.14.2 on, releases are on the repository's Releases page only (published by
+`.github/workflows/android-release.yml`), not in git. The file below is the last one kept here.
+
 `android/journal-android-<version>.apk` is the Android app (arm64 phones), signed with the release key and kept in
 git LFS. Download it from the file's page on GitHub ("Download raw file") and open it on the phone. The first time,
 uninstall a debug build of the app first: it is signed with another key.
