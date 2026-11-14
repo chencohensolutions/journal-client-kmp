@@ -337,7 +337,9 @@ class EnrollmentController internal constructor(
             return PasteResult.LINK
         }
         if (_state.value.step !is EnrollmentStep.EnterCode) return PasteResult.NOTHING
-        val code = PASTED_CODE.find(text)?.value ?: return PasteResult.NOTHING
+        // A plain eight-letter word ("tomorrow") is not a code: one from the server has a digit or its hyphen.
+        val code = PASTED_CODE.findAll(text).map { it.value }.firstOrNull { c -> c.any { it == '-' || it.isDigit() } }
+            ?: return PasteResult.NOTHING
         updateCode(code)
         return PasteResult.CODE
     }
