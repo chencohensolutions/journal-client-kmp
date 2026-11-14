@@ -124,7 +124,7 @@
     <string name="enroll_step_confirm">Confirm</string>
     <string name="enroll_step_register">Register</string>
     <string name="enroll_code_title">Enter enrollment code</string>
-    <string name="enroll_code_body">On your server, run journal-server enroll-code and type the address and code it prints.</string>
+    <string name="enroll_code_body">On your server, run journal-server enroll-code and scan its QR code, paste the link it prints, or type the address and code.</string>
     <string name="enroll_server_address">Server address</string>
     <string name="enroll_server_address_help">For example 192.168.50.2:8080</string>
     <string name="enroll_code">Enrollment code</string>
@@ -132,6 +132,8 @@
     <string name="enroll_continue">Continue</string>
     <string name="enroll_scan">Scan QR code</string>
     <string name="enroll_scan_failed">Couldn\'t open the QR code scanner. Type the code instead.</string>
+    <string name="enroll_paste">Paste link</string>
+    <string name="enroll_paste_nothing">Nothing to paste. Copy the enrollment link or code first.</string>
     <string name="enroll_confirm_title">Register this device?</string>
     <string name="enroll_server">Server</string>
     <string name="enroll_server_verified">Verified by journal-server-ca</string>
@@ -1015,6 +1017,7 @@
     <string name="swap_there_body">Your friend makes an invite on their phone (Keep a friend’s copy here). Scan its QR code, or paste the link they sent.</string>
     <string name="swap_there_scan">Scan the QR code</string>
     <string name="swap_there_or_paste">Or paste the link</string>
+    <string name="swap_there_paste">Paste</string>
     <string name="swap_there_bad_link">That isn’t a swap link</string>
     <string name="swap_scan_failed">Couldn’t scan the code</string>
     <string name="swap_accept_title">Keep my copy at %1$s’s</string>

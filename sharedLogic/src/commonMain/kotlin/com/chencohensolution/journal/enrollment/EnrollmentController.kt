@@ -161,11 +161,14 @@ class EnrollmentController internal constructor(
         setStep(EnrollmentStep.EnterCode())
     }
 
+    /** A whole enrollment link pasted into the address (or code) field opens it, as [openPasted] does. */
     fun updateServerAddress(address: String) {
+        findEnrollmentLink(address)?.let { return openLink(it) }
         _state.update { it.copy(serverAddress = address, step = clearedCodeError(it.step)) }
     }
 
     fun updateCode(code: String) {
+        findEnrollmentLink(code)?.let { return openLink(it) }
         _state.update { it.copy(code = cleanCode(code), step = clearedCodeError(it.step)) }
     }
 
@@ -321,6 +324,24 @@ class EnrollmentController internal constructor(
     /** What a QR code scan read: an enrollment link (see [openLink]), or else just the code. */
     fun openScanned(text: String) {
         parseEnrollmentLink(text)?.let(::openLink) ?: updateCode(text)
+    }
+
+    /**
+     * What the Paste button read from the clipboard: an enrollment link anywhere in it (as a chat app sends it, with
+     * words around it) opens it as a scan does, with the server's key pinned when the link has one; else a code in it
+     * fills in the code. [PasteResult.NOTHING] when it has neither, and nothing changes.
+     */
+    fun openPasted(text: String): PasteResult {
+        findEnrollmentLink(text)?.let {
+            openLink(it)
+            return PasteResult.LINK
+        }
+        if (_state.value.step !is EnrollmentStep.EnterCode) return PasteResult.NOTHING
+        // A plain eight-letter word ("tomorrow") is not a code: one from the server has a digit or its hyphen.
+        val code = PASTED_CODE.findAll(text).map { it.value }.firstOrNull { c -> c.any { it == '-' || it.isDigit() } }
+            ?: return PasteResult.NOTHING
+        updateCode(code)
+        return PasteResult.CODE
     }
 
     fun reset() {
@@ -481,6 +502,15 @@ fun parseEnrollmentLink(link: String): EnrollmentLink? {
         addresses = url.parameters.getAll("address").orEmpty().mapNotNull(KeptDiscovery::originOf).distinct(),
     )
 }
+
+/** What [EnrollmentController.openPasted] found in the clipboard. */
+enum class PasteResult { LINK, CODE, NOTHING }
+
+private val LINK_IN_TEXT = Regex("""journal://enroll\?[^\s<>"']+""")
+
+/** The first `journal://enroll?…` link in [text] that [parseEnrollmentLink] reads, without punctuation a sentence put after it. */
+fun findEnrollmentLink(text: String): EnrollmentLink? =
+    LINK_IN_TEXT.findAll(text).firstNotNullOfOrNull { parseEnrollmentLink(it.value.trimEnd('.', ',', ';', ')', ']', '!', '?')) }
 
 internal fun cleanCode(input: String): String {
     val pasted = input.any(Char::isWhitespace) || input.count(Char::isLetterOrDigit) > CODE_LENGTH

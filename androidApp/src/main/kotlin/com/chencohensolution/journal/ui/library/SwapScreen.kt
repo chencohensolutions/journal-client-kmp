@@ -398,14 +398,22 @@ private fun LinkStep(state: SwapState, draft: JoinDraft, actions: SwapThereActio
     SettingsCard {
         Column(Modifier.padding(16.dp)) {
             PrimaryButton(stringResource(R.string.swap_there_scan), onClick = actions.scan)
-            Text(stringResource(R.string.swap_there_or_paste), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+            val context = LocalContext.current
+            val setLink: (String) -> Unit = {
+                draft.linkText = it
+                parseSwapLink(it)?.from?.let { from -> if (draft.name.isBlank()) draft.name = from }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.swap_there_or_paste), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                // The link alone, when it came in a message with words around it.
+                TextButton(onClick = { pastedText(context).let { setLink(SWAP_LINK_IN_TEXT.find(it)?.value ?: it.trim()) } }) {
+                    Text(stringResource(R.string.swap_there_paste))
+                }
+            }
             val link = draft.link
             OutlinedTextField(
                 value = draft.linkText,
-                onValueChange = {
-                    draft.linkText = it
-                    parseSwapLink(it)?.from?.let { from -> if (draft.name.isBlank()) draft.name = from }
-                },
+                onValueChange = setLink,
                 placeholder = { Text("journal://swap?…") },
                 isError = draft.linkText.isNotBlank() && link == null,
                 supportingText = if (draft.linkText.isNotBlank() && link == null) {
@@ -738,3 +746,5 @@ internal fun SwapRow(state: SwapState, open: () -> Unit) {
     }
     PageRow(stringResource(R.string.swap_title), body, open)
 }
+
+private val SWAP_LINK_IN_TEXT = Regex("""journal://swap\?[^\s<>"']+""")

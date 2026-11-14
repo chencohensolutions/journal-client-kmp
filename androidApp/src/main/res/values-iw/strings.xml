@@ -128,7 +128,7 @@
     <string name="enroll_step_confirm">אישור</string>
     <string name="enroll_step_register">רישום</string>
     <string name="enroll_code_title">הזנת קוד רישום</string>
-    <string name="enroll_code_body">בשרת שלך, הריצו journal-server enroll-code והקלידו את הכתובת והקוד שהוא מדפיס.</string>
+    <string name="enroll_code_body">בשרת שלך, הריצו journal-server enroll-code וסרקו את קוד ה-QR, הדביקו את הקישור שהוא מדפיס, או הקלידו את הכתובת והקוד.</string>
     <string name="enroll_server_address">כתובת השרת</string>
     <string name="enroll_server_address_help">לדוגמה 192.168.50.2:8080</string>
     <string name="enroll_code">קוד רישום</string>
@@ -136,6 +136,8 @@
     <string name="enroll_continue">המשך</string>
     <string name="enroll_scan">סריקת קוד QR</string>
     <string name="enroll_scan_failed">לא ניתן לפתוח את סורק קוד ה-QR. אפשר להקליד את הקוד במקום.</string>
+    <string name="enroll_paste">הדבקת קישור</string>
+    <string name="enroll_paste_nothing">אין מה להדביק. העתיקו קודם את קישור הרישום או את הקוד.</string>
     <string name="enroll_confirm_title">לרשום את המכשיר הזה?</string>
     <string name="enroll_server">שרת</string>
     <string name="enroll_server_verified">מאומת על ידי journal-server-ca</string>
@@ -1065,6 +1067,7 @@
     <string name="swap_there_body">החבר יוצר הזמנה בטלפון שלו (לשמור כאן עותק של חבר). סרקו את קוד ה-QR, או הדביקו את הקישור ששלח.</string>
     <string name="swap_there_scan">סריקת קוד ה-QR</string>
     <string name="swap_there_or_paste">או הדביקו את הקישור</string>
+    <string name="swap_there_paste">הדבקה</string>
     <string name="swap_there_bad_link">זה לא קישור החלפה</string>
     <string name="swap_scan_failed">הסריקה לא הצליחה</string>
     <string name="swap_accept_title">לשמור את העותק שלי אצל %1$s</string>

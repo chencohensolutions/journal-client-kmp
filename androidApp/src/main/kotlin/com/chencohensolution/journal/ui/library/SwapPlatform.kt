@@ -137,6 +137,12 @@ internal fun copyText(context: Context, text: String, sensitive: Boolean) {
     context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(clip)
 }
 
+/** The clipboard's text, "" when it holds none. Read only when the user taps Paste (Android notes that it was read). */
+internal fun pastedText(context: Context): String {
+    val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip ?: return ""
+    return if (clip.itemCount > 0) clip.getItemAt(0).coerceToText(context)?.toString().orEmpty() else ""
+}
+
 /** What the recovery sheet says: the words, whose copy, at which friend's, from which server. */
 internal class RecoverySheet(
     val words: List<String>,
