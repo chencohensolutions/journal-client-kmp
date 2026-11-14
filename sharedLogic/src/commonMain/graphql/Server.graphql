@@ -58,3 +58,9 @@ query LocalIndexes {
 query PhoneModels {
   phoneModels { name precision bytes sha256 url source }
 }
+
+# Asked on its own too (Nov 14, 2026): the CA that signs this server's certificates, kept so the server is trusted by
+# it (JournalSettings.serverCa). A server from before it doesn't know the field.
+query ServerCa {
+  serverInfo { caCertificate }
+}

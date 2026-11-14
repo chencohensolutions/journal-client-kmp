@@ -3,6 +3,7 @@ package com.chencohensolution.journal.network
 import android.content.Context
 import android.security.KeyChain
 import com.chencohensolution.journal.enrollment.androidKeyStore
+import com.chencohensolution.journal.tls.decodePemCertificates
 import com.chencohensolution.journal.tls.parseX509Certificate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -47,11 +48,15 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
      * Blocks (KeyChain and Keystore), so it must stay off the main thread.
      */
     fun okHttpClient(identityAlias: String?, trustedCas: List<ByteArray>): OkHttpClient {
-        // Once the server's key is kept (serverInfo.discovery), it is checked instead of the CA and the host name, so
-        // the server is reached at any address (docs/plans/discovery.md, "Phones").
-        val pin = JournalSettings(SharedPreferencesStore(appContext)).serverFingerprint
-        val trustManager = if (pin != null) {
-            PinnedTrustManager(pin)
+        // Once the server's key (serverInfo.discovery) or its own CA (serverInfo.caCertificate) is kept, they are
+        // checked instead of the app's CA and the host name, so the server is reached at any address
+        // (docs/plans/discovery.md, "Phones"; journal-server-go docs/install.md, "A new server, and the CA").
+        val settings = JournalSettings(SharedPreferencesStore(appContext))
+        val pin = settings.serverFingerprint
+        val serverCas = settings.serverCa?.let(::decodePemCertificates).orEmpty()
+        val kept = pin != null || serverCas.isNotEmpty()
+        val trustManager = if (kept) {
+            KeptServerTrustManager(serverCas.map(::parseX509Certificate), pin)
         } else {
             HandshakeCertificates.Builder()
                 .addPlatformTrustedCertificates()
@@ -66,7 +71,7 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
         }
         return OkHttpClient.Builder()
             .sslSocketFactory(sslContext.socketFactory, trustManager)
-            .apply { if (pin != null) hostnameVerifier { _, _ -> true } }
+            .apply { if (kept) hostnameVerifier { _, _ -> true } }
             // OkHttp waits 10 s by default; the server answers an upload piece only after writing and syncing it,
             // and the last one only after hashing the whole file, which takes longer for a large video.
             .readTimeout(2, TimeUnit.MINUTES)
@@ -93,21 +98,33 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
 }
 
 /**
- * Accepts the server whose certificate's key (SubjectPublicKeyInfo) hashes to [fingerprint], whatever its CA, host name
- * or address; any other is refused. Client certificates aren't checked here (this is the phone's side).
+ * Accepts the server this phone knows: one whose certificate chains to the server's own CA [serverCas] and is for a
+ * server (serverAuth), or whose key (SubjectPublicKeyInfo) hashes to [fingerprint]; whatever its host name or address.
+ * Any other is refused. Client certificates aren't checked here (this is the phone's side).
  */
-internal class PinnedTrustManager(private val fingerprint: String) : X509TrustManager {
+internal class KeptServerTrustManager(serverCas: List<X509Certificate>, private val fingerprint: String?) : X509TrustManager {
+    private val byCa: X509TrustManager? = serverCas.takeIf { it.isNotEmpty() }?.let { cas ->
+        HandshakeCertificates.Builder().apply { cas.forEach { addTrustedCertificate(it) } }.build().trustManager
+    }
+
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
         val leaf = chain?.firstOrNull() ?: throw CertificateException("The server sent no certificate")
-        if (!ServerPin.fingerprintOfSpki(leaf.publicKey.encoded).equals(fingerprint, ignoreCase = true)) {
-            throw CertificateException("The server's key isn't the one this phone knows")
-        }
+        val byCa = byCa
+        if (byCa != null && runCatching { byCa.checkServerTrusted(chain, authType) }.isSuccess &&
+            leaf.extendedKeyUsage?.contains(SERVER_AUTH) == true
+        ) return
+        if (fingerprint != null && ServerPin.fingerprintOfSpki(leaf.publicKey.encoded).equals(fingerprint, ignoreCase = true)) return
+        throw CertificateException("The server isn't the one this phone knows")
     }
 
     override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?): Unit =
         throw CertificateException("Not a server")
 
     override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+
+    private companion object {
+        const val SERVER_AUTH = "1.3.6.1.5.5.7.3.1"
+    }
 }
 
 /**

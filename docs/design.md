@@ -124,6 +124,14 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
 - Enrolling by id (Nov 7, 2026, both platforms; [screens/enrollment.md](screens/enrollment.md)): a link with the
   server's `fingerprint`, DHT `key` and `address`es pins the key from the first connection, so the phone enrolls at
   an address the certificate doesn't list, trying the other addresses, then the DHT, when the first doesn't answer.
+- Each server's own CA (Nov 14, 2026, shared logic for both platforms; journal-server-go docs/install.md "A new
+  server, and the CA"): a new server makes its own CA, so the app can't know it in advance. Once enrolled (and on
+  every features refresh, for phones enrolled before), the app asks `serverInfo.caCertificate` on its own and keeps it
+  (`JournalSettings.serverCa`). The mTLS clients then accept a server certificate that chains to that CA and is for a
+  server, at any address, beside the pinned key (Android `KeptServerTrustManager`; iOS `MtlsChallenges.serverTrust`
+  with the SSL policy without a host name). The CA built into the app (`SERVER_CA_PEM`) stays for servers that use it.
+  Enrolling at a server with its own CA needs the QR code (its key fingerprint): a typed code reaches only servers on
+  the built-in CA.
 - Tags and notes per photo, Tags screen, tag page, and the tag search picker.
 - Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
   both; iOS since Oct 21, 2026).
@@ -329,7 +337,7 @@ session, behind the phone's lock once per session (see [screens/moments.md](scre
   address changes** (Nov 7, 2026, Android and iOS; docs/plans/discovery.md "Phones"): after the features, the app asks
   `serverInfo.discovery` on its own (an older server doesn't know it) and keeps the server's key fingerprint, id, DHT
   key and up to 16 addresses (`KeptDiscovery` in `JournalSettings`). From then on the mTLS clients pin the key
-  instead of checking the CA and the host name (Android `PinnedTrustManager`, also for the video stream; iOS
+  instead of checking the CA and the host name (Android `KeptServerTrustManager`, also for the video stream; iOS
   `MtlsChallenges.serverTrust` reading the SPKI from the certificate's DER, `ServerPin`), so any address of the server
   works. A request that fails on the network (not an HTTP answer) makes `ServerFinder` try the kept addresses, 400 ms
   apart, the first to answer winning, then a DHT lookup at most every 2 minutes (`DhtClient`: KRPC `get` over UDP with

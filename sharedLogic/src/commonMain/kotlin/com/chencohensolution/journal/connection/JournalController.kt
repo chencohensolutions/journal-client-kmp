@@ -108,12 +108,13 @@ class JournalController internal constructor(
      * Switches to an identity created by enrollment; called by EnrollmentController. [discovery]: who the server is,
      * when the enrollment link said (its key is pinned from then on); null forgets what was kept of a server before.
      */
-    internal fun useEnrolledIdentity(serverUrl: String, alias: String, discovery: KeptDiscovery? = null) {
+    internal fun useEnrolledIdentity(serverUrl: String, alias: String, discovery: KeptDiscovery? = null, serverCa: String? = null) {
         connectJob?.cancel()
         settings.serverUrl = serverUrl
         settings.identityAlias = alias
-        // Perhaps another server: what was kept of the old one (its pinned key, its addresses) doesn't apply.
+        // Perhaps another server: what was kept of the old one (its pinned key, its addresses, its CA) doesn't apply.
         settings.serverDiscovery = discovery
+        settings.serverCa = serverCa
         _state.update {
             JournalState(serverUrl = serverUrl, identityAlias = alias, status = ConnectionStatus.NotConnected)
         }

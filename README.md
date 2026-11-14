@@ -91,8 +91,11 @@ on the server.
 
 The private key never leaves the device. Certificates renew themselves in their last 30 days.
 
-The server's CA is compiled into the app ([server-ca.pem](sharedLogic/src/commonMain/certs/server-ca.pem)). If the
-CA changes, run `./gradlew :sharedLogic:syncServerCa` and ship a new build.
+Each server has its own CA, made when it is set up. Scanning the QR code tells the app the server's key, and once
+enrolled the app keeps the server's CA (`serverInfo.caCertificate`), so it trusts that server by it from then on.
+The CA of the first servers is also compiled into the app ([server-ca.pem](sharedLogic/src/commonMain/certs/server-ca.pem)),
+so phones enrolled there keep working, and a code typed by hand works only with those; if that CA changes, run
+`./gradlew :sharedLogic:syncServerCa` and ship a new build.
 
 ## Tech stack
 

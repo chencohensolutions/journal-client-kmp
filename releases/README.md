@@ -18,6 +18,11 @@ it from `serverInfo`).
 
 | App | versionCode | Needs server API | Works with servers |
 |---|---|---|---|
+| next build | | 1 | every server; keeps a server's own CA from 2026.11.14.2 (`serverInfo.caCertificate`) |
 | 2026.11.14 | 2026111400 | 1 | 1.2.8 and newer, 2026.11.14 and newer |
+
+Servers from 2026.11.14.2 make their own CA when they are set up. Every app enrolls there by the QR code (it pins the
+server's key); builds after 2026.11.14 also keep the CA, so the server stays trusted when its certificate is made
+again with a new key.
 
 sha256 of journal-android-2026.11.14.apk: 7bc84e896c6b5066581664017c8811ceec896c94502cf07e8fa37bd16825e35a

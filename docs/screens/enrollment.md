@@ -54,3 +54,10 @@ sha256 of the server certificate's key), `key=` (its DHT key) and `address=` for
 
 A link without a fingerprint (an older server), and an address typed by hand, work as before: the CA and the host
 name. Typing a server id by hand isn't offered.
+
+**The server's own CA** (Nov 14, 2026): each new server makes its own CA (journal-server-go docs/install.md, "A new
+server, and the CA"). In the connection test after the certificate is saved, the wizard also asks
+`serverInfo.caCertificate` (on its own: an older server doesn't know it) and hands it to `useEnrolledIdentity`, which
+keeps it in `JournalSettings.serverCa` (or forgets an older server's). From then on the mTLS clients trust the server
+by that CA too, at any address. So a server with its own CA is enrolled at by its QR code; a typed code reaches only a
+server on the CA built into the app, and the wizard shows the usual connection error for any other.
