@@ -19,3 +19,5 @@ it from `serverInfo`).
 | App | versionCode | Needs server API | Works with servers |
 |---|---|---|---|
 | 2026.11.14 | 2026111400 | 1 | 1.2.8 and newer, 2026.11.14 and newer |
+
+sha256 of journal-android-2026.11.14.apk: 7bc84e896c6b5066581664017c8811ceec896c94502cf07e8fa37bd16825e35a
