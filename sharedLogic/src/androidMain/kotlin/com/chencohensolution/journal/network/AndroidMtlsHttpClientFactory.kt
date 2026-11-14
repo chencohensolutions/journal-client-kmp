@@ -109,6 +109,7 @@ internal class KeptServerTrustManager(serverCas: List<X509Certificate>, private 
 
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
         val leaf = chain?.firstOrNull() ?: throw CertificateException("The server sent no certificate")
+        val byCa = byCa
         if (byCa != null && runCatching { byCa.checkServerTrusted(chain, authType) }.isSuccess &&
             leaf.extendedKeyUsage?.contains(SERVER_AUTH) == true
         ) return
