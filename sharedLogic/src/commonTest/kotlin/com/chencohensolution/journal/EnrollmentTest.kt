@@ -11,6 +11,7 @@ import com.chencohensolution.journal.enrollment.EnrollmentError
 import com.chencohensolution.journal.enrollment.EnrollmentLink
 import com.chencohensolution.journal.enrollment.EnrollmentStep
 import com.chencohensolution.journal.enrollment.KeyProtection
+import com.chencohensolution.journal.enrollment.PasteResult
 import com.chencohensolution.journal.enrollment.cleanCode
 import com.chencohensolution.journal.enrollment.parseEnrollmentLink
 import com.chencohensolution.journal.network.MtlsHttpClientFactory
@@ -267,6 +268,39 @@ class EnrollmentControllerTest {
     }
 
     @Test
+    fun pastedLinkWithWordsAroundItOpensLikeAScan() = runTest {
+        val controller = controller()
+        controller.start()
+        val result = controller.openPasted("Here you go: journal://enroll?code=k7qm-4xpd&server=https%3A%2F%2F192.168.50.2%3A8080.\nThanks")
+
+        assertEquals(PasteResult.LINK, result)
+        assertEquals(EnrollmentStep.Confirm(user = "hen", minutesLeft = 8), controller.awaitStep { it is EnrollmentStep.Confirm })
+        assertEquals("https://192.168.50.2:8080", controller.currentState.serverAddress)
+    }
+
+    @Test
+    fun pastedTextWithOnlyACodeFillsInTheCode() = runTest {
+        val controller = controller()
+        controller.start()
+
+        assertEquals(PasteResult.CODE, controller.openPasted("  Code     K7QM-4XPD"))
+        assertEquals("K7QM-4XPD", controller.currentState.code)
+        assertEquals(EnrollmentStep.EnterCode(), controller.currentState.step)
+        assertEquals(PasteResult.NOTHING, controller.openPasted("see you tomorrow"))
+        assertEquals("K7QM-4XPD", controller.currentState.code)
+    }
+
+    @Test
+    fun linkPastedIntoAFieldOpensIt() = runTest {
+        val controller = controller()
+        controller.start()
+        controller.updateCode("journal://enroll?code=k7qm-4xpd&server=https%3A%2F%2F192.168.50.2%3A8080")
+
+        assertEquals(EnrollmentStep.Confirm(user = "hen", minutesLeft = 8), controller.awaitStep { it is EnrollmentStep.Confirm })
+        assertEquals("https://192.168.50.2:8080", controller.currentState.serverAddress)
+    }
+
+    @Test
     fun rejectedCodeStaysOnCodeScreen() = runTest {
         val controller = controller(server(mapOf("EnrollmentPreview" to rejectedJson("enrollmentPreview", "INVALID_CODE"))))
         controller.start()
@@ -449,6 +483,18 @@ class EnrollByIdTest {
         state.first { predicate(it.step) }.step
 
     private fun realTime(block: suspend () -> Unit) = runTest { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { block() } }
+
+    @Test
+    fun aPastedLinkPinsTheKeyAsAScannedOneDoes() = realTime {
+        val controller = controller(up = setOf("203.0.113.7"))
+        controller.start()
+        val text = "journal://enroll?code=K7QM-4XPD&server=https%3A%2F%2F203.0.113.7%3A56398&fingerprint=$fingerprint&key=$dhtKey"
+        assertEquals(PasteResult.LINK, controller.openPasted("Join my journal: $text"))
+        assertIs<EnrollmentStep.Confirm>(controller.awaitStep { it is EnrollmentStep.Confirm || it is EnrollmentStep.EnterCode && it.error != null })
+        assertEquals(listOf<String?>(fingerprint), pinsSeen)
+        assertEquals("T6DNBAM-IJR6WLU-GRP5KQM-KWWQCWV-R36TY3F-MFYELGR-RLVWBLM-HQBIEAE", controller.currentState.serverId)
+        controller.close()
+    }
 
     @Test
     fun theLinkPinsTheKeyFromTheFirstConnection() = realTime {

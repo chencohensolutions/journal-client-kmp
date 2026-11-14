@@ -530,6 +530,13 @@ struct SwapThereView: View {
             Button("Scan the QR code") {
                 Task { if await QRCodeScannerSheet.canScan() { scanning = true } else { noScanner = true } }
             }
+            // The system's Paste button: no "Allow Paste" prompt. The link alone, when a message had words around it.
+            PasteButton(payloadType: String.self) { strings in
+                let text = strings.joined(separator: "\n")
+                let link = text.range(of: #"journal://swap\?[^\s<>"']+"#, options: .regularExpression).map { String(text[$0]) }
+                DispatchQueue.main.async { draft.linkText = link ?? text.trimmingCharacters(in: .whitespacesAndNewlines) }
+            }
+            .labelStyle(.titleAndIcon)
             TextField("journal://swap?…", text: $draft.linkText, axis: .vertical)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: draft.linkText) { _, text in

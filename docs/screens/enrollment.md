@@ -6,8 +6,16 @@ Shown while the device has no identity. The server side (codes, certificates, th
 ## Steps
 
 1. **Welcome:** what registering does, and **Get started**.
-2. **Connect** (`EnrollmentStep.EnterCode`): the server address and the 8-letter code, or **Scan QR code**. A
-   `journal://enroll?…` link (scanned, or opened from the phone's camera) fills both in and checks the code at once.
+2. **Connect** (`EnrollmentStep.EnterCode`): the server address and the 8-letter code, or **Scan QR code** and
+   **Paste link** side by side. A `journal://enroll?…` link (scanned, pasted, or opened from the phone's camera) fills
+   both in and checks the code at once.
+
+   **Paste link** (Nov 14, 2026; `EnrollmentController.openPasted`, `findEnrollmentLink`): reads the clipboard only
+   when tapped. A link anywhere in it (a chat message with words around it, the line `enroll-code` prints) opens
+   exactly as a scan does, fingerprint pinning, other addresses and the DHT included; without a link, a code in the
+   text fills in the code; with neither, "Nothing to paste. Copy the enrollment link or code first." and nothing
+   changes. A whole link pasted into the address or code field opens the same way. On iOS it is the system's Paste
+   button (`PasteButton`), so iOS doesn't ask to allow pasting each time.
 3. **Confirm** (`EnrollmentStep.Confirm`): "Register this device?" with the server, the account the code is for and
    when it expires, and the device's name. The server row says "Verified by journal-server-ca", or, after a link that
    said who the server is, "Its key matches server ID T6DNBAM-IJR6WLU-…" (`EnrollmentState.serverId`, its first two
@@ -59,5 +67,5 @@ name. Typing a server id by hand isn't offered.
 server, and the CA"). In the connection test after the certificate is saved, the wizard also asks
 `serverInfo.caCertificate` (on its own: an older server doesn't know it) and hands it to `useEnrolledIdentity`, which
 keeps it in `JournalSettings.serverCa` (or forgets an older server's). From then on the mTLS clients trust the server
-by that CA too, at any address. So a server with its own CA is enrolled at by its QR code; a typed code reaches only a
+by that CA too, at any address. So a server with its own CA is enrolled at by its QR code or its pasted link; a typed code reaches only a
 server on the CA built into the app, and the wizard shows the usual connection error for any other.

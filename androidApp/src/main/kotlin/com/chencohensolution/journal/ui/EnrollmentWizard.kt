@@ -65,7 +65,9 @@ import com.chencohensolution.journal.enrollment.EnrollmentError
 import com.chencohensolution.journal.enrollment.EnrollmentState
 import com.chencohensolution.journal.enrollment.EnrollmentStep
 import com.chencohensolution.journal.enrollment.KeyProtection
+import com.chencohensolution.journal.enrollment.PasteResult
 import com.chencohensolution.journal.enrollment.RegistrationProgress
+import com.chencohensolution.journal.ui.library.pastedText
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
@@ -97,6 +99,12 @@ fun EnrollmentWizard(
                     .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
                     .addOnFailureListener { Toast.makeText(context, R.string.enroll_scan_failed, Toast.LENGTH_LONG).show() }
             },
+            // Read only when tapped: Android lets a focused app read the clipboard and says so in its own note.
+            paste = {
+                if (controller.openPasted(pastedText(context)) == PasteResult.NOTHING) {
+                    Toast.makeText(context, R.string.enroll_paste_nothing, Toast.LENGTH_LONG).show()
+                }
+            },
             register = controller::register,
             openJournal = onOpenJournal,
         ),
@@ -111,6 +119,7 @@ private class EnrollmentActions(
     val updateDeviceName: (String) -> Unit = {},
     val checkCode: () -> Unit = {},
     val scan: () -> Unit = {},
+    val paste: () -> Unit = {},
     val register: () -> Unit = {},
     val openJournal: () -> Unit = {},
 )
@@ -160,14 +169,17 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
     StepBody {
         Title(stringResource(R.string.enroll_code_title), Modifier.padding(top = 24.dp))
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
-        OutlinedButton(
-            onClick = actions.scan,
-            enabled = !step.checking,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(top = 24.dp),
-        ) {
-            Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = actions.scan, enabled = !step.checking, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+                Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
+            }
+            OutlinedButton(onClick = actions.paste, enabled = !step.checking, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+                Icon(Icons.Paste, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.enroll_paste), style = MaterialTheme.typography.titleMedium)
+            }
         }
         OutlinedTextField(
             value = state.serverAddress,
@@ -569,6 +581,11 @@ private object Icons {
         "QrCode",
         "M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z",
         "M14 14h2v2h-2z", "M18 18h2v2h-2z", "M14 18v2", "M18 14h2",
+    )
+    val Paste = icon(
+        "Paste",
+        "M9 4h6v3H9z", "M9 5.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5a2 2 0 0 0-2-2h-2",
+        "M9 12h6", "M9 16h4",
     )
     val Error = icon("Error", "M12 3a9 9 0 1 0 0.01 0", "M12 7.5v5.5", "M12 16.5h0.01")
 }

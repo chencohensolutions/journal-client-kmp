@@ -8,6 +8,7 @@ struct EnrollmentView: View {
 
     @State private var scanning = false
     @State private var scanFailed = false
+    @State private var nothingToPaste = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,12 +36,22 @@ struct EnrollmentView: View {
         .alert("Couldn't open the QR code scanner. Type the code instead.", isPresented: $scanFailed) {
             Button("OK", role: .cancel) {}
         }
+        .alert("Nothing to paste. Copy the enrollment link or code first.", isPresented: $nothingToPaste) {
+            Button("OK", role: .cancel) {}
+        }
     }
 
     /// The camera, or a note when this device can't scan (no supported camera, as on the simulator, or no access).
     private func scan() {
         Task {
             if await QRCodeScannerSheet.canScan() { scanning = true } else { scanFailed = true }
+        }
+    }
+
+    /// The system's Paste button reads the clipboard without iOS asking each time; a link opens as a scan does.
+    private func paste(_ strings: [String]) {
+        DispatchQueue.main.async {
+            if viewModel.openPasted(strings.joined(separator: "\n")) == PasteResult.nothing { nothingToPaste = true }
         }
     }
 
@@ -86,17 +97,23 @@ struct EnrollmentView: View {
                     Text("Enter enrollment code")
                         .font(.title.weight(.semibold))
                         .padding(.top, 24)
-                    Text("On your server, run `journal-server enroll-code` and type the address and code it prints.")
+                    Text("On your server, run `journal-server enroll-code` and scan its QR code, paste the link it prints, or type the address and code.")
                         .foregroundStyle(.secondary)
                         .padding(.top, 8)
 
-                    Button(action: scan) {
-                        Label("Scan QR code", systemImage: "qrcode")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 50)
+                    HStack(spacing: 12) {
+                        Button(action: scan) {
+                            Label("Scan QR code", systemImage: "qrcode")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        PasteButton(payloadType: String.self, onPaste: paste)
+                            .buttonBorderShape(.capsule)
+                            .labelStyle(.titleAndIcon)
+                            .controlSize(.large)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
                     .disabled(step.checking)
                     .padding(.top, 24)
 

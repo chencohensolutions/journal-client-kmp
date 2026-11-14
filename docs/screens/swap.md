@@ -48,7 +48,8 @@ The page asks the server every 30 s while it shows, every 3 s while an invite's 
 ## Keep my copy at a friend's (route `swap-there`; `swap-there|<offer id>` to accept an offer)
 
 1. **Link**: **Scan the QR code** (Google's scanner on Android, the camera on iOS) or paste the link, or a message
-   holding it (`parseSwapLink`); the friend's name, filled from the link's `from`. A `journal://swap` link opened
+   holding it (`parseSwapLink`), by hand or with **Paste** (Nov 14, 2026: the clipboard's link alone goes in the
+   field; on iOS the system's Paste button, so iOS doesn't ask to allow pasting); the friend's name, filled from the link's `from`. A `journal://swap` link opened
    from outside the app (a friend's message) lands here, filled in.
 2. **How your copy is kept**: **Encrypted** (default: "Dana can't see your photos, only their sizes. A passphrase
    opens the copy: lose it and the copy is lost.") or **Plain, I trust this friend**. By the user's copy key

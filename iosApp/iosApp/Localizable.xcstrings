@@ -5331,6 +5331,16 @@
         }
       }
     },
+    "Nothing to paste. Copy the enrollment link or code first." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מה להדביק. העתיקו קודם את קישור הרישום או את הקוד."
+          }
+        }
+      }
+    },
     "Not known" : {
       "localizations" : {
         "he" : {
@@ -7308,12 +7318,12 @@
         }
       }
     },
-    "On your server, run `journal-server enroll-code` and type the address and code it prints." : {
+    "On your server, run `journal-server enroll-code` and scan its QR code, paste the link it prints, or type the address and code." : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בשרת שלך, הריצו `journal-server enroll-code` והקלידו את הכתובת והקוד שהוא מדפיס."
+            "value" : "בשרת שלך, הריצו `journal-server enroll-code` וסרקו את קוד ה-QR, הדביקו את הקישור שהוא מדפיס, או הקלידו את הכתובת והקוד."
           }
         }
       }
