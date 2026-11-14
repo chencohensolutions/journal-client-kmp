@@ -136,6 +136,8 @@ data class SettingsState(
     val serverAddress: String = "",
     /** The server's id (`serverInfo.discovery.id`, "MFZWI3D-BONSGYC-…"); null before the server told it. */
     val serverId: String? = null,
+    /** The server's version (`serverInfo.version`, "2026.11.14 (3f2a9c1 2026-11-14)"); null before it answered once. */
+    val serverVersion: String? = null,
 ) {
     companion object {
         /** What the Settings screen offers for [searchPageSize] (the server sends at most 1000 at a time). */
@@ -170,6 +172,7 @@ class SettingsController internal constructor(
             momentsPaging = settings.momentsPaging,
             serverAddress = shownServerAddress(settings.serverUrl),
             serverId = settings.serverDiscovery?.id,
+            serverVersion = serverVersion(),
         ),
     )
     val state: StateFlow<SettingsState> = _state.asStateFlow()
@@ -182,10 +185,14 @@ class SettingsController internal constructor(
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
     val currentState: SettingsState get() = _state.value
 
-    /** Reads the server's address and id again: they change while the app runs (Settings calls it when it opens). */
+    /** Reads the server's address, id and version again: they change while the app runs (Settings calls it when it opens). */
     fun refreshServer() {
-        _state.update { it.copy(serverAddress = shownServerAddress(settings.serverUrl), serverId = settings.serverDiscovery?.id) }
+        _state.update {
+            it.copy(serverAddress = shownServerAddress(settings.serverUrl), serverId = settings.serverDiscovery?.id, serverVersion = serverVersion())
+        }
     }
+
+    private fun serverVersion(): String? = settings.serverFeatures?.version?.takeIf { it.isNotBlank() }
 
     fun setGroupingMode(mode: GroupingMode) = changeGrouping { it.copy(mode = mode) }
 

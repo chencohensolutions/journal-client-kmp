@@ -998,6 +998,8 @@
     <string name="settings_server_title">השרת שלך</string>
     <string name="settings_server_id">מזהה %1$s</string>
     <string name="settings_server_no_id">המזהה יופיע אחרי שהשרת ימסור אותו.</string>
+    <string name="settings_server_version">גרסת השרת %1$s</string>
+    <string name="settings_app_version">האפליקציה: גרסה %1$s</string>
     <string name="enroll_server_verified_id">המפתח שלו תואם למזהה השרת %1$s</string>
     <!-- הגדרות › גיבוי › החלפה עם חבר -->
     <string name="swap_title">החלפה עם חבר</string>

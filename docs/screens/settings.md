@@ -26,7 +26,10 @@ saying how it stands and opening a page of its own; the switches used most stay 
   (`serverInfo.discovery.id`, `SettingsState.serverId`), or "Its ID shows once the server has told it." before a
   server with discovery answered. Both can be selected to copy; nothing opens. Read again each time Settings opens
   (`SettingsController.refreshServer`), since the address changes when the app finds the server elsewhere
-  (docs/plans/discovery.md, "Phones").
+  (docs/plans/discovery.md, "Phones"). Under the ID, "Server version 2026.11.14 (3f2a9c1 2026-11-14)"
+  (`serverInfo.version`, `SettingsState.serverVersion`, from the last answer kept on the phone; no line before one).
+  Below the card, muted, "This app: version 2026.11.14" (the APK's versionName; Nov 14, 2026, Android only; iOS not
+  built yet). Both can be selected to copy.
 
 The pages, and what each holds:
 
