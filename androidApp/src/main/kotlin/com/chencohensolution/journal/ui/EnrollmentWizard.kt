@@ -169,13 +169,14 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
     StepBody {
         Title(stringResource(R.string.enroll_code_title), Modifier.padding(top = 24.dp))
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
-        Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = actions.scan, enabled = !step.checking, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+        // One above the other: side by side, "Scan QR code" wraps on a phone.
+        Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = actions.scan, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
             }
-            OutlinedButton(onClick = actions.paste, enabled = !step.checking, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+            OutlinedButton(onClick = actions.paste, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Icon(Icons.Paste, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.enroll_paste), style = MaterialTheme.typography.titleMedium)

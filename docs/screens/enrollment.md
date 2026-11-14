@@ -6,8 +6,8 @@ Shown while the device has no identity. The server side (codes, certificates, th
 ## Steps
 
 1. **Welcome:** what registering does, and **Get started**.
-2. **Connect** (`EnrollmentStep.EnterCode`): the server address and the 8-letter code, or **Scan QR code** and
-   **Paste link** side by side. A `journal://enroll?…` link (scanned, pasted, or opened from the phone's camera) fills
+2. **Connect** (`EnrollmentStep.EnterCode`): the server address and the 8-letter code, or **Scan QR code** with
+   **Paste link** under it. A `journal://enroll?…` link (scanned, pasted, or opened from the phone's camera) fills
    both in and checks the code at once.
 
    **Paste link** (Nov 14, 2026; `EnrollmentController.openPasted`, `findEnrollmentLink`): reads the clipboard only
