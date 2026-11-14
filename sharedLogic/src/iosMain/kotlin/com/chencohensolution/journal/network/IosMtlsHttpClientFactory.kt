@@ -38,6 +38,9 @@ import platform.Security.SecTrustRef
 import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustSetAnchorCertificates
 import platform.Security.SecTrustSetAnchorCertificatesOnly
+import platform.Security.SecPolicyCreateSSL
+import platform.Security.SecTrustSetPolicies
+import com.chencohensolution.journal.tls.decodePemCertificates
 
 internal typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Unit
 
@@ -69,6 +72,10 @@ internal class MtlsChallenges(
     private val anchors: List<Any>,
     /** The server key's fingerprint, once kept (serverInfo.discovery); read at each challenge. */
     private val pin: () -> String? = { JournalSettings(UserDefaultsStore()).serverFingerprint },
+    /** The server's own CA, once kept (serverInfo.caCertificate), as DER; read at each challenge. */
+    private val serverCas: () -> List<ByteArray> = {
+        JournalSettings(UserDefaultsStore()).serverCa?.let(::decodePemCertificates).orEmpty()
+    },
 ) {
     /** As the Keychain identity [identityAlias], trusting [trustedCas]. */
     constructor(identityAlias: String?, trustedCas: List<ByteArray>) : this(
@@ -91,14 +98,18 @@ internal class MtlsChallenges(
 
     /**
      * The server's certificate checked against the journal's CA (and the system roots) and the host name; null: don't
-     * connect. Once the server's key is kept, only the key is checked instead, so any address works
-     * (docs/plans/discovery.md, "Phones").
+     * connect. Once the server's key (serverInfo.discovery) or its own CA (serverInfo.caCertificate) is kept, they are
+     * checked instead: a certificate for a server that chains to that CA, or that has that key, so any address works
+     * (docs/plans/discovery.md, "Phones"; journal-server-go docs/install.md, "A new server, and the CA").
      */
     fun serverTrust(challenge: NSURLAuthenticationChallenge): NSURLCredential? {
         val trust = challenge.protectionSpace.serverTrust ?: return null
-        pin()?.let { fingerprint ->
+        val fingerprint = pin()
+        val cas = serverCas()
+        if (fingerprint != null || cas.isNotEmpty()) {
             val leaf = leafCertificateDer(trust) ?: return null
-            return if (ServerPin.matches(leaf, fingerprint)) NSURLCredential.credentialForTrust(trust) else null
+            val known = (cas.isNotEmpty() && chainsTo(trust, cas)) || (fingerprint != null && ServerPin.matches(leaf, fingerprint))
+            return if (known) NSURLCredential.credentialForTrust(trust) else null
         }
         withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
         // Keep trusting the system roots as well, like the Android client.
@@ -117,6 +128,24 @@ internal class MtlsChallenges(
             )
         }
     }
+}
+
+/**
+ * Whether the server's certificate in [trust] chains to one of [cas] (DER) alone, for a server (serverAuth), whatever
+ * host name it was reached by.
+ */
+private fun chainsTo(trust: SecTrustRef, cas: List<ByteArray>): Boolean {
+    val anchors = runCatching { cas.map(::secCertificateObject) }.getOrNull() ?: return false
+    // The SSL policy for a server without a host name: the chain and the key usage are checked, the name isn't.
+    val policy = SecPolicyCreateSSL(true, null) ?: return false
+    try {
+        SecTrustSetPolicies(trust, policy)
+    } finally {
+        CFRelease(policy)
+    }
+    withCFBridge(anchors) { SecTrustSetAnchorCertificates(trust, it?.reinterpret()) }
+    SecTrustSetAnchorCertificatesOnly(trust, true)
+    return SecTrustEvaluateWithError(trust, null)
 }
 
 /** The DER of the server's own certificate (the first of the chain it sent). */

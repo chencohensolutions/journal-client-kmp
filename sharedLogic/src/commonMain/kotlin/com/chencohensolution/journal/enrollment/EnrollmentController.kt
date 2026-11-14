@@ -20,6 +20,7 @@ import com.chencohensolution.journal.network.serverAddress
 import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
 import com.chencohensolution.journal.tls.SERVER_CA_PEM
+import com.chencohensolution.journal.server.askServerCa
 import com.chencohensolution.journal.tls.decodePemCertificates
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineDispatcher
@@ -115,8 +116,11 @@ class EnrollmentController internal constructor(
     private val clientFactory: MtlsHttpClientFactory,
     private val keyStore: DeviceKeyStore,
     defaultDeviceName: String,
-    /** The new identity, at the GraphQL endpoint it enrolled at, with who the server is when the link said (else null). */
-    private val onEnrolled: (serverUrl: String, identityAlias: String, discovery: KeptDiscovery?) -> Unit,
+    /**
+     * The new identity, at the GraphQL endpoint it enrolled at, with who the server is when the link said (else null)
+     * and the CA that signs its certificates when it told (`serverInfo.caCertificate`; null from an older server).
+     */
+    private val onEnrolled: (serverUrl: String, identityAlias: String, discovery: KeptDiscovery?, serverCa: String?) -> Unit,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val trustedCas: List<ByteArray> = decodePemCertificates(SERVER_CA_PEM),
@@ -237,8 +241,14 @@ class EnrollmentController internal constructor(
                 }
 
                 setStep(EnrollmentStep.Registering(RegistrationProgress.TESTING_CONNECTION))
+                var serverCa: String? = null
                 val test = try {
-                    createApolloClient(clientFactory.create(alias, trustedCas), endpoint).useClient { checkConnection(it) }.status
+                    createApolloClient(clientFactory.create(alias, trustedCas), endpoint).useClient {
+                        checkConnection(it).status.also { status ->
+                            // Each server has its own CA: kept, so the server is trusted by it from now on.
+                            if (status == ConnectionStatus.Connected) serverCa = askServerCa(it)
+                        }
+                    }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     ConnectionStatus.Error(e.describe())
@@ -249,7 +259,7 @@ class EnrollmentController internal constructor(
 
                 val previous = settings.identityAlias
                 settings.certificateExpiresAt = runCatching { Instant.parse(issued.expiresAt).toEpochMilliseconds() }.getOrNull()
-                onEnrolled(endpoint, alias, pinned?.let { discoveryOf(it, endpoint) })
+                onEnrolled(endpoint, alias, pinned?.let { discoveryOf(it, endpoint) }, serverCa)
                 discoveryBefore = null
                 succeeded = true
                 if (previous != null && previous != alias && previous.startsWith(IDENTITY_ALIAS_PREFIX)) {

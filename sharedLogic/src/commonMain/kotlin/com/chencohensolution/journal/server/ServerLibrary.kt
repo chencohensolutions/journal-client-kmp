@@ -374,6 +374,7 @@ class ServerLibrary internal constructor(
                 settings.serverFeatures = answer
                 _features.value = answer
                 http.refreshDiscovery()
+                http.refreshServerCa()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

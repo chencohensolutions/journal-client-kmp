@@ -35,6 +35,15 @@ internal class JournalSettings(private val store: KeyValueStore) {
     /** The server key's fingerprint the mTLS clients pin; null: they check the CA and the host name. */
     val serverFingerprint: String? get() = serverDiscovery?.fingerprint
 
+    /**
+     * The CA that signs the server's certificates, PEM (`serverInfo.caCertificate`, Nov 14, 2026): each server has its
+     * own. Once kept, the mTLS clients accept a server certificate that chains to it, at any address, besides the
+     * pinned key and the CA built into the app. Null before a server that tells it answered.
+     */
+    var serverCa: String?
+        get() = store.getString(KEY_SERVER_CA)
+        set(value) = store.putString(KEY_SERVER_CA, value)
+
     /** Name of the client identity used for mTLS (Android KeyChain alias / iOS Keychain label). */
     var identityAlias: String?
         get() = store.getString(KEY_IDENTITY_ALIAS)
@@ -330,6 +339,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         const val DEFAULT_SERVER_URL = "https://journal.example.com:56398/query"
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_SERVER_DISCOVERY = "server_discovery"
+        private const val KEY_SERVER_CA = "server_ca"
         private const val KEY_IDENTITY_ALIAS = "keychain_alias"
         private const val KEY_CERTIFICATE_EXPIRES_AT = "certificate_expires_at"
         private const val KEY_PHOTO_ACCESS_REQUESTED = "photo_access_requested"

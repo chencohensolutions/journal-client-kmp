@@ -180,6 +180,7 @@ class EnrollmentControllerTest {
     private val requestedAliases = mutableListOf<String?>()
     private val requests = mutableListOf<String>()
     private var enrolled: Pair<String, String>? = null
+    private var enrolledCa: String? = null
 
     /** Answers by operation name; [overrides] replaces the default answer of an operation. */
     private fun server(overrides: Map<String, String> = emptyMap(), checkStatus: HttpStatusCode = HttpStatusCode.OK): MockRequestHandler = { request ->
@@ -208,7 +209,10 @@ class EnrollmentControllerTest {
             },
             keyStore = keyStore,
             defaultDeviceName = "Pixel 9 Pro",
-            onEnrolled = { url, alias, _ -> enrolled = url to alias },
+            onEnrolled = { url, alias, _, ca ->
+                enrolled = url to alias
+                enrolledCa = ca
+            },
             dispatcher = dispatcher,
             workDispatcher = dispatcher,
             clock = object : Clock {
@@ -313,6 +317,31 @@ class EnrollmentControllerTest {
         val enrollRequest = requests.single { "EnrollDevice" in it }
         assertContains(enrollRequest, "\"keyProtection\":\"TEE\"")
         assertContains(enrollRequest, "\"deviceName\":\"Pixel 9 Pro\"")
+        assertNull(enrolledCa, "a server that doesn't tell its CA")
+    }
+
+    /** Each server has its own CA (journal-server-go docs/install.md): asked once enrolled, and kept. */
+    @Test
+    fun registrationKeepsTheServersCa() = runTest {
+        val pem = "-----BEGIN CERTIFICATE-----\nMAMCAQU=\n-----END CERTIFICATE-----\n"
+        val answer = """{"data":{"serverInfo":{"caCertificate":${"\""}${pem.replace("\n", "\\n")}${"\""}}}}"""
+        val controller = controller(server(mapOf("ServerCa" to answer)))
+        controller.reachConfirm()
+        controller.register()
+
+        assertIs<EnrollmentStep.Enrolled>(controller.awaitStep { it is EnrollmentStep.Enrolled || it is EnrollmentStep.Failed })
+        assertEquals(pem, enrolledCa)
+
+        val journal = JournalController(
+            settings = JournalSettings(store),
+            clientFactory = MtlsHttpClientFactory { _, _ -> error("unused") },
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+        journal.useEnrolledIdentity("https://h:8080/query", "journal-device-2", serverCa = enrolledCa)
+        assertEquals(pem, JournalSettings(store).serverCa)
+        // Enrolling at another server that doesn't tell its CA forgets the old one's.
+        journal.useEnrolledIdentity("https://other:8080/query", "journal-device-3")
+        assertNull(JournalSettings(store).serverCa)
     }
 
     @Test
@@ -397,7 +426,7 @@ class EnrollByIdTest {
         },
         keyStore = FakeKeyStore(),
         defaultDeviceName = "Galaxy",
-        onEnrolled = { url, alias, discovery -> enrolled = Triple(url, alias, discovery) },
+        onEnrolled = { url, alias, discovery, _ -> enrolled = Triple(url, alias, discovery) },
         dispatcher = kotlinx.coroutines.Dispatchers.Default,
         workDispatcher = kotlinx.coroutines.Dispatchers.Default,
         clock = object : Clock {
