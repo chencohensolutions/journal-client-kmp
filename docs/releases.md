@@ -1,13 +1,20 @@
 # Releasing the Android app
 
-GitHub builds and publishes the app (`.github/workflows/android-release.yml`). To release today's version from main:
+GitHub builds and publishes the app (`.github/workflows/android-release.yml`) by itself: every push to main releases
+the version in the `VERSION` file at the root, once. To release, raise it and merge:
 
 ```sh
-git push origin main:release/2026.11.14
+scripts/bump-version.sh          # VERSION becomes today's date, or today's next .N (2026.11.14.2)
+git commit -am "Version 2026.11.14.2" && git push   # through a pull request, as usual
 ```
 
+A push to main whose VERSION already has a release does nothing. `git push origin <commit>:release/2026.11.14.3`
+releases that version from any commit instead. Local builds read VERSION too (versionName and versionCode), unless
+`-PversionName`/`-PversionCode` are given. Binaries go only on the release, never into git (the 2026.11.14 APK in
+`releases/` was the last).
+
 GitHub Actions then runs the shared tests, builds the arm64 release APK (R8, compressed native libraries, about
-33 MB) signed with the release key, and publishes it as `journal-android.apk` on the GitHub Release `v2026.11.14`, with
+33 MB) signed with the release key, and publishes it as `journal-android.apk` on the GitHub Release `v<version>`, with
 its sha256 beside it. It takes about 15 minutes; follow it in the repository's Actions tab. The newest APK is always
 at <https://github.com/chencohensolutions/journal-client-kmp/releases/latest/download/journal-android.apk>.
 

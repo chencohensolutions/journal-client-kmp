@@ -61,8 +61,10 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // A release branch release/<version> sets both (.github/workflows/android-release.yml, docs/releases.md).
-        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = findProperty("versionName") as String? ?: "1.0"
+        // Otherwise the VERSION file at the root (2026.11.14.2), and its versionCode (2026111402; docs/releases.md).
+        val fileVersion = rootProject.file("VERSION").takeIf { it.exists() }?.readText()?.trim()
+        versionName = findProperty("versionName") as String? ?: fileVersion ?: "1.0"
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: fileVersion?.let(::dateVersionCode) ?: 1
         // -Pabi=arm64-v8a (scripts/android-run.sh with ABI=…) packs only that processor's native libraries: about a third of
         // the debug APK's 200 MB, for a faster install on one phone. Without it, every ABI (emulators and old phones too).
         (findProperty("abi") as String?)?.let { abis -> ndk { abiFilters += abis.split(",") } }
@@ -126,4 +128,11 @@ android {
         compose = true
     }
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
+}
+
+/** 2026.11.14 → 2026111400, 2026.11.14.2 → 2026111402: the date's digits times 100 plus the day's number. */
+fun dateVersionCode(version: String): Int? {
+    val parts = version.split(".").map { it.toIntOrNull() ?: return null }
+    if (parts.size !in 3..4 || parts[0] < 2000) return null
+    return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 100 + parts.getOrElse(3) { 0 }
 }
