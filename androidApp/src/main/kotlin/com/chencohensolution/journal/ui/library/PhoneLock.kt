@@ -1,5 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.ui.text.font.FontWeight
 import android.app.KeyguardManager
 import android.content.Context
 import android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK
@@ -76,7 +77,7 @@ internal fun PhoneLocked(
             Text(
                 stringResource(if (secure) lockedText else noLockText),
                 color = LibraryColors.OnBackground,
-                fontSize = 16.sp,
+                style = LibraryType.RowTitle, fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
             )
             if (secure) {

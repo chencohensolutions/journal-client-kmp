@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
-import android.widget.Toast
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -161,10 +160,10 @@ internal fun SearchContent(
                 if (faces.isNotEmpty()) item(key = "faces") { SearchFaces(faces, actions.addPerson) }
             }
             SearchStatus.SEARCHING -> if (search.items.isEmpty() && search.yearChips.isEmpty()) item(key = "searching") {
-                Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = LibraryColors.OnBackground)
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    LoadingState()
                     if (search.preparing) {
-                        Text(stringResource(R.string.search_preparing), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+                        Text(stringResource(R.string.search_preparing), color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(top = 12.dp))
                     }
                 }
             }
@@ -180,7 +179,7 @@ internal fun SearchContent(
             SearchStatus.DONE -> Unit
         }
         if (search.status == SearchStatus.DONE && search.onPhone) item(key = "on-phone") {
-            Text(stringResource(R.string.search_on_phone), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text(stringResource(R.string.search_on_phone), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
         if (search.status == SearchStatus.DONE) item(key = "found") { FoundNote(search) }
         if (search.status == SearchStatus.DONE && search.hiddenBySources > 0) item(key = "hidden-sources") {
@@ -192,7 +191,7 @@ internal fun SearchContent(
                     pluralStringResource(R.plurals.search_hidden_more, count, count)
                 },
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 modifier = Modifier.fillMaxWidth()
                     .clickable { actions.showHiddenSources(!search.showingHidden) }
                     .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
@@ -238,7 +237,7 @@ private fun FoundNote(search: SearchState) {
         Text(
             pluralStringResource(R.plurals.search_found, search.items.size, search.items.size),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         )
@@ -259,7 +258,7 @@ private fun FoundNote(search: SearchState) {
             Text(
                 stringResource(R.string.search_still_reading, numbers.format(search.indexed), numbers.format(search.total)),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
             )
         }
     } else {
@@ -291,12 +290,12 @@ private fun Caption(item: MediaItem, places: Places) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(dayLabel(item.day), color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-        Text(timeLabel(item.takenAtMillis), color = LibraryColors.Muted, fontSize = 14.sp)
+        Text(dayLabel(item.day), color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
+        Text(timeLabel(item.takenAtMillis), color = LibraryColors.Muted, style = LibraryType.Body)
         Box(Modifier.weight(1f))
         placeLabel(item, places)?.let { place ->
             Icon(LibraryIcons.Pin, null, tint = LibraryColors.Muted, modifier = Modifier.size(15.dp))
-            Text(place, color = LibraryColors.Muted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(place, color = LibraryColors.Muted, style = LibraryType.Body, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -336,7 +335,7 @@ private fun FoundSet(
                 Text(
                     stringResource(R.string.feed_similar_position, pager.currentPage + 1, set.size),
                     color = LibraryColors.PhotoText,
-                    fontSize = 12.sp,
+                    style = LibraryType.Small,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
@@ -367,18 +366,18 @@ private fun SearchFaces(people: List<Person>, onAdd: (Person) -> Unit) {
         Text(
             stringResource(R.string.search_by_person),
             color = LibraryColors.OnBackground,
-            fontSize = 16.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp)) {
             people.forEach { person ->
                 Column(
-                    Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable { onAdd(person) }.padding(vertical = 6.dp),
+                    Modifier.width(76.dp).clip(LibraryShapes.Tile).clickable { onAdd(person) }.padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     FaceAvatar(person.cover, 56.dp)
-                    Text(person.name.orEmpty(), color = LibraryColors.OnBackground, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                    Text(person.name.orEmpty(), color = LibraryColors.OnBackground, style = LibraryType.Caption, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
@@ -398,7 +397,7 @@ private fun PersonChips(people: List<Person>, onRemove: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FaceAvatar(person.cover, 28.dp)
-                Text(person.name ?: "?", color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
+                Text(person.name ?: "?", color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
                 IconButton(onClick = { onRemove(person.id) }, modifier = Modifier.size(32.dp)) {
                     Icon(LibraryIcons.Close, stringResource(R.string.search_remove_person, person.name ?: "?"), tint = LibraryColors.Muted, modifier = Modifier.size(14.dp))
                 }
@@ -408,40 +407,45 @@ private fun PersonChips(people: List<Person>, onRemove: (String) -> Unit) {
 }
 
 @Composable
-private fun SearchMessage(text: String) {
-    Text(
-        text,
-        color = LibraryColors.Muted,
-        fontSize = 15.sp,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-    )
-}
+private fun SearchMessage(text: String) = EmptyState(text)
 
-/** "Search" at the top of the page; the field is at the bottom. */
+/**
+ * "Search" at the top of the page, with back before it ([onClose]: closes search, as the TitleBar's back does; it was a
+ * round ✕ beside the field, a thumb from the field's own clear ✕, until Nov 16, 2026); the field is at the bottom.
+ */
 @Composable
-internal fun SearchTopBar(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().statusBarRoom().padding(start = 16.dp, top = 8.dp, bottom = 8.dp)) {
+internal fun SearchTopBar(onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    Row(
+        modifier.fillMaxWidth().statusBarRoom().padding(start = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = {
+            keyboard?.hide()
+            onClose()
+        }) {
+            Icon(LibraryIcons.Back, stringResource(R.string.search_close), tint = LibraryColors.OnBackground)
+        }
         Text(
             stringResource(R.string.search_title),
             color = LibraryColors.OnBackground,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
+            style = LibraryType.ScreenTitle,
             modifier = Modifier.height(48.dp).semantics { heading() },
         )
     }
 }
 
 /**
- * The tab bar turned into the field: the search when the keyboard's search key is pressed, ✕ ([onClose]) back to the
- * tabs, and above it the Filter pill once there are matches to narrow. It opens with the keyboard up when nothing was
- * searched yet.
+ * The tab bar turned into the field, the full width: the search when the keyboard's search key is pressed, and above it
+ * the Filter pill once there are matches to narrow. It opens with the keyboard up when nothing was searched yet. Back
+ * (the system's, or [SearchTopBar]'s) returns to the tabs.
  */
 @Composable
-internal fun SearchBottomBar(search: SearchState, actions: SearchActions, onClose: () -> Unit) {
+internal fun SearchBottomBar(search: SearchState, actions: SearchActions) {
     var filtering by rememberSaveable { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (search.canFilter) FilterPill(search) { filtering = true }
-        SearchField(search, actions.search, actions.clear, onClose)
+        SearchField(search, actions.search, actions.clear)
     }
     if (filtering) FilterSheet(search, actions) { filtering = false }
 }
@@ -491,7 +495,7 @@ private fun FilterPill(search: SearchState, onClick: () -> Unit) {
         Text(
             if (chosen > 0) stringResource(R.string.search_filter_count, chosen) else stringResource(R.string.search_filter),
             color = color,
-            fontSize = 14.sp,
+            style = LibraryType.Body,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -505,17 +509,13 @@ private fun FilterPill(search: SearchState, onClick: () -> Unit) {
 @Composable
 private fun FilterSheet(search: SearchState, actions: SearchActions, onDone: () -> Unit) {
     // Opened whole, as the tag sheets are: half open, "Show N photos" would be below the screen's edge.
-    ModalBottomSheet(
-        onDismissRequest = onDone,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = LibraryColors.Background,
-    ) {
+    PageSheet(onDone) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.search_filter),
                     color = LibraryColors.OnBackground,
-                    fontSize = 20.sp,
+                    style = LibraryType.PageTitle,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
@@ -551,24 +551,19 @@ private fun FilterSheet(search: SearchState, actions: SearchActions, onDone: () 
                     }
                 }
             }
-            Button(
+            PrimaryButton(
+                pluralStringResource(R.plurals.search_filter_show, search.items.size, search.items.size),
                 onClick = onDone,
-                colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Accent, contentColor = Color.White),
+                busy = search.status == SearchStatus.SEARCHING,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                if (search.status == SearchStatus.SEARCHING) {
-                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                } else {
-                    Text(pluralStringResource(R.plurals.search_filter_show, search.items.size, search.items.size), fontWeight = FontWeight.SemiBold)
-                }
-            }
+            )
         }
     }
 }
 
 @Composable
 private fun SheetLabel(text: String) {
-    Text(text, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    Text(text, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
@@ -577,14 +572,14 @@ private fun YearCell(chip: SearchChip, selected: Boolean, modifier: Modifier, on
     Column(
         modifier
             .height(48.dp)
-            .background(if (selected) LibraryColors.Inverse else LibraryColors.Raised, RoundedCornerShape(10.dp))
+            .background(if (selected) LibraryColors.Inverse else LibraryColors.Raised, LibraryShapes.Tile)
             .clickable(onClick = onClick)
             .semantics { this.selected = selected },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(chip.value, color = color, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text(chip.count.toString(), color = color.copy(alpha = 0.7f), fontSize = 11.sp)
+        Text(chip.value, color = color, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+        Text(chip.count.toString(), color = color.copy(alpha = 0.7f), style = LibraryType.Tiny)
     }
 }
 
@@ -599,8 +594,8 @@ private fun TownRow(chip: SearchChip, selected: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(chip.value, color = LibraryColors.OnBackground, fontSize = 16.sp)
-        Text(chip.count.toString(), color = LibraryColors.Muted, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(chip.value, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
+        Text(chip.count.toString(), color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, modifier = Modifier.weight(1f))
         if (selected) Icon(LibraryIcons.Check, null, tint = LibraryColors.Accent, modifier = Modifier.size(20.dp))
     }
 }
@@ -611,9 +606,9 @@ private const val LOAD_AHEAD_ROWS = 5
 /** Years per row of the filter sheet. */
 private const val YEAR_COLUMNS = 4
 
-/** The field itself, with its clear button or spinner, and ✕. */
+/** The field itself, with its clear button or spinner. */
 @Composable
-private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit, onClose: () -> Unit) {
+private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit) {
     var text by rememberSaveable { mutableStateOf(search.query) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
@@ -635,7 +630,7 @@ private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear
         ) {
             Icon(LibraryIcons.Search, null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
             Box(Modifier.weight(1f).padding(start = 8.dp), contentAlignment = Alignment.CenterStart) {
-                if (text.isEmpty()) Text(stringResource(R.string.search_field_hint), color = LibraryColors.Muted, fontSize = 17.sp, maxLines = 1)
+                if (text.isEmpty()) Text(stringResource(R.string.search_field_hint), color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, maxLines = 1)
                 BasicTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -661,12 +656,6 @@ private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear
                     Icon(LibraryIcons.Close, stringResource(R.string.search_clear), tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
                 }
             }
-        }
-        RoundBarButton(onClick = {
-            keyboard?.hide()
-            onClose()
-        }) {
-            Icon(LibraryIcons.Close, stringResource(R.string.search_close), tint = LibraryColors.OnBackground)
         }
     }
 }

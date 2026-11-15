@@ -44,3 +44,9 @@ The Journal shows a **Journal can't see your photos** card with an **Allow acces
 - iOS: [PhotoAccessView.swift](../../iosApp/iosApp/PhotoAccessView.swift); the request is in
   [LibraryViewModel.swift](../../iosApp/iosApp/LibraryViewModel.swift). The prompt text is
   `NSPhotoLibraryUsageDescription` in `Info.plist`.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- Colors and buttons are the library's (ink Allow access, no wallpaper colors).

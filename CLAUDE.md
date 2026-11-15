@@ -34,8 +34,9 @@ whenever a screen changes.
 - Logic goes in `sharedLogic` (with tests); the UIs only render state and call controller methods.
 - Kotlin → Swift: use `currentState` (StateFlow values are erased in Swift), sealed types become `Foo` + `FooBar`
   classes checked with `is`/`as?`, Kotlin default arguments are not available in Swift.
-- The library screens are always dark (`LibraryColors` on both platforms); the photo access and enrollment screens
-  follow the system theme.
+- Every screen follows the system's light or dark theme with the library palette (`LibraryColors`, and Material's
+  colors built from it; no wallpaper colors); the viewer is always dark. Colors, buttons, type, shapes, sheets,
+  messages, empty states and words follow [docs/screens/style.md](docs/screens/style.md).
 - Naming: **storyline**, **note** (a photo's title and paragraph, `caption` in code and files), **tag**, **moment**,
   **set** (near-duplicates in Moments). There are no stories or groups any more.
 - Never write to the photo library. `PhotoSafetyTest` fails on MediaStore/PhotoKit write APIs or write permissions.

@@ -64,7 +64,7 @@ import java.text.NumberFormat
  * The filter bar (option h2 of the UI lab, Oct 24, 2026): one row that scrolls sideways, "+N" first (the sources hidden;
  * a plus alone while none is), then a chip per source shown, the most photos first, and one "Imported" chip for what
  * was imported (option b2, Oct 27, 2026). Tapping a chip hides it and it leaves the row; "+N" opens the "Showing"
- * sheet with every source as a pill. What Private settings hides on every device never has a chip: none of it is here.
+ * sheet with every source as a pill. What Hidden and private hides on every device never has a chip: none of it is here.
  */
 @Composable
 internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, modifier: Modifier = Modifier) {
@@ -104,7 +104,7 @@ internal fun FeedSourceBar(feed: MomentsFeed, onToggle: (MediaSource) -> Unit, m
 /**
  * A chip of the filter bar, and a pill of Show in the app: on (filled, with a ✓ in place of its icon, or its icon with
  * [keepIcon]) or off (outlined); "+N" is one with a title alone. [small] for Imported's kinds; [locked] adds a lock
- * after the count, for a source Private settings hides in part.
+ * after the count, for a source Hidden and private hides in part.
  */
 @Composable
 internal fun FilterBarChip(

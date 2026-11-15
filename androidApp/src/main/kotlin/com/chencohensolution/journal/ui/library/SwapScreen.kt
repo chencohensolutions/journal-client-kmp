@@ -95,7 +95,7 @@ internal fun SwapScreen(state: SwapState, nowMillis: Long, passphraseKept: Boole
     var removing by remember { mutableStateOf<MySwap?>(null) }
     var revoking by remember { mutableStateOf<KeptSwap?>(null) }
     SwapPage(stringResource(R.string.swap_title), back) {
-        Text(stringResource(R.string.swap_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+        PageNote(stringResource(R.string.swap_body))
         if (state.unsupported) {
             Note(stringResource(R.string.swap_unsupported))
             return@SwapPage
@@ -156,8 +156,8 @@ private fun OfferCard(offer: SwapOffer, nowMillis: Long, acting: Boolean, accept
     val minutes = ((offer.expiresAtMillis - nowMillis) / 60_000).coerceAtLeast(0).toInt() + 1
     SettingsCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(stringResource(R.string.swap_offer_title, offer.name, sizeText(offer.quota)), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.swap_offer_body, offer.name, minutes), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(stringResource(R.string.swap_offer_title, offer.name, sizeText(offer.quota)), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.swap_offer_body, offer.name, minutes), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 2.dp))
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PrimaryButton(stringResource(R.string.swap_offer_accept), enabled = !acting, onClick = accept)
                 TextButton(onClick = decline, enabled = !acting) { Text(stringResource(R.string.swap_offer_decline), color = LibraryColors.OnBackground) }
@@ -182,16 +182,16 @@ private fun MySwapRow(swap: MySwap, acting: Boolean, remove: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(swap.name, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(swap.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 if (swap.encrypted) {
                     Icon(LibraryIcons.Lock, stringResource(R.string.copies_encrypted), tint = LibraryColors.Muted, modifier = Modifier.padding(start = 6.dp).size(14.dp))
                 }
             }
-            Text(status, color = if (copy?.problem != null) LibraryColors.Error else LibraryColors.Muted, fontSize = 13.sp)
+            Text(status, color = if (copy?.problem != null) LibraryColors.Error else LibraryColors.Muted, style = LibraryType.Caption)
             Text(
                 stringResource(if (swap.encrypted) R.string.swap_mine_quota_encrypted else R.string.swap_mine_quota_plain, sizeText(swap.quota)),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
             )
         }
         TextButton(onClick = remove, enabled = !acting) { Text(stringResource(R.string.swap_remove), color = LibraryColors.OnBackground) }
@@ -203,8 +203,8 @@ private fun MySwapRow(swap: MySwap, acting: Boolean, remove: () -> Unit) {
 private fun KeptSwapRow(swap: KeptSwap, acting: Boolean, revoke: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(swap.name, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.swap_kept_used, sizeText(swap.used), sizeText(swap.quota)), color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(swap.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.swap_kept_used, sizeText(swap.used), sizeText(swap.quota)), color = LibraryColors.Muted, style = LibraryType.Caption)
             LinearProgressIndicator(
                 progress = { swap.fraction },
                 color = LibraryColors.OnBackground,
@@ -212,7 +212,7 @@ private fun KeptSwapRow(swap: KeptSwap, acting: Boolean, revoke: () -> Unit) {
                 drawStopIndicator = {},
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 12.dp),
             )
-            if (swap.revoked) Text(stringResource(R.string.swap_kept_revoked), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            if (swap.revoked) Text(stringResource(R.string.swap_kept_revoked), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp))
         }
         TextButton(onClick = revoke, enabled = !acting) {
             Text(stringResource(if (swap.revoked) R.string.swap_delete_files else R.string.swap_revoke), color = LibraryColors.OnBackground)
@@ -223,33 +223,25 @@ private fun KeptSwapRow(swap: KeptSwap, acting: Boolean, revoke: () -> Unit) {
 @Composable
 private fun RevokeDialog(swap: KeptSwap, revoke: (Boolean) -> Unit, dismiss: () -> Unit) {
     var delete by remember { mutableStateOf(swap.revoked) }
-    AlertDialog(
-        onDismissRequest = dismiss,
-        title = { Text(stringResource(R.string.swap_revoke_title, swap.name)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.swap_revoke_body, swap.name))
-                Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(delete, { delete = it }, colors = CheckboxDefaults.colors(checkedColor = LibraryColors.OnBackground))
-                    Text(stringResource(R.string.swap_revoke_delete, sizeText(swap.used)))
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { revoke(delete) }) { Text(stringResource(R.string.swap_revoke)) } },
-        dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.swap_cancel)) } },
-    )
+    ConfirmSheet(
+        title = stringResource(R.string.swap_revoke_title, swap.name),
+        body = stringResource(R.string.swap_revoke_body, swap.name),
+        confirmLabel = stringResource(R.string.swap_revoke),
+        destructive = true,
+        onConfirm = { revoke(delete) },
+        onDismiss = dismiss,
+        cancelLabel = stringResource(R.string.swap_cancel),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(delete, { delete = it }, colors = CheckboxDefaults.colors(checkedColor = LibraryColors.OnBackground))
+            Text(stringResource(R.string.swap_revoke_delete, sizeText(swap.used)), color = LibraryColors.OnBackground, style = LibraryType.Body)
+        }
+    }
 }
 
 @Composable
-private fun ConfirmDialog(title: String, body: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.swap_cancel)) } },
-    )
-}
+private fun ConfirmDialog(title: String, body: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) =
+    ConfirmSheet(title, body, confirm, destructive = true, onConfirm = onConfirm, onDismiss = onDismiss, cancelLabel = stringResource(R.string.swap_cancel))
 
 // --- Keep a friend's copy here ---------------------------------------------------------------------------------------
 
@@ -276,12 +268,12 @@ internal fun SwapHereScreen(state: SwapState, nowMillis: Long, actions: SwapHere
             val free = state.info?.freeSpace ?: 0
             var name by rememberSaveable { mutableStateOf("") }
             var quota by rememberSaveable(free) { mutableStateOf(SwapQuota.suggested(free)) }
-            Text(stringResource(R.string.swap_here_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+            PageNote(stringResource(R.string.swap_here_body))
             SettingsCard {
                 Column(Modifier.padding(16.dp)) {
                     NameField(name, { name = it }, taken = state.nameTaken(name))
-                    Text(stringResource(R.string.swap_here_quota), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
-                    Text(stringResource(R.string.swap_here_free, sizeText(free)), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(stringResource(R.string.swap_here_quota), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
+                    Text(stringResource(R.string.swap_here_free, sizeText(free)), color = LibraryColors.Muted, style = LibraryType.Caption)
                     QuotaChips(free, quota) { quota = it }
                 }
             }
@@ -301,25 +293,25 @@ internal fun SwapHereScreen(state: SwapState, nowMillis: Long, actions: SwapHere
                 when {
                     invite.joined -> {
                         Icon(LibraryIcons.Check, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(40.dp))
-                        Text(stringResource(R.string.swap_here_joined, invite.name), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
-                        Text(stringResource(R.string.swap_here_joined_body, invite.name, sizeText(invite.quota)), color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.swap_here_joined, invite.name), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                        Text(stringResource(R.string.swap_here_joined_body, invite.name, sizeText(invite.quota)), color = LibraryColors.Muted, style = LibraryType.Caption, textAlign = TextAlign.Center)
                     }
                     expired -> {
-                        Text(stringResource(R.string.swap_here_expired), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.swap_here_expired), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         TextButton(onClick = actions.again) { Text(stringResource(R.string.swap_here_again), color = LibraryColors.OnBackground) }
                     }
                     else -> {
-                        Text(stringResource(R.string.swap_here_scan, invite.name), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.swap_here_scan, invite.name), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         val qr = remember(invite.link) { qrBitmap(invite.link, 720).asImageBitmap() }
                         Image(qr, stringResource(R.string.swap_here_qr), Modifier.padding(vertical = 12.dp).size(240.dp).background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(8.dp)))
-                        Text(invite.code, color = LibraryColors.OnBackground, fontSize = 20.sp, fontFamily = FontFamily.Monospace)
+                        Text(invite.code, color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Normal, fontFamily = FontFamily.Monospace)
                         val left = invite.secondsLeft(nowMillis)
-                        Text(stringResource(R.string.swap_here_countdown, left / 60, left % 60), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(stringResource(R.string.swap_here_countdown, left / 60, left % 60), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp))
                         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             PrimaryButton(stringResource(R.string.swap_share)) { actions.share(invite) }
-                            OutlinedButton(onClick = { actions.copy(invite) }) { Text(stringResource(R.string.swap_copy_link), color = LibraryColors.OnBackground) }
+                            SecondaryButton(stringResource(R.string.swap_copy_link), { actions.copy(invite) })
                         }
-                        Text(stringResource(R.string.swap_here_waiting, invite.name), color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
+                        Text(stringResource(R.string.swap_here_waiting, invite.name), color = LibraryColors.Muted, style = LibraryType.Caption, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
                     }
                 }
             }
@@ -394,7 +386,7 @@ internal fun SwapThereScreen(state: SwapState, draft: JoinDraft, actions: SwapTh
 
 @Composable
 private fun LinkStep(state: SwapState, draft: JoinDraft, actions: SwapThereActions) {
-    Text(stringResource(R.string.swap_there_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+    PageNote(stringResource(R.string.swap_there_body))
     SettingsCard {
         Column(Modifier.padding(16.dp)) {
             PrimaryButton(stringResource(R.string.swap_there_scan), onClick = actions.scan)
@@ -404,7 +396,7 @@ private fun LinkStep(state: SwapState, draft: JoinDraft, actions: SwapThereActio
                 parseSwapLink(it)?.from?.let { from -> if (draft.name.isBlank()) draft.name = from }
             }
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.swap_there_or_paste), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.swap_there_or_paste), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.weight(1f))
                 // The link alone, when it came in a message with words around it.
                 TextButton(onClick = { pastedText(context).let { setLink(SWAP_LINK_IN_TEXT.find(it)?.value ?: it.trim()) } }) {
                     Text(stringResource(R.string.swap_there_paste))
@@ -446,7 +438,7 @@ private fun ProtectStep(state: SwapState, draft: JoinDraft, kind: CopyKeyKind?, 
             CopyKeyKind.KEY_FILE -> Note(stringResource(R.string.swap_protect_key_file))
             CopyKeyKind.PASSPHRASE -> SettingsCard {
                 Column(Modifier.padding(16.dp)) {
-                    Text(stringResource(R.string.swap_protect_same), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(stringResource(R.string.swap_protect_same), color = LibraryColors.Muted, style = LibraryType.Caption)
                     OutlinedTextField(
                         value = draft.typed,
                         onValueChange = { draft.typed = it },
@@ -491,7 +483,7 @@ private fun ProtectStep(state: SwapState, draft: JoinDraft, kind: CopyKeyKind?, 
 @Composable
 private fun WordsStep(draft: JoinDraft, actions: SwapThereActions) {
     val words = draft.suggested ?: return
-    Text(stringResource(R.string.swap_words_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+    PageNote(stringResource(R.string.swap_words_body))
     // The words are English: numbered left to right in Hebrew too.
     SettingsCard {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -502,7 +494,7 @@ private fun WordsStep(draft: JoinDraft, actions: SwapThereActions) {
                         Text(
                             "${row * 2 + col + 1}. $word",
                             color = LibraryColors.OnBackground,
-                            fontSize = 22.sp,
+                            style = LibraryType.PageTitle, fontWeight = FontWeight.Normal,
                             fontFamily = FontFamily.Monospace,
                             modifier = Modifier.weight(1f),
                         )
@@ -534,13 +526,13 @@ private fun WordsStep(draft: JoinDraft, actions: SwapThereActions) {
 private fun CheckStep(state: SwapState, draft: JoinDraft, actions: SwapThereActions) {
     val words = draft.suggested ?: return
     val right = words.typedBack(listOf(draft.check1, draft.check2))
-    Text(stringResource(R.string.swap_check_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
+    PageNote(stringResource(R.string.swap_check_body))
     SettingsCard {
         Column(Modifier.padding(16.dp)) {
             CheckField(words.check[0] + 1, draft.check1) { draft.check1 = it }
             CheckField(words.check[1] + 1, draft.check2) { draft.check2 = it }
             if (draft.check1.isNotBlank() && draft.check2.isNotBlank() && !right) {
-                Text(stringResource(R.string.swap_check_wrong), color = LibraryColors.Error, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.swap_check_wrong), color = LibraryColors.Error, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp))
             }
         }
     }
@@ -576,16 +568,16 @@ private fun ResultStep(state: SwapState, draft: JoinDraft, actions: SwapThereAct
             when (outcome) {
                 is SwapOutcome.Joined -> {
                     Icon(LibraryIcons.Check, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(40.dp))
-                    Text(stringResource(R.string.swap_joined, outcome.swap.name), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                    Text(stringResource(R.string.swap_joined, outcome.swap.name), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
                     Text(
                         stringResource(if (outcome.swap.encrypted) R.string.swap_joined_encrypted else R.string.swap_joined_plain, outcome.swap.name, sizeText(outcome.swap.quota)),
-                        color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center,
+                        color = LibraryColors.Muted, style = LibraryType.Caption, textAlign = TextAlign.Center,
                     )
-                    if (outcome.offered) Text(stringResource(R.string.swap_joined_offered, outcome.swap.name), color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
-                    if (draft.savedToManager) Text(stringResource(R.string.swap_joined_saved), color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                    if (outcome.offered) Text(stringResource(R.string.swap_joined_offered, outcome.swap.name), color = LibraryColors.Muted, style = LibraryType.Caption, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                    if (draft.savedToManager) Text(stringResource(R.string.swap_joined_saved), color = LibraryColors.Muted, style = LibraryType.Caption, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
                 }
                 is SwapOutcome.Refused -> {
-                    Text(refusalText(outcome.reason, draft.name), color = LibraryColors.OnBackground, fontSize = 16.sp, textAlign = TextAlign.Center)
+                    Text(refusalText(outcome.reason, draft.name), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, textAlign = TextAlign.Center)
                 }
             }
         }
@@ -637,7 +629,7 @@ internal fun CopyPassphraseScreen(passphrase: String?, copy: () -> Unit, share: 
             Text(
                 "\u200E" + passphrase,
                 color = LibraryColors.OnBackground,
-                fontSize = 22.sp,
+                style = LibraryType.PageTitle, fontWeight = FontWeight.Normal,
                 fontFamily = FontFamily.Monospace,
                 lineHeight = 34.sp,
                 modifier = Modifier.padding(16.dp),
@@ -658,40 +650,19 @@ internal fun CopyPassphraseScreen(passphrase: String?, copy: () -> Unit, share: 
 
 @Composable
 private fun SwapPage(title: String, back: () -> Unit, content: @Composable () -> Unit) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) { content() }
-        TitleBar(title, back, Modifier.align(Alignment.TopCenter))
+    SettingsScaffold(title, back, verticalArrangement = Arrangement.spacedBy(12.dp), imePadding = true) { content()
     }
 }
 
 @Composable
 private fun Note(text: String) {
-    Text(text, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp))
+    PageNote(text)
 }
 
+/** The shared [PrimaryButton] with the action last, as this file's callers write it. */
 @Composable
-private fun PrimaryButton(text: String, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = LibraryColors.Inverse,
-            contentColor = LibraryColors.OnInverse,
-            disabledContainerColor = LibraryColors.Muted.copy(alpha = 0.25f),
-            disabledContentColor = LibraryColors.Muted,
-        ),
-    ) {
-        if (busy) CircularProgressIndicator(Modifier.padding(end = 8.dp).size(16.dp), color = LibraryColors.OnInverse, strokeWidth = 2.dp)
-        Text(text)
-    }
-}
+private fun PrimaryButton(text: String, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) =
+    PrimaryButton(text, onClick, enabled = enabled, busy = busy)
 
 @Composable
 private fun NameField(name: String, onChange: (String) -> Unit, taken: Boolean) {

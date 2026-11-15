@@ -81,8 +81,8 @@ internal fun CopiesRow(copies: ServerCopiesState, open: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.copies_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(text, color = if (warning) color else LibraryColors.Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.copies_title), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(text, color = if (warning) color else LibraryColors.Muted, style = LibraryType.Caption)
         }
         if (warning) Box(Modifier.padding(end = 8.dp).size(10.dp).background(color, CircleShape))
         Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
@@ -95,26 +95,17 @@ internal fun CopiesRow(copies: ServerCopiesState, open: () -> Unit) {
  */
 @Composable
 internal fun CopiesScreen(copies: ServerCopiesState, actions: CopiesActions, back: () -> Unit) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(stringResource(R.string.copies_body), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
-            if (copies.loaded && copies.copies.isEmpty()) {
-                Text(stringResource(R.string.copies_none), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 32.dp))
-            }
-            copies.copies.forEach { copy -> SettingsCard { CopyCard(copy, copies.acting, actions) } }
-            val footer = copies.error?.let { stringResource(R.string.copies_offline) }
-                ?: copies.checkedAtMillis?.let { stringResource(R.string.copies_checked, whenText(it)) }
-            footer?.let {
-                Text(it, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp))
-            }
+    SettingsScaffold(stringResource(R.string.copies_title), back, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PageNote(stringResource(R.string.copies_body))
+        if (copies.loaded && copies.copies.isEmpty()) {
+            EmptyState(stringResource(R.string.copies_none))
         }
-        TitleBar(stringResource(R.string.copies_title), back, Modifier.align(Alignment.TopCenter))
+        copies.copies.forEach { copy -> SettingsCard { CopyCard(copy, copies.acting, actions) } }
+        val footer = copies.error?.let { stringResource(R.string.copies_offline) }
+            ?: copies.checkedAtMillis?.let { stringResource(R.string.copies_checked, whenText(it)) }
+        footer?.let {
+            PageNote(it)
+        }
     }
 }
 
@@ -129,7 +120,7 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 14.dp, bottom = 8.dp)) {
         Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             val name = if (copy.onPeer) stringResource(R.string.copies_on_peer, copy.folder) else copy.folder
-            Text(name, color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(end = 8.dp))
+            Text(name, color = LibraryColors.Muted, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(end = 8.dp))
             if (copy.encrypted) {
                 Icon(
                     LibraryIcons.Lock,
@@ -146,11 +137,11 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
         } else {
             val format = NumberFormat.getIntegerInstance()
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom) {
-                Text(format.format(copy.heldFiles), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(format.format(copy.heldFiles), color = LibraryColors.OnBackground, style = LibraryType.ScreenTitle, fontWeight = FontWeight.SemiBold)
                 Text(
                     stringResource(R.string.copies_of_files, format.format(copy.originals)),
                     color = LibraryColors.Muted,
-                    fontSize = 14.sp,
+                    style = LibraryType.Body,
                     modifier = Modifier.padding(start = 6.dp, bottom = 5.dp),
                 )
             }
@@ -171,17 +162,17 @@ private fun CopyCard(copy: DataCopy, acting: Boolean, actions: CopiesActions) {
 private fun PassProgress(copy: DataCopy, running: CopyRunning, acting: Boolean, actions: CopiesActions) {
     val format = NumberFormat.getIntegerInstance()
     Row(Modifier.padding(top = 4.dp, end = 12.dp), verticalAlignment = Alignment.Bottom) {
-        Text(sizeText(running.doneBytes), color = LibraryColors.OnBackground, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+        Text(sizeText(running.doneBytes), color = LibraryColors.OnBackground, style = LibraryType.ScreenTitle, fontWeight = FontWeight.SemiBold)
         Text(
             stringResource(R.string.copies_of_size, sizeText(running.totalBytes)),
             color = LibraryColors.Muted,
-            fontSize = 14.sp,
+            style = LibraryType.Body,
             modifier = Modifier.weight(1f).padding(start = 6.dp, bottom = 5.dp),
         )
         Text(
             stringResource(R.string.copies_percent, (running.fraction * 100).toInt()),
             color = LibraryColors.OnBackground,
-            fontSize = 20.sp,
+            style = LibraryType.PageTitle,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 2.dp),
         )
@@ -269,12 +260,12 @@ private fun CopyWarnings(copy: DataCopy) {
         Text(
             pluralStringResource(R.plurals.copies_failed, copy.failedFiles, NumberFormat.getIntegerInstance().format(copy.failedFiles)),
             color = LibraryColors.Warning,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             modifier = Modifier.padding(top = 4.dp),
         )
     }
     if (copy.sameDisk) {
-        Text(stringResource(R.string.copies_same_disk), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Text(stringResource(R.string.copies_same_disk), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -298,7 +289,7 @@ private fun CopyDetails(copy: DataCopy) {
         copy.freeBytes?.let { add(stringResource(if (copy.onPeer) R.string.copies_quota_left else R.string.copies_free, sizeText(it))) }
         if (copy.inCopyOnly > 0) add(pluralStringResource(R.plurals.copies_in_copy_only, copy.inCopyOnly, format.format(copy.inCopyOnly)))
     }
-    lines.forEach { Text(it, color = LibraryColors.Muted, fontSize = 13.sp) }
+    lines.forEach { Text(it, color = LibraryColors.Muted, style = LibraryType.Caption) }
 }
 
 /** The copy's mark beside its name: a dot for what needs a look, a check when up to date; none while copying. */

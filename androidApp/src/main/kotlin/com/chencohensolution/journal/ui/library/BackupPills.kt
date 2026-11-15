@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.foundation.clickable
+
 import android.text.format.Formatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -97,6 +100,9 @@ internal fun BackupPills(
                 warning = folder?.lost == true,
                 onClick = { if (folder?.lost == true && pickFolder != null) pickFolder() else toggle(pill) },
                 onLongClick = folder?.takeIf { remove != null }?.let { { removing = it.folder } },
+                // A visible way too: an x on the folder's pill (the UX review, Nov 16, 2026).
+                onRemove = folder?.takeIf { remove != null }?.let { { removing = it.folder } },
+                removeLabel = folder?.let { stringResource(R.string.backup_remove_title, it.folder.name) },
             )
         }
         if (pickFolder != null) {
@@ -104,17 +110,16 @@ internal fun BackupPills(
         }
     }
     removing?.let { folder ->
-        AlertDialog(
-            onDismissRequest = { removing = null },
-            title = { Text(stringResource(R.string.backup_remove_title, folder.name)) },
-            text = { Text(stringResource(R.string.backup_remove_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    removing = null
-                    remove?.invoke(folder)
-                }) { Text(stringResource(R.string.backup_remove_confirm)) }
+        ConfirmSheet(
+            title = stringResource(R.string.backup_remove_title, folder.name),
+            body = stringResource(R.string.backup_remove_body),
+            confirmLabel = stringResource(R.string.backup_remove_confirm),
+            destructive = true,
+            onConfirm = {
+                removing = null
+                remove?.invoke(folder)
             },
-            dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(R.string.backup_add_cancel)) } },
+            onDismiss = { removing = null },
         )
     }
 }
@@ -122,7 +127,16 @@ internal fun BackupPills(
 /** A pill in the look of the app's filter chips, with a long press. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: Boolean = false, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun Pill(
+    label: String,
+    selected: Boolean,
+    icon: ImageVector?,
+    warning: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null,
+    removeLabel: String? = null,
+) {
     val shape = RoundedCornerShape(8.dp)
     val content = when {
         selected -> LibraryColors.OnInverse
@@ -142,7 +156,15 @@ private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: 
             Icon(icon, null, tint = content, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(label, color = content, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = content, style = LibraryType.Body, fontWeight = FontWeight.Medium)
+        if (onRemove != null) {
+            Box(
+                Modifier.padding(start = 6.dp).size(20.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = removeLabel, onClick = onRemove),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(LibraryIcons.Close, removeLabel, tint = content, modifier = Modifier.size(14.dp))
+            }
+        }
     }
 }
 
@@ -155,41 +177,30 @@ internal fun AddFolderDialog(picked: PickedFolder, add: (AudioKind) -> Unit, can
     var kind by remember(picked.folder.treeUri) { mutableStateOf(picked.look.guess) }
     val format = NumberFormat.getIntegerInstance()
     val size = Formatter.formatShortFileSize(LocalContext.current, picked.look.bytes)
-    AlertDialog(
-        onDismissRequest = cancel,
-        icon = {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(LibraryColors.Accent), contentAlignment = Alignment.Center) {
-                Icon(kindIcon(kind), null, tint = LibraryColors.PhotoText, modifier = Modifier.size(22.dp))
-            }
-        },
-        title = { Text(stringResource(R.string.backup_add_title, picked.folder.name)) },
-        text = {
+    FormSheet(stringResource(R.string.backup_add_title, picked.folder.name), stringResource(R.string.backup_add_confirm), { add(kind) }, cancel) {
             Column {
-                Text(picked.folder.path, color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(picked.folder.path, color = LibraryColors.Muted, style = LibraryType.Caption)
                 Text(
                     stringResource(R.string.backup_add_found, pluralStringResource(R.plurals.backup_files, picked.look.files, format.format(picked.look.files)), size),
-                    fontSize = 15.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                 )
-                Text(stringResource(R.string.backup_add_kind), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text(stringResource(R.string.backup_add_kind), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(bottom = 4.dp))
                 AudioKind.entries.forEach { option ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                             .selectable(selected = kind == option, role = Role.RadioButton) { kind = option }.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = kind == option, onClick = null)
+                        RadioButton(selected = kind == option, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = LibraryColors.OnBackground, unselectedColor = LibraryColors.Muted))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(kindName(option)), fontSize = 16.sp)
+                        Text(stringResource(kindName(option)), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
                     }
                 }
-                Text(stringResource(R.string.backup_add_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.backup_add_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 8.dp))
             }
-        },
-        confirmButton = { TextButton(onClick = { add(kind) }) { Text(stringResource(R.string.backup_add_confirm)) } },
-        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(R.string.backup_add_cancel)) } },
-    )
+    }
 }
 
 private fun kindName(kind: AudioKind): Int = when (kind) {

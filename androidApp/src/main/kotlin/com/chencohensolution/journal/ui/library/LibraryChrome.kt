@@ -1,5 +1,9 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.ui.draw.clip
+
+import androidx.compose.foundation.clickable
+
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInVertically
@@ -51,23 +55,26 @@ internal fun OfflinePill(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.Warning, modifier = Modifier.size(15.dp))
-        Text(stringResource(R.string.library_offline), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.library_offline), color = Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
     }
 }
 
-/** "1,248 not backed up": the backup summary above the bottom bar. */
+/** "1,248 not backed up ›": the backup summary above the bottom bar; a tap opens Settings › Backup ([onClick]). */
 @Composable
-internal fun BackupSummaryPill(text: String, modifier: Modifier = Modifier) {
+internal fun BackupSummaryPill(text: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Row(
         modifier
+            .clip(RoundedCornerShape(50))
             .background(LibraryColors.OnBackground.copy(alpha = 0.12f), RoundedCornerShape(50))
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .height(36.dp)
-            .padding(horizontal = 14.dp),
+            .padding(start = 14.dp, end = if (onClick != null) 8.dp else 14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
-        Text(text, color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
+        if (onClick != null) Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.padding(start = 0.dp).size(16.dp))
     }
 }
 
@@ -97,7 +104,7 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
                         this.selected = isSelected
                     },
             ) {
-                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(label, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -114,6 +121,8 @@ internal fun BottomControls(
     modifier: Modifier = Modifier,
     insets: WindowInsets = navigationBarInsets(),
     summaryHidden: Boolean = false,
+    /** A tap on the summary: Settings › Backup. */
+    openSummary: (() -> Unit)? = null,
     bar: @Composable () -> Unit,
 ) {
     Column(
@@ -128,7 +137,7 @@ internal fun BottomControls(
                 enter = expandVertically(expandFrom = Alignment.Top) + slideInVertically { it },
                 exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically { it },
             ) {
-                BackupSummaryPill(summary)
+                BackupSummaryPill(summary, onClick = openSummary)
             }
         }
         bar()
@@ -139,7 +148,7 @@ internal fun BottomControls(
 @Composable
 internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
     Box(modifier.background(LibraryColors.LabelFade).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 24.dp)) {
-        Text(text, color = LibraryColors.PhotoText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = LibraryColors.PhotoText, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold)
     }
 }
 

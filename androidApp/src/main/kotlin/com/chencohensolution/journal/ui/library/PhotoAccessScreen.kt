@@ -66,12 +66,8 @@ internal fun PhotoAccessScreen(onAllow: () -> Unit, onNotNow: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onAllow, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                Text(stringResource(R.string.library_access_allow))
-            }
-            TextButton(onClick = onNotNow, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Text(stringResource(R.string.library_access_not_now))
-            }
+            PrimaryButton(stringResource(R.string.library_access_allow), onAllow, Modifier.fillMaxWidth().height(54.dp))
+            TextAction(stringResource(R.string.library_access_not_now), onNotNow, Modifier.fillMaxWidth().height(48.dp))
             Text(
                 stringResource(R.string.library_access_footnote),
                 style = MaterialTheme.typography.bodySmall,

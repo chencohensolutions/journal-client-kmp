@@ -51,7 +51,7 @@ internal fun PhoneSearchSection(state: PhoneSearchState, actions: PhoneSearchAct
     Text(
         stringResource(R.string.phone_search_intro),
         color = LibraryColors.Muted,
-        fontSize = 14.sp,
+        style = LibraryType.Body,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp),
     )
     if (state.kept.isNotEmpty()) {
@@ -81,7 +81,7 @@ internal fun PhoneSearchSection(state: PhoneSearchState, actions: PhoneSearchAct
     Text(
         stringResource(R.string.phone_search_space, size(state.keptBytes), size(state.freeBytes)),
         color = LibraryColors.Muted,
-        fontSize = 13.sp,
+        style = LibraryType.Caption,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
     )
 }
@@ -124,13 +124,13 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
                 Text(
                     stringResource(R.string.phone_search_downloading, stringResource(indexTitle(download.kind))),
                     color = LibraryColors.OnBackground,
-                    fontSize = 16.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     stringResource(R.string.phone_search_downloaded, size(download.doneBytes), size(download.totalBytes)),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                 )
                 LinearProgressIndicator(
                     progress = { download.doneBytes.toFloat() / download.totalBytes.coerceAtLeast(1) },
@@ -138,15 +138,15 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
                     trackColor = LibraryColors.Muted.copy(alpha = 0.2f),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp),
                 )
-                Text(stringResource(R.string.phone_search_downloading_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp, end = 8.dp))
+                Text(stringResource(R.string.phone_search_downloading_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 8.dp, end = 8.dp))
                 StatusButton(stringResource(R.string.phone_search_pause), actions.pause)
             }
             state.waitingForWifi -> {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(LibraryIcons.Wifi, null, tint = LibraryColors.Warning, modifier = Modifier.size(18.dp))
-                    Text(stringResource(R.string.phone_search_waiting_wifi), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.phone_search_waiting_wifi), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 }
-                Text(stringResource(R.string.phone_search_waiting_wifi_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(stringResource(R.string.phone_search_waiting_wifi_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
                 StatusButton(stringResource(R.string.phone_search_download_now), actions.updateNow)
             }
             else -> {
@@ -155,15 +155,15 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
                         stringResource(R.string.phone_search_updated, DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS))
                     } ?: stringResource(R.string.phone_search_never),
                     color = LibraryColors.OnBackground,
-                    fontSize = 16.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     if (state.newOnServer > 0) stringResource(R.string.phone_search_new, state.newOnServer) else stringResource(R.string.phone_search_up_to_date),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                 )
-                state.error?.let { Text(stringResource(R.string.phone_search_error, it), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, end = 8.dp)) }
+                state.error?.let { Text(stringResource(R.string.phone_search_error, it), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp, end = 8.dp)) }
                 StatusButton(stringResource(R.string.phone_search_update_now), actions.updateNow)
             }
         }
@@ -171,8 +171,6 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
 }
 
 @Composable
-private fun StatusButton(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.padding(top = 2.dp)) {
-        Text(label, color = LibraryColors.OnBackground, fontWeight = FontWeight.Bold)
-    }
-}
+/** A card with a body gets its action as a full-width outlined button at its bottom (docs/screens/style.md). */
+private fun StatusButton(label: String, onClick: () -> Unit) =
+    SecondaryButton(label, onClick, Modifier.fillMaxWidth().padding(top = 10.dp, end = 8.dp, bottom = 4.dp))

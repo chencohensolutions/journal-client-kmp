@@ -36,8 +36,8 @@ import java.text.NumberFormat
  * Settings › Show in the app as a status page (option c3 of the UI lab, Oct 27, 2026), with no switches: a line at the
  * top ("87,343 files" and "15 not backed up ›", or "All backed up"), then a line per kind with its total in a column at
  * the end and "12 not backed up ›" in orange under its name where some of this phone's files aren't on the server yet
- * (tapping it opens Backup); the sound kinds are a second card. Kinds Private settings hides on every device aren't
- * named: one line counts them, with "Private settings ›" (left out until Private settings was opened in this run). A note
+ * (tapping it opens Backup); the sound kinds are a second card. Kinds Hidden and private hides on every device aren't
+ * named: one line counts them, with "Hidden and private ›" (left out until Hidden and private was opened in this run). A note
  * says hiding on this phone is the Moments filter bar's. Drawn inside Settings' page.
  */
 @Composable
@@ -66,7 +66,7 @@ internal fun ShowInAppPage(status: KindsStatus, openBackup: () -> Unit, openPriv
     Text(
         stringResource(R.string.kinds_how_to_hide),
         color = LibraryColors.Muted,
-        fontSize = 13.sp,
+        style = LibraryType.Caption,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
     )
 }
@@ -75,11 +75,11 @@ internal fun ShowInAppPage(status: KindsStatus, openBackup: () -> Unit, openPriv
 @Composable
 private fun Summary(status: KindsStatus, openBackup: () -> Unit) {
     Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp)) {
-        Text(stringResource(R.string.kinds_files, count(status.files)), color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.kinds_files, count(status.files)), color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold)
         if (status.notBackedUp > 0) {
             NotBackedUp(status.notBackedUp, openBackup, 15.sp)
         } else {
-            Text(stringResource(R.string.kinds_all_backed_up), color = LibraryColors.Muted, fontSize = 15.sp)
+            Text(stringResource(R.string.kinds_all_backed_up), color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
         }
     }
 }
@@ -96,13 +96,13 @@ private fun KindRow(name: String, icon: ImageVector, files: Int, notBackedUp: In
     ) {
         Icon(icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 12.dp)) {
-            Text(name, color = LibraryColors.OnBackground, fontSize = 16.sp)
+            Text(name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
             if (notBackedUp > 0) NotBackedUp(notBackedUp, openBackup, 12.sp)
         }
         Text(
             count(files),
             color = LibraryColors.OnBackground,
-            fontSize = 16.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.End,
             modifier = Modifier.widthIn(min = 72.dp),
@@ -110,7 +110,7 @@ private fun KindRow(name: String, icon: ImageVector, files: Int, notBackedUp: In
     }
 }
 
-/** "☁ 12 not backed up ›" in orange; opens Backup. */
+/** "☁ 12 not backed up ›": an orange mark, ink words (a link is never orange); opens Backup. */
 @Composable
 private fun NotBackedUp(n: Int, openBackup: () -> Unit, size: TextUnit) {
     Row(
@@ -119,11 +119,11 @@ private fun NotBackedUp(n: Int, openBackup: () -> Unit, size: TextUnit) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(LibraryIcons.CloudUp, null, tint = LibraryColors.Warning, modifier = Modifier.size(14.dp))
-        Text(stringResource(R.string.kinds_not_backed_up, count(n)) + " ›", color = LibraryColors.Warning, fontSize = size, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.kinds_not_backed_up, count(n)) + " ›", color = LibraryColors.OnBackground, fontSize = size, fontWeight = FontWeight.SemiBold)
     }
 }
 
-/** "🔒 2 kinds hidden on all your devices · Private settings ›", never naming them. */
+/** "🔒 2 kinds hidden on all your devices · Hidden and private ›", never naming them. */
 @Composable
 private fun HiddenEverywhereLine(n: Int, openPrivate: () -> Unit) {
     val text = buildAnnotatedString {
@@ -144,7 +144,7 @@ private fun HiddenEverywhereLine(n: Int, openPrivate: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(LibraryIcons.Lock, null, tint = LibraryColors.Muted, modifier = Modifier.padding(top = 2.dp).size(15.dp))
-        Text(text, color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(text, color = LibraryColors.Muted, style = LibraryType.Caption)
     }
 }
 

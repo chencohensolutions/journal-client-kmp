@@ -1,16 +1,12 @@
 package com.chencohensolution.journal.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import com.chencohensolution.journal.ui.library.LibraryTheme
 
-/** Material You colors from the wallpaper (minSdk 35, so dynamic color is always available). */
+/**
+ * The app's colors: the library palette, light or dark with the system (no wallpaper colors since Nov 16, 2026), so
+ * enrollment and photo access look like the library. Screens that must be dark (the viewer) set their own
+ * `LibraryTheme(dark = true)`.
+ */
 @Composable
-fun JournalTheme(content: @Composable () -> Unit) {
-    val context = LocalContext.current
-    val colorScheme = if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    MaterialTheme(colorScheme = colorScheme, content = content)
-}
+fun JournalTheme(content: @Composable () -> Unit) = LibraryTheme(content = content)

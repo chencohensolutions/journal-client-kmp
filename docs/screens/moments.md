@@ -48,7 +48,8 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   taps then pick or unpick (a set is picked whole), back or **Cancel** stops. In place of the tabs, the **picking
   bar**: **Cancel · N selected · Mark private · Tuck away** (N counts photos, a set each of its own; Mark private asks
   first, as search's does; Tuck away doesn't), or **Bring back** in place of Tuck away when every photo picked is
-  tucked away. Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
+  tucked away. Mark private, Tuck away and Bring back are plain text buttons of the same weight on the bar (Nov 16,
+  2026; neither filled). Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
   two or more photos picked, **Make a moment** (Nov 9, 2026, below) and, with two or more photos or sets picked none of
   which is a named moment, **Merge**; with one set picked, **Take out** (the photo the long press was on).
   Remove from / Add to storyline is in the viewer's details panel. A long press on a photo taken during a recording
@@ -78,7 +79,8 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   marked, changed by dragging in the viewer's grid sheet. The first highlight is the set's **cover**: where it opens.
 - **A set without highlights shows its cover**: the photo it was turned to while the feed shows, else its best-looking
   photo (the server's aesthetic score), else its first (`StoriesState.frontOf`). At the cover's shape, the others
-  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner. The thin line marking where the
+  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner. (⧉ is the Stack icon since Nov 16,
+  2026.) The thin line marking where the
   photo shown is and the ▶ that played it in place were removed on Nov 10, 2026 (the owner didn't like them; the
   slideshow is the viewer's; Android only, iOS still has them).
   - **Hold and slide** flips through it in place: hold, then slide sideways, a tick per photo, 10 dp each, with
@@ -370,3 +372,13 @@ cache can be deleted at any time.
   took the place of the photos around them.
 - **iOS:** PhotoKit gives each photo's and video's location with the library; names come from `CLGeocoder`, about one a second.
 - Names are looked up once per ~500 m square: the area, the town and the country.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The picking bar's actions above it (Write · Crop · Tag · Make a moment · Merge · Take out, and a person's Not Mom)
+  are icons with small labels. The first Tuck away or Mark private from the bar shows **How these differ** once
+  (`HidingExplainerSheet`; remembered in `SettingsState.hidingExplained`), then goes on.
+- A row's route line joins its towns with `feed_route_separator`: " → " in English, " ← " in Hebrew. Dates follow the
+  app's language (`formatDate` uses the configuration's locale).

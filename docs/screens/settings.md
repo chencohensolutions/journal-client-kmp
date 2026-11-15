@@ -8,6 +8,8 @@ Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is 
 saying how it stands and opening a page of its own; the switches used most stay on the first page:
 
 - **Top bar:** back and "Settings" (on a page: its name).
+  Every page is the shared `SettingsScaffold` with `PageNote` intros, pill chips whose choices scroll sideways in one
+  row, and the shared empty, loading and unreachable states (Nov 16, 2026; [style.md](style.md)).
 - **Library:** **Show in the app ›** ("87,343 files · 15 not backed up"; until Oct 27, 2026 "Showing Camera, Other, Petcube +2"), **Your cameras ›**
   (when the server keeps cameras, `ServerFeatures.cameras`: "4 cameras · 1 not yours", "4 cameras" when all are,
   "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Sound folders ›**
@@ -583,3 +585,19 @@ were published or from the user's server instead of coming with the app (`Models
 - [Backup › Copies — a pass's progress](../ux-history/backup/2026-10-28-copy-progress.md) (Oct 28, 2026): size and percentage on one line, time left and Stop under the bar (c) picked, promoted in 1ccfdf6.
 - [Sound folders](../ux-history/sound-folders/2026-10-27-sound-folders.md) (Oct 27, 2026): folders grouped under Calls, Voice recordings and Kept as folders (b) picked, promoted in c29cd83.
 - [Show in the app and Private settings by kind](../ux-history/kinds/2026-10-27-kinds-and-private.md) (Oct 27, 2026): a list of kinds with totals (kinds c3) and Private settings choosing what shows, behind the lock (private c2) picked, promoted in 506a1f5.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- **Hidden and private** (was "Private settings"; `settings_hidden_title`): a folded **How these differ** card first
+  (the four ways a photo can be out of sight, lightest to strongest: Show in the app, Hidden on all your devices,
+  Tucked away, Private; `HidingExplainer`), then **Private** (Show private media) and **Hidden on all your devices**
+  (kinds, nudity). "Hide"/"hidden" is only for Show in the app and the kinds hidden on all devices; "private" only for
+  Mark private and Tucked away.
+- The first page: every group has a heading. **Display and sharing** (new) holds Show the phone badge and Share JPEG
+  XL as JPEG (out of Library); the Search card has its **Search** heading.
+- A card with a body gets its action as a full-width outlined button at its bottom: Read new photos now, Pause,
+  Resume, Update now, Download now, Reset to 85%, Add this network, Allow all the time.
+- Backup's folder pills have an **x** to stop backing a folder up (the long press still works).
+- Copies: "No copies yet. They are set up on your server."

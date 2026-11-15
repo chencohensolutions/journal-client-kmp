@@ -7,6 +7,9 @@ each screen's "Design history". The earlier design canvas (https://claude.ai/art
 longer updated. Stories, with
 their story and group pages, were replaced by the storyline on Oct 21, 2026 (owner's decision) and are gone.
 
+How every screen looks (colors, buttons, type, shapes, sheets, messages, empty and loading states, words):
+[style.md](style.md).
+
 | Screen | Shown when | Doc |
 |---|---|---|
 | Enrollment wizard | The device has no identity yet | [enrollment.md](enrollment.md); `docs/authentication.md` in journal-server-go |

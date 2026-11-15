@@ -240,7 +240,7 @@ private fun OverlayChip(icon: androidx.compose.ui.graphics.vector.ImageVector, l
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Text(stringResource(label), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(label), color = Color.White, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -258,17 +258,17 @@ private fun CastSheet(onDismiss: () -> Unit) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
             Text(
                 stringResource(if (state.connected) R.string.cast_on_tv else R.string.cast_title),
-                color = LibraryColors.OnBackground, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
             Spacer(Modifier.height(12.dp))
             if (state.connected) {
                 Text(
-                    state.device ?: stringResource(R.string.cast_a_tv), color = LibraryColors.OnBackground, fontSize = 16.sp,
+                    state.device ?: stringResource(R.string.cast_a_tv), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )
                 Text(
-                    stringResource(R.string.cast_frame_hint), color = LibraryColors.Muted, fontSize = 14.sp,
+                    stringResource(R.string.cast_frame_hint), color = LibraryColors.Muted, style = LibraryType.Body,
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
                 Spacer(Modifier.height(16.dp))
@@ -280,7 +280,7 @@ private fun CastSheet(onDismiss: () -> Unit) {
                 Row(Modifier.padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(color = LibraryColors.Muted, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text(stringResource(R.string.cast_looking), color = LibraryColors.Muted, fontSize = 15.sp)
+                    Text(stringResource(R.string.cast_looking), color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
                 }
             } else {
                 tvs.forEach { tv ->
@@ -303,7 +303,7 @@ private fun SheetRow(label: String, icon: androidx.compose.ui.graphics.vector.Im
     ) {
         if (busy) CircularProgressIndicator(color = LibraryColors.Accent, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
         else Icon(icon, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(22.dp))
-        Text(label, color = LibraryColors.OnBackground, fontSize = 16.sp)
+        Text(label, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
     }
 }
 
@@ -327,7 +327,7 @@ internal fun CastVideoControls(video: CastVideo?, onPlay: () -> Unit, onPause: (
                 tint = Color.White, modifier = Modifier.size(18.dp),
             )
         }
-        Text(castClock(((seeking?.let { it * duration } ?: video?.positionMillis?.toFloat()) ?: 0f).toLong()), color = Color.White, fontSize = 12.sp)
+        Text(castClock(((seeking?.let { it * duration } ?: video?.positionMillis?.toFloat()) ?: 0f).toLong()), color = Color.White, style = LibraryType.Small)
         Box(
             Modifier.weight(1f).height(28.dp).pointerInput(duration, rtl) {
                 if (duration <= 0) return@pointerInput
@@ -347,7 +347,7 @@ internal fun CastVideoControls(video: CastVideo?, onPlay: () -> Unit, onPause: (
             Box(Modifier.fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
             Box(Modifier.fillMaxWidth(fraction).height(3.dp).background(Color.White, RoundedCornerShape(2.dp)))
         }
-        Text(castClock(duration), color = Color.White, fontSize = 12.sp)
+        Text(castClock(duration), color = Color.White, style = LibraryType.Small)
     }
 }
 

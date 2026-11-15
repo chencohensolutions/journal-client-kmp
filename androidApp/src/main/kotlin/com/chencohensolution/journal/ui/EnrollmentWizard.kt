@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.enrollment.EnrollmentController
@@ -68,6 +67,10 @@ import com.chencohensolution.journal.enrollment.KeyProtection
 import com.chencohensolution.journal.enrollment.PasteResult
 import com.chencohensolution.journal.enrollment.RegistrationProgress
 import com.chencohensolution.journal.ui.library.pastedText
+import com.chencohensolution.journal.ui.library.Messages
+import com.chencohensolution.journal.ui.library.MessageHost
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.navigationBarsPadding
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
@@ -80,38 +83,43 @@ fun EnrollmentWizard(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Enrollment is outside the library, so it hosts its own message bar.
+    val messages = remember { Messages() }
     BackHandler(enabled = state.step !is EnrollmentStep.Welcome && state.step !is EnrollmentStep.Enrolled) {
         controller.back()
     }
-    EnrollmentContent(
-        state = state,
-        actions = EnrollmentActions(
-            start = controller::start,
-            back = controller::back,
-            updateServerAddress = controller::updateServerAddress,
-            updateCode = controller::updateCode,
-            updateDeviceName = controller::updateDeviceName,
-            checkCode = controller::checkCode,
-            // Google's scanner screen, from Play services: it needs no camera permission.
-            scan = {
-                val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
-                GmsBarcodeScanning.getClient(context, options).startScan()
-                    .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
-                    .addOnFailureListener { Toast.makeText(context, R.string.enroll_scan_failed, Toast.LENGTH_LONG).show() }
-            },
-            // Read only when tapped: Android lets a focused app read the clipboard and says so in its own note.
-            paste = {
-                if (controller.openPasted(pastedText(context)) == PasteResult.NOTHING) {
-                    Toast.makeText(context, R.string.enroll_paste_nothing, Toast.LENGTH_LONG).show()
-                }
-            },
-            register = controller::register,
-            openJournal = onOpenJournal,
-        ),
-    )
+    Box(Modifier.fillMaxSize()) {
+        EnrollmentContent(
+            state = state,
+            actions = EnrollmentActions(
+                start = controller::start,
+                back = controller::back,
+                updateServerAddress = controller::updateServerAddress,
+                updateCode = controller::updateCode,
+                updateDeviceName = controller::updateDeviceName,
+                checkCode = controller::checkCode,
+                // Google's scanner screen, from Play services: it needs no camera permission.
+                scan = {
+                    val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+                    GmsBarcodeScanning.getClient(context, options).startScan()
+                        .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
+                        .addOnFailureListener { messages.post(context.getString(R.string.enroll_scan_failed)) }
+                },
+                // Read only when tapped: Android lets a focused app read the clipboard and says so in its own note.
+                paste = {
+                    if (controller.openPasted(pastedText(context)) == PasteResult.NOTHING) {
+                        messages.post(context.getString(R.string.enroll_paste_nothing))
+                    }
+                },
+                register = controller::register,
+                openJournal = onOpenJournal,
+            ),
+        )
+        MessageHost(messages, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(bottom = 96.dp))
+    }
 }
 
-private class EnrollmentActions(
+internal class EnrollmentActions(
     val start: () -> Unit = {},
     val back: () -> Unit = {},
     val updateServerAddress: (String) -> Unit = {},
@@ -125,7 +133,7 @@ private class EnrollmentActions(
 )
 
 @Composable
-private fun EnrollmentContent(state: EnrollmentState, actions: EnrollmentActions) {
+internal fun EnrollmentContent(state: EnrollmentState, actions: EnrollmentActions) {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -168,19 +176,18 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
     WizardHeader(stepNumber = 1, label = R.string.enroll_step_connect, onBack = actions.back)
     StepBody {
         Title(stringResource(R.string.enroll_code_title), Modifier.padding(top = 24.dp))
+        // The way most people get a code first; the server's own command second and smaller (Nov 16, 2026).
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
+        Text(
+            stringResource(R.string.enroll_code_command),
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
         // One above the other: side by side, "Scan QR code" wraps on a phone.
         Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = actions.scan, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
-            }
-            OutlinedButton(onClick = actions.paste, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Icon(Icons.Paste, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.enroll_paste), style = MaterialTheme.typography.titleMedium)
-            }
+            com.chencohensolution.journal.ui.library.SecondaryButton(stringResource(R.string.enroll_scan), actions.scan, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = !step.checking, icon = Icons.QrCode)
+            com.chencohensolution.journal.ui.library.SecondaryButton(stringResource(R.string.enroll_paste), actions.paste, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = !step.checking, icon = Icons.Paste)
         }
         OutlinedTextField(
             value = state.serverAddress,
@@ -225,7 +232,7 @@ private fun ColumnScope.ConfirmStep(state: EnrollmentState, step: EnrollmentStep
         Title(stringResource(R.string.enroll_confirm_title), Modifier.padding(top = 24.dp))
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         ) {
             Column {
@@ -249,7 +256,7 @@ private fun ColumnScope.ConfirmStep(state: EnrollmentState, step: EnrollmentStep
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = RoundedCornerShape(12.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Tile,
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         ) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -307,7 +314,7 @@ private fun ColumnScope.EnrolledStep(step: EnrollmentStep.Enrolled, actions: Enr
         Body(stringResource(R.string.enroll_done_body, step.user), Modifier.padding(top = 8.dp), TextAlign.Center)
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -340,7 +347,7 @@ private fun ColumnScope.FailedStep(state: EnrollmentState, step: EnrollmentStep.
         )
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 28.dp),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -487,15 +494,8 @@ private fun NumberedItem(number: Int, title: Int, body: Int) {
 }
 
 @Composable
-private fun PrimaryButton(text: String, onClick: () -> Unit, loading: Boolean = false) {
-    Button(onClick = onClick, enabled = !loading, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        if (loading) {
-            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-        } else {
-            Text(text, style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
+private fun PrimaryButton(text: String, onClick: () -> Unit, loading: Boolean = false) =
+    com.chencohensolution.journal.ui.library.PrimaryButton(text, onClick, Modifier.fillMaxWidth().height(56.dp), enabled = !loading, busy = loading)
 
 @Composable
 private fun DetailRow(icon: ImageVector, label: String, value: String, detail: String, highlight: Boolean = true) {

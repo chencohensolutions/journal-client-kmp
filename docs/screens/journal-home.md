@@ -17,7 +17,8 @@ Photos fill the screen on the page background (light or dark with the system); t
   scrolls up; they always show at the top of the list and when the tab changes. Behind them, once the list is away
   from its top, the fade comes back with them (fading in and out); at the top there is none (Oct 24, 2026). The list starts under the bar: with Moments' filter bar off
   it leaves no room for it.
-- **Cards above the timeline**, when they apply:
+- **Cards above the timeline**, when they apply, all one card (`HomeCard`, Nov 16, 2026: `Raised`, a title, one
+  line, one ink action; [style.md](style.md)):
   - **This device isn't registered with the server · Register again**: the server answered 401, or there is no
     identity. Opens the enrollment wizard.
   - **Journal can't see your photos · Allow access**: access was denied or skipped. See
@@ -84,3 +85,12 @@ These are in the design but wait for features that don't exist:
   [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift) and
   [FeedVideo.swift](../../iosApp/iosApp/FeedVideo.swift); navigation and refresh in
   [LibraryRootView.swift](../../iosApp/iosApp/LibraryRootView.swift).
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The **N not backed up** pill above the tabs opens Settings › Backup (a chevron says so).
+- An empty storyline says how to fill it and has **Go to Moments**, which switches the tab.
+- Empty, loading and offline states are the shared ones, and messages show in the message bar above the tabs
+  ([style.md](style.md)).

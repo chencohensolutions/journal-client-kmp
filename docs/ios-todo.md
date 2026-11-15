@@ -23,6 +23,43 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **UX consistency review, Nov 16, 2026** (Android; [style.md](screens/style.md) has the rules). Round 1, colors and
+  buttons: the app's Material colors come from the library palette in light and dark (no system/wallpaper tint on
+  enrollment, photo access or alerts; SwiftUI: `.tint` the ink color, not teal); one shared primary button (filled ink
+  pill), secondary (outlined ink) and text action (ink semibold); teal only for on states and progress, red only for
+  remove/forget, orange only for warnings (Limited access' "Change", the viewer details' "Copy", "+ Tag", "More",
+  Add back, and the Show in the app "N not backed up ›" link are ink now). Home's Register again, No access and
+  Limited access are one card (Raised, title, one line, one ink action; `HomeCard` in `JournalHomeScreen.kt`). The
+  picking bar's Mark private, Tuck away and Bring back are plain text buttons of the same weight (`BarButton` in
+  `TuckedViews.kt`). Make a moment's "Show it in Moments on" choice and its Make it button are ink; Recompose's Done
+  is ink. Android files: `LibraryStyle.kt` (`materialColors`), `LibraryButtons.kt`, `JournalTheme.kt`.
+  Round 2, shared pieces: named text sizes (`LibraryType`: 30/22/13 semibold/16 semibold/14/13/12/11; Search's title
+  30; nothing under 11 but the skip buttons' digits), corners (cards and sheets 16, tiles 12, controls a pill;
+  `LibraryShapes`), one settings page scaffold (`SettingsScaffold` in `LibraryPages.kt`) with `PageNote` intros, one
+  pill chip for choices (ink selected, outlined not, no check mark for single choices; Free up's and Settings ›
+  Moments' choices in one sideways-scrolling row), `EmptyState` / `LoadingState` ("Loading…", new string
+  `library_loading`) / `UnreachableState` everywhere a list can be empty, loading or offline, the recording page's
+  title in the shared title bar (day, times under it), and drawn icons instead of ★ ☆ ⌗ ▶ ⧉ (`LibraryIcons.Star`,
+  `StarFilled`, `Crop`, `Play`, `Stack`).
+  Round 3, sheets and messages: every confirmation is a bottom sheet (`ConfirmSheet`; destructive confirm words red)
+  and every small form a `FormSheet` (name a moment, edit a call, add a sound folder, revoke a swap) in place of
+  alerts; all sheets share `PageSheet` (page colors, 16 dp corners, one drag handle; `LibrarySheets.kt`). Toasts are a
+  message bar above the bottom controls (`LibraryMessages.kt`: `Messages`, `MessageHost`, `MessageBar`; 6 s for
+  notes, until dismissed with an action), with Try again on "Not changed: can’t reach your server." where the change
+  can be resent. New strings: `message_dismiss`; `library_private_unreachable` is shorter.
+  Round 4, flows and words: "Private settings" is **Hidden and private** (Private first, then Hidden on all your
+  devices; `phone_lock_none`, `sources_private_about`, `backup_note` follow), with a folded **How these differ** card
+  and, once, a sheet before the picking bar's first Tuck away or Mark private (`SettingsState.hidingExplained`,
+  `SettingsController.hidingExplained()`; strings `hiding_*`); a person's page: long press starts picking with a
+  "Not <name>" extra (`PickingExtras.notThem`); the picking bar's extras are icons with small labels; the home's
+  not-backed-up pill opens Backup; Storyline and Tags empty states have **Go to Moments** (`library_go_to_moments`);
+  Settings' first page has a **Display and sharing** group and a **Search** heading; cards with a body end in a
+  full-width outlined button; Search's ✕ became a back arrow in its title row; Explore's Map is an icon in the title
+  row; the viewer's details have a **Show in the storyline** switch (`storyline_show_switch`) and a pencil to rename
+  a moment; Backup's folder pills have an x; Copies' empty text; Who's this? says **Save name**
+  (`group_save_name`); enrollment's code step leads with scanning or pasting (`enroll_code_body`,
+  `enroll_code_command`); "this phone" for "this device" in library strings; the route line's separator is
+  `feed_route_separator` (" ← " in Hebrew); dates follow the app's language.
 - **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
   in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
   `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from

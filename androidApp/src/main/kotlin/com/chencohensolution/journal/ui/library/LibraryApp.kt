@@ -1,5 +1,17 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.ui.Alignment
+
+import androidx.compose.foundation.layout.padding
+
+import androidx.compose.foundation.layout.navigationBars
+
+import androidx.compose.foundation.layout.WindowInsets
+
+import androidx.compose.foundation.layout.windowInsetsPadding
+
 import android.graphics.Color as AndroidColor
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -285,11 +297,13 @@ private fun LibraryScreens(
     val systemDark = isSystemInDarkTheme()
     SystemBars(activity as? ComponentActivity, stack.last().let { it is Route.Viewer || it is Route.Recompose || it is Route.Audio } || systemDark)
     // Each entry keeps its saveable state (scroll positions among it) while it is under the top of the stack.
+    Box(Modifier.fillMaxSize()) {
     SharedTransitionLayout {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
             LocalTucked provides tuckedActions,
             LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge,
+            LocalHidingExplained provides HidingExplained(settingsState.hidingExplained, settings::hidingExplained),
             // Show in the app's pills in the "Showing" sheets of Moments and Explore.
             LocalShownSources provides ShownSourcesChoice(
                 storiesState.shownSources,
@@ -319,6 +333,7 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     health = journalState.health,
                                     actions = HomeActions(
+                                        openBackup = { push(Route.BackupSettings) },
                                         openItem = { section, item -> push(Route.Viewer(section.key, item.id)) },
                                         openStoryline = { push(Route.Viewer(null, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
@@ -654,7 +669,16 @@ private fun LibraryScreens(
                                         onBack = pop,
                                     )
                                 }
-                                Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
+                                Route.Tags -> TagsScreen(
+                                    storiesState,
+                                    onOpenTag = { push(Route.Tag(it)) },
+                                    onBack = pop,
+                                    onGoToMoments = {
+                                        landing = null
+                                        showInMoments = ShowInMoments(null)
+                                        stack = listOf(Route.Journal)
+                                    },
+                                )
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,
                                     stories = storiesState,
@@ -829,7 +853,16 @@ private fun LibraryScreens(
             )
         }
     }
+        // Messages (in place of toasts), above the bottom controls of whichever screen is on top.
+        MessageHost(
+            AppMessages,
+            Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = MESSAGE_ABOVE_CONTROLS),
+        )
+    }
 }
+
+/** How far above the bottom of the screen messages show: over the tabs and the backup pill, or the viewer's bar. */
+private val MESSAGE_ABOVE_CONTROLS = 132.dp
 
 /** Material's shared X axis: the screen opened slides in from the side it lies on while the two crossfade. */
 private fun sharedAxis(forward: Boolean): ContentTransform {

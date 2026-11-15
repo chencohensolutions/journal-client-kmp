@@ -69,3 +69,11 @@ server, and the CA"). In the connection test after the certificate is saved, the
 keeps it in `JournalSettings.serverCa` (or forgets an older server's). From then on the mTLS clients trust the server
 by that CA too, at any address. So a server with its own CA is enrolled at by its QR code or its pasted link; a typed code reaches only a
 server on the CA built into the app, and the wizard shows the usual connection error for any other.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The code step leads with "Scan the QR code from whoever runs your server, or paste the link they sent." and keeps the
+  `journal-server enroll-code` command as a smaller second line. Its buttons and colors are the library's (no
+  wallpaper colors); its messages (scan failed, nothing to paste) show in its own message bar.

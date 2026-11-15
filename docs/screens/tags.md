@@ -70,3 +70,9 @@ takes a list of photos).
   the tag sheet in
   [PickerSheets.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/PickerSheets.kt)
 - iOS: [TagsView.swift](../../iosApp/iosApp/TagsView.swift), [PickerSheets.swift](../../iosApp/iosApp/PickerSheets.swift)
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- No tags yet: the empty state has **Go to Moments**, which goes back to the Journal on its Moments tab.

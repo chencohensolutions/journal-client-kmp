@@ -89,19 +89,10 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
     val insets = barsRoom()
     Column(
         Modifier.fillMaxSize().background(LibraryColors.Background)
-            .padding(top = insets.calculateTopPadding(), bottom = insets.calculateBottomPadding() + 16.dp),
+            .padding(bottom = insets.calculateBottomPadding() + 16.dp),
     ) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = actions.back), contentAlignment = Alignment.Center) {
-                Icon(LibraryIcons.Back, stringResource(R.string.audio_back), tint = LibraryColors.OnBackground, modifier = Modifier.size(22.dp))
-            }
-            Text(
-                stringResource(R.string.audio_day_times, dayLabel(recording.day), clockTime(recording.startMillis), clockTime(recording.endMillis)),
-                color = LibraryColors.Muted,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        // The shared title bar: the day as the title, the times under it.
+        TitleBar(dayLabel(recording.day), actions.back, caption = "${clockTime(recording.startMillis)} – ${clockTime(recording.endMillis)}")
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(64.dp).clip(CircleShape).background(LibraryColors.Accent), contentAlignment = Alignment.Center) {
                 Icon(kindIcon(recording.kind), null, tint = LibraryColors.PhotoText, modifier = Modifier.size(32.dp))
@@ -110,7 +101,7 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
             Text(
                 soundTitle(recording, state.place),
                 color = LibraryColors.OnBackground,
-                fontSize = 22.sp,
+                fontSize = LibraryType.PageTitle.fontSize,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -119,7 +110,7 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
             )
             // A call with both: the number under the name.
             if (recording.kind == AudioKind.CALL && recording.contact != null && recording.number != null) {
-                Text(recording.number!!, color = LibraryColors.Muted, fontSize = 15.sp, style = TextStyle(textDirection = TextDirection.Ltr))
+                Text(recording.number!!, color = LibraryColors.Muted, fontSize = LibraryType.RowTitle.fontSize, style = TextStyle(textDirection = TextDirection.Ltr))
             }
             if (recording.kind == AudioKind.CALL) {
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -147,16 +138,16 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
             marks = photos.map { (it.takenAtMillis - recording.startMillis).toFloat() / length },
         )
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
-            Text(formatDuration(position), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(formatDuration(position), color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.audio_remaining, formatDuration((recording.durationMillis - position).coerceAtLeast(0))), color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.audio_remaining, formatDuration((recording.durationMillis - position).coerceAtLeast(0))), color = LibraryColors.Muted, style = LibraryType.Caption)
         }
         AudioControls(playback, recording, actions, Modifier.fillMaxWidth().padding(vertical = 12.dp))
         if (photos.isNotEmpty()) {
             Text(
                 pluralStringResource(R.plurals.audio_photos_during, photos.size, photos.size),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
@@ -165,13 +156,13 @@ internal fun AudioPage(state: AudioPageState, actions: AudioPageActions) {
                     val current = i == nowIndex
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
-                            Modifier.size(84.dp).clip(RoundedCornerShape(10.dp))
-                                .then(if (current) Modifier.border(3.dp, LibraryColors.Warning, RoundedCornerShape(10.dp)) else Modifier)
+                            Modifier.size(84.dp).clip(LibraryShapes.Tile)
+                                .then(if (current) Modifier.border(3.dp, LibraryColors.Warning, LibraryShapes.Tile) else Modifier)
                                 .clickable { actions.seek(item.takenAtMillis - recording.startMillis) },
                         ) {
                             TwoStepPhoto(item, 240, 240, Modifier.fillMaxSize())
                         }
-                        Text(clockTime(item.takenAtMillis), color = if (current) LibraryColors.Warning else LibraryColors.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(clockTime(item.takenAtMillis), color = if (current) LibraryColors.Warning else LibraryColors.Muted, style = LibraryType.Tiny, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
             }
@@ -206,7 +197,7 @@ private fun AudioControls(playback: AudioPlayback?, recording: SoundRecording, a
         Text(
             stringResource(R.string.audio_speed, if (speed % 1f == 0f) speed.toInt().toString() else speed.toString()),
             color = LibraryColors.OnBackground,
-            fontSize = 15.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.clip(RoundedCornerShape(50)).clickable(enabled = playback != null) { actions.setSpeed(nextSpeed(speed)) }
                 .border(1.dp, LibraryColors.Muted.copy(alpha = 0.5f), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp),
@@ -219,18 +210,10 @@ private fun AudioControls(playback: AudioPlayback?, recording: SoundRecording, a
 private fun EditCallDialog(recording: SoundRecording, onDismiss: () -> Unit, onSave: (contact: String, number: String) -> Unit) {
     var contact by remember { mutableStateOf(recording.contact.orEmpty()) }
     var number by remember { mutableStateOf(recording.number.orEmpty()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.audio_edit_contact)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(contact, { contact = it }, label = { Text(stringResource(R.string.audio_contact)) }, singleLine = true)
-                OutlinedTextField(number, { number = it }, label = { Text(stringResource(R.string.audio_number)) }, singleLine = true, textStyle = TextStyle(textDirection = TextDirection.Ltr))
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(contact, number) }) { Text(stringResource(R.string.audio_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.audio_cancel)) } },
-    )
+    FormSheet(stringResource(R.string.audio_edit_contact), stringResource(R.string.audio_save), { onSave(contact, number) }, onDismiss) {
+        OutlinedTextField(contact, { contact = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.audio_contact)) }, singleLine = true)
+        OutlinedTextField(number, { number = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.audio_number)) }, singleLine = true, textStyle = TextStyle(textDirection = TextDirection.Ltr))
+    }
 }
 
 private const val SKIP_MILLIS = 15_000L

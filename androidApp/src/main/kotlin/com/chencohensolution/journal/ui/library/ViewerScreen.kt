@@ -2,7 +2,6 @@ package com.chencohensolution.journal.ui.library
 
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackException
@@ -471,7 +470,7 @@ internal fun ViewerScreen(
             server.offer(shownNow, castPreviews) to castAhead(items, items.indexOf(shownNow)).mapNotNull { server.offer(it, castPreviews) }
         }
         if (item == null) {
-            Toast.makeText(castContext, R.string.cast_no_wifi, Toast.LENGTH_LONG).show()
+            AppMessages.post(castContext.getString(R.string.cast_no_wifi))
             return@LaunchedEffect
         }
         val holder = castZoomOf(shownNow).takeIf { shownNow.type != MediaType.VIDEO }
@@ -511,7 +510,7 @@ internal fun ViewerScreen(
     LaunchedEffect(castState.error) {
         castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
         if (castState.error != null) {
-            Toast.makeText(castContext, R.string.cast_failed, Toast.LENGTH_SHORT).show()
+            AppMessages.post(castContext.getString(R.string.cast_failed))
             cast.errorSeen()
         }
     }
@@ -720,12 +719,12 @@ internal fun ViewerScreen(
         // with the bar on screen it said the same twice).
         if (set != null && playing && current.id in set.highlights && !zoom.isZoomed) {
             val highlighted = stringResource(R.string.set_highlighted)
-            Text(
-                "★",
-                Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 14.dp)
-                    .background(LibraryColors.PillScrim, CircleShape).padding(horizontal = 9.dp, vertical = 4.dp)
-                    .semantics { contentDescription = highlighted },
-                color = Color(0xFFFFD54F), fontSize = 18.sp, style = OverPhotoText,
+            Icon(
+                LibraryIcons.StarFilled,
+                highlighted,
+                tint = Color(0xFFFFD54F),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarRoom().padding(top = 64.dp, end = 14.dp)
+                    .background(LibraryColors.PillScrim, CircleShape).padding(8.dp).size(22.dp),
             )
         }
 
@@ -799,7 +798,7 @@ internal fun ViewerScreen(
                 // As a set's bar (asked Nov 10, 2026): ✎ Write · ⌗ Crop.
                 FloatingBar {
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
-                    BarPill(stringResource(R.string.crop_title), glyph = "⌗", enabled = current.type != MediaType.VIDEO) { actions.crop(current.id) }
+                    BarPill(stringResource(R.string.crop_title), icon = LibraryIcons.Crop, enabled = current.type != MediaType.VIDEO) { actions.crop(current.id) }
                 }
             }
             }
@@ -840,7 +839,7 @@ internal fun ViewerScreen(
                     Text(
                         stringResource(R.string.set_position, shownIndex + 1, items.size),
                         color = PositionColor,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                         modifier = Modifier.weight(1f),
                     )
                     ShareTopButton(current, actions.share)
@@ -854,11 +853,11 @@ internal fun ViewerScreen(
                         Text(
                             stringResource(R.string.set_position, pager.currentPage + 1, items.size) + " · " + dayLabel(current.day),
                             color = PositionColor,
-                            fontSize = 13.sp,
+                            style = LibraryType.Caption,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
-                        Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, fontSize = 13.sp)
+                        Text(stringResource(R.string.library_viewer_position_count, pager.currentPage + 1, items.size), color = PositionColor, style = LibraryType.Caption)
                         MomentsDayChip(dayLabel(current.day), Modifier.padding(start = 6.dp)) { showInMoments(current.id) }
                         Box(Modifier.weight(1f))
                     }
@@ -1049,7 +1048,7 @@ private fun SetBarBottom(
         FloatingBar(Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp, bottom = 10.dp).onPlaced { barTop = it.positionInParent().y.toInt() }) {
             BarPill(
                 stringResource(if (place >= 0) R.string.set_highlighted else R.string.set_highlight),
-                glyph = if (place >= 0) "★" else "☆",
+                icon = if (place >= 0) LibraryIcons.StarFilled else LibraryIcons.Star,
             ) { set.setHighlight(item.id, place < 0) }
             // Make cover (asked Nov 10, 2026): filled on the cover.
             val isCover = set.coverId == item.id
@@ -1058,7 +1057,7 @@ private fun SetBarBottom(
             }
             BarPill(stringResource(R.string.set_play), icon = LibraryIcons.Play, selected = true, onClick = onPlay)
             BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit, onClick = onWrite)
-            BarPill(stringResource(R.string.set_recompose), glyph = "⌗", enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
+            BarPill(stringResource(R.string.set_recompose), icon = LibraryIcons.Crop, enabled = item.type != MediaType.VIDEO) { set.recompose(item.id) }
         }
         // The reel last, along the bottom edge (asked Nov 9, 2026); the photo keeps clear of it.
         if (reel && items.size > 1) {
@@ -1091,7 +1090,6 @@ private fun FloatingBar(modifier: Modifier = Modifier, content: @Composable andr
 private fun BarPill(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    glyph: String? = null,
     selected: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit,
@@ -1109,10 +1107,7 @@ private fun BarPill(
             .alpha(if (enabled) 1f else 0.4f),
         contentAlignment = Alignment.Center,
     ) {
-        when {
-            icon != null -> Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
-            glyph != null -> Text(glyph, color = color, fontSize = 19.sp, style = androidx.compose.ui.text.TextStyle.Default)
-        }
+        if (icon != null) Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -1125,7 +1120,7 @@ private fun ShareTopButton(item: MediaItem, share: suspend (MediaItem) -> Boolea
     IconButton(enabled = !sharing, onClick = {
         sharing = true
         scope.launch {
-            if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+            if (!share(item)) AppMessages.post(context.getString(R.string.library_share_failed))
             sharing = false
         }
     }) {
@@ -1145,17 +1140,6 @@ private fun ShadowIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, de
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Color.Black.copy(alpha = 0.8f), modifier = Modifier.matchParentSize().offset(y = 1.dp).blur(3.dp))
         Icon(icon, description, tint = Color.White, modifier = Modifier.matchParentSize())
-    }
-}
-
-@Composable
-private fun SetBarButton(glyph: String, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
-    androidx.compose.foundation.layout.Column(
-        modifier.clip(RoundedCornerShape(12.dp)).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.4f),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(glyph, color = Color.White, fontSize = 17.sp, lineHeight = 18.sp)
-        Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 13.sp)
     }
 }
 
@@ -1397,11 +1381,11 @@ private fun CropChip(showingWhole: Boolean, onToggle: () -> Unit, modifier: Modi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.Crop, null, tint = Color.White, modifier = Modifier.size(14.dp))
-        if (!showingWhole) Text(stringResource(R.string.viewer_cropped) + " ·", color = Color(0xFFB8C2BF), fontSize = 13.sp)
+        if (!showingWhole) Text(stringResource(R.string.viewer_cropped) + " ·", color = Color(0xFFB8C2BF), style = LibraryType.Caption)
         Text(
             stringResource(if (showingWhole) R.string.viewer_show_crop else R.string.viewer_show_all),
             color = Color.White,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -1427,7 +1411,7 @@ private fun MomentsDayChip(day: String, modifier: Modifier = Modifier, onClick: 
             .padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(day, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(day, color = Color.White, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
         Icon(LibraryIcons.ChevronRight, null, tint = Color.White, modifier = Modifier.padding(start = 2.dp).size(14.dp))
     }
 }
@@ -1446,7 +1430,7 @@ private fun ShareButton(item: MediaItem, share: suspend (MediaItem) -> Boolean) 
             .clickable(enabled = !sharing, onClickLabel = stringResource(R.string.library_share)) {
                 sharing = true
                 scope.launch {
-                    if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+                    if (!share(item)) AppMessages.post(context.getString(R.string.library_share_failed))
                     sharing = false
                 }
             }
@@ -1473,7 +1457,7 @@ private fun ViewerAction(icon: androidx.compose.ui.graphics.vector.ImageVector, 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Text(label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1623,7 +1607,7 @@ private fun VideoPlayer(
             onRelease = { it.player = null },
             modifier = Modifier.fillMaxSize(),
         )
-        failed?.let { Text(stringResource(it), color = Color.White, fontSize = 15.sp, modifier = Modifier.padding(24.dp)) }
+        failed?.let { Text(stringResource(it), color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, modifier = Modifier.padding(24.dp)) }
     }
 }
 
@@ -1659,7 +1643,7 @@ private fun VideoControls(player: Player, muted: Boolean, onToggleMute: () -> Un
             }
             playingNow = player.isPlaying
         }
-        Text(formatClock(dragging?.toLong() ?: position), color = Color.White, fontSize = 11.sp)
+        Text(formatClock(dragging?.toLong() ?: position), color = Color.White, style = LibraryType.Tiny)
         val length = duration.toFloat().coerceAtLeast(1f)
         SlimSeekBar(
             fraction = ((dragging ?: position.toFloat()) / length).coerceIn(0f, 1f),
@@ -1670,7 +1654,7 @@ private fun VideoControls(player: Player, muted: Boolean, onToggleMute: () -> Un
             },
             modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
         )
-        Text(formatClock(duration), color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+        Text(formatClock(duration), color = Color.White.copy(alpha = 0.8f), style = LibraryType.Tiny)
         // Sound, with the rest of the video's controls (asked Nov 9, 2026: it floated apart from them).
         SmallControl(
             if (muted) SoundIcons.Off else SoundIcons.On,
@@ -1740,21 +1724,13 @@ private fun formatClock(millis: Long): String {
 private fun MomentNameDialog(name: String, description: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var typed by rememberSaveable { mutableStateOf(name) }
     var about by rememberSaveable { mutableStateOf(description) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.set_name_title)) },
-        text = {
-            Column {
-                OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
-                OutlinedTextField(
-                    about, { about = it }, Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 96.dp),
-                    placeholder = { Text(stringResource(R.string.set_description_hint)) },
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(typed, about) }) { Text(stringResource(R.string.set_name_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
-    )
+    FormSheet(stringResource(R.string.set_name_title), stringResource(R.string.set_name_save), { onSave(typed, about) }, onDismiss) {
+        OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+        OutlinedTextField(
+            about, { about = it }, Modifier.fillMaxWidth().padding(top = 2.dp).heightIn(min = 96.dp),
+            placeholder = { Text(stringResource(R.string.set_description_hint)) },
+        )
+    }
 }
 
 /**
@@ -1778,11 +1754,17 @@ private fun MomentTitle(name: String?, description: String?, modifier: Modifier 
         ),
     ) {
         if (name != null) {
-            Text(name, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Rename has a visible button too, not only the long press (the UX review, Nov 16, 2026).
+            androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                IconButton(onClick = onLongClick, modifier = Modifier.size(32.dp)) {
+                    Icon(LibraryIcons.Edit, stringResource(R.string.set_rename), tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+            }
         } else {
-            Text(stringResource(R.string.set_name_it), color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, maxLines = 1)
+            Text(stringResource(R.string.set_name_it), color = Color.White.copy(alpha = 0.7f), style = LibraryType.Body, maxLines = 1)
         }
-        description?.let { Text(it, color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+        description?.let { Text(it, color = Color.White.copy(alpha = 0.9f), style = LibraryType.Caption, maxLines = 3, overflow = TextOverflow.Ellipsis) }
     }
 }
 
@@ -1798,10 +1780,10 @@ private fun PhotoBrief(item: MediaItem, stories: StoriesState, modifier: Modifie
     val tags = stories.note(item.id)?.tags.orEmpty()
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            place?.let { Text(it, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White, fontSize = 13.sp, maxLines = 1)
+            place?.let { Text(it, color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(formatDate(taken, "EEEdMMMyyyyjmmss"), color = Color.White, style = LibraryType.Caption, maxLines = 1)
             if (tags.isNotEmpty()) {
-                Text(tags.joinToString("  ") { "#$it" }, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tags.joinToString("  ") { "#$it" }, color = Color.White.copy(alpha = 0.8f), style = LibraryType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         IconButton(onClick = onInfo) {

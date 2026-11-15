@@ -116,3 +116,10 @@ Oct 29, 2026.
   `LibraryApp` (`Route.Viewer(search = true)`). Previews: `SearchScreenshots.kt`.
 - iOS: [SearchViews.swift](../../iosApp/iosApp/SearchViews.swift) and `SearchViewModel.swift`,
   wired in `JournalHomeView` (`searching`, `search`, `searchPicks`) and `LibraryRootView` (`ViewerRequest(search: true)`).
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The round ✕ beside the field is gone: a **back arrow** at the start of the "Search" title row (30 sp) closes search,
+  as the system's back does, and the field takes the full width.

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,7 +63,7 @@ import com.chencohensolution.journal.server.ServerLibrary
 import java.text.NumberFormat
 
 /**
- * Settings › Private settings, behind the phone's lock (option c2 of the UI lab, Oct 27, 2026): "Show private media"
+ * Settings › Hidden and private, behind the phone's lock (option c2 of the UI lab, Oct 27, 2026): "Show private media"
  * (this phone's), then what shows on all your devices, one list by kind with a Show switch each (on = shown), the hidden
  * ones included: apps and folders, Screenshots as chips of just the app's name, the sound kinds and Sent to you, the
  * most files first; then Nudity with its slider. The server does the hiding (see [HiddenCollections]); each switch is
@@ -90,7 +91,7 @@ internal fun HiddenScreen(library: ServerLibrary, showPrivate: Boolean, setShowP
     }
 }
 
-/** What Private settings can ask for; see [HiddenCollectionsController]. */
+/** What Hidden and private can ask for; see [HiddenCollectionsController]. */
 internal class HiddenActions(
     val retry: () -> Unit = {},
     /** A kind, or a screenshot app, shown or hidden on every device. */
@@ -104,64 +105,44 @@ internal class HiddenActions(
 /** Draws [state]; once unlocked. Switches are ignored while a change is on its way to the server. */
 @Composable
 internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions: HiddenActions, back: () -> Unit, showPrivate: Boolean = false) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            // This phone's own choice (moved here from Settings, Oct 25, 2026); the rest is the server's, for every device.
-            SectionTitle(stringResource(R.string.settings_private_title))
-            SettingsCard {
-                SwitchRow(stringResource(R.string.settings_private_switch), stringResource(R.string.settings_private_switch_body), showPrivate, actions.setShowPrivate)
-            }
-            SectionTitle(stringResource(R.string.private_everywhere))
-            Text(
-                stringResource(R.string.private_intro),
-                color = LibraryColors.Muted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 10.dp),
-            )
-            when (state) {
-                is HiddenCollectionsState.Ready -> {
-                    if (state.notChanged) {
-                        Text(
-                            stringResource(R.string.hidden_not_changed),
-                            color = LibraryColors.Warning,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 10.dp),
-                        )
-                    }
-                    val show: (PrivateKinds.Kind, Boolean) -> Unit = { kind, shown -> if (!state.saving) actions.show(kind, shown) }
-                    SettingsCard {
-                        state.kinds.kinds.forEachIndexed { i, kind ->
-                            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                            if (kind.type == PrivateKinds.Type.SCREENSHOTS) {
-                                ScreenshotsRow(kind, state.kinds.screenshotApps, show)
-                            } else {
-                                KindRow(kind, show)
-                            }
+    SettingsScaffold(title, back) {
+        // What hidden, tucked away and private each mean, folded (the UX review, Nov 16, 2026).
+        Spacer(Modifier.height(8.dp))
+        HidingExplainerCard()
+        // This phone's own choice (moved here from Settings, Oct 25, 2026); the rest is the server's, for every device.
+        SectionTitle(stringResource(R.string.settings_private_title))
+        SettingsCard {
+            SwitchRow(stringResource(R.string.settings_private_switch), stringResource(R.string.settings_private_switch_body), showPrivate, actions.setShowPrivate)
+        }
+        SectionTitle(stringResource(R.string.private_everywhere))
+        PageNote(stringResource(R.string.private_intro), bottom = 10)
+        when (state) {
+            is HiddenCollectionsState.Ready -> {
+                if (state.notChanged) {
+                    Text(
+                        stringResource(R.string.hidden_not_changed),
+                        color = LibraryColors.Warning,
+                        style = LibraryType.Caption,
+                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 10.dp),
+                    )
+                }
+                val show: (PrivateKinds.Kind, Boolean) -> Unit = { kind, shown -> if (!state.saving) actions.show(kind, shown) }
+                SettingsCard {
+                    state.kinds.kinds.forEachIndexed { i, kind ->
+                        if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+                        if (kind.type == PrivateKinds.Type.SCREENSHOTS) {
+                            ScreenshotsRow(kind, state.kinds.screenshotApps, show)
+                        } else {
+                            KindRow(kind, show)
                         }
                     }
-                    SectionTitle(stringResource(R.string.hidden_nudity_title))
-                    SettingsCard { NudityRows(state.collections.nudity, state.saving, actions) }
                 }
-                HiddenCollectionsState.Unreachable -> {
-                    Column(Modifier.padding(horizontal = 32.dp, vertical = 16.dp)) {
-                        Text(stringResource(R.string.hidden_unreachable), color = LibraryColors.OnBackground, fontSize = 16.sp)
-                        TextButton(onClick = actions.retry) { Text(stringResource(R.string.hidden_retry), color = LibraryColors.OnBackground) }
-                    }
-                }
-                HiddenCollectionsState.Loading -> Text(
-                    stringResource(R.string.hidden_loading),
-                    color = LibraryColors.Muted,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp).align(Alignment.CenterHorizontally),
-                )
+                SectionTitle(stringResource(R.string.hidden_nudity_title))
+                SettingsCard { NudityRows(state.collections.nudity, state.saving, actions) }
             }
+            HiddenCollectionsState.Unreachable -> UnreachableState(actions.retry)
+            HiddenCollectionsState.Loading -> LoadingState()
         }
-        TitleBar(title, back, Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -178,8 +159,8 @@ private fun KindRow(kind: PrivateKinds.Kind, show: (PrivateKinds.Kind, Boolean) 
     ) {
         Icon(iconOf(kind), null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 12.dp)) {
-            Text(nameOf(kind), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = if (kind.shown) LibraryColors.Muted else LibraryColors.Warning, fontSize = 13.sp)
+            Text(nameOf(kind), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(body, color = if (kind.shown) LibraryColors.Muted else LibraryColors.Warning, style = LibraryType.Caption)
         }
         Switch(
             checked = kind.shown,
@@ -203,8 +184,8 @@ private fun ScreenshotsRow(kind: PrivateKinds.Kind, apps: List<PrivateKinds.Kind
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(iconOf(kind), null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(nameOf(kind), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.private_screenshots_body, count(kind.files)), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(nameOf(kind), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.private_screenshots_body, count(kind.files)), color = LibraryColors.Muted, style = LibraryType.Caption)
             }
         }
         FlowRow(
@@ -240,8 +221,8 @@ private fun AppChip(app: PrivateKinds.Kind, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (on) Icon(LibraryIcons.Check, null, tint = content, modifier = Modifier.size(14.dp))
-        Text(app.name.ifEmpty { stringResource(R.string.private_no_app) }, color = content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Text(count(app.files), color = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted, fontSize = 12.sp)
+        Text(app.name.ifEmpty { stringResource(R.string.private_no_app) }, color = content, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
+        Text(count(app.files), color = if (on) LibraryColors.OnInverseMuted else LibraryColors.Muted, style = LibraryType.Small)
     }
 }
 
@@ -266,8 +247,8 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
     val range = HiddenCollections.Nudity.RANGE
     Column(Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.hidden_nudity_from), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.hidden_nudity_from), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
         }
         Slider(
             value = dragging,
@@ -283,7 +264,7 @@ private fun NudityRows(nudity: HiddenCollections.Nudity, saving: Boolean, action
                 inactiveTickColor = Color.Transparent,
             ),
         )
-        Text(stringResource(R.string.hidden_nudity_from_body), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.hidden_nudity_from_body), color = LibraryColors.Muted, style = LibraryType.Caption)
     }
 }
 

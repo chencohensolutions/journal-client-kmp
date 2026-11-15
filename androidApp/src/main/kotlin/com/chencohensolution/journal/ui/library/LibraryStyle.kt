@@ -2,7 +2,12 @@ package com.chencohensolution.journal.ui.library
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -16,6 +21,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -91,10 +100,99 @@ private val LocalLibraryPalette = staticCompositionLocalOf { DarkLibraryPalette 
 internal val LibraryColors: LibraryPalette
     @Composable @ReadOnlyComposable get() = LocalLibraryPalette.current
 
-/** The library palette for [content]: the system theme's, or dark when [dark] says so (the viewer). */
+/**
+ * The library palette for [content]: the system theme's, or dark when [dark] says so (the viewer). Material's colors
+ * come from the same palette ([materialColors]), so dialogs, text fields, sliders and default buttons match the
+ * library instead of the wallpaper.
+ */
 @Composable
 internal fun LibraryTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalLibraryPalette provides if (dark) DarkLibraryPalette else LightLibraryPalette, content = content)
+    val palette = if (dark) DarkLibraryPalette else LightLibraryPalette
+    // Dates follow the app's language (the configuration's), also where it differs from the JVM's default (previews).
+    dateLocale = LocalConfiguration.current.locales[0]
+    CompositionLocalProvider(LocalLibraryPalette provides palette) {
+        MaterialTheme(colorScheme = if (dark) DarkMaterialColors else LightMaterialColors, typography = MaterialTheme.typography, content = content)
+    }
+}
+
+/**
+ * Material's color scheme from a library palette: ink (Inverse) is the main color, teal (Accent) the secondary for
+ * "on" states and progress, surfaces from Background and Raised, Muted for secondary text and outlines.
+ */
+internal fun materialColors(p: LibraryPalette, dark: Boolean): ColorScheme {
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val tealContainer = if (dark) Color(0xFF16403D) else Color(0xFFD3E6E3)
+    val onTealContainer = if (dark) Color(0xFFCDE7E3) else Color(0xFF0E3431)
+    return base.copy(
+        primary = p.Inverse,
+        onPrimary = p.OnInverse,
+        primaryContainer = p.Raised,
+        onPrimaryContainer = p.OnBackground,
+        inversePrimary = p.Accent,
+        secondary = p.Accent,
+        onSecondary = Color.White,
+        secondaryContainer = tealContainer,
+        onSecondaryContainer = onTealContainer,
+        tertiary = p.Accent,
+        onTertiary = Color.White,
+        tertiaryContainer = tealContainer,
+        onTertiaryContainer = onTealContainer,
+        background = p.Background,
+        onBackground = p.OnBackground,
+        surface = p.Background,
+        onSurface = p.OnBackground,
+        surfaceVariant = p.Raised,
+        onSurfaceVariant = p.Muted,
+        surfaceTint = Color.Transparent,
+        inverseSurface = p.Inverse,
+        inverseOnSurface = p.OnInverse,
+        error = p.Error,
+        onError = Color.White,
+        errorContainer = p.Error.copy(alpha = 0.15f),
+        onErrorContainer = p.Error,
+        outline = p.Muted,
+        outlineVariant = p.Muted.copy(alpha = 0.35f),
+        scrim = Color.Black,
+        surfaceBright = p.Raised,
+        surfaceDim = p.Background,
+        surfaceContainerLowest = p.Background,
+        surfaceContainerLow = p.Raised,
+        surfaceContainer = p.Raised,
+        surfaceContainerHigh = p.Raised,
+        surfaceContainerHighest = p.Raised,
+    )
+}
+
+internal val LightMaterialColors = materialColors(LightLibraryPalette, dark = false)
+internal val DarkMaterialColors = materialColors(DarkLibraryPalette, dark = true)
+
+/**
+ * The library's text sizes (docs/screens/style.md). Each carries its size and weight; a call may still set its own
+ * weight or color. Nothing is drawn below [Tiny] (11 sp) except digits inside an icon.
+ */
+internal object LibraryType {
+    /** The home screen's and Search's title: "Journal", "Search". */
+    val ScreenTitle = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Bold)
+    /** A page's or sheet's title. */
+    val PageTitle = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    /** A section's label over a card ("Backup", "Private"), in Muted. */
+    val SectionLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    /** A row's title in a card or list. */
+    val RowTitle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    val Body = TextStyle(fontSize = 14.sp)
+    /** Notes and second lines under a title. */
+    val Caption = TextStyle(fontSize = 13.sp)
+    /** Badges and counts over photos. */
+    val Small = TextStyle(fontSize = 12.sp)
+    val Tiny = TextStyle(fontSize = 11.sp)
+}
+
+/** Corners (docs/screens/style.md): cards and sheets, tiles inside a card, and full pills for controls. */
+internal object LibraryShapes {
+    val Card = RoundedCornerShape(16.dp)
+    val Sheet = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    val Tile = RoundedCornerShape(12.dp)
+    val Pill = RoundedCornerShape(50)
 }
 
 /** Line icons (Material icons are not a dependency of this app). */
@@ -168,6 +266,9 @@ internal object LibraryIcons {
     val Map = icon("Map", false, "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z", "M9 4v14", "M15 6v14")
     val Copy = icon("Copy", false, "M9 9h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z", "M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1")
     val Wifi = icon("Wifi", false, "M2 8.8a15 15 0 0 1 20 0", "M5 12.5a10 10 0 0 1 14 0", "M8.5 16a5 5 0 0 1 7 0", "M12 19.5h0.01")
+    /** Highlight: a star's outline, and [StarFilled] once highlighted. */
+    val Star = icon("Star", false, "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z")
+    val StarFilled = icon("StarFilled", true, "M12 2.5l2.9 6 6.6 1-4.8 4.6 1.1 6.6L12 17.6l-5.8 3.1 1.1-6.6L2.5 9.5l6.6-1z")
     val Photo = icon("Photo", false, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8.5 10a1.5 1.5 0 1 0 0.01 0", "M21 15l-5-5L5 21")
 }
 
@@ -185,9 +286,16 @@ internal fun dayLabel(day: LocalDay): String {
     }
 }
 
-/** [skeleton] is a CLDR skeleton; the locale decides order and punctuation. */
+/**
+ * The locale dates are written in: the configuration's first, set by [LibraryTheme] (so a Hebrew preview, or a per-app
+ * language, has Hebrew dates); the JVM's default until a theme has been drawn.
+ */
+@Volatile
+internal var dateLocale: Locale? = null
+
+/** [skeleton] is a CLDR skeleton; the locale ([dateLocale]) decides order and punctuation. */
 internal fun formatDate(date: java.time.temporal.TemporalAccessor, skeleton: String): String {
-    val locale = Locale.getDefault()
+    val locale = dateLocale ?: Locale.getDefault()
     return formatters.getOrPut(locale to skeleton) {
         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     }.format(date)

@@ -45,13 +45,13 @@ internal class ShownSourcesActions(
     val toggleSource: (MediaSource) -> Unit = {},
     /** Imported, all of it, on or off. */
     val toggleImported: () -> Unit = {},
-    /** Private settings, behind the phone's lock. */
+    /** Hidden and private, behind the phone's lock. */
     val openPrivate: () -> Unit = {},
 )
 
 /**
  * Show in the app as every screen changes it, provided once by the routing table: the setting, its actions, and what
- * Private settings hides on every device (null until it was opened in this run).
+ * Hidden and private hides on every device (null until it was opened in this run).
  */
 internal class ShownSourcesChoice(
     val shown: ShownSources = ShownSources(),
@@ -61,21 +61,21 @@ internal class ShownSourcesChoice(
 
 internal val LocalShownSources = compositionLocalOf { ShownSourcesChoice() }
 
-/** The pills of [counts] (photos per source, shown or not) as the setting and Private settings have them now. */
+/** The pills of [counts] (photos per source, shown or not) as the setting and Hidden and private have them now. */
 @Composable
 internal fun rememberShownPills(counts: Map<MediaSource, Int>): ShownSourcesPills {
     val choice = LocalShownSources.current
     return remember(choice.shown, choice.hiddenEverywhere, counts) { ShownSourcesPills.of(choice.shown, counts, choice.hiddenEverywhere) }
 }
 
-/** What Private settings hides on every device, as [library] last read it; null until it is opened. */
+/** What Hidden and private hides on every device, as [library] last read it; null until it is opened. */
 @Composable
 internal fun hiddenEverywhereOf(library: com.chencohensolution.journal.server.ServerLibrary?): State<HiddenCollections?> =
     library?.hiddenEverywhere?.collectAsState() ?: remember { mutableStateOf(null) }
 
 /**
- * The pills, the kinds under Imported while it is on, the line on Other, and what Private settings hides (or, before it
- * was opened, what it can hide), with "Private settings ›".
+ * The pills, the kinds under Imported while it is on, the line on Other, and what Hidden and private hides (or, before it
+ * was opened, what it can hide), with "Hidden and private ›".
  */
 @Composable
 internal fun ShownSourcesPillsSection(pills: ShownSourcesPills, actions: ShownSourcesActions) {
@@ -115,12 +115,12 @@ private fun ImportedKinds(pills: ShownSourcesPills, actions: ShownSourcesActions
         Modifier
             .padding(start = 16.dp, end = 16.dp, top = 12.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .background(LibraryColors.Raised, LibraryShapes.Card)
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(FeedIcons.Imported, null, tint = LibraryColors.Muted, modifier = Modifier.size(14.dp))
-            Text(stringResource(R.string.sources_of_imported), color = LibraryColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.sources_of_imported), color = LibraryColors.Muted, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
         }
         FlowRow(
             Modifier.padding(top = 8.dp),
@@ -135,7 +135,7 @@ private fun ImportedKinds(pills: ShownSourcesPills, actions: ShownSourcesActions
 }
 
 /**
- * A source's pill: locked and dimmed when Private settings hides it whole (tapping opens Private settings), with a
+ * A source's pill: locked and dimmed when Hidden and private hides it whole (tapping opens Hidden and private), with a
  * lock after its count when it hides part of it, else the plain pill.
  */
 @Composable
@@ -164,14 +164,14 @@ private fun OtherLine(pills: ShownSourcesPills) {
         Text(
             stringResource(R.string.sources_other_about, stringResource(R.string.feed_source_other)),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
         )
     }
 }
 
 /**
- * Once Private settings was opened: "🔒 Hidden on all your devices: WhatsApp, 1,640 more Screenshots. Not counted
- * here." Before, or when it hides none of these sources, what it can hide. Either way "Private settings ›" opens it.
+ * Once Hidden and private was opened: "🔒 Hidden on all your devices: WhatsApp, 1,640 more Screenshots. Not counted
+ * here." Before, or when it hides none of these sources, what it can hide. Either way "Hidden and private ›" opens it.
  */
 @Composable
 private fun HiddenEverywhereLine(pills: ShownSourcesPills, openPrivate: () -> Unit) {
@@ -195,9 +195,9 @@ private fun HiddenEverywhereLine(pills: ShownSourcesPills, openPrivate: () -> Un
     ) {
         Icon(LibraryIcons.Lock, null, tint = LibraryColors.Muted, modifier = Modifier.padding(top = 2.dp).size(15.dp))
         Column(Modifier.weight(1f)) {
-            Text(text, color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(text, color = LibraryColors.Muted, style = LibraryType.Caption)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.Bold)
                 Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
             }
         }

@@ -126,8 +126,8 @@ internal class FeedActions(
 internal sealed interface FeedRow {
     val key: String
 
-    /** [count]: the row's photos; [towns]: "Tel Aviv → Jaffa", empty when it has no places. */
-    data class Heading(val section: FeedSection, val count: Int, val towns: String) : FeedRow {
+    /** [count]: the row's photos; [towns]: the places in order ("Tel Aviv → Jaffa" once joined), empty when none. */
+    data class Heading(val section: FeedSection, val count: Int, val towns: List<String>) : FeedRow {
         override val key get() = "heading-${section.key}"
     }
 
@@ -258,7 +258,7 @@ private fun rows(entries: List<FeedEntry>): List<FeedRow> = entries.flatMap { en
             val heading = FeedRow.Heading(
                 section,
                 section.moments.sumOf { it.count() },
-                section.places.take(MAX_TOWNS).joinToString(" → ")
+                section.places.take(MAX_TOWNS),
             )
             listOf(heading) + section.parts.flatMap { part ->
                 if (part is FeedSound) return@flatMap listOf(FeedRow.Sound(section, part))
@@ -378,12 +378,15 @@ internal fun LazyListScope.feedItems(
                     )
                     PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
                     if (moment != null) {
-                        Text(
-                            "⧉ ${row.momentPhotos + row.momentVideos}",
+                        Row(
                             Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
                                 .padding(horizontal = 8.dp, vertical = 3.dp),
-                            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(13.dp))
+                            Text("${row.momentPhotos + row.momentVideos}", color = Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
                 PhotoNoteText(note?.caption)
@@ -474,7 +477,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
             Text(
                 dividerLabel(section.span),
                 color = LibraryColors.OnBackground,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -495,10 +498,11 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
         ) {
             // A row of only tucked-away photos says only its pill.
             if (count > 0 || section.tucked == 0) Text(
-                (heading.towns.ifEmpty { null }?.let { "$it · " }.orEmpty()) +
+                // Joined by the language's arrow: " → " in English, " ← " in Hebrew, which reads right to left.
+                (heading.towns.ifEmpty { null }?.joinToString(stringResource(R.string.feed_route_separator))?.let { "$it · " }.orEmpty()) +
                         pluralStringResource(R.plurals.library_story_items, count, count),
                 color = LibraryColors.Muted,
-                fontSize = 12.sp,
+                style = LibraryType.Small,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -532,7 +536,7 @@ private fun HiddenChip(label: String, on: Boolean, onClick: () -> Unit) {
     Text(
         label,
         color = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground,
-        fontSize = 12.sp,
+        style = LibraryType.Small,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         modifier = Modifier
@@ -575,11 +579,11 @@ private fun BandTop(top: FeedRow.BandTop) {
         Text(
             stringResource(R.string.feed_source_count, sourceName(band.source), band.items.size),
             color = LibraryColors.OnBackground,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
-        Text(timeRange(top.start, top.end), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(timeRange(top.start, top.end), color = LibraryColors.Muted, style = LibraryType.Caption)
     }
 }
 
@@ -620,7 +624,7 @@ private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
             Icon(it, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(label, color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -639,7 +643,7 @@ private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit) {
         Text(
             dayLabel(day),
             color = LibraryColors.OnBackground,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(horizontal = 12.dp)
@@ -687,7 +691,7 @@ private fun MomentLabel(label: FeedRow.Label) {
                     Text(
                         place,
                         color = LibraryColors.OnBackground,
-                        fontSize = 15.sp,
+                        style = LibraryType.RowTitle,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -697,7 +701,7 @@ private fun MomentLabel(label: FeedRow.Label) {
             Text(
                 time,
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 22.dp)
             )
@@ -712,7 +716,7 @@ private fun MomentLabel(label: FeedRow.Label) {
                         time
                     ),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -771,7 +775,7 @@ private fun PhotoNoteText(caption: String?) {
                 Text(
                     stringResource(R.string.feed_note_more),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 2.dp)
                 )
@@ -879,7 +883,7 @@ private fun PartOfLink(name: String?, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.Stack, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
-        Text(if (name != null) stringResource(R.string.set_part_of, name) else stringResource(R.string.set_part_of_unnamed), Modifier.padding(start = 6.dp), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(if (name != null) stringResource(R.string.set_part_of, name) else stringResource(R.string.set_part_of_unnamed), Modifier.padding(start = 6.dp), color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
         Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.padding(start = 2.dp).size(14.dp))
     }
 }
@@ -909,11 +913,11 @@ private fun SetName(name: String, first: LocalDay, last: LocalDay, counts: Strin
     val days = if (first == last) null else formatDate(first.toLocalDate(), "EEE") + " – " + formatDate(last.toLocalDate(), "EEE")
     val line = listOfNotNull(days, counts.ifEmpty { null }).joinToString(" · ")
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
-        Text(name, color = LibraryColors.OnBackground, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
         description?.let {
-            Text(it, color = LibraryColors.OnBackground.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            Text(it, color = LibraryColors.OnBackground.copy(alpha = 0.85f), style = LibraryType.Body, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
         }
-        if (line.isNotEmpty()) Text(line, color = LibraryColors.Muted, fontSize = 12.sp, maxLines = 1)
+        if (line.isNotEmpty()) Text(line, color = LibraryColors.Muted, style = LibraryType.Small, maxLines = 1)
     }
 }
 
@@ -970,7 +974,7 @@ private fun SetLine(count: Int, onClick: () -> Unit) {
         Text(
             pluralStringResource(R.plurals.set_line, count, count),
             Modifier.padding(start = 8.dp).weight(1f),
-            color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold,
         )
         Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.size(16.dp))
     }
@@ -1087,14 +1091,14 @@ private fun SetCover(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
-            Text(items.size.toString(), color = LibraryColors.PhotoText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(items.size.toString(), color = LibraryColors.PhotoText, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
         }
         if (scrubbing) {
             Text(
                 stringResource(R.string.set_position, shownIndex + 1, items.size),
                 Modifier.align(Alignment.TopCenter).padding(top = 12.dp).background(LibraryColors.PillScrim, RoundedCornerShape(50))
                     .padding(horizontal = 10.dp, vertical = 4.dp),
-                color = LibraryColors.PhotoText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                color = LibraryColors.PhotoText, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold,
             )
         }
         PickMark(selected, Modifier.align(Alignment.TopStart).padding(10.dp))
@@ -1114,7 +1118,7 @@ private fun VideoLength(millis: Long, modifier: Modifier = Modifier) {
         Text(
             formatDuration(millis),
             color = LibraryColors.PhotoText,
-            fontSize = 12.sp,
+            style = LibraryType.Small,
             fontWeight = FontWeight.SemiBold
         )
     }

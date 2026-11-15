@@ -65,9 +65,9 @@ internal fun MakeMomentSheet(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp).padding(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(stringResource(R.string.make_moment_title), color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.make_moment_title), color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.make_moment_name)) }, singleLine = true)
-            Text(stringResource(R.string.make_moment_highlights), color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.make_moment_highlights), color = LibraryColors.Muted, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(end = 8.dp)) {
                 items(photos, key = { it.id }) { photo ->
                     val place = highlights.indexOf(photo.id)
@@ -84,9 +84,9 @@ internal fun MakeMomentSheet(
                     }
                 }
             }
-            Text(stringResource(R.string.make_moment_highlights_hint), color = LibraryColors.Muted, fontSize = 12.sp)
-            Text(stringResource(R.string.make_moment_show_on), color = LibraryColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Row(Modifier.fillMaxWidth().background(LibraryColors.Raised, RoundedCornerShape(10.dp)).padding(3.dp)) {
+            Text(stringResource(R.string.make_moment_highlights_hint), color = LibraryColors.Muted, style = LibraryType.Small)
+            Text(stringResource(R.string.make_moment_show_on), color = LibraryColors.Muted, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth().background(LibraryColors.Raised, LibraryShapes.Pill).padding(3.dp)) {
                 val options = buildList {
                     add(ShowOn.FIRST to formatDate(firstDay.toLocalDate(), "EEEMMMd"))
                     if (lastDay != firstDay) {
@@ -97,33 +97,21 @@ internal fun MakeMomentSheet(
                 options.forEach { (option, title) ->
                     val on = showOn == option
                     Box(
-                        Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(8.dp))
-                            .background(if (on) LibraryColors.Accent else Color.Transparent).clickable { showOn = option },
+                        Modifier.weight(1f).height(38.dp).clip(LibraryShapes.Pill)
+                            .background(if (on) LibraryColors.Inverse else Color.Transparent).clickable { showOn = option },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(title, color = if (on) Color.White else LibraryColors.OnBackground, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 1)
+                        Text(title, color = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground, style = LibraryType.Caption, textAlign = TextAlign.Center, maxLines = 1)
                     }
                 }
             }
             Text(
                 stringResource(if (showOn == ShowOn.EACH) R.string.make_moment_hint_each else R.string.make_moment_hint_one),
                 color = LibraryColors.Muted,
-                fontSize = 12.sp,
+                style = LibraryType.Small,
             )
             // The name is optional (asked Nov 9, 2026), so Make it is always ready.
-            Box(
-                Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(12.dp))
-                    .background(LibraryColors.Accent)
-                    .clickable { onMake(name.trim(), highlights, showOn) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.make_moment_make),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            PrimaryButton(stringResource(R.string.make_moment_make), { onMake(name.trim(), highlights, showOn) }, Modifier.fillMaxWidth().height(50.dp))
         }
     }
 }

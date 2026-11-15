@@ -205,7 +205,7 @@ internal fun CallRow(call: SoundRecording, audio: FeedAudio, modifier: Modifier 
             Text(
                 soundTitle(call),
                 color = LibraryColors.OnBackground,
-                fontSize = 15.sp,
+                fontSize = LibraryType.RowTitle.fontSize,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -214,7 +214,7 @@ internal fun CallRow(call: SoundRecording, audio: FeedAudio, modifier: Modifier 
             Text(
                 stringResource(R.string.audio_time_length, clockTime(call.startMillis), formatDuration(call.durationMillis)),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
             )
         }
         PlayButton(playing, { audio.toggle(call) }, size = 36.dp)
@@ -227,7 +227,7 @@ internal fun CallsRow(calls: List<SoundRecording>, audio: FeedAudio) {
     var open by remember(calls.last().sha256) { mutableStateOf(calls.size == 1) }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-            .background(LibraryColors.Raised, RoundedCornerShape(16.dp)),
+            .background(LibraryColors.Raised, LibraryShapes.Card),
     ) {
         if (calls.size > 1) {
             Row(
@@ -244,7 +244,7 @@ internal fun CallsRow(calls: List<SoundRecording>, audio: FeedAudio) {
                         clockTime(calls.maxOf { it.endMillis }),
                     ),
                     color = LibraryColors.OnBackground,
-                    fontSize = 15.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
@@ -285,7 +285,7 @@ internal fun VoiceMessageRow(recording: SoundRecording, audio: FeedAudio) {
                 Text(
                     stringResource(R.string.audio_voice_line, formatDuration(recording.durationMillis), clockTime(recording.startMillis)),
                     color = LibraryColors.Muted,
-                    fontSize = 12.sp,
+                    style = LibraryType.Small,
                 )
             }
         }

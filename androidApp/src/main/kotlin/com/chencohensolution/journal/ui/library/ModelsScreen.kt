@@ -51,61 +51,41 @@ internal class ModelsActions(
  */
 @Composable
 internal fun ModelsScreen(state: PhoneModelsState, actions: ModelsActions) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
+    SettingsScaffold(stringResource(R.string.models_title), actions.back) {
+        PageNote(stringResource(R.string.models_intro), top = 8, bottom = 12)
+        if (state.offline) {
             Text(
-                stringResource(R.string.models_intro),
-                color = LibraryColors.Muted,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 12.dp),
-            )
-            if (state.offline) {
-                Text(
-                    stringResource(R.string.models_offline),
-                    color = LibraryColors.Warning,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp),
-                )
-            }
-            SettingsCard {
-                state.models.forEachIndexed { i, model ->
-                    if (i > 0) RowDivider()
-                    ModelRow(model, state.offline, actions)
-                }
-            }
-            if (state.missing.isNotEmpty()) {
-                Button(
-                    onClick = actions.downloadAll,
-                    enabled = !state.offline,
-                    colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.models_download_all, size(state.missingBytes)))
-                }
-            } else {
-                Spacer(Modifier.height(12.dp))
-            }
-            SettingsCard {
-                SwitchRow(
-                    title = stringResource(R.string.models_wifi_only),
-                    body = stringResource(R.string.models_wifi_only_body),
-                    checked = state.wifiOnly,
-                    onChange = actions.setWifiOnly,
-                )
-            }
-            Text(
-                stringResource(R.string.models_space, size(state.keptBytes), size(state.freeBytes)),
-                color = LibraryColors.Muted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
+                stringResource(R.string.models_offline),
+                color = LibraryColors.Warning,
+                style = LibraryType.Caption,
+                modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp),
             )
         }
-        TitleBar(stringResource(R.string.models_title), actions.back, Modifier.align(Alignment.TopCenter))
+        SettingsCard {
+            state.models.forEachIndexed { i, model ->
+                if (i > 0) RowDivider()
+                ModelRow(model, state.offline, actions)
+            }
+        }
+        if (state.missing.isNotEmpty()) {
+            PrimaryButton(
+                stringResource(R.string.models_download_all, size(state.missingBytes)),
+                onClick = actions.downloadAll,
+                enabled = !state.offline,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
+            )
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
+        SettingsCard {
+            SwitchRow(
+                title = stringResource(R.string.models_wifi_only),
+                body = stringResource(R.string.models_wifi_only_body),
+                checked = state.wifiOnly,
+                onChange = actions.setWifiOnly,
+            )
+        }
+        PageNote(stringResource(R.string.models_space, size(state.keptBytes), size(state.freeBytes)), top = 12)
     }
 }
 
@@ -118,16 +98,16 @@ private fun ModelRow(model: PhoneModelRow, offline: Boolean, actions: ModelsActi
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                Text(stringResource(modelTitle(model.kind)), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(modelBody(model.kind)), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(stringResource(modelTitle(model.kind)), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(modelBody(model.kind)), color = LibraryColors.Muted, style = LibraryType.Caption)
                 if (model.withBytes > 0) {
-                    Text(stringResource(R.string.models_words_with, size(model.withBytes)), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(stringResource(R.string.models_words_with, size(model.withBytes)), color = LibraryColors.Muted, style = LibraryType.Caption)
                 }
                 val warning = model.status == PhoneModelStatus.NOT_OFFERED || model.status == PhoneModelStatus.FAILED
                 Text(
                     modelStatus(model),
                     color = if (warning) LibraryColors.Warning else LibraryColors.OnBackground,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }

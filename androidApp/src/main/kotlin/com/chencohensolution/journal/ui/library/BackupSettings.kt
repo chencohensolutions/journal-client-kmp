@@ -113,16 +113,8 @@ internal fun BackupSettingsScreen(
     swap: SwapState? = null,
     openSwap: () -> Unit = {},
 ) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            BackupSection(ui, actions, openCopies, swap, openSwap)
-        }
-        TitleBar(stringResource(R.string.settings_backup_title), back, Modifier.align(Alignment.TopCenter))
+    SettingsScaffold(stringResource(R.string.settings_backup_title), back) {
+        BackupSection(ui, actions, openCopies, swap, openSwap)
     }
     actions.picked.value?.let { picked -> AddFolderDialog(picked, { kind -> actions.addFolder(picked, kind) }, actions.cancelAdd) }
 }
@@ -140,15 +132,15 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
         )
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(backupStatus(ui), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+            Text(backupStatus(ui), color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
             if (settings.enabled && ui.state.activity !is BackupActivity.Running) {
                 TextButton(onClick = actions.backUpNow) { Text(stringResource(R.string.settings_backup_now), color = LibraryColors.OnBackground) }
             }
         }
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(stringResource(R.string.settings_backup_server_usage), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(serverUsageText(ui.serverUsage), color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.settings_backup_server_usage), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(serverUsageText(ui.serverUsage), color = LibraryColors.Muted, style = LibraryType.Caption)
         }
         // Since Oct 28, 2026 (docs/ux-history/backup/2026-10-28-copies.md): shown with backup off too.
         ui.copies?.let { CopiesRow(it, openCopies) }
@@ -171,7 +163,7 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
         showCounts = false,
     )
     if (settings.soundFolders.isNotEmpty()) {
-        Text(stringResource(R.string.backup_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
+        PageNote(stringResource(R.string.backup_note), top = 8, bottom = 8)
     }
     // Always shown, as the owner asked (Oct 25, 2026), also before a sound folder is added; one card with a switch per
     // kind since Oct 28, 2026 (docs/ux-history/backup/2026-10-28-keep-on-phone.md).
@@ -195,25 +187,21 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
         if (settings.wifiOnly) {
             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
             Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-                Text(stringResource(R.string.settings_backup_networks), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.settings_backup_networks_body), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(stringResource(R.string.settings_backup_networks), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_backup_networks_body), color = LibraryColors.Muted, style = LibraryType.Caption)
                 settings.wifiNetworks.sorted().forEach { network ->
                     val remove = stringResource(R.string.settings_backup_remove_network, network)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(network, color = LibraryColors.OnBackground, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        Text(network, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, modifier = Modifier.weight(1f))
                         IconButton(onClick = { actions.removeNetwork(network) }, modifier = Modifier.semantics { contentDescription = remove }) {
                             Icon(LibraryIcons.Close, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
-                TextButton(onClick = actions.addCurrentNetwork) {
-                    Text(stringResource(R.string.settings_backup_add_network), color = LibraryColors.OnBackground)
-                }
+                SecondaryButton(stringResource(R.string.settings_backup_add_network), actions.addCurrentNetwork, Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 if (settings.wifiNetworks.isNotEmpty() && !ui.canCheckNetworkInBackground) {
-                    Text(stringResource(R.string.settings_backup_background_location), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
-                    TextButton(onClick = actions.allowBackgroundLocation) {
-                        Text(stringResource(R.string.settings_backup_background_location_button), color = LibraryColors.OnBackground)
-                    }
+                    Text(stringResource(R.string.settings_backup_background_location), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
+                    SecondaryButton(stringResource(R.string.settings_backup_background_location_button), actions.allowBackgroundLocation, Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 }
             }
         }
@@ -221,7 +209,7 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
 
     SectionTitle(stringResource(R.string.settings_backup_order_title))
     Column(
-        Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(LibraryColors.Raised, RoundedCornerShape(14.dp)).selectableGroup(),
+        Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(LibraryColors.Raised, LibraryShapes.Card).selectableGroup(),
     ) {
         ModeOption(
             title = stringResource(R.string.settings_backup_oldest),
@@ -265,12 +253,12 @@ private fun KeepOnPhoneCard(ui: BackupUi, actions: BackupActions) {
         if (settings.keepJpegXlOnPhone && !ui.canTrashWithoutAsking) {
             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.backup_keep_needs_access), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.backup_keep_needs_access), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.weight(1f))
                 TextButton(onClick = actions.allowMediaManagement) { Text(stringResource(R.string.backup_keep_allow), color = LibraryColors.OnBackground) }
             }
         }
     }
-    Text(stringResource(R.string.backup_keep_note), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
+    PageNote(stringResource(R.string.backup_keep_note), top = 8, bottom = 8)
 }
 
 /** "4.2 GB · 1,234 photos, 56 videos". */

@@ -98,54 +98,33 @@ internal fun SoundFoldersRoute(library: ServerLibrary, onState: (SoundFoldersSta
  */
 @Composable
 internal fun SoundFoldersScreen(state: SoundFoldersState, confirming: SoundFoldersChange?, actions: SoundFoldersActions) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            when (val folders = state) {
-                SoundFoldersState.Loading -> Text(
-                    stringResource(R.string.hidden_loading),
-                    color = LibraryColors.Muted,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
-                )
-                SoundFoldersState.Unreachable -> Column(Modifier.padding(horizontal = 32.dp, vertical = 8.dp)) {
-                    Text(stringResource(R.string.hidden_unreachable), color = LibraryColors.OnBackground, fontSize = 16.sp)
-                    TextButton(onClick = actions.retry) { Text(stringResource(R.string.hidden_retry), color = LibraryColors.OnBackground) }
-                }
-                is SoundFoldersState.Ready -> {
-                    folders.folders.firstOrNull { it.pending > 0 }?.let { MovingBand(it, folders.pending) }
-                    if (folders.notChanged) {
-                        Text(
-                            stringResource(R.string.hidden_not_changed),
-                            color = LibraryColors.Warning,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
-                        )
-                    }
-                    for ((mark, heading, about) in GROUPS) {
-                        Group(
-                            stringResource(heading),
-                            stringResource(about),
-                            folders.folders.filter { it.mark == mark },
-                            confirming,
-                            folders.saving,
-                            actions,
-                        )
-                    }
+    SettingsScaffold(stringResource(R.string.sound_folders_title), actions.back) {
+        when (val folders = state) {
+            SoundFoldersState.Loading -> LoadingState()
+            SoundFoldersState.Unreachable -> UnreachableState(actions.retry)
+            is SoundFoldersState.Ready -> {
+                folders.folders.firstOrNull { it.pending > 0 }?.let { MovingBand(it, folders.pending) }
+                if (folders.notChanged) {
                     Text(
-                        stringResource(R.string.sound_folders_footer),
-                        color = LibraryColors.Muted,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp),
+                        stringResource(R.string.hidden_not_changed),
+                        color = LibraryColors.Warning,
+                        style = LibraryType.Caption,
+                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
                     )
                 }
+                for ((mark, heading, about) in GROUPS) {
+                    Group(
+                        stringResource(heading),
+                        stringResource(about),
+                        folders.folders.filter { it.mark == mark },
+                        confirming,
+                        folders.saving,
+                        actions,
+                    )
+                }
+                PageNote(stringResource(R.string.sound_folders_footer), top = 10)
             }
         }
-        TitleBar(stringResource(R.string.sound_folders_title), actions.back, Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -169,16 +148,16 @@ private fun MovingBand(folder: ServerSoundFolder, pending: Int) {
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Muted.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .background(LibraryColors.Muted.copy(alpha = 0.15f), LibraryShapes.Tile)
             .padding(16.dp),
     ) {
         Text(
             pluralStringResource(R.plurals.sound_folders_moving, pending, format.format(pending), to),
             color = LibraryColors.OnBackground,
-            fontSize = 14.sp,
+            style = LibraryType.Body,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(stringResource(R.string.sound_folders_moving_body), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.sound_folders_moving_body), color = LibraryColors.Muted, style = LibraryType.Caption)
         LinearProgressIndicator(
             progress = { 1f - pending.toFloat() / folder.files.coerceAtLeast(1) },
             color = LibraryColors.OnBackground,
@@ -201,18 +180,13 @@ private fun Group(
     Text(
         heading,
         color = LibraryColors.OnBackground,
-        fontSize = 15.sp,
+        style = LibraryType.RowTitle,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 16.dp),
     )
-    Text(about, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp))
+    PageNote(about, bottom = 8)
     if (folders.isEmpty()) {
-        Text(
-            stringResource(R.string.sound_folders_none),
-            color = LibraryColors.Muted,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
-        )
+        PageNote(stringResource(R.string.sound_folders_none), top = 4, bottom = 4)
         return
     }
     SettingsCard {
@@ -231,13 +205,13 @@ private fun FolderRow(folder: ServerSoundFolder, confirming: SoundFoldersChange?
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                Text(folder.shownName, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(filesLine(folder), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(folder.shownName, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(filesLine(folder), color = LibraryColors.Muted, style = LibraryType.Caption)
                 if (folder.pending > 0) {
                     Text(
                         pluralStringResource(R.plurals.sound_folders_row_moving, folder.pending, format.format(folder.pending)),
                         color = LibraryColors.OnBackground,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                     )
                 }
             }
@@ -270,11 +244,11 @@ private fun FolderRow(folder: ServerSoundFolder, confirming: SoundFoldersChange?
                 Modifier
                     .padding(top = 8.dp, end = 8.dp)
                     .fillMaxWidth()
-                    .background(LibraryColors.Muted.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                    .background(LibraryColors.Muted.copy(alpha = 0.15f), LibraryShapes.Tile)
                     .padding(start = 12.dp, end = 4.dp, top = 10.dp),
             ) {
-                Text(question, color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(stringResource(R.string.sound_folders_confirm_body), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(question, color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.sound_folders_confirm_body), color = LibraryColors.Muted, style = LibraryType.Caption)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = actions.cancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.Muted) }
                     TextButton(onClick = actions.confirm) { Text(stringResource(R.string.sound_folders_move), color = LibraryColors.OnBackground) }

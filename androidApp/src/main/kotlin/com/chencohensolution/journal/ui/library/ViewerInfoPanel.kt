@@ -1,6 +1,13 @@
 package com.chencohensolution.journal.ui.library
 
-import android.widget.Toast
+import androidx.compose.ui.semantics.Role
+
+import androidx.compose.foundation.selection.selectable
+
+import androidx.compose.material3.SwitchDefaults
+
+import androidx.compose.material3.Switch
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -95,15 +102,15 @@ internal fun InfoPanel(
         modifier
             .fillMaxWidth()
             .heightIn(max = 600.dp)
-            .background(LibraryColors.Inverse, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(LibraryColors.Inverse, LibraryShapes.Sheet)
             .verticalScroll(rememberScrollState())
             .navigationBarRoom()
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column {
-            Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.OnInverse, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(formatDate(taken, "jmm"), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+            Text(formatDate(taken, "EEEEMMMMdyyyy"), color = LibraryColors.OnInverse, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold)
+            Text(formatDate(taken, "jmm"), color = LibraryColors.OnInverseMuted, style = LibraryType.Body)
         }
         TagsRow(note?.tags.orEmpty(), onAddTag, onRemoveTag)
         if (note?.hasWriting == true) StorylineRow(note.inStoryline, setInStoryline)
@@ -124,17 +131,17 @@ private fun LocationCard(location: Pair<GeoPoint, PlaceName?>, openMap: (GeoPoin
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(LibraryShapes.Card)
             .background(CardColor)
             .clickable(onClickLabel = stringResource(R.string.library_info_open_map)) { openMap(point) }
             .padding(6.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        LocationMap(point, Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(12.dp)))
+        LocationMap(point, Modifier.fillMaxWidth().height(170.dp).clip(LibraryShapes.Tile))
         Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp)) {
             val place = listOfNotNull(name?.label, name?.city, name?.country).distinct().joinToString(", ")
-            if (place.isNotEmpty()) Text(place, color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude), color = LibraryColors.OnInverseMuted, fontSize = 13.sp)
+            if (place.isNotEmpty()) Text(place, color = LibraryColors.OnInverse, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(String.format(Locale.ROOT, "%.5f, %.5f", point.latitude, point.longitude), color = LibraryColors.OnInverseMuted, style = LibraryType.Caption)
         }
     }
 }
@@ -159,18 +166,18 @@ private fun DetailsCard(item: MediaItem) {
     if (details == Unit || (shown != null && shown.count == 0)) return
     var open by remember(item.id) { mutableStateOf(false) }
     Column(
-        Modifier.fillMaxWidth().background(CardColor, RoundedCornerShape(16.dp)).padding(14.dp),
+        Modifier.fillMaxWidth().background(CardColor, LibraryShapes.Card).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         InfoHeading(stringResource(if (video) R.string.library_info_video_details else R.string.library_info_camera_details))
         if (shown == null) {
-            Text(stringResource(R.string.library_info_details_waiting), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+            Text(stringResource(R.string.library_info_details_waiting), color = LibraryColors.OnInverseMuted, style = LibraryType.Body)
             return@Column
         }
         if (shown.title != null || shown.subtitle != null) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                shown.title?.let { Text(it, color = LibraryColors.OnInverse, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
-                shown.subtitle?.let { Text(it, color = LibraryColors.OnInverseMuted, fontSize = 13.sp) }
+                shown.title?.let { Text(it, color = LibraryColors.OnInverse, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold) }
+                shown.subtitle?.let { Text(it, color = LibraryColors.OnInverseMuted, style = LibraryType.Caption) }
             }
         }
         if (shown.chips.isNotEmpty()) DetailChips(shown.chips)
@@ -179,18 +186,18 @@ private fun DetailsCard(item: MediaItem) {
                 open -> stringResource(if (video) R.string.library_info_video_details_hide else R.string.library_info_exif_hide)
                 else -> stringResource(if (video) R.string.library_info_video_details_all else R.string.library_info_exif_all, shown.count)
             },
-            color = LibraryColors.Accent,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            color = LibraryColors.OnInverse,
+            style = LibraryType.Body,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clickable { open = !open }.padding(vertical = 6.dp),
         )
         if (open) {
             shown.sections.forEach { section ->
-                Text(section.name, color = LibraryColors.OnInverseMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                Text(section.name, color = LibraryColors.OnInverseMuted, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 section.rows.forEach { (label, value) ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 13.sp, modifier = Modifier.width(130.dp))
-                        Text(value, color = LibraryColors.OnInverse, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                        Text(label, color = LibraryColors.OnInverseMuted, style = LibraryType.Caption, modifier = Modifier.width(130.dp))
+                        Text(value, color = LibraryColors.OnInverse, style = LibraryType.Caption, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -206,7 +213,7 @@ private fun DetailChips(chips: List<String>) {
             Text(
                 chip,
                 color = LibraryColors.OnInverse,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .background(LibraryColors.Accent.copy(alpha = 0.10f), RoundedCornerShape(8.dp))
@@ -221,53 +228,59 @@ private fun DetailChips(chips: List<String>) {
 @Composable
 private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.library_info_tags), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
+        Text(stringResource(R.string.library_info_tags), color = LibraryColors.OnInverseMuted, style = LibraryType.Small)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             tags.forEach { tag ->
                 Row(
                     Modifier
-                        .background(LibraryColors.Accent.copy(alpha = 0.12f), RoundedCornerShape(50))
+                        .background(LibraryColors.OnInverse.copy(alpha = 0.08f), RoundedCornerShape(50))
                         .padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(tag, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(tag, color = LibraryColors.OnInverse, style = LibraryType.Body, fontWeight = FontWeight.Medium)
                     IconButton(onClick = { onRemove(tag) }, modifier = Modifier.size(36.dp)) {
                         Icon(LibraryIcons.Close, stringResource(R.string.library_remove_tag, tag), tint = LibraryColors.OnInverseMuted, modifier = Modifier.size(14.dp))
                     }
                 }
             }
             TextButton(onClick = onAdd, modifier = Modifier.height(36.dp)) {
-                Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.library_tag), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
+                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(16.dp))
+                Text(stringResource(R.string.library_tag), color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
             }
         }
     }
 }
 
-/** With writing: "In the storyline" with Remove, or "Not in the storyline" with Add back. */
+/**
+ * With writing: a "Show in the storyline" switch (Nov 16, 2026; before, "In the storyline · Remove" in red, or "Not in
+ * the storyline · Add back"). Off keeps the writing, as Remove did.
+ */
 @Composable
 private fun StorylineRow(inStoryline: Boolean, setInStoryline: (Boolean) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(stringResource(R.string.storyline_title), color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.storyline_title), color = LibraryColors.OnInverseMuted, style = LibraryType.Small)
+        Row(
+            Modifier.fillMaxWidth().selectable(selected = inStoryline, role = Role.Switch) { setInStoryline(!inStoryline) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                stringResource(if (inStoryline) R.string.storyline_in else R.string.storyline_not_in),
+                stringResource(R.string.storyline_show_switch),
                 color = LibraryColors.OnInverse,
-                fontSize = 14.sp,
+                style = LibraryType.Body,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
-            if (inStoryline) {
-                TextButton(onClick = { setInStoryline(false) }) {
-                    Icon(LibraryIcons.Minus, null, tint = LibraryColors.Error, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.storyline_remove_short), color = LibraryColors.Error, modifier = Modifier.padding(start = 4.dp))
-                }
-            } else {
-                TextButton(onClick = { setInStoryline(true) }) {
-                    Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.storyline_add_back), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
-                }
-            }
+            Switch(
+                checked = inStoryline,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = LibraryColors.Inverse,
+                    checkedTrackColor = LibraryColors.OnInverse,
+                    uncheckedThumbColor = LibraryColors.OnInverseMuted,
+                    uncheckedTrackColor = LibraryColors.Inverse,
+                    uncheckedBorderColor = LibraryColors.OnInverseMuted,
+                ),
+            )
         }
     }
 }
@@ -296,17 +309,28 @@ private fun OriginalCard(
     var bringingBack by remember(item.id) { mutableStateOf(false) }
     // What is being asked of the server (private or not) until it answers; null when nothing is.
     var markingPrivate by remember(item.id) { mutableStateOf<Boolean?>(null) }
+    fun bringBack() {
+        bringingBack = true
+        scope.launch {
+            if (!tucked.setTucked(listOf(item), false)) {
+                AppMessages.post(context.getString(R.string.library_private_unreachable), context.getString(R.string.hidden_retry)) { bringBack() }
+            }
+            bringingBack = false
+        }
+    }
     fun markPrivate(isPrivate: Boolean) {
         markingPrivate = isPrivate
         scope.launch {
-            if (!setPrivate(item, isPrivate)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+            if (!setPrivate(item, isPrivate)) {
+                AppMessages.post(context.getString(R.string.library_private_unreachable), context.getString(R.string.hidden_retry)) { markPrivate(isPrivate) }
+            }
             markingPrivate = null
         }
     }
     Column(
         Modifier
             .fillMaxWidth()
-            .background(CardColor, RoundedCornerShape(16.dp))
+            .background(CardColor, LibraryShapes.Card)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -318,9 +342,9 @@ private fun OriginalCard(
                     Icon(LibraryIcons.CloudUp, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
                 }
             }
-            Text(originalLabel(item), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(originalLabel(item), color = LibraryColors.OnInverse, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (status is BackupStatus.Uploading) {
-                Text("${(status.progress * 100).roundToInt()}%", color = LibraryColors.Accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("${(status.progress * 100).roundToInt()}%", color = LibraryColors.Accent, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
             }
         }
         if (status is BackupStatus.Uploading) {
@@ -365,7 +389,7 @@ private fun OriginalCard(
         // Tucked away (revealed for the session, or opened from it): Bring back.
         if (item.isTucked) {
             InfoHeading(stringResource(R.string.tucked_away))
-            Text(stringResource(R.string.tucked_viewer_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+            Text(stringResource(R.string.tucked_viewer_body), color = LibraryColors.OnInverseMuted, style = LibraryType.Body)
             if (bringingBack) {
                 Row(Modifier.height(40.dp).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(18.dp), color = LibraryColors.Accent, strokeWidth = 2.dp)
@@ -373,29 +397,22 @@ private fun OriginalCard(
                 }
             } else {
                 OriginalButton(LibraryIcons.Eye, stringResource(R.string.tucked_bring_back)) {
-                    lock {
-                        bringingBack = true
-                        scope.launch {
-                            if (!tucked.setTucked(listOf(item), false)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
-                            bringingBack = false
-                        }
-                    }
+                    lock { bringBack() }
                 }
             }
         }
     }
     if (confirmingPrivate) {
-        AlertDialog(
-            onDismissRequest = { confirmingPrivate = false },
-            title = { Text(stringResource(R.string.library_private_mark_title)) },
-            text = { Text(stringResource(R.string.library_private_mark_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingPrivate = false
-                    markPrivate(true)
-                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
+        ConfirmSheet(
+            title = stringResource(R.string.library_private_mark_title),
+            body = stringResource(R.string.library_private_mark_body),
+            confirmLabel = stringResource(R.string.library_private_mark_confirm),
+            destructive = false,
+            onConfirm = {
+                confirmingPrivate = false
+                markPrivate(true)
             },
-            dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
+            onDismiss = { confirmingPrivate = false },
         )
     }
 }
@@ -416,15 +433,15 @@ private fun sourceFacts(item: MediaItem, camera: String?): List<Pair<String, Str
 @Composable
 private fun InfoFact(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
-        Text(label, color = LibraryColors.OnInverseMuted, fontSize = 12.sp)
-        Text(value, color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = LibraryColors.OnInverseMuted, style = LibraryType.Small)
+        Text(value, color = LibraryColors.OnInverse, style = LibraryType.Body, fontWeight = FontWeight.Medium)
     }
 }
 
 /** A section title in the info panel ("Original", "Shown on this phone"). */
 @Composable
 private fun InfoHeading(text: String) {
-    Text(text, color = LibraryColors.OnInverse, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+    Text(text, color = LibraryColors.OnInverse, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
 }
 
 /** Facts two to a row. */
@@ -494,7 +511,7 @@ private fun ShownHereFacts(item: MediaItem) {
 
     InfoHeading(stringResource(R.string.library_info_kept_title))
     if (here.isEmpty) {
-        Text(stringResource(R.string.library_info_kept_nothing), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
+        Text(stringResource(R.string.library_info_kept_nothing), color = LibraryColors.OnInverseMuted, style = LibraryType.Body)
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -502,10 +519,10 @@ private fun ShownHereFacts(item: MediaItem) {
             Text(
                 "${preview.width} × ${preview.height} · ${keptFormat(preview)} · ${Formatter.formatShortFileSize(context, preview.bytes)}",
                 color = LibraryColors.OnInverse,
-                fontSize = 14.sp,
+                style = LibraryType.Body,
             )
         }
-        here.originalBytes?.let { Text(stringResource(R.string.library_info_kept_original, sizeText(it)), color = LibraryColors.OnInverse, fontSize = 14.sp) }
+        here.originalBytes?.let { Text(stringResource(R.string.library_info_kept_original, sizeText(it)), color = LibraryColors.OnInverse, style = LibraryType.Body) }
         here.videoBytes?.let { bytes ->
             val cached = Formatter.formatShortFileSize(context, bytes)
             val text = if (original > 0) {
@@ -513,12 +530,12 @@ private fun ShownHereFacts(item: MediaItem) {
             } else {
                 stringResource(R.string.library_info_kept_video, cached)
             }
-            Text(text, color = LibraryColors.OnInverse, fontSize = 14.sp)
+            Text(text, color = LibraryColors.OnInverse, style = LibraryType.Body)
         }
         Text(
             stringResource(R.string.library_info_kept_total, Formatter.formatShortFileSize(context, here.totalBytes)),
             color = LibraryColors.OnInverseMuted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             modifier = Modifier.padding(top = 2.dp),
         )
     }
@@ -551,7 +568,7 @@ private fun keptFormat(preview: KeptPreview): String {
 @Composable
 private fun OriginalButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.height(40.dp)) {
-        Icon(icon, null, tint = LibraryColors.Accent, modifier = Modifier.size(18.dp))
-        Text(label, color = LibraryColors.Accent, modifier = Modifier.padding(start = 6.dp))
+        Icon(icon, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(18.dp))
+        Text(label, color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
     }
 }

@@ -106,7 +106,7 @@ internal fun SetCropEditor(
             Text(
                 stringResource(if (photos.size > 1) R.string.set_recompose else R.string.crop_title),
                 color = Color.White,
-                fontSize = 17.sp,
+                style = LibraryType.RowTitle,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
@@ -117,12 +117,12 @@ internal fun SetCropEditor(
                 Modifier
                     .padding(end = 8.dp)
                     .height(36.dp)
-                    .background(LibraryColors.Accent, RoundedCornerShape(50))
+                    .background(LibraryColors.Inverse, RoundedCornerShape(50))
                     .clickable { if (photos.all { saved[it.id] == result[it.id] }) onClose() else onDone(result) }
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.crop_done), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.crop_done), color = LibraryColors.OnInverse, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
@@ -131,14 +131,14 @@ internal fun SetCropEditor(
         Text(
             stringResource(if (photos.size > 1) R.string.recompose_hint else R.string.crop_hint_moments),
             color = Color(0xFFB8C2BF),
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         )
         Text(
             stringResource(R.string.crop_untouched),
             color = Color(0xFF7E8987),
-            fontSize = 12.sp,
+            style = LibraryType.Small,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
         )
@@ -162,7 +162,7 @@ internal fun SetCropEditor(
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(stringResource(label), color = if (on) Color.Black else Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(label), color = if (on) Color.Black else Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -189,7 +189,8 @@ internal fun SetCropEditor(
                     drafts = drafts + photos.filter { sameShape(it.ratio, item.ratio) }.associate { it.id to shown }
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 }) {
-                    Text("⧉  " + stringResource(R.string.recompose_same_frame), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(R.string.recompose_same_frame), color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 }
             }
         } else {

@@ -209,7 +209,8 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - **☆ Highlight** (★ when it is one) · **Make cover** (a photo icon, filled on the cover; Nov 10, 2026, Android
   only: the moment's cover in Moments and the storyline, `StoriesController.setMomentCover`, the note's
   `setInfo.cover`; again on the cover, back to the first highlight; a set the app made becomes a moment, unnamed) ·
-  **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each
+  **▶ Play** · **✎ Write** · **⌗ Recompose**, icons only (Nov 10, 2026; each drawn as line icons since Nov 16, 2026: a star
+  outline or filled star, play, edit, the crop mark;
   names itself to TalkBack), in a floating bar above the reel that looks as the Moments feed's tabs (Nov 9, 2026: the
   same pill shape, background and shadow; Play the filled one); a single photo has **✎ Write** in the same bar. **No gradients** in the viewer (Nov 9, 2026): the top bar, the info
   line and the video controls lie straight on the photo, kept readable by a mild shadow under their text and icons
@@ -314,3 +315,12 @@ It plays through the same player as Moments, so leaving the page keeps it playin
   [PhotoLibraryImages.swift](../../iosApp/iosApp/PhotoLibraryImages.swift) and
   [ServerImages.swift](../../iosApp/iosApp/ServerImages.swift) (with the shared `IosServerFiles`), deletion only in
   [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift)
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- Details: the storyline section is a **Show in the storyline** switch (it was "In the storyline · Remove" in red, or
+  "Not in the storyline · Add back"); off keeps the writing.
+- A named moment has a pencil after its name that opens Name this moment (the long press still works). Naming it and
+  every confirmation are bottom sheets now ([style.md](style.md)).
