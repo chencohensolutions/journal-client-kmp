@@ -210,18 +210,10 @@ private fun AudioControls(playback: AudioPlayback?, recording: SoundRecording, a
 private fun EditCallDialog(recording: SoundRecording, onDismiss: () -> Unit, onSave: (contact: String, number: String) -> Unit) {
     var contact by remember { mutableStateOf(recording.contact.orEmpty()) }
     var number by remember { mutableStateOf(recording.number.orEmpty()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.audio_edit_contact)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(contact, { contact = it }, label = { Text(stringResource(R.string.audio_contact)) }, singleLine = true)
-                OutlinedTextField(number, { number = it }, label = { Text(stringResource(R.string.audio_number)) }, singleLine = true, textStyle = TextStyle(textDirection = TextDirection.Ltr))
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(contact, number) }) { Text(stringResource(R.string.audio_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.audio_cancel)) } },
-    )
+    FormSheet(stringResource(R.string.audio_edit_contact), stringResource(R.string.audio_save), { onSave(contact, number) }, onDismiss) {
+        OutlinedTextField(contact, { contact = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.audio_contact)) }, singleLine = true)
+        OutlinedTextField(number, { number = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.audio_number)) }, singleLine = true, textStyle = TextStyle(textDirection = TextDirection.Ltr))
+    }
 }
 
 private const val SKIP_MILLIS = 15_000L

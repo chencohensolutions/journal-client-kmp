@@ -379,20 +379,20 @@ internal fun PersonScreen(
             MergeSheet(name, others, onMerge = { actions.merge(it.id); sheet = null })
         }
         PersonSheet.Forget -> PageSheet({ sheet = null }) {
-            ConfirmSheet(
+            ConfirmContent(
                 title = stringResource(R.string.person_forget_title, name),
                 body = stringResource(R.string.person_forget_body),
-                confirm = stringResource(R.string.person_forget_confirm),
+                confirmLabel = stringResource(R.string.person_forget_confirm),
                 destructive = true,
                 onConfirm = { actions.forget(); sheet = null },
                 onCancel = { sheet = null },
             )
         }
         is PersonSheet.NotThem -> PageSheet({ sheet = null }) {
-            ConfirmSheet(
+            ConfirmContent(
                 title = stringResource(R.string.person_not_them_title, name),
                 body = stringResource(R.string.person_not_them_body, name),
-                confirm = stringResource(R.string.person_not_them, name),
+                confirmLabel = stringResource(R.string.person_not_them, name),
                 destructive = false,
                 photo = open.item,
                 onConfirm = { actions.notThem(open.item); sheet = null },
@@ -510,62 +510,6 @@ private fun TogetherRow(name: String, together: List<Pair<Person, Int>>, onOpen:
             }
         }
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
-    }
-}
-
-/** A sheet over a page; drawn in place in previews, where a sheet doesn't open. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun PageSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    if (LocalInspectionMode.current) {
-        Box(Modifier.fillMaxSize().background(LibraryColors.BadgeScrim), contentAlignment = Alignment.BottomCenter) {
-            Column(Modifier.fillMaxWidth().background(LibraryColors.Background, LibraryShapes.Sheet).padding(top = 20.dp)) {
-                content()
-            }
-        }
-    } else {
-        ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = LibraryColors.Background,
-        ) { content() }
-    }
-}
-
-@Composable
-private fun SheetTitle(text: String) {
-    Text(
-        text,
-        color = LibraryColors.OnBackground,
-        style = LibraryType.PageTitle,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
-    )
-}
-
-/** A question with Cancel and its button; [photo] shown above it ("Not Mom" on a photo). */
-@Composable
-private fun ConfirmSheet(
-    title: String,
-    body: String,
-    confirm: String,
-    destructive: Boolean,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-    photo: MediaItem? = null,
-) {
-    Column(Modifier.fillMaxWidth().navigationBarRoom().padding(bottom = 16.dp)) {
-        photo?.let {
-            CroppedThumbnail(it, Modifier.padding(start = 24.dp, bottom = 14.dp).size(96.dp).clip(LibraryShapes.Tile))
-        }
-        SheetTitle(title)
-        Text(body, color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp))
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
-            TextButton(onClick = onConfirm) {
-                Text(confirm, color = if (destructive) LibraryColors.Error else LibraryColors.OnBackground, fontWeight = FontWeight.Bold)
-            }
-        }
     }
 }
 

@@ -108,16 +108,17 @@ internal fun NoteEditor(
         }
     }
     if (askingDiscard) {
-        AlertDialog(
-            onDismissRequest = { askingDiscard = false },
-            title = { Text(stringResource(R.string.note_discard_title)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askingDiscard = false
-                    onDismiss()
-                }) { Text(stringResource(R.string.note_discard)) }
+        ConfirmSheet(
+            title = stringResource(R.string.note_discard_title),
+            body = null,
+            confirmLabel = stringResource(R.string.note_discard),
+            destructive = true,
+            onConfirm = {
+                askingDiscard = false
+                onDismiss()
             },
-            dismissButton = { TextButton(onClick = { askingDiscard = false }) { Text(stringResource(R.string.note_keep_editing)) } },
+            onDismiss = { askingDiscard = false },
+            cancelLabel = stringResource(R.string.note_keep_editing),
         )
     }
 }

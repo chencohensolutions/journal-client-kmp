@@ -89,3 +89,24 @@ the storyline, Moments, Search, People, a person's page and the map.
 
 Line icons in `LibraryIcons` (24 dp, stroke 2): no typed characters as icons. Highlight is a star (outline, filled
 once highlighted), Recompose and Crop share the crop mark, a video's mark is Play, a moment's count is Stack.
+
+## Sheets and confirmations
+
+There are no AlertDialogs (Nov 16, 2026). `LibrarySheets.kt`:
+
+- `PageSheet`: every bottom sheet (the tag picker, the Showing sheet, search's filters, a person's menus, Make a
+  moment, the confirmations), in the colors of the page under it (light on a light page, dark in the viewer and when
+  the system is dark), 16 dp top corners, the same grey drag handle.
+- `ConfirmSheet(title, body, confirmLabel, destructive, onConfirm, onDismiss)`: a question with Cancel and its
+  button. The confirm word is red when it removes or forgets (Forget, Remove, Revoke, Delete, Discard), ink
+  otherwise. Cancel can take another word and action ("Later" in Free up's access question, "Keep editing").
+- `FormSheet(title, confirmLabel, …) { fields }`: a small form (name a moment, edit a call, add a folder) with the
+  same title and buttons.
+
+## Messages
+
+No toasts. One `MessageBar` (`LibraryMessages.kt`), hosted once in `LibraryApp` above the bottom controls (and once
+by enrollment): an ink bar with the text, an optional action and a close button. Screens post to `LocalMessages`
+(code outside composition, such as casting, to `AppMessages`). A plain note goes after 6 s; one with an action stays
+until dismissed. "Not changed: can’t reach your server." comes with **Try again** where the change can be sent again
+(Mark private and Tuck away from the picking bar, Mark private and Bring back in the viewer's details).

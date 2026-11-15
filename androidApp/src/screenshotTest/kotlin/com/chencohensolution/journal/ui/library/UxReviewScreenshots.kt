@@ -1,7 +1,10 @@
 package com.chencohensolution.journal.ui.library
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.chencohensolution.journal.connection.ServerHealth
@@ -69,6 +72,49 @@ fun ViewerDetails() = Screen {
 @Preview(name = "light", device = "spec:width=390dp,height=1900dp,dpi=420", showBackground = true)
 @Composable
 fun CopiesLight() = Screen { CopiesScreen(labCopies, CopiesActions(), back = {}) }
+
+// Round 3: confirmations are bottom sheets, messages a bar above the bottom controls.
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun ConfirmFreeUp() = Screen {
+    FreeUp()
+    ConfirmSheet(
+        title = "Delete 12 sound files?",
+        body = "Sound files have no trash: once deleted from this phone they are only on your server.",
+        confirmLabel = "Delete",
+        destructive = true,
+        onConfirm = {},
+        onDismiss = {},
+    )
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Composable
+fun MessageBarOverMoments() = Screen {
+    androidx.compose.foundation.layout.Box {
+        JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+        val messages = Messages().apply { post("Not changed: can’t reach your server.", "Try again") {} }
+        MessageHost(
+            messages,
+            androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 132.dp),
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Composable
+fun NameMomentSheet() = Screen {
+    FreeUp()
+    FormSheet("Name this moment", "Save", {}, {}) {
+        androidx.compose.material3.OutlinedTextField("Jaffa at night", {}, androidx.compose.ui.Modifier.fillMaxWidth(), singleLine = true)
+    }
+}
 
 /** The first set of the preview feed's photos. */
 internal fun firstSet() = PreviewData.feedStories.feed.entries.asSequence()

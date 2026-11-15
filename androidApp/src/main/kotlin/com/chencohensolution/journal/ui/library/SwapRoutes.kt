@@ -1,6 +1,5 @@
 package com.chencohensolution.journal.ui.library
 
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -76,7 +75,7 @@ internal fun SwapRoute(route: Route, swaps: SwapController, memory: SwapRouteMem
             SwapHereActions(
                 invite = swaps::invite,
                 share = { shareText(context, context.getString(R.string.swap_share_invite, it.link)) },
-                copy = { copyText(context, it.link, sensitive = false); Toast.makeText(context, copied, Toast.LENGTH_SHORT).show() },
+                copy = { copyText(context, it.link, sensitive = false); AppMessages.post(copied) },
                 again = swaps::closeInvite,
                 accept = { offer -> openAccept(offer, swaps, memory, push) },
                 decline = swaps::decline,
@@ -109,7 +108,7 @@ internal fun SwapRoute(route: Route, swaps: SwapController, memory: SwapRouteMem
                                     com.chencohensolution.journal.swap.parseSwapLink(raw)?.from?.let { if (draft.name.isBlank()) draft.name = it }
                                 }
                             }
-                            .addOnFailureListener { Toast.makeText(context, R.string.swap_scan_failed, Toast.LENGTH_LONG).show() }
+                            .addOnFailureListener { AppMessages.post(context.getString(R.string.swap_scan_failed)) }
                     },
                     fill = {
                         keeper.read()?.let { draft.typed = it } ?: activity?.let { a ->
@@ -120,7 +119,7 @@ internal fun SwapRoute(route: Route, swaps: SwapController, memory: SwapRouteMem
                         activity?.let { a -> scope.launch { draft.savedToManager = saveToPasswordManager(a, state.info?.serverId, words.text) } }
                     },
                     shareWords = { shareText(context, context.getString(R.string.swap_share_words, it.text)) },
-                    copyWords = { copyText(context, it.text, sensitive = true); Toast.makeText(context, copied, Toast.LENGTH_SHORT).show() },
+                    copyWords = { copyText(context, it.text, sensitive = true); AppMessages.post(copied) },
                     recoverySheet = { sheet(it.words, draft.name) },
                     join = {
                         swaps.clearOutcome()
@@ -146,7 +145,7 @@ internal fun SwapRoute(route: Route, swaps: SwapController, memory: SwapRouteMem
             var passphrase by remember { mutableStateOf(keeper.read()) }
             CopyPassphraseScreen(
                 passphrase,
-                copy = { passphrase?.let { copyText(context, it, sensitive = true); Toast.makeText(context, copied, Toast.LENGTH_SHORT).show() } },
+                copy = { passphrase?.let { copyText(context, it, sensitive = true); AppMessages.post(copied) } },
                 share = { passphrase?.let { shareText(context, context.getString(R.string.swap_share_words, it)) } },
                 sheet = { passphrase?.let { p -> sheet(p.split(" "), state.mine.firstOrNull { it.encrypted }?.name ?: "") } },
                 fill = {

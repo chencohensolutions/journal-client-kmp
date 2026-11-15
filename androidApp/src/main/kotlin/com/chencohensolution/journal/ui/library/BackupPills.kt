@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -104,17 +105,16 @@ internal fun BackupPills(
         }
     }
     removing?.let { folder ->
-        AlertDialog(
-            onDismissRequest = { removing = null },
-            title = { Text(stringResource(R.string.backup_remove_title, folder.name)) },
-            text = { Text(stringResource(R.string.backup_remove_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    removing = null
-                    remove?.invoke(folder)
-                }) { Text(stringResource(R.string.backup_remove_confirm)) }
+        ConfirmSheet(
+            title = stringResource(R.string.backup_remove_title, folder.name),
+            body = stringResource(R.string.backup_remove_body),
+            confirmLabel = stringResource(R.string.backup_remove_confirm),
+            destructive = true,
+            onConfirm = {
+                removing = null
+                remove?.invoke(folder)
             },
-            dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(R.string.backup_add_cancel)) } },
+            onDismiss = { removing = null },
         )
     }
 }
@@ -155,15 +155,7 @@ internal fun AddFolderDialog(picked: PickedFolder, add: (AudioKind) -> Unit, can
     var kind by remember(picked.folder.treeUri) { mutableStateOf(picked.look.guess) }
     val format = NumberFormat.getIntegerInstance()
     val size = Formatter.formatShortFileSize(LocalContext.current, picked.look.bytes)
-    AlertDialog(
-        onDismissRequest = cancel,
-        icon = {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(LibraryColors.Accent), contentAlignment = Alignment.Center) {
-                Icon(kindIcon(kind), null, tint = LibraryColors.PhotoText, modifier = Modifier.size(22.dp))
-            }
-        },
-        title = { Text(stringResource(R.string.backup_add_title, picked.folder.name)) },
-        text = {
+    FormSheet(stringResource(R.string.backup_add_title, picked.folder.name), stringResource(R.string.backup_add_confirm), { add(kind) }, cancel) {
             Column {
                 Text(picked.folder.path, color = LibraryColors.Muted, style = LibraryType.Caption)
                 Text(
@@ -179,17 +171,14 @@ internal fun AddFolderDialog(picked: PickedFolder, add: (AudioKind) -> Unit, can
                             .selectable(selected = kind == option, role = Role.RadioButton) { kind = option }.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = kind == option, onClick = null)
+                        RadioButton(selected = kind == option, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = LibraryColors.OnBackground, unselectedColor = LibraryColors.Muted))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(kindName(option)), style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
+                        Text(stringResource(kindName(option)), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
                     }
                 }
                 Text(stringResource(R.string.backup_add_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 8.dp))
             }
-        },
-        confirmButton = { TextButton(onClick = { add(kind) }) { Text(stringResource(R.string.backup_add_confirm)) } },
-        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(R.string.backup_add_cancel)) } },
-    )
+    }
 }
 
 private fun kindName(kind: AudioKind): Int = when (kind) {

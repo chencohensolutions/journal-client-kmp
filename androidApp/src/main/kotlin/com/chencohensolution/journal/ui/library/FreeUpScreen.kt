@@ -185,37 +185,36 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
 
     if (askSounds && plan != null) {
         val count = NumberFormat.getIntegerInstance().format(plan.sounds)
-        AlertDialog(
-            onDismissRequest = { askSounds = false },
-            title = { Text(stringResource(R.string.free_up_sounds_title)) },
-            text = { Text(pluralStringResource(R.plurals.free_up_sounds_body, plan.sounds, count)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askSounds = false
-                    actions.confirmSounds()
-                    freeUpNow()
-                }) { Text(stringResource(R.string.free_up_sounds_confirm), color = LibraryColors.Error, fontWeight = FontWeight.Bold) }
+        ConfirmSheet(
+            title = stringResource(R.string.free_up_sounds_title),
+            body = pluralStringResource(R.plurals.free_up_sounds_body, plan.sounds, count),
+            confirmLabel = stringResource(R.string.free_up_sounds_confirm),
+            destructive = true,
+            onConfirm = {
+                askSounds = false
+                actions.confirmSounds()
+                freeUpNow()
             },
-            dismissButton = { TextButton(onClick = { askSounds = false }) { Text(stringResource(R.string.backup_add_cancel)) } },
+            onDismiss = { askSounds = false },
         )
     }
 
     if (askAccess) {
-        AlertDialog(
-            onDismissRequest = { askAccess = false },
-            title = { Text(stringResource(R.string.settings_free_up_access_title)) },
-            text = { Text(stringResource(R.string.settings_free_up_access_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    askAccess = false
-                    actions.allowTrashWithoutAsking()
-                }) { Text(stringResource(R.string.settings_free_up_access_allow)) }
+        ConfirmSheet(
+            title = stringResource(R.string.settings_free_up_access_title),
+            body = stringResource(R.string.settings_free_up_access_body),
+            confirmLabel = stringResource(R.string.settings_free_up_access_allow),
+            destructive = false,
+            onConfirm = {
+                askAccess = false
+                actions.allowTrashWithoutAsking()
             },
-            dismissButton = {
-                TextButton(onClick = {
-                    askAccess = false
-                    actions.freeUp()
-                }) { Text(stringResource(R.string.settings_free_up_access_later)) }
+            onDismiss = { askAccess = false },
+            // "Later" goes on without the setting: the system asks for this run.
+            cancelLabel = stringResource(R.string.settings_free_up_access_later),
+            onCancel = {
+                askAccess = false
+                actions.freeUp()
             },
         )
     }

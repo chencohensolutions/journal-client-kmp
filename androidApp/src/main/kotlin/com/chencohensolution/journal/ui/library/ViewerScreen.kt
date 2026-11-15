@@ -2,7 +2,6 @@ package com.chencohensolution.journal.ui.library
 
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.PlaybackException
@@ -471,7 +470,7 @@ internal fun ViewerScreen(
             server.offer(shownNow, castPreviews) to castAhead(items, items.indexOf(shownNow)).mapNotNull { server.offer(it, castPreviews) }
         }
         if (item == null) {
-            Toast.makeText(castContext, R.string.cast_no_wifi, Toast.LENGTH_LONG).show()
+            AppMessages.post(castContext.getString(R.string.cast_no_wifi))
             return@LaunchedEffect
         }
         val holder = castZoomOf(shownNow).takeIf { shownNow.type != MediaType.VIDEO }
@@ -511,7 +510,7 @@ internal fun ViewerScreen(
     LaunchedEffect(castState.error) {
         castState.error?.let { android.util.Log.w("JournalCast", "the TV couldn't show ${it.id}: ${it.message}") }
         if (castState.error != null) {
-            Toast.makeText(castContext, R.string.cast_failed, Toast.LENGTH_SHORT).show()
+            AppMessages.post(castContext.getString(R.string.cast_failed))
             cast.errorSeen()
         }
     }
@@ -1121,7 +1120,7 @@ private fun ShareTopButton(item: MediaItem, share: suspend (MediaItem) -> Boolea
     IconButton(enabled = !sharing, onClick = {
         sharing = true
         scope.launch {
-            if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+            if (!share(item)) AppMessages.post(context.getString(R.string.library_share_failed))
             sharing = false
         }
     }) {
@@ -1431,7 +1430,7 @@ private fun ShareButton(item: MediaItem, share: suspend (MediaItem) -> Boolean) 
             .clickable(enabled = !sharing, onClickLabel = stringResource(R.string.library_share)) {
                 sharing = true
                 scope.launch {
-                    if (!share(item)) Toast.makeText(context, R.string.library_share_failed, Toast.LENGTH_LONG).show()
+                    if (!share(item)) AppMessages.post(context.getString(R.string.library_share_failed))
                     sharing = false
                 }
             }
@@ -1725,21 +1724,13 @@ private fun formatClock(millis: Long): String {
 private fun MomentNameDialog(name: String, description: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var typed by rememberSaveable { mutableStateOf(name) }
     var about by rememberSaveable { mutableStateOf(description) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.set_name_title)) },
-        text = {
-            Column {
-                OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
-                OutlinedTextField(
-                    about, { about = it }, Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 96.dp),
-                    placeholder = { Text(stringResource(R.string.set_description_hint)) },
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(typed, about) }) { Text(stringResource(R.string.set_name_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_cancel)) } },
-    )
+    FormSheet(stringResource(R.string.set_name_title), stringResource(R.string.set_name_save), { onSave(typed, about) }, onDismiss) {
+        OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), placeholder = { Text(stringResource(R.string.set_name_hint)) }, singleLine = true)
+        OutlinedTextField(
+            about, { about = it }, Modifier.fillMaxWidth().padding(top = 2.dp).heightIn(min = 96.dp),
+            placeholder = { Text(stringResource(R.string.set_description_hint)) },
+        )
+    }
 }
 
 /**

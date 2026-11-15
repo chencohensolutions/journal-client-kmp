@@ -1,7 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
 import android.content.Context
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.media3.common.AudioAttributes
@@ -71,7 +70,7 @@ internal class AudioPlayer(private val context: Context, private val scope: Coro
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Toast.makeText(context, R.string.audio_failed, Toast.LENGTH_SHORT).show()
+            AppMessages.post(context.getString(R.string.audio_failed))
             stop()
         }
     }
@@ -92,7 +91,7 @@ internal class AudioPlayer(private val context: Context, private val scope: Coro
         opening = scope.launch {
             val source = withContext(Dispatchers.IO) { dataSource(recording) }
             if (source == null || current !== recording) {
-                if (source == null) Toast.makeText(context, R.string.audio_failed, Toast.LENGTH_SHORT).show()
+                if (source == null) AppMessages.post(context.getString(R.string.audio_failed))
                 if (current === recording) stop()
                 return@launch
             }

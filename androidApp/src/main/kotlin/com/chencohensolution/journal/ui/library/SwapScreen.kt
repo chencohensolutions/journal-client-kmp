@@ -223,33 +223,25 @@ private fun KeptSwapRow(swap: KeptSwap, acting: Boolean, revoke: () -> Unit) {
 @Composable
 private fun RevokeDialog(swap: KeptSwap, revoke: (Boolean) -> Unit, dismiss: () -> Unit) {
     var delete by remember { mutableStateOf(swap.revoked) }
-    AlertDialog(
-        onDismissRequest = dismiss,
-        title = { Text(stringResource(R.string.swap_revoke_title, swap.name)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.swap_revoke_body, swap.name))
-                Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(delete, { delete = it }, colors = CheckboxDefaults.colors(checkedColor = LibraryColors.OnBackground))
-                    Text(stringResource(R.string.swap_revoke_delete, sizeText(swap.used)))
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { revoke(delete) }) { Text(stringResource(R.string.swap_revoke)) } },
-        dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.swap_cancel)) } },
-    )
+    ConfirmSheet(
+        title = stringResource(R.string.swap_revoke_title, swap.name),
+        body = stringResource(R.string.swap_revoke_body, swap.name),
+        confirmLabel = stringResource(R.string.swap_revoke),
+        destructive = true,
+        onConfirm = { revoke(delete) },
+        onDismiss = dismiss,
+        cancelLabel = stringResource(R.string.swap_cancel),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(delete, { delete = it }, colors = CheckboxDefaults.colors(checkedColor = LibraryColors.OnBackground))
+            Text(stringResource(R.string.swap_revoke_delete, sizeText(swap.used)), color = LibraryColors.OnBackground, style = LibraryType.Body)
+        }
+    }
 }
 
 @Composable
-private fun ConfirmDialog(title: String, body: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(body) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.swap_cancel)) } },
-    )
-}
+private fun ConfirmDialog(title: String, body: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) =
+    ConfirmSheet(title, body, confirm, destructive = true, onConfirm = onConfirm, onDismiss = onDismiss, cancelLabel = stringResource(R.string.swap_cancel))
 
 // --- Keep a friend's copy here ---------------------------------------------------------------------------------------
 

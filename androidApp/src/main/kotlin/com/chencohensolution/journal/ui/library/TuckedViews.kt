@@ -1,7 +1,6 @@
 package com.chencohensolution.journal.ui.library
 
 import android.app.KeyguardManager
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -216,7 +215,12 @@ internal fun PickingBar(
         busy = what
         val items = picked
         scope.launch {
-            if (call()) onDone(items, tuckedNow) else Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+            if (call()) {
+                onDone(items, tuckedNow)
+            } else {
+                // Not changed: the picks stay, and Try again sends them again.
+                AppMessages.post(context.getString(R.string.library_private_unreachable), context.getString(R.string.hidden_retry)) { send(what, call, tuckedNow) }
+            }
             busy = null
         }
     }
@@ -284,17 +288,16 @@ internal fun PickingBar(
         }
     }
     if (confirmingPrivate) {
-        AlertDialog(
-            onDismissRequest = { confirmingPrivate = false },
-            title = { Text(pluralStringResource(R.plurals.search_private_title, picked.size, picked.size)) },
-            text = { Text(stringResource(R.string.search_private_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingPrivate = false
-                    send("private", { tucked.markPrivate(picked) }, null)
-                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
+        ConfirmSheet(
+            title = pluralStringResource(R.plurals.search_private_title, picked.size, picked.size),
+            body = stringResource(R.string.search_private_body),
+            confirmLabel = stringResource(R.string.library_private_mark_confirm),
+            destructive = false,
+            onConfirm = {
+                confirmingPrivate = false
+                send("private", { tucked.markPrivate(picked) }, null)
             },
-            dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
+            onDismiss = { confirmingPrivate = false },
         )
     }
 }

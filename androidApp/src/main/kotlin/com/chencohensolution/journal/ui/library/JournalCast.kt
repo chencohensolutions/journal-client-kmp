@@ -227,7 +227,7 @@ internal object JournalCast {
             closed()
             // Said, not left silent: 2004 is a TV that doesn't know our receiver (not published, or not a test device).
             val text = if (error == CastStatusCodes.APPLICATION_NOT_FOUND) R.string.cast_not_on_this_tv else R.string.cast_start_failed
-            android.widget.Toast.makeText(app, text, android.widget.Toast.LENGTH_LONG).show()
+            AppMessages.post(app.getString(text))
         }
         override fun onSessionResumeFailed(session: CastSession, error: Int) = closed()
         override fun onSessionStarting(session: CastSession) {}

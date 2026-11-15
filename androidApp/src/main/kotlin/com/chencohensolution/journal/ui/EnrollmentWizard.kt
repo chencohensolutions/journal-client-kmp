@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.enrollment.EnrollmentController
@@ -68,6 +67,10 @@ import com.chencohensolution.journal.enrollment.KeyProtection
 import com.chencohensolution.journal.enrollment.PasteResult
 import com.chencohensolution.journal.enrollment.RegistrationProgress
 import com.chencohensolution.journal.ui.library.pastedText
+import com.chencohensolution.journal.ui.library.Messages
+import com.chencohensolution.journal.ui.library.MessageHost
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.navigationBarsPadding
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
@@ -80,35 +83,40 @@ fun EnrollmentWizard(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Enrollment is outside the library, so it hosts its own message bar.
+    val messages = remember { Messages() }
     BackHandler(enabled = state.step !is EnrollmentStep.Welcome && state.step !is EnrollmentStep.Enrolled) {
         controller.back()
     }
-    EnrollmentContent(
-        state = state,
-        actions = EnrollmentActions(
-            start = controller::start,
-            back = controller::back,
-            updateServerAddress = controller::updateServerAddress,
-            updateCode = controller::updateCode,
-            updateDeviceName = controller::updateDeviceName,
-            checkCode = controller::checkCode,
-            // Google's scanner screen, from Play services: it needs no camera permission.
-            scan = {
-                val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
-                GmsBarcodeScanning.getClient(context, options).startScan()
-                    .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
-                    .addOnFailureListener { Toast.makeText(context, R.string.enroll_scan_failed, Toast.LENGTH_LONG).show() }
-            },
-            // Read only when tapped: Android lets a focused app read the clipboard and says so in its own note.
-            paste = {
-                if (controller.openPasted(pastedText(context)) == PasteResult.NOTHING) {
-                    Toast.makeText(context, R.string.enroll_paste_nothing, Toast.LENGTH_LONG).show()
-                }
-            },
-            register = controller::register,
-            openJournal = onOpenJournal,
-        ),
-    )
+    Box(Modifier.fillMaxSize()) {
+        EnrollmentContent(
+            state = state,
+            actions = EnrollmentActions(
+                start = controller::start,
+                back = controller::back,
+                updateServerAddress = controller::updateServerAddress,
+                updateCode = controller::updateCode,
+                updateDeviceName = controller::updateDeviceName,
+                checkCode = controller::checkCode,
+                // Google's scanner screen, from Play services: it needs no camera permission.
+                scan = {
+                    val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+                    GmsBarcodeScanning.getClient(context, options).startScan()
+                        .addOnSuccessListener { barcode -> barcode.rawValue?.let(controller::openScanned) }
+                        .addOnFailureListener { messages.post(context.getString(R.string.enroll_scan_failed)) }
+                },
+                // Read only when tapped: Android lets a focused app read the clipboard and says so in its own note.
+                paste = {
+                    if (controller.openPasted(pastedText(context)) == PasteResult.NOTHING) {
+                        messages.post(context.getString(R.string.enroll_paste_nothing))
+                    }
+                },
+                register = controller::register,
+                openJournal = onOpenJournal,
+            ),
+        )
+        MessageHost(messages, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(bottom = 96.dp))
+    }
 }
 
 internal class EnrollmentActions(

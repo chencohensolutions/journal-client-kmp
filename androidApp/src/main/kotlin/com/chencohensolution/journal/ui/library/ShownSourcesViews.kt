@@ -92,11 +92,7 @@ internal fun explainsWhatsApp(shown: ShownSources, here: Map<MediaSource, Int>) 
 @Composable
 internal fun ShowingSheet(counts: Map<MediaSource, Int>, onDismiss: () -> Unit, whatsAppNote: Boolean = false) {
     val choice = LocalShownSources.current
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = LibraryColors.Background,
-    ) {
+    PageSheet(onDismiss) {
         ShowingSheetContent(rememberShownPills(counts), choice.actions, whatsAppNote && explainsWhatsApp(choice.shown, counts))
     }
 }

@@ -119,12 +119,13 @@ internal fun CamerasScreen(state: CamerasState, confirming: CameraGroup?, action
     }
     confirming?.let { camera ->
         val photos = NumberFormat.getIntegerInstance().format(camera.files)
-        AlertDialog(
-            onDismissRequest = actions.cancel,
-            title = { Text(pluralStringResource(R.plurals.cameras_confirm_title, camera.files, photos)) },
-            text = { Text(stringResource(R.string.cameras_confirm_body, camera.name)) },
-            confirmButton = { TextButton(onClick = actions.confirm) { Text(stringResource(R.string.cameras_move)) } },
-            dismissButton = { TextButton(onClick = actions.cancel) { Text(stringResource(R.string.library_cancel)) } },
+        ConfirmSheet(
+            title = pluralStringResource(R.plurals.cameras_confirm_title, camera.files, photos),
+            body = stringResource(R.string.cameras_confirm_body, camera.name),
+            confirmLabel = stringResource(R.string.cameras_move),
+            destructive = false,
+            onConfirm = actions.confirm,
+            onDismiss = actions.cancel,
         )
     }
 }

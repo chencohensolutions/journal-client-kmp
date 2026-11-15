@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -139,7 +138,7 @@ internal fun libraryActions(
     val addCurrentNetwork: () -> Unit = {
         scope.launch {
             val name = currentWifiName(context)
-            if (name != null) backup.addWifiNetwork(name) else Toast.makeText(context, R.string.settings_backup_no_wifi, Toast.LENGTH_SHORT).show()
+            if (name != null) backup.addWifiNetwork(name) else AppMessages.post(context.getString(R.string.settings_backup_no_wifi))
         }
     }
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -159,7 +158,7 @@ internal fun libraryActions(
         scope.launch {
             val folder = pickedFolder(uri)
             val look = backup.look(folder)
-            if (look == null) Toast.makeText(context, R.string.backup_folder_unreadable, Toast.LENGTH_SHORT).show() else picked.value = PickedFolder(folder, look)
+            if (look == null) AppMessages.post(context.getString(R.string.backup_folder_unreadable)) else picked.value = PickedFolder(folder, look)
         }
     }
     // Keep on this phone's Allow: "Photos as JPEG XL" moves each JPEG to the trash without a prompt, only with "Media

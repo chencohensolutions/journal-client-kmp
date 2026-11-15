@@ -116,7 +116,7 @@ private fun PickerSheet(
     val focus = remember { FocusRequester() }
     // Ready to type: most of the time the answer is a search or a new name.
     LaunchedEffect(Unit) { focus.requestFocus() }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    PageSheet(onDismiss) {
         Column(Modifier.fillMaxSize().imePadding()) {
             Text(
                 title,

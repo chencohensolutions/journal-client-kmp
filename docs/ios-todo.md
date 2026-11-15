@@ -41,6 +41,12 @@ Still missing on iOS:
   `library_loading`) / `UnreachableState` everywhere a list can be empty, loading or offline, the recording page's
   title in the shared title bar (day, times under it), and drawn icons instead of ★ ☆ ⌗ ▶ ⧉ (`LibraryIcons.Star`,
   `StarFilled`, `Crop`, `Play`, `Stack`).
+  Round 3, sheets and messages: every confirmation is a bottom sheet (`ConfirmSheet`; destructive confirm words red)
+  and every small form a `FormSheet` (name a moment, edit a call, add a sound folder, revoke a swap) in place of
+  alerts; all sheets share `PageSheet` (page colors, 16 dp corners, one drag handle; `LibrarySheets.kt`). Toasts are a
+  message bar above the bottom controls (`LibraryMessages.kt`: `Messages`, `MessageHost`, `MessageBar`; 6 s for
+  notes, until dismissed with an action), with Try again on "Not changed: can’t reach your server." where the change
+  can be resent. New strings: `message_dismiss`; `library_private_unreachable` is shorter.
 - **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
   in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
   `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from

@@ -1,6 +1,5 @@
 package com.chencohensolution.journal.ui.library
 
-import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -296,10 +295,21 @@ private fun OriginalCard(
     var bringingBack by remember(item.id) { mutableStateOf(false) }
     // What is being asked of the server (private or not) until it answers; null when nothing is.
     var markingPrivate by remember(item.id) { mutableStateOf<Boolean?>(null) }
+    fun bringBack() {
+        bringingBack = true
+        scope.launch {
+            if (!tucked.setTucked(listOf(item), false)) {
+                AppMessages.post(context.getString(R.string.library_private_unreachable), context.getString(R.string.hidden_retry)) { bringBack() }
+            }
+            bringingBack = false
+        }
+    }
     fun markPrivate(isPrivate: Boolean) {
         markingPrivate = isPrivate
         scope.launch {
-            if (!setPrivate(item, isPrivate)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
+            if (!setPrivate(item, isPrivate)) {
+                AppMessages.post(context.getString(R.string.library_private_unreachable), context.getString(R.string.hidden_retry)) { markPrivate(isPrivate) }
+            }
             markingPrivate = null
         }
     }
@@ -373,29 +383,22 @@ private fun OriginalCard(
                 }
             } else {
                 OriginalButton(LibraryIcons.Eye, stringResource(R.string.tucked_bring_back)) {
-                    lock {
-                        bringingBack = true
-                        scope.launch {
-                            if (!tucked.setTucked(listOf(item), false)) Toast.makeText(context, R.string.library_private_unreachable, Toast.LENGTH_LONG).show()
-                            bringingBack = false
-                        }
-                    }
+                    lock { bringBack() }
                 }
             }
         }
     }
     if (confirmingPrivate) {
-        AlertDialog(
-            onDismissRequest = { confirmingPrivate = false },
-            title = { Text(stringResource(R.string.library_private_mark_title)) },
-            text = { Text(stringResource(R.string.library_private_mark_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmingPrivate = false
-                    markPrivate(true)
-                }) { Text(stringResource(R.string.library_private_mark_confirm)) }
+        ConfirmSheet(
+            title = stringResource(R.string.library_private_mark_title),
+            body = stringResource(R.string.library_private_mark_body),
+            confirmLabel = stringResource(R.string.library_private_mark_confirm),
+            destructive = false,
+            onConfirm = {
+                confirmingPrivate = false
+                markPrivate(true)
             },
-            dismissButton = { TextButton(onClick = { confirmingPrivate = false }) { Text(stringResource(R.string.library_cancel)) } },
+            onDismiss = { confirmingPrivate = false },
         )
     }
 }

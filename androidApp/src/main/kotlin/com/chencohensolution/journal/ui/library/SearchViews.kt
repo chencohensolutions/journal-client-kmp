@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
-import android.widget.Toast
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -498,11 +497,7 @@ private fun FilterPill(search: SearchState, onClick: () -> Unit) {
 @Composable
 private fun FilterSheet(search: SearchState, actions: SearchActions, onDone: () -> Unit) {
     // Opened whole, as the tag sheets are: half open, "Show N photos" would be below the screen's edge.
-    ModalBottomSheet(
-        onDismissRequest = onDone,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = LibraryColors.Background,
-    ) {
+    PageSheet(onDone) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
