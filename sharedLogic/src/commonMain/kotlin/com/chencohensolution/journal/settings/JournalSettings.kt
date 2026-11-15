@@ -282,6 +282,14 @@ internal class JournalSettings(private val store: KeyValueStore) {
         get() = store.getString(KEY_MODELS_ONBOARDING_DUE) == "true"
         set(value) = store.putString(KEY_MODELS_ONBOARDING_DUE, if (value) "true" else null)
 
+    /**
+     * Whether the sheet explaining hidden, tucked away and private was shown: once, the first time Tuck away or Mark
+     * private is used from the picking bar.
+     */
+    var hidingExplained: Boolean
+        get() = store.getString(KEY_HIDING_EXPLAINED) == "true"
+        set(value) = store.putString(KEY_HIDING_EXPLAINED, if (value) "true" else null)
+
     /** "Show the phone badge" (Settings → Badges): off by default. */
     var showOnPhoneBadge: Boolean
         get() = store.getString(KEY_SHOW_ON_PHONE_BADGE) == "true"
@@ -383,6 +391,7 @@ internal class JournalSettings(private val store: KeyValueStore) {
         /** No longer read: the server hides nudity (Hidden collections). Removed when "Show private media" is saved. */
         private const val KEY_PRIVATE_THRESHOLD_PERCENT = "private_threshold_percent"
         private const val KEY_SHOW_ON_PHONE_BADGE = "show_on_phone_badge"
+        private const val KEY_HIDING_EXPLAINED = "hiding_explained"
         private const val KEY_AUTOPLAY_VIDEOS = "autoplay_videos"
         private const val KEY_SHARE_JXL_AS_JPEG = "share_jxl_as_jpeg"
     }

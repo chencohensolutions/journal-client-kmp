@@ -315,3 +315,12 @@ It plays through the same player as Moments, so leaving the page keeps it playin
   [PhotoLibraryImages.swift](../../iosApp/iosApp/PhotoLibraryImages.swift) and
   [ServerImages.swift](../../iosApp/iosApp/ServerImages.swift) (with the shared `IosServerFiles`), deletion only in
   [PhotoRemoval.swift](../../iosApp/iosApp/PhotoRemoval.swift)
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- Details: the storyline section is a **Show in the storyline** switch (it was "In the storyline · Remove" in red, or
+  "Not in the storyline · Add back"); off keeps the writing.
+- A named moment has a pencil after its name that opens Name this moment (the long press still works). Naming it and
+  every confirmation are bottom sheets now ([style.md](style.md)).

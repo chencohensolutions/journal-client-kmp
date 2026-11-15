@@ -372,3 +372,13 @@ cache can be deleted at any time.
   took the place of the photos around them.
 - **iOS:** PhotoKit gives each photo's and video's location with the library; names come from `CLGeocoder`, about one a second.
 - Names are looked up once per ~500 m square: the area, the town and the country.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The picking bar's actions above it (Write · Crop · Tag · Make a moment · Merge · Take out, and a person's Not Mom)
+  are icons with small labels. The first Tuck away or Mark private from the bar shows **How these differ** once
+  (`HidingExplainerSheet`; remembered in `SettingsState.hidingExplained`), then goes on.
+- A row's route line joins its towns with `feed_route_separator`: " → " in English, " ← " in Hebrew. Dates follow the
+  app's language (`formatDate` uses the configuration's locale).

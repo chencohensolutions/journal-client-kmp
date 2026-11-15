@@ -47,6 +47,19 @@ Still missing on iOS:
   message bar above the bottom controls (`LibraryMessages.kt`: `Messages`, `MessageHost`, `MessageBar`; 6 s for
   notes, until dismissed with an action), with Try again on "Not changed: can’t reach your server." where the change
   can be resent. New strings: `message_dismiss`; `library_private_unreachable` is shorter.
+  Round 4, flows and words: "Private settings" is **Hidden and private** (Private first, then Hidden on all your
+  devices; `phone_lock_none`, `sources_private_about`, `backup_note` follow), with a folded **How these differ** card
+  and, once, a sheet before the picking bar's first Tuck away or Mark private (`SettingsState.hidingExplained`,
+  `SettingsController.hidingExplained()`; strings `hiding_*`); a person's page: long press starts picking with a
+  "Not <name>" extra (`PickingExtras.notThem`); the picking bar's extras are icons with small labels; the home's
+  not-backed-up pill opens Backup; Storyline and Tags empty states have **Go to Moments** (`library_go_to_moments`);
+  Settings' first page has a **Display and sharing** group and a **Search** heading; cards with a body end in a
+  full-width outlined button; Search's ✕ became a back arrow in its title row; Explore's Map is an icon in the title
+  row; the viewer's details have a **Show in the storyline** switch (`storyline_show_switch`) and a pencil to rename
+  a moment; Backup's folder pills have an x; Copies' empty text; Who's this? says **Save name**
+  (`group_save_name`); enrollment's code step leads with scanning or pasting (`enroll_code_body`,
+  `enroll_code_command`); "this phone" for "this device" in library strings; the route line's separator is
+  `feed_route_separator` (" ← " in Hebrew); dates follow the app's language.
 - **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
   in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
   `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from

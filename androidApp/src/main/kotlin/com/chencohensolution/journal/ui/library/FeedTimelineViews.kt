@@ -95,7 +95,7 @@ import kotlinx.coroutines.launch
 
 /** "October 2026". */
 internal val TimelineMonth.title: String
-    get() = "${Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, Locale.getDefault()).replaceFirstChar { it.titlecase() }} $year"
+    get() = "${Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, dateLocale ?: Locale.getDefault()).replaceFirstChar { it.titlecase() }} $year"
 
 /** A light tick per day or month, a firmer one per year. */
 private fun View.tick(timeline: FeedTimeline, from: Int, to: Int) {

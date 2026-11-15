@@ -85,3 +85,12 @@ These are in the design but wait for features that don't exist:
   [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.swift) and
   [FeedVideo.swift](../../iosApp/iosApp/FeedVideo.swift); navigation and refresh in
   [LibraryRootView.swift](../../iosApp/iosApp/LibraryRootView.swift).
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- The **N not backed up** pill above the tabs opens Settings › Backup (a chevron says so).
+- An empty storyline says how to fill it and has **Go to Moments**, which switches the tab.
+- Empty, loading and offline states are the shared ones, and messages show in the message bar above the tabs
+  ([style.md](style.md)).

@@ -184,11 +184,9 @@ private fun Body(text: String, modifier: Modifier = Modifier) = Text(text, color
 private fun Warning(text: String) = Text(text, color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
 
 @Composable
-private fun IndexingButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.padding(top = 2.dp)) {
-        Text(label, color = if (enabled) LibraryColors.OnBackground else LibraryColors.Muted, fontWeight = FontWeight.Bold)
-    }
-}
+/** A card with a body gets its action as a full-width outlined button at its bottom (docs/screens/style.md). */
+private fun IndexingButton(label: String, enabled: Boolean, onClick: () -> Unit) =
+    SecondaryButton(label, onClick, Modifier.fillMaxWidth().padding(top = 10.dp, end = 8.dp, bottom = 4.dp), enabled = enabled)
 
 /** Settings' row for it: "Server: reading 40 of 200", or "20 per page · 3 kept on this phone". */
 @Composable

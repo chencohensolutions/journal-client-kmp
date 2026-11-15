@@ -31,6 +31,20 @@ class PhoneBadgeTest {
     }
 }
 
+class HidingExplainedTest {
+    @Test
+    fun shownOnceThenRemembered() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val store = BadgeTestStore()
+        val settings = SettingsController(JournalSettings(store), dispatcher)
+        assertFalse(settings.currentState.hidingExplained)
+
+        settings.hidingExplained()
+        assertTrue(settings.currentState.hidingExplained)
+        assertTrue(SettingsController(JournalSettings(store), dispatcher).currentState.hidingExplained)
+    }
+}
+
 class ShareJpegXlTest {
     @Test
     fun jpegXlIsSharedAsJpegUntilTurnedOff() = runTest {

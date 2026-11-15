@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -107,6 +108,8 @@ internal val LibraryColors: LibraryPalette
 @Composable
 internal fun LibraryTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val palette = if (dark) DarkLibraryPalette else LightLibraryPalette
+    // Dates follow the app's language (the configuration's), also where it differs from the JVM's default (previews).
+    dateLocale = LocalConfiguration.current.locales[0]
     CompositionLocalProvider(LocalLibraryPalette provides palette) {
         MaterialTheme(colorScheme = if (dark) DarkMaterialColors else LightMaterialColors, typography = MaterialTheme.typography, content = content)
     }
@@ -283,9 +286,16 @@ internal fun dayLabel(day: LocalDay): String {
     }
 }
 
-/** [skeleton] is a CLDR skeleton; the locale decides order and punctuation. */
+/**
+ * The locale dates are written in: the configuration's first, set by [LibraryTheme] (so a Hebrew preview, or a per-app
+ * language, has Hebrew dates); the JVM's default until a theme has been drawn.
+ */
+@Volatile
+internal var dateLocale: Locale? = null
+
+/** [skeleton] is a CLDR skeleton; the locale ([dateLocale]) decides order and punctuation. */
 internal fun formatDate(date: java.time.temporal.TemporalAccessor, skeleton: String): String {
-    val locale = Locale.getDefault()
+    val locale = dateLocale ?: Locale.getDefault()
     return formatters.getOrPut(locale to skeleton) {
         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     }.format(date)

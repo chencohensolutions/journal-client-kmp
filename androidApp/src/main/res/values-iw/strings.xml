@@ -41,14 +41,14 @@
     <string name="library_limited_change">שינוי</string>
     <string name="library_no_access_title">ליומן אין גישה לתמונות שלך</string>
     <string name="library_no_access_body">אפשרו גישה כדי לראות כאן את התמונות והסרטונים שלך.</string>
-    <string name="library_rejected_title">המכשיר הזה לא רשום בשרת</string>
-    <string name="library_rejected_body">השרת כבר לא מקבל את התעודה של המכשיר הזה. רשמו אותו מחדש עם קוד רישום חדש.</string>
+    <string name="library_rejected_title">הטלפון הזה לא רשום בשרת</string>
+    <string name="library_rejected_body">השרת כבר לא מקבל את התעודה של הטלפון הזה. רשמו אותו מחדש עם קוד רישום חדש.</string>
     <string name="library_rejected_action">רישום מחדש</string>
-    <string name="library_empty">עדיין אין תמונות או סרטונים במכשיר הזה.</string>
+    <string name="library_empty">עדיין אין תמונות או סרטונים בטלפון הזה.</string>
     <string name="library_load_error">לא ניתן לקרוא את התמונות שלך: %s</string>
     <string name="library_photo_description">תמונה, %s</string>
     <string name="library_video_description">סרטון, %s</string>
-    <string name="library_backup_not_backed_up">רק במכשיר הזה</string>
+    <string name="library_backup_not_backed_up">רק בטלפון הזה</string>
     <string name="library_backup_queued">ממתין להעלאה</string>
     <string name="library_backup_uploading">מועלה לשרת שלך</string>
     <string name="library_backup_done">מגובה</string>
@@ -93,7 +93,7 @@
     <string name="library_tags">תגיות</string>
     <string name="library_find_tag">חיפוש תגיות</string>
     <string name="library_tags_empty">עדיין אין תגיות. פתחו תמונה, הציגו את הפרטים שלה והקישו על + תגית.</string>
-    <string name="library_tag_empty">אין במכשיר הזה תמונות עם התגית הזו.</string>
+    <string name="library_tag_empty">אין בטלפון הזה תמונות עם התגית הזו.</string>
     <string name="library_tag">תגית</string>
     <string name="library_remove_tag">הסרת התגית %s</string>
     <string name="library_info_tags">תגיות</string>
@@ -128,7 +128,7 @@
     <string name="enroll_step_confirm">אישור</string>
     <string name="enroll_step_register">רישום</string>
     <string name="enroll_code_title">הזנת קוד רישום</string>
-    <string name="enroll_code_body">בשרת שלך, הריצו journal-server enroll-code וסרקו את קוד ה-QR, הדביקו את הקישור שהוא מדפיס, או הקלידו את הכתובת והקוד.</string>
+    <string name="enroll_code_body">סרקו את קוד ה-QR ממי שמפעיל את השרת שלך, או הדביקו את הקישור ששלחו לך.</string>
     <string name="enroll_server_address">כתובת השרת</string>
     <string name="enroll_server_address_help">לדוגמה 192.168.50.2:8080</string>
     <string name="enroll_code">קוד רישום</string>
@@ -197,9 +197,9 @@
     <string name="settings_on_phone_badge_body">מסמנת תמונות שנמצאות בטלפון הזה וגם מגובות. לתמונות שממתינות להעלאה, בהעלאה או שההעלאה שלהן נכשלה תמיד יש תגית.</string>
     <string name="settings_share_jxl_as_jpeg">שיתוף JPEG XL כ-JPEG</string>
     <string name="settings_share_jxl_as_jpeg_body">תמונות שנשמרו כ-JPEG XL משותפות כקובץ ה-JPEG שממנו נוצרו, בדיוק כפי שהיה, כדי שכל אפליקציה תוכל לפתוח אותן. כשההגדרה כבויה, הן משותפות כ-JPEG XL.</string>
-    <string name="settings_private_title">מדיה פרטית</string>
+    <string name="settings_private_title">פרטי</string>
     <string name="settings_private_switch">הצגת מדיה פרטית</string>
-    <string name="settings_private_switch_body">תמונות וסרטונים שסימנת כפרטיים. כשכבוי: מוסתרים בטלפון הזה ולא יורדים.</string>
+    <string name="settings_private_switch_body">תמונות וסרטונים שסימנת כפרטיים. כשכבוי: לא מוצגים בטלפון הזה ולא יורדים.</string>
     <string name="settings_gap_title">שורה חדשה אחרי הפסקה של</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">שעה אחת</item>
@@ -274,7 +274,7 @@
     <string name="settings_backup_status_stopped">נעצר: %s. ננסה שוב מאוחר יותר.</string>
     <string name="settings_backup_wait_network">ממתין: רשת ה-Wi-Fi הזו לא ברשימה</string>
     <string name="settings_backup_wait_location">ממתין: יש לאפשר מיקום כדי לבדוק את רשת ה-Wi-Fi</string>
-    <string name="settings_backup_wait_registration">ממתין: יש לרשום את המכשיר מחדש</string>
+    <string name="settings_backup_wait_registration">ממתין: יש לרשום את הטלפון מחדש</string>
     <string name="settings_backup_wait_access">ממתין: יש לאפשר גישה לתמונות</string>
     <string name="settings_backup_off">כבוי. שום דבר לא מועלה.</string>
     <string name="settings_backup_sources_title">מה לגבות</string>
@@ -309,14 +309,14 @@
     <string name="library_private_marking">מסמן כפרטי…</string>
     <string name="library_private_unmarking">מבטל סימון כפרטי…</string>
     <string name="library_private_mark_title">לסמן כפרטי?</string>
-    <string name="library_private_mark_body">הפריט יוסתר בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
+    <string name="library_private_mark_body">הפריט לא יוצג באף אחד מהמכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר ממנו לא יורד. גם העריכות והקבצים המשויכים אליו מסומנים. אפשר לבטל את הסימון כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_mark_confirm">סימון כפרטי</string>
     <plurals name="search_private_title">
         <item quantity="one">לסמן תמונה אחת כפרטית?</item>
         <item quantity="two">לסמן %d תמונות כפרטיות?</item>
         <item quantity="other">לסמן %d תמונות כפרטיות?</item>
     </plurals>
-    <string name="search_private_body">הן יוסתרו בכל המכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר מהן לא יורד. גם העריכות והקבצים המשויכים אליהן מסומנים. אפשר לבטל את הסימון של כל אחת כשהצגת מדיה פרטית פועלת.</string>
+    <string name="search_private_body">הן לא יוצגו באף אחד מהמכשירים שלך כל עוד הצגת מדיה פרטית כבויה, ושום דבר מהן לא יורד. גם העריכות והקבצים המשויכים אליהן מסומנים. אפשר לבטל את הסימון של כל אחת כשהצגת מדיה פרטית פועלת.</string>
     <string name="library_private_unreachable">לא שונה: אין חיבור לשרת שלך.</string>
     <string name="library_info_type">סוג</string>
     <string name="library_info_source">מקור</string>
@@ -555,7 +555,7 @@
         <item quantity="two">הצגת %d תמונות</item>
         <item quantity="other">הצגת %d תמונות</item>
     </plurals>
-    <string name="settings_hidden_title">הגדרות פרטיות</string>
+    <string name="settings_hidden_title">מוסתר ופרטי</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
     <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה</string>
     <string name="hidden_nudity_title">עירום</string>
@@ -576,10 +576,10 @@
         <item quantity="two">%s תמונות וסרטונים</item>
         <item quantity="other">%s תמונות וסרטונים</item>
     </plurals>
-    <string name="phone_lock_locked">נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר.</string>
+    <string name="phone_lock_locked">נעול. פתחו בנעילת הטלפון כדי לראות מה מוסתר ומה פרטי.</string>
     <string name="phone_lock_unlock">פתיחה</string>
     <string name="phone_lock_prompt">טביעת אצבע, פנים או נעילת המסך</string>
-    <string name="phone_lock_none">הגדירו נעילת מסך בטלפון הזה (קוד, קו ביטול נעילה או סיסמה) כדי לפתוח את האוספים המוסתרים.</string>
+    <string name="phone_lock_none">הגדירו נעילת מסך בטלפון הזה (קוד, קו ביטול נעילה או סיסמה) כדי לפתוח את מוסתר ופרטי.</string>
     <string name="explore_people">אנשים</string>
     <string name="people_none_yet">עוד לא נמצאו פנים. השרת מוצא אותן כשהוא קורא את התמונות.</string>
     <string name="people_no_names">עוד אף אחד לא קיבל שם. תנו שם לקבוצה למטה, והתמונות שלהם יימצאו מעכשיו.</string>
@@ -708,7 +708,7 @@
     <string name="timeline_close">סגירה</string>
     <string name="timeline_counts">%1$d תמונות · %2$d ימים</string>
 
-    <!-- Sound recordings: Moments, a recording's page, Hidden collections (since Oct 25, 2026). -->
+    <!-- Sound recordings: Moments, a recording's page, Hidden and private (since Oct 25, 2026). -->
     <string name="audio_recording">הקלטה</string>
     <string name="audio_recording_at">הקלטה · %s</string>
     <string name="audio_voice_message">הודעה קולית</string>
@@ -752,7 +752,7 @@
     <string name="sources_of_imported">מתוך מה שיובא</string>
     <string name="sources_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
     <string name="sources_more">עוד %1$s</string>
-    <string name="sources_private_about">הגדרות פרטיות יכולות להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן.</string>
+    <string name="sources_private_about">במסך מוסתר ופרטי (בהגדרות) אפשר להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן.</string>
     <string name="sources_other_about">%1$s: קבצים שהשם והתיקייה שלהם לא מספרים דבר: הורדות, תמונות שנשמרו, קבצים ממחשב.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">שורה חדשה אחרי שעה</item>
@@ -769,7 +769,7 @@
 
     <!-- הגדרות › גיבוי: תיקיות של שיחות והקלטות (מסבב מעבדת הממשק ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">הוספת תיקייה</string>
-    <string name="backup_note">תיקיות של שיחות והקלטות מגובות גם כשהן מוסתרות בהגדרות הפרטיות.</string>
+    <string name="backup_note">תיקיות של שיחות והקלטות מגובות גם כשהן מוסתרות בכל המכשירים שלך.</string>
     <string name="backup_add_title">לגבות את %s?</string>
     <plurals name="backup_files">
         <item quantity="one">קובץ קול אחד</item>
@@ -930,8 +930,8 @@
         <item quantity="other">%1$s סוגים מוסתרים בכל המכשירים שלך</item>
     </plurals>
     <string name="settings_moments_filter_title">מה מוצג ברגעים</string>
-    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
-    <string name="private_everywhere">להציג בכל המכשירים שלך</string>
+    <!-- Hidden and private, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">מוסתר בכל המכשירים שלך</string>
     <string name="private_intro">כבו סוג כדי להסתיר אותו בכל המכשירים שלך: לא בספרייה, בספירות או בחיפוש. שום דבר לא נמחק. העמוד נפתח רק עם נעילת הטלפון.</string>
     <string name="private_hidden">%1$s · מוסתר בכל המכשירים שלך</string>
     <string name="private_screenshots_body">%1$s · לפי האפליקציה שבה צולמו</string>
@@ -939,7 +939,7 @@
     <!-- Settings › Backup › Copies on other disks -->
     <string name="copies_title">עותקים בדיסקים אחרים</string>
     <string name="copies_body">השרת שומר את הקבצים שלך גם בתיקיות האלה, כך שדיסק שנכשל לא ייקח אותם.</string>
-    <string name="copies_none">אין עותקים עדיין. מגדירים אותם בשרת, ב-config.json.</string>
+    <string name="copies_none">אין עותקים עדיין. מגדירים אותם בשרת שלך.</string>
     <string name="copies_files_of">%1$s מתוך %2$s קבצים</string>
     <string name="copies_up_to_date">מעודכן</string>
     <plurals name="copies_to_copy">
@@ -1268,4 +1268,21 @@
     <string name="cast_start_failed">לא הצלחנו להתחיל להציג בטלוויזיה.</string>
     <string name="library_loading">טוען…</string>
     <string name="message_dismiss">סגירה</string>
+    <string name="hiding_explainer_title">מה ההבדל</string>
+    <string name="hiding_explainer_intro">מהקל אל החזק:</string>
+    <string name="hiding_shown_title">מה מוצג באפליקציה</string>
+    <string name="hiding_shown_body">רק בטלפון הזה: מקור לא יופיע ברגעים, בגילוי ובחיפוש.</string>
+    <string name="hiding_everywhere_title">מוסתר בכל המכשירים שלך</string>
+    <string name="hiding_everywhere_body">סוגים ועירום שלא מגיעים לטלפונים שלך בכלל.</string>
+    <string name="hiding_tucked_title">מוצנע</string>
+    <string name="hiding_tucked_body">תמונות בודדות שלא מופיעות בתצוגות היומיומיות ובחיפוש; אפשר לראות אותן שוב מאחורי נעילת הטלפון.</string>
+    <string name="hiding_private_title">פרטי</string>
+    <string name="hiding_private_body">תמונות בודדות שמוצגות רק כשהצגת מדיה פרטית פועלת; אפשר למנוע אותן ממכשיר.</string>
+    <string name="hiding_explainer_continue">הבנתי</string>
+    <string name="library_go_to_moments">למעבר לרגעים</string>
+    <string name="settings_display_title">תצוגה ושיתוף</string>
+    <string name="storyline_show_switch">הצגה בסיפור שלי</string>
+    <string name="enroll_code_command">בשרת עצמו: journal-server enroll-code</string>
+    <string name="group_save_name">שמירת השם</string>
+    <string name="feed_route_separator">" ← "</string>
 </resources>

@@ -409,31 +409,43 @@ private fun PersonChips(people: List<Person>, onRemove: (String) -> Unit) {
 @Composable
 private fun SearchMessage(text: String) = EmptyState(text)
 
-/** "Search" at the top of the page; the field is at the bottom. */
+/**
+ * "Search" at the top of the page, with back before it ([onClose]: closes search, as the TitleBar's back does; it was a
+ * round ✕ beside the field, a thumb from the field's own clear ✕, until Nov 16, 2026); the field is at the bottom.
+ */
 @Composable
-internal fun SearchTopBar(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().statusBarRoom().padding(start = 16.dp, top = 8.dp, bottom = 8.dp)) {
+internal fun SearchTopBar(onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    Row(
+        modifier.fillMaxWidth().statusBarRoom().padding(start = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = {
+            keyboard?.hide()
+            onClose()
+        }) {
+            Icon(LibraryIcons.Back, stringResource(R.string.search_close), tint = LibraryColors.OnBackground)
+        }
         Text(
             stringResource(R.string.search_title),
             color = LibraryColors.OnBackground,
             style = LibraryType.ScreenTitle,
-            fontWeight = FontWeight.Bold,
             modifier = Modifier.height(48.dp).semantics { heading() },
         )
     }
 }
 
 /**
- * The tab bar turned into the field: the search when the keyboard's search key is pressed, ✕ ([onClose]) back to the
- * tabs, and above it the Filter pill once there are matches to narrow. It opens with the keyboard up when nothing was
- * searched yet.
+ * The tab bar turned into the field, the full width: the search when the keyboard's search key is pressed, and above it
+ * the Filter pill once there are matches to narrow. It opens with the keyboard up when nothing was searched yet. Back
+ * (the system's, or [SearchTopBar]'s) returns to the tabs.
  */
 @Composable
-internal fun SearchBottomBar(search: SearchState, actions: SearchActions, onClose: () -> Unit) {
+internal fun SearchBottomBar(search: SearchState, actions: SearchActions) {
     var filtering by rememberSaveable { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (search.canFilter) FilterPill(search) { filtering = true }
-        SearchField(search, actions.search, actions.clear, onClose)
+        SearchField(search, actions.search, actions.clear)
     }
     if (filtering) FilterSheet(search, actions) { filtering = false }
 }
@@ -594,9 +606,9 @@ private const val LOAD_AHEAD_ROWS = 5
 /** Years per row of the filter sheet. */
 private const val YEAR_COLUMNS = 4
 
-/** The field itself, with its clear button or spinner, and ✕. */
+/** The field itself, with its clear button or spinner. */
 @Composable
-private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit, onClose: () -> Unit) {
+private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear: () -> Unit) {
     var text by rememberSaveable { mutableStateOf(search.query) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
@@ -644,12 +656,6 @@ private fun SearchField(search: SearchState, onSearch: (String) -> Unit, onClear
                     Icon(LibraryIcons.Close, stringResource(R.string.search_clear), tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
                 }
             }
-        }
-        RoundBarButton(onClick = {
-            keyboard?.hide()
-            onClose()
-        }) {
-            Icon(LibraryIcons.Close, stringResource(R.string.search_close), tint = LibraryColors.OnBackground)
         }
     }
 }

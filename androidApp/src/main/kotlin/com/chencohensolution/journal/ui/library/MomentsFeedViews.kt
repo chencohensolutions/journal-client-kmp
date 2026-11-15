@@ -126,8 +126,8 @@ internal class FeedActions(
 internal sealed interface FeedRow {
     val key: String
 
-    /** [count]: the row's photos; [towns]: "Tel Aviv → Jaffa", empty when it has no places. */
-    data class Heading(val section: FeedSection, val count: Int, val towns: String) : FeedRow {
+    /** [count]: the row's photos; [towns]: the places in order ("Tel Aviv → Jaffa" once joined), empty when none. */
+    data class Heading(val section: FeedSection, val count: Int, val towns: List<String>) : FeedRow {
         override val key get() = "heading-${section.key}"
     }
 
@@ -258,7 +258,7 @@ private fun rows(entries: List<FeedEntry>): List<FeedRow> = entries.flatMap { en
             val heading = FeedRow.Heading(
                 section,
                 section.moments.sumOf { it.count() },
-                section.places.take(MAX_TOWNS).joinToString(" → ")
+                section.places.take(MAX_TOWNS),
             )
             listOf(heading) + section.parts.flatMap { part ->
                 if (part is FeedSound) return@flatMap listOf(FeedRow.Sound(section, part))
@@ -498,7 +498,8 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
         ) {
             // A row of only tucked-away photos says only its pill.
             if (count > 0 || section.tucked == 0) Text(
-                (heading.towns.ifEmpty { null }?.let { "$it · " }.orEmpty()) +
+                // Joined by the language's arrow: " → " in English, " ← " in Hebrew, which reads right to left.
+                (heading.towns.ifEmpty { null }?.joinToString(stringResource(R.string.feed_route_separator))?.let { "$it · " }.orEmpty()) +
                         pluralStringResource(R.plurals.library_story_items, count, count),
                 color = LibraryColors.Muted,
                 style = LibraryType.Small,

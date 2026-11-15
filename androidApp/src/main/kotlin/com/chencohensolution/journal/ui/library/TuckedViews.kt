@@ -176,6 +176,9 @@ internal class PickingExtras(
     val takeOut: (() -> Unit)? = null,
     /** Moments, two or more photos picked: Make a moment's sheet (a name, highlights, the days it shows on). */
     val makeMoment: (() -> Unit)? = null,
+    /** A person's page: "Not Mom" for every photo picked ([notThemLabel]). */
+    val notThem: (() -> Unit)? = null,
+    val notThemLabel: String? = null,
 )
 
 /**
@@ -208,6 +211,10 @@ internal fun PickingBar(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var confirmingPrivate by remember { mutableStateOf(false) }
+    // The first Tuck away or Mark private from this bar explains the four ways first (once; SettingsState.hidingExplained).
+    val explained = LocalHidingExplained.current
+    var explainThen by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun explainedFirst(action: () -> Unit) = if (explained.shown) action() else explainThen = action
     // What the server is asked until it answers: "private", "tuck", "back"; null when nothing is.
     var busy by remember { mutableStateOf<String?>(null) }
     val bringBack = canBringBack && allTucked(picked)
@@ -226,15 +233,17 @@ internal fun PickingBar(
     }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val single = picked.size == 1
+        // Each an icon with a small label, as a bar of actions (the UX review, Nov 16, 2026).
         val extraButtons = buildList {
             if (single) {
-                extras.write?.let { add((if (extras.written) R.string.picking_edit else R.string.picking_write) to it) }
-                extras.crop?.let { add(R.string.feed_menu_crop to it) }
-                extras.tag?.let { add(R.string.library_tag to it) }
+                extras.write?.let { add(Extra(stringResource(if (extras.written) R.string.picking_edit else R.string.picking_write), LibraryIcons.Edit, it)) }
+                extras.crop?.let { add(Extra(stringResource(R.string.feed_menu_crop), LibraryIcons.Crop, it)) }
+                extras.tag?.let { add(Extra(stringResource(R.string.library_tag), LibraryIcons.Tag, it)) }
             }
-            extras.makeMoment?.let { add(R.string.make_moment to it) }
-            extras.merge?.let { add(R.string.feed_merge to it) }
-            extras.takeOut?.let { add(R.string.picking_take_out to it) }
+            extras.makeMoment?.let { add(Extra(stringResource(R.string.make_moment), LibraryIcons.Plus, it)) }
+            extras.merge?.let { add(Extra(stringResource(R.string.feed_merge), LibraryIcons.Stack, it)) }
+            extras.takeOut?.let { add(Extra(stringResource(R.string.picking_take_out), LibraryIcons.Minus, it)) }
+            extras.notThem?.let { add(Extra(extras.notThemLabel.orEmpty(), LibraryIcons.Close, it)) }
         }
         // Write · Crop · Tag (or Merge) grow in and out as the picks change, and cross-fade between them.
         val lastExtras = remember { arrayOf(extraButtons) }
@@ -244,11 +253,7 @@ internal fun PickingBar(
                 Modifier.background(LibraryColors.Inverse, RoundedCornerShape(50)).padding(4.dp).animateContentSize(motion()),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                lastExtras[0].forEach { (label, action) ->
-                    TextButton(onClick = action, enabled = busy == null) {
-                        Text(stringResource(label), color = LibraryColors.OnInverse, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
-                    }
-                }
+                lastExtras[0].forEach { extra -> ExtraButton(extra, enabled = busy == null) }
             }
         }
         Row(
@@ -268,7 +273,7 @@ internal fun PickingBar(
                 )
             }
             BarButton(stringResource(R.string.library_private_mark), busy == "private", enabled = picked.isNotEmpty() && busy == null) {
-                confirmingPrivate = true
+                explainedFirst { confirmingPrivate = true }
             }
             // Tuck away turns into Bring back (and back) as tucked and untucked photos are picked.
             AnimatedContent(
@@ -281,11 +286,24 @@ internal fun PickingBar(
                         lock { send("back", { tucked.setTucked(picked, false) }, false) }
                     }
                     "tuck" -> BarButton(stringResource(R.string.tucked_tuck_away), busy == "tuck", enabled = picked.isNotEmpty() && busy == null) {
-                        send("tuck", { tucked.setTucked(picked, true) }, true)
+                        explainedFirst { send("tuck", { tucked.setTucked(picked, true) }, true) }
                     }
                 }
             }
         }
+    }
+    explainThen?.let { then ->
+        HidingExplainerSheet(
+            onContinue = {
+                explained.markShown()
+                explainThen = null
+                then()
+            },
+            onDismiss = {
+                explained.markShown()
+                explainThen = null
+            },
+        )
     }
     if (confirmingPrivate) {
         ConfirmSheet(
@@ -299,6 +317,23 @@ internal fun PickingBar(
             },
             onDismiss = { confirmingPrivate = false },
         )
+    }
+}
+
+/** One of the picking bar's actions above it: an icon and its label. */
+private class Extra(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val action: () -> Unit)
+
+@Composable
+private fun ExtraButton(extra: Extra, enabled: Boolean) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .clickable(enabled = enabled, role = Role.Button, onClick = extra.action)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(extra.icon, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(20.dp))
+        Text(extra.label, color = LibraryColors.OnInverse, style = LibraryType.Tiny, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 

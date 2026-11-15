@@ -75,3 +75,11 @@ document and faces the phone keeps when the server can't be reached; naming, mer
   `ServerFeaturesScreenshots.kt`; UI lab: `explore-people`, `person`, `group`.
 - iOS: `PeopleViews.swift`, `PeopleViewModels.swift`, `.person` in `LibraryRootView.swift`; faces through
   `ServerImages.face`.
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- A person's page: a **long press starts picking**, as everywhere (it meant "Not Mom" before): the shared picking bar,
+  with **Not Mom** (for every photo picked) above Mark private and Tuck away; in Best first's grid too.
+- Who's this?: the button beside the name field reads **Save name**; the keyboard's Done saves too.

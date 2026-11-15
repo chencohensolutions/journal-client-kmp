@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,7 +63,7 @@ import com.chencohensolution.journal.server.ServerLibrary
 import java.text.NumberFormat
 
 /**
- * Settings › Private settings, behind the phone's lock (option c2 of the UI lab, Oct 27, 2026): "Show private media"
+ * Settings › Hidden and private, behind the phone's lock (option c2 of the UI lab, Oct 27, 2026): "Show private media"
  * (this phone's), then what shows on all your devices, one list by kind with a Show switch each (on = shown), the hidden
  * ones included: apps and folders, Screenshots as chips of just the app's name, the sound kinds and Sent to you, the
  * most files first; then Nudity with its slider. The server does the hiding (see [HiddenCollections]); each switch is
@@ -90,7 +91,7 @@ internal fun HiddenScreen(library: ServerLibrary, showPrivate: Boolean, setShowP
     }
 }
 
-/** What Private settings can ask for; see [HiddenCollectionsController]. */
+/** What Hidden and private can ask for; see [HiddenCollectionsController]. */
 internal class HiddenActions(
     val retry: () -> Unit = {},
     /** A kind, or a screenshot app, shown or hidden on every device. */
@@ -105,6 +106,9 @@ internal class HiddenActions(
 @Composable
 internal fun HiddenContent(title: String, state: HiddenCollectionsState, actions: HiddenActions, back: () -> Unit, showPrivate: Boolean = false) {
     SettingsScaffold(title, back) {
+        // What hidden, tucked away and private each mean, folded (the UX review, Nov 16, 2026).
+        Spacer(Modifier.height(8.dp))
+        HidingExplainerCard()
         // This phone's own choice (moved here from Settings, Oct 25, 2026); the rest is the server's, for every device.
         SectionTitle(stringResource(R.string.settings_private_title))
         SettingsCard {

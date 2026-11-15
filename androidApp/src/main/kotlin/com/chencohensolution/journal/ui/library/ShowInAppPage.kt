@@ -36,8 +36,8 @@ import java.text.NumberFormat
  * Settings › Show in the app as a status page (option c3 of the UI lab, Oct 27, 2026), with no switches: a line at the
  * top ("87,343 files" and "15 not backed up ›", or "All backed up"), then a line per kind with its total in a column at
  * the end and "12 not backed up ›" in orange under its name where some of this phone's files aren't on the server yet
- * (tapping it opens Backup); the sound kinds are a second card. Kinds Private settings hides on every device aren't
- * named: one line counts them, with "Private settings ›" (left out until Private settings was opened in this run). A note
+ * (tapping it opens Backup); the sound kinds are a second card. Kinds Hidden and private hides on every device aren't
+ * named: one line counts them, with "Hidden and private ›" (left out until Hidden and private was opened in this run). A note
  * says hiding on this phone is the Moments filter bar's. Drawn inside Settings' page.
  */
 @Composable
@@ -123,7 +123,7 @@ private fun NotBackedUp(n: Int, openBackup: () -> Unit, size: TextUnit) {
     }
 }
 
-/** "🔒 2 kinds hidden on all your devices · Private settings ›", never naming them. */
+/** "🔒 2 kinds hidden on all your devices · Hidden and private ›", never naming them. */
 @Composable
 private fun HiddenEverywhereLine(n: Int, openPrivate: () -> Unit) {
     val text = buildAnnotatedString {

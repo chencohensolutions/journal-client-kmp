@@ -108,15 +108,13 @@ internal class ExploreActions(
     val reloadPeople: () -> Unit = {},
 )
 
-/** Under the top bar: Places, Years or (when the server has face search) People, and the map. */
+/** Under the top bar: Places, Years or (when the server has face search) People; the map is an icon in the title row. */
 @Composable
-internal fun ExploreBar(view: ExploreView, onView: (ExploreView) -> Unit, onMap: () -> Unit, modifier: Modifier = Modifier, people: Boolean = false) {
+internal fun ExploreBar(view: ExploreView, onView: (ExploreView) -> Unit, modifier: Modifier = Modifier, people: Boolean = false) {
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ExploreChip(stringResource(R.string.explore_places), view == ExploreView.PLACES) { onView(ExploreView.PLACES) }
         ExploreChip(stringResource(R.string.explore_years), view == ExploreView.YEARS) { onView(ExploreView.YEARS) }
         if (people) ExploreChip(stringResource(R.string.explore_people), view == ExploreView.PEOPLE) { onView(ExploreView.PEOPLE) }
-        Spacer(Modifier.weight(1f))
-        ExploreChip(stringResource(R.string.explore_map), on = false, icon = LibraryIcons.Map, onClick = onMap)
     }
 }
 
@@ -497,7 +495,7 @@ private fun OnlyHiddenYear(year: YearSummary, onShow: () -> Unit) {
 }
 
 /** "Oct", as the locale writes it. */
-internal fun monthName(month: Int): String = Month.of(month).getDisplayName(TextStyle.SHORT, Locale.getDefault())
+internal fun monthName(month: Int): String = Month.of(month).getDisplayName(TextStyle.SHORT, dateLocale ?: Locale.getDefault())
 
 @Composable
 private fun ExploreMessage(text: String) = EmptyState(text)

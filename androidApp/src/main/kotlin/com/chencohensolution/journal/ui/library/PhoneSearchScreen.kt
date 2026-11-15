@@ -171,8 +171,6 @@ private fun StatusRows(state: PhoneSearchState, actions: PhoneSearchActions, siz
 }
 
 @Composable
-private fun StatusButton(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.padding(top = 2.dp)) {
-        Text(label, color = LibraryColors.OnBackground, fontWeight = FontWeight.Bold)
-    }
-}
+/** A card with a body gets its action as a full-width outlined button at its bottom (docs/screens/style.md). */
+private fun StatusButton(label: String, onClick: () -> Unit) =
+    SecondaryButton(label, onClick, Modifier.fillMaxWidth().padding(top = 10.dp, end = 8.dp, bottom = 4.dp))

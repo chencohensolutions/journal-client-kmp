@@ -113,3 +113,10 @@ the feed rows of [MomentsFeedViews.swift](../../iosApp/iosApp/MomentsFeedViews.s
 [ExploreMapView.swift](../../iosApp/iosApp/ExploreMapView.swift), the tab in
 [JournalHomeView.swift](../../iosApp/iosApp/JournalHomeView.swift) and the routes and what the viewer swipes through
 in [LibraryRootView.swift](../../iosApp/iosApp/LibraryRootView.swift).
+
+## UX review changes (Nov 16, 2026)
+
+Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are in [style.md](style.md).
+
+- **Map** is an icon button in the title row beside Tags and Settings while Explore is the tab (labelled "Map" for
+  TalkBack), no longer a fourth pill after Places, Years and People.

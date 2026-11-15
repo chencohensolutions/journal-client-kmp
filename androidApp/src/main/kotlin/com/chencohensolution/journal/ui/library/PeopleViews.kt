@@ -1,5 +1,11 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.runtime.LaunchedEffect
+
+import androidx.compose.animation.AnimatedVisibility
+
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -268,7 +274,8 @@ private fun PersonState.byDay(): Boolean = sort == PageSort.NEWEST && query.isBl
 /**
  * A person's page: their best photo with the name, ⋯ (Rename, Merge with…, Forget), a search of their photos, the
  * sort, who they are often with, then their photos like the Moments tab (or a grid, best first or best match). Press
- * and hold a photo for "Not Mom".
+ * and hold a photo to start picking, as everywhere: the picking bar, with "Not Mom" for every photo picked (Nov 16, 2026;
+ * a long press meant "Not Mom" before).
  */
 @Composable
 internal fun PersonScreen(
@@ -286,7 +293,11 @@ internal fun PersonScreen(
     var askWho by remember { mutableStateOf<Face?>(null) }
     val name = state.person?.name.orEmpty()
     val rows = rememberPageRows(stories, if (state.byDay()) state.items else emptyList())
-    val feedActions = FeedActions(openItem = { _: FeedSection, item: MediaItem -> actions.openItem(item) }, itemMenu = { sheet = PersonSheet.NotThem(it) })
+    val feedActions = FeedActions(openItem = { _: FeedSection, item: MediaItem -> actions.openItem(item) })
+    // A long press picks photos (the shared picking bar, with Not Mom); back stops picking.
+    val selection = remember { FeedSelection() }
+    BackHandler(enabled = selection.active) { selection.clear() }
+    LaunchedEffect(state.sort, state.query) { selection.clear() }
     val cover = remember(state.items) { state.items.filter { it.type == com.chencohensolution.journal.library.MediaType.IMAGE }.maxByOrNull { it.aesthetic ?: 0f } }
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         LazyColumn(contentPadding = PaddingValues(bottom = insets.calculateBottomPadding() + 48.dp)) {
@@ -321,12 +332,33 @@ internal fun PersonScreen(
                     EditFacesGrid(state, marked) { face -> marked = if (face.id in marked) marked - face.id else marked + face.id }
                 }
             } else if (state.byDay()) {
-                feedItems(rows, feedActions, landing = null, notes = stories.notes)
+                feedItems(rows, feedActions, landing = null, notes = stories.notes, selection = selection)
             } else {
-                photoGrid(state.items, actions.openItem) { sheet = PersonSheet.NotThem(it) }
+                photoGrid(state.items, actions.openItem, selection = selection)
             }
         }
         PageBack(actions.back)
+        AnimatedVisibility(
+            selection.active && !editing,
+            Modifier.align(Alignment.BottomCenter).navigationBarRoom().padding(bottom = 16.dp, start = 12.dp, end = 12.dp),
+            enter = barIn,
+            exit = barOut,
+            label = "picking bar",
+        ) {
+            val picked = if (state.byDay()) rows.picked(selection) else state.items.filter { it.id in selection.keys }
+            PickingBar(
+                picked = picked,
+                onCancel = selection::clear,
+                onDone = { _, _ -> selection.clear() },
+                extras = PickingExtras(
+                    notThem = {
+                        picked.forEach(actions.notThem)
+                        selection.clear()
+                    },
+                    notThemLabel = stringResource(R.string.person_not_them, name),
+                ),
+            )
+        }
         if (editing) {
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(LibraryColors.Background).navigationBarRoom()
@@ -422,16 +454,34 @@ private fun LazyListScope.pageStatus(state: PersonState, retry: () -> Unit) {
     }
 }
 
-/** [items] three to a row, square, in their order; press and hold for [onHold]. */
+/**
+ * [items] three to a row, square, in their order; press and hold for [onHold], or, with a [selection], to start picking
+ * (taps then pick and unpick).
+ */
 @OptIn(ExperimentalFoundationApi::class)
-internal fun LazyListScope.photoGrid(items: List<MediaItem>, onOpen: (MediaItem) -> Unit, onHold: ((MediaItem) -> Unit)? = null) {
+internal fun LazyListScope.photoGrid(
+    items: List<MediaItem>,
+    onOpen: (MediaItem) -> Unit,
+    onHold: ((MediaItem) -> Unit)? = null,
+    selection: FeedSelection? = null,
+) {
     items(items.chunked(3), key = { row -> "grid:" + row.first().id }) { row ->
         Row(Modifier.padding(horizontal = 2.dp, vertical = 1.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             row.forEach { item ->
-                CroppedThumbnail(
-                    item,
-                    Modifier.weight(1f).aspectRatio(1f).combinedClickable(onLongClick = onHold?.let { { it(item) } }, onClick = { onOpen(item) }),
-                )
+                val hold: (() -> Unit)? = when {
+                    selection != null -> { { selection.press(item.id, item.id) } }
+                    onHold != null -> { { onHold(item) } }
+                    else -> null
+                }
+                Box(
+                    Modifier.weight(1f).aspectRatio(1f).combinedClickable(
+                        onLongClick = hold,
+                        onClick = { if (selection?.active == true) selection.toggle(item.id) else onOpen(item) },
+                    ),
+                ) {
+                    CroppedThumbnail(item, Modifier.fillMaxSize())
+                    if (selection != null) PickMark(if (selection.active) item.id in selection.keys else null, Modifier.align(Alignment.TopStart).padding(6.dp))
+                }
             }
             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
         }
@@ -703,8 +753,9 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
                 enabled = ready,
                 modifier = Modifier.height(52.dp).background(if (ready) LibraryColors.Inverse else LibraryColors.Raised, LibraryShapes.Card),
             ) {
+                // "Save name" (Nov 16, 2026: "Name" read as a label); the keyboard's Done saves too.
                 Text(
-                    stringResource(R.string.group_name),
+                    stringResource(R.string.group_save_name),
                     color = if (ready) LibraryColors.OnInverse else LibraryColors.Muted,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp),

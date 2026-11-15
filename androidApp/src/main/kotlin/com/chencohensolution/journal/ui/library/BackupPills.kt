@@ -1,5 +1,7 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.foundation.clickable
+
 import android.text.format.Formatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -98,6 +100,9 @@ internal fun BackupPills(
                 warning = folder?.lost == true,
                 onClick = { if (folder?.lost == true && pickFolder != null) pickFolder() else toggle(pill) },
                 onLongClick = folder?.takeIf { remove != null }?.let { { removing = it.folder } },
+                // A visible way too: an x on the folder's pill (the UX review, Nov 16, 2026).
+                onRemove = folder?.takeIf { remove != null }?.let { { removing = it.folder } },
+                removeLabel = folder?.let { stringResource(R.string.backup_remove_title, it.folder.name) },
             )
         }
         if (pickFolder != null) {
@@ -122,7 +127,16 @@ internal fun BackupPills(
 /** A pill in the look of the app's filter chips, with a long press. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: Boolean = false, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+private fun Pill(
+    label: String,
+    selected: Boolean,
+    icon: ImageVector?,
+    warning: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null,
+    removeLabel: String? = null,
+) {
     val shape = RoundedCornerShape(8.dp)
     val content = when {
         selected -> LibraryColors.OnInverse
@@ -143,6 +157,14 @@ private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: 
             Spacer(Modifier.width(8.dp))
         }
         Text(label, color = content, style = LibraryType.Body, fontWeight = FontWeight.Medium)
+        if (onRemove != null) {
+            Box(
+                Modifier.padding(start = 6.dp).size(20.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = removeLabel, onClick = onRemove),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(LibraryIcons.Close, removeLabel, tint = content, modifier = Modifier.size(14.dp))
+            }
+        }
     }
 }
 

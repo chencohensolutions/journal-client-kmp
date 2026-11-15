@@ -2,6 +2,7 @@ package com.chencohensolution.journal.ui.library
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -27,7 +28,7 @@ fun PhotoAccess() = JournalTheme { PhotoAccessScreen(onAllow = {}, onNotNow = {}
 @Preview(name = "light", device = PHONE, showBackground = true)
 @Composable
 fun MomentsEmpty() = Screen {
-    JournalHomeScreen(LibraryState(access = PhotoAccess.FULL, complete = true), PreviewData.stories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+    JournalHomeScreen(LibraryState(access = PhotoAccess.FULL, complete = true), PreviewData.stories.copy(ready = true), ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
 }
 
 @PreviewTest
@@ -114,6 +115,61 @@ fun NameMomentSheet() = Screen {
     FormSheet("Name this moment", "Save", {}, {}) {
         androidx.compose.material3.OutlinedTextField("Jaffa at night", {}, androidx.compose.ui.Modifier.fillMaxWidth(), singleLine = true)
     }
+}
+
+// Round 4: the route line in Hebrew (towns joined by "←", dates in Hebrew), the explainer, empty states with a button.
+
+/** The preview feed with Hebrew town names on every row. */
+private val hebrewTownsStories = PreviewData.feedStories.copy(
+    feed = PreviewData.feedStories.feed.copy(
+        entries = PreviewData.feedStories.feed.entries.map { entry ->
+            if (entry is FeedEntry.Section && entry.section.places.isNotEmpty()) {
+                FeedEntry.Section(entry.section.copy(places = listOf("תל אביב", "יפו", "חיפה").take(entry.section.places.size.coerceAtLeast(2))))
+            } else {
+                entry
+            }
+        },
+    ),
+)
+
+@PreviewTest
+@Preview(name = "light-he", locale = "iw", device = PHONE, showBackground = true)
+@Composable
+fun MomentsHebrewTowns() = Screen {
+    JournalHomeScreen(PreviewData.library, hebrewTownsStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Preview(name = "light-he", locale = "iw", device = PHONE, showBackground = true)
+@Composable
+fun HidingExplainerOverMoments() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.feedStories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS)
+    HidingExplainerSheet(onContinue = {}, onDismiss = {})
+}
+
+@PreviewTest
+@Preview(name = "light", device = "spec:width=390dp,height=1500dp,dpi=420", showBackground = true)
+@Composable
+fun HiddenAndPrivateExplained() = Screen {
+    androidx.compose.foundation.layout.Column {
+        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(80.dp))
+        HidingExplainerCard(initiallyOpen = true)
+    }
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Composable
+fun StorylineEmpty() = Screen {
+    JournalHomeScreen(PreviewData.library, PreviewData.stories.copy(ready = true), ServerHealth.OK, HomeActions())
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Composable
+fun TagsEmpty() = Screen {
+    TagsScreen(PreviewData.stories, onOpenTag = {}, onBack = {}, onGoToMoments = {})
 }
 
 /** The first set of the preview feed's photos. */

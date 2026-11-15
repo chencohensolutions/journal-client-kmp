@@ -1,5 +1,13 @@
 package com.chencohensolution.journal.ui.library
 
+import androidx.compose.ui.semantics.Role
+
+import androidx.compose.foundation.selection.selectable
+
+import androidx.compose.material3.SwitchDefaults
+
+import androidx.compose.material3.Switch
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -243,30 +251,36 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
     }
 }
 
-/** With writing: "In the storyline" with Remove, or "Not in the storyline" with Add back. */
+/**
+ * With writing: a "Show in the storyline" switch (Nov 16, 2026; before, "In the storyline · Remove" in red, or "Not in
+ * the storyline · Add back"). Off keeps the writing, as Remove did.
+ */
 @Composable
 private fun StorylineRow(inStoryline: Boolean, setInStoryline: (Boolean) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(stringResource(R.string.storyline_title), color = LibraryColors.OnInverseMuted, style = LibraryType.Small)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().selectable(selected = inStoryline, role = Role.Switch) { setInStoryline(!inStoryline) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                stringResource(if (inStoryline) R.string.storyline_in else R.string.storyline_not_in),
+                stringResource(R.string.storyline_show_switch),
                 color = LibraryColors.OnInverse,
                 style = LibraryType.Body,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
-            if (inStoryline) {
-                TextButton(onClick = { setInStoryline(false) }) {
-                    Icon(LibraryIcons.Minus, null, tint = LibraryColors.Error, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.storyline_remove_short), color = LibraryColors.Error, modifier = Modifier.padding(start = 4.dp))
-                }
-            } else {
-                TextButton(onClick = { setInStoryline(true) }) {
-                    Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.storyline_add_back), color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
-                }
-            }
+            Switch(
+                checked = inStoryline,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = LibraryColors.Inverse,
+                    checkedTrackColor = LibraryColors.OnInverse,
+                    uncheckedThumbColor = LibraryColors.OnInverseMuted,
+                    uncheckedTrackColor = LibraryColors.Inverse,
+                    uncheckedBorderColor = LibraryColors.OnInverseMuted,
+                ),
+            )
         }
     }
 }

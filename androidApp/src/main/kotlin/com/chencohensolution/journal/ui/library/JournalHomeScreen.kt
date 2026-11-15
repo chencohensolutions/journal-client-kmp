@@ -116,6 +116,8 @@ internal enum class HomeTab { STORYLINE, MOMENTS, EXPLORE }
 private const val SEARCH_FACES = 16
 
 internal class HomeActions(
+    /** The "N not backed up" pill: Settings › Backup. */
+    val openBackup: () -> Unit = {},
     /** A photo of the Moments tab; the viewer swipes through its row. */
     val openItem: (FeedSection, MediaItem) -> Unit = { _, _ -> },
     /** A photo of the storyline; the viewer swipes through the storyline. */
@@ -534,7 +536,7 @@ internal fun JournalHomeScreen(
                         item(key = "empty") { Message(stringResource(R.string.library_empty)) }
                 }
                 if (storyline && stories.storyline.isEmpty() && !library.isEmpty) {
-                    item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty)) }
+                    item(key = "no-storyline") { Message(stringResource(R.string.storyline_empty), stringResource(R.string.library_go_to_moments)) { tab = HomeTab.MOMENTS } }
                 }
                 if (moments && !momentsWaiting && stories.feed.entries.isEmpty() && !library.isEmpty) {
                     item(key = "nothing-shown") { Message(stringResource(R.string.feed_nothing_shown)) }
@@ -546,7 +548,7 @@ internal fun JournalHomeScreen(
         }
 
         if (searching) {
-            SearchTopBar(Modifier.align(Alignment.TopCenter))
+            SearchTopBar(onClose = { searching = false }, modifier = Modifier.align(Alignment.TopCenter))
             BottomControls(
                 summary = null,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
@@ -556,7 +558,7 @@ internal fun JournalHomeScreen(
                     if (picking) {
                         SearchPickingBar(search, searchPicks, actions.search)
                     } else {
-                        SearchBottomBar(search, actions.search, onClose = { searching = false })
+                        SearchBottomBar(search, actions.search)
                     }
                 }
             }
@@ -567,9 +569,10 @@ internal fun JournalHomeScreen(
             titleHeight = titleHeight,
             fade = { topFade.value },
             modifier = Modifier.align(Alignment.TopCenter),
+            openMap = actions.explore.openMap.takeIf { tab == HomeTab.EXPLORE },
         ) {
             if (moments && stories.shownSources.showFilterBar) FeedSourceBar(stories.feed, actions.toggleSource, Modifier.padding(top = 4.dp))
-            if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, actions.explore.openMap, Modifier.padding(top = 4.dp), people = people != null)
+            if (tab == HomeTab.EXPLORE) ExploreBar(exploreView, { exploreView = it }, Modifier.padding(top = 4.dp), people = people != null)
         }
 
         pinned?.takeIf { moments && !searching }?.let { moment ->
@@ -582,6 +585,7 @@ internal fun JournalHomeScreen(
             summary = backupSummary(library, backupRunning).takeIf { !selection.active && !timelineOpen },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             summaryHidden = bottomHidden,
+            openSummary = actions.openBackup,
         ) {
             // The picking bar slides up over the tabs as picking starts, and back down as it ends (Nov 8, 2026).
             AnimatedContent(
@@ -755,6 +759,8 @@ private fun TopBar(
     /** How much of the fade behind the bar shows (0 to 1) while the bar itself shows: none at the list's top. */
     fade: () -> Float,
     modifier: Modifier = Modifier,
+    /** Explore's map, an icon beside Tags and Settings while Explore is the tab (not a fourth filter pill). */
+    openMap: (() -> Unit)? = null,
     below: @Composable () -> Unit = {},
 ) {
     // How much of the controls shows: 1 in place, 0 slid away.
@@ -780,6 +786,11 @@ private fun TopBar(
                         modifier = Modifier.weight(1f).semantics { heading() },
                     )
                     if (health == ServerHealth.OFFLINE) OfflinePill()
+                    if (openMap != null) {
+                        IconButton(onClick = openMap) {
+                            Icon(LibraryIcons.Map, stringResource(R.string.explore_map), tint = LibraryColors.OnBackground)
+                        }
+                    }
                     IconButton(onClick = actions.openTags) {
                         Icon(LibraryIcons.Tag, stringResource(R.string.library_tags), tint = LibraryColors.OnBackground)
                     }
@@ -882,8 +893,11 @@ private fun HomeCard(title: String, body: String?, action: String, onAction: () 
 @Composable
 private fun Message(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) = EmptyState(text, actionLabel = actionLabel, onAction = onAction)
 
-/** A request to show [itemId] in the Moments tab; a new one each time, so the same photo can be asked for again. */
-internal class ShowInMoments(val itemId: String)
+/**
+ * A request to show [itemId] in the Moments tab (null: just the tab); a new one each time, so the same photo can be
+ * asked for again.
+ */
+internal class ShowInMoments(val itemId: String?)
 
 /** Whether the first Moments frame was measured in this process (see [Measure]). */
 private var firstMomentsFrameLogged = false

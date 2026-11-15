@@ -176,7 +176,14 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
     WizardHeader(stepNumber = 1, label = R.string.enroll_step_connect, onBack = actions.back)
     StepBody {
         Title(stringResource(R.string.enroll_code_title), Modifier.padding(top = 24.dp))
+        // The way most people get a code first; the server's own command second and smaller (Nov 16, 2026).
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
+        Text(
+            stringResource(R.string.enroll_code_command),
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
         // One above the other: side by side, "Scan QR code" wraps on a phone.
         Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             com.chencohensolution.journal.ui.library.SecondaryButton(stringResource(R.string.enroll_scan), actions.scan, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = !step.checking, icon = Icons.QrCode)

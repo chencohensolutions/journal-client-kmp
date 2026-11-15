@@ -198,14 +198,10 @@ private fun BackupSection(ui: BackupUi, actions: BackupActions, openCopies: () -
                         }
                     }
                 }
-                TextButton(onClick = actions.addCurrentNetwork) {
-                    Text(stringResource(R.string.settings_backup_add_network), color = LibraryColors.OnBackground)
-                }
+                SecondaryButton(stringResource(R.string.settings_backup_add_network), actions.addCurrentNetwork, Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 if (settings.wifiNetworks.isNotEmpty() && !ui.canCheckNetworkInBackground) {
                     Text(stringResource(R.string.settings_backup_background_location), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
-                    TextButton(onClick = actions.allowBackgroundLocation) {
-                        Text(stringResource(R.string.settings_backup_background_location_button), color = LibraryColors.OnBackground)
-                    }
+                    SecondaryButton(stringResource(R.string.settings_backup_background_location_button), actions.allowBackgroundLocation, Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
                 }
             }
         }

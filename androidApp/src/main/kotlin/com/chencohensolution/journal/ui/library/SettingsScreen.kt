@@ -69,7 +69,7 @@ internal class SettingsActions(
     val setGapHours: (Int) -> Unit = {},
     val setSimilarityPercent: (Int) -> Unit = {},
     val resetSimilarity: () -> Unit = {},
-    /** Opens Hidden collections (behind the phone's lock). */
+    /** Opens Hidden and private (behind the phone's lock). */
     val openHidden: () -> Unit = {},
     /** Opens Settings › Your cameras. */
     val openCameras: () -> Unit = {},
@@ -101,7 +101,7 @@ internal class SettingsActions(
     val back: () -> Unit = {},
 )
 
-/** Settings' first page, and the pages its rows open. Backup, Free up space, Hidden collections and Search are screens of their own. */
+/** Settings' first page, and the pages its rows open. Backup, Free up space, Hidden and private and Search are screens of their own. */
 internal enum class SettingsPage { MAIN, SHOWN, MOMENTS, STORAGE, LOADING_MOMENTS }
 
 /**
@@ -120,7 +120,7 @@ internal fun SettingsScreen(
     backupActions: BackupActions = BackupActions(),
     storage: StorageUi? = null,
     storageActions: StorageActions = StorageActions(),
-    /** How far the library's sync is, shown on Hidden collections' row (after a change there); null when not syncing. */
+    /** How far the library's sync is, shown on Hidden and private' row (after a change there); null when not syncing. */
     syncProgress: SyncProgress? = null,
     /** Search › On this phone, when the server lets phones keep its indexes; null: none. For Search's row. */
     phoneSearch: com.chencohensolution.journal.local.PhoneSearchState? = null,
@@ -181,7 +181,10 @@ private fun MainPage(
             RowDivider()
         }
         PageRow(stringResource(R.string.settings_moments_title), momentsSummary(settings)) { actions.openPage(SettingsPage.MOMENTS) }
-        RowDivider()
+    }
+    // Every group has a heading (the UX review, Nov 16, 2026): the switches about how photos show and are shared have their own.
+    SectionTitle(stringResource(R.string.settings_display_title))
+    Card {
         SwitchRow(
             title = stringResource(R.string.settings_on_phone_badge),
             body = stringResource(R.string.settings_on_phone_badge_body),
@@ -197,7 +200,7 @@ private fun MainPage(
         )
     }
     SectionTitle(stringResource(R.string.settings_privacy_title))
-    // Show private media is in Private settings, behind the phone's lock (asked Oct 25, 2026).
+    // Show private media is in Hidden and private, behind the phone's lock (asked Oct 25, 2026).
     Card { HiddenRow(syncProgress, actions.openHidden) }
     if (backup != null || storage != null) {
         SectionTitle(stringResource(R.string.settings_backup_storage_title))
@@ -211,13 +214,12 @@ private fun MainPage(
             }
         }
     }
-    Column(Modifier.padding(top = 20.dp)) {
-        Card {
-            SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch)
-            if (models != null && models.models.isNotEmpty()) {
-                RowDivider()
-                ModelsRow(models, actions.openModels)
-            }
+    SectionTitle(stringResource(R.string.settings_search_title))
+    Card {
+        SearchSettingsRow(settings.searchPageSize, indexing, phoneSearch, actions.openSearch)
+        if (models != null && models.models.isNotEmpty()) {
+            RowDivider()
+            ModelsRow(models, actions.openModels)
         }
     }
     AdvancedSection(settings.momentsPaging) { actions.openPage(SettingsPage.LOADING_MOMENTS) }
@@ -465,14 +467,12 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
         )
         Text(stringResource(R.string.settings_similarity_body), color = LibraryColors.Muted, style = LibraryType.Caption)
         if (!similarity.isDefault) {
-            TextButton(onClick = actions.resetSimilarity, modifier = Modifier.padding(top = 4.dp)) {
-                Text(stringResource(R.string.settings_similarity_reset, similarity.defaultPercent), color = LibraryColors.OnBackground)
-            }
+            SecondaryButton(stringResource(R.string.settings_similarity_reset, similarity.defaultPercent), actions.resetSimilarity, Modifier.fillMaxWidth().padding(top = 12.dp))
         }
     }
 }
 
-/** Private settings (Show private media, nudity, sound recordings, WhatsApp, screenshots), with how far the library is in reading the server's list again after a change there. */
+/** Hidden and private (Show private media, nudity, sound recordings, WhatsApp, screenshots), with how far the library is in reading the server's list again after a change there. */
 @Composable
 private fun HiddenRow(syncProgress: SyncProgress?, openHidden: () -> Unit) {
     Row(

@@ -303,6 +303,7 @@ private fun LibraryScreens(
             LocalSharedTransitionScope provides this,
             LocalTucked provides tuckedActions,
             LocalShowOnPhoneBadge provides settingsState.showOnPhoneBadge,
+            LocalHidingExplained provides HidingExplained(settingsState.hidingExplained, settings::hidingExplained),
             // Show in the app's pills in the "Showing" sheets of Moments and Explore.
             LocalShownSources provides ShownSourcesChoice(
                 storiesState.shownSources,
@@ -332,6 +333,7 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     health = journalState.health,
                                     actions = HomeActions(
+                                        openBackup = { push(Route.BackupSettings) },
                                         openItem = { section, item -> push(Route.Viewer(section.key, item.id)) },
                                         openStoryline = { push(Route.Viewer(null, it.id, storyline = true)) },
                                         openTags = { push(Route.Tags) },
@@ -667,7 +669,16 @@ private fun LibraryScreens(
                                         onBack = pop,
                                     )
                                 }
-                                Route.Tags -> TagsScreen(storiesState, onOpenTag = { push(Route.Tag(it)) }, onBack = pop)
+                                Route.Tags -> TagsScreen(
+                                    storiesState,
+                                    onOpenTag = { push(Route.Tag(it)) },
+                                    onBack = pop,
+                                    onGoToMoments = {
+                                        landing = null
+                                        showInMoments = ShowInMoments(null)
+                                        stack = listOf(Route.Journal)
+                                    },
+                                )
                                 is Route.Tag -> TagScreen(
                                     tag = route.name,
                                     stories = storiesState,

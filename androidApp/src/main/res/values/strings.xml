@@ -37,16 +37,16 @@
         <item quantity="other">Journal can see %d photos and videos</item>
     </plurals>
     <string name="library_limited_change">Change</string>
-    <string name="library_no_access_title">Journal can\'t see your photos</string>
+    <string name="library_no_access_title">Journal can’t see your photos</string>
     <string name="library_no_access_body">Allow access to see your photos and videos here.</string>
-    <string name="library_rejected_title">This device isn\'t registered with the server</string>
-    <string name="library_rejected_body">The server doesn\'t accept this device\'s certificate anymore. Register it again with a new enrollment code.</string>
+    <string name="library_rejected_title">This phone isn’t registered with the server</string>
+    <string name="library_rejected_body">The server doesn’t accept this phone’s certificate anymore. Register it again with a new enrollment code.</string>
     <string name="library_rejected_action">Register again</string>
-    <string name="library_empty">No photos or videos on this device yet.</string>
-    <string name="library_load_error">Couldn\'t read your photos: %s</string>
+    <string name="library_empty">No photos or videos on this phone yet.</string>
+    <string name="library_load_error">Couldn’t read your photos: %s</string>
     <string name="library_photo_description">Photo, %s</string>
     <string name="library_video_description">Video, %s</string>
-    <string name="library_backup_not_backed_up">Only on this device</string>
+    <string name="library_backup_not_backed_up">Only on this phone</string>
     <string name="library_backup_queued">Waiting to upload</string>
     <string name="library_backup_uploading">Uploading to your server</string>
     <string name="library_backup_done">Backed up</string>
@@ -90,7 +90,7 @@
     <string name="library_tags">Tags</string>
     <string name="library_find_tag">Search tags</string>
     <string name="library_tags_empty">No tags yet. Open a photo, show its details and tap + Tag.</string>
-    <string name="library_tag_empty">No photos on this device have this tag.</string>
+    <string name="library_tag_empty">No photos on this phone have this tag.</string>
     <string name="library_tag">Tag</string>
     <string name="library_remove_tag">Remove tag %s</string>
     <string name="library_info_tags">Tags</string>
@@ -114,7 +114,7 @@
     <string name="enroll_welcome_step1_title">Get an enrollment code</string>
     <string name="enroll_welcome_step1_body">Create one on the server. It works once and expires after 10 minutes.</string>
     <string name="enroll_welcome_step2_title">Type the code here</string>
-    <string name="enroll_welcome_step2_body">Along with your server\'s address.</string>
+    <string name="enroll_welcome_step2_body">Along with your server’s address.</string>
     <string name="enroll_welcome_step3_title">The server issues a certificate</string>
     <string name="enroll_welcome_step3_body">From then on, this device signs in automatically.</string>
     <string name="enroll_get_started">Get started</string>
@@ -124,14 +124,14 @@
     <string name="enroll_step_confirm">Confirm</string>
     <string name="enroll_step_register">Register</string>
     <string name="enroll_code_title">Enter enrollment code</string>
-    <string name="enroll_code_body">On your server, run journal-server enroll-code and scan its QR code, paste the link it prints, or type the address and code.</string>
+    <string name="enroll_code_body">Scan the QR code from whoever runs your server, or paste the link they sent.</string>
     <string name="enroll_server_address">Server address</string>
     <string name="enroll_server_address_help">For example 192.168.50.2:8080</string>
     <string name="enroll_code">Enrollment code</string>
     <string name="enroll_code_help">8 letters and digits. Works once, expires 10 minutes after it was created.</string>
     <string name="enroll_continue">Continue</string>
     <string name="enroll_scan">Scan QR code</string>
-    <string name="enroll_scan_failed">Couldn\'t open the QR code scanner. Type the code instead.</string>
+    <string name="enroll_scan_failed">Couldn’t open the QR code scanner. Type the code instead.</string>
     <string name="enroll_paste">Paste link</string>
     <string name="enroll_paste_nothing">Nothing to paste. Copy the enrollment link or code first.</string>
     <string name="enroll_confirm_title">Register this device?</string>
@@ -141,7 +141,7 @@
     <string name="enroll_code_expires">Code %1$s · expires in %2$d min</string>
     <string name="enroll_device_name">Device name</string>
     <string name="enroll_device_name_help">Shown on the server so you can tell devices apart and revoke one later.</string>
-    <string name="enroll_key_notice">A new key will be created in this phone\'s secure hardware. It can\'t be copied, exported or backed up.</string>
+    <string name="enroll_key_notice">A new key will be created in this phone’s secure hardware. It can’t be copied, exported or backed up.</string>
     <string name="enroll_register">Register device</string>
     <string name="enroll_registering_title">Registering %s</string>
     <string name="enroll_registering_body">This takes a few seconds. Keep the app open.</string>
@@ -154,7 +154,7 @@
     <string name="enroll_progress_test">Test connection</string>
     <string name="enroll_progress_test_detail">Signing in with the new certificate</string>
     <string name="enroll_cancel">Cancel</string>
-    <string name="enroll_done_title">You\'re connected</string>
+    <string name="enroll_done_title">You’re connected</string>
     <string name="enroll_done_body">This device is registered as %s.</string>
     <string name="enroll_device">Device</string>
     <string name="enroll_key">Key</string>
@@ -164,7 +164,7 @@
     <string name="enroll_key_secure_enclave">Secure Enclave</string>
     <string name="enroll_key_software">Software (emulator)</string>
     <string name="enroll_open_journal">Open journal</string>
-    <string name="enroll_failed_code_title">That code didn\'t work</string>
+    <string name="enroll_failed_code_title">That code didn’t work</string>
     <string name="enroll_failed_code_body">The server rejected %s. It may be mistyped, expired or already used. Each code works once, for 10 minutes.</string>
     <string name="enroll_failed_title">Registration failed</string>
     <string name="enroll_failed_new_code">Create a new code on the server</string>
@@ -174,7 +174,7 @@
     <string name="enroll_error_missing_code">Enter the enrollment code.</string>
     <string name="enroll_error_invalid_code">This code is wrong, expired or already used.</string>
     <string name="enroll_error_rate_limited">Too many wrong codes. Wait a minute and try again.</string>
-    <string name="enroll_error_request_rejected">The server could not process this device\'s certificate request.</string>
+    <string name="enroll_error_request_rejected">The server could not process this device’s certificate request.</string>
     <string name="enroll_error_unreachable">Could not reach the server: %s</string>
     <string name="enroll_error_key_store">The device key store failed: %s</string>
     <string name="enroll_error_connection_test">The certificate was issued, but signing in with it failed: %s</string>
@@ -193,9 +193,9 @@
     <string name="settings_on_phone_badge_body">Marks photos that are on this phone and backed up. Photos waiting to upload, uploading or failed always have a badge.</string>
     <string name="settings_share_jxl_as_jpeg">Share JPEG XL as JPEG</string>
     <string name="settings_share_jxl_as_jpeg_body">Photos kept as JPEG XL are shared as the JPEG they were made from, exactly as it was, so every app can open them. Off, they are shared as JPEG XL.</string>
-    <string name="settings_private_title">Private media</string>
+    <string name="settings_private_title">Private</string>
     <string name="settings_private_switch">Show private media</string>
-    <string name="settings_private_switch_body">Photos and videos you marked private. Off: hidden on this phone, and not downloaded.</string>
+    <string name="settings_private_switch_body">Photos and videos you marked private. Off: not shown on this phone, and not downloaded.</string>
     <string name="settings_gap_title">New row after a break of</string>
     <plurals name="settings_gap_hours">
         <item quantity="one">%d hour</item>
@@ -243,9 +243,9 @@
     <string name="crop_mode_portrait">Portrait</string>
     <string name="crop_mode_landscape">Landscape</string>
     <string name="crop_hint_moments">Any shape. This is how the photo shows in Moments.</string>
-    <string name="crop_hint_portrait">Your screen\'s shape. Shown when you view it with the phone upright.</string>
-    <string name="crop_hint_landscape">Your screen\'s shape, sideways. Shown when you view it with the phone turned.</string>
-    <string name="crop_untouched">The photo itself isn\'t changed.</string>
+    <string name="crop_hint_portrait">Your screen’s shape. Shown when you view it with the phone upright.</string>
+    <string name="crop_hint_landscape">Your screen’s shape, sideways. Shown when you view it with the phone turned.</string>
+    <string name="crop_untouched">The photo itself isn’t changed.</string>
     <!-- Viewer -->
     <string name="viewer_write">Write</string>
     <string name="viewer_cropped">Cropped</string>
@@ -277,7 +277,7 @@
     <string name="settings_backup_status_stopped">Stopped: %s. It tries again later.</string>
     <string name="settings_backup_wait_network">Waiting: this Wi-Fi network isn’t on the list</string>
     <string name="settings_backup_wait_location">Waiting: allow location so the Wi-Fi network can be checked</string>
-    <string name="settings_backup_wait_registration">Waiting: register this device again</string>
+    <string name="settings_backup_wait_registration">Waiting: register this phone again</string>
     <string name="settings_backup_wait_access">Waiting: allow access to photos</string>
     <string name="settings_backup_off">Off. Nothing is uploaded.</string>
     <string name="settings_backup_sources_title">What to back up</string>
@@ -312,13 +312,13 @@
     <string name="library_private_marking">Marking private…</string>
     <string name="library_private_unmarking">Unmarking private…</string>
     <string name="library_private_mark_title">Mark private?</string>
-    <string name="library_private_mark_body">It’s hidden on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
+    <string name="library_private_mark_body">It’s kept out of sight on all your devices while Show private media is off, and nothing of it is downloaded. Its edits and paired files are marked too. You can unmark it with Show private media on.</string>
     <string name="library_private_mark_confirm">Mark private</string>
     <plurals name="search_private_title">
         <item quantity="one">Mark %d photo private?</item>
         <item quantity="other">Mark %d photos private?</item>
     </plurals>
-    <string name="search_private_body">They’re hidden on all your devices while Show private media is off, and nothing of them is downloaded. Their edits and paired files are marked too. You can unmark each with Show private media on.</string>
+    <string name="search_private_body">They’re kept out of sight on all your devices while Show private media is off, and nothing of them is downloaded. Their edits and paired files are marked too. You can unmark each with Show private media on.</string>
     <string name="library_private_unreachable">Not changed: can’t reach your server.</string>
     <string name="library_info_type">Type</string>
     <string name="library_info_source">From</string>
@@ -468,11 +468,11 @@
     <string name="map_no_photos">No photos with a location yet.</string>
     <!-- Which sources the app shows: Settings › Show in the app, the Moments chips and band, Explore's line and sheet -->
     <string name="settings_shown_title">Show in the app</string>
-    <string name="settings_say_hidden">Say what\'s hidden</string>
+    <string name="settings_say_hidden">Say what’s hidden</string>
     <string name="settings_say_hidden_body">“+6 WhatsApp” on a day, tap to see them</string>
     <string name="settings_filter_bar">Filter bar in Moments</string>
     <string name="settings_filter_bar_body">The row of sources above the feed. When off, choose them here.</string>
-    <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn\'t change what is backed up.</string>
+    <string name="settings_shown_stories">Photos you wrote about always show in the storyline. Hiding never deletes anything and doesn’t change what is backed up.</string>
     <string name="feed_hidden_chip">+%1$,d %2$s</string>
     <string name="feed_hide_source">Hide %1$s</string>
     <string name="feed_reveal_always">Always show this day</string>
@@ -487,12 +487,12 @@
     <string name="explore_show_them">Show them</string>
     <string name="explore_sheet_title">Showing</string>
     <string name="explore_sheet_body">The same in Moments and Explore.</string>
-    <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town\'s page.</string>
+    <string name="explore_sheet_whatsapp">Most WhatsApp photos have no location, so few of them are on the map either way. Hiding them mostly changes Years and the photos on a town’s page.</string>
     <string name="settings_first_image">Quick image while scrolling</string>
     <string name="settings_video_frames_on_phone">Make video thumbnails on this phone</string>
     <string name="settings_video_frames_on_phone_body">Videos only on the server show their first frame. With this on, the phone gets the frame from the video itself and decodes it, so your server does less work, but each video takes about 0.3 to 2 MB instead of tens of KB.</string>
     <string name="settings_first_image_body">Photos only on the server show a small image at once, and the sharp one when you stop scrolling. A smaller image loads faster but looks softer.</string>
-    <string name="settings_first_image_size">Width, of the screen\'s</string>
+    <string name="settings_first_image_size">Width, of the screen’s</string>
     <string name="settings_first_image_off">None</string>
     <string name="settings_viewer_ahead">Photos made ready while swiping</string>
     <string name="settings_viewer_ahead_body">In the photo viewer, how many photos on each side of the one shown are prepared at screen size, so they slide in sharp. More: uses more memory.</string>
@@ -503,7 +503,7 @@
     <string name="search_close">Back to the tabs</string>
     <string name="search_clear">Clear</string>
     <string name="search_field_hint">Describe a photo</string>
-    <string name="search_hint">Describe what\'s in the photo, in your own words: \"a dog on the beach at sunset\", \"birthday cake\", \"snow in the mountains\". Search looks at the pictures themselves, not their names.</string>
+    <string name="search_hint">Describe what’s in the photo, in your own words: \"a dog on the beach at sunset\", \"birthday cake\", \"snow in the mountains\". Search looks at the pictures themselves, not their names.</string>
     <plurals name="search_found">
         <item quantity="one">%d photo, best first</item>
         <item quantity="other">%d photos, best first</item>
@@ -522,8 +522,8 @@
     <string name="search_by_person">Search by person</string>
     <string name="search_remove_person">Remove %1$s</string>
     <string name="search_off">Search is off on your server.</string>
-    <string name="search_offline">Can\'t reach your server. Search works when the server can be reached.</string>
-    <string name="search_server_error">The server couldn\'t search: %1$s</string>
+    <string name="search_offline">Can’t reach your server. Search works when the server can be reached.</string>
+    <string name="search_server_error">The server couldn’t search: %1$s</string>
     <string name="settings_search_title">Search</string>
     <string name="settings_search_page">Photos per page</string>
     <string name="settings_search_page_body">How many photos a search shows at first. Scrolling near the end shows the next page.</string>
@@ -535,7 +535,7 @@
         <item quantity="one">Show %d photo</item>
         <item quantity="other">Show %d photos</item>
     </plurals>
-    <string name="settings_hidden_title">Private settings</string>
+    <string name="settings_hidden_title">Hidden and private</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
     <string name="settings_hidden_row_body">Private media, nudity, sound recordings, apps and screenshots by app</string>
     <string name="hidden_nudity_title">Nudity</string>
@@ -554,10 +554,10 @@
         <item quantity="one">%s photo or video</item>
         <item quantity="other">%s photos and videos</item>
     </plurals>
-    <string name="phone_lock_locked">Locked. Unlock with your phone’s lock to see what is hidden.</string>
+    <string name="phone_lock_locked">Locked. Unlock with your phone’s lock to see what is hidden and private.</string>
     <string name="phone_lock_unlock">Unlock</string>
     <string name="phone_lock_prompt">Use your fingerprint, face or screen lock</string>
-    <string name="phone_lock_none">Set a screen lock on this phone (PIN, pattern or password) to open Hidden collections.</string>
+    <string name="phone_lock_none">Set a screen lock on this phone (PIN, pattern or password) to open Hidden and private.</string>
     <!-- People, a photo's findings and On this phone (docs/screens/people.md, settings.md). -->
     <string name="explore_people">People</string>
     <string name="people_none_yet">No faces found yet. Your server finds them as it reads your photos.</string>
@@ -656,8 +656,8 @@
     <string name="indexing_of">%1$s of %2$s</string>
     <string name="indexing_waiting">Waiting for other runs</string>
     <plurals name="indexing_waiting_body">
-        <item quantity="one">%d run ahead of yours. Only one runs at a time, to keep the server\'s memory free.</item>
-        <item quantity="other">%d runs ahead of yours. Only one runs at a time, to keep the server\'s memory free.</item>
+        <item quantity="one">%d run ahead of yours. Only one runs at a time, to keep the server’s memory free.</item>
+        <item quantity="other">%d runs ahead of yours. Only one runs at a time, to keep the server’s memory free.</item>
     </plurals>
     <string name="indexing_paused">Paused at %1$s of %2$s</string>
     <string name="indexing_paused_body">The server let go of its models while paused. Resume goes on from here.</string>
@@ -665,10 +665,10 @@
     <string name="indexing_last_stopped">Stopped %1$s after %2$s photos</string>
     <string name="indexing_never">No run yet</string>
     <string name="indexing_up_to_date">New photos are read every night.</string>
-    <string name="indexing_could_not_read">%d couldn\'t be read</string>
-    <string name="indexing_failed">It couldn\'t go on: %s</string>
+    <string name="indexing_could_not_read">%d couldn’t be read</string>
+    <string name="indexing_failed">It couldn’t go on: %s</string>
     <string name="indexing_next">Next nightly run: %s</string>
-    <string name="indexing_error">Can\'t reach the server: %s</string>
+    <string name="indexing_error">Can’t reach the server: %s</string>
     <string name="indexing_start">Read new photos now</string>
     <string name="indexing_pause">Pause</string>
     <string name="indexing_resume">Resume</string>
@@ -677,11 +677,11 @@
     <!-- Moments: going to a date (FeedTimelineViews.kt) -->
     <string name="timeline_older">Older month</string>
     <string name="timeline_newer">Newer month</string>
-    <string name="timeline_open">Show the month\'s days</string>
+    <string name="timeline_open">Show the month’s days</string>
     <string name="timeline_close">Close</string>
     <string name="timeline_counts">%1$d photos · %2$d days</string>
 
-    <!-- Sound recordings: Moments, a recording's page, Hidden collections (since Oct 25, 2026). -->
+    <!-- Sound recordings: Moments, a recording’s page, Hidden and private (since Oct 25, 2026). -->
     <string name="audio_recording">Recording</string>
     <string name="audio_recording_at">Recording · %s</string>
     <string name="audio_voice_message">Voice message</string>
@@ -724,7 +724,7 @@
     <string name="sources_of_imported">Of what was imported</string>
     <string name="sources_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
     <string name="sources_more">%1$s more</string>
-    <string name="sources_private_about">Private settings can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren\'t counted here.</string>
+    <string name="sources_private_about">Hidden and private (in Settings) can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren’t counted here.</string>
     <string name="sources_other_about">%1$s: files whose name and folder say nothing: downloads, saved images, files from a computer.</string>
     <plurals name="settings_moments_gap_summary">
         <item quantity="one">New row after %d hour</item>
@@ -741,7 +741,7 @@
 
     <!-- Settings › Backup: folders of calls and recordings (promoted from UI lab round ux/backup/2026-10-25, b2). -->
     <string name="backup_pick">Add a folder</string>
-    <string name="backup_note">Folders of calls and recordings are backed up even while they are hidden in Private settings.</string>
+    <string name="backup_note">Folders of calls and recordings are backed up even while they are hidden on all your devices.</string>
     <string name="backup_add_title">Back up %s?</string>
     <plurals name="backup_files">
         <item quantity="one">%s sound file</item>
@@ -755,7 +755,7 @@
     <string name="backup_add_body">New files in it are backed up as they come, even while hidden. Calls keep who they were with, as the phone named each file.</string>
     <string name="backup_add_confirm">Back it up</string>
     <string name="backup_add_cancel">Cancel</string>
-    <string name="backup_folder_unreadable">The app can\'t read that folder.</string>
+    <string name="backup_folder_unreadable">The app can’t read that folder.</string>
     <string name="backup_folder_lost">%s · pick again</string>
     <string name="backup_keep_title">Keep on this phone</string>
     <string name="backup_keep_flac">Recordings as FLAC</string>
@@ -885,16 +885,16 @@
         <item quantity="other">%1$s kinds hidden on all your devices</item>
     </plurals>
     <string name="settings_moments_filter_title">What Moments shows</string>
-    <!-- Private settings, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
-    <string name="private_everywhere">Show on all your devices</string>
-    <string name="private_intro">Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone\'s lock.</string>
+    <!-- Hidden and private, one list by kind (private c2 of the UI lab, Oct 27, 2026). -->
+    <string name="private_everywhere">Hidden on all your devices</string>
+    <string name="private_intro">Turn a kind off to hide it on all your devices: not in the library, its counts or search. Nothing is deleted. This page opens only with the phone’s lock.</string>
     <string name="private_hidden">%1$s · Hidden on all your devices</string>
     <string name="private_screenshots_body">%1$s · by the app they were taken in</string>
     <string name="private_no_app">No app name</string>
     <!-- Settings › Backup › Copies on other disks -->
     <string name="copies_title">Copies on other disks</string>
     <string name="copies_body">Your server also keeps your files in these folders, so a failing disk doesn’t take them.</string>
-    <string name="copies_none">No copies yet. They are set up on the server, in config.json.</string>
+    <string name="copies_none">No copies yet. They are set up on your server.</string>
     <string name="copies_files_of">%1$s of %2$s files</string>
     <string name="copies_up_to_date">Up to date</string>
     <plurals name="copies_to_copy">
@@ -1085,7 +1085,7 @@
 
     <!-- Settings › Models on this phone (ModelsScreen.kt) -->
     <string name="models_title">Models on this phone</string>
-    <string name="models_intro">The app runs these models on this phone. They\'re downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app. Until one is here, its feature uses a simpler way or your server.</string>
+    <string name="models_intro">The app runs these models on this phone. They’re downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app. Until one is here, its feature uses a simpler way or your server.</string>
     <string name="models_photos_title">Photo similarity</string>
     <string name="models_photos_body">Finds photos of the same scene for sets in Moments</string>
     <string name="models_words_title">Search by words</string>
@@ -1096,24 +1096,24 @@
     <string name="models_missing_size_unknown">Not downloaded</string>
     <string name="models_downloading">Downloading %1$s of %2$s</string>
     <string name="models_waiting">Waiting for Wi-Fi</string>
-    <string name="models_not_offered">Your server doesn\'t offer it yet</string>
-    <string name="models_failed">Couldn\'t download</string>
+    <string name="models_not_offered">Your server doesn’t offer it yet</string>
+    <string name="models_failed">Couldn’t download</string>
     <string name="models_download">Download</string>
     <string name="models_download_now">Download now</string>
     <string name="models_pause">Pause</string>
     <string name="models_try_again">Try again</string>
     <string name="models_delete">Delete</string>
     <string name="models_download_all">Download all · %1$s</string>
-    <string name="models_offline">Your server can\'t be reached. What\'s downloaded still works.</string>
+    <string name="models_offline">Your server can’t be reached. What’s downloaded still works.</string>
     <string name="models_wifi_only">Only on Wi-Fi</string>
-    <string name="models_wifi_only_body">Downloads wait for Wi-Fi. The same switch as On device search\'s.</string>
+    <string name="models_wifi_only_body">Downloads wait for Wi-Fi. The same switch as On device search’s.</string>
     <string name="models_space">Uses %1$s of this phone · %2$s free</string>
     <string name="models_row">%1$d of %2$d downloaded</string>
     <string name="models_row_downloading">Downloading…</string>
 
     <!-- Onboarding › Models on this phone (ModelsOnboardingScreen.kt) -->
     <string name="models_onboarding_title">Get this phone ready</string>
-    <string name="models_onboarding_body">The app runs a few models on this phone. They\'re downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app.</string>
+    <string name="models_onboarding_body">The app runs a few models on this phone. They’re downloaded once, from where they were published (Hugging Face, Google) or from your server, not with the app.</string>
     <string name="models_onboarding_checking">Asking your server what it offers…</string>
     <string name="models_onboarding_words_size">%1$s model and its %2$s index</string>
     <string name="models_onboarding_wifi_body">Search by words waits for Wi-Fi. Photo similarity is small and downloads now.</string>
@@ -1208,9 +1208,26 @@
     <string name="cast_play">Play on TV</string>
     <string name="cast_pause">Pause on TV</string>
     <string name="cast_no_wifi">The phone needs to be on the same Wi-Fi as the TV.</string>
-    <string name="cast_failed">The TV couldn\'t show this one.</string>
-    <string name="cast_not_on_this_tv">This TV can\'t open Journal yet: it isn\'t set up for it in the Cast console.</string>
-    <string name="cast_start_failed">Couldn\'t start showing on the TV.</string>
+    <string name="cast_failed">The TV couldn’t show this one.</string>
+    <string name="cast_not_on_this_tv">This TV can’t open Journal yet: it isn’t set up for it in the Cast console.</string>
+    <string name="cast_start_failed">Couldn’t start showing on the TV.</string>
     <string name="library_loading">Loading…</string>
     <string name="message_dismiss">Dismiss</string>
+    <string name="hiding_explainer_title">How these differ</string>
+    <string name="hiding_explainer_intro">From lightest to strongest:</string>
+    <string name="hiding_shown_title">Show in the app</string>
+    <string name="hiding_shown_body">This phone only: leaves a source out of Moments, Explore and search.</string>
+    <string name="hiding_everywhere_title">Hidden on all your devices</string>
+    <string name="hiding_everywhere_body">Kinds and nudity that never reach your phones.</string>
+    <string name="hiding_tucked_title">Tucked away</string>
+    <string name="hiding_tucked_body">Single photos left out of everyday views and search; shown again behind the phone’s lock.</string>
+    <string name="hiding_private_title">Private</string>
+    <string name="hiding_private_body">Single photos shown only with Show private media on; a device can be refused them.</string>
+    <string name="hiding_explainer_continue">Got it</string>
+    <string name="library_go_to_moments">Go to Moments</string>
+    <string name="settings_display_title">Display and sharing</string>
+    <string name="storyline_show_switch">Show in the storyline</string>
+    <string name="enroll_code_command">On the server itself: journal-server enroll-code</string>
+    <string name="group_save_name">Save name</string>
+    <string name="feed_route_separator">" → "</string>
 </resources>

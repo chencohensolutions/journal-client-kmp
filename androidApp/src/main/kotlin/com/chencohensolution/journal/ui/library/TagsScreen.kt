@@ -47,7 +47,7 @@ import com.chencohensolution.journal.library.MediaItem
 
 /** Every tag, most recently used first, with a search field. See docs/screens/tags.md. */
 @Composable
-internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBack: () -> Unit) {
+internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBack: () -> Unit, onGoToMoments: (() -> Unit)? = null) {
     var query by rememberSaveable { mutableStateOf("") }
     val tags = if (query.isBlank()) stories.tags else stories.searchTags(query)
     val insets = barsRoom()
@@ -72,7 +72,7 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
                 )
             }
             if (stories.tags.isEmpty()) {
-                item(key = "empty") { Note(stringResource(R.string.library_tags_empty)) }
+                item(key = "empty") { Note(stringResource(R.string.library_tags_empty), onGoToMoments?.let { stringResource(R.string.library_go_to_moments) }, onGoToMoments) }
             }
             items(tags, key = { it.name.lowercase() }) { tag ->
                 Row(

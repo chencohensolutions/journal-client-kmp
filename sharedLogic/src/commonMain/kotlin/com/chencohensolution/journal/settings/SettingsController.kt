@@ -119,6 +119,11 @@ data class SettingsState(
      */
     val showOnPhoneBadge: Boolean = false,
     /**
+     * Whether the explainer of hidden, tucked away and private (Show in the app, Hidden on all your devices, Tucked
+     * away, Private) was shown once from the picking bar; until then Tuck away and Mark private show it first.
+     */
+    val hidingExplained: Boolean = false,
+    /**
      * Whether the viewer's videos play by themselves (muted) when slid onto, and a slideshow plays each to its end; off,
      * a video waits for Play and a slideshow shows it for a slide's time (asked Nov 9, 2026). On by default.
      */
@@ -166,6 +171,7 @@ class SettingsController internal constructor(
             previewOptions = settings.previewOptions,
             privateMedia = settings.privateMedia,
             showOnPhoneBadge = settings.showOnPhoneBadge,
+            hidingExplained = settings.hidingExplained,
             autoplayVideos = settings.autoplayVideos,
             shareJpegXlAsJpeg = settings.shareJpegXlAsJpeg,
             searchPageSize = settings.searchPageSize,
@@ -309,6 +315,12 @@ class SettingsController internal constructor(
     fun setAutoplayVideos(on: Boolean) {
         settings.autoplayVideos = on
         _state.update { it.copy(autoplayVideos = on) }
+    }
+
+    /** The explainer of hidden, tucked away and private was shown: it doesn't show again from the picking bar. */
+    fun hidingExplained() {
+        settings.hidingExplained = true
+        _state.update { it.copy(hidingExplained = true) }
     }
 
     /** The phone badge on photos that are on this phone and backed up, on or off. */

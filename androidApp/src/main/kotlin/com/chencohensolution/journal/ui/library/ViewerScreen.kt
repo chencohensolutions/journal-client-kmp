@@ -1754,7 +1754,13 @@ private fun MomentTitle(name: String?, description: String?, modifier: Modifier 
         ),
     ) {
         if (name != null) {
-            Text(name, color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Rename has a visible button too, not only the long press (the UX review, Nov 16, 2026).
+            androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, color = Color.White, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                IconButton(onClick = onLongClick, modifier = Modifier.size(32.dp)) {
+                    Icon(LibraryIcons.Edit, stringResource(R.string.set_rename), tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+            }
         } else {
             Text(stringResource(R.string.set_name_it), color = Color.White.copy(alpha = 0.7f), style = LibraryType.Body, maxLines = 1)
         }

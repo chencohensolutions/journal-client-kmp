@@ -110,3 +110,14 @@ by enrollment): an ink bar with the text, an optional action and a close button.
 (code outside composition, such as casting, to `AppMessages`). A plain note goes after 6 s; one with an action stays
 until dismissed. "Not changed: can’t reach your server." comes with **Try again** where the change can be sent again
 (Mark private and Tuck away from the picking bar, Mark private and Bring back in the viewer's details).
+
+## Words
+
+- **Hide / hidden** only for Show in the app (this phone) and the kinds hidden on all your devices; **private** only
+  for Mark private and Tucked away. Settings' page for both is **Hidden and private**, and **How these differ**
+  (`HidingExplainer`) says the four, lightest to strongest.
+- **This phone**, not "this device", in the library's strings; enrollment keeps "device", the server's word.
+- Curly apostrophes (’) in `values/strings.xml`.
+- A long press on a photo always starts picking; anything a long press does also has a visible button (rename a
+  moment, remove a backup folder).
+- Every changed or new string is in English and Hebrew (Tucked away is "מוצנע").
