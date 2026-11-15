@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -62,7 +63,6 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Unit) {
     val context = LocalContext.current
-    val insets = barsRoom()
     val freeUp = ui.freeUp
     val rule = freeUp.rule
     val plan = freeUp.plan
@@ -73,113 +73,107 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
     val freeUpNow = { if (ui.canTrashWithoutAsking || plan?.photos == 0 && plan.videos == 0) actions.freeUp() else askAccess = true }
     var moreOptions by rememberSaveable { mutableStateOf(rule != FreeUpRule.Everything) }
 
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            SettingsCard {
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Text(
-                        when {
-                            plan == null -> stringResource(R.string.settings_storage_counting)
-                            plan.groups.isEmpty() -> stringResource(R.string.free_up_nothing)
-                            else -> Formatter.formatShortFileSize(context, plan.bytes)
-                        },
-                        color = LibraryColors.OnBackground,
-                        fontSize = if (plan == null || plan.groups.isEmpty()) 20.sp else 34.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(ruleSummary(rule), color = LibraryColors.OnBackground, fontSize = 15.sp, modifier = Modifier.padding(top = 4.dp))
+    SettingsScaffold(stringResource(R.string.settings_free_up_title), back) {
+        SettingsCard {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text(
+                    when {
+                        plan == null -> stringResource(R.string.settings_storage_counting)
+                        plan.groups.isEmpty() -> stringResource(R.string.free_up_nothing)
+                        else -> Formatter.formatShortFileSize(context, plan.bytes)
+                    },
+                    color = LibraryColors.OnBackground,
+                    fontSize = if (plan == null || plan.groups.isEmpty()) 20.sp else 34.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(ruleSummary(rule), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, modifier = Modifier.padding(top = 4.dp))
+                if (plan != null && plan.groups.isNotEmpty()) {
+                    Text(planDetails(plan), color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(top = 2.dp))
+                } else if (plan != null) {
+                    Text(stringResource(R.string.settings_free_up_plan_none), color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(top = 2.dp))
+                }
+                PrimaryButton(
                     if (plan != null && plan.groups.isNotEmpty()) {
-                        Text(planDetails(plan), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-                    } else if (plan != null) {
-                        Text(stringResource(R.string.settings_free_up_plan_none), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
-                    }
-                    PrimaryButton(
-                        if (plan != null && plan.groups.isNotEmpty()) {
-                            stringResource(R.string.free_up_button_amount, Formatter.formatShortFileSize(context, plan.bytes))
-                        } else {
-                            stringResource(R.string.settings_free_up_button)
-                        },
-                        onClick = { if ((plan?.sounds ?: 0) > 0) askSounds = true else freeUpNow() },
-                        enabled = !running && plan != null && plan.groups.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
-                    )
-                    Text(stringResource(R.string.settings_free_up_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
-                    freeUpStatus(freeUp)?.let { Text(it, color = LibraryColors.OnBackground, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp)) }
-                    if (!running && freeUp.waitingCount > 0) {
-                        TextButton(onClick = actions.moveWaitingToTrash, modifier = Modifier.padding(top = 4.dp)) {
-                            Text(stringResource(R.string.settings_free_up_move_waiting), color = LibraryColors.OnBackground)
-                        }
+                        stringResource(R.string.free_up_button_amount, Formatter.formatShortFileSize(context, plan.bytes))
+                    } else {
+                        stringResource(R.string.settings_free_up_button)
+                    },
+                    onClick = { if ((plan?.sounds ?: 0) > 0) askSounds = true else freeUpNow() },
+                    enabled = !running && plan != null && plan.groups.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
+                )
+                Text(stringResource(R.string.settings_free_up_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 12.dp))
+                freeUpStatus(freeUp)?.let { Text(it, color = LibraryColors.OnBackground, style = LibraryType.Body, modifier = Modifier.padding(top = 12.dp)) }
+                if (!running && freeUp.waitingCount > 0) {
+                    TextButton(onClick = actions.moveWaitingToTrash, modifier = Modifier.padding(top = 4.dp)) {
+                        Text(stringResource(R.string.settings_free_up_move_waiting), color = LibraryColors.OnBackground)
                     }
                 }
             }
+        }
 
-            SectionTitle(stringResource(R.string.free_up_sources))
-            BackupPills(
-                freeUp.pills(),
-                toggle = { pill ->
-                    when (pill) {
-                        is BackupPill.Source -> actions.toggleSource(pill.source)
-                        is BackupPill.Folder -> actions.toggleFolder(pill.folder.treeUri)
-                    }
-                },
-                showBytes = true,
+        SectionTitle(stringResource(R.string.free_up_sources))
+        BackupPills(
+            freeUp.pills(),
+            toggle = { pill ->
+                when (pill) {
+                    is BackupPill.Source -> actions.toggleSource(pill.source)
+                    is BackupPill.Folder -> actions.toggleFolder(pill.folder.treeUri)
+                }
+            },
+            showBytes = true,
+        )
+
+        Row(
+            Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .clickable { moreOptions = !moreOptions }
+                .padding(start = 32.dp, end = 28.dp, top = 12.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.free_up_more), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Icon(
+                LibraryIcons.ChevronDown,
+                contentDescription = null,
+                tint = LibraryColors.Muted,
+                modifier = Modifier.size(20.dp).rotate(if (moreOptions) 180f else 0f),
             )
-
-            Row(
-                Modifier
-                    .padding(top = 12.dp)
-                    .fillMaxWidth()
-                    .clickable { moreOptions = !moreOptions }
-                    .padding(start = 32.dp, end = 28.dp, top = 12.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.free_up_more), color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Icon(
-                    LibraryIcons.ChevronDown,
-                    contentDescription = null,
-                    tint = LibraryColors.Muted,
-                    modifier = Modifier.size(20.dp).rotate(if (moreOptions) 180f else 0f),
-                )
-            }
-            if (moreOptions) {
-                SettingsCard {
-                    Column(Modifier.fillMaxWidth().selectableGroup()) {
-                        ModeOption(
-                            title = stringResource(R.string.free_up_rule_everything),
-                            body = stringResource(R.string.free_up_rule_everything_body),
-                            selected = rule == FreeUpRule.Everything,
-                            onSelect = { actions.setRule(FreeUpRule.Everything) },
-                        )
-                        ModeOption(
-                            title = stringResource(R.string.settings_free_up_older),
-                            body = stringResource(R.string.settings_free_up_older_body),
-                            selected = rule is FreeUpRule.OlderThan,
-                            onSelect = { if (rule !is FreeUpRule.OlderThan) actions.setRule(FreeUpRule.OlderThan(DEFAULT_OLDER_THAN_DAYS)) },
-                        )
-                        // Each choice's values sit under it, shown while it is the one chosen.
-                        if (rule is FreeUpRule.OlderThan) {
-                            OptionChips {
-                                FreeUpRule.DAYS_OPTIONS.forEach { days ->
-                                    Chip(ageText(days), rule.days == days) { actions.setRule(FreeUpRule.OlderThan(days)) }
-                                }
+        }
+        if (moreOptions) {
+            SettingsCard {
+                Column(Modifier.fillMaxWidth().selectableGroup()) {
+                    ModeOption(
+                        title = stringResource(R.string.free_up_rule_everything),
+                        body = stringResource(R.string.free_up_rule_everything_body),
+                        selected = rule == FreeUpRule.Everything,
+                        onSelect = { actions.setRule(FreeUpRule.Everything) },
+                    )
+                    ModeOption(
+                        title = stringResource(R.string.settings_free_up_older),
+                        body = stringResource(R.string.settings_free_up_older_body),
+                        selected = rule is FreeUpRule.OlderThan,
+                        onSelect = { if (rule !is FreeUpRule.OlderThan) actions.setRule(FreeUpRule.OlderThan(DEFAULT_OLDER_THAN_DAYS)) },
+                    )
+                    // Each choice's values sit under it, shown while it is the one chosen.
+                    if (rule is FreeUpRule.OlderThan) {
+                        OptionChips {
+                            FreeUpRule.DAYS_OPTIONS.forEach { days ->
+                                Chip(ageText(days), rule.days == days) { actions.setRule(FreeUpRule.OlderThan(days)) }
                             }
                         }
-                        ModeOption(
-                            title = stringResource(R.string.settings_free_up_keep),
-                            body = stringResource(R.string.settings_free_up_keep_body),
-                            selected = rule is FreeUpRule.KeepNewest,
-                            onSelect = { if (rule !is FreeUpRule.KeepNewest) actions.setRule(FreeUpRule.KeepNewest(DEFAULT_KEEP_GIGABYTES)) },
-                        )
-                        if (rule is FreeUpRule.KeepNewest) {
-                            OptionChips {
-                                FreeUpRule.GIGABYTES_OPTIONS.forEach { gigabytes ->
-                                    Chip(stringResource(R.string.settings_storage_gigabytes, gigabytes), rule.gigabytes == gigabytes) {
-                                        actions.setRule(FreeUpRule.KeepNewest(gigabytes))
-                                    }
+                    }
+                    ModeOption(
+                        title = stringResource(R.string.settings_free_up_keep),
+                        body = stringResource(R.string.settings_free_up_keep_body),
+                        selected = rule is FreeUpRule.KeepNewest,
+                        onSelect = { if (rule !is FreeUpRule.KeepNewest) actions.setRule(FreeUpRule.KeepNewest(DEFAULT_KEEP_GIGABYTES)) },
+                    )
+                    if (rule is FreeUpRule.KeepNewest) {
+                        OptionChips {
+                            FreeUpRule.GIGABYTES_OPTIONS.forEach { gigabytes ->
+                                Chip(stringResource(R.string.settings_storage_gigabytes, gigabytes), rule.gigabytes == gigabytes) {
+                                    actions.setRule(FreeUpRule.KeepNewest(gigabytes))
                                 }
                             }
                         }
@@ -187,7 +181,6 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
                 }
             }
         }
-        TitleBar(stringResource(R.string.settings_free_up_title), back, Modifier.align(Alignment.TopCenter))
     }
 
     if (askSounds && plan != null) {
@@ -234,10 +227,10 @@ private const val DEFAULT_OLDER_THAN_DAYS = 365
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun OptionChips(content: @Composable () -> Unit) {
-    FlowRow(
-        Modifier.padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
+    // One row that scrolls sideways, not uneven wrapped rows.
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 52.dp, end = 16.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) { content() }
 }
 

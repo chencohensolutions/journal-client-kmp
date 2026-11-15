@@ -62,50 +62,37 @@ internal fun SearchSettingsScreen(
     phoneSearch: PhoneSearchState?,
     actions: SearchSettingsActions,
 ) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            if (indexing != null) {
-                SectionTitle(stringResource(R.string.indexing_title))
+    SettingsScaffold(stringResource(R.string.settings_search_title), actions.back) {
+        if (indexing != null) {
+            SectionTitle(stringResource(R.string.indexing_title))
+            PageNote(stringResource(R.string.indexing_intro), bottom = 8)
+            SettingsCard { IndexingRows(indexing, actions) }
+            indexing.nextNightlyMillis?.let { next ->
+                val context = LocalContext.current
                 Text(
-                    stringResource(R.string.indexing_intro),
+                    stringResource(
+                        R.string.indexing_next,
+                        DateUtils.formatDateTime(context, next, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_WEEKDAY),
+                    ),
                     color = LibraryColors.Muted,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(start = 32.dp, end = 32.dp, bottom = 8.dp),
+                    style = LibraryType.Caption,
+                    modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp),
                 )
-                SettingsCard { IndexingRows(indexing, actions) }
-                indexing.nextNightlyMillis?.let { next ->
-                    val context = LocalContext.current
-                    Text(
-                        stringResource(
-                            R.string.indexing_next,
-                            DateUtils.formatDateTime(context, next, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_WEEKDAY),
-                        ),
-                        color = LibraryColors.Muted,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp),
-                    )
-                }
             }
-            SectionTitle(stringResource(R.string.search_settings_results_title))
-            SettingsCard {
-                Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-                    Text(stringResource(R.string.settings_search_page), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.settings_search_page_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
-                    FlowRow(Modifier.padding(top = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SettingsState.SEARCH_PAGE_OPTIONS.forEach { size ->
-                            Chip(size.toString(), searchPageSize == size) { actions.setSearchPageSize(size) }
-                        }
+        }
+        SectionTitle(stringResource(R.string.search_settings_results_title))
+        SettingsCard {
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+                Text(stringResource(R.string.settings_search_page), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_search_page_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
+                FlowRow(Modifier.padding(top = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SettingsState.SEARCH_PAGE_OPTIONS.forEach { size ->
+                        Chip(size.toString(), searchPageSize == size) { actions.setSearchPageSize(size) }
                     }
                 }
             }
-            if (phoneSearch != null) PhoneSearchSection(phoneSearch, actions.phoneSearch)
         }
-        TitleBar(stringResource(R.string.settings_search_title), actions.back, Modifier.align(Alignment.TopCenter))
+        if (phoneSearch != null) PhoneSearchSection(phoneSearch, actions.phoneSearch)
     }
 }
 
@@ -188,13 +175,13 @@ private fun indexName(name: String): Int = when (name) {
 }
 
 @Composable
-private fun Title(text: String) = Text(text, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+private fun Title(text: String) = Text(text, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
 
 @Composable
-private fun Body(text: String, modifier: Modifier = Modifier) = Text(text, color = LibraryColors.Muted, fontSize = 13.sp, modifier = modifier)
+private fun Body(text: String, modifier: Modifier = Modifier) = Text(text, color = LibraryColors.Muted, style = LibraryType.Caption, modifier = modifier)
 
 @Composable
-private fun Warning(text: String) = Text(text, color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
+private fun Warning(text: String) = Text(text, color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
 
 @Composable
 private fun IndexingButton(label: String, enabled: Boolean, onClick: () -> Unit) {

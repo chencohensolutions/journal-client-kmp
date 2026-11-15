@@ -33,6 +33,14 @@ Still missing on iOS:
   picking bar's Mark private, Tuck away and Bring back are plain text buttons of the same weight (`BarButton` in
   `TuckedViews.kt`). Make a moment's "Show it in Moments on" choice and its Make it button are ink; Recompose's Done
   is ink. Android files: `LibraryStyle.kt` (`materialColors`), `LibraryButtons.kt`, `JournalTheme.kt`.
+  Round 2, shared pieces: named text sizes (`LibraryType`: 30/22/13 semibold/16 semibold/14/13/12/11; Search's title
+  30; nothing under 11 but the skip buttons' digits), corners (cards and sheets 16, tiles 12, controls a pill;
+  `LibraryShapes`), one settings page scaffold (`SettingsScaffold` in `LibraryPages.kt`) with `PageNote` intros, one
+  pill chip for choices (ink selected, outlined not, no check mark for single choices; Free up's and Settings ›
+  Moments' choices in one sideways-scrolling row), `EmptyState` / `LoadingState` ("Loading…", new string
+  `library_loading`) / `UnreachableState` everywhere a list can be empty, loading or offline, the recording page's
+  title in the shared title bar (day, times under it), and drawn icons instead of ★ ☆ ⌗ ▶ ⧉ (`LibraryIcons.Star`,
+  `StarFilled`, `Crop`, `Play`, `Stack`).
 - **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
   in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
   `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from

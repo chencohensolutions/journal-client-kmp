@@ -61,7 +61,7 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
                     placeholder = { Text(stringResource(R.string.library_find_tag)) },
                     leadingIcon = { Icon(LibraryIcons.Search, null, tint = LibraryColors.Muted) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = LibraryShapes.Tile,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = LibraryColors.OnBackground,
                         unfocusedTextColor = LibraryColors.OnBackground,
@@ -85,8 +85,8 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
                 ) {
                     TagThumbnail(tag, 56.dp)
                     Column(Modifier.weight(1f)) {
-                        Text(tag.name, color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                        Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, fontSize = 13.sp)
+                        Text(tag.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                        Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, style = LibraryType.Caption)
                     }
                 }
             }
@@ -122,7 +122,7 @@ internal fun TagScreen(
                     Text(
                         pluralStringResource(R.plurals.library_story_items, count, count),
                         color = LibraryColors.Muted,
-                        fontSize = 14.sp,
+                        style = LibraryType.Body,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
                     )
                 }
@@ -136,8 +136,9 @@ internal fun TagScreen(
     }
 }
 
+/** A page's title row: back, the title, and an optional [caption] under it. */
 @Composable
-internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, caption: String? = null) {
     Row(
         modifier
             .fillMaxWidth()
@@ -149,18 +150,18 @@ internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mo
         IconButton(onClick = onBack) {
             Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
         }
-        Text(
-            title,
-            color = LibraryColors.OnBackground,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() },
-        )
+        Column {
+            Text(
+                title,
+                color = LibraryColors.OnBackground,
+                style = LibraryType.PageTitle,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (caption != null) Text(caption, color = LibraryColors.Muted, style = LibraryType.Caption)
+        }
     }
 }
 
 /** A muted line in a list: an empty state. */
 @Composable
-private fun Note(text: String) {
-    Text(text, color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-}
+private fun Note(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) = EmptyState(text, actionLabel = actionLabel, onAction = onAction)

@@ -39,3 +39,53 @@ Material mapping: primary = Inverse (onPrimary = OnInverse), secondary and terti
 
 Register again, No access and Limited access are one `HomeCard`: `Raised`, a title, one line, one ink action (a
 filled button, or a text action at the end of a one-line card). The rejected card has a small warning mark.
+
+## Type
+
+Named sizes in `LibraryType` (`LibraryStyle.kt`); hand-typed sizes went on Nov 16, 2026 (15 and 17 became 16, 18–20
+became 22, 28 became 30). A call may still set its own weight or color.
+
+| Style | Size | Weight | For |
+|---|---|---|---|
+| ScreenTitle | 30 | bold | "Journal", "Search" |
+| PageTitle | 22 | bold | A page's or sheet's title (`TitleBar`) |
+| SectionLabel | 13 | semibold, Muted | The label over a settings card (`SectionTitle`) |
+| RowTitle | 16 | semibold | A row's title |
+| Body | 14 | | Text, messages |
+| Caption | 13 | | Second lines, notes (`PageNote`) |
+| Small | 12 | | Badges and counts over photos |
+| Tiny | 11 | | The smallest: a reel's video length, the date ruler's day numbers |
+
+Nothing is drawn below 11 sp, except digits inside an icon (the "15" of the skip buttons). Text fields (the note
+editor's serif, search's field) keep their own sizes.
+
+## Shapes
+
+`LibraryShapes`: cards and sheets 16 dp (`Card`; sheets round their top corners, `Sheet`), tiles inside a card and
+thumbnails 12 dp (`Tile`), controls a full pill (`Pill`: buttons, chips, segmented choices). Small badges over photos
+(2 to 8 dp) keep their own.
+
+## Pages
+
+- A settings-style page is `SettingsScaffold(title, back) { … }` (`LibraryPages.kt`): the page color, the scroll,
+  room for the bars and the floating `TitleBar` (back and the title in PageTitle; an optional caption under it, as a
+  sound recording's page has its times). Settings and its pages, Backup, Free up, Cameras, Sound folders, Private
+  settings, Models, Copies, Swap and Search settings use it.
+- Intros and notes on those pages are one `PageNote`: Caption, Muted, 32 dp from the sides.
+- Choice chips are one full pill (`Chip`, Explore's bar's `ExploreChip`): ink when selected, outlined when not; a
+  check mark only where several can be on at once. A row of choices scrolls sideways (`OptionChips`) instead of
+  wrapping.
+
+## Empty, loading, unreachable
+
+- `EmptyState(text, actionLabel?, onAction?)`: a muted line, centered, with an optional outlined button under it.
+- `LoadingState()`: a small spinner with "Loading…" under it, centered.
+- `UnreachableState(onRetry)`: "Can’t reach your server right now." with Try again.
+
+The same paddings everywhere (32 dp). Used by Cameras, Sound folders, Private settings, Copies, Tags, a tag's page,
+the storyline, Moments, Search, People, a person's page and the map.
+
+## Icons
+
+Line icons in `LibraryIcons` (24 dp, stroke 2): no typed characters as icons. Highlight is a star (outline, filled
+once highlighted), Recompose and Crop share the crop mark, a video's mark is Play, a moment's count is Stack.

@@ -122,7 +122,7 @@ internal fun ExploreBar(view: ExploreView, onView: (ExploreView) -> Unit, onMap:
 
 /** A choice like the Moments filter bar's: filled when on, outlined when off. */
 @Composable
-internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, onClick: () -> Unit) {
+internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, role: Role = Role.Tab, onClick: () -> Unit) {
     val content = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground
     Row(
         Modifier
@@ -137,7 +137,7 @@ internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, 
             )
             .clickable(onClick = onClick)
             .semantics {
-                role = Role.Tab
+                this.role = role
                 selected = on
             }
             .padding(horizontal = 14.dp),
@@ -145,7 +145,7 @@ internal fun ExploreChip(label: String, on: Boolean, icon: ImageVector? = null, 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon?.let { Icon(it, null, tint = content, modifier = Modifier.size(16.dp)) }
-        Text(label, color = content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = content, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -217,7 +217,7 @@ private fun PlacesList(summaries: ExploreSummary, actions: ExploreActions, conte
                 Text(
                     stringResource(if (homeCountry != null) R.string.explore_other_countries else R.string.explore_countries),
                     color = LibraryColors.OnBackground,
-                    fontSize = 20.sp,
+                    style = LibraryType.PageTitle,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp).semantics { heading() },
                 )
@@ -239,7 +239,7 @@ private fun HomeCountryTowns(country: CountrySummary, towns: List<PlaceSummary>,
                 Text(
                     stringResource(R.string.explore_more_in, countryName(country)),
                     color = LibraryColors.OnBackground,
-                    fontSize = 20.sp,
+                    style = LibraryType.PageTitle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -253,11 +253,11 @@ private fun HomeCountryTowns(country: CountrySummary, towns: List<PlaceSummary>,
                         pluralStringResource(R.plurals.library_story_items, photos, photos),
                     ),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                 )
             }
             Row(Modifier.height(44.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.explore_see_all), color = LibraryColors.OnBackground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.explore_see_all), color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
                 Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(18.dp))
             }
         }
@@ -279,15 +279,15 @@ private fun CountryRow(country: CountrySummary, onOpen: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverMosaic(country.covers, Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
+        CoverMosaic(country.covers, Modifier.size(72.dp).clip(LibraryShapes.Tile))
         Column(Modifier.weight(1f)) {
-            Text(countryName(country), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(countryName(country), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val names = country.places.take(COUNTRY_ROW_TOWNS).joinToString(", ") { it.town }
             val more = country.places.size - COUNTRY_ROW_TOWNS
             Text(
                 if (more > 0) stringResource(R.string.explore_towns_more, names, more) else names,
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -298,7 +298,7 @@ private fun CountryRow(country: CountrySummary, onOpen: () -> Unit) {
                     yearRange(country.firstYear, country.lastYear),
                 ),
                 color = LibraryColors.Muted,
-                fontSize = 12.sp,
+                style = LibraryType.Small,
             )
         }
         Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
@@ -331,7 +331,7 @@ private fun HomeCard(place: PlaceSummary, onOpen: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(176.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(LibraryShapes.Card)
             .background(LibraryColors.Raised)
             .clickable(onClick = onOpen),
     ) {
@@ -343,23 +343,23 @@ private fun HomeCard(place: PlaceSummary, onOpen: () -> Unit) {
                 .background(LibraryColors.PhotoFade)
                 .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 14.dp),
         ) {
-            Text(stringResource(R.string.explore_home).uppercase(), color = LibraryColors.PhotoTextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)
-            Text(place.town, color = LibraryColors.PhotoText, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(placeLine(place), color = LibraryColors.PhotoTextMuted, fontSize = 13.sp)
+            Text(stringResource(R.string.explore_home).uppercase(), color = LibraryColors.PhotoTextMuted, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)
+            Text(place.town, color = LibraryColors.PhotoText, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(placeLine(place), color = LibraryColors.PhotoTextMuted, style = LibraryType.Caption)
         }
     }
 }
 
 @Composable
 private fun PlaceCard(place: PlaceSummary, modifier: Modifier = Modifier, onOpen: () -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Box(Modifier.fillMaxWidth().height(132.dp).clip(RoundedCornerShape(12.dp)).background(LibraryColors.Raised)) {
+    Column(modifier.clip(LibraryShapes.Tile).clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(Modifier.fillMaxWidth().height(132.dp).clip(LibraryShapes.Tile).background(LibraryColors.Raised)) {
             CroppedThumbnail(place.cover, Modifier.fillMaxSize())
         }
         Text(
             place.town,
             color = LibraryColors.OnBackground,
-            fontSize = 15.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -368,7 +368,7 @@ private fun PlaceCard(place: PlaceSummary, modifier: Modifier = Modifier, onOpen
         Text(
             stringResource(R.string.feed_place_time, "${place.count}", yearRange(place.firstYear, place.lastYear)),
             color = LibraryColors.Muted,
-            fontSize = 12.sp,
+            style = LibraryType.Small,
         )
     }
 }
@@ -411,17 +411,17 @@ private fun YearCard(year: YearSummary, shown: Set<MediaSource>, actions: Explor
             Text(
                 "${year.year}",
                 color = LibraryColors.OnBackground,
-                fontSize = 30.sp,
+                style = LibraryType.ScreenTitle,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             Column(Modifier.padding(bottom = 6.dp), horizontalAlignment = Alignment.End) {
-                Text(pluralStringResource(R.plurals.library_story_items, year.count, year.count), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(pluralStringResource(R.plurals.library_story_items, year.count, year.count), color = LibraryColors.Muted, style = LibraryType.Caption)
                 if (year.hidden.isNotEmpty() && !onlyHidden) {
                     Text(
                         stringResource(R.string.explore_year_hidden, sourceCountsText(year.hidden)),
                         color = LibraryColors.Muted.copy(alpha = 0.75f),
-                        fontSize = 12.sp,
+                        style = LibraryType.Small,
                         maxLines = 1,
                     )
                 }
@@ -432,10 +432,10 @@ private fun YearCard(year: YearSummary, shown: Set<MediaSource>, actions: Explor
             return@Column
         }
         if (year.towns.isNotEmpty()) {
-            Text(year.towns.joinToString(" · "), color = LibraryColors.Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(year.towns.joinToString(" · "), color = LibraryColors.Muted, style = LibraryType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Row(
-            Modifier.padding(top = 10.dp).fillMaxWidth().height(86.dp).clip(RoundedCornerShape(12.dp)),
+            Modifier.padding(top = 10.dp).fillMaxWidth().height(86.dp).clip(LibraryShapes.Tile),
             horizontalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             year.covers.forEach { item ->
@@ -452,7 +452,7 @@ private fun YearCard(year: YearSummary, shown: Set<MediaSource>, actions: Explor
                 Text(
                     monthName(month),
                     color = LibraryColors.OnBackground,
-                    fontSize = 12.sp,
+                    style = LibraryType.Small,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
@@ -487,7 +487,7 @@ private fun OnlyHiddenYear(year: YearSummary, onShow: () -> Unit) {
         Text(
             stringResource(R.string.explore_only_hidden, year.hidden.keys.map { sourceName(it) }.joinToString(", "), year.hidden.values.sum()),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onShow) {
@@ -500,9 +500,7 @@ private fun OnlyHiddenYear(year: YearSummary, onShow: () -> Unit) {
 internal fun monthName(month: Int): String = Month.of(month).getDisplayName(TextStyle.SHORT, Locale.getDefault())
 
 @Composable
-private fun ExploreMessage(text: String) {
-    Text(text, color = LibraryColors.Muted, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 32.dp))
-}
+private fun ExploreMessage(text: String) = EmptyState(text)
 
 /**
  * A town's or a year's page as worked out: its photos as the Moments tab's list items, and its photos per source
@@ -709,8 +707,8 @@ internal fun PageCover(title: String, subtitle: String?, cover: MediaItem?) {
                 .background(LibraryColors.PhotoFade)
                 .padding(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 16.dp),
         ) {
-            Text(title, color = LibraryColors.PhotoText, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-            subtitle?.let { Text(it, color = LibraryColors.PhotoTextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(title, color = LibraryColors.PhotoText, style = LibraryType.ScreenTitle, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+            subtitle?.let { Text(it, color = LibraryColors.PhotoTextMuted, style = LibraryType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }

@@ -66,7 +66,7 @@ internal fun ShowInAppPage(status: KindsStatus, openBackup: () -> Unit, openPriv
     Text(
         stringResource(R.string.kinds_how_to_hide),
         color = LibraryColors.Muted,
-        fontSize = 13.sp,
+        style = LibraryType.Caption,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
     )
 }
@@ -75,11 +75,11 @@ internal fun ShowInAppPage(status: KindsStatus, openBackup: () -> Unit, openPriv
 @Composable
 private fun Summary(status: KindsStatus, openBackup: () -> Unit) {
     Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp)) {
-        Text(stringResource(R.string.kinds_files, count(status.files)), color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.kinds_files, count(status.files)), color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold)
         if (status.notBackedUp > 0) {
             NotBackedUp(status.notBackedUp, openBackup, 15.sp)
         } else {
-            Text(stringResource(R.string.kinds_all_backed_up), color = LibraryColors.Muted, fontSize = 15.sp)
+            Text(stringResource(R.string.kinds_all_backed_up), color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
         }
     }
 }
@@ -96,13 +96,13 @@ private fun KindRow(name: String, icon: ImageVector, files: Int, notBackedUp: In
     ) {
         Icon(icon, null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 12.dp)) {
-            Text(name, color = LibraryColors.OnBackground, fontSize = 16.sp)
+            Text(name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
             if (notBackedUp > 0) NotBackedUp(notBackedUp, openBackup, 12.sp)
         }
         Text(
             count(files),
             color = LibraryColors.OnBackground,
-            fontSize = 16.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.End,
             modifier = Modifier.widthIn(min = 72.dp),
@@ -144,7 +144,7 @@ private fun HiddenEverywhereLine(n: Int, openPrivate: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(LibraryIcons.Lock, null, tint = LibraryColors.Muted, modifier = Modifier.padding(top = 2.dp).size(15.dp))
-        Text(text, color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(text, color = LibraryColors.Muted, style = LibraryType.Caption)
     }
 }
 

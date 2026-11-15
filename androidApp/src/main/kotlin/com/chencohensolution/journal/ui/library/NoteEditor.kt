@@ -138,7 +138,7 @@ private fun ColumnScope.Writing(
     LaunchedEffect(Unit) { focus.requestFocus() }
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
-        Text(stringResource(R.string.note_writing), color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.note_writing), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         TextButton(onClick = onSave) { Text(stringResource(R.string.library_save), color = LibraryColors.OnBackground, fontWeight = FontWeight.Bold) }
     }
     OutlinedTextField(
@@ -160,7 +160,7 @@ private fun ColumnScope.Writing(
             Text(
                 pluralStringResource(R.plurals.note_edited, history.size, history.size, savedLabel(note?.writtenAt ?: note?.updatedAt)),
                 color = LibraryColors.Muted,
-                fontSize = 14.sp,
+                style = LibraryType.Body,
             )
         }
     }
@@ -174,17 +174,17 @@ private fun HistoryList(history: List<NoteVersion>, onBack: () -> Unit, onOpen: 
         items(history.indices.reversed().toList()) { index ->
             val version = history[index]
             Column(Modifier.fillMaxWidth().clickable { onOpen(index) }.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                Text(savedLabel(version.savedAt), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(savedLabel(version.savedAt), color = LibraryColors.Muted, style = LibraryType.Caption)
                 Text(
                     version.title.ifBlank { stringResource(R.string.note_no_title) },
                     color = if (version.title.isBlank()) LibraryColors.Muted else LibraryColors.OnBackground,
-                    fontSize = 16.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (version.text.isNotBlank()) {
-                    Text(version.text, color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(version.text, color = LibraryColors.OnBackground, fontFamily = FontFamily.Serif, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
@@ -198,15 +198,15 @@ private fun ColumnScope.VersionPage(version: NoteVersion, later: Pair<String, St
     TitleRow(savedLabel(version.savedAt), onBack)
     Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)) {
         if (version.title.isBlank()) {
-            Text(stringResource(R.string.note_no_title), color = LibraryColors.Muted, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.note_no_title), color = LibraryColors.Muted, style = LibraryType.PageTitle, fontWeight = FontWeight.SemiBold)
         } else {
-            Text(highlighted(version.title, later.first), color = LibraryColors.OnBackground, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Text(highlighted(version.title, later.first), color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.SemiBold)
         }
         Text(
             highlighted(version.text, later.second),
             color = LibraryColors.OnBackground,
             fontFamily = FontFamily.Serif,
-            fontSize = 18.sp,
+            style = LibraryType.PageTitle, fontWeight = FontWeight.Normal,
             lineHeight = 27.sp,
             modifier = Modifier.padding(top = 12.dp),
         )
@@ -222,7 +222,7 @@ private fun ColumnScope.VersionPage(version: NoteVersion, later: Pair<String, St
 private fun TitleRow(title: String, onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack) { Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground) }
-        Text(title, color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold)
     }
 }
 

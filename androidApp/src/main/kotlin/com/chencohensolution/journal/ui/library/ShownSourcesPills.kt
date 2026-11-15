@@ -115,12 +115,12 @@ private fun ImportedKinds(pills: ShownSourcesPills, actions: ShownSourcesActions
         Modifier
             .padding(start = 16.dp, end = 16.dp, top = 12.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .background(LibraryColors.Raised, LibraryShapes.Card)
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(FeedIcons.Imported, null, tint = LibraryColors.Muted, modifier = Modifier.size(14.dp))
-            Text(stringResource(R.string.sources_of_imported), color = LibraryColors.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.sources_of_imported), color = LibraryColors.Muted, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
         }
         FlowRow(
             Modifier.padding(top = 8.dp),
@@ -164,7 +164,7 @@ private fun OtherLine(pills: ShownSourcesPills) {
         Text(
             stringResource(R.string.sources_other_about, stringResource(R.string.feed_source_other)),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
         )
     }
 }
@@ -195,9 +195,9 @@ private fun HiddenEverywhereLine(pills: ShownSourcesPills, openPrivate: () -> Un
     ) {
         Icon(LibraryIcons.Lock, null, tint = LibraryColors.Muted, modifier = Modifier.padding(top = 2.dp).size(15.dp))
         Column(Modifier.weight(1f)) {
-            Text(text, color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(text, color = LibraryColors.Muted, style = LibraryType.Caption)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.Bold)
                 Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
             }
         }

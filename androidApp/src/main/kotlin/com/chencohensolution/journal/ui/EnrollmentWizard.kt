@@ -217,7 +217,7 @@ private fun ColumnScope.ConfirmStep(state: EnrollmentState, step: EnrollmentStep
         Title(stringResource(R.string.enroll_confirm_title), Modifier.padding(top = 24.dp))
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         ) {
             Column {
@@ -241,7 +241,7 @@ private fun ColumnScope.ConfirmStep(state: EnrollmentState, step: EnrollmentStep
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = RoundedCornerShape(12.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Tile,
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         ) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -299,7 +299,7 @@ private fun ColumnScope.EnrolledStep(step: EnrollmentStep.Enrolled, actions: Enr
         Body(stringResource(R.string.enroll_done_body, step.user), Modifier.padding(top = 8.dp), TextAlign.Center)
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
@@ -332,7 +332,7 @@ private fun ColumnScope.FailedStep(state: EnrollmentState, step: EnrollmentStep.
         )
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(16.dp),
+            shape = com.chencohensolution.journal.ui.library.LibraryShapes.Card,
             modifier = Modifier.fillMaxWidth().padding(top = 28.dp),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

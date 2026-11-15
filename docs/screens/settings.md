@@ -8,6 +8,8 @@ Since Oct 24, 2026 (chosen by the owner from the UI lab's options), Settings is 
 saying how it stands and opening a page of its own; the switches used most stay on the first page:
 
 - **Top bar:** back and "Settings" (on a page: its name).
+  Every page is the shared `SettingsScaffold` with `PageNote` intros, pill chips whose choices scroll sideways in one
+  row, and the shared empty, loading and unreachable states (Nov 16, 2026; [style.md](style.md)).
 - **Library:** **Show in the app ›** ("87,343 files · 15 not backed up"; until Oct 27, 2026 "Showing Camera, Other, Petcube +2"), **Your cameras ›**
   (when the server keeps cameras, `ServerFeatures.cameras`: "4 cameras · 1 not yours", "4 cameras" when all are,
   "Moving 312 photos…" while the server moves some, "Which cameras were yours" until the list came), **Sound folders ›**

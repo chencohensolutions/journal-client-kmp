@@ -529,11 +529,7 @@ internal fun JournalHomeScreen(
                 // Moments draws once: one spinner until its feed is ready and its rows are worked out (asked Oct 25, 2026).
                 val momentsWaiting = moments && (!stories.ready || (feedRows.isEmpty() && stories.feed.entries.isNotEmpty()))
                 when {
-                    momentsWaiting || (library.loading && library.isEmpty) -> item(key = "loading") {
-                        Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = LibraryColors.OnBackground)
-                        }
-                    }
+                    momentsWaiting || (library.loading && library.isEmpty) -> item(key = "loading") { LoadingState(Modifier.padding(top = 16.dp)) }
                     canRead && library.isEmpty && library.loadError == null ->
                         item(key = "empty") { Message(stringResource(R.string.library_empty)) }
                 }
@@ -728,14 +724,14 @@ private fun RevealNote(section: FeedSection, band: RevealedPhotos, onHide: () ->
         Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Inverse, RoundedCornerShape(12.dp))
+            .background(LibraryColors.Inverse, LibraryShapes.Tile)
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(R.string.feed_reveal_showing, band.items.size, sourceName(band.source), formatDate(section.span.newestDay.toLocalDate(), "MMMd")),
             color = LibraryColors.OnInverse,
-            fontSize = 14.sp,
+            style = LibraryType.Body,
             maxLines = 2,
             modifier = Modifier.weight(1f).padding(vertical = 12.dp),
         )
@@ -779,7 +775,7 @@ private fun TopBar(
                     Text(
                         stringResource(R.string.library_title),
                         color = LibraryColors.OnBackground,
-                        fontSize = 30.sp,
+                        style = LibraryType.ScreenTitle,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).semantics { heading() },
                     )
@@ -862,7 +858,7 @@ private fun HomeCard(title: String, body: String?, action: String, onAction: () 
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(16.dp))
+            .background(LibraryColors.Raised, LibraryShapes.Card)
             .padding(start = 16.dp, end = 8.dp, top = if (body == null) 4.dp else 14.dp, bottom = 4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -877,21 +873,14 @@ private fun HomeCard(title: String, body: String?, action: String, onAction: () 
             if (body == null) TextAction(action, onAction)
         }
         if (body != null) {
-            Text(body, color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
+            Text(body, color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
             PrimaryButton(action, onAction, Modifier.padding(top = 10.dp, bottom = 10.dp))
         }
     }
 }
 
 @Composable
-private fun Message(text: String) {
-    Text(
-        text,
-        color = LibraryColors.Muted,
-        fontSize = 15.sp,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp),
-    )
-}
+private fun Message(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) = EmptyState(text, actionLabel = actionLabel, onAction = onAction)
 
 /** A request to show [itemId] in the Moments tab; a new one each time, so the same photo can be asked for again. */
 internal class ShowInMoments(val itemId: String)

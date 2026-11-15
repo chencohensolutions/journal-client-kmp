@@ -79,7 +79,8 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked in the U
   marked, changed by dragging in the viewer's grid sheet. The first highlight is the set's **cover**: where it opens.
 - **A set without highlights shows its cover**: the photo it was turned to while the feed shows, else its best-looking
   photo (the server's aesthetic score), else its first (`StoriesState.frontOf`). At the cover's shape, the others
-  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner. The thin line marking where the
+  fitted inside on black at their own (their Moments crop); "⧉ 36" in the corner. (⧉ is the Stack icon since Nov 16,
+  2026.) The thin line marking where the
   photo shown is and the ▶ that played it in place were removed on Nov 10, 2026 (the owner didn't like them; the
   slideshow is the viewer's; Android only, iOS still has them).
   - **Hold and slide** flips through it in place: hold, then slide sideways, a tick per photo, 10 dp each, with

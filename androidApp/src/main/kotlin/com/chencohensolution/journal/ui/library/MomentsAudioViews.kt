@@ -44,7 +44,7 @@ internal fun RecordingBar(moment: FeedMoment, audio: FeedAudio, modifier: Modifi
     val playback = audio.of(recording)
     val playing = playback?.playing == true
     Column(modifier.fillMaxWidth().background(LibraryColors.Background).padding(horizontal = 12.dp, vertical = 6.dp)) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(LibraryColors.Raised).clickable { audio.open(recording) }) {
+        Column(Modifier.fillMaxWidth().clip(LibraryShapes.Card).background(LibraryColors.Raised).clickable { audio.open(recording) }) {
             Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PlayButton(playing, { audio.toggle(recording) }, size = 36.dp)
                 Spacer(Modifier.width(10.dp))
@@ -55,7 +55,7 @@ internal fun RecordingBar(moment: FeedMoment, audio: FeedAudio, modifier: Modifi
                         Text(
                             soundTitle(recording, moment.place),
                             color = LibraryColors.OnBackground,
-                            fontSize = 14.sp,
+                            fontSize = LibraryType.Body.fontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -74,7 +74,7 @@ internal fun RecordingBar(moment: FeedMoment, audio: FeedAudio, modifier: Modifi
                             soundTimes(recording)
                         },
                         color = LibraryColors.Muted,
-                        fontSize = 12.sp,
+                        style = LibraryType.Small,
                     )
                 }
             }
@@ -99,7 +99,7 @@ internal fun RecordingOffset(item: MediaItem, recording: SoundRecording, modifie
         Text(
             stringResource(R.string.audio_offset, formatDuration((item.takenAtMillis - recording.startMillis).coerceAtLeast(0))),
             color = LibraryColors.PhotoText,
-            fontSize = 12.sp,
+            style = LibraryType.Small,
             fontWeight = FontWeight.SemiBold,
         )
     }

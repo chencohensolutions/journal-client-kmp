@@ -92,7 +92,7 @@ internal fun TagSheet(
                 Text(
                     stringResource(R.string.library_tags_empty_hint),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp,
+                    style = LibraryType.Body,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                 )
             }
@@ -120,7 +120,7 @@ private fun PickerSheet(
         Column(Modifier.fillMaxSize().imePadding()) {
             Text(
                 title,
-                fontSize = 20.sp,
+                style = LibraryType.PageTitle,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp).semantics { heading() },
             )
@@ -130,7 +130,7 @@ private fun PickerSheet(
                 placeholder = { Text(hint) },
                 leadingIcon = { Icon(LibraryIcons.Search, null) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = LibraryShapes.Tile,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(focus),
             )
             LazyColumn(Modifier.weight(1f).padding(top = 8.dp)) {
@@ -140,18 +140,18 @@ private fun PickerSheet(
                             Modifier
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
                                 .fillMaxWidth()
-                                .background(LibraryColors.OnBackground.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+                                .background(LibraryColors.OnBackground.copy(alpha = 0.06f), LibraryShapes.Tile)
                                 .clickable(role = Role.Button) { onCreate(query.trim()) }
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(Modifier.size(44.dp).background(LibraryColors.Inverse, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp).background(LibraryColors.Inverse, LibraryShapes.Tile), contentAlignment = Alignment.Center) {
                                 Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse)
                             }
                             Column {
-                                Text(createLabel(query.trim()), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                createDetail?.let { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                Text(createLabel(query.trim()), style = LibraryType.RowTitle, fontWeight = FontWeight.Bold)
+                                createDetail?.let { Text(it, style = LibraryType.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                         }
                     }
@@ -166,7 +166,7 @@ private fun PickerSheet(
 private fun SectionLabel(text: String) {
     Text(
         text.uppercase(),
-        fontSize = 12.sp,
+        style = LibraryType.Small,
         fontWeight = FontWeight.Bold,
         letterSpacing = 0.8.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -186,8 +186,8 @@ private fun PickerRow(title: String, detail: String?, leading: @Composable () ->
     ) {
         Box(Modifier.width(52.dp), contentAlignment = Alignment.Center) { leading() }
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            if (!detail.isNullOrEmpty()) Text(detail, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            if (!detail.isNullOrEmpty()) Text(detail, style = LibraryType.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (checked) Icon(LibraryIcons.Check, stringResource(R.string.library_picker_checked), tint = LibraryColors.Accent)
     }
@@ -198,7 +198,7 @@ private fun PickerRow(title: String, detail: String?, leading: @Composable () ->
 internal fun TagThumbnail(tag: TagSummary, size: androidx.compose.ui.unit.Dp = 44.dp) {
     val thumbnail = tag.latest?.let { rememberThumbnail(it, THUMB_SMALL) }
     Box(
-        Modifier.size(size).clip(RoundedCornerShape(10.dp)).background(LibraryColors.Accent.copy(alpha = 0.15f)),
+        Modifier.size(size).clip(LibraryShapes.Tile).background(LibraryColors.Accent.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center,
     ) {
         if (thumbnail != null) {

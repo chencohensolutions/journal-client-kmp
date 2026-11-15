@@ -51,7 +51,7 @@ internal fun OfflinePill(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.Warning, modifier = Modifier.size(15.dp))
-        Text(stringResource(R.string.library_offline), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.library_offline), color = Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -67,7 +67,7 @@ internal fun BackupSummaryPill(text: String, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(LibraryIcons.CloudOff, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
-        Text(text, color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -97,7 +97,7 @@ internal fun <T> SegmentedBar(options: List<Pair<T, String>>, selected: T, onSel
                         this.selected = isSelected
                     },
             ) {
-                Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(label, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -139,7 +139,7 @@ internal fun BottomControls(
 @Composable
 internal fun DayLabelOverlay(text: String, modifier: Modifier = Modifier) {
     Box(modifier.background(LibraryColors.LabelFade).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 24.dp)) {
-        Text(text, color = LibraryColors.PhotoText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = LibraryColors.PhotoText, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold)
     }
 }
 

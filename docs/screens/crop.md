@@ -34,7 +34,8 @@ mode](viewer.md#a-set-nov-9-2026) (`Route.Recompose`, `SetCropEditor`): the Mome
   current one; the frame stays free after.
 - **The set's strip**: its photos in a row, the one shown outlined, a dot on each cropped; a tap goes to it without
   leaving.
-- **⧉ Same frame for all**: every photo of the set of the same shape as the one shown gets its frame.
+- **⧉ Same frame for all**: every photo of the set of the same shape as the one shown gets its frame. (The ⧉ is the
+  Stack icon since Nov 16, 2026.)
 - A near-duplicate set that wasn't made by hand becomes one when Recompose saves (a cropped photo is never put in a set
   by itself), so it stays together.
 

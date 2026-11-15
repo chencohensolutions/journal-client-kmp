@@ -133,7 +133,6 @@ internal fun SettingsScreen(
     /** Models on this phone, for its row under Search; null or none listed: no row. */
     models: com.chencohensolution.journal.local.PhoneModelsState? = null,
 ) {
-    val insets = barsRoom()
     val title = when (page) {
         SettingsPage.MAIN -> R.string.library_settings
         SettingsPage.SHOWN -> R.string.settings_shown_title
@@ -142,21 +141,14 @@ internal fun SettingsScreen(
         SettingsPage.LOADING_MOMENTS -> R.string.settings_loading_title
     }
 
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            when (page) {
-                SettingsPage.MAIN -> MainPage(settings, actions, kinds, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders, models)
-                SettingsPage.SHOWN -> ShowInAppPage(kinds, actions.openBackup, actions.openHidden)
-                SettingsPage.MOMENTS -> MomentsPage(settings, actions)
-                SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
-                SettingsPage.LOADING_MOMENTS -> LoadingMomentsPage(settings.momentsPaging, actions)
-            }
+    SettingsScaffold(stringResource(title), actions.back) {
+        when (page) {
+            SettingsPage.MAIN -> MainPage(settings, actions, kinds, backup, storage, storageActions, syncProgress, phoneSearch, indexing, cameras, soundFolders, models)
+            SettingsPage.SHOWN -> ShowInAppPage(kinds, actions.openBackup, actions.openHidden)
+            SettingsPage.MOMENTS -> MomentsPage(settings, actions)
+            SettingsPage.STORAGE -> if (storage != null) StorageSection(storage, storageActions)
+            SettingsPage.LOADING_MOMENTS -> LoadingMomentsPage(settings.momentsPaging, actions)
         }
-        TitleBar(stringResource(title), actions.back, Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -247,12 +239,7 @@ private fun appVersion(): String {
 private fun AppVersionLine(version: String) {
     if (version.isEmpty()) return
     SelectionContainer {
-        Text(
-            stringResource(R.string.settings_app_version, version),
-            color = LibraryColors.Muted,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp),
-        )
+        PageNote(stringResource(R.string.settings_app_version, version), top = 10)
     }
 }
 
@@ -266,14 +253,14 @@ private fun ServerSection(address: String, id: String?, version: String?) {
     SettingsCard {
         SelectionContainer {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Text(address, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(address, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 Text(
                     if (id != null) stringResource(R.string.settings_server_id, id) else stringResource(R.string.settings_server_no_id),
                     color = LibraryColors.Muted,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                     fontFamily = if (id != null) FontFamily.Monospace else null,
                 )
-                if (version != null) Text(stringResource(R.string.settings_server_version, version), color = LibraryColors.Muted, fontSize = 13.sp)
+                if (version != null) Text(stringResource(R.string.settings_server_version, version), color = LibraryColors.Muted, style = LibraryType.Caption)
             }
         }
     }
@@ -288,7 +275,7 @@ private fun MomentsPage(settings: SettingsState, actions: SettingsActions) {
         Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .background(LibraryColors.Raised, LibraryShapes.Card)
             .selectableGroup(),
     ) {
         ModeOption(
@@ -330,7 +317,7 @@ private fun MomentsPage(settings: SettingsState, actions: SettingsActions) {
             onChange = actions.setSayWhatsHidden,
         )
     }
-    Text(stringResource(R.string.settings_shown_stories), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp))
+    PageNote(stringResource(R.string.settings_shown_stories), top = 10)
 }
 
 /** A row that opens a page: its title, how it stands, and a chevron. */
@@ -341,8 +328,8 @@ internal fun PageRow(title: String, body: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(title, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(body, color = LibraryColors.Muted, style = LibraryType.Caption)
         }
         Icon(LibraryIcons.ChevronRight, contentDescription = null, tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
     }
@@ -397,19 +384,12 @@ private fun momentsSummary(settings: SettingsState): String {
 @Composable
 internal fun RowDivider() = HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
 
+/**
+ * A choice chip: the same full pill as Explore's bar, ink when selected and outlined when not. One of a row is chosen
+ * at a time, so it has no check mark ([ExploreChip] with a radio button's role).
+ */
 @Composable
-internal fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label) },
-        colors = FilterChipDefaults.filterChipColors(
-            labelColor = LibraryColors.OnBackground,
-            selectedContainerColor = LibraryColors.Inverse,
-            selectedLabelColor = LibraryColors.OnInverse,
-        ),
-    )
-}
+internal fun Chip(label: String, selected: Boolean, onClick: () -> Unit) = ExploreChip(label, selected, role = Role.RadioButton, onClick = onClick)
 
 /** A Settings card, for the screens opened from Settings. */
 @Composable
@@ -417,7 +397,7 @@ internal fun SettingsCard(content: @Composable () -> Unit) = Card(content)
 
 @Composable
 private fun Card(content: @Composable () -> Unit) {
-    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(LibraryColors.Raised, RoundedCornerShape(14.dp))) { content() }
+    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(LibraryColors.Raised, LibraryShapes.Card)) { content() }
 }
 
 @Composable
@@ -430,8 +410,8 @@ internal fun SwitchRow(title: String, body: String?, checked: Boolean, onChange:
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            if (body != null) Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(title, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            if (body != null) Text(body, color = LibraryColors.Muted, style = LibraryType.Caption)
         }
         Switch(
             checked = checked,
@@ -456,18 +436,18 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
         Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
+            .background(LibraryColors.Raised, LibraryShapes.Card)
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.settings_similarity_label),
                 color = LibraryColors.OnBackground,
-                fontSize = 16.sp,
+                style = LibraryType.RowTitle,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("${dragging.toInt()}%", color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
         }
         Slider(
             value = dragging,
@@ -483,7 +463,7 @@ private fun SimilarityCard(similarity: SimilarityThreshold, actions: SettingsAct
                 inactiveTickColor = Color.Transparent,
             ),
         )
-        Text(stringResource(R.string.settings_similarity_body), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.settings_similarity_body), color = LibraryColors.Muted, style = LibraryType.Caption)
         if (!similarity.isDefault) {
             TextButton(onClick = actions.resetSimilarity, modifier = Modifier.padding(top = 4.dp)) {
                 Text(stringResource(R.string.settings_similarity_reset, similarity.defaultPercent), color = LibraryColors.OnBackground)
@@ -500,14 +480,14 @@ private fun HiddenRow(syncProgress: SyncProgress?, openHidden: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.settings_hidden_title), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_hidden_row_body), color = LibraryColors.Muted, style = LibraryType.Caption)
             if (syncProgress != null) {
                 val format = NumberFormat.getIntegerInstance()
                 Text(
                     stringResource(R.string.settings_hidden_syncing, format.format(syncProgress.done), format.format(syncProgress.total)),
                     color = LibraryColors.OnBackground,
-                    fontSize = 13.sp,
+                    style = LibraryType.Caption,
                     modifier = Modifier.padding(top = 6.dp),
                 )
                 LinearProgressIndicator(
@@ -528,8 +508,7 @@ internal fun SectionTitle(text: String) {
     Text(
         text,
         color = LibraryColors.Muted,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
+        style = LibraryType.SectionLabel,
         modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 20.dp, bottom = 8.dp).semantics { heading() },
     )
 }
@@ -550,8 +529,8 @@ internal fun ModeOption(title: String, body: String, selected: Boolean, onSelect
             modifier = Modifier.padding(12.dp),
         )
         Column(Modifier.weight(1f)) {
-            Text(title, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(title, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(body, color = LibraryColors.Muted, style = LibraryType.Caption)
         }
     }
 }

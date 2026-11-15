@@ -58,7 +58,7 @@ internal fun ShowingLine(shown: Set<MediaSource>, present: Set<MediaSource>, onC
     Row(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(LibraryShapes.Tile)
             .background(LibraryColors.Raised)
             .clickable(role = Role.Button, onClick = onChange)
             .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
@@ -66,8 +66,8 @@ internal fun ShowingLine(shown: Set<MediaSource>, present: Set<MediaSource>, onC
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(LibraryIcons.Eye, null, tint = LibraryColors.Muted, modifier = Modifier.size(16.dp))
-        Text(text, color = LibraryColors.Muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Text(stringResource(R.string.explore_change), color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = LibraryColors.Muted, style = LibraryType.Caption, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.explore_change), color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -108,14 +108,14 @@ internal fun ShowingSheetContent(pills: ShownSourcesPills, actions: ShownSources
         Text(
             stringResource(R.string.explore_sheet_title),
             color = LibraryColors.OnBackground,
-            fontSize = 20.sp,
+            style = LibraryType.PageTitle,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
         )
         Text(
             stringResource(R.string.explore_sheet_body),
             color = LibraryColors.Muted,
-            fontSize = 13.sp,
+            style = LibraryType.Caption,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 2.dp, bottom = 12.dp),
         )
         ShownSourcesPillsSection(pills, actions)
@@ -123,7 +123,7 @@ internal fun ShowingSheetContent(pills: ShownSourcesPills, actions: ShownSources
             Text(
                 stringResource(R.string.explore_sheet_whatsapp),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp),
             )
         }

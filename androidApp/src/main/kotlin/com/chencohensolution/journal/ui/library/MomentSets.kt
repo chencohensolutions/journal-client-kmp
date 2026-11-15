@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -245,11 +246,12 @@ internal fun SetReel(
             ReelThumb(item, crop)
             // A highlight: the photo's gold ★, small, in the top corner (asked Nov 10, 2026: the white dot was too easy to miss).
             if (item.id in highlights) {
-                Text(
-                    "★",
-                    Modifier.align(Alignment.TopEnd).padding(2.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape)
-                        .padding(horizontal = 3.dp),
-                    color = Color(0xFFFFD54F), fontSize = 11.sp, lineHeight = 13.sp,
+                Icon(
+                    LibraryIcons.StarFilled,
+                    null,
+                    tint = Color(0xFFFFD54F),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        .padding(3.dp).size(11.dp),
                 )
             }
             // A video says so: ▶ and its length in the corner (asked Nov 9, 2026).
@@ -326,8 +328,8 @@ private fun ReelVideoMark(lengthMillis: Long, modifier: Modifier = Modifier) {
         modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp)).padding(horizontal = 3.dp, vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("▶", color = Color.White, fontSize = 7.sp, lineHeight = 9.sp)
-        Text(" %d:%02d".format(seconds / 60, seconds % 60), color = Color.White, fontSize = 9.sp, lineHeight = 10.sp, fontWeight = FontWeight.SemiBold)
+        Icon(LibraryIcons.Play, null, tint = Color.White, modifier = Modifier.size(10.dp))
+        Text(" %d:%02d".format(seconds / 60, seconds % 60), color = Color.White, style = LibraryType.Tiny, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -365,7 +367,7 @@ internal fun SpeedPicker(speed: SlideSpeed, onSpeed: (SlideSpeed) -> Unit) {
                     .clickable { onSpeed(option) }.padding(horizontal = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(option.label), color = if (on) Color.Black else Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(option.label), color = if (on) Color.Black else Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -389,13 +391,13 @@ internal fun SetGridSheet(
             Text(
                 pluralStringResource(R.plurals.set_photos, items.size, items.size),
                 Modifier.padding(horizontal = 16.dp),
-                color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.Bold,
             )
             if (highlights.isNotEmpty()) {
                 Text(
                     stringResource(R.string.set_highlights) + " · " + stringResource(R.string.set_highlights_hint),
                     Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 8.dp),
-                    color = LibraryColors.Muted, fontSize = 13.sp,
+                    color = LibraryColors.Muted, style = LibraryType.Caption,
                 )
                 HighlightOrder(highlights, onPick, onMove, Modifier.padding(horizontal = 16.dp))
             }
@@ -422,7 +424,11 @@ internal fun SetGridSheet(
 @Composable
 internal fun HighlightMark(place: Int, modifier: Modifier = Modifier) {
     Box(modifier.size(20.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
-        Text(if (place == 1) "★" else place.toString(), color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        if (place == 1) {
+            Icon(LibraryIcons.StarFilled, null, tint = Color.Black, modifier = Modifier.size(12.dp))
+        } else {
+            Text(place.toString(), color = Color.Black, style = LibraryType.Tiny, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -494,7 +500,7 @@ internal fun SlideshowBar(
     Column(modifier.fillMaxWidth().padding(16.dp)) {
         Text(
             stringResource(R.string.set_position, index + 1, count),
-            color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            color = Color.White, fontSize = LibraryType.Body.fontSize, fontWeight = FontWeight.SemiBold,
             style = androidx.compose.ui.text.TextStyle(shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = 0.9f), androidx.compose.ui.geometry.Offset(0f, 1f), blurRadius = 8f)),
         )
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -511,7 +517,7 @@ internal fun SlideshowBar(
                     Text(
                         stringResource(R.string.set_autoplay_videos),
                         color = if (on) Color.Black else Color.White,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -520,7 +526,7 @@ internal fun SlideshowBar(
             Box(
                 Modifier.height(40.dp).background(LibraryColors.PillScrim, RoundedCornerShape(50)).clickable(onClick = onStop).padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text(stringResource(R.string.set_stop), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+            ) { Text(stringResource(R.string.set_stop), color = Color.White, style = LibraryType.Body, fontWeight = FontWeight.SemiBold) }
         }
     }
 }

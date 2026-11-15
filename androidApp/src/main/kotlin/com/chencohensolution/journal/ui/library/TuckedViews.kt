@@ -148,7 +148,7 @@ internal fun TuckedPill(count: Int, revealed: Boolean, onClick: () -> Unit, modi
             Icon(if (shown) LibraryIcons.Eye else LibraryIcons.EyeOff, null, tint = color, modifier = Modifier.size(14.dp))
         }
         AnimatedContent(count, transitionSpec = { countChange(targetState > initialState) }, label = "pill count") { n ->
-            Text(pluralStringResource(R.plurals.tucked_pill, n, n), color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(pluralStringResource(R.plurals.tucked_pill, n, n), color = color, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
@@ -242,7 +242,7 @@ internal fun PickingBar(
             ) {
                 lastExtras[0].forEach { (label, action) ->
                     TextButton(onClick = action, enabled = busy == null) {
-                        Text(stringResource(label), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(label), color = LibraryColors.OnInverse, style = LibraryType.Body, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -258,7 +258,7 @@ internal fun PickingBar(
                 Text(
                     pluralStringResource(R.plurals.feed_selected, n, n),
                     color = LibraryColors.OnInverseMuted,
-                    fontSize = 14.sp,
+                    style = LibraryType.Body,
                     maxLines = 1,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
@@ -316,7 +316,7 @@ private fun BarButton(label: String, busy: Boolean, enabled: Boolean, onClick: (
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(16.dp), color = LibraryColors.OnInverse, strokeWidth = 2.dp)
-            Text(label, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(label, color = color, style = LibraryType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }

@@ -372,7 +372,7 @@ private fun TimelinePanel(timeline: FeedTimeline, month: Int, onDay: (TimelineDa
                         // Its place only: the bar draws the name.
                         modifier = Modifier.alpha(0f),
                     )
-                    Text(stringResource(R.string.timeline_counts, shown.count, shown.days.size), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(stringResource(R.string.timeline_counts, shown.count, shown.days.size), color = LibraryColors.Muted, style = LibraryType.Caption)
                 }
             }
             DayStrip(timeline, month, onDay)
@@ -457,7 +457,7 @@ private fun DayStrip(timeline: FeedTimeline, month: Int, onDay: (TimelineDay) ->
                 Text(
                     if (day == 1 || day % 5 == 0) "$day" else "",
                     color = LibraryColors.Muted,
-                    fontSize = 9.sp,
+                    style = LibraryType.Tiny,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     softWrap = false,
@@ -597,7 +597,7 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
                     Text(
                         "${shown.year}",
                         color = labels,
-                        fontSize = 10.sp,
+                        style = LibraryType.Tiny,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.absoluteOffset { IntOffset((x - 14 * density).roundToInt(), 0) }.alpha(1f - abs(x - mid) / mid),
                     )

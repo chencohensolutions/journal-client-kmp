@@ -106,7 +106,7 @@ internal fun FaceAvatar(face: Face, size: Dp, modifier: Modifier = Modifier) {
 @Composable
 private fun PersonCell(person: Person, modifier: Modifier = Modifier, onOpen: () -> Unit) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 6.dp),
+        modifier.clip(LibraryShapes.Tile).clickable(onClick = onOpen).padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FaceAvatar(person.cover, 72.dp)
@@ -114,7 +114,7 @@ private fun PersonCell(person: Person, modifier: Modifier = Modifier, onOpen: ()
             Text(
                 person.name!!,
                 color = LibraryColors.OnBackground,
-                fontSize = 14.sp,
+                style = LibraryType.Body,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -124,7 +124,7 @@ private fun PersonCell(person: Person, modifier: Modifier = Modifier, onOpen: ()
         Text(
             NumberFormat.getIntegerInstance().format(person.files),
             color = LibraryColors.Muted,
-            fontSize = 12.sp,
+            style = LibraryType.Small,
             modifier = Modifier.padding(top = if (person.name == null) 6.dp else 0.dp),
         )
     }
@@ -161,7 +161,7 @@ internal fun PeopleList(people: PeopleState, actions: ExploreActions, contentPad
         if (people.stillReading) item(key = "reading") { ReadingLine(list.read, list.total) }
         when {
             people.status == PeopleStatus.LOADING && list.people.isEmpty() && list.groups.isEmpty() ->
-                item(key = "loading") { PeopleMessage(stringResource(R.string.hidden_loading)) }
+                item(key = "loading") { LoadingState() }
             people.status == PeopleStatus.UNREACHABLE && list.people.isEmpty() && list.groups.isEmpty() ->
                 item(key = "offline") { PeopleRetry(stringResource(R.string.hidden_unreachable), actions.reloadPeople) }
             people.status == PeopleStatus.FAILED && list.people.isEmpty() && list.groups.isEmpty() ->
@@ -177,11 +177,11 @@ internal fun PeopleList(people: PeopleState, actions: ExploreActions, contentPad
                         Text(
                             stringResource(R.string.people_whos_this),
                             color = LibraryColors.OnBackground,
-                            fontSize = 20.sp,
+                            style = LibraryType.PageTitle,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.semantics { heading() },
                         )
-                        Text(stringResource(R.string.people_whos_this_body), color = LibraryColors.Muted, fontSize = 13.sp)
+                        Text(stringResource(R.string.people_whos_this_body), color = LibraryColors.Muted, style = LibraryType.Caption)
                     }
                     if (list.groups.size > GROUPS_SHOWN) {
                         TextButton(onClick = { allGroups = !allGroups }) {
@@ -206,7 +206,7 @@ internal fun PeopleList(people: PeopleState, actions: ExploreActions, contentPad
 private fun ReadingLine(read: Int, total: Int) {
     val format = NumberFormat.getIntegerInstance()
     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
-        Text(stringResource(R.string.people_reading, format.format(read), format.format(total)), color = LibraryColors.Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.people_reading, format.format(read), format.format(total)), color = LibraryColors.Muted, style = LibraryType.Caption)
         LinearProgressIndicator(
             progress = { read.toFloat() / total },
             color = LibraryColors.OnBackground,
@@ -217,17 +217,10 @@ private fun ReadingLine(read: Int, total: Int) {
 }
 
 @Composable
-private fun PeopleMessage(text: String) {
-    Text(text, color = LibraryColors.Muted, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp))
-}
+private fun PeopleMessage(text: String) = EmptyState(text)
 
 @Composable
-private fun PeopleRetry(text: String, onRetry: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp)) {
-        Text(text, color = LibraryColors.Muted, fontSize = 15.sp)
-        TextButton(onClick = onRetry) { Text(stringResource(R.string.hidden_retry), color = LibraryColors.OnBackground) }
-    }
-}
+private fun PeopleRetry(text: String, onRetry: () -> Unit) = UnreachableState(onRetry, text = text)
 
 internal class PersonActions(
     val back: () -> Unit = {},
@@ -320,7 +313,7 @@ internal fun PersonScreen(
                     Text(
                         stringResource(R.string.face_edit_body, name),
                         color = LibraryColors.Muted,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     )
                 }
@@ -344,7 +337,7 @@ internal fun PersonScreen(
                 Text(
                     pluralStringResource(R.plurals.face_marked_count, marked.size, marked.size, name),
                     color = LibraryColors.OnBackground,
-                    fontSize = 14.sp,
+                    style = LibraryType.Body,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = {
@@ -420,9 +413,9 @@ internal fun PersonScreen(
 private fun LazyListScope.pageStatus(state: PersonState, retry: () -> Unit) {
     when {
         state.notChanged -> item(key = "not-changed") {
-            Text(stringResource(R.string.hidden_not_changed), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Text(stringResource(R.string.hidden_not_changed), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
-        state.status == PersonStatus.LOADING && state.items.isEmpty() -> item(key = "loading") { PeopleMessage(stringResource(R.string.hidden_loading)) }
+        state.status == PersonStatus.LOADING && state.items.isEmpty() -> item(key = "loading") { LoadingState() }
         state.status == PersonStatus.UNREACHABLE && state.items.isEmpty() -> item(key = "offline") { PeopleRetry(stringResource(R.string.hidden_unreachable), retry) }
         state.status == PersonStatus.FAILED && state.items.isEmpty() -> item(key = "failed") { PeopleRetry(stringResource(R.string.people_failed, state.error.orEmpty()), retry) }
         state.status == PersonStatus.READY && state.items.isEmpty() && state.query.isNotBlank() -> item(key = "none") { PeopleMessage(stringResource(R.string.search_nothing)) }
@@ -455,7 +448,7 @@ internal fun PageSearchField(query: String, hint: String, onQuery: (String) -> U
     ) {
         Icon(LibraryIcons.Search, null, tint = LibraryColors.Muted, modifier = Modifier.size(18.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) Text(hint, color = LibraryColors.Muted, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (query.isEmpty()) Text(hint, color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
             BasicTextField(
                 value = query,
                 onValueChange = onQuery,
@@ -490,7 +483,7 @@ private fun TogetherRow(name: String, together: List<Pair<Person, Int>>, onOpen:
         Text(
             stringResource(R.string.person_together, name),
             color = LibraryColors.OnBackground,
-            fontSize = 16.sp,
+            style = LibraryType.RowTitle,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() },
         )
@@ -499,20 +492,20 @@ private fun TogetherRow(name: String, together: List<Pair<Person, Int>>, onOpen:
         ) {
             together.forEach { (other, photos) ->
                 Column(
-                    Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onOpen(other.id) }.padding(vertical = 6.dp),
+                    Modifier.width(76.dp).clip(LibraryShapes.Tile).clickable(role = Role.Button) { onOpen(other.id) }.padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     FaceAvatar(other.cover, 52.dp)
                     Text(
                         other.name ?: "?",
                         color = LibraryColors.OnBackground,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp),
                     )
-                    Text("$photos", color = LibraryColors.Muted, fontSize = 12.sp)
+                    Text("$photos", color = LibraryColors.Muted, style = LibraryType.Small)
                 }
             }
         }
@@ -526,7 +519,7 @@ private fun TogetherRow(name: String, together: List<Pair<Person, Int>>, onOpen:
 internal fun PageSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     if (LocalInspectionMode.current) {
         Box(Modifier.fillMaxSize().background(LibraryColors.BadgeScrim), contentAlignment = Alignment.BottomCenter) {
-            Column(Modifier.fillMaxWidth().background(LibraryColors.Background, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).padding(top = 20.dp)) {
+            Column(Modifier.fillMaxWidth().background(LibraryColors.Background, LibraryShapes.Sheet).padding(top = 20.dp)) {
                 content()
             }
         }
@@ -544,7 +537,7 @@ private fun SheetTitle(text: String) {
     Text(
         text,
         color = LibraryColors.OnBackground,
-        fontSize = 20.sp,
+        style = LibraryType.PageTitle,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() },
     )
@@ -563,10 +556,10 @@ private fun ConfirmSheet(
 ) {
     Column(Modifier.fillMaxWidth().navigationBarRoom().padding(bottom = 16.dp)) {
         photo?.let {
-            CroppedThumbnail(it, Modifier.padding(start = 24.dp, bottom = 14.dp).size(96.dp).clip(RoundedCornerShape(12.dp)))
+            CroppedThumbnail(it, Modifier.padding(start = 24.dp, bottom = 14.dp).size(96.dp).clip(LibraryShapes.Tile))
         }
         SheetTitle(title)
-        Text(body, color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp))
+        Text(body, color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp))
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
             TextButton(onClick = onConfirm) {
@@ -597,7 +590,7 @@ private fun RenameSheet(name: String, onRename: (String) -> Unit, onCancel: () -
 private fun MergeSheet(name: String, others: List<Person>, onMerge: (Person) -> Unit) {
     Column(Modifier.fillMaxWidth().navigationBarRoom().padding(bottom = 8.dp)) {
         SheetTitle(stringResource(R.string.person_merge_title, name))
-        Text(stringResource(R.string.person_merge_body, name), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 8.dp))
+        Text(stringResource(R.string.person_merge_body, name), color = LibraryColors.Muted, style = LibraryType.Body, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 8.dp))
         Column(Modifier.verticalScroll(rememberScrollState())) {
             others.forEach { other -> PersonRow(other, onClick = { onMerge(other) }) }
         }
@@ -617,12 +610,12 @@ private fun PersonRow(person: Person, trailing: String? = null, onClick: () -> U
             Text(
                 person.name ?: stringResource(R.string.people_unnamed),
                 color = if (person.name == null) LibraryColors.Muted else LibraryColors.OnBackground,
-                fontSize = 16.sp,
+                style = LibraryType.RowTitle,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(pluralStringResource(R.plurals.library_story_items, person.files, person.files), color = LibraryColors.Muted, fontSize = 13.sp)
+            Text(pluralStringResource(R.plurals.library_story_items, person.files, person.files), color = LibraryColors.Muted, style = LibraryType.Caption)
         }
-        trailing?.let { Text(it, color = LibraryColors.OnBackground, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+        trailing?.let { Text(it, color = LibraryColors.OnBackground, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold) }
     }
 }
 
@@ -630,11 +623,11 @@ private fun PersonRow(person: Person, trailing: String? = null, onClick: () -> U
 @Composable
 private fun NameField(name: String, onName: (String) -> Unit, modifier: Modifier = Modifier, hint: String? = null, onDone: () -> Unit = {}) {
     Box(
-        modifier.fillMaxWidth().height(52.dp).background(LibraryColors.Raised, RoundedCornerShape(14.dp))
-            .border(1.dp, LibraryColors.Muted.copy(alpha = 0.35f), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp),
+        modifier.fillMaxWidth().height(52.dp).background(LibraryColors.Raised, LibraryShapes.Card)
+            .border(1.dp, LibraryColors.Muted.copy(alpha = 0.35f), LibraryShapes.Card).padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        if (name.isEmpty() && hint != null) Text(hint, color = LibraryColors.Muted, fontSize = 17.sp)
+        if (name.isEmpty() && hint != null) Text(hint, color = LibraryColors.Muted, style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
         BasicTextField(
             value = name,
             onValueChange = onName,
@@ -674,7 +667,7 @@ internal fun GroupScreen(state: PersonState, actions: GroupActions) {
                 Text(
                     stringResource(R.string.group_photos, format.format(state.person?.files ?: state.items.size)),
                     color = LibraryColors.Muted,
-                    fontSize = 14.sp,
+                    style = LibraryType.Body,
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
                 )
             }
@@ -682,7 +675,7 @@ internal fun GroupScreen(state: PersonState, actions: GroupActions) {
             items(faces.chunked(GRID_COLUMNS), key = { row -> row.first().first.id }) { row ->
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     row.forEach { (item, face) ->
-                        BoxWithConstraints(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(10.dp)).clickable { actions.openItem(item) }) {
+                        BoxWithConstraints(Modifier.weight(1f).aspectRatio(1f).clip(LibraryShapes.Tile).clickable { actions.openItem(item) }) {
                             FaceSquare(face, maxWidth)
                         }
                     }
@@ -726,13 +719,13 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
     Column(
         modifier
             .fillMaxWidth()
-            .background(LibraryColors.Background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(LibraryColors.Background, LibraryShapes.Sheet)
             .navigationBarRoom()
             .imePadding()
             .padding(top = 12.dp, bottom = 12.dp),
     ) {
         if (state.notChanged) {
-            Text(stringResource(R.string.hidden_not_changed), color = LibraryColors.Warning, fontSize = 13.sp, modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp))
+            Text(stringResource(R.string.hidden_not_changed), color = LibraryColors.Warning, style = LibraryType.Caption, modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp))
         }
         if (typed.isNotEmpty()) {
             state.matches.forEach { person ->
@@ -747,7 +740,7 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
                     Box(Modifier.size(44.dp).border(1.dp, LibraryColors.Muted.copy(alpha = 0.5f), CircleShape), contentAlignment = Alignment.Center) {
                         Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(20.dp))
                     }
-                    Text(stringResource(R.string.group_new_person, typed), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.group_new_person, typed), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 }
             }
             HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 6.dp))
@@ -755,7 +748,7 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
             Text(
                 stringResource(R.string.group_name_body),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
             )
         }
@@ -764,7 +757,7 @@ private fun NameBar(state: PersonState, actions: GroupActions, modifier: Modifie
             TextButton(
                 onClick = { actions.name(typed) },
                 enabled = ready,
-                modifier = Modifier.height(52.dp).background(if (ready) LibraryColors.Inverse else LibraryColors.Raised, RoundedCornerShape(14.dp)),
+                modifier = Modifier.height(52.dp).background(if (ready) LibraryColors.Inverse else LibraryColors.Raised, LibraryShapes.Card),
             ) {
                 Text(
                     stringResource(R.string.group_name),
@@ -805,7 +798,7 @@ internal fun FaceSheet(found: FoundFace, people: List<Person>, actions: FaceActi
     Column(Modifier.fillMaxWidth().navigationBarRoom().imePadding().padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         FaceAvatar(found.face, 112.dp)
         if (!asking && person != null) {
-            Text(person.name.orEmpty(), color = LibraryColors.OnBackground, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+            Text(person.name.orEmpty(), color = LibraryColors.OnBackground, style = LibraryType.PageTitle, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
             Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 SheetRow(LibraryIcons.Check, stringResource(R.string.face_this_is, person.name.orEmpty())) {
                     actions.confirm(found.face, person.id)
@@ -821,7 +814,7 @@ internal fun FaceSheet(found: FoundFace, people: List<Person>, actions: FaceActi
             Text(
                 stringResource(if (person != null) R.string.face_who_is_it else R.string.face_who_is_this),
                 color = LibraryColors.OnBackground,
-                fontSize = 20.sp,
+                style = LibraryType.PageTitle,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 10.dp),
             )
@@ -829,14 +822,14 @@ internal fun FaceSheet(found: FoundFace, people: List<Person>, actions: FaceActi
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp)) {
                 others.forEach { other ->
                     Column(
-                        Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable {
+                        Modifier.width(76.dp).clip(LibraryShapes.Tile).clickable {
                             actions.move(found.face, other.id)
                             onDone()
                         }.padding(vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         FaceAvatar(other.cover, 52.dp)
-                        Text(other.name.orEmpty(), color = LibraryColors.OnBackground, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                        Text(other.name.orEmpty(), color = LibraryColors.OnBackground, style = LibraryType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
             }
@@ -874,7 +867,7 @@ private fun SheetRow(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(22.dp))
-        Text(label, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -890,7 +883,7 @@ internal fun EditFacesGrid(state: PersonState, marked: Set<String>, onToggle: (F
             Row(Modifier.padding(vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { (_, face) ->
                     val off = face.id in marked
-                    BoxWithConstraints(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(10.dp)).clickable { onToggle(face) }) {
+                    BoxWithConstraints(Modifier.weight(1f).aspectRatio(1f).clip(LibraryShapes.Tile).clickable { onToggle(face) }) {
                         FaceSquare(face, maxWidth)
                         if (off) {
                             Box(Modifier.fillMaxSize().background(LibraryColors.BadgeScrim), contentAlignment = Alignment.Center) {

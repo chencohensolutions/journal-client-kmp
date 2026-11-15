@@ -64,12 +64,7 @@ internal fun LoadingMomentsPage(paging: MomentsPaging, actions: SettingsActions)
             actions.setViewerAhead,
         )
     }
-    Text(
-        stringResource(R.string.settings_loading_note),
-        color = LibraryColors.Muted,
-        fontSize = 13.sp,
-        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp),
-    )
+    PageNote(stringResource(R.string.settings_loading_note), top = 10)
     if (!paging.isDefault) {
         TextButton(onClick = actions.resetMomentsPaging, modifier = Modifier.padding(start = 20.dp, top = 4.dp)) {
             Text(
@@ -85,8 +80,8 @@ internal fun LoadingMomentsPage(paging: MomentsPaging, actions: SettingsActions)
 @Composable
 private fun Choice(title: String, body: String, options: List<Int>, value: Int, default: Int, onPick: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
-        Text(title, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp))
-        Text(body, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp))
+        Text(title, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp))
+        Text(body, color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(horizontal = 16.dp))
         // Not OptionChips: these sit under a plain title, without its radio button's indent.
         FlowRow(
             Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),

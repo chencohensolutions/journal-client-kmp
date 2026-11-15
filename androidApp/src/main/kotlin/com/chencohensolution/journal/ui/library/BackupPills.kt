@@ -142,7 +142,7 @@ private fun Pill(label: String, selected: Boolean, icon: ImageVector?, warning: 
             Icon(icon, null, tint = content, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(label, color = content, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = content, style = LibraryType.Body, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -165,14 +165,14 @@ internal fun AddFolderDialog(picked: PickedFolder, add: (AudioKind) -> Unit, can
         title = { Text(stringResource(R.string.backup_add_title, picked.folder.name)) },
         text = {
             Column {
-                Text(picked.folder.path, color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(picked.folder.path, color = LibraryColors.Muted, style = LibraryType.Caption)
                 Text(
                     stringResource(R.string.backup_add_found, pluralStringResource(R.plurals.backup_files, picked.look.files, format.format(picked.look.files)), size),
-                    fontSize = 15.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                 )
-                Text(stringResource(R.string.backup_add_kind), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text(stringResource(R.string.backup_add_kind), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(bottom = 4.dp))
                 AudioKind.entries.forEach { option ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
@@ -181,10 +181,10 @@ internal fun AddFolderDialog(picked: PickedFolder, add: (AudioKind) -> Unit, can
                     ) {
                         RadioButton(selected = kind == option, onClick = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(kindName(option)), fontSize = 16.sp)
+                        Text(stringResource(kindName(option)), style = LibraryType.RowTitle, fontWeight = FontWeight.Normal)
                     }
                 }
-                Text(stringResource(R.string.backup_add_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.backup_add_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(top = 8.dp))
             }
         },
         confirmButton = { TextButton(onClick = { add(kind) }) { Text(stringResource(R.string.backup_add_confirm)) } },

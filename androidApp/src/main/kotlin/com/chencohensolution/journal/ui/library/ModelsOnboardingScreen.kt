@@ -112,7 +112,7 @@ private fun size(bytes: Long): String = Formatter.formatShortFileSize(LocalConte
 /** A model: its name, what it does and its size, how its download stands with a bar; Search by words with its check box. */
 @Composable
 private fun ModelCard(model: PhoneModelRow, checked: Boolean?, actions: ModelsOnboardingActions) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp)) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = LibraryShapes.Card) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

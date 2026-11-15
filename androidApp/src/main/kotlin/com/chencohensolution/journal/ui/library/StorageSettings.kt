@@ -88,7 +88,7 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
     SectionTitle(stringResource(R.string.settings_storage_kept))
     SettingsCard {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Text(stringResource(R.string.settings_storage_used), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_storage_used), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
             Text(
                 ui.previewBytes?.let {
                     stringResource(
@@ -98,7 +98,7 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
                     )
                 } ?: stringResource(R.string.settings_storage_counting),
                 color = LibraryColors.Muted,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 modifier = Modifier.padding(end = 8.dp),
             )
             FlowRow(Modifier.padding(top = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -120,17 +120,17 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
         )
         if (options.enabled) {
             Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 12.dp)) {
-                Text(stringResource(R.string.settings_storage_format), color = LibraryColors.OnBackground, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_storage_format), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
                 FlowRow(Modifier.padding(top = 4.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PreviewFormat.entries.forEach { format ->
                         Chip(formatName(format), options.format == format) { actions.setPreviewFormat(format) }
                     }
                 }
-                Text(formatHint(options.format), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(formatHint(options.format), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
                 Text(
                     stringResource(R.string.settings_storage_quality),
                     color = LibraryColors.OnBackground,
-                    fontSize = 15.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -143,12 +143,12 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
         }
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)) {
-            Text(stringResource(R.string.settings_first_image), color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.settings_first_image_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(stringResource(R.string.settings_first_image), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_first_image_body), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
             Text(
                 stringResource(R.string.settings_first_image_size),
                 color = LibraryColors.OnBackground,
-                fontSize = 15.sp,
+                style = LibraryType.RowTitle,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 12.dp),
             )
@@ -162,7 +162,7 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
                 Text(
                     stringResource(R.string.settings_storage_format),
                     color = LibraryColors.OnBackground,
-                    fontSize = 15.sp,
+                    style = LibraryType.RowTitle,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -171,7 +171,7 @@ internal fun StorageSection(ui: StorageUi, actions: StorageActions) {
                         Chip(formatName(format), options.firstFormat == format) { actions.setFirstImageFormat(format) }
                     }
                 }
-                Text(formatHint(options.firstFormat), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(formatHint(options.firstFormat), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
             }
         }
         HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))

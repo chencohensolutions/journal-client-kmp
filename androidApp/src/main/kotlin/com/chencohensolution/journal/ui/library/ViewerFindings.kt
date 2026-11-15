@@ -68,11 +68,11 @@ private val CardColor: Color @Composable get() = LibraryColors.OnInverse.copy(al
 @Composable
 private fun FindingsCard(title: String, trailing: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().background(CardColor, RoundedCornerShape(16.dp)).padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 12.dp),
+        Modifier.fillMaxWidth().background(CardColor, LibraryShapes.Card).padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = LibraryColors.OnInverse, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(title, color = LibraryColors.OnInverse, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             trailing()
         }
         content()
@@ -87,7 +87,7 @@ private fun PeopleCard(people: List<FoundFace>, onOpen: (FoundFace) -> Unit) {
             people.forEach { found ->
                 val name = found.person?.name ?: found.face.personName
                 Column(
-                    Modifier.width(72.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onOpen(found) }.padding(vertical = 4.dp),
+                    Modifier.width(72.dp).clip(LibraryShapes.Tile).clickable(role = Role.Button) { onOpen(found) }.padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box {
@@ -96,7 +96,7 @@ private fun PeopleCard(people: List<FoundFace>, onOpen: (FoundFace) -> Unit) {
                             Text(
                                 "?",
                                 color = LibraryColors.OnInverse,
-                                fontSize = 12.sp,
+                                fontSize = LibraryType.Small.fontSize,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.align(Alignment.BottomEnd).size(20.dp).background(LibraryColors.Inverse, CircleShape).padding(top = 1.dp),
                                 style = TextStyle(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
@@ -106,7 +106,7 @@ private fun PeopleCard(people: List<FoundFace>, onOpen: (FoundFace) -> Unit) {
                     Text(
                         name ?: stringResource(R.string.people_whos_this),
                         color = if (name == null) LibraryColors.OnInverseMuted else LibraryColors.OnInverse,
-                        fontSize = 13.sp,
+                        style = LibraryType.Caption,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -140,7 +140,7 @@ private fun TextCard(lines: List<String>) {
                 Text(
                     line,
                     color = LibraryColors.OnInverse,
-                    fontSize = 15.sp,
+                    fontSize = LibraryType.RowTitle.fontSize,
                     style = TextStyle(textDirection = TextDirection.Content),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -163,7 +163,7 @@ private fun SimilarCard(similar: List<MediaItem>, actions: FindingsActions) {
     ) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             similar.take(SIMILAR_SHOWN).forEach { item ->
-                CroppedThumbnail(item, Modifier.size(76.dp).clip(RoundedCornerShape(10.dp)).clickable { actions.openSimilar(item) })
+                CroppedThumbnail(item, Modifier.size(76.dp).clip(LibraryShapes.Tile).clickable { actions.openSimilar(item) })
             }
         }
     }

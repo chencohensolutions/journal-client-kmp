@@ -105,7 +105,7 @@ internal fun DurationChip(durationMillis: Long?, modifier: Modifier = Modifier) 
     ) {
         Icon(LibraryIcons.Play, contentDescription = null, tint = Color.White, modifier = Modifier.size(9.dp))
         if (durationMillis != null) {
-            Text(formatDuration(durationMillis), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text(formatDuration(durationMillis), color = Color.White, style = LibraryType.Tiny, fontWeight = FontWeight.SemiBold)
         }
     }
 }

@@ -241,7 +241,7 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(LibraryColors.Background, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                .background(LibraryColors.Background, LibraryShapes.Sheet)
                 .navigationBarRoom()
                 .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         ) {
@@ -251,10 +251,10 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                     Text(
                         if (from == years.first && to == years.last) stringResource(R.string.explore_all_years) else if (from == to) "$from" else stringResource(R.string.explore_year_range, from, to),
                         color = LibraryColors.OnBackground,
-                        fontSize = 17.sp,
+                        style = LibraryType.RowTitle,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(pluralStringResource(R.plurals.map_photos_here, inView, inView), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(pluralStringResource(R.plurals.map_photos_here, inView, inView), color = LibraryColors.Muted, style = LibraryType.Caption)
                 }
                 TextButton(enabled = inView > 0, onClick = { look?.let { actions.openPhotos(scopeOf(it.area), null) } }) {
                     Text(stringResource(R.string.map_show), color = if (inView > 0) LibraryColors.OnBackground else LibraryColors.Muted, fontWeight = FontWeight.SemiBold)
@@ -279,8 +279,8 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
                     modifier = Modifier.padding(end = 8.dp),
                 )
                 Row(Modifier.fillMaxWidth().padding(end = 8.dp)) {
-                    Text("${years.first}", color = LibraryColors.Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                    Text("${years.last}", color = LibraryColors.Muted, fontSize = 12.sp)
+                    Text("${years.first}", color = LibraryColors.Muted, style = LibraryType.Small, modifier = Modifier.weight(1f))
+                    Text("${years.last}", color = LibraryColors.Muted, style = LibraryType.Small)
                 }
             }
         }
@@ -292,11 +292,13 @@ internal fun MapScreen(library: LibraryState, stories: StoriesState, actions: Ma
 private fun MapEmpty(loaded: Boolean, actions: MapActions, line: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
         if (loaded) {
-            Column(Modifier.align(Alignment.Center).padding(24.dp)) {
-                Text(stringResource(R.string.map_no_photos), color = LibraryColors.Muted, fontSize = 15.sp, modifier = Modifier.padding(bottom = 16.dp))
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                EmptyState(stringResource(R.string.map_no_photos))
                 // Their photos may all be of sources hidden.
                 line()
             }
+        } else {
+            LoadingState(Modifier.align(Alignment.Center))
         }
         IconButton(onClick = actions.back, modifier = Modifier.statusBarRoom().padding(start = 8.dp, top = 8.dp)) {
             Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)

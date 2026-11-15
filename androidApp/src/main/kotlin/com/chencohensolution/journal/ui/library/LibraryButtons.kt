@@ -56,7 +56,7 @@ internal fun PrimaryButton(
     ) {
         if (busy) CircularProgressIndicator(Modifier.padding(end = 8.dp).size(16.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
         if (icon != null) Icon(icon, null, Modifier.padding(end = 8.dp).size(18.dp))
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -79,7 +79,7 @@ internal fun SecondaryButton(
         modifier = modifier.heightIn(min = 44.dp),
     ) {
         if (icon != null) Icon(icon, null, Modifier.padding(end = 8.dp).size(18.dp))
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
     }
 }
 

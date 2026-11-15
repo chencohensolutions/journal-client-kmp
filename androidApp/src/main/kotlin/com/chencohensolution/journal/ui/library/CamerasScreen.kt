@@ -93,55 +93,29 @@ internal fun CamerasRoute(library: ServerLibrary, onState: (CamerasState) -> Uni
  */
 @Composable
 internal fun CamerasScreen(state: CamerasState, confirming: CameraGroup?, actions: CamerasActions) {
-    val insets = barsRoom()
-    Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
-        ) {
-            Text(
-                stringResource(R.string.cameras_intro),
-                color = LibraryColors.Muted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 12.dp),
-            )
-            when (val cameras = state) {
-                CamerasState.Loading -> Text(
-                    stringResource(R.string.hidden_loading),
-                    color = LibraryColors.Muted,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(horizontal = 32.dp),
-                )
-                CamerasState.Unreachable -> Column(Modifier.padding(horizontal = 32.dp)) {
-                    Text(stringResource(R.string.hidden_unreachable), color = LibraryColors.OnBackground, fontSize = 16.sp)
-                    TextButton(onClick = actions.retry) { Text(stringResource(R.string.hidden_retry), color = LibraryColors.OnBackground) }
-                }
-                is CamerasState.Ready -> {
-                    if (cameras.notChanged) {
-                        Text(
-                            stringResource(R.string.hidden_not_changed),
-                            color = LibraryColors.Warning,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
-                        )
-                    }
-                    SettingsCard {
-                        cameras.cameras.forEachIndexed { i, camera ->
-                            if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
-                            CameraRow(camera, cameras.saving, actions)
-                        }
-                    }
+    SettingsScaffold(stringResource(R.string.cameras_title), actions.back) {
+        PageNote(stringResource(R.string.cameras_intro), top = 8, bottom = 12)
+        when (val cameras = state) {
+            CamerasState.Loading -> LoadingState()
+            CamerasState.Unreachable -> UnreachableState(actions.retry)
+            is CamerasState.Ready -> {
+                if (cameras.notChanged) {
                     Text(
-                        stringResource(R.string.cameras_unmarked),
-                        color = LibraryColors.Muted,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 10.dp),
+                        stringResource(R.string.hidden_not_changed),
+                        color = LibraryColors.Warning,
+                        style = LibraryType.Caption,
+                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
                     )
                 }
+                SettingsCard {
+                    cameras.cameras.forEachIndexed { i, camera ->
+                        if (i > 0) HorizontalDivider(color = LibraryColors.Muted.copy(alpha = 0.2f))
+                        CameraRow(camera, cameras.saving, actions)
+                    }
+                }
+                PageNote(stringResource(R.string.cameras_unmarked), top = 10)
             }
         }
-        TitleBar(stringResource(R.string.cameras_title), actions.back, Modifier.align(Alignment.TopCenter))
     }
     confirming?.let { camera ->
         val photos = NumberFormat.getIntegerInstance().format(camera.files)
@@ -167,13 +141,13 @@ private fun CameraRow(camera: CameraGroup, saving: Boolean, actions: CamerasActi
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(camera.name, color = LibraryColors.OnBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(listOfNotNull(format.format(camera.files), years(camera)).joinToString(" · "), color = LibraryColors.Muted, fontSize = 13.sp)
+                Text(camera.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                Text(listOfNotNull(format.format(camera.files), years(camera)).joinToString(" · "), color = LibraryColors.Muted, style = LibraryType.Caption)
                 if (!camera.mine && camera.pending == 0) {
-                    Text(stringResource(R.string.cameras_sent_to_you), color = LibraryColors.Muted, fontSize = 13.sp)
+                    Text(stringResource(R.string.cameras_sent_to_you), color = LibraryColors.Muted, style = LibraryType.Caption)
                 }
             }
-            Text(stringResource(R.string.cameras_mine), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(stringResource(R.string.cameras_mine), color = LibraryColors.Muted, style = LibraryType.Caption, modifier = Modifier.padding(end = 8.dp))
             Switch(
                 checked = camera.mine,
                 onCheckedChange = null,
@@ -190,7 +164,7 @@ private fun CameraRow(camera: CameraGroup, saving: Boolean, actions: CamerasActi
             Text(
                 pluralStringResource(R.plurals.cameras_moving, camera.pending, format.format(camera.pending)),
                 color = LibraryColors.OnBackground,
-                fontSize = 13.sp,
+                style = LibraryType.Caption,
                 modifier = Modifier.padding(top = 8.dp),
             )
             LinearProgressIndicator(
