@@ -98,10 +98,10 @@ internal fun MakeMomentSheet(
                     val on = showOn == option
                     Box(
                         Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(8.dp))
-                            .background(if (on) LibraryColors.Accent else Color.Transparent).clickable { showOn = option },
+                            .background(if (on) LibraryColors.Inverse else Color.Transparent).clickable { showOn = option },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(title, color = if (on) Color.White else LibraryColors.OnBackground, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 1)
+                        Text(title, color = if (on) LibraryColors.OnInverse else LibraryColors.OnBackground, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 1)
                     }
                 }
             }
@@ -111,19 +111,7 @@ internal fun MakeMomentSheet(
                 fontSize = 12.sp,
             )
             // The name is optional (asked Nov 9, 2026), so Make it is always ready.
-            Box(
-                Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(12.dp))
-                    .background(LibraryColors.Accent)
-                    .clickable { onMake(name.trim(), highlights, showOn) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    stringResource(R.string.make_moment_make),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            PrimaryButton(stringResource(R.string.make_moment_make), { onMake(name.trim(), highlights, showOn) }, Modifier.fillMaxWidth().height(50.dp))
         }
     }
 }

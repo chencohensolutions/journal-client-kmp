@@ -79,14 +79,12 @@ internal fun ModelsScreen(state: PhoneModelsState, actions: ModelsActions) {
                 }
             }
             if (state.missing.isNotEmpty()) {
-                Button(
+                PrimaryButton(
+                    stringResource(R.string.models_download_all, size(state.missingBytes)),
                     onClick = actions.downloadAll,
                     enabled = !state.offline,
-                    colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.models_download_all, size(state.missingBytes)))
-                }
+                )
             } else {
                 Spacer(Modifier.height(12.dp))
             }

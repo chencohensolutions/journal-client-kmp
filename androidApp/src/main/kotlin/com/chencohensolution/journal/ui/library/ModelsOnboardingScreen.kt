@@ -101,9 +101,7 @@ internal fun ModelsOnboardingScreen(state: ModelsOnboardingState, actions: Model
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
-            Button(onClick = actions.continueOn, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                Text(stringResource(R.string.models_onboarding_continue))
-            }
+            PrimaryButton(stringResource(R.string.models_onboarding_continue), actions.continueOn, Modifier.fillMaxWidth().height(54.dp))
         }
     }
 }

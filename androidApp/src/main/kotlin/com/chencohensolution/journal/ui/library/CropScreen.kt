@@ -117,12 +117,12 @@ internal fun SetCropEditor(
                 Modifier
                     .padding(end = 8.dp)
                     .height(36.dp)
-                    .background(LibraryColors.Accent, RoundedCornerShape(50))
+                    .background(LibraryColors.Inverse, RoundedCornerShape(50))
                     .clickable { if (photos.all { saved[it.id] == result[it.id] }) onClose() else onDone(result) }
                     .padding(horizontal = 18.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.crop_done), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.crop_done), color = LibraryColors.OnInverse, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {

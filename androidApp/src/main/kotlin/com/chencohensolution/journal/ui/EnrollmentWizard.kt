@@ -111,7 +111,7 @@ fun EnrollmentWizard(
     )
 }
 
-private class EnrollmentActions(
+internal class EnrollmentActions(
     val start: () -> Unit = {},
     val back: () -> Unit = {},
     val updateServerAddress: (String) -> Unit = {},
@@ -125,7 +125,7 @@ private class EnrollmentActions(
 )
 
 @Composable
-private fun EnrollmentContent(state: EnrollmentState, actions: EnrollmentActions) {
+internal fun EnrollmentContent(state: EnrollmentState, actions: EnrollmentActions) {
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -171,16 +171,8 @@ private fun ColumnScope.EnterCodeStep(state: EnrollmentState, step: EnrollmentSt
         Body(stringResource(R.string.enroll_code_body), Modifier.padding(top = 8.dp))
         // One above the other: side by side, "Scan QR code" wraps on a phone.
         Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = actions.scan, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Icon(Icons.QrCode, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.enroll_scan), style = MaterialTheme.typography.titleMedium)
-            }
-            OutlinedButton(onClick = actions.paste, enabled = !step.checking, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Icon(Icons.Paste, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.enroll_paste), style = MaterialTheme.typography.titleMedium)
-            }
+            com.chencohensolution.journal.ui.library.SecondaryButton(stringResource(R.string.enroll_scan), actions.scan, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = !step.checking, icon = Icons.QrCode)
+            com.chencohensolution.journal.ui.library.SecondaryButton(stringResource(R.string.enroll_paste), actions.paste, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = !step.checking, icon = Icons.Paste)
         }
         OutlinedTextField(
             value = state.serverAddress,
@@ -487,15 +479,8 @@ private fun NumberedItem(number: Int, title: Int, body: Int) {
 }
 
 @Composable
-private fun PrimaryButton(text: String, onClick: () -> Unit, loading: Boolean = false) {
-    Button(onClick = onClick, enabled = !loading, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        if (loading) {
-            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-        } else {
-            Text(text, style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
+private fun PrimaryButton(text: String, onClick: () -> Unit, loading: Boolean = false) =
+    com.chencohensolution.journal.ui.library.PrimaryButton(text, onClick, Modifier.fillMaxWidth().height(56.dp), enabled = !loading, busy = loading)
 
 @Composable
 private fun DetailRow(icon: ImageVector, label: String, value: String, detail: String, highlight: Boolean = true) {

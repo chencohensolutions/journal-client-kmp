@@ -551,17 +551,12 @@ private fun FilterSheet(search: SearchState, actions: SearchActions, onDone: () 
                     }
                 }
             }
-            Button(
+            PrimaryButton(
+                pluralStringResource(R.plurals.search_filter_show, search.items.size, search.items.size),
                 onClick = onDone,
-                colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Accent, contentColor = Color.White),
+                busy = search.status == SearchStatus.SEARCHING,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                if (search.status == SearchStatus.SEARCHING) {
-                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                } else {
-                    Text(pluralStringResource(R.plurals.search_filter_show, search.items.size, search.items.size), fontWeight = FontWeight.SemiBold)
-                }
-            }
+            )
         }
     }
 }

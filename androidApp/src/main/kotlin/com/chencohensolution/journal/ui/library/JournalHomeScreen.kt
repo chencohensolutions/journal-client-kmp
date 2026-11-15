@@ -828,67 +828,58 @@ internal fun timeLabel(millis: Long): String = formatDate(Instant.ofEpochMilli(m
 
 /** The server refused this device (401) or there is no identity: offer to register again. */
 @Composable
-private fun RegisterAgainBanner(onRegister: () -> Unit) {
-    Card {
-        Text(stringResource(R.string.library_rejected_title), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.library_rejected_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
-        Button(
-            onClick = onRegister,
-            colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Error, contentColor = Color.White),
-        ) {
-            Text(stringResource(R.string.library_rejected_action))
-        }
-    }
-}
+private fun RegisterAgainBanner(onRegister: () -> Unit) = HomeCard(
+    title = stringResource(R.string.library_rejected_title),
+    body = stringResource(R.string.library_rejected_body),
+    action = stringResource(R.string.library_rejected_action),
+    onAction = onRegister,
+    warning = true,
+)
 
 @Composable
-private fun NoAccessCard(onAllow: () -> Unit) {
-    Card {
-        Text(stringResource(R.string.library_no_access_title), color = LibraryColors.OnInverse, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.library_no_access_body), color = LibraryColors.OnInverseMuted, fontSize = 14.sp)
-        Button(
-            onClick = onAllow,
-            colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Accent, contentColor = Color.White),
-        ) {
-            Text(stringResource(R.string.library_access_allow))
-        }
-    }
-}
+private fun NoAccessCard(onAllow: () -> Unit) = HomeCard(
+    title = stringResource(R.string.library_no_access_title),
+    body = stringResource(R.string.library_no_access_body),
+    action = stringResource(R.string.library_access_allow),
+    onAction = onAllow,
+)
 
 @Composable
-private fun LimitedBanner(count: Int, onChange: () -> Unit) {
-    Row(
-        Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .background(LibraryColors.Raised, RoundedCornerShape(14.dp))
-            .padding(start = 14.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            pluralStringResource(R.plurals.library_limited, count, count),
-            color = LibraryColors.OnBackground,
-            fontSize = 14.sp,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onChange) {
-            Text(stringResource(R.string.library_limited_change), color = LibraryColors.Warning, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
+private fun LimitedBanner(count: Int, onChange: () -> Unit) = HomeCard(
+    title = pluralStringResource(R.plurals.library_limited, count, count),
+    body = null,
+    action = stringResource(R.string.library_limited_change),
+    onAction = onChange,
+)
 
+/**
+ * A card at the top of home (Register again, No access, Limited access): Raised, a title, one line and one ink action.
+ * [warning] puts a small warning mark before the title.
+ */
 @Composable
-private fun Card(content: @Composable () -> Unit) {
+private fun HomeCard(title: String, body: String?, action: String, onAction: () -> Unit, warning: Boolean = false) {
     Column(
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .background(LibraryColors.Inverse, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(LibraryColors.Raised, RoundedCornerShape(16.dp))
+            .padding(start = 16.dp, end = 8.dp, top = if (body == null) 4.dp else 14.dp, bottom = 4.dp),
     ) {
-        content()
-        Spacer(Modifier.size(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (warning) Icon(LibraryIcons.Info, null, tint = LibraryColors.Warning, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+            Text(
+                title,
+                color = LibraryColors.OnBackground,
+                fontSize = if (body == null) 14.sp else 16.sp,
+                fontWeight = if (body == null) FontWeight.Normal else FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            if (body == null) TextAction(action, onAction)
+        }
+        if (body != null) {
+            Text(body, color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
+            PrimaryButton(action, onAction, Modifier.padding(top = 10.dp, bottom = 10.dp))
+        }
     }
 }
 

@@ -263,7 +263,7 @@ internal fun PickingBar(
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-            BarButton(stringResource(R.string.library_private_mark), busy == "private", enabled = picked.isNotEmpty() && busy == null, accent = false) {
+            BarButton(stringResource(R.string.library_private_mark), busy == "private", enabled = picked.isNotEmpty() && busy == null) {
                 confirmingPrivate = true
             }
             // Tuck away turns into Bring back (and back) as tucked and untucked photos are picked.
@@ -299,26 +299,24 @@ internal fun PickingBar(
     }
 }
 
-/** A filled button of the picking bar; it spins while [busy]. */
+/**
+ * A text button of the picking bar (Mark private, Tuck away, Bring back), all of the same weight; it spins while
+ * [busy].
+ */
 @Composable
-private fun BarButton(label: String, busy: Boolean, enabled: Boolean, accent: Boolean = true, onClick: () -> Unit) {
-    val background = when {
-        !enabled && !busy -> LibraryColors.OnInverseMuted.copy(alpha = 0.3f)
-        accent -> LibraryColors.Accent
-        else -> LibraryColors.OnInverseMuted.copy(alpha = 0.35f)
-    }
+private fun BarButton(label: String, busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val color = if (enabled || busy) LibraryColors.OnInverse else LibraryColors.OnInverseMuted
     Box(
         Modifier
             .height(40.dp)
-            .background(background, RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (busy) CircularProgressIndicator(Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-            Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (busy) CircularProgressIndicator(Modifier.size(16.dp), color = LibraryColors.OnInverse, strokeWidth = 2.dp)
+            Text(label, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }

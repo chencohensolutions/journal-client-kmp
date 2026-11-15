@@ -97,22 +97,16 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
                     } else if (plan != null) {
                         Text(stringResource(R.string.settings_free_up_plan_none), color = LibraryColors.Muted, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
                     }
-                    Button(
+                    PrimaryButton(
+                        if (plan != null && plan.groups.isNotEmpty()) {
+                            stringResource(R.string.free_up_button_amount, Formatter.formatShortFileSize(context, plan.bytes))
+                        } else {
+                            stringResource(R.string.settings_free_up_button)
+                        },
                         onClick = { if ((plan?.sounds ?: 0) > 0) askSounds = true else freeUpNow() },
                         enabled = !running && plan != null && plan.groups.isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = LibraryColors.Inverse, contentColor = LibraryColors.OnInverse),
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(52.dp),
-                    ) {
-                        Text(
-                            if (plan != null && plan.groups.isNotEmpty()) {
-                                stringResource(R.string.free_up_button_amount, Formatter.formatShortFileSize(context, plan.bytes))
-                            } else {
-                                stringResource(R.string.settings_free_up_button)
-                            },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    )
                     Text(stringResource(R.string.settings_free_up_body), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
                     freeUpStatus(freeUp)?.let { Text(it, color = LibraryColors.OnBackground, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp)) }
                     if (!running && freeUp.waitingCount > 0) {
@@ -207,7 +201,7 @@ internal fun FreeUpScreen(ui: StorageUi, actions: StorageActions, back: () -> Un
                     askSounds = false
                     actions.confirmSounds()
                     freeUpNow()
-                }) { Text(stringResource(R.string.free_up_sounds_confirm), color = LibraryColors.Warning) }
+                }) { Text(stringResource(R.string.free_up_sounds_confirm), color = LibraryColors.Error, fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { askSounds = false }) { Text(stringResource(R.string.backup_add_cancel)) } },
         )

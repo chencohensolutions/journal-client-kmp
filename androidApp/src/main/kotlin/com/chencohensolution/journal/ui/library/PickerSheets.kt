@@ -140,14 +140,14 @@ private fun PickerSheet(
                             Modifier
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
                                 .fillMaxWidth()
-                                .background(LibraryColors.Accent.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                                .background(LibraryColors.OnBackground.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
                                 .clickable(role = Role.Button) { onCreate(query.trim()) }
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(Modifier.size(44.dp).background(LibraryColors.Accent, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                                Icon(LibraryIcons.Plus, null, tint = Color.White)
+                            Box(Modifier.size(44.dp).background(LibraryColors.Inverse, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse)
                             }
                             Column {
                                 Text(createLabel(query.trim()), fontSize = 16.sp, fontWeight = FontWeight.Bold)

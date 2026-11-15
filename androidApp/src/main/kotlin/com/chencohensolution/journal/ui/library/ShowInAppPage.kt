@@ -110,7 +110,7 @@ private fun KindRow(name: String, icon: ImageVector, files: Int, notBackedUp: In
     }
 }
 
-/** "☁ 12 not backed up ›" in orange; opens Backup. */
+/** "☁ 12 not backed up ›": an orange mark, ink words (a link is never orange); opens Backup. */
 @Composable
 private fun NotBackedUp(n: Int, openBackup: () -> Unit, size: TextUnit) {
     Row(
@@ -119,7 +119,7 @@ private fun NotBackedUp(n: Int, openBackup: () -> Unit, size: TextUnit) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(LibraryIcons.CloudUp, null, tint = LibraryColors.Warning, modifier = Modifier.size(14.dp))
-        Text(stringResource(R.string.kinds_not_backed_up, count(n)) + " ›", color = LibraryColors.Warning, fontSize = size, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.kinds_not_backed_up, count(n)) + " ›", color = LibraryColors.OnBackground, fontSize = size, fontWeight = FontWeight.SemiBold)
     }
 }
 

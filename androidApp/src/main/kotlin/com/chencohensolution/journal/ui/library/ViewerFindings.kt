@@ -127,10 +127,12 @@ private fun TextCard(lines: List<String>) {
     FindingsCard(
         stringResource(R.string.findings_text),
         trailing = {
-            TextButton(onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, all))) } }) {
-                Icon(LibraryIcons.Copy, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.findings_copy), color = LibraryColors.Accent, modifier = Modifier.padding(start = 6.dp))
-            }
+            TextAction(
+                stringResource(R.string.findings_copy),
+                { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, all))) } },
+                icon = LibraryIcons.Copy,
+                color = LibraryColors.OnInverse,
+            )
         },
     ) {
         Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -154,8 +156,8 @@ private fun SimilarCard(similar: List<MediaItem>, actions: FindingsActions) {
         stringResource(R.string.findings_similar),
         trailing = {
             TextButton(onClick = actions.moreSimilar) {
-                Text(stringResource(R.string.findings_more), color = LibraryColors.Accent)
-                Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
+                Text(stringResource(R.string.findings_more), color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold)
+                Icon(LibraryIcons.ChevronRight, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(16.dp))
             }
         },
     ) {

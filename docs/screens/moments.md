@@ -48,7 +48,8 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   taps then pick or unpick (a set is picked whole), back or **Cancel** stops. In place of the tabs, the **picking
   bar**: **Cancel · N selected · Mark private · Tuck away** (N counts photos, a set each of its own; Mark private asks
   first, as search's does; Tuck away doesn't), or **Bring back** in place of Tuck away when every photo picked is
-  tucked away. Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
+  tucked away. Mark private, Tuck away and Bring back are plain text buttons of the same weight on the bar (Nov 16,
+  2026; neither filled). Above it, with exactly one photo picked, **Write** (or **Edit**) · **Crop** (photos) · **Tag**; with
   two or more photos picked, **Make a moment** (Nov 9, 2026, below) and, with two or more photos or sets picked none of
   which is a named moment, **Merge**; with one set picked, **Take out** (the photo the long press was on).
   Remove from / Add to storyline is in the viewer's details panel. A long press on a photo taken during a recording

@@ -2,6 +2,10 @@ package com.chencohensolution.journal.ui.library
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -16,6 +20,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
@@ -91,11 +99,69 @@ private val LocalLibraryPalette = staticCompositionLocalOf { DarkLibraryPalette 
 internal val LibraryColors: LibraryPalette
     @Composable @ReadOnlyComposable get() = LocalLibraryPalette.current
 
-/** The library palette for [content]: the system theme's, or dark when [dark] says so (the viewer). */
+/**
+ * The library palette for [content]: the system theme's, or dark when [dark] says so (the viewer). Material's colors
+ * come from the same palette ([materialColors]), so dialogs, text fields, sliders and default buttons match the
+ * library instead of the wallpaper.
+ */
 @Composable
 internal fun LibraryTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalLibraryPalette provides if (dark) DarkLibraryPalette else LightLibraryPalette, content = content)
+    val palette = if (dark) DarkLibraryPalette else LightLibraryPalette
+    CompositionLocalProvider(LocalLibraryPalette provides palette) {
+        MaterialTheme(colorScheme = if (dark) DarkMaterialColors else LightMaterialColors, typography = MaterialTheme.typography, content = content)
+    }
 }
+
+/**
+ * Material's color scheme from a library palette: ink (Inverse) is the main color, teal (Accent) the secondary for
+ * "on" states and progress, surfaces from Background and Raised, Muted for secondary text and outlines.
+ */
+internal fun materialColors(p: LibraryPalette, dark: Boolean): ColorScheme {
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val tealContainer = if (dark) Color(0xFF16403D) else Color(0xFFD3E6E3)
+    val onTealContainer = if (dark) Color(0xFFCDE7E3) else Color(0xFF0E3431)
+    return base.copy(
+        primary = p.Inverse,
+        onPrimary = p.OnInverse,
+        primaryContainer = p.Raised,
+        onPrimaryContainer = p.OnBackground,
+        inversePrimary = p.Accent,
+        secondary = p.Accent,
+        onSecondary = Color.White,
+        secondaryContainer = tealContainer,
+        onSecondaryContainer = onTealContainer,
+        tertiary = p.Accent,
+        onTertiary = Color.White,
+        tertiaryContainer = tealContainer,
+        onTertiaryContainer = onTealContainer,
+        background = p.Background,
+        onBackground = p.OnBackground,
+        surface = p.Background,
+        onSurface = p.OnBackground,
+        surfaceVariant = p.Raised,
+        onSurfaceVariant = p.Muted,
+        surfaceTint = Color.Transparent,
+        inverseSurface = p.Inverse,
+        inverseOnSurface = p.OnInverse,
+        error = p.Error,
+        onError = Color.White,
+        errorContainer = p.Error.copy(alpha = 0.15f),
+        onErrorContainer = p.Error,
+        outline = p.Muted,
+        outlineVariant = p.Muted.copy(alpha = 0.35f),
+        scrim = Color.Black,
+        surfaceBright = p.Raised,
+        surfaceDim = p.Background,
+        surfaceContainerLowest = p.Background,
+        surfaceContainerLow = p.Raised,
+        surfaceContainer = p.Raised,
+        surfaceContainerHigh = p.Raised,
+        surfaceContainerHighest = p.Raised,
+    )
+}
+
+internal val LightMaterialColors = materialColors(LightLibraryPalette, dark = false)
+internal val DarkMaterialColors = materialColors(DarkLibraryPalette, dark = true)
 
 /** Line icons (Material icons are not a dependency of this app). */
 internal object LibraryIcons {

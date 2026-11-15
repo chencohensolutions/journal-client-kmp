@@ -139,7 +139,7 @@ private fun ColumnScope.Writing(
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onCancel) { Text(stringResource(R.string.library_cancel), color = LibraryColors.OnBackground) }
         Text(stringResource(R.string.note_writing), color = LibraryColors.OnBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        TextButton(onClick = onSave) { Text(stringResource(R.string.library_save), color = LibraryColors.Warning, fontWeight = FontWeight.Bold) }
+        TextButton(onClick = onSave) { Text(stringResource(R.string.library_save), color = LibraryColors.OnBackground, fontWeight = FontWeight.Bold) }
     }
     OutlinedTextField(
         value = text,

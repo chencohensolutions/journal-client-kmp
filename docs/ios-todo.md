@@ -23,6 +23,16 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **UX consistency review, Nov 16, 2026** (Android; [style.md](screens/style.md) has the rules). Round 1, colors and
+  buttons: the app's Material colors come from the library palette in light and dark (no system/wallpaper tint on
+  enrollment, photo access or alerts; SwiftUI: `.tint` the ink color, not teal); one shared primary button (filled ink
+  pill), secondary (outlined ink) and text action (ink semibold); teal only for on states and progress, red only for
+  remove/forget, orange only for warnings (Limited access' "Change", the viewer details' "Copy", "+ Tag", "More",
+  Add back, and the Show in the app "N not backed up ›" link are ink now). Home's Register again, No access and
+  Limited access are one card (Raised, title, one line, one ink action; `HomeCard` in `JournalHomeScreen.kt`). The
+  picking bar's Mark private, Tuck away and Bring back are plain text buttons of the same weight (`BarButton` in
+  `TuckedViews.kt`). Make a moment's "Show it in Moments on" choice and its Make it button are ink; Recompose's Done
+  is ink. Android files: `LibraryStyle.kt` (`materialColors`), `LibraryButtons.kt`, `JournalTheme.kt`.
 - **Settings: app and server versions** (Android Nov 14, 2026; [settings.md](screens/settings.md) "Your server"):
   in Your server's card, under the ID, "Server version %@" from `SettingsState.serverVersion` (nil: no line;
   `refreshServer()` already reads it again when Settings opens); below the card, muted, "This app: version %@" from

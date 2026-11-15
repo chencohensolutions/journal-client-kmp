@@ -317,7 +317,7 @@ internal fun SwapHereScreen(state: SwapState, nowMillis: Long, actions: SwapHere
                         Text(stringResource(R.string.swap_here_countdown, left / 60, left % 60), color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             PrimaryButton(stringResource(R.string.swap_share)) { actions.share(invite) }
-                            OutlinedButton(onClick = { actions.copy(invite) }) { Text(stringResource(R.string.swap_copy_link), color = LibraryColors.OnBackground) }
+                            SecondaryButton(stringResource(R.string.swap_copy_link), { actions.copy(invite) })
                         }
                         Text(stringResource(R.string.swap_here_waiting, invite.name), color = LibraryColors.Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
                     }
@@ -676,22 +676,10 @@ private fun Note(text: String) {
     Text(text, color = LibraryColors.Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 32.dp))
 }
 
+/** The shared [PrimaryButton] with the action last, as this file's callers write it. */
 @Composable
-private fun PrimaryButton(text: String, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = LibraryColors.Inverse,
-            contentColor = LibraryColors.OnInverse,
-            disabledContainerColor = LibraryColors.Muted.copy(alpha = 0.25f),
-            disabledContentColor = LibraryColors.Muted,
-        ),
-    ) {
-        if (busy) CircularProgressIndicator(Modifier.padding(end = 8.dp).size(16.dp), color = LibraryColors.OnInverse, strokeWidth = 2.dp)
-        Text(text)
-    }
-}
+private fun PrimaryButton(text: String, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) =
+    PrimaryButton(text, onClick, enabled = enabled, busy = busy)
 
 @Composable
 private fun NameField(name: String, onChange: (String) -> Unit, taken: Boolean) {

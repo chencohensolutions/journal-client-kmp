@@ -179,9 +179,9 @@ private fun DetailsCard(item: MediaItem) {
                 open -> stringResource(if (video) R.string.library_info_video_details_hide else R.string.library_info_exif_hide)
                 else -> stringResource(if (video) R.string.library_info_video_details_all else R.string.library_info_exif_all, shown.count)
             },
-            color = LibraryColors.Accent,
+            color = LibraryColors.OnInverse,
             fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clickable { open = !open }.padding(vertical = 6.dp),
         )
         if (open) {
@@ -226,7 +226,7 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
             tags.forEach { tag ->
                 Row(
                     Modifier
-                        .background(LibraryColors.Accent.copy(alpha = 0.12f), RoundedCornerShape(50))
+                        .background(LibraryColors.OnInverse.copy(alpha = 0.08f), RoundedCornerShape(50))
                         .padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -237,8 +237,8 @@ private fun TagsRow(tags: List<String>, onAdd: () -> Unit, onRemove: (String) ->
                 }
             }
             TextButton(onClick = onAdd, modifier = Modifier.height(36.dp)) {
-                Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                Text(stringResource(R.string.library_tag), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
+                Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(16.dp))
+                Text(stringResource(R.string.library_tag), color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
             }
         }
     }
@@ -264,8 +264,8 @@ private fun StorylineRow(inStoryline: Boolean, setInStoryline: (Boolean) -> Unit
                 }
             } else {
                 TextButton(onClick = { setInStoryline(true) }) {
-                    Icon(LibraryIcons.Plus, null, tint = LibraryColors.Accent, modifier = Modifier.size(16.dp))
-                    Text(stringResource(R.string.storyline_add_back), color = LibraryColors.Accent, modifier = Modifier.padding(start = 4.dp))
+                    Icon(LibraryIcons.Plus, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.storyline_add_back), color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
                 }
             }
         }
@@ -551,7 +551,7 @@ private fun keptFormat(preview: KeptPreview): String {
 @Composable
 private fun OriginalButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.height(40.dp)) {
-        Icon(icon, null, tint = LibraryColors.Accent, modifier = Modifier.size(18.dp))
-        Text(label, color = LibraryColors.Accent, modifier = Modifier.padding(start = 6.dp))
+        Icon(icon, null, tint = LibraryColors.OnInverse, modifier = Modifier.size(18.dp))
+        Text(label, color = LibraryColors.OnInverse, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
     }
 }
