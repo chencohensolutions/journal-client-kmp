@@ -12539,16 +12539,6 @@
         }
       }
     },
-    "Of what was imported" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מתוך מה שיובא"
-          }
-        }
-      }
-    },
     "%@: files whose name and folder say nothing: downloads, saved images, files from a computer." : {
       "localizations" : {
         "he" : {

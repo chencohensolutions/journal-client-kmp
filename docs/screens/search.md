@@ -93,7 +93,8 @@ results follow without searching again.
 
 **Search follows Show in the app** (the owner, Oct 27, 2026; before, every source was searched whatever Moments
 showed): a match in a source Settings › Show in the app hides is left out, as Moments leaves it out: a hidden source
-(WhatsApp and Screenshots at first), what was imported while Imported is off, but not the photos of a day shown
+(WhatsApp and Screenshots at first; an imported file is hidden with its kind since Nov 16, 2026, and with Imported
+off until then), but not the photos of a day shown
 anyway ("Always show this day"). The filter's years and towns count only what shows. Under the count a line says how
 many were left out of the pages shown so far, "**12 more in sources you hide · Show**"; a tap shows them for this
 search only ("Including 12 from sources you hide · Hide" takes them out again), and the next search hides them again.

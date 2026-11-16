@@ -243,11 +243,11 @@ class CamerasTest {
         val whatsapp = after.fromPhones.single { it.source == MediaSource.WHATSAPP }
         assertTrue(whatsapp.allHiddenEverywhere)
         assertEquals(MediaSource.WHATSAPP, after.fromPhones.last().source) // locked ones last
-        assertEquals(40, after.fromPhones.single { it.source == MediaSource.SCREENSHOTS }.hiddenEverywhere)
-        // Imported: its kinds, WhatsApp among them though none of it reaches this phone; screenshots hidden at first.
-        assertTrue(after.importedKinds.single { it.source == MediaSource.imported(MediaSource.WHATSAPP) }.allHiddenEverywhere)
-        assertEquals(false, after.importedKinds.single { it.source == MediaSource.imported(MediaSource.SCREENSHOTS) }.shown)
-        assertEquals(38410 + 540, after.importedCount)
+        assertEquals(1640, after.fromPhones.single { it.source == MediaSource.SCREENSHOTS }.hiddenEverywhere)
+        // Imported files are counted in their kind: one list, no Imported.
+        assertEquals(1240 + 38410, after.fromPhones.single { it.source == MediaSource.CAMERA }.count)
+        assertEquals(88 + 540, after.fromPhones.single { it.source == MediaSource.SCREENSHOTS }.count)
+        assertTrue(after.fromPhones.none { it.source.isImported })
         assertEquals(listOf(MediaSource.WHATSAPP), after.hiddenWhole)
         assertEquals(mapOf(MediaSource.SCREENSHOTS to 1640), after.hiddenInPart)
     }

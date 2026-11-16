@@ -300,7 +300,7 @@ class SearchTest {
         )
         search.search("dog")
         advanceUntilIdle()
-        // WhatsApp is hidden at first; imported Camera shows while Imported does.
+        // WhatsApp is hidden at first; imported Camera shows with Camera.
         assertEquals(listOf("1", "i"), search.currentState.items.map { it.id })
         assertEquals(1, search.currentState.hiddenBySources)
         assertEquals(listOf(SearchChip("2026", 2)), search.currentState.yearChips)
@@ -314,13 +314,13 @@ class SearchTest {
         advanceUntilIdle()
         assertEquals(listOf("1", "i"), search.currentState.items.map { it.id })
 
-        // Imported off hides what was imported; "Always show this day" shows WhatsApp's photos of that day.
+        // Camera hidden hides the imported camera photo too; "Always show this day" shows WhatsApp's photos of that day.
         stories.value = StoriesState(
-            shownSources = ShownSources(importedShown = false, alwaysShown = setOf(DaySource(LocalDay(2026, 10, 8), MediaSource.WHATSAPP))),
+            shownSources = ShownSources(hidden = setOf(MediaSource.CAMERA), alwaysShown = setOf(DaySource(LocalDay(2026, 10, 8), MediaSource.WHATSAPP))),
         )
         advanceUntilIdle()
-        assertEquals(listOf("w", "1"), search.currentState.items.map { it.id })
-        assertEquals(1, search.currentState.hiddenBySources)
+        assertEquals(listOf("w"), search.currentState.items.map { it.id })
+        assertEquals(2, search.currentState.hiddenBySources)
         search.close()
     }
 }

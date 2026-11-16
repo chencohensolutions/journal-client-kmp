@@ -11,13 +11,14 @@ worked out again from the library each time. On Android and, since Oct 21, 2026,
   a chip per source ran far off the screen): one row that scrolls sideways. First **+N**, the sources hidden ("+2"; a
   plus alone while none is), then a filled chip with a ✓ and its count for each source **shown** that has photos, the
   most photos first ("✓ Camera 1,240", "✓ Petcube 5"; a folder or app by its name with a folder icon). Tapping a chip
-  hides its source and it leaves the row. After the phones' chips, one **Imported** chip with a box icon and the count
-  of what was imported and shows (Android Oct 27, 2026, option b2 of the UI lab; `MomentsFeed.importedCount`, none
-  while Imported is off or nothing imported shows; tapping it turns Imported off, which "+N" then counts as one). What
+  hides its source and it leaves the row. What the server's import placed is counted in its kind's chip and shows or
+  hides with it (an imported camera photo is Camera; Nov 16, 2026: the **Imported** chip, and its box in the Showing
+  sheet, added Oct 27, are gone, and with them the `show_imported` setting, which had hidden every imported photo
+  from Moments and its ruler). What
   Private settings hides on every device never has a chip and isn't in "+N": none of it reaches the phone. **+N**
-  opens the **Showing** sheet: Show in the app's pills, Imported's kinds and its Private settings line, as in
+  opens the **Showing** sheet: Show in the app's pills and its Private settings line, as in
   [Settings › Show in the app](settings.md) (also a hidden folder with no photos left). Shared:
-  `MomentsFeed.bar`, `hiddenCount`, `sheet`, `importedCount`, `hasImported`, `ShownSourcesPills`. Everything but WhatsApp and Screenshots is shown at first (those two off
+  `MomentsFeed.bar`, `hiddenCount`, `sheet`, `ShownSourcesPills`, the counts folded by `MediaSource.byKind`. Everything but WhatsApp and Screenshots is shown at first (those two off
   for everyone since Oct 21, 2026), and a folder seen for the first time is shown. Settings › Show in the app › **Filter bar in
   Moments** turns the bar off (Oct 24, 2026). It is the same choice as [Settings › Show in the app](settings.md), so it hides a source
   everywhere (`ShownSources`, kept as `hidden_sources`; an older `shown_sources` or `feed_sources` keeps its choice).
@@ -208,7 +209,8 @@ month or day with one finger. Android and iOS.
     day picked last (Nov 10, 2026; before, only the line of dots did, and a tap on the same day again did nothing);
     it lands on that day itself, its first moment of the day, even when the day is inside a row of several days, and
     the pill names the day at the top of the feed, not its row's newest;
-  - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January, a
+  - a **dial of months**, oldest to newest, each a bar as tall as its photos (square root), years under January (in Hebrew
+    too since Nov 16, 2026; before, the Hebrew month's name was matched against English and no year showed), a
     needle in the middle. Drag it and the feed follows; a flick keeps it turning, and it settles on a month.
 - **Folding it:** a touch anywhere outside the ruler folds it and does nothing else (no photo opens by accident); a
   touch on the ruler never does, even between its controls (Nov 10, 2026: such a touch fell through and folded it), as
@@ -297,7 +299,8 @@ Shared logic in [MomentsFeed.kt](../../sharedLogic/src/commonMain/kotlin/com/che
   Moments is read from the source first (call, recording, `folder:whatsapp` a voice message), then from the server's
   call facts. **Sent to you** (`received`) is what the server labels photos of a camera the user marked as not
   theirs; a phone never gives its own files that source; it shows at first. What the server's import placed is
-  `import:` and its kind (`import:camera`, `import:folder:telegram`), under Imported. On Android the source comes
+  `import:` and its kind (`import:camera`, `import:folder:telegram`), shown, hidden and counted as that kind (Nov 16,
+  2026; under Imported before). On Android the source comes
   from the file's name and folder (`sourceOfFolder`, reading the table in `SourceNames.kt`, a copy of the server's
   rule so both label a file alike; the cases both are tested over are `SOURCE_FIXTURES` in `SourcesTest`), the first
   that fits: a screenshot's name ("Screenshot_20240301_030715_Bumble.jpg") is Screenshots wherever it is; WhatsApp's

@@ -258,7 +258,7 @@ struct LibraryRootView: View {
                 .environment(\.showOnPhoneBadge, settings.state.showOnPhoneBadge)
                 .environment(\.shownSourcesChoice, ShownSourcesChoice(
                     shown: settings.state.shownSources, hiddenEverywhere: settings.hiddenEverywhere,
-                    toggleImported: settings.toggleImported, openPrivate: { path.append(.privateSettings) }
+                    openPrivate: { path.append(.privateSettings) }
                 ))
                 .cropCover($crop, stories: stories.state, want: stories.want) { itemId, crops in stories.setCrops(crops, of: itemId) }
                 .environment(\.viewerShowing, showing)

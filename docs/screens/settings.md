@@ -57,13 +57,15 @@ The pages, and what each holds:
   (`BackupState.soundsNotBackedUp`: each folder's files at its last run less its uploaded ledger entries), which are
   also its "not backed up". A kind Private settings hides whole is left out with its counts.
   Until Oct 27, 2026 this page was pills to show or hide each source on this phone (since Oct 24; a switch per source
-  before), with an Imported pill and its kinds (option b2 of `ux/sources/2026-10-27`), Say what's hidden and Filter
+  before), with an Imported pill and its kinds (option b2 of `ux/sources/2026-10-27`; gone everywhere since Nov 16,
+  2026), Say what's hidden and Filter
   bar in Moments (now on the Moments page), and a line on what Private settings hides. Hiding on this phone is still
   the Moments filter bar's and Explore's Showing sheet's (`ShownSources`, kept as the sources hidden: `hidden_sources`
-  (until Oct 24, 2026 the fixed sources shown, `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`,
-  `show_imported`; the old id `whatsapp` there, and in `backup_sources` and `free_up_kept`, is read as the folder
+  (until Oct 24, 2026 the fixed sources shown, `shown_sources`, read once), `say_whats_hidden`, `always_shown_days`;
+  `show_imported`, Oct 27 to Nov 16, 2026, is ignored and removed when saving, and `import:` ids in the hidden sources
+  are dropped: imported files show or hide with their kind; the old id `whatsapp` there, and in `backup_sources` and `free_up_kept`, is read as the folder
   `folder:whatsapp` it is since Oct 27, 2026, as is any folder kept with capitals: folder ids are in lower case since
-  Oct 27, 2026, and written so). The Showing sheets keep b2's pills, Imported box and Private settings line
+  Oct 27, 2026, and written so). The Showing sheets keep b2's pills and Private settings line (its Imported pill and box removed Nov 16, 2026)
   (`ShownSourcesPills.kt`, `ShowingSheet`).
 - **Your cameras** (a page under Library, Oct 27, 2026; Android; iOS since Oct 29, 2026): a line on what it does,
   then one card of every camera the user's files name, the most photos first, each with its photos and years
@@ -571,7 +573,7 @@ were published or from the user's server instead of coming with the app (`Models
   [SoundFoldersView.swift](../../iosApp/iosApp/SoundFoldersView.swift) (`SoundFoldersController`); Copies on other disks
   in [CopiesView.swift](../../iosApp/iosApp/CopiesView.swift) (`IosJournal.serverCopies()`, watched while the page
   shows); the Showing sheets' pills in [ShownSourcesViews.swift](../../iosApp/iosApp/ShownSourcesViews.swift)
-  (`ShownSourcesPills`, with `ShownSourcesChoice` in the environment for Imported and Private settings).
+  (`ShownSourcesPills`, with `ShownSourcesChoice` in the environment for Private settings).
 
 ## Design history
 

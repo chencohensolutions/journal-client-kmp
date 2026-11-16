@@ -837,7 +837,6 @@ struct FeedSourceBar: View {
     let shown: ShownSources
     let onToggle: (MediaSource) -> Void
     @State private var open = false
-    @Environment(\.shownSourcesChoice) private var choice
 
     var body: some View {
         let counts = feed.counts
@@ -851,15 +850,6 @@ struct FeedSourceBar: View {
                         withAnimation(.snappy) { onToggle(source) }
                     }
                 }
-                // What the server's import placed, all of it in one chip (its box icon kept while on).
-                if feed.importedCount > 0 {
-                    FilterBarChip(
-                        title: String(localized: "Imported"), symbol: "shippingbox", count: Int(feed.importedCount).formatted(), on: true,
-                        keepIcon: true
-                    ) {
-                        withAnimation(.snappy) { choice.toggleImported() }
-                    }
-                }
             }
             .padding(.horizontal, 16)
         }
@@ -871,8 +861,8 @@ struct FeedSourceBar: View {
 }
 
 /// A chip of the filter bar, and a pill of Show in the app: on (filled, with a ✓ in place of its icon, or its icon with
-/// `keepIcon`) or off (outlined), an icon, a title and a count; "+N" is one with a title alone. `small` for Imported's
-/// kinds; `locked` adds a lock after the count, for a source Private settings hides in part.
+/// `keepIcon`) or off (outlined), an icon, a title and a count; "+N" is one with a title alone. `small` for a smaller
+/// one; `locked` adds a lock after the count, for a source Private settings hides in part.
 struct FilterBarChip: View {
     let title: String
     var symbol: String? = nil

@@ -102,9 +102,6 @@ final class SettingsViewModel: ObservableObject {
     func resetMomentsPaging() { controller.resetMomentsPaging() }
     func refreshServer() { controller.refreshServer() }
 
-    /// "Imported" in the Showing sheets and the Moments filter bar: what the server's import placed, shown or not.
-    func toggleImported() { controller.toggleImported() }
-
     /// What the limit offers, in GB.
     static var previewLimitOptions: [Int] { SettingsState.Companion.shared.PREVIEW_CACHE_GB_OPTIONS.map { $0.intValue } }
 

@@ -749,7 +749,6 @@
     <string name="settings_backup_storage_title">גיבוי ואחסון</string>
     <string name="settings_moments_title">רגעים</string>
     <string name="sources_imported">מיובא</string>
-    <string name="sources_of_imported">מתוך מה שיובא</string>
     <string name="sources_everywhere">מוסתר בכל המכשירים שלך: %1$s. לא נספר כאן.</string>
     <string name="sources_more">עוד %1$s</string>
     <string name="sources_private_about">במסך מוסתר ופרטי (בהגדרות) אפשר להסתיר אפליקציות, צילומי מסך של אפליקציות שבחרת ועירום בכל המכשירים שלך. הקבצים האלה לא מגיעים לטלפון הזה ולא נספרים כאן.</string>

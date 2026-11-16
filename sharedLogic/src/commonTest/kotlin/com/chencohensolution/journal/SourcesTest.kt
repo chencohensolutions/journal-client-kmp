@@ -142,15 +142,13 @@ class SourcesTest {
     }
 
     @Test
-    fun importedOffersEveryKindWithPhotos() {
-        val telegram = MediaSource.imported(MediaSource.folder("Telegram"))
-        val whatsApp = MediaSource.imported(MediaSource.WHATSAPP)
-        val counts = mapOf(MediaSource.imported(MediaSource.CAMERA) to 5, whatsApp to 900, telegram to 12, MediaSource.CAMERA to 3)
-        assertEquals(
-            listOf(whatsApp, telegram, MediaSource.imported(MediaSource.CAMERA), MediaSource.imported(MediaSource.SCREENSHOTS), MediaSource.imported(MediaSource.OTHER)),
-            MediaSource.importedChoices(counts),
+    fun importedCountsFoldIntoTheirKind() {
+        val telegram = MediaSource.folder("Telegram")
+        val counts = mapOf(
+            MediaSource.imported(MediaSource.CAMERA) to 5, MediaSource.imported(MediaSource.WHATSAPP) to 900,
+            MediaSource.imported(telegram) to 12, MediaSource.CAMERA to 3,
         )
-        assertEquals(emptyList(), MediaSource.importedChoices(mapOf(MediaSource.CAMERA to 3)))
+        assertEquals(mapOf(MediaSource.CAMERA to 8, telegram to 12, MediaSource.WHATSAPP to 900), MediaSource.byKind(counts))
     }
 
     @Test
