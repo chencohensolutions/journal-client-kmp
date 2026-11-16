@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -584,8 +585,9 @@ private fun MonthDial(timeline: FeedTimeline, month: Int, onMonth: (Int) -> Unit
             }
             drawRect(needle, topLeft = Offset(mid - 1 * density, 0f), size = Size(2 * density, size.height))
         }
-        // Years under January, as the dial has turned.
-        BoxWithConstraints(Modifier.fillMaxWidth().height(14.dp).align(Alignment.BottomStart)) {
+        // Years under January, as the dial has turned. Placed from the left edge, as the bars' x is: in Hebrew a box
+        // starts its children at the right, and the offset then pushed every year past the panel's edge (Nov 16, 2026).
+        BoxWithConstraints(Modifier.fillMaxWidth().height(14.dp).align(Alignment.BottomStart), contentAlignment = AbsoluteAlignment.TopLeft) {
             val density = LocalDensity.current.density
             val mid = constraints.maxWidth / 2f
             timeline.months.forEachIndexed { index, shown ->
