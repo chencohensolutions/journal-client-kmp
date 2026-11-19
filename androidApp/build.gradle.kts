@@ -136,3 +136,6 @@ fun dateVersionCode(version: String): Int? {
     if (parts.size !in 3..4 || parts[0] < 2000) return null
     return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 100 + parts.getOrElse(3) { 0 }
 }
+
+// The screen previews render in a test process; with ~190 of them its default heap ran out (Nov 19, 2026).
+tasks.withType<Test>().configureEach { maxHeapSize = "2g" }

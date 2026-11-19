@@ -1229,4 +1229,42 @@
     <string name="enroll_code_command">On the server itself: journal-server enroll-code</string>
     <string name="group_save_name">Save name</string>
     <string name="feed_route_separator">" → "</string>
+
+    <!-- Tagging several photos, tucked-away tags, highlights that show through (Nov 19, 2026) -->
+    <plurals name="tucked_tag_pill">
+        <item quantity="one">%1$d %2$s</item>
+        <item quantity="other">%1$d %2$s</item>
+    </plurals>
+    <string name="picking_more_tags">More…</string>
+    <string name="picking_highlight">Highlight</string>
+    <string name="picking_unhighlight">Unhighlight</string>
+    <plurals name="tagged_photos">
+        <item quantity="one">Tagged %1$d photo %2$s</item>
+        <item quantity="other">Tagged %1$d photos %2$s</item>
+    </plurals>
+    <string name="tagged_tucked_suffix">" · tucked away"</string>
+    <string name="tagged_undo">Undo</string>
+    <plurals name="tag_photos_title">
+        <item quantity="one">Tag %d photo</item>
+        <item quantity="other">Tag %d photos</item>
+    </plurals>
+    <string name="tag_some_of">%1$d of %2$d</string>
+    <string name="tag_tucked_detail">tucked away</string>
+    <string name="tag_sheet_done">Done</string>
+    <string name="tags_tucked_section">Tucked away</string>
+    <string name="tag_menu">More for %s</string>
+    <string name="tag_tuck_away">Tuck away this tag</string>
+    <string name="tag_tuck_away_detail">Its photos leave Moments, the storyline, Explore and search. Each day says how many it holds, and a tap shows them.</string>
+    <string name="tag_bring_back">Bring back</string>
+    <string name="tag_bring_back_detail">Its photos show everywhere again.</string>
+    <plurals name="tag_tucked_card">
+        <item quantity="one">Its photo stays out of Moments, the storyline, Explore and search. Its day shows a “%2$s” pill instead.</item>
+        <item quantity="other">Its %1$d photos stay out of Moments, the storyline, Explore and search. Each day shows a “%2$s” pill instead.</item>
+    </plurals>
+    <string name="tag_show_everywhere">Show everywhere for now</string>
+    <string name="tag_hide_again">Hide again</string>
+    <string name="tag_locked">Its photos show once your phone’s lock is passed.</string>
+    <string name="tag_unlock">Unlock</string>
+    <string name="tucked_with_tag">Tucked away with %s: left out of Moments, the storyline, Explore and search.</string>
+    <string name="tucked_shown_through">Shown although %s is tucked away (highlighted).</string>
 </resources>

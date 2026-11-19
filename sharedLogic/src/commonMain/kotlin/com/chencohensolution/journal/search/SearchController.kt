@@ -557,7 +557,11 @@ class SearchController internal constructor(
         // What is tucked away is never found (the server leaves it out too; this covers the library's own copies and
         // what was tucked since the answer).
         val resolve = { shas: List<String> ->
-            resolveAll(shas).filter { !it.isTucked && it.id !in madeTucked && !(hiding && it.id in madePrivate) }
+            // Photos a tucked tag keeps out (unless highlighted) are left out the same way (Nov 19, 2026).
+            val tagged = stories?.value?.tagged
+            resolveAll(shas).filter {
+                !it.isTucked && it.id !in madeTucked && !(hiding && it.id in madePrivate) && tagged?.tagOf(it) == null
+            }
         }
         val town = current.town
         val sources = stories?.value?.shownSources

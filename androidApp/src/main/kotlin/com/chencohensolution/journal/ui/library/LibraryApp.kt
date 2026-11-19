@@ -205,6 +205,11 @@ private fun LibraryScreens(
             toggleDays = stories.tucked::toggle,
             setTucked = { items, tucked -> server.library.setTuckedItems(items, tucked).also { if (it && tucked) search.madeTucked(items) } },
             markPrivate = { items -> actions.markPrivate(items).also { if (it) search.madePrivate(items) } },
+            toggleTag = stories.tucked::toggleTag,
+            showEverywhere = { tag, on -> if (on) stories.tucked.showEverywhere(tag) else stories.tucked.hideEverywhere(tag) },
+            setTagTucked = stories::setTagTucked,
+            tagOf = { id -> stories.currentState.tuckedTagOf(id) },
+            shownThrough = { id -> stories.currentState.shownThroughTag(id) },
         )
     }
 
@@ -360,6 +365,9 @@ private fun LibraryScreens(
                                         toggleTag = { itemId, tag, add ->
                                             if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                         },
+                                        addTag = stories::addTag,
+                                        removeTag = stories::removeTag,
+                                        setHighlighted = stories::setHighlighted,
                                         explore = ExploreActions(
                                             openPlace = { push(Route.Place(it)) },
                                             openCountry = { push(Route.Country(it)) },
@@ -672,6 +680,7 @@ private fun LibraryScreens(
                                 Route.Tags -> TagsScreen(
                                     storiesState,
                                     onOpenTag = { push(Route.Tag(it)) },
+                                    onSetTucked = stories::setTagTucked,
                                     onBack = pop,
                                     onGoToMoments = {
                                         landing = null
@@ -776,6 +785,7 @@ private fun LibraryScreens(
                                             setInStoryline = stories::setInStoryline,
                                             setWriting = stories::setWriting,
                                             restoreWriting = stories::restoreWriting,
+                                            setHighlighted = { id, on -> stories.setHighlighted(listOf(id), on) },
                                             toggleTag = { itemId, tag, add ->
                                                 if (add) stories.addTag(listOf(itemId), tag) else stories.removeTag(listOf(itemId), tag)
                                             },

@@ -56,10 +56,88 @@ app doesn't know.
 
 There is no separate list of tags: the tags are whatever the notes contain.
 
+## Tagging several photos (Nov 19, 2026)
+
+Android; iOS not built yet ([ios-todo.md](../ios-todo.md)). Picked on the design canvas
+https://claude.ai/artifact/Qamjv8YgzvTXrHQ87ms7EE (frames 1a, 1b).
+
+- The picking bar (Moments and the storyline) offers **Tag** for any number of photos picked.
+- **Quick tags**: above the extras while picking, the 3 most recently used tags as outlined chips (ink text) and
+  **More…** (dashed) for the tag sheet. A chip tags every photo picked (`addTag(itemIds, tag)`), stops picking and
+  says "Tagged 4 photos Dog" (" · tucked away" when the tag is) with **Undo**, which takes the tag off the photos that
+  didn't have it. No tags yet: only the Tag extra. The row scrolls sideways when long.
+- **The tag sheet for several**: "Tag 4 photos"; each tag shows a check (all have it), a dash with "2 of 4" (some) or
+  nothing (`StoriesState.tagCounts(itemIds)`). Tapping: some → all, all → none, none → all. Create tag "…" gives it to
+  all. A tucked tag shows a crossed eye and "tucked away", and its tile is a crossed eye. **Done** closes.
+
+## Tucked-away tags (Nov 19, 2026)
+
+Android; iOS not built yet. Picked on the design canvas above (frames 2a, 2b, 2d, 2e), with the owner's addition that a
+highlighted photo shows anyway. "Tucked" belongs to the **tag**, not to each file: no file is marked (`setTucked` is
+never called for it).
+
+- A photo is **tucked by tag** when any of its note's tags is tucked away, unless it is **highlighted** (its note's
+  `highlight`, the viewer's star): a highlight shows through, in Moments and the storyline. A file tucked away itself
+  (the server's mark) or private stays so whatever its tags and highlight.
+- Tucked-by-tag photos leave **Moments**, the **storyline** (with their writing) and **Explore**, and the app drops
+  them from **search** results (the server's and On this phone's), as it does for tucked files. Tagging photos with a
+  tucked tag makes them leave the feed with the usual motion.
+- **The Tags screen**: each row has ⋯ (and a long press) opening its sheet: the tag's name and count, then **Tuck
+  away this tag** (crossed eye; "Its photos leave Moments, the storyline, Explore and search. Each day says how many it
+  holds, and a tap shows them.") or **Bring back**. No Rename or Merge. Tucked tags are listed last, under **Tucked
+  away**, with a crossed-eye tile in place of their newest photo.
+- **Day pills**: where a day says "1 tucked away" (a Moments row under its divider, a storyline day under its
+  heading), each tucked tag with photos that day has its own pill, "3 Dog" (crossed eye, same pill), beside the
+  generic pill (shown only when files are tucked that day). A photo with two tucked tags counts under the first
+  alphabetically, so the counts never exceed the photos; a photo tucked as a file counts only on the generic pill. A
+  day whose photos are all tucked keeps its divider or heading with only the pills.
+- **Reveal**: tapping a tag's pill reveals only that tag's photos of that day, in place, each with a corner mark
+  (crossed eye and the tag's name); the pill fills (ink) with an open eye. Tapping again hides them. The lock rule of
+  [Tucked away](moments.md#tucked-away-nov-8-2026): the first reveal of a session asks for the phone's lock.
+- **A tucked tag's page** asks for the lock once per session, and starts with a Raised card: crossed eye and "Tucked
+  away", "Its 214 photos stay out of Moments, the storyline, Explore and search. Each day shows a "Dog" pill instead.",
+  **Show everywhere for now** (reveals the tag on every day for the session, behind the lock; then **Hide again**) and
+  **Bring back**.
+- The picking bar's Tuck away and Bring back stay file actions; Bring back isn't offered for photos tucked only by tag.
+- The viewer's details say "Tucked away with Dog" for a tag-tucked photo, and "Shown although Dog is tucked away
+  (highlighted)" for a highlighted one ([viewer.md](viewer.md)).
+
+### How it's saved and synced
+
+The list of tucked tags, compared ignoring case:
+
+- On the server as the app's data called `tags` (`appData` / `setAppData`, journal-server-go docs/media.md "App
+  data"): `{"v": 1, "tucked": ["Dog"], "updatedAt": "…"}`. Fields the app doesn't know are kept. Synced only with a
+  server whose `serverInfo.appNotes` is true; otherwise the list stays on the phone.
+- On the phone as `journal/tags.json`: `{"v": 1, "content": {the server's object}, "synced": {"version": "…",
+  "tucked": [...]}, "pending": true}`; "synced" is what the server had when last in step (the base of a merge),
+  "pending" a change still to send. Written to a temp file and renamed; a damaged file is never fatal (the list starts
+  empty and the file is replaced on the next change). It works offline; a change is sent when the server can be
+  reached (a second after it, at start and when the server's list changes), and the server's list is brought in
+  otherwise.
+- **Conflict** (`AppDataConflict`: another phone changed it since): this phone's changes since the last sync are laid
+  over the server's list: tags tucked here are added, tags brought back here are removed, everything else is as the
+  server has it; then it is sent again (`mergeTucked`). Chosen because each change is a single tag's on or off, so
+  replaying them keeps both phones' intent.
+- What the session reveals (days, tags on days, tags everywhere) is never saved (`TuckedSession.dayTags`, `.tags`).
+
+### Code
+
+`TuckedTags.kt` (the list, its file and its sync; `TagsSyncSource`), `TagTucking` and `TuckedTagCount` in
+`TuckedAway.kt` (which photos a tag keeps out, the pills), `FeedSection.tuckedTags`, `StorylineDay.tags`,
+`StoriesState.tuckedTags` / `tagged` / `tuckedTagOf` / `shownThroughTag` / `tagCounts`, `StoriesController.setTagTucked`
+/ `setHighlighted`, `TuckedReveal.toggleTag` / `showEverywhere` / `hideEverywhere`; `ServerLibrary.appData` /
+`setAppData`. Moments' rows kept in `feed_section` count the photos per tag (`FEED_VERSION` 6); the tucked tags are part
+of the rows' version, so tucking or bringing back a tag makes them all again, as a hidden source does. Tests:
+`TuckedTagsTest`. Android: the Tags screen and a tag's page in
+[TagsScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/TagsScreen.kt), pills, corner
+mark, quick tags and Highlight in
+[TuckedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/TuckedViews.kt), previews
+`TagsTuckedScreenshots.kt`.
+
 ## Not built yet
 
-Renaming, merging or deleting a tag everywhere at once; tagging several photos in one go (the shared logic already
-takes a list of photos).
+Renaming, merging or deleting a tag everywhere at once.
 
 ## Code
 

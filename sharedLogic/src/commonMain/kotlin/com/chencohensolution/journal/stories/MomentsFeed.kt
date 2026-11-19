@@ -126,6 +126,11 @@ data class FeedSection(
     val tucked: Int = 0,
     /** Whether its tucked photos show, in place among its moments (its days are revealed for the session). */
     val tuckedShown: Boolean = false,
+    /**
+     * Its photos kept out by tucked-away tags, a pill per tag ("3 Dog", Nov 19, 2026), by name; [TuckedTagCount.shown]
+     * while revealed. Highlighted photos and those tucked as files aren't counted.
+     */
+    val tuckedTags: List<TuckedTagCount> = emptyList(),
 ) {
     val key: String get() = span.key
 
@@ -283,13 +288,15 @@ internal fun buildFeed(
      * [ShowOn.EACH] each day's photos of the set are a set of their own on that day.
      */
     placements: Map<String, ShowOn> = emptyMap(),
+    /** The photos tucked tags keep out, and which of them this session shows ([TagTucking]). */
+    tagged: TagTucking = TagTucking.NONE,
 ): MomentsFeed {
     val counts = MediaSource.byKind(sourceCounts(items))
     val (visible, hiddenBySource) = items.partition(shown::shows)
     // A tucked photo of a hidden source is neither counted on the source's chip nor shown in its band.
-    val hidden = hiddenBySource.filterNot { it.isTucked }
+    val hidden = hiddenBySource.filterNot { it.isTucked || tagged.tagOf(it) != null }
     // Tucked away and not revealed: in its row's span (so revealing never moves rows), but not among its moments.
-    fun tuckedAway(item: MediaItem) = item.isTucked && item.day !in tuckedShown
+    fun tuckedAway(item: MediaItem) = (item.isTucked && item.day !in tuckedShown) || tagged.hides(item)
     // Each set merged by hand, oldest first, by the photo it shows at (its oldest; its newest when shown on its last
     // day); its other photos show only in it. A set shown on each of its days is a set per day.
     val merged = visible.filter { it.id in sets && !tuckedAway(it) }
@@ -303,7 +310,8 @@ internal fun buildFeed(
     val sections = groupMoments(rowItems.filter { it.id !in inLaterPlace }, grouping).mapNotNull { span ->
         val spanPhotos = span.items.filter { it.type != MediaType.AUDIO }
         val tucked = spanPhotos.count { it.isTucked }
-        val photos = if (tucked == 0) spanPhotos else spanPhotos.filterNot(::tuckedAway)
+        val tuckedTags = tagged.countsOf(spanPhotos)
+        val photos = if (tucked == 0 && tuckedTags.isEmpty()) spanPhotos else spanPhotos.filterNot(::tuckedAway)
         // A sound belongs to the row its start is in.
         val spanSounds = span.items.filter { it.id.startsWith(SOUND_PREFIX) }.mapNotNull { shownSounds[it.id.removePrefix(SOUND_PREFIX)] }
         val taken = HashSet<String>()
@@ -322,13 +330,14 @@ internal fun buildFeed(
             spanSounds.filter { it.kind == AudioKind.VOICE_MESSAGE }.map(FeedSound::Voice)
         // A row made only of where a recording ended (it started in the row before) shows nothing.
         // A row of only tucked photos stays, for its pill.
-        if (moments.isEmpty() && soundRows.isEmpty() && tucked == 0) return@mapNotNull null
+        if (moments.isEmpty() && soundRows.isEmpty() && tucked == 0 && tuckedTags.isEmpty()) return@mapNotNull null
         val towns = moments.reversed()
             .filter { it.source.kind == MediaSource.CAMERA }
             .flatMap { moment -> moment.items.mapNotNull { places.nameOf(it)?.town } }
         FeedSection(
             span, moments, towns.distinct(), sounds = soundRows.sortedByDescending { it.startMillis },
             tucked = tucked, tuckedShown = tucked > 0 && spanPhotos.any { it.isTucked && it.day in tuckedShown },
+            tuckedTags = tuckedTags,
         )
     }.withHidden(hidden, shown.sayWhatsHidden, revealed)
     return MomentsFeed(

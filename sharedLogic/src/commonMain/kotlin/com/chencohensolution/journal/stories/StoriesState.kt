@@ -21,7 +21,18 @@ data class TagSummary(
     val latest: MediaItem?,
     /** RFC 3339 time it was last added to a photo. */
     val lastUsed: String,
+    /** Tucked away (Nov 19, 2026): its photos leave Moments, the storyline, Explore and search ([TagTucking]). */
+    val tucked: Boolean = false,
 )
+
+/** How many of some photos carry a tag ([StoriesState.tagCounts]): the tag sheet for several photos. */
+data class TagCoverage(val tag: String, val count: Int, val of: Int) {
+    /** Every photo has it: a check. */
+    val all: Boolean get() = of > 0 && count == of
+
+    /** Some, not all: a dash and "2 of 4". */
+    val some: Boolean get() = count in 1 until of
+}
 
 data class StoriesState(
     /**
@@ -73,6 +84,10 @@ data class StoriesState(
     val namedSets: Map<String, NamedSet> = emptyMap(),
     /** Explore's home from the library database; null without one (Explore works it out from the items, see [placesOf]). */
     val home: ExploreHome? = null,
+    /** The tags tucked away, as saved ([TuckedTags]), compared ignoring case. */
+    val tuckedTags: List<String> = emptyList(),
+    /** The photos tucked tags keep out, and what of them this session shows. */
+    val tagged: TagTucking = TagTucking.NONE,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -89,7 +104,7 @@ data class StoriesState(
      */
     fun feedOf(items: List<MediaItem>): MomentsFeed =
         // Explore leaves out what is tucked away, with no pill.
-        buildFeed(items.filterNot { it.isTucked }, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes), placements = placementsIn(notes))
+        buildFeed(items.filterNot { it.isTucked || tagged.tagOf(it) != null }, shownSources.copy(sayWhatsHidden = false), grouping, places, looks, alone = aloneIn(notes), sets = setsIn(notes), placements = placementsIn(notes))
             .withSets(notes)
 
     fun note(itemId: String): PhotoNote? = notes[itemId]
@@ -134,6 +149,46 @@ data class StoriesState(
 
     /** Tags whose name matches [query], most used first. */
     fun searchTags(query: String): List<TagSummary> = tags.filter { matches(it.name, query) }.sortedByDescending { it.count }
+
+    /** Whether the tag [tag] is tucked away (ignoring case). */
+    fun isTagTucked(tag: String): Boolean = tuckedTags.any { it.equals(tag, ignoreCase = true) }
+
+    /**
+     * The tucked tag that takes the photo [itemId] out of Moments, the storyline, Explore and search ("Tucked away with
+     * Dog"), revealed or not; null when none does (no tucked tag, highlighted, or tucked away as a file).
+     */
+    fun tuckedTagOf(itemId: String): String? {
+        val item = itemsById[itemId]
+        return if (item != null) tagged.tagOf(item) else tagged.hiddenBy[itemId]
+    }
+
+    /** Whether the photo [item] is out of sight now: tucked as a file or by a tag, and not revealed this session. */
+    fun hidesTagged(item: MediaItem): Boolean = tagged.hides(item)
+
+    /**
+     * The tucked tag a highlighted photo [itemId] carries: it shows anyway ("Shown although Dog is tucked away
+     * (highlighted)"); null when it isn't highlighted or carries no tucked tag. Never for a file tucked away itself.
+     */
+    fun shownThroughTag(itemId: String): String? {
+        val note = notes[itemId] ?: return null
+        if (note.highlight == null || itemsById[itemId]?.isTucked == true) return null
+        return note.tags.filter(::isTagTucked).minByOrNull { it.lowercase() }
+    }
+
+    /** Whether the photo [itemId] is highlighted ([PhotoNote.highlight]): the viewer's star, the picking bar's Highlight. */
+    fun isHighlighted(itemId: String): Boolean = notes[itemId]?.highlight != null
+
+    /**
+     * Every tag in use ([tags]' order, most recently used first) with how many of [itemIds] carry it: the tag sheet for
+     * several photos (a check, a dash with "2 of 4", or nothing).
+     */
+    fun tagCounts(itemIds: Collection<String>): List<TagCoverage> {
+        val ids = itemIds.toSet()
+        val noted = ids.mapNotNull { notes[it] }
+        return tags.map { summary ->
+            TagCoverage(summary.name, noted.count { note -> note.tags.any { it.equals(summary.name, ignoreCase = true) } }, ids.size)
+        }
+    }
 }
 
 internal fun buildState(
@@ -157,7 +212,12 @@ internal fun buildState(
     items: Map<String, MediaItem>? = null,
     missing: Set<String> = emptySet(),
     home: ExploreHome? = null,
+    /** The tags tucked away ([TuckedTags]). */
+    tuckedTags: List<String> = emptyList(),
+    /** What this session reveals of them ([TuckedSession.dayTags], [TuckedSession.tags]). */
+    session: TuckedSession = TuckedSession(days = tuckedShown),
 ): StoriesState {
+    val tagged = TagTucking.of(notes, tuckedTags, session)
     val itemsById = if (paged != null && items != null) paged.itemsById() + items else library.days.flatMap { it.items }.associateBy { it.id }
     // A tag counts the photos it shows; those not on this device yet count too.
     val tags = notes.values
@@ -165,12 +225,14 @@ internal fun buildState(
         .flatMap { note -> note.tags.map { tag -> tag to note } }
         .groupBy { (tag, _) -> tag.lowercase() }
         .map { (_, uses) ->
-            val tagged = uses.map { it.second }
+            val carrying = uses.map { it.second }
+            val name = uses.minBy { it.second.updatedAt }.first
             TagSummary(
-                name = uses.minBy { it.second.updatedAt }.first,
-                count = tagged.size,
-                latest = tagged.mapNotNull { itemsById[it.deviceId] }.maxByOrNull { it.takenAtMillis },
-                lastUsed = tagged.maxOf { it.updatedAt },
+                name = name,
+                count = carrying.size,
+                latest = carrying.mapNotNull { itemsById[it.deviceId] }.maxByOrNull { it.takenAtMillis },
+                lastUsed = carrying.maxOf { it.updatedAt },
+                tucked = tuckedTags.any { it.equals(name, ignoreCase = true) },
             )
         }
         .sortedByDescending { it.lastUsed }
@@ -188,6 +250,7 @@ internal fun buildState(
                 .sortedByDescending { it.takenAtMillis }
         },
         TuckedSession(days = tuckedShown),
+        tagged,
     )
     return StoriesState(
         storyline = storylineDays.flatMap { it.items },
@@ -210,12 +273,15 @@ internal fun buildState(
             sounds = library.sounds,
             tuckedShown = tuckedShown,
             placements = placementsIn(notes),
+            tagged = tagged,
         )).withSets(notes),
         sounds = library.sounds.associateBy { it.sha256 },
         ready = ready,
         namedSets = named,
         home = home,
         error = error,
+        tuckedTags = tuckedTags,
+        tagged = tagged,
     )
 }
 

@@ -149,6 +149,11 @@ feed scrolls to that photo, and a near-duplicate set turns to it.
 
 ## Tucked away (Nov 8, 2026)
 
+Tags can be tucked away too (Nov 19, 2026): each such tag gets its own day pill ("3 Dog") beside "1 tucked away",
+revealing only its photos, and a highlighted photo shows anyway. See [tags.md](tags.md#tucked-away-tags-nov-19-2026).
+The picking bar also offers **Tag** for any number of photos, quick tag chips above it, and **Highlight**
+([tags.md](tags.md#tagging-several-photos-nov-19-2026)).
+
 "מוצנע" in Hebrew: a casual private level, asked by the owner on Nov 8, 2026 (plan:
 https://claude.ai/artifact/GVKv6SowaqUXAdY8uJUvTE). Android; iOS not built yet ([ios-todo.md](../ios-todo.md)).
 

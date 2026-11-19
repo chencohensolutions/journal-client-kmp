@@ -1,0 +1,11 @@
+# The app's own data on the server (appData, setAppData): journal keeps its tucked-away tags as "tags" (Nov 19, 2026).
+query AppData($name: String!) {
+  appData(name: $name) { name content version }
+}
+
+mutation SetAppData($name: String!, $content: String, $baseVersion: String) {
+  setAppData(name: $name, content: $content, baseVersion: $baseVersion) {
+    ... on AppDataSaved { data { name content version } }
+    ... on AppDataConflict { data { name content version } }
+  }
+}

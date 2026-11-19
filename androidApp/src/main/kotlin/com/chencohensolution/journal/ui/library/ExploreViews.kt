@@ -611,7 +611,8 @@ private fun rememberExplorePage(library: LibraryState, stories: StoriesState, wh
     val reads = LocalExploreReads.current
     val page by produceState<ExplorePage?>(null, library, stories, shown) {
         // What is tucked away never shows in Explore.
-        val everything = reads.scope(library, stories, whole).filterNot { it.isTucked }
+        // Nor what a tucked tag keeps out (Nov 19, 2026).
+        val everything = reads.scope(library, stories, whole).filterNot { it.isTucked || stories.tagged.tagOf(it) != null }
         value = withContext(Dispatchers.Default) {
             val all = everything.filter(stories::shows)
             val inScope = all.filter { shown.matches(it, stories.places) }

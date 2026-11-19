@@ -144,7 +144,9 @@ Swiping is not a tap; a playing video's own controls take its taps.
     (the largest kept, "2560 × 1920 · 635 kB", or "None yet"). Then **Mark private** (**Unmark private** asks for the
     phone's lock unless this session passed it for Tucked away; Android, Nov 8, 2026). For a photo
     [tucked away](moments.md#tucked-away-nov-8-2026) (revealed for the session): a **Tucked away** section saying what
-    it means and **Bring back**, behind the same lock (Android; iOS not built yet).
+    it means and **Bring back**, behind the same lock (Android; iOS not built yet). A photo with a
+    [tucked-away tag](tags.md#tucked-away-tags-nov-19-2026): "Tucked away with Dog"; a highlighted one: "Shown although
+    Dog is tucked away (highlighted)" (Nov 19, 2026; Android).
   - **Camera details** (photos) or **Video details** (videos), read from the original on this phone (the gallery's
     file, or the one the viewer downloaded; never from the server). A photo: make and model, the lens, and chips for
     ISO, 35 mm focal length, f-number, shutter and exposure bias; **All EXIF (n)** opens every tag, by section
@@ -236,6 +238,14 @@ opens the viewer on the set alone (`Route.Viewer` with a set's list, `setListKey
 - Code: `ViewerSet` and `SetBar` in [ViewerScreen.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/ViewerScreen.kt),
   the scrubber, slideshow and grid sheet in [MomentSets.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/MomentSets.kt),
   wired in `LibraryApp.kt` (`openSet`).
+
+## Highlight for every photo (Nov 19, 2026)
+
+Android; iOS not built yet. Outside a set, the bar under the photo has **☆ Highlight** too (★ once highlighted): the
+note's `highlight` becomes 1 (`StoriesController.setHighlighted`), which creates no set and changes no set's order. A
+highlighted photo shows in Moments and the storyline even when one of its tags is
+[tucked away](tags.md#tucked-away-tags-nov-19-2026). The picking bar's **Highlight** does the same for every photo picked
+(a photo of a set made by hand becomes its last highlight).
 
 ## Showing on a TV (Nov 9, 2026; Android only, iOS not built yet)
 

@@ -87,6 +87,7 @@ import kotlin.math.abs
 import com.chencohensolution.journal.stories.PhotoNote
 import com.chencohensolution.journal.stories.RevealedPhotos
 import com.chencohensolution.journal.stories.StorylineDay
+import com.chencohensolution.journal.stories.TuckedTagCount
 import java.time.LocalDate
 
 // The Moments tab: every photo reads like a story that arranged itself (see MomentsFeed in the shared logic).
@@ -115,6 +116,8 @@ internal class FeedActions(
     val alwaysShow: (FeedSection, MediaSource) -> Unit = { _, _ -> },
     /** A day's "3 tucked away" pill (a row of Moments, or a day of the storyline): reveals them, or hides them again. */
     val toggleTucked: (days: List<LocalDay>) -> Unit = {},
+    /** A tucked tag's day pill ("3 Dog"): reveals only that tag's photos of these days, or hides them again. */
+    val toggleTuckedTag: (days: List<LocalDay>, tag: String) -> Unit = { _, _ -> },
 )
 
 /**
@@ -175,7 +178,7 @@ internal sealed interface FeedRow {
     }
 
     /** The storyline: the day of the photos under it, until the next one; [tucked] of its photos tucked away. */
-    data class StoryDay(val day: LocalDay, val tucked: Int = 0, val revealed: Boolean = false) : FeedRow {
+    data class StoryDay(val day: LocalDay, val tucked: Int = 0, val revealed: Boolean = false, val tags: List<TuckedTagCount> = emptyList()) : FeedRow {
         override val key get() = "story-day-$day"
     }
 
@@ -293,7 +296,7 @@ internal fun storylineDayRows(
     itemOf: (String) -> MediaItem? = { null },
 ): List<FeedRow> = FeedRows(
     days.flatMap { day ->
-        listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed)) + day.items.map { item ->
+        listOf(FeedRow.StoryDay(day.day, day.tucked, day.revealed, day.tags)) + day.items.map { item ->
             val moment = momentOf(item.id)
             val known = moment?.itemIds?.mapNotNull(itemOf).orEmpty()
             val momentDays = known.map { it.day }.takeIf { it.isNotEmpty() }?.let { it.min() to it.max() }
@@ -348,7 +351,7 @@ internal fun LazyListScope.feedItems(
             is FeedRow.BandTop -> BandTop(row)
             is FeedRow.BandPhotos -> BandPhotos(row.items) { actions.openRevealed(row.section, row.band, it) }
             is FeedRow.BandEnd -> BandEnd(row.band) { actions.alwaysShow(row.section, row.band.source) }
-            is FeedRow.StoryDay -> StorylineDay(row) { actions.toggleTucked(listOf(row.day)) }
+            is FeedRow.StoryDay -> StorylineDay(row, { actions.toggleTucked(listOf(row.day)) }) { tag -> actions.toggleTuckedTag(listOf(row.day), tag) }
             is FeedRow.StoryPhoto -> Column(Modifier.padding(bottom = TILE_GAP)) {
                 val note = notes[row.item.id]
                 val picked = if (picking) row.item.id in selection!!.keys else null
@@ -497,7 +500,7 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             // A row of only tucked-away photos says only its pill.
-            if (count > 0 || section.tucked == 0) Text(
+            if (count > 0 || (section.tucked == 0 && section.tuckedTags.isEmpty())) Text(
                 // Joined by the language's arrow: " → " in English, " ← " in Hebrew, which reads right to left.
                 (heading.towns.ifEmpty { null }?.joinToString(stringResource(R.string.feed_route_separator))?.let { "$it · " }.orEmpty()) +
                         pluralStringResource(R.plurals.library_story_items, count, count),
@@ -507,7 +510,9 @@ private fun DayDivider(heading: FeedRow.Heading, actions: FeedActions) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            TuckedPillSlot(section.tucked, section.tuckedShown, { actions.toggleTucked(section.days) })
+            TuckedPills(section.tucked, section.tuckedShown, section.tuckedTags, { actions.toggleTucked(section.days) }) { tag ->
+                actions.toggleTuckedTag(section.days, tag)
+            }
             (shownHere + section.hidden.keys).sorted().forEach { source ->
                 when {
                     source in shownHere -> HiddenChip(
@@ -630,7 +635,7 @@ private fun BandLink(icon: ImageVector?, label: String, onClick: () -> Unit) {
 
 /** The storyline's day above its photos, on a line like a Moments row's: "Sat, Oct 4"; under it, its tucked-away pill. */
 @Composable
-private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit) {
+private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit, onTag: (String) -> Unit) {
     val day = row.day
     val line = LibraryColors.Muted.copy(alpha = 0.3f)
     Column(
@@ -653,7 +658,12 @@ private fun StorylineDay(row: FeedRow.StoryDay, onTucked: () -> Unit) {
         )
         Box(Modifier.weight(1f).height(1.dp).background(line))
     }
-    TuckedPillSlot(row.tucked, row.revealed, onTucked)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        TuckedPills(row.tucked, row.revealed, row.tags, onTucked, onTag)
+    }
     }
 }
 
@@ -850,7 +860,9 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
         }
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
         // Tucked away and revealed for the session.
-        if (item.isTucked) TuckedMark(Modifier.align(Alignment.TopEnd).padding(10.dp))
+        // Or revealed with its tucked tag: the mark says which.
+        val tuckedTag = if (item.isTucked) null else LocalTucked.current.tagOf(item.id)
+        if (item.isTucked || tuckedTag != null) TuckedMark(Modifier.align(Alignment.TopEnd).padding(10.dp), tuckedTag)
     }
 }
 

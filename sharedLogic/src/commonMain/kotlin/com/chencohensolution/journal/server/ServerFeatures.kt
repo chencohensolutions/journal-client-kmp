@@ -58,6 +58,11 @@ data class ServerFeatures(
     val tuckedAway: Boolean = false,
     /** Notes are kept and synced (setNote, Media.note): each photo's writing, tags, crops and sets (Nov 8, 2026). */
     val notes: Boolean = false,
+    /**
+     * Each app keeps its own data on the server (appData, setAppData; serverInfo.appNotes): the tucked-away tags are
+     * synced as "tags" (Nov 19, 2026). Without it they stay on the phone.
+     */
+    val appData: Boolean = false,
 ) {
     companion object {
         /** Before the server answered once; for Swift, which has no default arguments. */

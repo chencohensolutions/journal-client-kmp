@@ -82,6 +82,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.connection.ServerHealth
@@ -142,6 +143,11 @@ internal class HomeActions(
     /** "Remove from storyline" (false) or "Add to storyline" (true) from a photo's menu. */
     val setInStoryline: (itemId: String, inStoryline: Boolean) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
+    /** Tags several photos at once (the picking bar's quick tags and tag sheet); the tag as saved, null when blank. */
+    val addTag: (itemIds: List<String>, tag: String) -> String? = { _, tag -> tag },
+    val removeTag: (itemIds: List<String>, tag: String) -> Unit = { _, _ -> },
+    /** The picking bar's Highlight: the photos show even when a tag of theirs is tucked away. */
+    val setHighlighted: (itemIds: List<String>, on: Boolean) -> Unit = { _, _ -> },
     /** The Explore tab's towns, years and map. */
     val explore: ExploreActions = ExploreActions(),
     /** A hidden source's photos shown on one row of Moments ([FeedSection.key]), or hidden again; nothing is saved. */
@@ -209,7 +215,10 @@ internal fun JournalHomeScreen(
     var exploreView by rememberSaveable { mutableStateOf(initialExploreView) }
     // The photo being written about or tagged from the picking bar.
     var writingFor by rememberSaveable { mutableStateOf<String?>(null) }
+    // The photos being tagged from the picking bar, their ids joined by new lines (saveable as one string).
     var tagFor by rememberSaveable { mutableStateOf<String?>(null) }
+    val messages = LocalMessages.current
+    val context = LocalContext.current
     // The photos picked for Make a moment while its sheet is open.
     var makingMoment by remember { mutableStateOf<List<MediaItem>?>(null) }
     // Photos and sets picked (a long press in Moments or the storyline); back stops picking.
@@ -466,6 +475,7 @@ internal fun JournalHomeScreen(
             openStoryline = { currentActions.openStoryline(it) },
             openMoment = { moment, cover -> currentActions.openSet(moment.itemIds, listOf(cover), cover) },
             toggleTucked = { days -> currentLock { currentTucked.toggleDays(days) } },
+            toggleTuckedTag = { days, tag -> currentLock { currentTucked.toggleTag(days, tag) } },
             showOnRow = { section, source ->
                 reveal = FeedReveal(section.key, source)
                 currentActions.showOnRow(section.key, source)
@@ -614,7 +624,18 @@ internal fun JournalHomeScreen(
                             write = one?.let { item -> then { writingFor = item.id } },
                             written = one?.let { stories.notes[it.id]?.hasWriting } == true,
                             crop = one?.takeIf { it.durationMillis == null }?.let { item -> then { actions.crop(item.id) } },
-                            tag = one?.let { item -> then { tagFor = item.id } },
+                            tag = picked.takeIf { it.isNotEmpty() }?.let { items -> then { tagFor = items.joinToString("\n") { it.id } } },
+                            quickTags = stories.tags.take(3).map { it.name },
+                            onQuickTag = { tag ->
+                                val ids = picked.map { it.id }
+                                selection.clear()
+                                tagPhotos(ids, tag, stories, actions, messages, context)
+                            },
+                            highlight = picked.takeIf { it.isNotEmpty() }?.let { items ->
+                                val all = items.all { stories.isHighlighted(it.id) }
+                                then { actions.setHighlighted(items.map { it.id }, !all) }
+                            },
+                            highlighted = picked.isNotEmpty() && picked.all { stories.isHighlighted(it.id) },
                             // Merge stays for sets without a name; a moment made by hand is made again with Make a moment.
                             merge = if (pickedBlocks.size >= 2 && pickedBlocks.none { it.named != null }) then { actions.merge(pickedBlocks.flatMap { it.items }.map { it.id }) } else null,
                             makeMoment = if (moments && picked.size >= 2) then { makingMoment = picked } else null,
@@ -710,15 +731,35 @@ internal fun JournalHomeScreen(
             onDismiss = { writingFor = null },
         )
     }
-    tagFor?.let { id ->
+    tagFor?.let { joined ->
+        val ids = joined.split("\n")
         TagSheet(
-            itemIds = listOf(id),
+            itemIds = ids,
             stories = stories,
-            onToggle = { tag, add -> actions.toggleTag(id, tag, add) },
-            onCreate = { tag -> actions.toggleTag(id, tag, true) },
+            onToggle = { tag, add -> if (add) actions.addTag(ids, tag) else actions.removeTag(ids, tag) },
+            onCreate = { tag -> actions.addTag(ids, tag) },
             onDismiss = { tagFor = null },
         )
     }
+}
+
+/**
+ * A quick tag from the picking bar: tags every photo of [ids] with [tag] and says so ("Tagged 4 photos Dog", with
+ * "· tucked away" when the tag is), with Undo, which takes it off the photos that didn't have it.
+ */
+private fun tagPhotos(
+    ids: List<String>,
+    tag: String,
+    stories: StoriesState,
+    actions: HomeActions,
+    messages: Messages,
+    context: android.content.Context,
+) {
+    val newly = ids.filter { id -> stories.note(id)?.tags?.none { it.equals(tag, ignoreCase = true) } != false }
+    val saved = actions.addTag(ids, tag) ?: return
+    val text = context.resources.getQuantityString(R.plurals.tagged_photos, ids.size, ids.size, saved) +
+        (if (stories.isTagTucked(saved)) context.getString(R.string.tagged_tucked_suffix) else "")
+    messages.post(text, context.getString(R.string.tagged_undo)) { actions.removeTag(newly, saved) }
 }
 
 /** Above the tabs while a band is shown: "Showing 6 from WhatsApp on Oct 4 · Hide". */

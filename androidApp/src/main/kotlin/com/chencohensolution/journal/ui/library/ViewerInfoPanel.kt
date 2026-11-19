@@ -386,6 +386,19 @@ private fun OriginalCard(
                 OriginalButton(LibraryIcons.Lock, stringResource(R.string.library_private_mark)) { confirmingPrivate = true }
             }
         }
+        // Tucked away by a tag of its note (Nov 19, 2026), or shown although it is, being highlighted.
+        if (!item.isTucked) {
+            val byTag = tucked.tagOf(item.id)
+            val through = if (byTag == null) tucked.shownThrough(item.id) else null
+            if (byTag != null || through != null) {
+                InfoHeading(stringResource(R.string.tucked_away))
+                Text(
+                    if (byTag != null) stringResource(R.string.tucked_with_tag, byTag) else stringResource(R.string.tucked_shown_through, through!!),
+                    color = LibraryColors.OnInverseMuted,
+                    style = LibraryType.Body,
+                )
+            }
+        }
         // Tucked away (revealed for the session, or opened from it): Bring back.
         if (item.isTucked) {
             InfoHeading(stringResource(R.string.tucked_away))

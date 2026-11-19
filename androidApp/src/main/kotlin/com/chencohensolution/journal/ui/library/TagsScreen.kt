@@ -43,13 +43,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.StoriesState
+import com.chencohensolution.journal.stories.TagSummary
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
 import com.chencohensolution.journal.library.MediaItem
 
-/** Every tag, most recently used first, with a search field. See docs/screens/tags.md. */
+/**
+ * Every tag, most recently used first, with a search field; tucked-away tags in their own section at the end. Each row's
+ * ⋯ (or a long press) opens its sheet: Tuck away this tag, or Bring back. See docs/screens/tags.md.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBack: () -> Unit, onGoToMoments: (() -> Unit)? = null) {
+internal fun TagsScreen(
+    stories: StoriesState,
+    onOpenTag: (String) -> Unit,
+    onBack: () -> Unit,
+    onGoToMoments: (() -> Unit)? = null,
+    /** Tucks a tag away (true) or brings it back. */
+    onSetTucked: (tag: String, on: Boolean) -> Unit = { _, _ -> },
+    /** Previews: the ⋯ sheet of this tag open. */
+    initialMenu: String? = null,
+) {
     var query by rememberSaveable { mutableStateOf("") }
+    var menuFor by rememberSaveable { mutableStateOf(initialMenu) }
     val tags = if (query.isBlank()) stories.tags else stories.searchTags(query)
+    val (tucked, shown) = tags.partition { it.tucked }
     val insets = barsRoom()
 
     Box(Modifier.fillMaxSize().background(LibraryColors.Background)) {
@@ -74,28 +94,110 @@ internal fun TagsScreen(stories: StoriesState, onOpenTag: (String) -> Unit, onBa
             if (stories.tags.isEmpty()) {
                 item(key = "empty") { Note(stringResource(R.string.library_tags_empty), onGoToMoments?.let { stringResource(R.string.library_go_to_moments) }, onGoToMoments) }
             }
-            items(tags, key = { it.name.lowercase() }) { tag ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button) { onOpenTag(tag.name) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TagThumbnail(tag, 56.dp)
-                    Column(Modifier.weight(1f)) {
-                        Text(tag.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
-                        Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, style = LibraryType.Caption)
-                    }
+            items(shown, key = { it.name.lowercase() }) { tag -> TagRow(tag, { onOpenTag(tag.name) }) { menuFor = tag.name } }
+            if (tucked.isNotEmpty()) {
+                item(key = "h-tucked") {
+                    Text(
+                        stringResource(R.string.tags_tucked_section),
+                        color = LibraryColors.Muted,
+                        style = LibraryType.SectionLabel,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp).semantics { heading() },
+                    )
                 }
+                items(tucked, key = { "tucked-" + it.name.lowercase() }) { tag -> TagRow(tag, { onOpenTag(tag.name) }) { menuFor = tag.name } }
             }
         }
         TitleBar(stringResource(R.string.library_tags), onBack, Modifier.align(Alignment.TopCenter))
     }
+    menuFor?.let { name ->
+        val tag = stories.tags.firstOrNull { it.name.equals(name, ignoreCase = true) }
+        if (tag == null) {
+            menuFor = null
+        } else {
+            TagMenuSheet(
+                tag,
+                onTuck = { on ->
+                    menuFor = null
+                    onSetTucked(tag.name, on)
+                },
+                onDismiss = { menuFor = null },
+            )
+        }
+    }
 }
 
-/** The photos with one tag, by day, newest first; tapping opens the viewer on them. */
+/** A tag in the list: its newest photo (a crossed eye when tucked away), name and count, and ⋯ for its sheet. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TagRow(tag: TagSummary, onOpen: () -> Unit, onMenu: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .combinedClickable(role = Role.Button, onClick = onOpen, onLongClick = onMenu)
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TagThumbnail(tag, 56.dp)
+        Column(Modifier.weight(1f)) {
+            Text(tag.name, color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, style = LibraryType.Caption)
+        }
+        IconButton(onClick = onMenu) {
+            Icon(LibraryIcons.More, stringResource(R.string.tag_menu, tag.name), tint = LibraryColors.Muted)
+        }
+    }
+}
+
+/** A tag's sheet: its name and count, then Tuck away this tag (with what that does) or Bring back. No rename or merge. */
+@Composable
+private fun TagMenuSheet(tag: TagSummary, onTuck: (Boolean) -> Unit, onDismiss: () -> Unit) {
+    PageSheet(onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TagThumbnail(tag, 48.dp)
+                Column {
+                    Text(tag.name, color = LibraryColors.OnBackground, style = LibraryType.PageTitle, modifier = Modifier.semantics { heading() })
+                    Text(pluralStringResource(R.plurals.library_story_items, tag.count, tag.count), color = LibraryColors.Muted, style = LibraryType.Caption)
+                }
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onTuck(!tag.tucked) }
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(if (tag.tucked) LibraryIcons.Eye else LibraryIcons.EyeOff, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(24.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(if (tag.tucked) R.string.tag_bring_back else R.string.tag_tuck_away),
+                        color = LibraryColors.OnBackground,
+                        style = LibraryType.RowTitle,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        stringResource(if (tag.tucked) R.string.tag_bring_back_detail else R.string.tag_tuck_away_detail),
+                        color = LibraryColors.Muted,
+                        style = LibraryType.Caption,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The photos with one tag, by day, newest first; tapping opens the viewer on them. A tucked tag's page asks for the
+ * phone's lock once per session, and starts with a card: what tucking does, Show everywhere for now (or Hide again)
+ * and Bring back.
+ */
 @Composable
 internal fun TagScreen(
     tag: String,
@@ -105,7 +207,13 @@ internal fun TagScreen(
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
 ) {
-    val days = stories.tagged(tag)
+    val tuckedActions = LocalTucked.current
+    val tucked = stories.isTagTucked(tag)
+    val lock = rememberTuckedLock()
+    // A tucked tag's photos show once the phone's lock was passed this session.
+    var unlocked by remember(tag) { mutableStateOf(!tucked || !tuckedActions.needsLock()) }
+    if (tucked && !unlocked) LaunchedEffect(tag) { lock { unlocked = true } }
+    val days = if (!tucked || unlocked) stories.tagged(tag) else emptyList()
     val insets = barsRoom()
     val list = rememberLazyListState()
     val rows = remember(days) { dayGridRows(days) }
@@ -117,21 +225,64 @@ internal fun TagScreen(
                 contentPadding = PaddingValues(top = insets.calculateTopPadding() + 64.dp, bottom = insets.calculateBottomPadding() + 24.dp),
                 verticalArrangement = Arrangement.spacedBy(TILE_GAP),
             ) {
-                item(key = "count") {
-                    val count = days.sumOf { it.items.size }
-                    Text(
-                        pluralStringResource(R.plurals.library_story_items, count, count),
-                        color = LibraryColors.Muted,
-                        style = LibraryType.Body,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-                    )
+                if (tucked) {
+                    item(key = "tucked") {
+                        val total = stories.tags.firstOrNull { it.name.equals(tag, ignoreCase = true) }?.count ?: 0
+                        TuckedTagCard(
+                            tag = stories.tags.firstOrNull { it.name.equals(tag, ignoreCase = true) }?.name ?: tag,
+                            count = total,
+                            everywhere = stories.tagged.session.showsEverywhere(tag),
+                            onShowEverywhere = { on -> if (on) lock { tuckedActions.showEverywhere(tag, true) } else tuckedActions.showEverywhere(tag, false) },
+                            onBringBack = { tuckedActions.setTagTucked(tag, false) },
+                        )
+                    }
                 }
-                if (days.isEmpty()) {
-                    item(key = "empty") { Note(stringResource(R.string.library_tag_empty)) }
+                if (tucked && !unlocked) {
+                    item(key = "locked") { Note(stringResource(R.string.tag_locked), stringResource(R.string.tag_unlock)) { lock { unlocked = true } } }
+                } else {
+                    item(key = "count") {
+                        val count = days.sumOf { it.items.size }
+                        Text(
+                            pluralStringResource(R.plurals.library_story_items, count, count),
+                            color = LibraryColors.Muted,
+                            style = LibraryType.Body,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                        )
+                    }
+                    if (days.isEmpty()) {
+                        item(key = "empty") { Note(stringResource(R.string.library_tag_empty)) }
+                    }
+                    dayGrids(days, onOpen = onOpenItem)
                 }
-                dayGrids(days, onOpen = onOpenItem)
             }
             TitleBar(tag, onBack, Modifier.align(Alignment.TopCenter))
+        }
+    }
+}
+
+/** On top of a tucked tag's page: crossed eye and "Tucked away", what it means, Show everywhere for now and Bring back. */
+@Composable
+private fun TuckedTagCard(tag: String, count: Int, everywhere: Boolean, onShowEverywhere: (Boolean) -> Unit, onBringBack: () -> Unit) {
+    Column(
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .fillMaxWidth()
+            .background(LibraryColors.Raised, LibraryShapes.Card)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(LibraryIcons.EyeOff, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(20.dp))
+            Text(stringResource(R.string.tucked_away), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+        }
+        Text(pluralStringResource(R.plurals.tag_tucked_card, count, count, tag), color = LibraryColors.Muted, style = LibraryType.Body)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PrimaryButton(
+                stringResource(if (everywhere) R.string.tag_hide_again else R.string.tag_show_everywhere),
+                onClick = { onShowEverywhere(!everywhere) },
+                icon = if (everywhere) LibraryIcons.EyeOff else LibraryIcons.Eye,
+            )
+            TextAction(stringResource(R.string.tag_bring_back), onClick = onBringBack)
         }
     }
 }

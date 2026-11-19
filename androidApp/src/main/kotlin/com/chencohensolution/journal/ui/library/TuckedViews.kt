@@ -34,6 +34,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
+import com.chencohensolution.journal.stories.TuckedTagCount
 import com.chencohensolution.journal.stories.allTucked
 import kotlinx.coroutines.launch
 
@@ -79,6 +85,16 @@ internal class TuckedActions(
     val setTucked: suspend (List<MediaItem>, Boolean) -> Boolean = { _, _ -> false },
     /** Marks private; false when the server couldn't be reached. */
     val markPrivate: suspend (List<MediaItem>) -> Boolean = { false },
+    /** A tucked tag's day pill ("3 Dog"): reveals that tag's photos of these days, or hides them again. */
+    val toggleTag: (Collection<LocalDay>, String) -> Unit = { _, _ -> },
+    /** A tucked tag's page: Show everywhere for now (true) or Hide again. */
+    val showEverywhere: (tag: String, on: Boolean) -> Unit = { _, _ -> },
+    /** Tucks a tag away (true) or brings it back. */
+    val setTagTucked: (tag: String, on: Boolean) -> Unit = { _, _ -> },
+    /** The tucked tag that keeps a photo out of the feeds (StoriesState.tuckedTagOf), for its corner mark. */
+    val tagOf: (itemId: String) -> String? = { null },
+    /** The tucked tag a highlighted photo shows through (StoriesState.shownThroughTag), for the viewer's details. */
+    val shownThrough: (itemId: String) -> String? = { null },
 )
 
 internal val LocalTucked = staticCompositionLocalOf { TuckedActions() }
@@ -126,7 +142,14 @@ internal fun TuckedPillSlot(count: Int, revealed: Boolean, onClick: () -> Unit, 
  * cross-fade as it changes.
  */
 @Composable
-internal fun TuckedPill(count: Int, revealed: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun TuckedPill(
+    count: Int,
+    revealed: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The pill's words for a count: "3 tucked away", or a tag's "3 Dog". */
+    label: @Composable (Int) -> String = { n -> pluralStringResource(R.plurals.tucked_pill, n, n) },
+) {
     val color by animateColorAsState(if (revealed) LibraryColors.OnInverse else LibraryColors.Muted, motion(), label = "pill text")
     val fill by animateColorAsState(if (revealed) LibraryColors.Inverse else LibraryColors.Inverse.copy(alpha = 0f), motion(), label = "pill fill")
     val edge by animateColorAsState(
@@ -147,19 +170,53 @@ internal fun TuckedPill(count: Int, revealed: Boolean, onClick: () -> Unit, modi
             Icon(if (shown) LibraryIcons.Eye else LibraryIcons.EyeOff, null, tint = color, modifier = Modifier.size(14.dp))
         }
         AnimatedContent(count, transitionSpec = { countChange(targetState > initialState) }, label = "pill count") { n ->
-            Text(pluralStringResource(R.plurals.tucked_pill, n, n), color = color, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(label(n), color = color, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
 
-/** On a revealed tucked photo's corner: a small eye with a line through it. */
+/**
+ * On a revealed tucked photo's corner: a small eye with a line through it; with the name of the tucked [tag] that keeps
+ * it out, for a photo tucked by its tag.
+ */
 @Composable
-internal fun TuckedMark(modifier: Modifier = Modifier) {
-    Box(
-        modifier.size(26.dp).background(Color.Black.copy(alpha = 0.45f), CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(LibraryIcons.EyeOff, stringResource(R.string.tucked_away), tint = Color.White, modifier = Modifier.size(15.dp))
+internal fun TuckedMark(modifier: Modifier = Modifier, tag: String? = null) {
+    if (tag == null) {
+        Box(
+            modifier.size(26.dp).background(Color.Black.copy(alpha = 0.45f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(LibraryIcons.EyeOff, stringResource(R.string.tucked_away), tint = Color.White, modifier = Modifier.size(15.dp))
+        }
+    } else {
+        Row(
+            modifier.height(26.dp).background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50)).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(LibraryIcons.EyeOff, stringResource(R.string.tucked_away), tint = Color.White, modifier = Modifier.size(14.dp))
+            Text(tag, color = Color.White, style = LibraryType.Small, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * A day's tucked pills (Nov 19, 2026): the generic "1 tucked away" for photos tucked as files (only when there are
+ * some), then one pill per tucked tag with photos that day ("3 Dog"), each revealing only its own photos.
+ */
+@Composable
+internal fun TuckedPills(
+    tucked: Int,
+    revealed: Boolean,
+    tags: List<TuckedTagCount>,
+    onTucked: () -> Unit,
+    onTag: (String) -> Unit,
+) {
+    TuckedPillSlot(tucked, revealed, onTucked)
+    tags.forEach { tag ->
+        key(tag.tag.lowercase()) {
+            TuckedPill(tag.count, tag.shown, { onTag(tag.tag) }, label = { n -> pluralStringResource(R.plurals.tucked_tag_pill, n, n, tag.tag) })
+        }
     }
 }
 
@@ -179,6 +236,15 @@ internal class PickingExtras(
     /** A person's page: "Not Mom" for every photo picked ([notThemLabel]). */
     val notThem: (() -> Unit)? = null,
     val notThemLabel: String? = null,
+    /**
+     * The 3 most recently used tags, as chips above the extras ([onQuickTag] tags every photo picked); More… opens the
+     * tag sheet ([tag]). Empty: no tags yet, only the Tag extra.
+     */
+    val quickTags: List<String> = emptyList(),
+    val onQuickTag: ((String) -> Unit)? = null,
+    /** Highlight every photo picked (or, [highlighted], stop): they show even when a tag of theirs is tucked away. */
+    val highlight: (() -> Unit)? = null,
+    val highlighted: Boolean = false,
 )
 
 /**
@@ -238,12 +304,20 @@ internal fun PickingBar(
             if (single) {
                 extras.write?.let { add(Extra(stringResource(if (extras.written) R.string.picking_edit else R.string.picking_write), LibraryIcons.Edit, it)) }
                 extras.crop?.let { add(Extra(stringResource(R.string.feed_menu_crop), LibraryIcons.Crop, it)) }
-                extras.tag?.let { add(Extra(stringResource(R.string.library_tag), LibraryIcons.Tag, it)) }
+            }
+            // Tag for any number of photos picked (Nov 19, 2026).
+            if (picked.isNotEmpty()) extras.tag?.let { add(Extra(stringResource(R.string.library_tag), LibraryIcons.Tag, it)) }
+            extras.highlight?.let {
+                add(Extra(stringResource(if (extras.highlighted) R.string.picking_unhighlight else R.string.picking_highlight), if (extras.highlighted) LibraryIcons.StarFilled else LibraryIcons.Star, it))
             }
             extras.makeMoment?.let { add(Extra(stringResource(R.string.make_moment), LibraryIcons.Plus, it)) }
             extras.merge?.let { add(Extra(stringResource(R.string.feed_merge), LibraryIcons.Stack, it)) }
             extras.takeOut?.let { add(Extra(stringResource(R.string.picking_take_out), LibraryIcons.Minus, it)) }
             extras.notThem?.let { add(Extra(extras.notThemLabel.orEmpty(), LibraryIcons.Close, it)) }
+        }
+        // The recent tags, one tap tagging every photo picked; More… opens the tag sheet.
+        if (extras.quickTags.isNotEmpty() && extras.onQuickTag != null && extras.tag != null) {
+            QuickTags(extras.quickTags, enabled = busy == null, onTag = extras.onQuickTag, onMore = extras.tag)
         }
         // Write · Crop · Tag (or Merge) grow in and out as the picks change, and cross-fade between them.
         val lastExtras = remember { arrayOf(extraButtons) }
@@ -317,6 +391,52 @@ internal fun PickingBar(
             },
             onDismiss = { confirmingPrivate = false },
         )
+    }
+}
+
+/**
+ * Above the picking bar's extras: the 3 most recently used tags as outlined chips, and More… (dashed) for the tag
+ * sheet. Scrolls sideways when long.
+ */
+@Composable
+private fun QuickTags(tags: List<String>, enabled: Boolean, onTag: (String) -> Unit, onMore: () -> Unit) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        tags.forEach { tag ->
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(LibraryColors.Background, RoundedCornerShape(50))
+                    .border(1.dp, LibraryColors.OnBackground.copy(alpha = 0.6f), RoundedCornerShape(50))
+                    .clickable(enabled = enabled, role = Role.Button) { onTag(tag) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(LibraryIcons.Tag, null, tint = LibraryColors.OnBackground, modifier = Modifier.size(14.dp))
+                Text(tag, color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+        }
+        val dash = LibraryColors.OnBackground.copy(alpha = 0.6f)
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(LibraryColors.Background, RoundedCornerShape(50))
+                .drawBehind {
+                    drawRoundRect(
+                        dash,
+                        cornerRadius = CornerRadius(size.height / 2),
+                        style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))),
+                    )
+                }
+                .clickable(enabled = enabled, role = Role.Button, onClick = onMore)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(stringResource(R.string.picking_more_tags), color = LibraryColors.OnBackground, style = LibraryType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
     }
 }
 

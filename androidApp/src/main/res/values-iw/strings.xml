@@ -1284,4 +1284,46 @@
     <string name="enroll_code_command">בשרת עצמו: journal-server enroll-code</string>
     <string name="group_save_name">שמירת השם</string>
     <string name="feed_route_separator">" ← "</string>
+
+    <!-- Tagging several photos, tucked-away tags, highlights that show through (Nov 19, 2026) -->
+    <plurals name="tucked_tag_pill">
+        <item quantity="one">%1$d %2$s</item>
+        <item quantity="two">%1$d %2$s</item>
+        <item quantity="other">%1$d %2$s</item>
+    </plurals>
+    <string name="picking_more_tags">עוד…</string>
+    <string name="picking_highlight">הדגשה</string>
+    <string name="picking_unhighlight">ביטול הדגשה</string>
+    <plurals name="tagged_photos">
+        <item quantity="one">תמונה אחת תויגה %2$s</item>
+        <item quantity="two">שתי תמונות תויגו %2$s</item>
+        <item quantity="other">%1$d תמונות תויגו %2$s</item>
+    </plurals>
+    <string name="tagged_tucked_suffix">" · מוצנע"</string>
+    <string name="tagged_undo">ביטול</string>
+    <plurals name="tag_photos_title">
+        <item quantity="one">תיוג תמונה אחת</item>
+        <item quantity="two">תיוג שתי תמונות</item>
+        <item quantity="other">תיוג %d תמונות</item>
+    </plurals>
+    <string name="tag_some_of">%1$d מתוך %2$d</string>
+    <string name="tag_tucked_detail">מוצנע</string>
+    <string name="tag_sheet_done">סיום</string>
+    <string name="tags_tucked_section">מוצנעים</string>
+    <string name="tag_menu">עוד עבור %s</string>
+    <string name="tag_tuck_away">הצנעת התגית</string>
+    <string name="tag_tuck_away_detail">התמונות שלה לא יופיעו ברגעים, בסיפור, בגילוי ובחיפוש. בכל יום כתוב כמה יש בו, ונגיעה מציגה אותן.</string>
+    <string name="tag_bring_back">החזרה</string>
+    <string name="tag_bring_back_detail">התמונות שלה יופיעו שוב בכל מקום.</string>
+    <plurals name="tag_tucked_card">
+        <item quantity="one">התמונה שלה לא מופיעה ברגעים, בסיפור, בגילוי ובחיפוש. היום שלה מציג במקומה את “%2$s”.</item>
+        <item quantity="two">שתי התמונות שלה לא מופיעות ברגעים, בסיפור, בגילוי ובחיפוש. כל יום מציג במקומן את “%2$s”.</item>
+        <item quantity="other">%1$d התמונות שלה לא מופיעות ברגעים, בסיפור, בגילוי ובחיפוש. כל יום מציג במקומן את “%2$s”.</item>
+    </plurals>
+    <string name="tag_show_everywhere">הצגה בכל מקום לעכשיו</string>
+    <string name="tag_hide_again">הסתרה שוב</string>
+    <string name="tag_locked">התמונות שלה יופיעו אחרי פתיחת נעילת הטלפון.</string>
+    <string name="tag_unlock">פתיחה</string>
+    <string name="tucked_with_tag">מוצנעת עם התגית %s: לא מופיעה ברגעים, בסיפור, בגילוי ובחיפוש.</string>
+    <string name="tucked_shown_through">מופיעה למרות שהתגית %s מוצנעת (מודגשת).</string>
 </resources>
