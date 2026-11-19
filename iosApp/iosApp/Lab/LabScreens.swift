@@ -51,6 +51,10 @@ let labScreens: [LabScreen] = [
         searchOptionA,
         searchOptionB,
         searchOptionC,
+        searchOptionA2,
+        searchOptionA3,
+        searchOptionA3Sheet,
+        searchOptionA4,
     ]),
     LabScreen(id: "search-empty", title: "Search, before typing", options: [
         current { labHome(data.placesLibrary, data.placesStories, searching: true) },

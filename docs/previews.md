@@ -54,6 +54,10 @@ only launcher entry and dropping Journal's `journal://` links). It sits beside J
 replaces it or stops its backup. It builds only the device's processor's native libraries (about 140 MB instead of
 335), which over wireless debugging is about 30 seconds instead of 8 minutes.
 
+Each option shows its letter in a pink badge at the top corner ("A2", "NOW" for the current screen), and the
+options list shows it before each title, so a screen and its screenshots say which option they are (asked Nov 19, 2026;
+both labs).
+
 The list is [LabScreens.kt](../androidApp/src/debug/kotlin/com/chencohensolution/journal/ui/library/LabScreens.kt).
 Suggestions are options after `current`, each in its own folder under `lab/`; how they are built, recorded in
 [docs/ux-history/](ux-history/README.md) and promoted into the app is the [ui-lab skill](../.claude/skills/ui-lab/SKILL.md).
