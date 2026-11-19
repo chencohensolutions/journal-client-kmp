@@ -129,9 +129,12 @@ contents by date, and a disposable `.cache/` index rebuilt from the files.
   every features refresh, for phones enrolled before), the app asks `serverInfo.caCertificate` on its own and keeps it
   (`JournalSettings.serverCa`). The mTLS clients then accept a server certificate that chains to that CA and is for a
   server, at any address, beside the pinned key (Android `KeptServerTrustManager`; iOS `MtlsChallenges.serverTrust`
-  with the SSL policy without a host name). The CA built into the app (`SERVER_CA_PEM`) stays for servers that use it.
-  Enrolling at a server with its own CA needs the QR code (its key fingerprint): a typed code reaches only servers on
-  the built-in CA.
+  with the SSL policy without a host name). The CA built into the app (`SERVER_CA_PEM`) stays only for phones already
+  enrolled with a server on it, until they have kept that server's CA. Enrolling needs the QR code or link (its key
+  fingerprint): since Nov 19, 2026 a typed address is trusted only by the system's roots, not the built-in CA (anyone
+  holding that CA's key could otherwise stand between a new phone and its server), and a link's key is used only by
+  enrollment's own connections, written to the settings once the phone is enrolled (an enrolled phone opening a
+  stranger's link keeps trusting its own server).
 - Tags and notes per photo, Tags screen, tag page, and the tag search picker.
 - Explore tab: towns by country, years, a town's or a year's page, and the map (MapLibre with OpenFreeMap tiles on
   both; iOS since Oct 21, 2026).

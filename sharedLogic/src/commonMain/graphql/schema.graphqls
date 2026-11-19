@@ -68,7 +68,8 @@ type Mutation {
   Renews the calling device's certificate (serverInfo.renewCertificates): a new certificate for a new key, for the same
   user and device, with its settings. The old certificate works until the new one is first used, and is then
   revoked. A device renews in the last 30 days of its certificate (expiresAt). NOT_ENROLLED for a certificate made
-  outside enrollment, or revoked.
+  outside enrollment, or revoked; RATE_LIMITED more than 60 days before it expires, or after 5 renewals of the same
+  certificate.
   """
   renewCertificate(csr: String!, keyProtection: KeyProtection!): EnrollDeviceResult!
 }

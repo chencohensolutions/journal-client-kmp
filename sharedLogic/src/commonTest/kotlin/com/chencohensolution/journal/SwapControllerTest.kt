@@ -135,9 +135,11 @@ class SwapControllerTest {
     fun weaknessCountsCharactersAndWords() {
         assertNull(Passphrase.weakness("abcdefghijklmnopqrstuvwx"), "24 characters in one word")
         assertNotNull(Passphrase.weakness("abcdefghijklmnopqrstuvw"), "23 in one word")
-        assertNull(Passphrase.weakness("aaaa bbbb cccc dddd e"), "21 characters in 5 words")
+        assertNull(Passphrase.weakness("abcd efgh ijkl mnop q"), "21 characters in 5 words")
         assertNotNull(Passphrase.weakness("aaaaaa bbbbbb cccccc"), "20 characters in 3 words")
-        assertNull(Passphrase.weakness("aaaa-bbbb-cccc-ddddee"), "hyphens split words, as on the server")
+        assertNull(Passphrase.weakness("abcd-efgh-ijkl-mnopqr"), "hyphens split words, as on the server")
+        assertEquals(6, Passphrase.weakness("aaaa bbbb cccc dddd eeee")?.different, "long but only 6 different characters")
+        assertNotNull(Passphrase.weakness("AbAbAbAbAbAbAbAbAbAbAbAb"), "case doesn't count, as on the server")
         assertEquals(9, Passphrase.weakness("  short one ")?.characters)
     }
 

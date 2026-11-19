@@ -41,23 +41,49 @@ object Passphrase {
 
     /**
      * Why [passphrase] is too weak for a new copy key, as the server checks it (journal-server-go copies/derive.go
-     * `WeakPassphrase`): it needs 24 characters, or 4 words or more and 20; null when strong enough.
+     * `WeakPassphrase`): it needs 24 characters, or 4 words or more and 20, and at least [MIN_DIFFERENT] different
+     * characters (ignoring case: "aaaa bbbb cccc dddd eeee" is long but easy to guess); null when strong enough.
      */
     fun weakness(passphrase: String): PassphraseWeakness? {
         val p = passphrase.trim()
         val words = p.split(Regex("[\\s-]+")).count { it.isNotEmpty() }
         val length = p.codePointCount()
-        return if (length >= 24 || (length >= 20 && words >= 4)) null else PassphraseWeakness(length, words)
+        val different = p.lowercase().codePoints().toSet().size
+        val long = length >= 24 || (length >= 20 && words >= 4)
+        return if (long && different >= MIN_DIFFERENT) null else PassphraseWeakness(length, words, different)
     }
+
+    /** The fewest different characters a passphrase may have (the server's `minDifferentCharacters`). */
+    const val MIN_DIFFERENT = 10
 
     /** The list's word count, for tests and the recovery sheet's note. */
     val wordListSize: Int get() = SWAP_WORDS.size
 }
 
-/** A passphrase that is [characters] long in [words] words: too short (see [Passphrase.weakness]). */
-data class PassphraseWeakness(val characters: Int, val words: Int)
+/**
+ * A passphrase that is [characters] long in [words] words, with [different] different characters: too short, or too
+ * repetitive (see [Passphrase.weakness]).
+ */
+data class PassphraseWeakness(val characters: Int, val words: Int, val different: Int = Int.MAX_VALUE)
 
 internal fun normalize(word: String) = word.trim().lowercase()
+
+/** The string's code points (a character outside the BMP is one), as the server counts runes. */
+private fun String.codePoints(): List<Int> {
+    val points = ArrayList<Int>(length)
+    var i = 0
+    while (i < length) {
+        val c = this[i]
+        if (c.isHighSurrogate() && i + 1 < length && this[i + 1].isLowSurrogate()) {
+            points += ((c.code - 0xD800) shl 10) + (this[i + 1].code - 0xDC00) + 0x10000
+            i += 2
+        } else {
+            points += c.code
+            i++
+        }
+    }
+    return points
+}
 
 private fun String.codePointCount(): Int {
     var n = 0

@@ -23,6 +23,17 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Security fixes, Nov 19, 2026** (shared logic and both platforms' Kotlin are done; nothing in SwiftUI needed for
+  the first two). (1) An enrollment link no longer writes the link's server into `serverDiscovery` before enrolling:
+  `EnrollmentController` asks `MtlsHttpClientFactory.createPinned`, which `IosMtlsHttpClientFactory` builds from
+  `MtlsChallenges(..., pin = { fingerprint }, serverCas = { emptyList() })`; check on the simulator that enrolling
+  from a QR link still works, and that an enrolled phone opening another server's link and going back still reaches
+  its own server. (2) Enrolling by a typed address no longer trusts the CA once built into the apps
+  (`trustedCas` is empty), so it works only with a server whose certificate the system trusts; QR links are the way.
+  (3) Still to do on iOS: keep the app's files out of iCloud backups, as Android now does
+  (`allowBackup="false"`, `data_extraction_rules.xml`): set `URLResourceValues.isExcludedFromBackup` on the app's
+  data folder (notes, the library database, kept originals, indexes) at start.
+
 - **UX consistency review, Nov 16, 2026** (Android; [style.md](screens/style.md) has the rules). Round 1, colors and
   buttons: the app's Material colors come from the library palette in light and dark (no system/wallpaper tint on
   enrollment, photo access or alerts; SwiftUI: `.tint` the ink color, not teal); one shared primary button (filled ink

@@ -40,8 +40,11 @@
         </intent>
     </queries>
 
+    <!-- No backup and no phone-to-phone transfer: the notes, library database, kept originals and indexes stay on this
+         phone, and a copied app would think it is enrolled without its key (res/xml/data_extraction_rules.xml). -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
