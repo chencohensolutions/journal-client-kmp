@@ -54,7 +54,8 @@ struct SearchScreenA3: View {
             }
         }
         .sheet(isPresented: $sorting) {
-            sheet.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            // Tall enough for the slider, the weakest photos and the Show button without scrolling.
+            sheet.presentationDetents([state.sort.byDate ? .fraction(0.62) : .medium, .large]).presentationDragIndicator(.visible)
         }
     }
 
