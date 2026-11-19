@@ -48,7 +48,7 @@ object Passphrase {
         val p = passphrase.trim()
         val words = p.split(Regex("[\\s-]+")).count { it.isNotEmpty() }
         val length = p.codePointCount()
-        val different = p.lowercase().codePoints().toSet().size
+        val different = p.lowercase().codePointList().toSet().size
         val long = length >= 24 || (length >= 20 && words >= 4)
         return if (long && different >= MIN_DIFFERENT) null else PassphraseWeakness(length, words, different)
     }
@@ -69,7 +69,7 @@ data class PassphraseWeakness(val characters: Int, val words: Int, val different
 internal fun normalize(word: String) = word.trim().lowercase()
 
 /** The string's code points (a character outside the BMP is one), as the server counts runes. */
-private fun String.codePoints(): List<Int> {
+private fun String.codePointList(): List<Int> {
     val points = ArrayList<Int>(length)
     var i = 0
     while (i < length) {
