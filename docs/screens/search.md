@@ -124,3 +124,7 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are i
 
 - The round ✕ beside the field is gone: a **back arrow** at the start of the "Search" title row (30 sp) closes search,
   as the system's back does, and the field takes the full width.
+
+## Design history
+
+- [Results by date, sorting and a match threshold](../ux-history/search/2026-11-19-sort.md) (Nov 19, 2026, iOS lab): a3 picked, the Sort sheet with a slider.
