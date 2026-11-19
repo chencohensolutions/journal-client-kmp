@@ -48,6 +48,9 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "search", title: "Search", options: [
         current { labHome(data.placesLibrary, data.placesStories, search: data.searchFound, searching: true) },
+        searchOptionA,
+        searchOptionB,
+        searchOptionC,
     ]),
     LabScreen(id: "search-empty", title: "Search, before typing", options: [
         current { labHome(data.placesLibrary, data.placesStories, searching: true) },
