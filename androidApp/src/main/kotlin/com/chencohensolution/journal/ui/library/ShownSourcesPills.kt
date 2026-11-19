@@ -36,15 +36,13 @@ import com.chencohensolution.journal.settings.ShownSourcesPills
 import java.text.NumberFormat
 
 // Show in the app's pills (option b2 of the UI lab, Oct 27, 2026), in Settings › Show in the app and in the "Showing"
-// sheets of Moments and Explore: the phones' sources, one "Imported" with its kinds under it while on, and what Private
-// settings hides on every device said in place, never switched here. State: ShownSourcesPills (shared logic).
+// sheets of Moments and Explore: the sources (what the server's import placed in its kind), and what Private settings
+// hides on every device said in place, never switched here. State: ShownSourcesPills (shared logic).
 
 /** What Show in the app's pills can do, wherever they are drawn. */
 internal class ShownSourcesActions(
-    /** A source on or off, phones' or one of Imported's kinds (the same as the Moments filter bar). */
+    /** A source on or off (the same as the Moments filter bar). */
     val toggleSource: (MediaSource) -> Unit = {},
-    /** Imported, all of it, on or off. */
-    val toggleImported: () -> Unit = {},
     /** Hidden and private, behind the phone's lock. */
     val openPrivate: () -> Unit = {},
 )
@@ -74,62 +72,23 @@ internal fun hiddenEverywhereOf(library: com.chencohensolution.journal.server.Se
     library?.hiddenEverywhere?.collectAsState() ?: remember { mutableStateOf(null) }
 
 /**
- * The pills, the kinds under Imported while it is on, the line on Other, and what Hidden and private hides (or, before it
+ * The pills, the line on Other, and what Hidden and private hides (or, before it
  * was opened, what it can hide), with "Hidden and private ›".
  */
 @Composable
 internal fun ShownSourcesPillsSection(pills: ShownSourcesPills, actions: ShownSourcesActions) {
     Pills(pills, actions)
-    ImportedKinds(pills, actions)
     OtherLine(pills)
     HiddenEverywhereLine(pills, actions.openPrivate)
 }
 
-/** The phone's sources, the most photos first, then "Imported" with its box icon and the count of what it has. */
+/** The sources, the most photos first. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Pills(pills: ShownSourcesPills, actions: ShownSourcesActions) {
     FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         pills.fromPhones.forEach { pill ->
-            SourcePill(pill, small = false, onToggle = { actions.toggleSource(pill.source) }, openPrivate = actions.openPrivate)
-        }
-        if (pills.hasImported) {
-            FilterBarChip(
-                stringResource(R.string.sources_imported),
-                FeedIcons.Imported,
-                count(pills.importedCount),
-                on = pills.importedShown,
-                keepIcon = true,
-                onClick = actions.toggleImported,
-            )
-        }
-    }
-}
-
-/** While Imported is on: "Of what was imported", its kinds as smaller pills in a tinted box. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ImportedKinds(pills: ShownSourcesPills, actions: ShownSourcesActions) {
-    if (!pills.importedShown || !pills.hasImported) return
-    Column(
-        Modifier
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp)
-            .fillMaxWidth()
-            .background(LibraryColors.Raised, LibraryShapes.Card)
-            .padding(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(FeedIcons.Imported, null, tint = LibraryColors.Muted, modifier = Modifier.size(14.dp))
-            Text(stringResource(R.string.sources_of_imported), color = LibraryColors.Muted, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
-        }
-        FlowRow(
-            Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            pills.importedKinds.forEach { pill ->
-                SourcePill(pill, small = true, onToggle = { actions.toggleSource(pill.source) }, openPrivate = actions.openPrivate)
-            }
+            SourcePill(pill, onToggle = { actions.toggleSource(pill.source) }, openPrivate = actions.openPrivate)
         }
     }
 }
@@ -139,17 +98,16 @@ private fun ImportedKinds(pills: ShownSourcesPills, actions: ShownSourcesActions
  * lock after its count when it hides part of it, else the plain pill.
  */
 @Composable
-private fun SourcePill(pill: ShownSourcesPills.Pill, small: Boolean, onToggle: () -> Unit, openPrivate: () -> Unit) {
+private fun SourcePill(pill: ShownSourcesPills.Pill, onToggle: () -> Unit, openPrivate: () -> Unit) {
     when {
         pill.allHiddenEverywhere -> Box(Modifier.alpha(0.5f)) {
-            FilterBarChip(sourceName(pill.source), LibraryIcons.Lock, null, on = false, small = small, onClick = openPrivate)
+            FilterBarChip(sourceName(pill.source), LibraryIcons.Lock, null, on = false, onClick = openPrivate)
         }
         else -> FilterBarChip(
             sourceName(pill.source),
             pill.source.icon,
             count(pill.count),
             on = pill.shown,
-            small = small,
             locked = pill.hiddenEverywhere > 0,
             onClick = onToggle,
         )
@@ -159,7 +117,7 @@ private fun SourcePill(pill: ShownSourcesPills.Pill, small: Boolean, onToggle: (
 /** "Other: files whose name and folder say nothing…", while Other is among the pills (the owner asked, Oct 27, 2026). */
 @Composable
 private fun OtherLine(pills: ShownSourcesPills) {
-    if (pills.fromPhones.none { it.source == MediaSource.OTHER } && pills.importedKinds.none { it.source.kind == MediaSource.OTHER }) return
+    if (pills.fromPhones.none { it.source == MediaSource.OTHER }) return
     Row(Modifier.padding(start = 32.dp, end = 32.dp, top = 12.dp)) {
         Text(
             stringResource(R.string.sources_other_about, stringResource(R.string.feed_source_other)),

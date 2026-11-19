@@ -276,7 +276,7 @@ class StoriesController internal constructor(
         val settings = settingsState.value
         val shown = settings.shownSources
         val version = listOf(
-            shown.hidden.map { it.id }.sorted(), shown.importedShown, shown.sayWhatsHidden, shown.alwaysShown.map { "${it.day}:${it.source.id}" }.sorted(),
+            shown.hidden.map { it.id }.sorted(), shown.sayWhatsHidden, shown.alwaysShown.map { "${it.day}:${it.source.id}" }.sorted(),
             settings.grouping.mode, settings.grouping.gapHours, settings.similarity.percent, FEED_VERSION,
         ).joinToString("|")
         return FeedContext(

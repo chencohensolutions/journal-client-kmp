@@ -64,13 +64,12 @@ private class ShownTestLibrary(val items: List<MediaItem>) : MediaLibrary {
 class ShownSourcesTest {
     @Test
     fun whatsAppAndScreenshotsAreOffAtFirstAndTheOldFilterBarKeepsTheRest() {
-        val importedOff = ShownSources.DEFAULT_HIDDEN_IMPORTED
-        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS) + importedOff, JournalSettings(ShownTestStore()).shownSources.hidden)
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS), JournalSettings(ShownTestStore()).shownSources.hidden)
 
         // The Moments filter bar's choice from before: Camera and Other kept as they were, WhatsApp turned off.
         val store = ShownTestStore().apply { values["feed_sources"] = "CAMERA,WHATSAPP" }
         val settings = JournalSettings(store)
-        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, MediaSource.OTHER) + importedOff, settings.shownSources.hidden)
+        assertEquals(setOf(MediaSource.WHATSAPP, MediaSource.SCREENSHOTS, MediaSource.OTHER), settings.shownSources.hidden)
 
         val flowers = MediaSource.folder("Flowers, 2024")
         val chosen = ShownSources(
@@ -89,30 +88,56 @@ class ShownSourcesTest {
     }
 
     @Test
-    fun importedIsOneSwitchWithItsKindsUnderIt() {
+    fun importedFilesShowAndHideWithTheirKind() {
         val camera = MediaSource.imported(MediaSource.CAMERA)
         val whatsapp = MediaSource.imported(MediaSource.WHATSAPP)
         assertEquals(camera, MediaSource.parse("import:camera"))
         assertEquals(MediaSource.CAMERA, camera.kind)
         assertTrue(camera.isImported && !MediaSource.CAMERA.isImported)
 
-        // Its kinds are offered under Imported, not beside the phones' sources, and only once something was imported.
-        val counts = mapOf(MediaSource.CAMERA to 10, camera to 300, MediaSource.imported(MediaSource.OTHER) to 40)
+        // An imported camera photo shows in Moments while Camera shows, and hides when Camera is hidden; imported
+        // WhatsApp is hidden at first with WhatsApp.
+        val items = newestFirst(shot("c1", OCT_4, 10), shot("i1", OCT_4, 12, camera), shot("w1", OCT_4, 14, whatsapp))
         val shown = ShownSources()
-        assertTrue(shown.choices(counts).none { it.isImported })
-        assertEquals(listOf(camera, MediaSource.imported(MediaSource.OTHER)), shown.importedChoices(counts).take(2))
-        assertEquals(emptyList(), shown.importedChoices(mapOf(MediaSource.CAMERA to 10)))
         assertTrue(shown.isShown(camera) && !shown.isShown(whatsapp))
+        val feed = buildFeed(items, shown, TimelineGrouping())
+        assertEquals(listOf("i1", "c1"), feed.sections().single().items.map { it.id })
+        assertEquals(mapOf(MediaSource.WHATSAPP to 1), feed.sections().single().hidden)
+        val noCamera = shown.copy(hidden = shown.hidden + MediaSource.CAMERA)
+        assertTrue(!noCamera.isShown(camera))
+        assertEquals(emptyList(), buildFeed(items, noCamera, TimelineGrouping()).sections())
 
-        // Imported off hides all its kinds, which keep their own choice for when it is on again.
-        val off = shown.copy(importedShown = false)
-        assertTrue(!off.isShown(camera) && off.isShown(MediaSource.CAMERA))
-        assertTrue(off.copy(importedShown = true).isShown(camera))
+        // "Always show this day" for Camera shows the imported camera photos of that day too.
+        val always = noCamera.copy(alwaysShown = setOf(DaySource(OCT_4, MediaSource.CAMERA)))
+        assertEquals(listOf("i1", "c1"), buildFeed(items, always, TimelineGrouping()).sections().single().items.map { it.id })
 
-        // Kept, and read back as it was.
-        val store = ShownTestStore()
-        JournalSettings(store).shownSources = off
-        assertEquals(off, JournalSettings(store).shownSources)
+        // The filter bar and the Showing sheet count imported files in their kind: one Camera chip, no Imported.
+        assertEquals(mapOf(MediaSource.CAMERA to 2, MediaSource.WHATSAPP to 1), feed.counts)
+        assertEquals(listOf(MediaSource.CAMERA), feed.bar)
+        assertTrue(feed.sheet.none { it.isImported })
+        assertEquals(1, feed.hiddenCount) // WhatsApp
+        assertEquals(
+            mapOf(MediaSource.CAMERA to 310, MediaSource.OTHER to 40),
+            MediaSource.byKind(mapOf(MediaSource.CAMERA to 10, camera to 300, MediaSource.imported(MediaSource.OTHER) to 40)),
+        )
+    }
+
+    @Test
+    fun theImportedChoiceKeptBeforeIsForgotten() {
+        // Saved while Imported was a choice (Oct 27 to Nov 16, 2026): Imported off, and imported WhatsApp hidden.
+        val store = ShownTestStore().apply {
+            values["show_imported"] = "false"
+            values["hidden_sources"] = "folder:whatsapp,import:camera,import:folder:whatsapp"
+        }
+        val shown = JournalSettings(store).shownSources
+        assertEquals(setOf(MediaSource.WHATSAPP), shown.hidden)
+        assertTrue(shown.isShown(MediaSource.imported(MediaSource.CAMERA)))
+        assertTrue(!shown.isShown(MediaSource.imported(MediaSource.WHATSAPP)))
+
+        // Saving drops the old key.
+        JournalSettings(store).shownSources = shown
+        assertEquals(null, store.values["show_imported"])
+        assertEquals(shown, JournalSettings(store).shownSources)
     }
 
     @Test
@@ -120,7 +145,7 @@ class ShownSourcesTest {
         // Kept as the sources shown until Oct 24, 2026: the fixed ones missing from it are hidden, and folders show.
         val store = ShownTestStore().apply { values["shown_sources"] = "CAMERA,WHATSAPP" }
         val shown = JournalSettings(store).shownSources
-        assertEquals(setOf(MediaSource.SCREENSHOTS, MediaSource.OTHER) + ShownSources.DEFAULT_HIDDEN_IMPORTED, shown.hidden)
+        assertEquals(setOf(MediaSource.SCREENSHOTS, MediaSource.OTHER), shown.hidden)
         assertTrue(shown.isShown(MediaSource.folder("Petcube")))
         // Its pills: the most photos first; a hidden source with none stays offered, to show it again.
         val petcube = MediaSource.folder("Petcube")

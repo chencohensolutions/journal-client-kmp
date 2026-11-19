@@ -307,7 +307,7 @@ private fun LibraryScreens(
             // Show in the app's pills in the "Showing" sheets of Moments and Explore.
             LocalShownSources provides ShownSourcesChoice(
                 storiesState.shownSources,
-                remember(settings) { ShownSourcesActions(settings::toggleFeedSource, settings::toggleImported, { push(Route.Hidden) }) },
+                remember(settings) { ShownSourcesActions(settings::toggleFeedSource, { push(Route.Hidden) }) },
                 hiddenEverywhere,
             ),
         ) {

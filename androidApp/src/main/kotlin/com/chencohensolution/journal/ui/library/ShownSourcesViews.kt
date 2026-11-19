@@ -38,18 +38,14 @@ import com.chencohensolution.journal.settings.ShownSourcesPills
 // hidden — Change") and the "Showing" sheet it opens, with the same pills as Settings › Show in the app.
 
 /**
- * "Camera · Imported · WhatsApp, Screenshots hidden" and "Change": the sources [shown] and those of [present] it hides,
- * what was imported said once as "Imported". Tapping it opens the "Showing" sheet.
+ * "Camera · Other · WhatsApp, Screenshots hidden" and "Change": the sources [shown] and those of [present] it hides,
+ * what the server's import placed as its kind. Tapping it opens the "Showing" sheet.
  */
 @Composable
 internal fun ShowingLine(shown: Set<MediaSource>, present: Set<MediaSource>, onChange: () -> Unit, modifier: Modifier = Modifier) {
-    val importedShown = LocalShownSources.current.shown.importedShown
-    val imported = stringResource(R.string.sources_imported)
-    val anyImported = present.any { it.isImported }
-    val on = shown.filterNot { it.isImported }.sorted().map { sourceName(it) } +
-        listOfNotNull(imported.takeIf { importedShown && shown.any { it.isImported } })
-    val off = present.filter { !it.isImported && it !in shown }.sorted().map { sourceName(it) } +
-        listOfNotNull(imported.takeIf { anyImported && !importedShown })
+    val shownKinds = shown.map { it.kind }.toSet()
+    val on = shownKinds.sorted().map { sourceName(it) }
+    val off = present.map { it.kind }.filter { it !in shownKinds }.distinct().sorted().map { sourceName(it) }
     val text = when {
         off.isEmpty() -> on.joinToString(" · ")
         on.isEmpty() -> stringResource(R.string.explore_all_hidden, off.joinToString(", "))
@@ -73,7 +69,7 @@ internal fun ShowingLine(shown: Set<MediaSource>, present: Set<MediaSource>, onC
 
 /** The sources a library has photos of ([counts]), and those on even without any. */
 internal fun presentSources(counts: Map<MediaSource, Int>, shown: Set<MediaSource>): Set<MediaSource> =
-    (shown + counts.filterValues { it > 0 }.keys).sorted().toSet()
+    (shown + MediaSource.byKind(counts).filterValues { it > 0 }.keys).sorted().toSet()
 
 /** Of the fixed sources and those [counts] has photos of, the ones the setting shows. */
 internal fun ShownSources.shownAmong(counts: Map<MediaSource, Int>?): Set<MediaSource> =

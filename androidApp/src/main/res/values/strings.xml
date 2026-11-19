@@ -721,7 +721,6 @@
     <string name="settings_backup_storage_title">Backup and storage</string>
     <string name="settings_moments_title">Moments</string>
     <string name="sources_imported">Imported</string>
-    <string name="sources_of_imported">Of what was imported</string>
     <string name="sources_everywhere">Hidden on all your devices: %1$s. Not counted here.</string>
     <string name="sources_more">%1$s more</string>
     <string name="sources_private_about">Hidden and private (in Settings) can hide apps, screenshots of chosen apps and nudity on all your devices. Those files never reach this phone and aren’t counted here.</string>

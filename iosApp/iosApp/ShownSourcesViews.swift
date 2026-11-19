@@ -4,9 +4,11 @@ import SharedLogic
 // What the app shows of each source (Settings › Show in the app, the Moments filter bar, Explore's "Showing" sheet):
 // one setting everywhere (ShownSources in the shared logic). Hiding never deletes anything and doesn't change backup.
 
-/// A Kotlin map of counts per source as (source, count) pairs in `MediaSource` order, leaving out sources with none.
+/// A Kotlin map of counts per source as (source, count) pairs in `MediaSource` order, leaving out sources with none;
+/// what the server's import placed is counted as its kind.
 func sourceCountList(_ counts: [MediaSource: KotlinInt]) -> [(MediaSource, Int)] {
-    MediaSource.companion.choices(present: Set(counts.keys), chosen: []).compactMap { source in
+    let counts = MediaSource.companion.byKind(counts: counts)
+    return MediaSource.companion.choices(present: Set(counts.keys), chosen: []).compactMap { source in
         let count = counts[source]?.intValue ?? 0
         return count > 0 ? (source, count) : nil
     }
@@ -17,8 +19,6 @@ func sourceCountList(_ counts: [MediaSource: KotlinInt]) -> [(MediaSource, Int)]
 struct ShownSourcesChoice {
     var shown: ShownSources? = nil
     var hiddenEverywhere: HiddenCollections? = nil
-    /// "Imported", all of it, on or off.
-    var toggleImported: () -> Void = {}
     /// Private settings, behind the phone's lock.
     var openPrivate: () -> Void = {}
 }
@@ -34,8 +34,8 @@ extension EnvironmentValues {
     }
 }
 
-/// Under Explore's choices: "Camera · Imported · WhatsApp, Screenshots hidden" and Change, which opens the "Showing"
-/// sheet; what was imported is said once, as "Imported". Sources with nothing in `counts` aren't named; nothing shows
+/// Under Explore's choices: "Camera · Other · WhatsApp, Screenshots hidden" and Change, which opens the "Showing"
+/// sheet; what the server's import placed is in its kind. Sources with nothing in `counts` aren't named; nothing shows
 /// when there are no photos at all.
 struct ShownSourcesLine: View {
     let shown: ShownSources
@@ -67,13 +67,8 @@ struct ShownSourcesLine: View {
     }
 
     private func line(_ present: [MediaSource]) -> String {
-        let imported = String(localized: "Imported")
-        let anyImported = present.contains { $0.isImported }
-        var on = present.filter { !$0.isImported && shown.isShown(source: $0) }.map(\.title)
-        if shown.importedShown && present.contains(where: { $0.isImported && shown.isShown(source: $0) }) { on.append(imported) }
-        var off = present.filter { !$0.isImported && !shown.isShown(source: $0) }.map(\.title)
-        if anyImported && !shown.importedShown { off.append(imported) }
-        var parts = on
+        var parts = present.filter { shown.isShown(source: $0) }.map(\.title)
+        let off = present.filter { !shown.isShown(source: $0) }.map(\.title)
         if !off.isEmpty { parts.append(String(localized: "\(off.joined(separator: ", ")) hidden")) }
         return parts.joined(separator: " · ")
     }
@@ -105,7 +100,7 @@ struct ShowingSheet: View {
                     .padding(.top, 2)
                     .padding(.bottom, 12)
                 ShownPillsSection(
-                    pills: pills, toggle: onToggle, toggleImported: choice.toggleImported,
+                    pills: pills, toggle: onToggle,
                     openPrivate: {
                         dismiss()
                         choice.openPrivate()
@@ -133,40 +128,20 @@ struct ShowingSheet: View {
     }
 }
 
-/// The phones' sources, then "Imported" with its kinds in a tinted box while on, the line on Other, and what Private
+/// The sources (what the server's import placed in its kind), the line on Other, and what Private
 /// settings hides on every device (or, before it was opened, what it can hide), with "Private settings ›". A source it
 /// hides whole is a dimmed pill with a lock that opens it; one it hides in part has a lock after its count.
 struct ShownPillsSection: View {
     let pills: ShownSourcesPills
     let toggle: (MediaSource) -> Void
-    let toggleImported: () -> Void
     let openPrivate: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             FlowLayout(spacing: 8) {
-                ForEach(pills.fromPhones, id: \.source.id) { pill in pillView(pill, small: false) }
-                if pills.hasImported {
-                    FilterBarChip(
-                        title: String(localized: "Imported"), symbol: "shippingbox", count: Int(pills.importedCount).formatted(),
-                        on: pills.importedShown, keepIcon: true, action: toggleImported
-                    )
-                }
+                ForEach(pills.fromPhones, id: \.source.id) { pill in pillView(pill) }
             }
-            if pills.importedShown && pills.hasImported {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Of what was imported", systemImage: "shippingbox")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(LibraryColors.muted)
-                    FlowLayout(spacing: 6) {
-                        ForEach(pills.importedKinds, id: \.source.id) { pill in pillView(pill, small: true) }
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LibraryColors.raised, in: RoundedRectangle(cornerRadius: 14))
-            }
-            if pills.fromPhones.contains(where: { $0.source == .other }) || pills.importedKinds.contains(where: { $0.source.kind == .other }) {
+            if pills.fromPhones.contains(where: { $0.source == .other }) {
                 Text("\(MediaSource.other.title): files whose name and folder say nothing: downloads, saved images, files from a computer.")
                     .font(.footnote)
                     .foregroundStyle(LibraryColors.muted)
@@ -193,12 +168,12 @@ struct ShownPillsSection: View {
     }
 
     @ViewBuilder
-    private func pillView(_ pill: ShownSourcesPills.Pill, small: Bool) -> some View {
+    private func pillView(_ pill: ShownSourcesPills.Pill) -> some View {
         if pill.allHiddenEverywhere {
-            FilterBarChip(title: pill.source.title, symbol: "lock.fill", on: false, small: small, action: openPrivate).opacity(0.5)
+            FilterBarChip(title: pill.source.title, symbol: "lock.fill", on: false, action: openPrivate).opacity(0.5)
         } else {
             FilterBarChip(
-                title: pill.source.title, symbol: pill.source.symbol, count: Int(pill.count).formatted(), on: pill.shown, small: small,
+                title: pill.source.title, symbol: pill.source.symbol, count: Int(pill.count).formatted(), on: pill.shown,
                 locked: pill.hiddenEverywhere > 0
             ) { toggle(pill.source) }
         }

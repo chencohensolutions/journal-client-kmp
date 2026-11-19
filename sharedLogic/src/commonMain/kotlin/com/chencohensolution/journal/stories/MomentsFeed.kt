@@ -170,7 +170,7 @@ sealed interface FeedEntry {
 /** The Moments tab: every photo and video of the [shown] sources, newest first. */
 data class MomentsFeed(
     val entries: List<FeedEntry> = emptyList(),
-    /** Photos per source, shown or not, in [MediaSource] order. */
+    /** Photos per source, shown or not, in [MediaSource] order; imported ones counted as their kind ([MediaSource.byKind]). */
     val counts: Map<MediaSource, Int> = emptyMap(),
     /** Of the sources [choices] offers, those on. */
     val shown: Set<MediaSource> = ShownSources().shownOf(MediaSource.FIXED),
@@ -181,10 +181,6 @@ data class MomentsFeed(
     val sheet: List<MediaSource> = MediaSource.byCount(counts),
     /** The whole feed's timeline when [entries] are only its first rows (read from the database: FeedPager). */
     val givenTimeline: FeedTimeline? = null,
-    /** Whether what the server's import placed shows ([ShownSources.importedShown]). */
-    val importedShown: Boolean = true,
-    /** The kinds under Imported in the sheet, the most photos first; empty while nothing imported has photos. */
-    val importedSheet: List<MediaSource> = MediaSource.importedChoices(counts),
     /** Read from the database: newer rows above [entries], read once the list nears its top (FeedPager's window). */
     val hasNewer: Boolean = false,
     /** Read from the database: older rows below [entries], read once the list nears its end. */
@@ -228,19 +224,13 @@ data class MomentsFeed(
     val choices: List<MediaSource> get() = MediaSource.choices(counts.keys)
 
     /**
-     * The filter bar's chips: the phones' sources shown that have photos, the most first (asked Oct 24, 2026); what
-     * was imported is one chip after them ([importedCount]).
+     * The filter bar's chips: the sources shown that have photos, the most first (asked Oct 24, 2026); what the
+     * server's import placed is in its kind's chip.
      */
     val bar: List<MediaSource> get() = sheet.filter { it in shown && (counts[it] ?: 0) > 0 }
 
-    /** The filter bar's Imported chip: the imported photos shown; 0 while Imported is off or none show. */
-    val importedCount: Int get() = if (!importedShown) 0 else importedSheet.filter { it in shown }.sumOf { counts[it] ?: 0 }
-
-    /** Whether anything imported has photos, shown or not: the sheet and Settings offer Imported. */
-    val hasImported: Boolean get() = importedSheet.isNotEmpty()
-
-    /** The filter bar's "+N": the phones' sources hidden that have photos, and Imported while it is off. */
-    val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 } + if (hasImported && !importedShown) 1 else 0
+    /** The filter bar's "+N": the sources hidden that have photos. */
+    val hiddenCount: Int get() = sheet.count { it !in shown && (counts[it] ?: 0) > 0 }
 
     /** Its months and days, for going to a date: worked out once, when first asked for. */
     val timeline: FeedTimeline by lazy { givenTimeline ?: FeedTimeline.of(this) }
@@ -294,7 +284,7 @@ internal fun buildFeed(
      */
     placements: Map<String, ShowOn> = emptyMap(),
 ): MomentsFeed {
-    val counts = sourceCounts(items)
+    val counts = MediaSource.byKind(sourceCounts(items))
     val (visible, hiddenBySource) = items.partition(shown::shows)
     // A tucked photo of a hidden source is neither counted on the source's chip nor shown in its band.
     val hidden = hiddenBySource.filterNot { it.isTucked }
@@ -346,8 +336,6 @@ internal fun buildFeed(
         counts,
         shown.shownAmong(counts),
         shown.choices(counts),
-        importedShown = shown.importedShown,
-        importedSheet = shown.importedChoices(counts),
     )
 }
 
@@ -417,11 +405,12 @@ private fun List<FeedSection>.withHidden(hidden: List<MediaItem>, say: Boolean, 
     }
     return mapIndexed { i, section ->
         val items = perSection[i] ?: return@mapIndexed section
-        val bySource = items.groupBy { it.source }
+        // What the server's import placed is said and shown with its kind.
+        val bySource = items.groupBy { it.source.kind }
         val shownHere = bySource.keys.filter { FeedReveal(section.key, it) in revealed }.toSet()
         section.copy(
             hidden = if (say) {
-                sourceCounts(items.filter { it.source !in shownHere })
+                MediaSource.byKind(sourceCounts(items.filter { it.source.kind !in shownHere }))
             } else {
                 emptyMap()
             },

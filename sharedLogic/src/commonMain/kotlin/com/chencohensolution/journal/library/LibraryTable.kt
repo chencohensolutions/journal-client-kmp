@@ -335,7 +335,7 @@ internal class LibraryTable(private val database: LibraryDatabase) {
         val spellings = queries.sourceCounts().executeAsList().map { it.source }.groupBy { MediaSource.of(it) }
         val hidden = spellings.filterKeys { !shown.isShown(it) }.values.flatten()
         val always = shown.alwaysShown.flatMap { daySource ->
-            spellings[daySource.source].orEmpty().map { "${daySource.day.toEpochDay()}:$it" }
+            spellings.filterKeys { it.kind == daySource.source.kind }.values.flatten().map { "${daySource.day.toEpochDay()}:$it" }
         }
         return hidden to always
     }

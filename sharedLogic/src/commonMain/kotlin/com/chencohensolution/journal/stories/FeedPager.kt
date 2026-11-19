@@ -186,12 +186,10 @@ internal class FeedPager(
         }
         return MomentsFeed(
             entries = withRevealed.map(FeedEntry::Section),
-            counts = counts,
+            counts = MediaSource.byKind(counts),
             shown = context.shown.shownAmong(counts),
             sheet = context.shown.choices(counts),
             givenTimeline = timeline,
-            importedShown = context.shown.importedShown,
-            importedSheet = context.shown.importedChoices(counts),
             hasNewer = newest != null,
             hasOlder = hasOlder,
         )

@@ -94,8 +94,8 @@ class MediaSource private constructor(
     val isSound: Boolean get() = this == CALL || this == RECORDING
 
     /**
-     * Whether the server's import placed it ("import:folder:whatsapp"), rather than a phone uploading it: kept apart
-     * from the phones' folders, under "Imported" in Show in the app (asked Oct 27, 2026).
+     * Whether the server's import placed it ("import:folder:whatsapp"), rather than a phone uploading it: shown or
+     * hidden as its [kind] (Nov 16, 2026: there is no "Imported" choice any more).
      */
     val isImported: Boolean get() = id.startsWith(IMPORT)
 
@@ -219,21 +219,19 @@ class MediaSource private constructor(
 
         /**
          * What a screen offers: Camera, Screenshots and Other, then [present] (those with photos) and [chosen] ones, in
-         * order. The imported ones are offered apart, under Imported ([importedChoices]); the sound recordings' own
-         * ([SOUND]) never.
+         * order. Never the imported ones (fold them into their kind first: [byKind]) or the sound recordings' own ([SOUND]).
          */
         fun choices(present: Set<MediaSource>, chosen: Set<MediaSource> = emptySet()): List<MediaSource> =
             (OFFERED + present + chosen).filterNot { it.isImported || it.kind.isSound }.distinct().sorted()
 
         /**
-         * The kinds Imported offers, the most photos in [counts] first (ties in order): Camera, Screenshots and Other and
-         * every imported kind with photos ("import:folder:whatsapp"), once anything imported has photos, else none (a
-         * server without imports shows no Imported).
+         * [counts] with what the server's import placed added to its kind ("import:camera" to Camera), in order: what
+         * the filter bar, the Showing sheets and the rows' "+N" count (imported files show as their kind, Nov 16, 2026).
          */
-        fun importedChoices(counts: Map<MediaSource, Int>): List<MediaSource> {
-            val present = counts.filter { (source, count) -> source.isImported && count > 0 }.keys
-            if (present.isEmpty()) return emptyList()
-            return (OFFERED.map(::imported) + present).distinct().sorted().sortedByDescending { counts[it] ?: 0 }
+        fun byKind(counts: Map<MediaSource, Int>): Map<MediaSource, Int> {
+            val folded = HashMap<MediaSource, Int>()
+            counts.forEach { (source, count) -> folded[source.kind] = (folded[source.kind] ?: 0) + count }
+            return folded.keys.sorted().associateWith { folded.getValue(it) }
         }
 
         /**
