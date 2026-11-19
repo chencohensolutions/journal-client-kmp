@@ -16,6 +16,13 @@ import io.ktor.http.encodedPath
  */
 internal fun interface MtlsHttpClientFactory {
     suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient
+
+    /**
+     * A client that trusts only the server whose key (SubjectPublicKeyInfo) hashes to [fingerprint], whatever server
+     * this phone keeps: enrollment from a link uses it, so opening a link never changes who an enrolled phone trusts
+     * before the user has enrolled. The platform factories override it; the default is for tests' fakes.
+     */
+    suspend fun createPinned(identityAlias: String?, fingerprint: String): HttpClient = create(identityAlias, emptyList())
 }
 
 private const val GRAPHQL_PATH = "/query"

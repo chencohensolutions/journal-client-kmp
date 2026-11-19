@@ -437,26 +437,35 @@ class EnrollByIdTest {
     private var enrolled: Triple<String, String, com.chencohensolution.journal.discovery.KeptDiscovery?>? = null
     private var dhtAsked = 0
 
-    /** The server, answering only at [up] (hosts), as a dead address fails elsewhere; the pin it was asked with. */
+    /** The server, answering only at [up] (hosts), as a dead address fails elsewhere; the pin each client trusted. */
     private val pinsSeen = mutableListOf<String?>()
+
+    private fun server(up: Set<String>) = HttpClient(MockEngine { request ->
+        asked += request.url.host
+        if (request.url.host !in up) throw kotlinx.io.IOException("No route to host")
+        val body = request.body.toByteArray().decodeToString()
+        val operation = Regex("\"operationName\":\"(\\w+)\"").find(body)?.groupValues?.get(1)
+        val json = when (operation) {
+            "EnrollmentPreview" -> PREVIEW_JSON
+            "EnrollDevice" -> ENROLLED_JSON
+            null -> "" // a probe
+            else -> USAGE_OK
+        }
+        respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+    })
 
     private fun controller(up: Set<String>, dht: List<String>? = null) = EnrollmentController(
         settings = settings,
-        clientFactory = MtlsHttpClientFactory { _, _ ->
-            pinsSeen += settings.serverFingerprint
-            HttpClient(MockEngine { request ->
-                asked += request.url.host
-                if (request.url.host !in up) throw kotlinx.io.IOException("No route to host")
-                val body = request.body.toByteArray().decodeToString()
-                val operation = Regex("\"operationName\":\"(\\w+)\"").find(body)?.groupValues?.get(1)
-                val json = when (operation) {
-                    "EnrollmentPreview" -> PREVIEW_JSON
-                    "EnrollDevice" -> ENROLLED_JSON
-                    null -> "" // a probe
-                    else -> USAGE_OK
-                }
-                respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
-            })
+        clientFactory = object : MtlsHttpClientFactory {
+            override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient {
+                pinsSeen += null
+                return server(up)
+            }
+
+            override suspend fun createPinned(identityAlias: String?, fingerprint: String): HttpClient {
+                pinsSeen += fingerprint
+                return server(up)
+            }
         },
         keyStore = FakeKeyStore(),
         defaultDeviceName = "Galaxy",
@@ -540,13 +549,16 @@ class EnrollByIdTest {
     }
 
     @Test
-    fun leavingWithoutEnrollingPutsBackWhatWasKept() = realTime {
+    fun aLinkChangesNothingKeptUntilTheDeviceIsEnrolled() = realTime {
+        // An enrolled phone opening someone's link: who it trusts and where it looks for its server stay as they were,
+        // so its own connections never move to the link's server unless the user enrolls there.
         val before = com.chencohensolution.journal.discovery.KeptDiscovery(fingerprint = "ab".repeat(32), id = "OLD")
         settings.serverDiscovery = before
-        val controller = controller(up = setOf("203.0.113.7"))
-        controller.openLink(link("https://203.0.113.7:56398"))
+        val controller = controller(up = setOf("192.168.1.20"))
+        controller.openLink(link("https://203.0.113.7:56398", "https://203.0.113.7:56398", "https://192.168.1.20:56398"))
         controller.awaitStep { it is EnrollmentStep.Confirm }
-        assertEquals(fingerprint, settings.serverFingerprint)
+        assertEquals(before, settings.serverDiscovery)
+        assertTrue(pinsSeen.isNotEmpty() && pinsSeen.all { it == fingerprint }, "enrollment trusted only the link's key: $pinsSeen")
         controller.back() // to the code
         controller.back() // to the start
         assertEquals(before, settings.serverDiscovery)

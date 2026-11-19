@@ -35,6 +35,11 @@ phone (viewer)                                   TV (Cast receiver page)
   next video is cast or casting stops, and without 1 GB free beside it the video streams as the TV reads. A JPEG XL the server packed
   from a JPEG goes as that JPEG, byte for byte (`JpegXl.unpack`): it is the original, and the TV decodes JPEG itself.
   A photo the TV can't read (DNG, other raw files) goes as a JPEG made on the phone at 3840 px.
+- **Who else can see it** (security review, Nov 19, 2026): the phone's server speaks plain HTTP on the Wi-Fi, since a
+  Cast TV can't trust the journal server's certificates. The random 128-bit token in each path keeps anyone from
+  guessing what is shown, but someone already on the same Wi-Fi who can watch its traffic (a shared or open network,
+  a compromised device at home) sees the photos and videos cast while casting lasts. Cast at home, on a network you
+  trust.
 - **The receiver decodes**: JPEG, PNG, WebP, GIF and AVIF by the TV's browser; HEIC/HEIF with libheif-js 1.23.5 and
   JPEG XL with jxl-oxide-wasm 0.12.6, both WebAssembly, vendored in `receiver/vendor/` with their licences and loaded
   the first time one comes. HEIC is decoded in a worker (`receiver/heif-worker.js`): libheif-js compiles its

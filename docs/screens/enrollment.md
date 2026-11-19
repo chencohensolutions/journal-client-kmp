@@ -51,24 +51,26 @@ sha256 of the server certificate's key), `key=` (its DHT key) and `address=` for
 (`parseEnrollmentLink`, `EnrollmentLink`). With a fingerprint:
 
 - Every connection of the enrollment, from the first `enrollmentPreview`, checks the server's key against it instead
-  of the apps' CA and the host name: the link's server is put in `JournalSettings.serverDiscovery`, which the mTLS
-  clients pin (docs/plans/discovery.md, "Phones"). So a bare IP the server certificate doesn't list works, and no
-  host name is needed.
+  of the apps' CA and the host name: enrollment's connections are made by `MtlsHttpClientFactory.createPinned`, which
+  trusts that key only (docs/plans/discovery.md, "Phones"). So a bare IP the server certificate doesn't list works,
+  and no host name is needed. Nothing is written to the settings before the phone is enrolled (Nov 19, 2026: a link
+  used to go into `serverDiscovery` at once, so an enrolled phone that only opened a stranger's link could move its
+  own connections there).
 - When the address doesn't answer at all, the link's other addresses are tried (400 ms apart, the first to answer
   wins), then the DHT under `key`; the wizard goes on at the address that answered and shows it.
 - After enrolling, what the link said is kept (`JournalController.useEnrolledIdentity`), so the app goes on pinning
-  the key and finding the server when its address changes. Leaving the wizard without enrolling puts back what was
-  kept before.
+  the key and finding the server when its address changes. Leaving the wizard without enrolling changes nothing.
 
-A link without a fingerprint (an older server), and an address typed by hand, work as before: the CA and the host
-name. Typing a server id by hand isn't offered.
+A link without a fingerprint (an older server), and an address typed by hand, are trusted by the system's roots and
+the host name only: since Nov 19, 2026 not by the CA built into the apps, whose key could have let its holder stand
+between a new phone and its server. Typing a server id by hand isn't offered.
 
 **The server's own CA** (Nov 14, 2026): each new server makes its own CA (journal-server-go docs/install.md, "A new
 server, and the CA"). In the connection test after the certificate is saved, the wizard also asks
 `serverInfo.caCertificate` (on its own: an older server doesn't know it) and hands it to `useEnrolledIdentity`, which
 keeps it in `JournalSettings.serverCa` (or forgets an older server's). From then on the mTLS clients trust the server
-by that CA too, at any address. So a server with its own CA is enrolled at by its QR code or its pasted link; a typed code reaches only a
-server on the CA built into the app, and the wizard shows the usual connection error for any other.
+by that CA too, at any address. So a server is enrolled at by its QR code or its pasted link; a typed address reaches only a server
+whose certificate the system trusts, and the wizard shows the usual connection error for any other.
 
 ## UX review changes (Nov 16, 2026)
 

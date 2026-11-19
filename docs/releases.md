@@ -24,8 +24,8 @@ at <https://github.com/chencohensolutions/journal-client-kmp/releases/latest/dow
   `versionCode` is the date's digits times 100 plus that number (2026.11.14 is 2026111400, 2026.11.14.2 is
   2026111402). A phone installs an APK over the one it has only when the versionCode is higher, so each release
   needs a later date or number. Which app works with which server: `releases/README.md`.
-- Pushing the same release branch again rebuilds it and replaces that release's APK. Phones that already installed
-  that version won't see it as an update; push a new version for that.
+- A published version is never replaced (Nov 19, 2026): pushing the same release branch again fails, so release a
+  higher version. (Phones that installed a version never see a rebuild of it as an update anyway.)
 - Only arm64 phones (every phone of the last years). Emulators and old 32-bit phones use a debug build.
 
 ## The release key (once)
@@ -53,6 +53,13 @@ Then in the repository's Settings › Secrets and variables › Actions, add:
 | `ANDROID_KEY_PASSWORD` | only if you gave the key a different password |
 
 Without them the workflow stops at "Release key" and publishes nothing.
+
+**Approving releases** (Nov 19, 2026). The job that signs runs in the `release` environment. Once: Settings ›
+Environments › `release` (the first run makes it), tick "Required reviewers" and add yourself, then add the four
+secrets there instead (and delete the repository-wide ones). From then on an APK is signed only after you press
+Approve on its run, so a change that reaches main without you can't become a signed release. Pushes to main that
+release nothing never wait: the version is decided in a job of its own, without the key. The workflow's actions are
+pinned by commit.
 
 The release APK is signed with another key than debug and `profile` builds, so the first time, uninstall the
 debug-signed app on a phone before installing a release.

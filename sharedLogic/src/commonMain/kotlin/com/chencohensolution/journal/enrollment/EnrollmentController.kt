@@ -19,9 +19,8 @@ import com.chencohensolution.journal.network.graphQlEndpoint
 import com.chencohensolution.journal.network.serverAddress
 import com.chencohensolution.journal.network.useClient
 import com.chencohensolution.journal.settings.JournalSettings
-import com.chencohensolution.journal.tls.SERVER_CA_PEM
 import com.chencohensolution.journal.server.askServerCa
-import com.chencohensolution.journal.tls.decodePemCertificates
+import io.ktor.client.HttpClient
 import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -123,7 +122,11 @@ class EnrollmentController internal constructor(
     private val onEnrolled: (serverUrl: String, identityAlias: String, discovery: KeptDiscovery?, serverCa: String?) -> Unit,
     dispatcher: CoroutineDispatcher = Dispatchers.Main,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val trustedCas: List<ByteArray> = decodePemCertificates(SERVER_CA_PEM),
+    /**
+     * What an address typed without a link is trusted by, besides the system's roots. Empty: the CA once built into
+     * the apps is no longer trusted for enrolling (Nov 19, 2026); a link's key or a public certificate is.
+     */
+    private val trustedCas: List<ByteArray> = emptyList(),
     private val clock: Clock = Clock.System,
     /** The DHT lookup, when none of the link's addresses answers. */
     private val dhtLookup: suspend (key: String, fingerprint: String) -> ServerRecord? = { key, fingerprint ->
@@ -133,16 +136,12 @@ class EnrollmentController internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var job: Job? = null
 
-    /** The link scanned or opened, when it said who the server is (its fingerprint): the connections pin its key. */
-    private var pinned: EnrollmentLink? = null
-
     /**
-     * What `serverDiscovery` was before enrollment put the link's in, so the mTLS clients pin it (they read it from the
-     * settings); put back when the user leaves without enrolling. Null while nothing was put in.
+     * The link scanned or opened, when it said who the server is (its fingerprint): enrollment's connections trust only
+     * its key ([MtlsHttpClientFactory.createPinned]). Nothing of it goes into the settings until the device is enrolled
+     * ([onEnrolled]): a link opened on an enrolled phone, and left, changes nothing the phone keeps.
      */
-    private var discoveryBefore: SavedDiscovery? = null
-
-    private class SavedDiscovery(val value: KeptDiscovery?)
+    private var pinned: EnrollmentLink? = null
 
     private val _state = MutableStateFlow(
         EnrollmentState(
@@ -246,7 +245,7 @@ class EnrollmentController internal constructor(
                 setStep(EnrollmentStep.Registering(RegistrationProgress.TESTING_CONNECTION))
                 var serverCa: String? = null
                 val test = try {
-                    createApolloClient(clientFactory.create(alias, trustedCas), endpoint).useClient {
+                    createApolloClient(enrollmentClient(alias), endpoint).useClient {
                         checkConnection(it).status.also { status ->
                             // Each server has its own CA: kept, so the server is trusted by it from now on.
                             if (status == ConnectionStatus.Connected) serverCa = askServerCa(it)
@@ -263,7 +262,6 @@ class EnrollmentController internal constructor(
                 val previous = settings.identityAlias
                 settings.certificateExpiresAt = runCatching { Instant.parse(issued.expiresAt).toEpochMilliseconds() }.getOrNull()
                 onEnrolled(endpoint, alias, pinned?.let { discoveryOf(it, endpoint) }, serverCa)
-                discoveryBefore = null
                 succeeded = true
                 if (previous != null && previous != alias && previous.startsWith(IDENTITY_ALIAS_PREFIX)) {
                     withContext(workDispatcher) { runCatching { keyStore.delete(previous) } }
@@ -363,7 +361,7 @@ class EnrollmentController internal constructor(
     private suspend fun <T> anonymousApollo(serverAddress: String, block: suspend (com.apollographql.apollo.ApolloClient) -> T): T {
         val endpoint = graphQlEndpoint(serverAddress)
         val httpClient = try {
-            clientFactory.create(null, trustedCas)
+            enrollmentClient(null)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             throw EnrollmentTransportException(e.describe())
@@ -372,12 +370,11 @@ class EnrollmentController internal constructor(
     }
 
     /**
-     * Runs [block] on the anonymous client at [address], pinning the link's key when it has one. When [address] doesn't
+     * Runs [block] on the anonymous client at [address], trusting only the link's key when it has one. When [address] doesn't
      * answer at all and the link said who the server is, the link's other addresses are tried (400 ms apart, the first
      * to answer wins), then the DHT under its key, and [block] runs where the server answered. Gives that address too.
      */
     private suspend fun <T> reachServer(address: String, block: suspend (com.apollographql.apollo.ApolloClient) -> T): Pair<String, T> {
-        pinned?.let { pinFor(it, address) }
         try {
             return address to anonymousApollo(address, block)
         } catch (e: Exception) {
@@ -386,7 +383,6 @@ class EnrollmentController internal constructor(
             val network = generateSequence<Throwable>(e) { it.cause?.takeIf { cause -> cause !== it } }.take(10).any { it is ApolloNetworkException }
             val link = pinned?.takeIf { network } ?: throw e
             val found = findElsewhere(link, KeptDiscovery.originOf(graphQlEndpoint(address))) ?: throw e
-            pinFor(link, found)
             return found to anonymousApollo(found, block)
         }
     }
@@ -394,7 +390,7 @@ class EnrollmentController internal constructor(
     private suspend fun findElsewhere(link: EnrollmentLink, failed: String?): String? {
         val fingerprint = link.fingerprint ?: return null
         val http = try {
-            clientFactory.create(null, trustedCas)
+            clientFactory.createPinned(null, fingerprint)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             return null
@@ -416,16 +412,12 @@ class EnrollmentController internal constructor(
         }
     }
 
-    /** Puts the link's server in the settings, as at [address], so the mTLS clients pin its key. */
-    private fun pinFor(link: EnrollmentLink, address: String) {
-        if (discoveryBefore == null) discoveryBefore = SavedDiscovery(settings.serverDiscovery)
-        settings.serverDiscovery = discoveryOf(link, graphQlEndpoint(address))
-    }
+    /** A client as [identityAlias] (none: anonymous) that trusts the link's key only, or else [trustedCas] and what is kept. */
+    private suspend fun enrollmentClient(identityAlias: String?): HttpClient =
+        pinned?.fingerprint?.let { clientFactory.createPinned(identityAlias, it) } ?: clientFactory.create(identityAlias, trustedCas)
 
-    /** Puts back what the settings had before [pinFor], when the user leaves without enrolling. */
+    /** Forgets the link's key, when the user leaves without enrolling. */
     private fun forgetPin() {
-        discoveryBefore?.let { settings.serverDiscovery = it.value }
-        discoveryBefore = null
         pinned = null
         _state.update { it.copy(serverId = null) }
     }

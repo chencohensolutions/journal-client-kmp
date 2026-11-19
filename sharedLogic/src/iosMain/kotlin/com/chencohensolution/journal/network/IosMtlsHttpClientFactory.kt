@@ -50,8 +50,13 @@ internal typealias ChallengeCompletion = (NSURLSessionAuthChallengeDisposition, 
  */
 internal class IosMtlsHttpClientFactory : MtlsHttpClientFactory {
 
-    override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient {
-        val challenges = MtlsChallenges(identityAlias, trustedCas)
+    override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient =
+        client(MtlsChallenges(identityAlias, trustedCas))
+
+    override suspend fun createPinned(identityAlias: String?, fingerprint: String): HttpClient =
+        client(MtlsChallenges(MtlsChallenges.keychainIdentity(identityAlias), emptyList(), pin = { fingerprint }, serverCas = { emptyList() }))
+
+    private fun client(challenges: MtlsChallenges): HttpClient {
         return HttpClient(Darwin) {
             engine {
                 handleChallenge { _, _, challenge, completion -> challenges.answer(challenge, completion) }
@@ -79,9 +84,15 @@ internal class MtlsChallenges(
 ) {
     /** As the Keychain identity [identityAlias], trusting [trustedCas]. */
     constructor(identityAlias: String?, trustedCas: List<ByteArray>) : this(
-        identityAlias?.let { KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again") },
+        keychainIdentity(identityAlias),
         trustedCas.map(::secCertificateObject),
     )
+
+    companion object {
+        /** The Keychain identity [identityAlias] (a SecIdentity); null without an alias. */
+        fun keychainIdentity(identityAlias: String?): Any? =
+            identityAlias?.let { KeychainIdentities.find(it) ?: error("Identity \"$it\" is not in the Keychain; import it again") }
+    }
 
     fun answer(challenge: NSURLAuthenticationChallenge, completion: ChallengeCompletion) {
         when (challenge.protectionSpace.authenticationMethod) {

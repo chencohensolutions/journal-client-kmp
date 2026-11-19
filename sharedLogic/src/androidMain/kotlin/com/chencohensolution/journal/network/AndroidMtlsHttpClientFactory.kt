@@ -34,8 +34,14 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
     private val appContext = context.applicationContext
 
     override suspend fun create(identityAlias: String?, trustedCas: List<ByteArray>): HttpClient =
+        client(identityAlias, trustedCas, onlyKey = null)
+
+    override suspend fun createPinned(identityAlias: String?, fingerprint: String): HttpClient =
+        client(identityAlias, emptyList(), onlyKey = fingerprint)
+
+    private suspend fun client(identityAlias: String?, trustedCas: List<ByteArray>, onlyKey: String?): HttpClient =
         withContext(Dispatchers.IO) {
-            val okHttp = okHttpClient(identityAlias, trustedCas)
+            val okHttp = okHttpClient(identityAlias, trustedCas, onlyKey)
             HttpClient(OkHttp) {
                 engine { preconfigured = okHttp }
                 // No limits of its own: a request that needs longer than OkHttp's (verifying a large video) sets them.
@@ -45,15 +51,16 @@ internal class AndroidMtlsHttpClientFactory(context: Context) : MtlsHttpClientFa
 
     /**
      * The OkHttp client under [create], also used directly where OkHttp is needed (the video player streams with it).
-     * Blocks (KeyChain and Keystore), so it must stay off the main thread.
+     * Blocks (KeyChain and Keystore), so it must stay off the main thread. [onlyKey]: trust only the server with
+     * that key's fingerprint, not what the settings keep ([MtlsHttpClientFactory.createPinned]).
      */
-    fun okHttpClient(identityAlias: String?, trustedCas: List<ByteArray>): OkHttpClient {
+    fun okHttpClient(identityAlias: String?, trustedCas: List<ByteArray>, onlyKey: String? = null): OkHttpClient {
         // Once the server's key (serverInfo.discovery) or its own CA (serverInfo.caCertificate) is kept, they are
         // checked instead of the app's CA and the host name, so the server is reached at any address
         // (docs/plans/discovery.md, "Phones"; journal-server-go docs/install.md, "A new server, and the CA").
         val settings = JournalSettings(SharedPreferencesStore(appContext))
-        val pin = settings.serverFingerprint
-        val serverCas = settings.serverCa?.let(::decodePemCertificates).orEmpty()
+        val pin = onlyKey ?: settings.serverFingerprint
+        val serverCas = if (onlyKey != null) emptyList() else settings.serverCa?.let(::decodePemCertificates).orEmpty()
         val kept = pin != null || serverCas.isNotEmpty()
         val trustManager = if (kept) {
             KeptServerTrustManager(serverCas.map(::parseX509Certificate), pin)
