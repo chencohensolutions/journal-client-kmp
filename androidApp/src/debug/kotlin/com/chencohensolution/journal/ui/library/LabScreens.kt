@@ -1,6 +1,8 @@
 package com.chencohensolution.journal.ui.library
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.chencohensolution.journal.connection.ServerHealth
 import com.chencohensolution.journal.settings.SettingsState
 import com.chencohensolution.journal.server.CamerasState
@@ -61,6 +63,26 @@ internal val labScreens: List<LabScreen> = listOf(
         LabOption("call", "A call", "Who it was with, Call and Edit contact") {
             LibraryTheme(dark = true) {
                 AudioPage(AudioPageState(PreviewData.feedStories.sounds.getValue("lab-call-2").copy(number = "0521234567"), null, emptyList(), null), AudioPageActions())
+            }
+        },
+    )),
+    // Tagging several photos, tucked-away tags, highlights that show through (Nov 19, 2026; docs/screens/tags.md).
+    LabScreen("tags", "Tags and tucked-away tags", listOf(
+        current { TagsLab(picking = false) },
+        LabOption("picking", "Picking two photos", "Quick tags above the extras, Tag for several, Highlight") { TagsLab(picking = true) },
+        LabOption("tag-sheet", "Tag sheet for several", "Tag 4 photos: check, dash with 2 of 4, tucked tags") {
+            val stories = PreviewData.tagStories()
+            androidx.compose.runtime.CompositionLocalProvider(LocalTucked provides TuckedActions(tagOf = stories::tuckedTagOf)) {
+                TagSheet(PreviewData.taggingPicks.map { it.id }, stories, onToggle = { _, _ -> }, onCreate = {}, onDismiss = {})
+            }
+        },
+        LabOption("tags-screen", "The Tags screen", "⋯ or a long press: Tuck away this tag, Bring back; Tucked away last") {
+            TagsScreen(PreviewData.tagStories(), onOpenTag = {}, onBack = {})
+        },
+        LabOption("tag-page", "A tucked tag's page", "Show everywhere for now, Bring back") {
+            val stories = PreviewData.dogPage()
+            androidx.compose.runtime.CompositionLocalProvider(LocalTucked provides TuckedActions(tagOf = stories::tuckedTagOf)) {
+                TagScreen("Dog", stories, onOpenItem = {}, onBack = {})
             }
         },
     )),
@@ -247,3 +269,22 @@ private fun labSet(): List<com.chencohensolution.journal.library.MediaItem> =
         .flatMap { (it as com.chencohensolution.journal.stories.FeedEntry.Section).section.moments }
         .flatMap { it.blocks }
         .first { it is com.chencohensolution.journal.stories.FeedBlock.Similar }.items
+
+
+/**
+ * Moments with Dog tucked away: its "3 Dog" pill beside "1 tucked away" reveals and hides the Dog photos (each with its
+ * corner mark), as the app does; [picking] starts with two photos picked, for the quick tags.
+ */
+@Composable
+private fun TagsLab(picking: Boolean) {
+    var revealed by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val stories = androidx.compose.runtime.remember(revealed) { PreviewData.tagStories(revealed) }
+    val actions = TuckedActions(canTuck = true, toggleTag = { _, _ -> revealed = !revealed }, tagOf = stories::tuckedTagOf)
+    androidx.compose.runtime.CompositionLocalProvider(LocalTucked provides actions) {
+        JournalHomeScreen(
+            PreviewData.library, stories, ServerHealth.OK, HomeActions(),
+            initialTab = HomeTab.MOMENTS,
+            initialSelection = if (picking) setOf(PreviewData.notedPhoto.id, PreviewData.croppedPhoto.id) else emptySet(),
+        )
+    }
+}
