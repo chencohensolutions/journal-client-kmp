@@ -33,10 +33,13 @@ struct UiLabView: View {
             if let option {
                 NavigationStack { option.content() }
                     .overlay(alignment: .topLeading) { LabBackButton(title: screen?.title ?? "") { optionId = nil } }
+                    .overlay(alignment: .topTrailing) { LabOptionBadge(id: option.id) }
             } else if let screen {
                 LabList(
                     title: screen.title,
-                    rows: screen.options.enumerated().map { i, option in LabRow(title: option.title, note: i == 0 ? "Now in the app" : option.note) },
+                    rows: screen.options.enumerated().map { i, option in
+                        LabRow(title: option.title, note: i == 0 ? "Now in the app" : option.note, badge: labBadge(option.id))
+                    },
                     onBack: { screenId = nil },
                     onOpen: { optionId = screen.options[$0].id }
                 )
@@ -106,6 +109,30 @@ private struct LabBackButton: View {
 private struct LabRow {
     let title: String
     let note: String
+    var badge: String? = nil
+}
+
+/// The option's letter as the lab shows it: "A2" for option a2, "NOW" for the app's current screen. hen asked for it
+/// (Nov 19, 2026): which option a screen is should be clear at a glance, and in a screenshot.
+func labBadge(_ id: String) -> String {
+    id == "current" ? "NOW" : id.uppercased()
+}
+
+/// The option's letter in the top corner of an option, big and solid, so screenshots carry it too.
+private struct LabOptionBadge: View {
+    let id: String
+
+    var body: some View {
+        Text(labBadge(id))
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .frame(minWidth: 34, minHeight: 28)
+            .background(Color(red: 0.86, green: 0.15, blue: 0.47), in: Capsule())
+            .padding(.trailing, 10)
+            .allowsHitTesting(false)
+            .accessibilityLabel("Option \(labBadge(id))")
+    }
 }
 
 private func optionCount(_ n: Int) -> String { n == 1 ? "Current only" : "Current + \(n - 1) suggestion\(n > 2 ? "s" : "")" }
@@ -132,9 +159,18 @@ private struct LabList: View {
                     .padding(.bottom, 8)
                 ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
                     Button { onOpen(i) } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.title).font(.system(size: 17)).foregroundStyle(LibraryColors.onBackground)
-                            if !row.note.isEmpty { Text(row.note).font(.system(size: 13)).foregroundStyle(LibraryColors.muted) }
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            if let badge = row.badge {
+                                Text(badge)
+                                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .frame(minWidth: 40, minHeight: 24)
+                                    .background(Color(red: 0.86, green: 0.15, blue: 0.47), in: Capsule())
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.title).font(.system(size: 17)).foregroundStyle(LibraryColors.onBackground)
+                                if !row.note.isEmpty { Text(row.note).font(.system(size: 13)).foregroundStyle(LibraryColors.muted) }
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)

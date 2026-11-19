@@ -147,6 +147,78 @@
         }
       }
     },
+    "%@ · %lld photos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$#@photos@"
+          },
+          "substitutions" : {
+            "photos" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photo"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg photos"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$#@photos@"
+          },
+          "substitutions" : {
+            "photos" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "תמונה אחת"
+                    }
+                  },
+                  "two" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg תמונות"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ · pick again" : {
       "localizations" : {
         "he" : {
@@ -945,6 +1017,162 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld תמונות, הטובות ביותר ראשונות"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos, newest first" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo, newest first"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos, newest first"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת, החדשות קודם"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, החדשות קודם"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, החדשות קודם"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, החדשות קודם"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos, oldest first" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo, oldest first"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos, oldest first"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת, הישנות קודם"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, הישנות קודם"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, הישנות קודם"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות, הישנות קודם"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld photos. The weakest kept:" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photo. The weakest kept:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld photos. The weakest kept:"
+                }
+              }
+            }
+          }
+        },
+        "he" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "תמונה אחת. החלשה שנשארה:"
+                }
+              },
+              "two" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות. החלשות שנשארו:"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות. החלשות שנשארו:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld תמונות. החלשות שנשארו:"
                 }
               }
             }
@@ -2629,6 +2857,16 @@
         }
       }
     },
+    "All places" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל המקומות"
+          }
+        }
+      }
+    },
     "All video details (%lld)" : {
       "localizations" : {
         "he" : {
@@ -3211,6 +3449,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "סגירה"
+          }
+        }
+      }
+    },
+    "Close match" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קרובה"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "Close matches by date, the earliest first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התאמות קרובות לפי תאריך, המוקדמות קודם"
+          }
+        }
+      }
+    },
+    "Close matches by date, the latest first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התאמות קרובות לפי תאריך, האחרונות קודם"
           }
         }
       }
@@ -3916,6 +4190,16 @@
         }
       }
     },
+    "Every match, the closest first" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל ההתאמות, הקרובות קודם"
+          }
+        }
+      }
+    },
     "Every photo and video this phone backed up to your server." : {
       "localizations" : {
         "he" : {
@@ -4524,6 +4808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "רמת דמיון"
+          }
+        }
+      }
+    },
+    "How close a match" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמה קרובה ההתאמה"
           }
         }
       }
@@ -5187,6 +5481,32 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שונה"
+          }
+        }
+      }
+    },
+    "More matches" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יותר"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        }
+      }
+    },
+    "Most relevant" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכי רלוונטי"
           }
         }
       }
@@ -5897,6 +6217,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מציג את ימי החודש ואת שאר החודשים"
+          }
+        }
+      }
+    },
+    "Sort" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיון"
           }
         }
       }

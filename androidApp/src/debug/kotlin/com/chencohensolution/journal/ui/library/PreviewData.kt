@@ -6,6 +6,8 @@ import com.chencohensolution.journal.library.DayGroup
 import com.chencohensolution.journal.library.GeoPoint
 import com.chencohensolution.journal.library.LibraryState
 import com.chencohensolution.journal.search.SearchChip
+import com.chencohensolution.journal.search.SearchDay
+import com.chencohensolution.journal.search.SearchSort
 import com.chencohensolution.journal.search.SearchState
 import com.chencohensolution.journal.search.SearchStatus
 import com.chencohensolution.journal.library.LocalDay
@@ -429,6 +431,21 @@ internal object PreviewData {
             total = 14_200,
             yearChips = items.groupingBy { it.day.year }.eachCount().entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) },
             townChips = items.mapNotNull(::town).groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { SearchChip(it.key, it.value) },
+            matchCount = items.size,
+            allPlaces = items.size,
+        )
+    }
+
+    /** [searchFound] as Newest first: the close half of the matches by day, with each day's towns, as the Sort sheet makes it. */
+    val searchNewest: SearchState = run {
+        fun town(item: MediaItem) = placesStories.places.location(item)?.let(placesStories.places::name)?.town
+        val kept = searchFound.items.filterIndexed { i, _ -> i % 3 != 2 }.sortedByDescending { it.takenAtMillis }
+        val days = kept.groupBy { it.day }.map { (day, items) ->
+            SearchDay(day, items.sortedBy { it.takenAtMillis }.mapNotNull(::town).fold(listOf<String>()) { list, t -> if (list.lastOrNull() == t) list else list + t }, items.size, items.map(::listOf))
+        }
+        searchFound.copy(
+            items = kept, sets = kept.map(::listOf), sort = SearchSort.NEWEST, days = days, matchCount = kept.size,
+            weakest = kept.takeLast(4), indexed = 14_200,
         )
     }
 

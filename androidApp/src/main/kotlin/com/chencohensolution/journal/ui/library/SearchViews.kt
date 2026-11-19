@@ -81,6 +81,11 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.places.Places
 import com.chencohensolution.journal.search.SearchChip
+import com.chencohensolution.journal.search.SearchDay
+import com.chencohensolution.journal.search.SearchSort
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.foundation.border
 import com.chencohensolution.journal.people.Person
 import com.chencohensolution.journal.search.SearchError
 import com.chencohensolution.journal.search.SearchState
@@ -90,7 +95,9 @@ import java.text.NumberFormat
 // The home screen's search: the 🔍 beside the tabs turns the bottom bar into a field, and the page lists the photos the
 // server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
 // almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
-// Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
+// Filter pill above the field opens a sheet of the matches' years and towns to narrow them, and the town chips under the
+// title narrow by town too. A Sort pill beside it lists them by date instead, only the close matches (a threshold), by
+// day (chosen in the UI lab, option a3, Nov 19, 2026). ✕ goes back to the tab,
 // keeping the search for next time. A long press starts picking photos (a set is picked whole) to mark them private
 // together. See docs/screens/search.md.
 
@@ -115,6 +122,9 @@ internal class SearchActions(
     val madeTucked: (List<MediaItem>) -> Unit = {},
     /** "N more in sources you hide · Show" (true) and its "Hide" (false), for this search only. */
     val showHiddenSources: (Boolean) -> Unit = {},
+    /** The Sort sheet's order, and its "How close a match" slider (SearchController.sort / setThreshold). */
+    val sort: (SearchSort) -> Unit = {},
+    val setThreshold: (Double) -> Unit = {},
 )
 
 /** The results page, under [SearchTopBar] and above [SearchBottomBar]. */
@@ -154,6 +164,7 @@ internal fun SearchContent(
     val hiding = rowsHiding(remember(search.sets) { search.sets.map { it.first().id } })
     LazyColumn(state = list, contentPadding = contentPadding) {
         if (search.people.isNotEmpty()) item(key = "people-chips") { PersonChips(search.people, actions.removePerson) }
+        if (search.showsTownChips) item(key = "town-chips") { TownChips(search, actions.chooseTown) }
         when (search.status) {
             SearchStatus.IDLE -> {
                 item(key = "hint") { SearchMessage(stringResource(R.string.search_hint)) }
@@ -200,17 +211,25 @@ internal fun SearchContent(
         // Last, so landing from the viewer can count them from the end. Kept while a new search runs; the field shows its
         // spinner.
         if (search.status == SearchStatus.DONE || search.status == SearchStatus.SEARCHING) {
-            items(search.sets, key = { it.first().id }) { set ->
+            // By date: each day under its line, without a date under each photo. Most relevant: one list, best first.
+            val byDate = search.sort.byDate
+            val rows: List<Pair<SearchDay?, List<MediaItem>>> = if (byDate) {
+                search.days.flatMap { day -> day.sets.mapIndexed { i, set -> (if (i == 0) day else null) to set } }
+            } else {
+                search.sets.map { null to it }
+            }
+            items(rows, key = { it.second.first().id }) { (day, set) ->
                 val key = set.first().id
                 val picked = if (selection.active) key in selection.keys else null
                 val pick = { selection.toggle(key) }
                 // Results made private or tucked away fade out, and the rest slide up into their place.
-                Box(animatedRow(hiding)) {
+                Column(animatedRow(hiding)) {
+                    if (day != null) DayHeading(day)
                     CompositionLocalProvider(LocalScrollSettled provides scrollSettled) {
                         if (set.size == 1) {
-                            FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick)
+                            FoundPhoto(set.first(), places, picked, onClick = { if (selection.active) pick() else actions.openItem(set.first()) }, onLongClick = pick, captioned = !byDate)
                         } else {
-                            FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick)
+                            FoundSet(set, places, landing, picked, onOpen = { if (selection.active) pick() else actions.openItem(it) }, onLongClick = pick, captioned = !byDate)
                         }
                     }
                 }
@@ -228,14 +247,25 @@ internal fun SearchContent(
 private val SEARCH_AHEAD = 1600.dp
 private val SEARCH_BEHIND = 400.dp
 
-/** "36 photos, best first", or "Nothing found", and how far the server has read the library while it still is. */
+/**
+ * "36 photos, best first" ("29 photos, newest first" by date, all the cut keeps), or "Nothing found", and how far the
+ * server has read the library while it still is.
+ */
 @Composable
 private fun FoundNote(search: SearchState) {
     if (search.items.isEmpty()) {
         SearchMessage(stringResource(R.string.search_nothing))
     } else {
+        val count = if (search.sort.byDate) search.matchCount else search.items.size
         Text(
-            pluralStringResource(R.plurals.search_found, search.items.size, search.items.size),
+            pluralStringResource(
+                when (search.sort) {
+                    SearchSort.NEWEST -> R.plurals.search_found_newest
+                    SearchSort.OLDEST -> R.plurals.search_found_oldest
+                    else -> R.plurals.search_found
+                },
+                count, count,
+            ),
             color = LibraryColors.Muted,
             style = LibraryType.Caption,
             fontWeight = FontWeight.SemiBold,
@@ -271,10 +301,89 @@ private fun FoundNote(search: SearchState) {
  * under it. [picked] is null while not picking.
  */
 @Composable
-private fun FoundPhoto(item: MediaItem, places: Places, picked: Boolean?, onClick: () -> Unit, onLongClick: () -> Unit) {
-    Column(Modifier.padding(bottom = 14.dp)) {
+private fun FoundPhoto(item: MediaItem, places: Places, picked: Boolean?, onClick: () -> Unit, onLongClick: () -> Unit, captioned: Boolean = true) {
+    Column(Modifier.padding(bottom = if (captioned) 14.dp else 2.dp)) {
         MediaTile(item, onClick, Modifier.fillMaxWidth().aspectRatio(shapeOf(item)), onLongClick = onLongClick, selected = picked)
-        Caption(item, places)
+        if (captioned) Caption(item, places)
+    }
+}
+
+/** A day in the date orders: "Sat, Jun 1" on a line, as Moments' days, and "Tel Aviv → Jaffa · 6 photos" under it. */
+@Composable
+private fun DayHeading(day: SearchDay) {
+    val line = LibraryColors.Muted.copy(alpha = 0.3f)
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f).height(1.dp).background(line))
+            Text(
+                dayLabel(day.day),
+                color = LibraryColors.OnBackground,
+                style = LibraryType.Caption,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .background(LibraryColors.Raised, RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .semantics { heading() },
+            )
+            Box(Modifier.weight(1f).height(1.dp).background(line))
+        }
+        Text(
+            if (day.towns.isEmpty()) {
+                pluralStringResource(R.plurals.search_day_photos, day.count, day.count)
+            } else {
+                pluralStringResource(R.plurals.search_day_towns, day.count, day.towns.joinToString(" → "), day.count)
+            },
+            color = LibraryColors.Muted,
+            style = LibraryType.Caption,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Whether the town chips show under the title: more than one town among the matches (or one chosen), no people chosen. */
+private val SearchState.showsTownChips: Boolean
+    get() = (status == SearchStatus.DONE || status == SearchStatus.SEARCHING) && showsTowns && people.isEmpty()
+
+/** "All places 48 · Tel Aviv 14 · Paris 6 …": one town at a time, as the Filter sheet's Place. */
+@Composable
+private fun TownChips(search: SearchState, choose: (String?) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TownChip(stringResource(R.string.search_all_places), search.allPlaces, selected = search.town == null, pin = true) { choose(null) }
+        search.townChips.forEach { chip ->
+            TownChip(chip.value, chip.count, selected = chip.value == search.town, pin = false) {
+                choose(if (chip.value == search.town) null else chip.value)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TownChip(label: String, count: Int, selected: Boolean, pin: Boolean, onClick: () -> Unit) {
+    val color = if (selected) LibraryColors.OnInverse else LibraryColors.OnBackground
+    Row(
+        Modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) LibraryColors.Inverse else Color.Transparent)
+            .then(if (selected) Modifier else Modifier.border(1.dp, LibraryColors.Muted.copy(alpha = 0.5f), RoundedCornerShape(50)))
+            .clickable(onClick = onClick)
+            .semantics { this.selected = selected }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (pin) Icon(LibraryIcons.Pin, null, tint = color, modifier = Modifier.size(15.dp))
+        Text(label, color = color, style = LibraryType.Body, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(count.toString(), color = color.copy(alpha = 0.7f), style = LibraryType.Body)
     }
 }
 
@@ -312,6 +421,7 @@ private fun FoundSet(
     picked: Boolean?,
     onOpen: (MediaItem) -> Unit,
     onLongClick: () -> Unit,
+    captioned: Boolean = true,
 ) {
     val pager = rememberPagerState { set.size }
     LaunchedEffect(landing) {
@@ -319,7 +429,7 @@ private fun FoundSet(
         if (page >= 0 && page != pager.currentPage) pager.scrollToPage(page)
     }
     val shown = set[pager.currentPage.coerceIn(set.indices)]
-    Column(Modifier.padding(bottom = 14.dp)) {
+    Column(Modifier.padding(bottom = if (captioned) 14.dp else 2.dp)) {
         Box(Modifier.fillMaxWidth().aspectRatio(shapeOf(set.first()))) {
             HorizontalPager(pager, Modifier.fillMaxSize(), pageSpacing = TILE_GAP, beyondViewportPageCount = 1) { page ->
                 MediaTile(set[page], onClick = { onOpen(set[page]) }, modifier = Modifier.fillMaxSize(), onLongClick = onLongClick, selected = picked)
@@ -346,7 +456,7 @@ private fun FoundSet(
                 }
             }
         }
-        Caption(shown, places)
+        if (captioned) Caption(shown, places)
     }
 }
 
@@ -443,11 +553,147 @@ internal fun SearchTopBar(onClose: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 internal fun SearchBottomBar(search: SearchState, actions: SearchActions) {
     var filtering by rememberSaveable { mutableStateOf(false) }
+    var sorting by rememberSaveable { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (search.canFilter) FilterPill(search) { filtering = true }
+        if (search.canSort || search.canFilter) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (search.canSort) SortPill(search) { sorting = true }
+                if (search.canFilter) FilterPill(search) { filtering = true }
+            }
+        }
         SearchField(search, actions.search, actions.clear)
     }
     if (filtering) FilterSheet(search, actions) { filtering = false }
+    if (sorting) SortSheet(search, actions) { sorting = false }
+}
+
+/** Whether there is something to sort: matches found, or a date order (whose cut may have left none). */
+private val SearchState.canSort: Boolean
+    get() = (status == SearchStatus.DONE || status == SearchStatus.SEARCHING) && (items.isNotEmpty() || yearChips.isNotEmpty() || sort.byDate)
+
+/** "↓ Newest first · 29", "↑ Oldest first · 29" or "✦ Most relevant · 46", floating as the Filter pill. */
+@Composable
+private fun SortPill(search: SearchState, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .height(36.dp)
+            .shadow(8.dp, RoundedCornerShape(50))
+            .background(LibraryColors.Raised, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(sortIcon(search.sort), null, tint = LibraryColors.OnBackground, modifier = Modifier.size(16.dp))
+        Text(
+            stringResource(R.string.search_sort_pill, stringResource(sortName(search.sort)), search.matchCount),
+            color = LibraryColors.OnBackground,
+            style = LibraryType.Body,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+private fun sortIcon(sort: SearchSort) = when (sort) {
+    SearchSort.RELEVANT -> LibraryIcons.Sparkle
+    SearchSort.NEWEST -> LibraryIcons.ArrowDown
+    SearchSort.OLDEST -> LibraryIcons.ArrowUp
+}
+
+private fun sortName(sort: SearchSort) = when (sort) {
+    SearchSort.RELEVANT -> R.string.search_sort_relevant
+    SearchSort.NEWEST -> R.string.search_sort_newest
+    SearchSort.OLDEST -> R.string.search_sort_oldest
+}
+
+private fun sortHint(sort: SearchSort) = when (sort) {
+    SearchSort.RELEVANT -> R.string.search_sort_relevant_hint
+    SearchSort.NEWEST -> R.string.search_sort_newest_hint
+    SearchSort.OLDEST -> R.string.search_sort_oldest_hint
+}
+
+/**
+ * The orders, each with a line on what it does, a tap choosing it at once. In the date orders, "How close a match" from
+ * Close to More (the score a match needs), how many that keeps and the weakest of them, so you see where the cut falls,
+ * then "Show N photos".
+ */
+@Composable
+private fun SortSheet(search: SearchState, actions: SearchActions, onDone: () -> Unit) {
+    // Opened whole, as the Filter sheet is, so "Show N photos" is never below the screen's edge.
+    PageSheet(onDone) { SortSheetContent(search, actions, onDone) }
+}
+
+/** [SortSheet]'s inside; also its preview. */
+@Composable
+internal fun SortSheetContent(search: SearchState, actions: SearchActions, onDone: () -> Unit) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+            Text(
+                stringResource(R.string.search_sort_title),
+                color = LibraryColors.OnBackground,
+                style = LibraryType.PageTitle,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp).semantics { heading() },
+            )
+            SearchSort.entries.forEach { sort ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { actions.sort(sort) }
+                        .semantics { selected = sort == search.sort }
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Icon(sortIcon(sort), null, tint = LibraryColors.OnBackground, modifier = Modifier.size(20.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(sortName(sort)), color = LibraryColors.OnBackground, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(sortHint(sort)), color = LibraryColors.Muted, style = LibraryType.Caption)
+                    }
+                    if (sort == search.sort) Icon(LibraryIcons.Check, null, tint = LibraryColors.Accent, modifier = Modifier.size(20.dp))
+                }
+            }
+            if (search.sort.byDate) {
+                Text(
+                    stringResource(R.string.search_sort_close_label),
+                    color = LibraryColors.Muted,
+                    style = LibraryType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp),
+                )
+                Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.search_sort_close), color = LibraryColors.Muted, style = LibraryType.Caption)
+                    // Close at the start: the slider runs from the highest score needed to the lowest.
+                    Slider(
+                        value = (SearchSort.MAX_THRESHOLD + SearchSort.MIN_THRESHOLD - search.threshold).toFloat(),
+                        onValueChange = { actions.setThreshold(SearchSort.MAX_THRESHOLD + SearchSort.MIN_THRESHOLD - it) },
+                        valueRange = SearchSort.MIN_THRESHOLD.toFloat()..SearchSort.MAX_THRESHOLD.toFloat(),
+                        colors = SliderDefaults.colors(thumbColor = LibraryColors.OnBackground, activeTrackColor = LibraryColors.Accent, inactiveTrackColor = LibraryColors.Raised),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(stringResource(R.string.search_sort_more), color = LibraryColors.Muted, style = LibraryType.Caption)
+                }
+                Text(
+                    pluralStringResource(R.plurals.search_sort_weakest, search.matchCount, search.matchCount),
+                    color = LibraryColors.Muted,
+                    style = LibraryType.Caption,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp),
+                )
+                Row(
+                    Modifier.padding(horizontal = 20.dp).padding(top = 8.dp).clip(LibraryShapes.Tile),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    search.weakest.forEach { item ->
+                        MediaTile(item, {}, Modifier.size(80.dp))
+                    }
+                }
+            }
+            PrimaryButton(
+                pluralStringResource(R.plurals.search_filter_show, search.matchCount, search.matchCount),
+                onClick = onDone,
+                busy = search.status == SearchStatus.SEARCHING,
+                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp).height(48.dp),
+            )
+        }
 }
 
 /**

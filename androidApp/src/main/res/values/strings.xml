@@ -535,6 +535,38 @@
         <item quantity="one">Show %d photo</item>
         <item quantity="other">Show %d photos</item>
     </plurals>
+    <string name="search_sort_title">Sort</string>
+    <string name="search_sort_relevant">Most relevant</string>
+    <string name="search_sort_newest">Newest first</string>
+    <string name="search_sort_oldest">Oldest first</string>
+    <string name="search_sort_relevant_hint">Every match, the closest first</string>
+    <string name="search_sort_newest_hint">Close matches by date, the latest first</string>
+    <string name="search_sort_oldest_hint">Close matches by date, the earliest first</string>
+    <string name="search_sort_pill">%1$s · %2$d</string>
+    <string name="search_sort_close_label">How close a match</string>
+    <string name="search_sort_close">Close</string>
+    <string name="search_sort_more">More</string>
+    <plurals name="search_sort_weakest">
+        <item quantity="one">%d photo. The weakest kept:</item>
+        <item quantity="other">%d photos. The weakest kept:</item>
+    </plurals>
+    <plurals name="search_found_newest">
+        <item quantity="one">%d photo, newest first</item>
+        <item quantity="other">%d photos, newest first</item>
+    </plurals>
+    <plurals name="search_found_oldest">
+        <item quantity="one">%d photo, oldest first</item>
+        <item quantity="other">%d photos, oldest first</item>
+    </plurals>
+    <plurals name="search_day_photos">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+    <plurals name="search_day_towns">
+        <item quantity="one">%1$s · %2$d photo</item>
+        <item quantity="other">%1$s · %2$d photos</item>
+    </plurals>
+    <string name="search_all_places">All places</string>
     <string name="settings_hidden_title">Hidden and private</string>
     <string name="settings_hidden_syncing">Updating your library: %1$s of %2$s</string>
     <string name="settings_hidden_row_body">Private media, nudity, sound recordings, apps and screenshots by app</string>

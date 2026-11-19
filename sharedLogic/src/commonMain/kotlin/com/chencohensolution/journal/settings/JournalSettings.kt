@@ -9,6 +9,7 @@ import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaSource
 import com.chencohensolution.journal.server.PreviewFormat
 import com.chencohensolution.journal.server.PreviewOptions
+import com.chencohensolution.journal.search.SearchSort
 import com.chencohensolution.journal.server.PreviewQuality
 import com.chencohensolution.journal.server.ServerFeatures
 import com.chencohensolution.journal.storage.FreeUpRule
@@ -181,6 +182,16 @@ internal class JournalSettings(private val store: KeyValueStore) {
     var searchPageSize: Int
         get() = store.getString(KEY_SEARCH_PAGE_SIZE)?.toIntOrNull()?.takeIf { it in 1..1000 } ?: DEFAULT_SEARCH_PAGE_SIZE
         set(value) = store.putString(KEY_SEARCH_PAGE_SIZE, value.toString())
+
+    /** How search lists its matches (the Sort sheet); Most relevant until changed. Kept across searches. */
+    var searchSort: SearchSort
+        get() = store.getString(KEY_SEARCH_SORT)?.let { name -> SearchSort.entries.firstOrNull { it.name == name } } ?: SearchSort.RELEVANT
+        set(value) = store.putString(KEY_SEARCH_SORT, value.name)
+
+    /** How close a match the date orders keep (the Sort sheet's slider), within [SearchSort.THRESHOLDS]. */
+    var searchThreshold: Double
+        get() = store.getString(KEY_SEARCH_THRESHOLD)?.toDoubleOrNull()?.takeIf { it in SearchSort.THRESHOLDS } ?: SearchSort.DEFAULT_THRESHOLD
+        set(value) = store.putString(KEY_SEARCH_THRESHOLD, value.toString())
 
     /** How Moments is read a page at a time (Settings › Advanced › Loading Moments); each value falls back on its own. */
     var momentsPaging: MomentsPaging
@@ -374,6 +385,8 @@ internal class JournalSettings(private val store: KeyValueStore) {
         private const val KEY_BACKUP_ORDER = "backup_order"
         private const val KEY_PREVIEW_CACHE_GB = "preview_cache_gb"
         private const val KEY_SEARCH_PAGE_SIZE = "search_page_size"
+        private const val KEY_SEARCH_SORT = "search_sort"
+        private const val KEY_SEARCH_THRESHOLD = "search_threshold"
         private const val KEY_MOMENTS_ROWS_PER_PAGE = "moments_rows_per_page"
         private const val KEY_MOMENTS_LOAD_AHEAD = "moments_load_ahead"
         private const val KEY_VIEWER_AHEAD = "viewer_ahead"

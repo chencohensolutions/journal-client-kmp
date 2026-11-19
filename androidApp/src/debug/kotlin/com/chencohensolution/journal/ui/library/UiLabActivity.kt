@@ -7,7 +7,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,13 +58,16 @@ class UiLabActivity : ComponentActivity() {
                 when {
                     option != null -> {
                         BackHandler { optionId = null }
-                        option.content()
+                        Box(Modifier.fillMaxSize()) {
+                            option.content()
+                            LabOptionBadge(option.id, Modifier.align(Alignment.TopEnd))
+                        }
                     }
                     screen != null -> {
                         BackHandler { screenId = null }
                         LabList(
                             title = screen.title,
-                            rows = screen.options.mapIndexed { i, it -> LabRow(it.title, if (i == 0) "Now in the app" else it.note) },
+                            rows = screen.options.mapIndexed { i, it -> LabRow(it.title, if (i == 0) "Now in the app" else it.note, labBadge(it.id)) },
                             onOpen = { optionId = screen.options[it].id },
                         )
                     }
@@ -87,7 +99,31 @@ internal class LabScreen(val id: String, val title: String, val options: List<La
 /** One way to draw a screen: the current one or a suggestion. [id] is what `ui-lab.sh` takes. */
 internal class LabOption(val id: String, val title: String, val note: String = "", val content: @Composable () -> Unit)
 
-private class LabRow(val title: String, val note: String)
+private class LabRow(val title: String, val note: String, val badge: String? = null)
+
+/**
+ * The option's letter as the lab shows it: "A2" for option a2, "NOW" for the app's current screen. Asked Nov 19, 2026:
+ * which option a screen is should be clear at a glance, and in a screenshot.
+ */
+private fun labBadge(id: String) = if (id == "current") "NOW" else id.uppercase()
+
+private val BadgeColor = Color(0xFFDB2777)
+
+/** The option's letter in the top corner of an option, solid, so screenshots carry it too. */
+@Composable
+private fun LabOptionBadge(id: String, modifier: Modifier = Modifier) {
+    Text(
+        labBadge(id),
+        color = Color.White,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Black,
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(top = 4.dp, end = 10.dp)
+            .background(BadgeColor, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
+}
 
 private fun optionCount(n: Int) = if (n == 1) "Current only" else "Current + ${n - 1} suggestion${if (n > 2) "s" else ""}"
 
@@ -104,9 +140,24 @@ private fun LabList(title: String, rows: List<LabRow>, onOpen: (Int) -> Unit) {
             )
         }
         itemsIndexed(rows) { i, row ->
-            Column(Modifier.fillMaxWidth().clickable { onOpen(i) }.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                Text(row.title, color = LibraryColors.OnBackground, fontSize = 17.sp)
-                if (row.note.isNotEmpty()) Text(row.note, color = LibraryColors.Muted, fontSize = 13.sp)
+            Row(
+                Modifier.fillMaxWidth().clickable { onOpen(i) }.padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                row.badge?.let { badge ->
+                    Text(
+                        badge,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp).background(BadgeColor, RoundedCornerShape(50)).widthIn(min = 40.dp).padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
+                Column {
+                    Text(row.title, color = LibraryColors.OnBackground, fontSize = 17.sp)
+                    if (row.note.isNotEmpty()) Text(row.note, color = LibraryColors.Muted, fontSize = 13.sp)
+                }
             }
         }
     }

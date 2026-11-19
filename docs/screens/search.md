@@ -3,7 +3,7 @@
 Find photos and videos by describing them in a sentence ("a dog on the beach at sunset", "birthday cake", "snow in
 the mountains"). The server reads every picture with a SigLIP 2 model and answers with the closest, best first; see
 `docs/search.md` in journal-server-go. Built Oct 22, 2026 on Android and iOS. The design was picked in the iOS UI lab
-from five suggestions ("one per row, full width"); the lab now shows the real screen (`search`, `search-empty`).
+from five suggestions ("one per row, full width"); the lab now shows the real screen (`search`, `search-by-date`, `search-empty`).
 
 ## Opening and closing
 
@@ -41,6 +41,28 @@ from five suggestions ("one per row, full width"); the lab now shows the real sc
   drops it, and Clear drops both; each section is counted within the other's choice. A section with one value and
   nothing chosen isn't shown, and with neither there is no pill. The server picks the best of that year or town (see
   below), not the overall best that happen to match.
+- **Sort** (chosen in the UI lab, option a3, Nov 19, 2026; Android and iOS): a **Sort** pill floats beside the Filter
+  pill ("↓ Newest first · 29", "✦ Most relevant · 46"). It opens a sheet with the three orders, each with a line on
+  what it does, a tap choosing at once:
+  - **Most relevant** (the default): every match, the closest first, as search always was.
+  - **Newest first** / **Oldest first**: only the matches at or over a threshold, by when they were taken. The sheet
+    then shows **How close a match**, a slider from Close to More (the score a match needs, 0.25 down to 0.05,
+    starting at 0.12), "29 photos. The weakest kept:" with the four weakest matches the cut still keeps, so you see
+    where it falls, and **Show 29 photos**. The sheet opens tall enough for all of it.
+  The order and the threshold are remembered (`JournalSettings.searchSort` / `searchThreshold`) for the next searches.
+  In a date order the results are a feed of days: "Sat, Jun 1" on a line as Moments' days, "Tel Aviv → Jaffa · 6
+  photos" under it (the day's towns in the order they were taken), then its photos with no caption under each; sets
+  still swipe as one row. The note says "29 photos, newest first" (all the cut keeps), and the pages come from the
+  first answer here, a page at a time.
+  How (`SearchController.sort` / `setThreshold`): the query asks each hit's `score` (cosine similarity; a photo whose
+  own text has the words scores 1, so it always stays; the phone's own search scores the same way). A date order cuts
+  the best 1000 (the first answer) at the threshold, keeps the same hiding as Most relevant (private, tucked, tucked
+  tags, hidden sources with their "N more" line, On this phone, people), sorts by time taken and pages here
+  (`SearchState.days`, `matchCount`, `weakest`). A year or town chosen in a date order narrows the first answer here;
+  Most relevant chosen again asks the server for the best of that year or town.
+- **Town chips** (Nov 19, 2026, with Sort): under the title, "All places 48 · Tel Aviv 14 · Paris 6 …", one town at a
+  time; choosing one is the same as the Filter sheet's Place (`SearchController.chooseTown`). Not shown with people
+  chosen or with only one town among the matches.
 - Nothing found: "Nothing found. Try other words." Offline: "Can't reach your server…". Search off on the server
   (its `SEARCH_OFF` code): "Search is off on your server." Any other error of the server's: "The server couldn't
   search: …".
@@ -124,3 +146,7 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are i
 
 - The round ✕ beside the field is gone: a **back arrow** at the start of the "Search" title row (30 sp) closes search,
   as the system's back does, and the field takes the full width.
+
+## Design history
+
+- [Results by date, sorting and a match threshold](../ux-history/search/2026-11-19-sort.md) (Nov 19, 2026, iOS lab): a3 picked, the Sort sheet with a slider; promoted in c13accd4.
