@@ -180,8 +180,12 @@ internal class FeedPager(
         newest?.let { if (table.millisAfter(it, 1).isEmpty()) newest = null }
         val sections = window.sections
         val tuckedShown = context.tuckedShown
-        val withRevealed = if (revealed.isEmpty() && tuckedShown.isEmpty()) sections else sections.map { section ->
-            val tuckedHere = section.tucked > 0 && section.days.any { it in tuckedShown }
+        val session = context.tagged.session
+        val tagsShown = session.dayTags.isNotEmpty() || session.tags.isNotEmpty()
+        val withRevealed = if (revealed.isEmpty() && tuckedShown.isEmpty() && !tagsShown) sections else sections.map { section ->
+            // A tucked tag revealed on one of its days: the row is made again with its photos, as a revealed day is.
+            val tuckedHere = (section.tucked > 0 && section.days.any { it in tuckedShown }) ||
+                section.tuckedTags.any { count -> section.days.any { session.showsTag(it, count.tag) } }
             if (revealed.none { it.section == section.key } && !tuckedHere) section else reveal(section, context, revealed, shown) ?: section
         }
         return MomentsFeed(
@@ -203,7 +207,7 @@ internal class FeedPager(
         }
         return buildWindow(
             window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, revealed, context.sounds,
-            context.tuckedShown, context.placements,
+            context.tuckedShown, context.placements, context.tagged,
         )
             .firstOrNull { it.key == section.key }
     }

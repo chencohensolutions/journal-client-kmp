@@ -256,6 +256,11 @@ internal class ViewerActions(
     /** Back to an earlier version of the photo's writing. */
     val restoreWriting: (itemId: String, version: NoteVersion) -> Unit = { _, _ -> },
     val toggleTag: (itemId: String, tag: String, add: Boolean) -> Unit = { _, _, _ -> },
+    /**
+     * ☆ Highlight for a photo outside a set (Nov 19, 2026): it shows in Moments and the storyline even when a tag of
+     * its is tucked away. Creates no set.
+     */
+    val setHighlighted: (itemId: String, on: Boolean) -> Unit = { _, _ -> },
     /** The photo now shown, on opening and on each swipe: it is the one that flies back to its tile on closing. */
     val showing: (itemId: String) -> Unit = {},
     /**
@@ -795,8 +800,13 @@ internal fun ViewerScreen(
                     CastVideoControls(castState.video?.takeIf { it.id == current.id }, cast::play, cast::pause, cast::seek, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
                 } else if (current.type == MediaType.VIDEO) videoPlayer.value?.let { VideoControls(it, videoMuted, { videoMuted = !videoMuted }, Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) }
                 // Icons only, Share in the top bar (asked Nov 10, 2026).
-                // As a set's bar (asked Nov 10, 2026): ✎ Write · ⌗ Crop.
+                // As a set's bar (asked Nov 10, 2026): ☆ Highlight · ✎ Write · ⌗ Crop.
                 FloatingBar {
+                    val highlighted = stories.isHighlighted(current.id)
+                    BarPill(
+                        stringResource(if (highlighted) R.string.set_highlighted else R.string.set_highlight),
+                        icon = if (highlighted) LibraryIcons.StarFilled else LibraryIcons.Star,
+                    ) { actions.setHighlighted(current.id, !highlighted) }
                     BarPill(stringResource(R.string.viewer_write), icon = LibraryIcons.Edit) { editingCaption = true }
                     BarPill(stringResource(R.string.crop_title), icon = LibraryIcons.Crop, enabled = current.type != MediaType.VIDEO) { actions.crop(current.id) }
                 }

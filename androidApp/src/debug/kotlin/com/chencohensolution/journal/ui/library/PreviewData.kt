@@ -232,6 +232,66 @@ internal object PreviewData {
         )
     }
 
+    /** Four photos of Today picked for tagging several at once: two carry Beach, all four Jaffa. */
+    val taggingPicks: List<MediaItem> get() = todayMoments[0].blocks[0].items.take(3) + todayMoments[0].blocks[1].items.first()
+
+    /**
+     * Tucked-away tags (Nov 19, 2026): Dog is tucked away. Today has 3 Dog photos (its "3 Dog" pill) beside 1 tucked as
+     * a file ("1 tucked away"); with [revealed], the Dog photos show in place, each with its corner mark. The Tags
+     * screen lists Dog last, in Tucked away.
+     */
+    fun tagStories(revealed: Boolean = false): StoriesState {
+        val sections = feed.entries.map { (it as FeedEntry.Section).section }
+        val today = sections[0]
+        val dogs = List(3) { photo(0, hour = 22, ratio = ratios[(it + 1) % ratios.size]) }
+        val withDogs = if (!revealed) {
+            today.copy(tucked = 1, tuckedTags = listOf(com.chencohensolution.journal.stories.TuckedTagCount("Dog", dogs.size, false)))
+        } else {
+            today.copy(
+                moments = (today.moments + FeedMoment(MediaSource.CAMERA, dogs.map { FeedBlock.Single(it) }, "Meir Park")).sortedByDescending { it.startMillis },
+                tucked = 1,
+                tuckedTags = listOf(com.chencohensolution.journal.stories.TuckedTagCount("Dog", dogs.size, true)),
+            )
+        }
+        val session = com.chencohensolution.journal.stories.TuckedSession(
+            dayTags = if (revealed) setOf(com.chencohensolution.journal.stories.DayTag(today.span.newestDay, "dog")) else emptySet(),
+        )
+        val picks = taggingPicks
+        fun tagged(item: MediaItem, vararg tags: String) =
+            item.id to PhotoNote(item.id, item.fileName, item.takenAtMillis, tags = tags.toList(), updatedAt = "2026-11-19T10:00:00Z")
+        val notes = feedStories.notes + dogs.map { tagged(it, "Dog") } + listOf(
+            tagged(picks[0], "Beach", "Jaffa"), tagged(picks[1], "Beach", "Jaffa"), tagged(picks[2], "Jaffa"), tagged(picks[3], "Jaffa"),
+        )
+        val now = "2026-11-19T10:00:00Z"
+        fun summary(name: String, count: Int, latest: MediaItem?, tucked: Boolean = false) =
+            com.chencohensolution.journal.stories.TagSummary(name, count, latest, now, tucked)
+        val allDays = library.days.flatMap { it.items }
+        return feedStories.copy(
+            feed = feed.copy(entries = listOf(FeedEntry.Section(withDogs)) + feed.entries.drop(1)),
+            notes = notes,
+            itemsById = feedStories.itemsById + dogs.associateBy { it.id },
+            tags = listOf(
+                summary("Jaffa", 18, picks[0]),
+                summary("Beach", 12, allDays[3]),
+                summary("Receipts", 31, allDays[9]),
+                summary("Concert", 6, allDays[14]),
+                summary("Dog", 214, dogs.first(), tucked = true),
+            ),
+            tuckedTags = listOf("Dog"),
+            tagged = com.chencohensolution.journal.stories.TagTucking(dogs.associate { it.id to "Dog" }, session),
+        )
+    }
+
+    /** The photos of [tagStories]' Dog tag, for its page. */
+    fun dogPage(): StoriesState {
+        val base = tagStories()
+        val dogs = (0..8).map { photo(it % 4 + 2, hour = 10 + it % 5, ratio = ratios[it % ratios.size]) }
+        return base.copy(
+            notes = base.notes + dogs.associate { it.id to PhotoNote(it.id, it.fileName, it.takenAtMillis, tags = listOf("Dog"), updatedAt = "2026-11-19T10:00:00Z") },
+            itemsById = base.itemsById + dogs.associateBy { it.id },
+        )
+    }
+
     /**
      * Seven years of photos for going to a date in Moments (FeedTimeline): quiet weeks, busy days and a few trips, the
      * same on every run. The same as the iOS lab's LabData.timelineStories, built through [StoriesState.feedOf].

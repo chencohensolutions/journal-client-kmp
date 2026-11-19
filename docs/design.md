@@ -164,7 +164,6 @@ mobile-mcp was being set up for that: `scripts/wda-simulator.sh`).
 **Not built yet**
 - On iOS: "Only on these Wi-Fi networks". Everywhere: note sync.
 - More than one photo for a storyline entry (the owner will decide how).
-- Multi-select in Moments for tagging (tag several at once; the shared logic already takes lists).
 - Renaming/merging tags; month scrubber; similarity search in the app (the server has `searchMedia`).
 - Copies on a friend's server (swap), encrypted copies, restore, and encrypted accounts (the server can't read them;
   previews and indexes made on the phone), all optional: [plans/swap-and-encryption.md](plans/swap-and-encryption.md).
@@ -216,6 +215,10 @@ previews, originals and videos of them. **Tucked away** ("מוצנע", asked for
 lighter level than private. Picked photos are tucked on the server (`setTucked`) and leave Moments, the storyline and
 Explore, and search never finds them; each day with some says "3 tucked away", and tapping that reveals them for the
 session, behind the phone's lock once per session (see [screens/moments.md](screens/moments.md#tucked-away-nov-8-2026)).
+**Tucked-away tags** (Nov 19, 2026; Android, iOS to do): a whole tag can be tucked away; its photos leave the same
+places unless highlighted, each day gets a pill per tag ("3 Dog"), and the list of tucked tags is synced as the app's
+data `tags` on the server (see [screens/tags.md](screens/tags.md#tucked-away-tags-nov-19-2026)). Several photos can be
+tagged at once from the picking bar.
 **Notes sync** with the server (Nov 8, 2026; see Notes below).
 
 **Server and network**

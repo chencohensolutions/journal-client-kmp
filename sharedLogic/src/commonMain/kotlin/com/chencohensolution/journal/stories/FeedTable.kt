@@ -36,6 +36,11 @@ internal class FeedContext(
     val tuckedShown: Set<LocalDay> = emptySet(),
     /** Where the named sets show ([placementsIn]). */
     val placements: Map<String, ShowOn> = emptyMap(),
+    /**
+     * The photos tucked tags keep out, and what of them the session shows: the rows kept count them per tag; those with
+     * a tag revealed are made again in memory, as revealed days are.
+     */
+    val tagged: TagTucking = TagTucking.NONE,
 )
 
 /**
@@ -158,7 +163,9 @@ internal class FeedTable(
     }
 
     private fun build(window: DayWindow, source: FeedSource, context: FeedContext): List<FeedSection> =
-        buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds, placements = context.placements)
+        buildWindow(window, source, context.shown, context.grouping, context.places, context.looks, context.alone, context.sets, emptySet(), context.sounds, placements = context.placements,
+            // The rows kept only count what tucked tags keep out; nothing revealed is saved.
+            tagged = TagTucking(context.tagged.hiddenBy))
 
     /** [table] keeping the items it read last: a span is read once more to widen it, and again to make its rows. */
     private class LastItems(private val table: FeedTable) : FeedSource by table {
@@ -296,6 +303,8 @@ internal class SectionData(
     val sounds: List<SoundData> = emptyList(),
     /** [FeedSection.tucked]. */
     val tucked: Int = 0,
+    /** [FeedSection.tuckedTags]: each tucked tag's name and count, by name (Nov 19, 2026). */
+    val tuckedTags: List<TagCountData> = emptyList(),
 ) {
     fun itemIds(): List<String> = span.filter { it.at == null }.map { it.id } + moments.flatMap { m -> m.blocks.flatten() }
 
@@ -330,6 +339,7 @@ internal class SectionData(
                 else FeedSound.Calls(sound.calls.map { sounds[it] ?: return null })
             },
             tucked = tucked,
+            tuckedTags = tuckedTags.map { TuckedTagCount(it.tag, it.count, shown = false) },
         )
     }
 
@@ -355,9 +365,13 @@ internal class SectionData(
                 }
             },
             tucked = section.tucked,
+            tuckedTags = section.tuckedTags.map { TagCountData(it.tag, it.count) },
         )
     }
 }
+
+@Serializable
+internal class TagCountData(val tag: String, val count: Int)
 
 @Serializable
 internal class SpanEntry(val id: String, val at: Long? = null)

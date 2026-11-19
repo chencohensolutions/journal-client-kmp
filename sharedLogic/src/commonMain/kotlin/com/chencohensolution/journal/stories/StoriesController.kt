@@ -51,8 +51,9 @@ private const val MAX_WANTED = 2_000
  * Bumped when the way Moments' rows are made changes, so the database's rows are all made again once. 3: WhatsApp is the
  * folder "folder:WhatsApp" (Oct 27, 2026). 4: folder ids are in lower case ("folder:whatsapp"), and sound recordings
  * have their own sources, call and recording (Oct 27, 2026). 5: a camera burst is a set of its own (Nov 9, 2026).
+ * 6: rows count the photos tucked tags keep out, per tag (Nov 19, 2026).
  */
-private const val FEED_VERSION = 5
+private const val FEED_VERSION = 6
 
 /**
  * What the user adds to their photos, kept on this device: each photo's writing (and its earlier versions), tags,
@@ -90,6 +91,8 @@ class StoriesController internal constructor(
     val tucked: TuckedReveal = TuckedReveal(),
     /** The server the notes sync with ([NoteSync]); without it (tests, no database) they stay on this phone. */
     noteSync: NoteSyncSource? = null,
+    /** The tags tucked away, kept on the phone and synced with the server's app data ([TuckedTags]). */
+    val tuckedTags: TuckedTags = TuckedTags.inMemory(),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val libraryState = library.state
@@ -133,7 +136,21 @@ class StoriesController internal constructor(
         scope.launch { libraryState.collect { outsideChanges.value++ } }
         scope.launch { settingsState.collect { outsideChanges.value++ } }
         // Revealing a day's tucked photos (or the session starting over) makes its rows again, in memory.
-        scope.launch { tucked.state.map { it.days }.distinctUntilChanged().drop(1).collect { outsideChanges.value++ } }
+        scope.launch {
+            tucked.state.map { Triple(it.days, it.dayTags, it.tags) }.distinctUntilChanged().drop(1).collect {
+                outsideChanges.value++
+                // The storyline and the counts at once; Moments' rows follow (outsideChanges).
+                publish()
+            }
+        }
+        // A tag tucked away or brought back (here or on another phone): every row is made again (the feed's version).
+        scope.launch {
+            tuckedTags.tucked.drop(1).collect {
+                outsideChanges.value++
+                publish()
+            }
+        }
+        tuckedTags.start(scope)
         similarity?.let { scope.launch { it.looks.collect { backgroundChanges.value++ } } }
         places?.let { scope.launch { it.places.collect { backgroundChanges.value++ } } }
         // The caches kept on this phone being read: the feed is ready once they are (StoriesState.ready).
@@ -278,10 +295,12 @@ class StoriesController internal constructor(
         val version = listOf(
             shown.hidden.map { it.id }.sorted(), shown.sayWhatsHidden, shown.alwaysShown.map { "${it.day}:${it.source.id}" }.sorted(),
             settings.grouping.mode, settings.grouping.gapHours, settings.similarity.percent, FEED_VERSION,
+            tuckedTags.tucked.value.map { it.lowercase() }.sorted(),
         ).joinToString("|")
         return FeedContext(
             shown, settings.grouping, places?.places?.value ?: Places.NONE, looks, aloneIn(notes), setsIn(notes),
             libraryState.value.sounds, version, tuckedShown = tucked.state.value.days, placements = placementsIn(notes),
+            tagged = TagTucking.of(notes, tuckedTags.tucked.value, tucked.state.value),
         )
     }
 
@@ -763,6 +782,35 @@ class StoriesController internal constructor(
     }
 
     /**
+     * Tucks the tag [tag] away ([on]): its photos leave Moments, the storyline, Explore and search, each day saying how
+     * many it holds ("3 Dog"); or brings it back. Saved on the phone and synced with the server ([TuckedTags]); no
+     * file is marked.
+     */
+    fun setTagTucked(tag: String, on: Boolean) {
+        tuckedTags.set(tag, on)
+        // A tag brought back needs no reveal any more.
+        if (!on) tucked.hideEverywhere(tag)
+    }
+
+    /**
+     * Highlight [itemIds] ([on]) or not, as the viewer's star does: a photo of a set made by hand becomes its last
+     * highlight (the others keep their order); a photo in no such set gets highlight 1, which creates no set. A
+     * highlighted photo shows in Moments and the storyline even when one of its tags is tucked away.
+     */
+    fun setHighlighted(itemIds: List<String>, on: Boolean) {
+        val ids = itemIds.distinct()
+        ids.groupBy { notes[it]?.feedSet }.forEach { (set, picked) ->
+            if (set == null) {
+                changeNotes(picked) { note -> note.copy(highlight = if (on) note.highlight ?: 1 else null) }
+            } else {
+                val members = notes.values.filter { it.feedSet == set }.sortedBy { it.takenAtMillis }.map { it.deviceId }
+                val current = highlightOrder(members)
+                writeHighlights(members, if (on) current + picked.filterNot { it in current } else current - picked.toSet())
+            }
+        }
+    }
+
+    /**
      * Saves the notes [transform] changes. Without [rebuild] (for what changes nothing else on screen, done on each
      * swipe) only the state's notes are updated, as rebuilding the whole state can take longer than a frame, and
      * nothing at all when no note changed: a new state redraws the whole home screen, and a set scrolling into view
@@ -855,6 +903,8 @@ class StoriesController internal constructor(
         libraryState.value, notes, error, settingsState.value, looks, places?.places?.value ?: Places.NONE, revealed,
         // From the database: its first page read. Else the whole library merged. Either way with the caches read.
         tuckedShown = tucked.state.value.days,
+        tuckedTags = tuckedTags.tucked.value,
+        session = tucked.state.value,
         ready = cachesLoaded && (if (feed != null) pagedFeed != null else libraryState.value.complete),
         paged = if (feed != null) pagedFeed ?: MomentsFeed() else null,
         items = if (feed != null) readItems else null,
@@ -871,6 +921,8 @@ class StoriesController internal constructor(
         val places: Places,
         val revealed: Set<FeedReveal>,
         val tuckedShown: Set<LocalDay>,
+        val tuckedTags: List<String>,
+        val session: TuckedSession,
         val ready: Boolean,
         val paged: MomentsFeed?,
         val items: Map<String, MediaItem>?,
@@ -885,6 +937,8 @@ class StoriesController internal constructor(
                 revealed = revealed,
                 tuckedShown = tuckedShown,
                 ready = ready,
+                tuckedTags = tuckedTags,
+                session = session,
                 paged = paged,
                 items = items,
                 missing = missing,

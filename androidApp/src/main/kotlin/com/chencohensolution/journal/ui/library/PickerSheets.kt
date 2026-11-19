@@ -50,7 +50,11 @@ import com.chencohensolution.journal.R
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.stories.TagSummary
 
-/** Tags photos: recent tags before typing, every matching tag while typing, with "Create" for a new one. */
+/**
+ * Tags photos: recent tags before typing, every matching tag while typing, with "Create" for a new one. For several
+ * photos (Nov 19, 2026): "Tag 4 photos", each tag with a check (all have it), a dash and "2 of 4" (some) or nothing;
+ * tapping gives it to all, or takes it off all once all have it. Tucked tags say so. Done closes.
+ */
 @Composable
 internal fun TagSheet(
     itemIds: List<String>,
@@ -59,17 +63,17 @@ internal fun TagSheet(
     onCreate: (tag: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val applied = { tag: TagSummary ->
-        itemIds.all { id -> stories.note(id)?.tags?.any { it.equals(tag.name, ignoreCase = true) } == true }
-    }
+    val coverage = stories.tagCounts(itemIds).associateBy { it.tag.lowercase() }
+    val several = itemIds.size > 1
     PickerSheet(
-        title = stringResource(R.string.library_add_tag),
+        title = if (several) pluralStringResource(R.plurals.tag_photos_title, itemIds.size, itemIds.size) else stringResource(R.string.library_add_tag),
         hint = stringResource(R.string.library_search_tags),
         createLabel = { stringResource(R.string.library_create_tag, it) },
         createDetail = null,
         hideCreateFor = { query -> stories.tags.any { it.name.equals(query.trim(), ignoreCase = true) } },
         onCreate = onCreate,
         onDismiss = onDismiss,
+        done = onDismiss,
     ) { query ->
         val list = if (query.isBlank()) stories.tags else stories.searchTags(query)
         if (list.isNotEmpty()) {
@@ -78,13 +82,18 @@ internal fun TagSheet(
             }
         }
         items(list, key = { "tag-${it.name.lowercase()}" }) { tag ->
-            val isApplied = applied(tag)
+            val covered = coverage[tag.name.lowercase()]
+            val all = covered?.all == true
+            val some = several && covered?.some == true
+            val count = pluralStringResource(R.plurals.library_story_items, tag.count, tag.count)
             PickerRow(
                 title = tag.name,
-                detail = pluralStringResource(R.plurals.library_story_items, tag.count, tag.count),
+                detail = if (tag.tucked) "$count · ${stringResource(R.string.tag_tucked_detail)}" else count,
                 leading = { TagThumbnail(tag) },
-                checked = isApplied,
-                onClick = { onToggle(tag.name, !isApplied) },
+                checked = all,
+                partly = if (some) stringResource(R.string.tag_some_of, covered!!.count, covered.of) else null,
+                tucked = tag.tucked,
+                onClick = { onToggle(tag.name, !all) },
             )
         }
         if (query.isBlank() && list.isEmpty()) {
@@ -110,6 +119,8 @@ private fun PickerSheet(
     onCreate: (String) -> Unit,
     onDismiss: () -> Unit,
     hideCreateFor: (String) -> Boolean = { false },
+    /** A Done at the title's end, closing the sheet; null: none. */
+    done: (() -> Unit)? = null,
     content: LazyListScope.(query: String) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -118,12 +129,15 @@ private fun PickerSheet(
     LaunchedEffect(Unit) { focus.requestFocus() }
     PageSheet(onDismiss) {
         Column(Modifier.fillMaxSize().imePadding()) {
-            Text(
-                title,
-                style = LibraryType.PageTitle,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp).semantics { heading() },
-            )
+            Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = LibraryType.PageTitle,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                done?.let { TextAction(stringResource(R.string.tag_sheet_done), onClick = it) }
+            }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -175,7 +189,17 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun PickerRow(title: String, detail: String?, leading: @Composable () -> Unit, checked: Boolean, onClick: () -> Unit) {
+private fun PickerRow(
+    title: String,
+    detail: String?,
+    leading: @Composable () -> Unit,
+    checked: Boolean,
+    onClick: () -> Unit,
+    /** Some of the photos have it: a dash and this ("2 of 4"). */
+    partly: String? = null,
+    /** A tucked tag: a crossed eye before its detail. */
+    tucked: Boolean = false,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -187,15 +211,30 @@ private fun PickerRow(title: String, detail: String?, leading: @Composable () ->
         Box(Modifier.width(52.dp), contentAlignment = Alignment.Center) { leading() }
         Column(Modifier.weight(1f)) {
             Text(title, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
-            if (!detail.isNullOrEmpty()) Text(detail, style = LibraryType.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!detail.isNullOrEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (tucked) Icon(LibraryIcons.EyeOff, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                Text(detail, style = LibraryType.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        if (checked) Icon(LibraryIcons.Check, stringResource(R.string.library_picker_checked), tint = LibraryColors.Accent)
+        when {
+            checked -> Icon(LibraryIcons.Check, stringResource(R.string.library_picker_checked), tint = LibraryColors.Accent)
+            partly != null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(partly, style = LibraryType.Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(LibraryIcons.Minus, null, tint = LibraryColors.Accent)
+            }
+        }
     }
 }
 
-/** The newest photo with the tag, or a tag icon. */
+/** The newest photo with the tag, or a tag icon; a tucked tag shows a crossed eye instead of its photo. */
 @Composable
 internal fun TagThumbnail(tag: TagSummary, size: androidx.compose.ui.unit.Dp = 44.dp) {
+    if (tag.tucked) {
+        Box(Modifier.size(size).clip(LibraryShapes.Tile).background(LibraryColors.Raised), contentAlignment = Alignment.Center) {
+            Icon(LibraryIcons.EyeOff, stringResource(R.string.tucked_away), tint = LibraryColors.Muted, modifier = Modifier.size(20.dp))
+        }
+        return
+    }
     val thumbnail = tag.latest?.let { rememberThumbnail(it, THUMB_SMALL) }
     Box(
         Modifier.size(size).clip(LibraryShapes.Tile).background(LibraryColors.Accent.copy(alpha = 0.15f)),

@@ -3,7 +3,10 @@ package com.chencohensolution.journal.server
 import com.apollographql.apollo.api.Optional
 import com.chencohensolution.journal.graphql.CamerasQuery
 import com.chencohensolution.journal.graphql.ChangesQuery
+import com.chencohensolution.journal.graphql.AppDataQuery
 import com.chencohensolution.journal.graphql.ChangesTuckedQuery
+import com.chencohensolution.journal.graphql.ServerAppNotesQuery
+import com.chencohensolution.journal.graphql.SetAppDataMutation
 import com.chencohensolution.journal.graphql.FolderNamesQuery
 import com.chencohensolution.journal.graphql.SetSoundFolderMutation
 import com.chencohensolution.journal.graphql.SoundFoldersQuery
@@ -208,6 +211,12 @@ data class StorageUsage(val photos: Int, val videos: Int, val bytes: Long)
  */
 internal data class NoteAnswer(val saved: Boolean, val note: String?, val version: String?)
 
+/** A piece of the app's data on the server (appData): [content] a JSON object as text, [version] its sha256; null when there is none. */
+data class AppDataContent(val content: String?, val version: String?)
+
+/** setAppData's answer: [saved], or not (a conflict) with the data as it is now ([data]). */
+data class AppDataAnswer(val saved: Boolean, val data: AppDataContent)
+
 /** How far a sync of more than one page has read the server's change feed: [done] of [total] changes. */
 data class SyncProgress(val done: Int, val total: Int)
 
@@ -369,7 +378,9 @@ class ServerLibrary internal constructor(
                         .getOrNull() == true
                     val notes = runCatching { apollo.query(ServerNotesQuery()).execute().data?.serverInfo?.notes }
                         .getOrNull() == true
-                    features.copy(videoFrames = frames, tuckedAway = tucked, notes = notes)
+                    val appData = runCatching { apollo.query(ServerAppNotesQuery()).execute().data?.serverInfo?.appNotes }
+                        .getOrNull() == true
+                    features.copy(videoFrames = frames, tuckedAway = tucked, notes = notes, appData = appData)
                 } ?: return@launch
                 settings.serverFeatures = answer
                 _features.value = answer
@@ -508,6 +519,39 @@ class ServerLibrary internal constructor(
      * note is then sent again later (NoteSync). The database's copy of the file's note follows the answer, so the next
      * sync doesn't bring the old one back.
      */
+    /** The app's data called [name] ([AppDataContent]); null when the server can't be reached or refused. */
+    internal suspend fun appData(name: String): AppDataContent? = try {
+        http.graphql { apollo ->
+            val response = apollo.query(AppDataQuery(name)).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            response.data?.appData?.let { AppDataContent(it.content, it.version) }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    /**
+     * Replaces the app's data called [name] with [content] when [baseVersion] is still its version: saved, or a
+     * conflict with the data as it is now. Null when the server can't be reached or refused.
+     */
+    internal suspend fun setAppData(name: String, content: String?, baseVersion: String?): AppDataAnswer? = try {
+        http.graphql { apollo ->
+            val response = apollo.mutation(SetAppDataMutation(name, Optional.present(content), Optional.present(baseVersion))).execute()
+            response.exception?.let { throw it }
+            response.errors?.firstOrNull()?.let { throw IllegalStateException(it.message) }
+            val result = response.data?.setAppData ?: return@graphql null
+            result.onAppDataSaved?.data?.let { AppDataAnswer(true, AppDataContent(it.content, it.version)) }
+                ?: result.onAppDataConflict?.data?.let { AppDataAnswer(false, AppDataContent(it.content, it.version)) }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
     internal suspend fun setNote(sha256: String, note: String?, baseVersion: String?): NoteAnswer? {
         val answer = try {
             http.graphql { apollo ->

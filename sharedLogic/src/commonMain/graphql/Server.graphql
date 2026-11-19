@@ -64,3 +64,8 @@ query PhoneModels {
 query ServerCa {
   serverInfo { caCertificate }
 }
+
+# Asked on its own too (Nov 19, 2026): whether each app keeps its own data (appData, setAppData), for tucked-away tags.
+query ServerAppNotes {
+  serverInfo { appNotes }
+}

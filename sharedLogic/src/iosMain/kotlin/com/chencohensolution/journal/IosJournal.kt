@@ -18,6 +18,8 @@ import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.NoteSyncSource
+import com.chencohensolution.journal.stories.TagsSyncSource
+import com.chencohensolution.journal.stories.TuckedTags
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.FileFactsCache
 import com.chencohensolution.journal.library.IosMediaLibrary
@@ -483,6 +485,8 @@ object IosJournal {
             shownRow = library::shownRow,
             // Notes synced with the server, through the same database (NoteSync).
             noteSync = NoteSyncSource.of(libraryDatabase, serverLibrary(), Dispatchers.IO),
+            // The tags tucked away: journal/tags.json, synced with the server's app data "tags".
+            tuckedTags = TuckedTags(FileSystem.SYSTEM, support.toPath() / "journal", TagsSyncSource.of(serverLibrary())) { kotlin.time.Clock.System.now().toString() },
         )
     }
 

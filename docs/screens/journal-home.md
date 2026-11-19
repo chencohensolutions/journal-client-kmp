@@ -39,7 +39,8 @@ Photos fill the screen on the page background (light or dark with the system); t
   its note file), or once removed **Add to storyline**, is in the viewer's details panel. A photo
   [tucked away](moments.md#tucked-away-nov-8-2026) leaves it with its writing; its day says "1 tucked away" under its
   heading (the day stays, with only the pill, when all its photos are tucked), and tapping that shows them for the
-  session.
+  session. A photo with a [tucked-away tag](tags.md#tucked-away-tags-nov-19-2026) leaves it too, unless highlighted;
+  each such tag has its own pill on the day ("3 Dog", Nov 19, 2026; Android).
 - **Moments:** a feed of every photo that groups itself, full-width photos split by time, place, source and
   looks, with the source filter bar under the title; see [moments.md](moments.md). On iOS since Oct 21, 2026 (until
   then it showed rows of small unsorted photos with **+ Story**).

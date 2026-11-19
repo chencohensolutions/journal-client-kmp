@@ -23,6 +23,8 @@ import com.chencohensolution.journal.stories.FeedTable
 import com.chencohensolution.journal.stories.StoriesController
 import com.chencohensolution.journal.stories.FilePhotoNoteStore
 import com.chencohensolution.journal.stories.NoteSyncSource
+import com.chencohensolution.journal.stories.TagsSyncSource
+import com.chencohensolution.journal.stories.TuckedTags
 import com.chencohensolution.journal.stories.deleteOldStories
 import com.chencohensolution.journal.library.AndroidMediaLibrary
 import com.chencohensolution.journal.library.LibraryController
@@ -497,5 +499,7 @@ fun createStoriesController(context: Context, library: LibraryController, settin
         shownRow = library::shownRow,
         // Notes synced with the server, through the same database (NoteSync).
         noteSync = NoteSyncSource.of(libraryDatabase(context), serverLibrary(context), Dispatchers.IO),
+        // The tags tucked away: files/journal/tags.json, synced with the server's app data "tags".
+        tuckedTags = TuckedTags(FileSystem.SYSTEM, journal, TagsSyncSource.of(serverLibrary(context))) { kotlin.time.Clock.System.now().toString() },
     )
 }

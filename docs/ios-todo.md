@@ -23,6 +23,34 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Tagging several photos, tucked-away tags, highlight for every photo (Nov 19, 2026; Android only).** See
+  [screens/tags.md](screens/tags.md#tagging-several-photos-nov-19-2026) and
+  [viewer.md](screens/viewer.md#highlight-for-every-photo-nov-19-2026). Shared logic is done (`IosJournal` already
+  passes `TuckedTags(…, TagsSyncSource.of(serverLibrary()))`); SwiftUI needs:
+  - Picking bar (Moments, storyline): Tag for any number picked; quick tags above the extras (`currentState.tags`'
+    first 3 names + More…), a chip calling `stories.addTag(itemIds:tag:)` and posting "Tagged 4 photos Dog" (+ " ·
+    tucked away" when `currentState.isTagTucked(tag:)`) with Undo → `removeTag` on the photos that didn't have it;
+    Highlight / Unhighlight → `stories.setHighlighted(itemIds:on:)` (state: `isHighlighted(itemId:)`).
+  - Tag sheet for several: `currentState.tagCounts(itemIds:)` → `TagCoverage` (`all`, `some`, `count`, `of`); title
+    "Tag N photos", check / dash + "2 of 4" / nothing, tap → add unless `all`; tucked tags (`TagSummary.tucked`) with a
+    crossed eye and "tucked away"; Done.
+  - Tags screen: ⋯ and long press → sheet with Tuck away this tag / Bring back (`stories.setTagTucked(tag:on:)`);
+    tucked tags last under "Tucked away" with a crossed-eye tile.
+  - Day pills: `FeedSection.tuckedTags` and `StorylineDay.tags` (`TuckedTagCount`: tag, count, shown) beside the
+    generic pill; tap → lock (as today) then `stories.tucked.toggleTag(days:tag:)`. Corner mark with the tag's name
+    for a revealed photo: `currentState.tuckedTagOf(itemId:)`.
+  - A tucked tag's page: ask the lock once per session (`tucked.needsLock`), then a Raised card with
+    `currentState.tagged.session.showsEverywhere(tag:)` → Show everywhere for now (`tucked.showEverywhere(tag:)`,
+    behind the lock) / Hide again (`tucked.hideEverywhere(tag:)`), and Bring back (`setTagTucked(tag, false)`).
+  - Viewer: ☆ Highlight outside a set (`setHighlighted([id], on)`); details "Tucked away with %@"
+    (`tuckedTagOf`) or "Shown although %@ is tucked away (highlighted)" (`shownThroughTag`).
+  - Explore's pages: leave out `currentState.tagged.tagOf(item:) != nil` beside `isTucked`.
+  - Android files to mirror: `TuckedViews.kt` (QuickTags, TuckedPills, TuckedMark), `PickerSheets.kt` (TagSheet),
+    `TagsScreen.kt` (TagMenuSheet, TuckedTagCard), `MomentsFeedViews.kt`, `ViewerScreen.kt`, `ViewerInfoPanel.kt`.
+  - Strings (en/he in `values*/strings.xml`): tucked_tag_pill, picking_more_tags, picking_highlight,
+    picking_unhighlight, tagged_photos, tagged_tucked_suffix, tagged_undo, tag_photos_title, tag_some_of,
+    tag_tucked_detail, tag_sheet_done, tags_tucked_section, tag_menu, tag_tuck_away(_detail), tag_bring_back(_detail),
+    tag_tucked_card, tag_show_everywhere, tag_hide_again, tag_locked, tag_unlock, tucked_with_tag, tucked_shown_through.
 - **Security fixes, Nov 19, 2026** (shared logic and both platforms' Kotlin are done; nothing in SwiftUI needed for
   the first two). (1) An enrollment link no longer writes the link's server into `serverDiscovery` before enrolling:
   `EnrollmentController` asks `MtlsHttpClientFactory.createPinned`, which `IosMtlsHttpClientFactory` builds from
