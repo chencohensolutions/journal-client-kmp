@@ -184,6 +184,8 @@ struct LibraryRootView: View {
                                 addPerson: search.addPerson,
                                 removePerson: search.removePerson,
                                 showHiddenSources: search.showHiddenSources,
+                                sort: search.sort,
+                                setThreshold: search.setThreshold,
                                 markPrivate: { items in
                                     let done = await ServerImages.shared.markPrivate(items)
                                     if done { await MainActor.run { search.madePrivate(items) } }

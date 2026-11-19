@@ -232,6 +232,7 @@ object IosJournal {
             bySha = library::itemsOfShas,
             townArea = library::townArea,
             showsPrivate = { JournalSettings(UserDefaultsStore()).privateMedia.show },
+            remembered = JournalSettings(UserDefaultsStore()),
         )
 
     private var peopleController: PeopleController? = null

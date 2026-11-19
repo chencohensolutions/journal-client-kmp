@@ -48,8 +48,9 @@ let labScreens: [LabScreen] = [
     ]),
     LabScreen(id: "search", title: "Search", options: [
         current { labHome(data.placesLibrary, data.placesStories, search: data.searchFound, searching: true) },
-        searchOptionA3,
-        searchOptionA3Sheet,
+    ]),
+    LabScreen(id: "search-by-date", title: "Search, newest first", options: [
+        current { labHome(data.placesLibrary, data.placesStories, search: data.searchNewest, searching: true) },
     ]),
     LabScreen(id: "search-empty", title: "Search, before typing", options: [
         current { labHome(data.placesLibrary, data.placesStories, searching: true) },

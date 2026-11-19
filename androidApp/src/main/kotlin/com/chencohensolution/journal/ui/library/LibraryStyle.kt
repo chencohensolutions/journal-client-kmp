@@ -263,6 +263,10 @@ internal object LibraryIcons {
         "Share", false, "M18 2a3 3 0 1 0 0.01 0", "M6 9a3 3 0 1 0 0.01 0", "M18 16a3 3 0 1 0 0.01 0", "M8.6 13.5l6.8 4", "M15.4 6.5l-6.8 4",
     )
     val Pin = icon("Pin", false, "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z", "M12 7.5a2 2 0 1 0 0.01 0")
+    /** Search's orders: newest first (down), oldest first (up), most relevant (a sparkle). */
+    val ArrowDown = icon("ArrowDown", false, "M12 5v14", "M6 13l6 6 6-6")
+    val ArrowUp = icon("ArrowUp", false, "M12 19V5", "M6 11l6-6 6 6")
+    val Sparkle = icon("Sparkle", false, "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z", "M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z")
     val Map = icon("Map", false, "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z", "M9 4v14", "M15 6v14")
     val Copy = icon("Copy", false, "M9 9h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z", "M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1")
     val Wifi = icon("Wifi", false, "M2 8.8a15 15 0 0 1 20 0", "M5 12.5a10 10 0 0 1 14 0", "M8.5 16a5 5 0 0 1 7 0", "M12 19.5h0.01")

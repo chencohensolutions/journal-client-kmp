@@ -269,6 +269,7 @@ fun createSearchController(
         bySha = library::itemsOfShas,
         townArea = library::townArea,
         showsPrivate = { JournalSettings(SharedPreferencesStore(context)).privateMedia.show },
+        remembered = JournalSettings(SharedPreferencesStore(context)),
     )
 
 private var peopleController: PeopleController? = null

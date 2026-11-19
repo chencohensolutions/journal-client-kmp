@@ -4,7 +4,9 @@ import SharedLogic
 // The home screen's search: the 🔍 beside the tabs turns the bottom bar into a field, and the page lists the photos the
 // server finds for the sentence typed, best first, each across the screen with its date, time and place under it, and
 // almost identical ones as one photo you swipe (the server's sets, a moment's sets kept together). A
-// Filter pill above the field opens a sheet of the matches' years and towns to narrow them. ✕ goes back to the tab,
+// Filter pill above the field opens a sheet of the matches' years and towns to narrow them, and the town chips under the
+// title narrow by town too. A Sort pill beside it lists them by date instead, only the close matches (a threshold), by
+// day (chosen in the UI lab, option a3, Nov 19, 2026). ✕ goes back to the tab,
 // keeping the search for next time. A long press starts picking photos (a set is picked whole) to mark them private
 // together. See docs/screens/search.md. As Android's SearchViews.kt.
 
@@ -27,6 +29,9 @@ struct SearchActions {
     var removePerson: (String) -> Void = { _ in }
     /// "N more in sources you hide · Show" (true) and its "Hide" (false), for this search only.
     var showHiddenSources: (Bool) -> Void = { _ in }
+    /// The Sort sheet's order, and its "How close a match" slider (SearchController.sort / setThreshold).
+    var sort: (SearchSort) -> Void = { _ in }
+    var setThreshold: (Double) -> Void = { _ in }
     /// The picked photos' Mark private; false when the server couldn't be reached.
     var markPrivate: ([MediaItem]) async -> Bool = { _ in true }
 }
@@ -64,6 +69,9 @@ struct SearchResultsView: View {
                 }
                 .scrollIndicators(.hidden)
                 .padding(.vertical, 6)
+            }
+            if search.showsTownChips {
+                SearchTownChips(search: search, choose: actions.chooseTown)
             }
             switch search.status {
             case .idle:
@@ -137,17 +145,25 @@ struct SearchResultsView: View {
             // Kept while a new search runs; the field shows its spinner.
             if search.status == .done || search.status == .searching {
                 let loadFrom = max(search.sets.count - loadAheadRows, 0)
+                // By date: each day under its line, without a date under each photo. Most relevant: one list, best first.
+                let byDate = search.sort.byDate
+                let heads: [String: SearchDay] = byDate
+                    ? Dictionary(search.days.compactMap { day in day.sets.first.map { ($0[0].id, day) } }, uniquingKeysWith: { a, _ in a })
+                    : [:]
                 ForEach(Array(search.sets.enumerated()), id: \.element.first!.id) { index, set in
                     let key = set[0].id
                     let picked: Bool? = selection.wrappedValue.isEmpty ? nil : selection.wrappedValue.contains(key)
                     let pick: () -> Void = { toggle(key) }
-                    Group {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let day = heads[key] {
+                            SearchDayHeading(day: day)
+                        }
                         if set.count == 1 {
-                            FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width, picked: picked, onHold: pick) {
+                            FoundPhoto(item: set[0], place: placeLabel(set[0]), width: width, picked: picked, captioned: !byDate, onHold: pick) {
                                 if picked != nil { pick() } else { actions.openItem(set[0]) }
                             }
                         } else {
-                            FoundSet(items: set, place: placeLabel, width: width, picked: picked, onHold: pick) { item in
+                            FoundSet(items: set, place: placeLabel, width: width, picked: picked, captioned: !byDate, onHold: pick) { item in
                                 if picked != nil { pick() } else { actions.openItem(item) }
                             }
                         }
@@ -191,7 +207,8 @@ struct SearchResultsView: View {
 /// The next page is asked for when a row this close to the end appears.
 private let loadAheadRows = 5
 
-/// "36 photos, best first", or "Nothing found", and how far the server has read the library while it still is.
+/// "36 photos, best first" ("29 photos, newest first" by date, all the cut keeps), or "Nothing found", and how far the
+/// server has read the library while it still is.
 private struct FoundNote: View {
     let search: SearchState
 
@@ -200,7 +217,15 @@ private struct FoundNote: View {
             if search.items.isEmpty {
                 SearchMessage(text: "Nothing found. Try other words.")
             } else {
-                Text("\(search.items.count) photos, best first")
+                Group {
+                    if search.sort == .newest {
+                        Text("\(Int(search.matchCount)) photos, newest first")
+                    } else if search.sort == .oldest {
+                        Text("\(Int(search.matchCount)) photos, oldest first")
+                    } else {
+                        Text("\(search.items.count) photos, best first")
+                    }
+                }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(LibraryColors.muted)
                     .padding(.horizontal, 16)
@@ -228,6 +253,7 @@ private struct FoundPhoto: View {
     let place: String?
     let width: CGFloat
     let picked: Bool?
+    var captioned = true
     let onHold: () -> Void
     let onOpen: () -> Void
 
@@ -241,9 +267,74 @@ private struct FoundPhoto: View {
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onOpen)
                 .onLongPressGesture(perform: onHold)
-            FoundCaption(item: item, place: place)
+            if captioned { FoundCaption(item: item, place: place) }
         }
-        .padding(.bottom, 14)
+        .padding(.bottom, captioned ? 14 : 2)
+    }
+}
+
+/// A day in the date orders: "Sat, Jun 1" on a line, as Moments' days, and "Tel Aviv → Jaffa · 6 photos" under it.
+private struct SearchDayHeading: View {
+    let day: SearchDay
+
+    var body: some View {
+        VStack(spacing: 4) {
+            DayLine(label: day.day.label)
+            let count = Int(day.count)
+            Group {
+                if day.towns.isEmpty {
+                    Text("\(count) photos")
+                } else {
+                    Text("\(day.towns.joined(separator: " → ")) · \(count) photos")
+                }
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(LibraryColors.muted)
+            .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.top, 24)
+        .padding(.bottom, 10)
+    }
+}
+
+/// "All places 48 · Tel Aviv 14 · Paris 6 …" under the title: one town at a time, as the Filter sheet's Place.
+private struct SearchTownChips: View {
+    let search: SearchState
+    let choose: (String?) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                chip(Text("All places"), count: Int(search.allPlaces), selected: search.town == nil, pin: true) { choose(nil) }
+                ForEach(search.townChips, id: \.value) { town in
+                    chip(Text(verbatim: town.value), count: Int(town.count), selected: search.town == town.value, pin: false) {
+                        choose(search.town == town.value ? nil : town.value)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .scrollIndicators(.hidden)
+        .padding(.top, 4)
+        .padding(.bottom, 12)
+    }
+
+    private func chip(_ label: Text, count: Int, selected: Bool, pin: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if pin { Image(systemName: "mappin.and.ellipse").font(.system(size: 12, weight: .semibold)) }
+                label.font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                Text(verbatim: "\(count)").font(.system(size: 14)).opacity(0.7)
+            }
+            .foregroundStyle(selected ? LibraryColors.onInverse : LibraryColors.onBackground)
+            .padding(.horizontal, 14).frame(height: 36)
+            .background(selected ? LibraryColors.inverse : .clear, in: Capsule())
+            .overlay(Capsule().stroke(selected ? .clear : LibraryColors.muted.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
 
@@ -255,6 +346,7 @@ private struct FoundSet: View {
     let place: (MediaItem) -> String?
     let width: CGFloat
     let picked: Bool?
+    let captioned: Bool
     let onHold: () -> Void
     let onOpen: (MediaItem) -> Void
 
@@ -263,13 +355,14 @@ private struct FoundSet: View {
     @Environment(\.viewerShowing) private var viewerShowing
 
     init(
-        items: [MediaItem], place: @escaping (MediaItem) -> String?, width: CGFloat, picked: Bool?,
+        items: [MediaItem], place: @escaping (MediaItem) -> String?, width: CGFloat, picked: Bool?, captioned: Bool = true,
         onHold: @escaping () -> Void, onOpen: @escaping (MediaItem) -> Void
     ) {
         self.items = items
         self.place = place
         self.width = width
         self.picked = picked
+        self.captioned = captioned
         self.onHold = onHold
         self.onOpen = onOpen
         _current = State(initialValue: items.first?.id)
@@ -324,9 +417,9 @@ private struct FoundSet: View {
                 .padding(.bottom, 10)
                 .accessibilityHidden(true)
             }
-            FoundCaption(item: items[index], place: place(items[index]))
+            if captioned { FoundCaption(item: items[index], place: place(items[index])) }
         }
-        .padding(.bottom, 14)
+        .padding(.bottom, captioned ? 14 : 2)
         .onChange(of: viewerShowing) { _, showing in
             if let id = showing?.itemId, id != current, items.contains(where: { $0.id == id }) { current = id }
         }
@@ -449,6 +542,7 @@ struct SearchFieldBar: View {
 
     @State private var text: String
     @State private var filtering = false
+    @State private var sorting = false
     @FocusState private var focused: Bool
 
     init(search: SearchState, actions: SearchActions, onClose: @escaping () -> Void) {
@@ -460,10 +554,20 @@ struct SearchFieldBar: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            if search.canFilter {
-                FilterPill(search: search) {
-                    focused = false
-                    filtering = true
+            if search.canSort || search.canFilter {
+                HStack(spacing: 10) {
+                    if search.canSort {
+                        SortPill(search: search) {
+                            focused = false
+                            sorting = true
+                        }
+                    }
+                    if search.canFilter {
+                        FilterPill(search: search) {
+                            focused = false
+                            filtering = true
+                        }
+                    }
                 }
             }
             field
@@ -471,6 +575,12 @@ struct SearchFieldBar: View {
         .sheet(isPresented: $filtering) {
             FilterSheet(search: search, actions: actions) { filtering = false }
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $sorting) {
+            // Tall enough for the slider, the weakest photos and the Show button without scrolling.
+            SortSheet(search: search, actions: actions) { sorting = false }
+                .presentationDetents([search.sort.byDate ? .fraction(0.62) : .medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -558,6 +668,131 @@ extension SearchState {
     fileprivate var canFilter: Bool { (status == .done || status == .searching) && (showsYears || showsTowns) }
     fileprivate var showsYears: Bool { yearChips.count > 1 || year != nil }
     fileprivate var showsTowns: Bool { townChips.count > 1 || town != nil }
+    /// The town chips under the title: more than one town among the matches (or one chosen), and no people chosen.
+    fileprivate var showsTownChips: Bool { (status == .done || status == .searching) && showsTowns && people.isEmpty }
+    /// Something to sort: matches found, or a date order (whose cut may have left none).
+    fileprivate var canSort: Bool { (status == .done || status == .searching) && (!items.isEmpty || !yearChips.isEmpty || sort.byDate) }
+}
+
+private let sortOrders: [SearchSort] = [.relevant, .newest, .oldest]
+
+private func sortName(_ sort: SearchSort) -> LocalizedStringKey {
+    if sort == .newest { return "Newest first" }
+    if sort == .oldest { return "Oldest first" }
+    return "Most relevant"
+}
+
+private func sortHint(_ sort: SearchSort) -> LocalizedStringKey {
+    if sort == .newest { return "Close matches by date, the latest first" }
+    if sort == .oldest { return "Close matches by date, the earliest first" }
+    return "Every match, the closest first"
+}
+
+private func sortIcon(_ sort: SearchSort) -> String {
+    if sort == .newest { return "arrow.down" }
+    if sort == .oldest { return "arrow.up" }
+    return "sparkles"
+}
+
+/// "↓ Newest first · 29", "↑ Oldest first · 29" or "✦ Most relevant · 46", floating as the Filter pill.
+private struct SortPill: View {
+    let search: SearchState
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: sortIcon(search.sort)).font(.system(size: 13, weight: .semibold))
+                Text(sortName(search.sort))
+                Text(verbatim: "· \(search.matchCount)")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(LibraryColors.onBackground)
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .background(LibraryColors.raised, in: Capsule())
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+        }
+    }
+}
+
+/// The orders, each with a line on what it does, a tap choosing it at once. In the date orders, "How close a match" from
+/// Close to More (the score a match needs), how many that keeps and the weakest of them, so you see where the cut falls,
+/// then "Show N photos".
+struct SortSheet: View {
+    let search: SearchState
+    let actions: SearchActions
+    let done: () -> Void
+
+    var body: some View {
+        let lowest = SearchSort.companion.MIN_THRESHOLD
+        let highest = SearchSort.companion.MAX_THRESHOLD
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Sort")
+                    .font(.system(size: 22, weight: .bold)).foregroundStyle(LibraryColors.onBackground)
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, 24).padding(.top, 24).padding(.bottom, 8)
+                ForEach(sortOrders, id: \.self) { sort in
+                    Button { actions.sort(sort) } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: sortIcon(sort)).frame(width: 22)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(sortName(sort)).font(.system(size: 16, weight: .semibold))
+                                Text(sortHint(sort)).font(.system(size: 13)).foregroundStyle(LibraryColors.muted)
+                            }
+                            Spacer()
+                            if sort == search.sort { Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)) }
+                        }
+                        .foregroundStyle(LibraryColors.onBackground)
+                        .padding(.horizontal, 24).padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(sort == search.sort ? [.isSelected] : [])
+                }
+                if search.sort.byDate {
+                    Text("How close a match")
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(LibraryColors.muted)
+                        .padding(.horizontal, 24).padding(.top, 18)
+                    HStack(spacing: 10) {
+                        Text("Close match").font(.system(size: 13)).foregroundStyle(LibraryColors.muted)
+                        // Close at the start: the slider runs from the highest score needed to the lowest.
+                        Slider(
+                            value: Binding(
+                                get: { highest + lowest - search.threshold },
+                                set: { actions.setThreshold(highest + lowest - $0) }
+                            ),
+                            in: lowest...highest
+                        )
+                        .tint(LibraryColors.accent)
+                        Text("More matches").font(.system(size: 13)).foregroundStyle(LibraryColors.muted)
+                    }
+                    .padding(.horizontal, 24)
+                    Text("\(Int(search.matchCount)) photos. The weakest kept:")
+                        .font(.system(size: 13)).foregroundStyle(LibraryColors.muted)
+                        .padding(.horizontal, 24).padding(.top, 10)
+                    HStack(spacing: 2) {
+                        ForEach(search.weakest, id: \.id) { item in
+                            MediaTileView(item: item, badgeSize: 18)
+                                .frame(width: 80, height: 80).clipped()
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 24).padding(.top, 8)
+                }
+                Button(action: done) {
+                    Text("Show \(Int(search.matchCount)) photos")
+                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(LibraryColors.onInverse)
+                        .frame(maxWidth: .infinity).frame(height: 50)
+                        .background(LibraryColors.inverse, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 16)
+            }
+        }
+        .background(LibraryColors.background)
+    }
 }
 
 /// "Filter", or "Filter · 2" with a year and a town chosen, dark while any is.

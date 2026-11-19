@@ -555,6 +555,43 @@
         <item quantity="two">הצגת %d תמונות</item>
         <item quantity="other">הצגת %d תמונות</item>
     </plurals>
+    <string name="search_sort_title">מיון</string>
+    <string name="search_sort_relevant">הכי רלוונטי</string>
+    <string name="search_sort_newest">החדשות קודם</string>
+    <string name="search_sort_oldest">הישנות קודם</string>
+    <string name="search_sort_relevant_hint">כל ההתאמות, הקרובות קודם</string>
+    <string name="search_sort_newest_hint">התאמות קרובות לפי תאריך, האחרונות קודם</string>
+    <string name="search_sort_oldest_hint">התאמות קרובות לפי תאריך, המוקדמות קודם</string>
+    <string name="search_sort_pill">%1$s · %2$d</string>
+    <string name="search_sort_close_label">כמה קרובה ההתאמה</string>
+    <string name="search_sort_close">קרובה</string>
+    <string name="search_sort_more">יותר</string>
+    <plurals name="search_sort_weakest">
+        <item quantity="one">תמונה אחת. החלשה שנשארה:</item>
+        <item quantity="two">%d תמונות. החלשות שנשארו:</item>
+        <item quantity="other">%d תמונות. החלשות שנשארו:</item>
+    </plurals>
+    <plurals name="search_found_newest">
+        <item quantity="one">תמונה אחת, החדשות קודם</item>
+        <item quantity="two">%d תמונות, החדשות קודם</item>
+        <item quantity="other">%d תמונות, החדשות קודם</item>
+    </plurals>
+    <plurals name="search_found_oldest">
+        <item quantity="one">תמונה אחת, הישנות קודם</item>
+        <item quantity="two">%d תמונות, הישנות קודם</item>
+        <item quantity="other">%d תמונות, הישנות קודם</item>
+    </plurals>
+    <plurals name="search_day_photos">
+        <item quantity="one">תמונה אחת</item>
+        <item quantity="two">%d תמונות</item>
+        <item quantity="other">%d תמונות</item>
+    </plurals>
+    <plurals name="search_day_towns">
+        <item quantity="one">%1$s · תמונה אחת</item>
+        <item quantity="two">%1$s · %2$d תמונות</item>
+        <item quantity="other">%1$s · %2$d תמונות</item>
+    </plurals>
+    <string name="search_all_places">כל המקומות</string>
     <string name="settings_hidden_title">מוסתר ופרטי</string>
     <string name="settings_hidden_syncing">מעדכן את הספרייה: %1$s מתוך %2$s</string>
     <string name="settings_hidden_row_body">מדיה פרטית, עירום, הקלטות קול, אפליקציות וצילומי מסך לפי אפליקציה</string>

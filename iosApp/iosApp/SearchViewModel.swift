@@ -48,4 +48,7 @@ final class SearchViewModel: ObservableObject {
     func madePrivate(_ items: [MediaItem]) { controller.madePrivate(items: items) }
     /// The results of the sources Moments hides, shown (true) or left out again, for this search only.
     func showHiddenSources(_ show: Bool) { controller.showHiddenSources(show: show) }
+    /// How the matches are listed, and the score the date orders need; both remembered for the next searches.
+    func sort(_ sort: SearchSort) { controller.sort(sort: sort) }
+    func setThreshold(_ threshold: Double) { controller.setThreshold(threshold: threshold) }
 }

@@ -18,7 +18,10 @@ import com.chencohensolution.journal.stories.GeoArea
 import com.chencohensolution.journal.stories.StoriesState
 import com.chencohensolution.journal.search.SearchController
 import com.chencohensolution.journal.search.SearchError
+import com.chencohensolution.journal.search.SearchSort
 import com.chencohensolution.journal.search.SearchStatus
+import com.chencohensolution.journal.settings.JournalSettings
+import com.chencohensolution.journal.settings.KeyValueStore
 import com.chencohensolution.journal.search.SearchUnreachable
 import com.chencohensolution.journal.server.ServerMedia
 import kotlinx.coroutines.CompletableDeferred
@@ -322,5 +325,162 @@ class SearchTest {
         assertEquals(listOf("w"), search.currentState.items.map { it.id })
         assertEquals(2, search.currentState.hiddenBySources)
         search.close()
+    }
+
+    private val hour = 3_600_000L
+
+    /** Taken on day [day] of June 2026 at [hourOf] o'clock, in [point]'s town. */
+    private fun takenAt(id: String, sha: Char, day: Int, hourOf: Int, point: GeoPoint? = null) =
+        item(id, sha(sha)).copy(takenAtMillis = (day * 24L + hourOf) * hour, day = LocalDay(2026, 6, day), location = point)
+
+    private fun store() = object : KeyValueStore {
+        private val values = mutableMapOf<String, String>()
+        override fun getString(key: String): String? = values[key]
+        override fun putString(key: String, value: String?) {
+            if (value == null) values.remove(key) else values[key] = value
+        }
+    }
+
+    @Test
+    fun dateOrdersKeepTheMatchesOverTheThresholdByWhenTheyWereTaken() = runTest {
+        val library = MutableStateFlow(
+            library(
+                takenAt("1", 'a', 1, 20, telAviv), takenAt("2", 'b', 1, 22, jaffa), takenAt("3", 'c', 3, 10, paris),
+                takenAt("4", 'd', 2, 9, telAviv), takenAt("5", 'e', 4, 9, telAviv),
+            ),
+        )
+        // e matched its own text (1); d is under the usual threshold (0.12).
+        val search = SearchController(library, { _, _, _, _, _ ->
+            SearchAnswer(listOf(sha('c'), sha('a'), sha('b'), sha('d'), sha('e')), 5, 5, scores = listOf(0.2, 0.18, 0.13, 0.08, 1.0))
+        }, stories = placed, dispatcher = StandardTestDispatcher(testScheduler))
+        search.search("concerts")
+        advanceUntilIdle()
+
+        // Most relevant, as always: every match, best first, no days.
+        assertEquals(SearchSort.RELEVANT, search.currentState.sort)
+        assertEquals(listOf("3", "1", "2", "4", "5"), search.currentState.items.map { it.id })
+        assertEquals(emptyList(), search.currentState.days)
+        assertEquals(5, search.currentState.matchCount)
+
+        search.sort(SearchSort.NEWEST)
+        advanceUntilIdle()
+        val newest = search.currentState
+        assertEquals(listOf("5", "3", "2", "1"), newest.items.map { it.id })
+        assertEquals(4, newest.matchCount)
+        assertEquals(listOf(LocalDay(2026, 6, 4), LocalDay(2026, 6, 3), LocalDay(2026, 6, 1)), newest.days.map { it.day })
+        assertEquals(listOf(1, 1, 2), newest.days.map { it.count })
+        // The weakest kept, weakest first: where the cut falls.
+        assertEquals(listOf("2", "1", "3", "5"), newest.weakest.map { it.id })
+
+        search.sort(SearchSort.OLDEST)
+        advanceUntilIdle()
+        assertEquals(listOf("1", "2", "3", "5"), search.currentState.items.map { it.id })
+
+        // More: d comes in; Close: only what is over 0.19, and e, which matched its text.
+        search.setThreshold(0.05)
+        advanceUntilIdle()
+        assertEquals(listOf("1", "2", "4", "3", "5"), search.currentState.items.map { it.id })
+        search.setThreshold(0.19)
+        advanceUntilIdle()
+        assertEquals(listOf("3", "5"), search.currentState.items.map { it.id })
+        // Out of range is held at the ends.
+        search.setThreshold(0.9)
+        assertEquals(SearchSort.MAX_THRESHOLD, search.currentState.threshold)
+        search.close()
+    }
+
+    @Test
+    fun aDaysTownsAreInTheOrderTheyWereTakenAndSetsStayOneRow() = runTest {
+        val library = MutableStateFlow(
+            library(takenAt("1", 'a', 1, 20, telAviv), takenAt("2", 'b', 1, 21, telAviv), takenAt("3", 'c', 1, 22, paris), takenAt("4", 'd', 1, 9, jaffa)),
+        )
+        val stories = MutableStateFlow(
+            StoriesState(places = Places.named(mapOf(telAviv to PlaceName(null, "Tel Aviv", "Israel"), jaffa to PlaceName(null, "Jaffa", "Israel"), paris to PlaceName(null, "Paris", "France")))),
+        )
+        // a and b are one set.
+        val search = SearchController(library, { _, _, _, _, _ ->
+            SearchAnswer(listOf(sha('a'), sha('c'), sha('b'), sha('d')), 4, 4, sets = listOf(0, 1, 0, 2), moments = listOf(0, 0, 0, 0), scores = listOf(0.2, 0.2, 0.2, 0.2))
+        }, stories = stories, dispatcher = StandardTestDispatcher(testScheduler))
+        search.search("concerts")
+        search.sort(SearchSort.NEWEST)
+        advanceUntilIdle()
+        val day = search.currentState.days.single()
+        assertEquals(listOf("Jaffa", "Tel Aviv", "Paris"), day.towns)
+        assertEquals(4, day.count)
+        assertEquals(listOf(listOf("3"), listOf("2", "1"), listOf("4")), day.sets.map { set -> set.map { it.id } })
+        search.close()
+    }
+
+    @Test
+    fun dateOrdersArePagedHere() = runTest {
+        val library = MutableStateFlow(library(*(1..5).map { takenAt("$it", 'a' + it, it, 12) }.toTypedArray()))
+        var asks = 0
+        val search = SearchController(library, { _, _, _, _, _ ->
+            asks++
+            SearchAnswer((1..5).map { sha('a' + it) }, 5, 5, scores = List(5) { 0.2 })
+        }, pageSize = { 2 }, dispatcher = StandardTestDispatcher(testScheduler))
+        search.search("concerts")
+        search.sort(SearchSort.OLDEST)
+        advanceUntilIdle()
+        assertEquals(listOf("1", "2"), search.currentState.items.map { it.id })
+        assertEquals(5, search.currentState.matchCount)
+        assertTrue(search.currentState.canLoadMore)
+        search.loadMore()
+        search.loadMore()
+        advanceUntilIdle()
+        assertEquals(listOf("1", "2", "3", "4", "5"), search.currentState.items.map { it.id })
+        assertTrue(!search.currentState.canLoadMore)
+        assertEquals(1, asks)
+        search.close()
+    }
+
+    @Test
+    fun aTownInADateOrderNarrowsHereAndMostRelevantAsksTheServerForIt() = runTest {
+        val library = MutableStateFlow(library(takenAt("1", 'a', 1, 9, telAviv), takenAt("2", 'b', 2, 9, paris), takenAt("3", 'c', 3, 9, telAviv)))
+        val asked = mutableListOf<GeoArea?>()
+        val search = SearchController(library, { _, _, _, _, area ->
+            asked += area
+            SearchAnswer(listOf(sha('a'), sha('b'), sha('c')), 3, 3, scores = listOf(0.2, 0.2, 0.2))
+        }, stories = placed, dispatcher = StandardTestDispatcher(testScheduler))
+        search.search("concerts")
+        search.sort(SearchSort.NEWEST)
+        advanceUntilIdle()
+        search.chooseTown("Tel Aviv")
+        advanceUntilIdle()
+        assertEquals(1, asked.size)
+        assertEquals(listOf("3", "1"), search.currentState.items.map { it.id })
+        assertEquals(2, search.currentState.matchCount)
+        // The chips still count every town.
+        assertEquals(listOf(SearchChip("Tel Aviv", 2), SearchChip("Paris", 1)), search.currentState.townChips)
+
+        search.sort(SearchSort.RELEVANT)
+        advanceUntilIdle()
+        assertEquals(2, asked.size)
+        assertTrue(asked.last() != null)
+        assertEquals("Tel Aviv", search.currentState.town)
+        search.close()
+    }
+
+    @Test
+    fun theOrderAndThresholdAreRemembered() = runTest {
+        val settings = JournalSettings(store())
+        val library = MutableStateFlow(library(item("1", sha('a'))))
+        val answer = { _: String, _: Int, _: Int, _: List<Int>?, _: GeoArea? -> SearchAnswer(listOf(sha('a')), 1, 1) }
+        val first = SearchController(library, answer, remembered = settings, dispatcher = StandardTestDispatcher(testScheduler))
+        assertEquals(SearchSort.RELEVANT, first.currentState.sort)
+        assertEquals(SearchSort.DEFAULT_THRESHOLD, first.currentState.threshold)
+        first.sort(SearchSort.OLDEST)
+        first.setThreshold(0.2)
+        first.search("dog")
+        // A new search keeps them.
+        assertEquals(SearchSort.OLDEST, first.currentState.sort)
+        first.close()
+
+        val next = SearchController(library, answer, remembered = settings, dispatcher = StandardTestDispatcher(testScheduler))
+        assertEquals(SearchSort.OLDEST, next.currentState.sort)
+        assertEquals(0.2, next.currentState.threshold)
+        next.clear()
+        assertEquals(SearchSort.OLDEST, next.currentState.sort)
+        next.close()
     }
 }

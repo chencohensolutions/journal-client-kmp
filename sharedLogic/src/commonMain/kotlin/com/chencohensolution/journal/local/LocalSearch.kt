@@ -83,12 +83,15 @@ internal class LocalSearchApi(
         val keep: (String) -> Boolean = { sha -> sha in shown.taken }
         val wanted = offset + limit
         val hits = ArrayList<String>()
+        val scores = ArrayList<Double>()
         val inText = HashSet<String>()
         val texts = indexes.table(PhoneIndexKind.TEXT) as? TextTable
         if (texts != null) {
             for (sha in ocrFind(wordsOf(texts), text, keep)) {
                 if (hits.size == wanted) break
                 hits += sha
+                // A photo whose own text has the words scores 1, as on the server.
+                scores += 1.0
                 inText += sha
             }
         }
@@ -99,7 +102,10 @@ internal class LocalSearchApi(
             val tokens = tokenizer(model)?.textTokens(text) ?: throw SearchUnreachable("The search model's tokenizer is missing")
             val query = encoding.encode(model, tokens) ?: throw SearchUnreachable("The search model couldn't run")
             unit(query)
-            vectors.top(query, wanted - hits.size) { it !in inText && keep(it) }.forEach { hits += it.first }
+            vectors.top(query, wanted - hits.size) { it !in inText && keep(it) }.forEach {
+                hits += it.first
+                scores += it.second.toDouble()
+            }
         } else if (texts == null) {
             throw SearchUnreachable("Nothing to search with on this phone")
         }
@@ -117,6 +123,7 @@ internal class LocalSearchApi(
             sets = sets.drop(offset),
             moments = moments.drop(offset),
             onPhone = true,
+            scores = scores.drop(offset),
         )
     }
 

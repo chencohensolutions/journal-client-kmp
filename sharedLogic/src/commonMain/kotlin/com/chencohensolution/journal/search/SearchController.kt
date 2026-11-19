@@ -13,6 +13,7 @@ import com.chencohensolution.journal.server.ServerErrorCode
 import com.chencohensolution.journal.server.firstServerError
 import com.chencohensolution.journal.graphql.type.GeoAreaInput
 import com.chencohensolution.journal.library.LibraryState
+import com.chencohensolution.journal.library.LocalDay
 import com.chencohensolution.journal.library.MediaItem
 import com.chencohensolution.journal.network.describe
 import com.chencohensolution.journal.people.Person
@@ -87,6 +88,40 @@ internal interface SearchWarmUp {
     suspend fun waitWhileLoading(): SearchReadiness
 }
 
+/**
+ * How the matches are listed (the Sort sheet, hen, Nov 19, 2026): [RELEVANT] every match, the closest first, as search
+ * always did; [NEWEST] and [OLDEST] only the matches at or over a threshold ("How close a match"), by when they were
+ * taken.
+ */
+enum class SearchSort {
+    RELEVANT,
+    NEWEST,
+    OLDEST;
+
+    /** Listed by date, cut at the threshold. */
+    val byDate: Boolean get() = this != RELEVANT
+
+    companion object {
+        /**
+         * The threshold's range and where it starts: the server's score is a cosine similarity, a good match often 0.1
+         * to 0.2 (a photo whose own text has the words scores 1, so it always stays).
+         */
+        const val MIN_THRESHOLD = 0.05
+        const val MAX_THRESHOLD = 0.25
+        const val DEFAULT_THRESHOLD = 0.12
+        val THRESHOLDS = MIN_THRESHOLD..MAX_THRESHOLD
+
+        /** How many of the weakest matches a cut keeps the Sort sheet shows. */
+        const val WEAKEST = 4
+    }
+}
+
+/**
+ * A day of the matches in a date order: its sets as rows, newest or oldest first as the order goes, and the towns its
+ * photos were taken in, in the order they were ("Tel Aviv → Jaffa · 6 photos").
+ */
+data class SearchDay(val day: LocalDay, val towns: List<String>, val count: Int, val sets: List<List<MediaItem>>)
+
 /** A year ("2025") or town ("Paris") the matches are in, with how many of them. */
 data class SearchChip(val value: String, val count: Int)
 
@@ -132,6 +167,21 @@ data class SearchState(
     val hiddenBySources: Int = 0,
     /** This search shows the matches in hidden sources too ([SearchController.showHiddenSources]). */
     val showingHidden: Boolean = false,
+    /** How the matches are listed ([SearchController.sort]); remembered across searches. */
+    val sort: SearchSort = SearchSort.RELEVANT,
+    /** The score a match needs in the date orders ([SearchController.setThreshold]); remembered across searches. */
+    val threshold: Double = SearchSort.DEFAULT_THRESHOLD,
+    /**
+     * How many matches there are as listed, of the chosen year and town: in the date orders all those over the
+     * threshold (not only the pages shown), in Most relevant those of the first answer. "Newest first · 29".
+     */
+    val matchCount: Int = 0,
+    /** The weakest matches a date order keeps, weakest first ([SearchSort.WEAKEST]): where the cut falls. */
+    val weakest: List<MediaItem> = emptyList(),
+    /** In the date orders, [sets] by day with each day's towns; empty in Most relevant. */
+    val days: List<SearchDay> = emptyList(),
+    /** How many matches of the chosen year there are in every place: "All places 48" before the town chips. */
+    val allPlaces: Int = 0,
 ) {
     /** The server hasn't read every file yet, so some can't be found. */
     val stillReading: Boolean get() = status == SearchStatus.DONE && indexed < total
@@ -154,15 +204,23 @@ internal data class SearchAnswer(
     val moments: List<Int> = emptyList(),
     /** Answered by this phone because the server couldn't be reached ("Searched on this phone"). */
     val onPhone: Boolean = false,
+    /** Each hit's score (cosine similarity; 1 for a match of the photo's own text); empty or short: unknown, taken as 1. */
+    val scores: List<Double> = emptyList(),
 ) {
     val size: Int get() = sha256s.size
 
+    /** The score of hit [i]; 1 when unknown (an older server, people without words), so it is never cut. */
+    fun scoreOf(i: Int): Double = scores.getOrNull(i) ?: 1.0
+
     /** The first [n] hits. */
-    fun take(n: Int) = copy(sha256s = sha256s.take(n), sets = sets.take(n), moments = moments.take(n))
+    fun take(n: Int) = copy(sha256s = sha256s.take(n), sets = sets.take(n), moments = moments.take(n), scores = scores.take(n))
 
     /** [next] (the page after these) added at the end, with its counts. */
-    operator fun plus(next: SearchAnswer) =
-        SearchAnswer(sha256s + next.sha256s, next.indexed, next.total, sets + next.sets, moments + next.moments, onPhone || next.onPhone)
+    operator fun plus(next: SearchAnswer) = SearchAnswer(
+        sha256s + next.sha256s, next.indexed, next.total, sets + next.sets, moments + next.moments, onPhone || next.onPhone,
+        // Scores only while both have them all, so a hit never takes another's.
+        if (scores.size == size && next.scores.size == next.size) scores + next.scores else emptyList(),
+    )
 }
 
 /**
@@ -210,7 +268,10 @@ internal class ApolloSearchApi(
             }
             firstServerError(response.errors)?.let { throw it }
             val found = response.data?.searchMedia ?: throw IllegalStateException("No answer")
-            SearchAnswer(found.hits.map { it.media.sha256 }, found.indexed, found.total, found.hits.map { it.set }, found.hits.map { it.moment })
+            SearchAnswer(
+                found.hits.map { it.media.sha256 }, found.indexed, found.total, found.hits.map { it.set }, found.hits.map { it.moment },
+                scores = found.hits.map { it.score },
+            )
         } ?: throw SearchUnreachable("This device isn't registered")
     }
 }
@@ -246,6 +307,8 @@ internal class ApolloSearchWarmUp(private val http: ServerHttp) : SearchWarmUp {
  * photo made private, a town named) the same answers are shown again through them. A new request replaces one running.
  * Search follows Show in the app (the owner, Oct 27, 2026): what its sources hide, as [stories]' shownSources say, is
  * left out and counted ([SearchState.hiddenBySources]) until [showHiddenSources] shows it for this search.
+ * [sort] lists the matches by date instead (hen, Nov 19, 2026): the first answer's matches at or over [setThreshold]'s
+ * score, by when they were taken, paged here, with their days; the year and town then narrow them here too.
  */
 class SearchController internal constructor(
     private val library: StateFlow<LibraryState>,
@@ -276,6 +339,8 @@ class SearchController internal constructor(
     private val townArea: (suspend (town: String, places: Places) -> GeoArea?)? = null,
     /** "Show private media": while off, what [madePrivate] names leaves the results at once. */
     private val showsPrivate: () -> Boolean = { true },
+    /** Where the order and threshold are remembered; null (tests): Most relevant at the usual threshold, not kept. */
+    private val remembered: JournalSettings? = null,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var searchJob: Job? = null
@@ -305,7 +370,16 @@ class SearchController internal constructor(
     /** This search shows what Show in the app hides too ([showHiddenSources]); a new search hides it again. */
     private var showHidden = false
 
-    private val _state = MutableStateFlow(SearchState())
+    /** How many photos the date orders show so far: a page, and a page more with each [loadMore]. */
+    private var dateShown = 0
+
+    /**
+     * A year or town was chosen while listed by date, which narrows here without asking the server: Most relevant asks
+     * it for that year or town when chosen again.
+     */
+    private var choiceNotAsked = false
+
+    private val _state = MutableStateFlow(fresh())
     val state: StateFlow<SearchState> = _state.asStateFlow()
 
     /** Same as `state.value`, typed for Swift (generic StateFlow values are erased to `Any`). */
@@ -322,10 +396,12 @@ class SearchController internal constructor(
         val query = text.trim()
         val people = _state.value.people
         if (query.isEmpty() && people.isEmpty()) return clear()
-        _state.update { SearchState(query = query, status = SearchStatus.SEARCHING, people = people) }
+        _state.update { fresh().copy(query = query, status = SearchStatus.SEARCHING, people = people) }
         years = null
         area = null
         showHidden = false
+        choiceNotAsked = false
+        dateShown = pageSize()
         fetch(limit = CANDIDATES) { answer ->
             firstAnswer = answer
             show(answer, full = answer.size == CANDIDATES)
@@ -374,12 +450,46 @@ class SearchController internal constructor(
     fun chooseTown(town: String?) = choose(_state.value.year, town)
 
     /**
+     * Lists the matches as [sort] says, and remembers it for the next searches. Back to Most relevant after a year or
+     * town was chosen in a date order, the server is asked for the best of it.
+     */
+    fun sort(sort: SearchSort) {
+        val current = _state.value
+        if (current.sort == sort) return
+        remembered?.searchSort = sort
+        _state.update { it.copy(sort = sort) }
+        dateShown = pageSize()
+        if (!sort.byDate && choiceNotAsked) {
+            choiceNotAsked = false
+            return choose(current.year, current.town)
+        }
+        refresh()
+    }
+
+    /**
+     * The score a match needs in the date orders, within [SearchSort.THRESHOLDS] (the slider: lower keeps more);
+     * remembered for the next searches.
+     */
+    fun setThreshold(threshold: Double) {
+        val value = threshold.coerceIn(SearchSort.THRESHOLDS)
+        if (value == _state.value.threshold) return
+        remembered?.searchThreshold = value
+        _state.update { it.copy(threshold = value) }
+        refresh()
+    }
+
+    /**
      * The next page: from what was fetched already, or from the server once that is all shown. Nothing while a page
-     * is coming, or when there are no more.
+     * is coming, or when there are no more. In the date orders, the next page of what the cut keeps.
      */
     fun loadMore() {
         val current = _state.value
         if (current.status != SearchStatus.DONE || current.loadingMore || !current.canLoadMore) return
+        if (current.sort.byDate) {
+            dateShown += pageSize()
+            refresh()
+            return
+        }
         val shown = pageEnds.lastOrNull() ?: 0
         if (shown < loaded.size) {
             pageEnds = pageEnds + minOf(loaded.size, shown + pageSize())
@@ -450,8 +560,15 @@ class SearchController internal constructor(
         pageEnds = emptyList()
         serverHasMore = false
         showHidden = false
-        _state.value = SearchState()
+        choiceNotAsked = false
+        _state.value = fresh()
     }
+
+    /** Nothing searched, in the order and at the threshold remembered. */
+    private fun fresh() = SearchState(
+        sort = remembered?.searchSort ?: SearchSort.RELEVANT,
+        threshold = remembered?.searchThreshold ?: SearchSort.DEFAULT_THRESHOLD,
+    )
 
     /** Callback-style observation for Swift; Android collects [state] directly. */
     fun observe(onChange: (SearchState) -> Unit): ObservationHandle {
@@ -465,6 +582,13 @@ class SearchController internal constructor(
         val current = _state.value
         if (current.query.isEmpty() || firstAnswer.size == 0 || current.people.isNotEmpty()) return
         _state.update { it.copy(year = year, town = town) }
+        if (current.sort.byDate) {
+            // The first answer is narrowed here; the server is asked once Most relevant is chosen again.
+            choiceNotAsked = true
+            dateShown = pageSize()
+            refresh()
+            return
+        }
         years = year?.let(::listOf)
         // From the database the town's box is read when the page is asked for (fetch).
         area = if (townArea == null) town?.let(::areaOf) else null
@@ -566,9 +690,16 @@ class SearchController internal constructor(
         val town = current.town
         val sources = stories?.value?.shownSources
         val hides: (MediaItem) -> Boolean = { sources != null && !sources.shows(it) }
-        // A town is asked for as a box, which can reach into the next town.
-        val (sets, hiddenBySources) = grouped(resolve, hides) { town == null || townOf(it) == town }
         val matches = resolve(firstAnswer.sha256s).filter { showHidden || !hides(it) }
+        val chosen: (MediaItem) -> Boolean = { (town == null || townOf(it) == town) && (current.year == null || it.day.year == current.year) }
+        // A town is asked for as a box, which can reach into the next town.
+        val listed = if (current.sort.byDate) {
+            byDate(resolve, hides, chosen, current.threshold, newest = current.sort == SearchSort.NEWEST)
+        } else {
+            val (sets, hidden) = grouped(resolve, hides) { town == null || townOf(it) == town }
+            Listed(sets, emptyList(), hidden, matches.count(chosen), emptyList(), canLoadMore = false)
+        }
+        val (sets, days, hiddenBySources) = listed
         val yearChips = matches.filter { town == null || townOf(it) == town }
             .groupingBy { it.day.year }.eachCount()
             .entries.sortedByDescending { it.key }.map { SearchChip(it.key.toString(), it.value) }
@@ -576,13 +707,82 @@ class SearchController internal constructor(
             .mapNotNull(::townOf).groupingBy { it }.eachCount()
             .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .map { SearchChip(it.key, it.value) }
-        val canLoadMore = (pageEnds.lastOrNull() ?: 0) < loaded.size || (serverHasMore && loaded.size < MAX_DEPTH)
+        val canLoadMore = if (current.sort.byDate) {
+            listed.canLoadMore
+        } else {
+            (pageEnds.lastOrNull() ?: 0) < loaded.size || (serverHasMore && loaded.size < MAX_DEPTH)
+        }
         _state.update {
             it.copy(
                 items = sets.flatten(), sets = sets, yearChips = yearChips, townChips = townChips, canLoadMore = canLoadMore,
-                hiddenBySources = hiddenBySources, showingHidden = showHidden,
+                hiddenBySources = hiddenBySources, showingHidden = showHidden, matchCount = listed.count,
+                weakest = listed.weakest, days = days, allPlaces = matches.count { m -> current.year == null || m.day.year == current.year },
             )
         }
+    }
+
+    /** What [present] lists: the rows shown, by day in a date order, and the counts. */
+    private data class Listed(
+        val sets: List<List<MediaItem>>,
+        val days: List<SearchDay>,
+        val hidden: Int,
+        val count: Int,
+        val weakest: List<MediaItem>,
+        val canLoadMore: Boolean,
+    )
+
+    /**
+     * The first answer's matches at or over [threshold] ([keep] ones only, those the sources hide counted and left out
+     * unless [showHidden]), by when they were taken ([newest] first or oldest first), [dateShown] photos of them: each
+     * set one row in the same order, the rows by day.
+     */
+    private fun byDate(
+        resolve: (List<String>) -> List<MediaItem>,
+        hides: (MediaItem) -> Boolean,
+        keep: (MediaItem) -> Boolean,
+        threshold: Double,
+        newest: Boolean,
+    ): Listed {
+        class Kept(val item: MediaItem, val set: Int, val score: Double)
+        val kept = ArrayList<Kept>()
+        val seen = HashSet<String>()
+        var hidden = 0
+        for (i in 0 until firstAnswer.size) {
+            val score = firstAnswer.scoreOf(i)
+            if (score < threshold) continue
+            val item = resolve(listOf(firstAnswer.sha256s[i])).firstOrNull()?.takeIf(keep) ?: continue
+            if (!seen.add(item.id)) continue
+            if (hides(item)) {
+                hidden++
+                if (!showHidden) continue
+            }
+            kept += Kept(item, firstAnswer.sets.getOrNull(i) ?: (-1 - i), score)
+        }
+        val oldestFirst = compareBy<MediaItem>({ it.takenAtMillis }, { it.id })
+        val order = if (newest) oldestFirst.reversed() else oldestFirst
+        val rows = kept.groupBy({ it.set }, { it.item }).values
+            .map { it.sortedWith(order) }
+            .sortedWith(compareBy(order) { it.first() })
+        var count = 0
+        val shown = rows.takeWhile { row -> (count < dateShown).also { count += row.size } }
+        val days = ArrayList<SearchDay>()
+        for ((day, sets) in shown.groupConsecutive { it.first().day }) {
+            val towns = sets.flatten().sortedWith(oldestFirst).mapNotNull(::townOf)
+                .fold(mutableListOf<String>()) { list, town -> list.also { if (it.lastOrNull() != town) it += town } }
+            days += SearchDay(day, towns, sets.sumOf { it.size }, sets)
+        }
+        val weakest = kept.sortedWith(compareBy<Kept>({ it.score }, { it.item.id })).take(SearchSort.WEAKEST).map { it.item }
+        return Listed(shown, days, hidden, kept.size, weakest, canLoadMore = shown.size < rows.size)
+    }
+
+    /** Runs of neighbours with the same [key], in order. */
+    private fun <T, K> List<T>.groupConsecutive(key: (T) -> K): List<Pair<K, List<T>>> {
+        val runs = ArrayList<Pair<K, MutableList<T>>>()
+        for (element in this) {
+            val k = key(element)
+            if (runs.lastOrNull()?.first == k) runs.last().second.add(element) else runs += k to mutableListOf(element)
+        }
+        return runs
     }
 
     /**

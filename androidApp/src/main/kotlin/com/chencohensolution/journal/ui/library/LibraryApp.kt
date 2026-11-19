@@ -406,6 +406,8 @@ private fun LibraryScreens(
                                             madePrivate = search::madePrivate,
                                             madeTucked = search::madeTucked,
                                             showHiddenSources = search::showHiddenSources,
+                                            sort = search::sort,
+                                            setThreshold = search::setThreshold,
                                         ),
                                     ),
                                     landing = landingHere,
