@@ -356,7 +356,7 @@ internal fun LazyListScope.feedItems(
                 val note = notes[row.item.id]
                 val picked = if (picking) row.item.id in selection!!.keys else null
                 // A moment made by hand stands in the storyline by its cover (asked Nov 10, 2026): its name over it, its
-                // description under it, "⧉ 36" in the corner, and a tap opens the whole moment.
+                // description under it, and a tap opens the whole moment.
                 val moment = row.moment
                 // Its name as Moments shows it (asked Nov 10, 2026): not bold, its days under it.
                 val momentName = moment?.name
@@ -380,17 +380,7 @@ internal fun LazyListScope.feedItems(
                             }),
                     )
                     PickMark(picked, Modifier.align(Alignment.TopStart).padding(10.dp))
-                    if (moment != null) {
-                        Row(
-                            Modifier.align(Alignment.TopEnd).padding(10.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(LibraryIcons.Stack, null, tint = Color.White, modifier = Modifier.size(13.dp))
-                            Text("${row.momentPhotos + row.momentVideos}", color = Color.White, style = LibraryType.Caption, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
+                    // No "⧉ 36" over the cover (removed Nov 19, 2026): the count is in the line over it.
                 }
                 PhotoNoteText(note?.caption)
             }
