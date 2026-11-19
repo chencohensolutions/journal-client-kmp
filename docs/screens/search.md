@@ -149,4 +149,4 @@ Android only; iOS not built yet ([ios-todo.md](../ios-todo.md)). The rules are i
 
 ## Design history
 
-- [Results by date, sorting and a match threshold](../ux-history/search/2026-11-19-sort.md) (Nov 19, 2026, iOS lab): a3 picked, the Sort sheet with a slider.
+- [Results by date, sorting and a match threshold](../ux-history/search/2026-11-19-sort.md) (Nov 19, 2026, iOS lab): a3 picked, the Sort sheet with a slider; promoted in c13accd4.
