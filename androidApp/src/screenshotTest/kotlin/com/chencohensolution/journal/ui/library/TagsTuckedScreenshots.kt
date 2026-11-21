@@ -103,3 +103,33 @@ fun TuckedTagPage() {
     val stories = PreviewData.dogPage()
     Tags(stories) { TagScreen("Dog", stories, onOpenItem = {}, onBack = {}) }
 }
+
+// Round 2 (Nov 21, 2026): Delete tag, and the storyline's month pill.
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Preview(name = "light-he", locale = "iw", device = PHONE, showBackground = true)
+@Composable
+fun TagDeleteConfirm() {
+    val stories = PreviewData.tagStories()
+    Tags(stories) { TagsScreen(stories, onOpenTag = {}, onBack = {}, initialMenu = "Dog", initialConfirm = true) }
+}
+
+@PreviewTest
+@Preview(name = "light", device = PHONE, showBackground = true)
+@Preview(name = "dark", device = PHONE, showBackground = true, uiMode = UI_MODE_NIGHT_YES)
+@Preview(name = "light-he", locale = "iw", device = PHONE, showBackground = true)
+@Composable
+fun StorylineMonthPill() {
+    val stories = PreviewData.feedStories
+    Tags(stories) { JournalHomeScreen(PreviewData.library, stories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.STORYLINE) }
+}
+
+@PreviewTest
+@Preview(name = "revealed-he", locale = "iw", device = TALL, showBackground = true)
+@Composable
+fun DayWithDogRevealedHebrew() {
+    val stories = PreviewData.tagStories(revealed = true)
+    Tags(stories) { JournalHomeScreen(PreviewData.library, stories, ServerHealth.OK, HomeActions(), initialTab = HomeTab.MOMENTS) }
+}

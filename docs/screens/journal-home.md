@@ -25,7 +25,8 @@ Photos fill the screen on the page background (light or dark with the system); t
     [photo-access.md](photo-access.md).
   - **Journal can see N photos and videos · Change**: limited access. Opens the system picker to change the
     selection.
-- **Storyline:** every photo or video with a title or a paragraph (see the [note editor](viewer.md)), one each and
+- **Storyline:** the month pill of Moments above the tabs (Nov 21, 2026; Android): its days with entries, see
+  [moments.md](moments.md#going-to-a-date-oct-24-2026). Every photo or video with a title or a paragraph (see the [note editor](viewer.md)), one each and
   never a set, newest first by the date taken. A small day heading comes before each new day; then (no title since Nov 10, 2026)
   the photo full width with its Moments crop, and the paragraph under it (4 lines, then **more**), as in
   Moments. It shows photos of every source, also those Show in the app hides. Writing about a photo puts it here; to

@@ -63,8 +63,12 @@ internal fun TagsScreen(
     onGoToMoments: (() -> Unit)? = null,
     /** Tucks a tag away (true) or brings it back. */
     onSetTucked: (tag: String, on: Boolean) -> Unit = { _, _ -> },
+    /** Delete tag, once confirmed: it comes off every photo. */
+    onDelete: (tag: String) -> Unit = {},
     /** Previews: the ⋯ sheet of this tag open. */
     initialMenu: String? = null,
+    /** Previews: its Delete tag confirmation open. */
+    initialConfirm: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var menuFor by rememberSaveable { mutableStateOf(initialMenu) }
@@ -121,7 +125,12 @@ internal fun TagsScreen(
                     menuFor = null
                     onSetTucked(tag.name, on)
                 },
+                onDelete = {
+                    menuFor = null
+                    onDelete(tag.name)
+                },
                 onDismiss = { menuFor = null },
+                initialConfirm = initialConfirm,
             )
         }
     }
@@ -150,9 +159,30 @@ private fun TagRow(tag: TagSummary, onOpen: () -> Unit, onMenu: () -> Unit) {
     }
 }
 
-/** A tag's sheet: its name and count, then Tuck away this tag (with what that does) or Bring back. No rename or merge. */
+/**
+ * A tag's sheet: its name and count, then Tuck away this tag (with what that does) or Bring back, and Delete tag (red,
+ * confirmed first). No rename or merge.
+ */
 @Composable
-private fun TagMenuSheet(tag: TagSummary, onTuck: (Boolean) -> Unit, onDismiss: () -> Unit) {
+private fun TagMenuSheet(
+    tag: TagSummary,
+    onTuck: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+    initialConfirm: Boolean = false,
+) {
+    var confirming by remember { mutableStateOf(initialConfirm) }
+    if (confirming) {
+        ConfirmSheet(
+            title = stringResource(R.string.tag_delete_title, tag.name),
+            body = pluralStringResource(R.plurals.tag_delete_body, tag.count, tag.count),
+            confirmLabel = stringResource(R.string.tag_delete_confirm),
+            destructive = true,
+            onConfirm = onDelete,
+            onDismiss = onDismiss,
+        )
+        return
+    }
     PageSheet(onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Row(
@@ -189,6 +219,17 @@ private fun TagMenuSheet(tag: TagSummary, onTuck: (Boolean) -> Unit, onDismiss: 
                     )
                 }
             }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { confirming = true }
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(LibraryIcons.Trash, null, tint = LibraryColors.Error, modifier = Modifier.size(24.dp))
+                Text(stringResource(R.string.tag_delete), color = LibraryColors.Error, style = LibraryType.RowTitle, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -206,8 +247,11 @@ internal fun TagScreen(
     onBack: () -> Unit,
     /** The photo the viewer above shows: its tile is scrolled into view for the photo to land on when it closes. */
     landing: String? = null,
+    /** Delete tag from its ⋯, once confirmed; the page then closes. */
+    onDelete: (tag: String) -> Unit = {},
 ) {
     val tuckedActions = LocalTucked.current
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
     val tucked = stories.isTagTucked(tag)
     val lock = rememberTuckedLock()
     // A tucked tag's photos show once the phone's lock was passed this session.
@@ -255,8 +299,24 @@ internal fun TagScreen(
                     dayGrids(days, onOpen = onOpenItem)
                 }
             }
-            TitleBar(tag, onBack, Modifier.align(Alignment.TopCenter))
+            TitleBar(tag, onBack, Modifier.align(Alignment.TopCenter), onMenu = { menuOpen = true })
         }
+    }
+    val summary = stories.tags.firstOrNull { it.name.equals(tag, ignoreCase = true) }
+    if (menuOpen && summary != null) {
+        TagMenuSheet(
+            summary,
+            onTuck = { on ->
+                menuOpen = false
+                tuckedActions.setTagTucked(summary.name, on)
+            },
+            onDelete = {
+                menuOpen = false
+                onDelete(summary.name)
+                onBack()
+            },
+            onDismiss = { menuOpen = false },
+        )
     }
 }
 
@@ -289,7 +349,14 @@ private fun TuckedTagCard(tag: String, count: Int, everywhere: Boolean, onShowEv
 
 /** A page's title row: back, the title, and an optional [caption] under it. */
 @Composable
-internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, caption: String? = null) {
+internal fun TitleBar(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    caption: String? = null,
+    /** A ⋯ at the end (a tag's page): its sheet. */
+    onMenu: (() -> Unit)? = null,
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -301,7 +368,7 @@ internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mo
         IconButton(onClick = onBack) {
             Icon(LibraryIcons.Back, stringResource(R.string.library_back), tint = LibraryColors.OnBackground)
         }
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(
                 title,
                 color = LibraryColors.OnBackground,
@@ -309,6 +376,9 @@ internal fun TitleBar(title: String, onBack: () -> Unit, modifier: Modifier = Mo
                 modifier = Modifier.semantics { heading() },
             )
             if (caption != null) Text(caption, color = LibraryColors.Muted, style = LibraryType.Caption)
+        }
+        if (onMenu != null) IconButton(onClick = onMenu) {
+            Icon(LibraryIcons.More, stringResource(R.string.tag_menu, title), tint = LibraryColors.OnBackground)
         }
     }
 }

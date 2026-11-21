@@ -222,6 +222,43 @@ class TuckedTagsTest {
         assertTrue(rows(stories.currentState.feed).first().tuckedTags.isEmpty())
     }
 
+    @Test
+    fun deletingATagTakesItOffEveryPhotoAndOutOfTheTuckedList() = runTest {
+        val stories = controller(this)
+        advanceUntilIdle()
+        stories.addTag(listOf("d1", "d2", "c"), "Dog")
+        stories.addTag(listOf("c"), "Beach")
+        stories.setTagTucked("Dog", true)
+        advanceUntilIdle()
+        assertEquals(listOf("a"), rows(stories.currentState.feed).first().items.map { it.id }, "Dog's photos are out")
+
+        // A photo's chip ×: the tag sheet unchecks it for that photo.
+        stories.removeTag(listOf("d2"), "dog")
+        advanceUntilIdle()
+        val coverage = stories.currentState.tagCounts(listOf("d1", "d2")).first { it.tag == "Dog" }
+        assertTrue(coverage.some && !coverage.all)
+
+        assertEquals(2, stories.deleteTag("DOG"))
+        advanceUntilIdle()
+        val state = stories.currentState
+        assertTrue(state.tags.none { it.name == "Dog" })
+        assertEquals(listOf("Beach"), state.note("c")?.tags)
+        assertNull(state.note("d1"), "a note left empty is deleted")
+        assertTrue(state.tuckedTags.isEmpty())
+        assertEquals(4, rows(state.feed).first().items.size, "the photos stay, and show again")
+        assertEquals(0, stories.deleteTag("Dog"))
+    }
+
+    @Test
+    fun theStorylineTimelineHasOnlyDaysWithWriting() {
+        val days = storylineDays(library, TuckedSession.NONE, tagging(TuckedSession.NONE, "Dog"))
+        // Day 1's only photo is tucked by Dog: nothing to go to.
+        val timeline = com.chencohensolution.journal.stories.FeedTimeline.ofStoryline(days)
+        assertEquals(listOf(DAY_2), timeline.months.flatMap { m -> m.days.map { it.day } })
+        assertEquals(3, timeline.months.first().days.first().count)
+        assertEquals("story-day-$DAY_2", timeline.landing(0).sectionKey)
+    }
+
     private fun controller(scope: TestScope): StoriesController {
         val dispatcher = StandardTestDispatcher(scope.testScheduler)
         val items = listOf(shot("a", DAY_2, 20), shot("d1", DAY_2, 19), shot("d2", DAY_2, 17), shot("c", DAY_2, 14))

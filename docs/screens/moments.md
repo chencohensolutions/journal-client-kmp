@@ -201,7 +201,13 @@ https://claude.ai/artifact/GVKv6SowaqUXAdY8uJUvTE). Android; iOS not built yet (
 
 A **month pill** above the tabs, "‹ 24 October 2026 ›", says which day the top of the feed is in (with its month and
 year, since Oct 24, 2026; just the month while it goes to another month, and in the ruler), and goes to another year,
-month or day with one finger. Android and iOS.
+month or day with one finger. Android and iOS. The storyline has the same pill (Nov 21, 2026; Android, iOS to do):
+it lists only the days with storyline entries (`StoriesState.storylineTimeline`, `FeedTimeline.ofStoryline`; a day of
+only tucked-away photos is left out), names the day whose heading is at the top, and goes straight to a day's heading
+(the storyline is all in the list, nothing to read first).
+
+Tucked marks (Nov 21, 2026): on a set's photo the set's count and the photo's tucked mark ("⧉ 2" then the eye with
+"Dog") share its top corner side by side, in the language's order, instead of overlapping.
 
 - **The arrows** go to the month with photos before or after (months without photos are skipped). Held, they keep
   going: after 0.4 s, then every 0.25 s, faster and faster. At the oldest or newest month that arrow is dimmed.

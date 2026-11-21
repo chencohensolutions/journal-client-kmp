@@ -202,7 +202,7 @@ internal object PreviewData {
         sounds = labSounds.associateBy { it.sha256 },
         // Built and read: Moments draws its rows rather than its spinner.
         ready = true,
-    )
+    ).let { it.copy(storylineTimeline = com.chencohensolution.journal.stories.FeedTimeline.ofStoryline(it.storylineDays)) }
 
     /**
      * Tucked away (Nov 8, 2026): Today has 3 photos tucked away, its pill says so; with [revealed], they show in place
@@ -250,7 +250,8 @@ internal object PreviewData {
             today.copy(tucked = 1, tuckedTags = listOf(com.chencohensolution.journal.stories.TuckedTagCount("Dog", dogs.size, false)))
         } else {
             today.copy(
-                moments = (today.moments + FeedMoment(MediaSource.CAMERA, dogs.map { FeedBlock.Single(it) }, "Meir Park")).sortedByDescending { it.startMillis },
+                // Two of them a set: its count and the Dog mark side by side in its corner.
+                moments = (today.moments + FeedMoment(MediaSource.CAMERA, listOf(FeedBlock.Similar(dogs.take(2)), FeedBlock.Single(dogs[2])), "Meir Park")).sortedByDescending { it.startMillis },
                 tucked = 1,
                 tuckedTags = listOf(com.chencohensolution.journal.stories.TuckedTagCount("Dog", dogs.size, true)),
             )

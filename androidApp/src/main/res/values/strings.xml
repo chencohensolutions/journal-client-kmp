@@ -1299,4 +1299,13 @@
     <string name="tag_unlock">Unlock</string>
     <string name="tucked_with_tag">Tucked away with %s: left out of Moments, the storyline, Explore and search.</string>
     <string name="tucked_shown_through">Shown although %s is tucked away (highlighted).</string>
+
+    <!-- Delete tag (Nov 21, 2026) -->
+    <string name="tag_delete">Delete tag</string>
+    <string name="tag_delete_title">Delete “%s”?</string>
+    <plurals name="tag_delete_body">
+        <item quantity="one">It comes off its photo. The photo stays.</item>
+        <item quantity="other">It comes off its %d photos. The photos stay.</item>
+    </plurals>
+    <string name="tag_delete_confirm">Delete</string>
 </resources>
