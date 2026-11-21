@@ -683,6 +683,7 @@ private fun LibraryScreens(
                                     storiesState,
                                     onOpenTag = { push(Route.Tag(it)) },
                                     onSetTucked = stories::setTagTucked,
+                                    onDelete = { stories.deleteTag(it) },
                                     onBack = pop,
                                     onGoToMoments = {
                                         landing = null
@@ -695,6 +696,7 @@ private fun LibraryScreens(
                                     stories = storiesState,
                                     onOpenItem = { push(Route.Viewer(null, it.id, tag = route.name)) },
                                     onBack = pop,
+                                    onDelete = { stories.deleteTag(it) },
                                     landing = landingHere,
                                 )
                                 is Route.Viewer -> {

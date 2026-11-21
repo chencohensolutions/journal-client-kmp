@@ -328,9 +328,20 @@ internal fun JournalHomeScreen(
             landed?.takeIf { (key, _) -> feedRows.getOrNull(index)?.key == key }?.second ?: rowDays.getOrNull(index)
         }
     }
-    val topDay = topRowDay ?: topSection?.let { shownFeed.section(it)?.span?.newestDay }
-    val topMonth = topDay?.let { day -> timeline.months.indexOfFirst { it.year == day.year && it.month == day.month }.takeIf { it >= 0 } }
-        ?: topSection?.let(timeline::monthOf)
+    val feedTopDay = topRowDay ?: topSection?.let { shownFeed.section(it)?.span?.newestDay }
+    // The storyline has the month pill too (Nov 21, 2026): its days with writing, the day at the top from its headings.
+    val storyRowDays = remember(storyRows) { storyRows.rowDays() }
+    val topStoryDay by remember(storyRows) {
+        derivedStateOf {
+            val info = list.layoutInfo
+            val top = info.visibleItemsInfo.firstOrNull { it.offset + it.size > 0 }?.index ?: list.firstVisibleItemIndex
+            storyRowDays.getOrNull(top - (info.totalItemsCount - storyRows.size)) ?: storyRowDays.firstOrNull { it != null }
+        }
+    }
+    val barTimeline = if (storyline) stories.storylineTimeline else timeline
+    val topDay = if (storyline) topStoryDay else feedTopDay
+    val topMonth = topDay?.let { day -> barTimeline.months.indexOfFirst { it.year == day.year && it.month == day.month }.takeIf { it >= 0 } }
+        ?: topSection?.takeIf { !storyline }?.let(timeline::monthOf)
     val scope = rememberCoroutineScope()
     // The title row and the bar under it slide away while the list scrolls down, and back as it scrolls up (asked Oct 24,
     // 2026).
@@ -655,10 +666,16 @@ internal fun JournalHomeScreen(
                                 actions.hideOnRow(section.key, photos.source)
                             }
                         }
-                        if (moments && band == null && !timeline.isEmpty) {
+                        if ((moments || storyline) && band == null && !barTimeline.isEmpty) {
                             // Slides down with the tabs into their place at the bottom, and back up with them.
                             Box(Modifier.graphicsLayer { translationY = tabsAway.value * tabsRoom[0] }) {
-                                TimelineBar(timeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                                TimelineBar(barTimeline, topMonth, topDay, timelineOpen, onOpen = { timelineOpen = it }) { day ->
+                                    if (storyline) {
+                                        // The storyline is all in the list: straight to the day's heading.
+                                        val row = storyRows.storyRowOfDay(day.day)
+                                        if (row >= 0) scope.launch { list.scrollToItem(list.layoutInfo.totalItemsCount - storyRows.size + row) }
+                                        return@TimelineBar
+                                    }
                                     val row = feedRows.rowOfDay(day.sectionKey, day.day)
                                     // The feed's rows come last in the list, after its banners. A row not in the list yet is
                                     // read first (down to it), then gone to by the key the read names: the rows may have been

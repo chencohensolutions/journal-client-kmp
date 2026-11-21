@@ -23,6 +23,14 @@ owner's team must have it).
 
 Still missing on iOS:
 
+- **Tags round 2 (Nov 21, 2026; Android only).** (1) Delete tag: on the Tags ⋯ sheet and a tag page's ⋯, red, with
+  a ConfirmSheet ("Delete “%@”?", plural "It comes off its %d photos. The photos stay."), calling
+  `stories.deleteTag(tag:)`; from a tag's page it then closes. (2) The storyline's month pill: the Moments
+  `TimelineBar` with `currentState.storylineTimeline` (only days with entries), the top day from the storyline's day
+  headings, a day tap scrolling to that day's heading (`story-day-<day>`). (3) On a set's photo in Moments, the set
+  count and the tucked mark side by side in one corner (count first). Android files: `TagsScreen.kt`
+  (TagMenuSheet, TitleBar's onMenu), `JournalHomeScreen.kt` (barTimeline, storyRowOfDay), `MomentsFeedViews.kt`
+  (TuckedMarkOf). Strings: tag_delete, tag_delete_title, tag_delete_body, tag_delete_confirm.
 - **Tagging several photos, tucked-away tags, highlight for every photo (Nov 19, 2026; Android only).** See
   [screens/tags.md](screens/tags.md#tagging-several-photos-nov-19-2026) and
   [viewer.md](screens/viewer.md#highlight-for-every-photo-nov-19-2026). Shared logic is done (`IosJournal` already

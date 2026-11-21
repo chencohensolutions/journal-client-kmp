@@ -1363,4 +1363,14 @@
     <string name="tag_unlock">פתיחה</string>
     <string name="tucked_with_tag">מוצנעת עם התגית %s: לא מופיעה ברגעים, בסיפור, בגילוי ובחיפוש.</string>
     <string name="tucked_shown_through">מופיעה למרות שהתגית %s מוצנעת (מודגשת).</string>
+
+    <!-- Delete tag (Nov 21, 2026) -->
+    <string name="tag_delete">מחיקת התגית</string>
+    <string name="tag_delete_title">למחוק את “%s”?</string>
+    <plurals name="tag_delete_body">
+        <item quantity="one">היא תוסר מהתמונה שלה. התמונה נשארת.</item>
+        <item quantity="two">היא תוסר משתי התמונות שלה. התמונות נשארות.</item>
+        <item quantity="other">היא תוסר מ־%d התמונות שלה. התמונות נשארות.</item>
+    </plurals>
+    <string name="tag_delete_confirm">מחיקה</string>
 </resources>

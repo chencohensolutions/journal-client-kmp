@@ -250,6 +250,7 @@ internal object LibraryIcons {
     val Search = icon("Search", false, "M11 4a7 7 0 1 0 0.01 0", "M20 20l-3.5-3.5")
     val Tag = icon("Tag", false, "M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z", "M7.5 7.5h0.01")
     val Close = icon("Close", false, "M6 6l12 12", "M18 6L6 18")
+    val Trash = icon("Trash", false, "M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13", "M10 11v6", "M14 11v6")
     val Stack = icon("Stack", false, "M9 7h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "M4 16V5a1 1 0 0 1 1-1h11")
     val Settings = icon("Settings", false, "M4 7h9", "M17 7h3", "M15 5v4", "M4 17h3", "M11 17h9", "M9 15v4")
     val Eye = icon("Eye", false, "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 9a3 3 0 1 0 0.01 0")

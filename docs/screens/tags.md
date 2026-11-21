@@ -135,9 +135,20 @@ mark, quick tags and Highlight in
 [TuckedViews.kt](../../androidApp/src/main/kotlin/com/chencohensolution/journal/ui/library/TuckedViews.kt), previews
 `TagsTuckedScreenshots.kt`.
 
+## Deleting a tag (Nov 21, 2026)
+
+Android; iOS not built yet ([ios-todo.md](../ios-todo.md)). The ⋯ sheet of a tag (on the Tags screen, and the ⋯ at the
+end of a tag's page title) has **Delete tag** (red, with a bin). It asks first (`ConfirmSheet`, destructive): "Delete
+"Dog"?", "It comes off its 214 photos. The photos stay." Confirming takes the tag off every photo's note, whether or
+not the photo is in the library now (`StoriesController.deleteTag`, ignoring case; a note left empty is deleted); the
+notes go to the server as any change does ([NoteSync](../design.md)), and the tag leaves the tucked list if it was
+there, so its photos come back. From its page, the page closes. One photo at a time: the × on a tag chip in the
+viewer's details (`removeTag`); the tag sheet then shows it unchecked, or "1 of 2" for several. Tests:
+`TuckedTagsTest`.
+
 ## Not built yet
 
-Renaming, merging or deleting a tag everywhere at once.
+Renaming or merging a tag everywhere at once.
 
 ## Code
 

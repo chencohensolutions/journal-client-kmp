@@ -88,6 +88,8 @@ data class StoriesState(
     val tuckedTags: List<String> = emptyList(),
     /** The photos tucked tags keep out, and what of them this session shows. */
     val tagged: TagTucking = TagTucking.NONE,
+    /** The storyline's months and days, for its month pill ([FeedTimeline.ofStoryline]). */
+    val storylineTimeline: FeedTimeline = FeedTimeline.NONE,
 ) {
     // Compared by identity: each rebuild is a new state, and comparing two of a large library field by field took
     // longer than a frame on the main thread (StateFlow and Compose compare every new value with the last).
@@ -282,6 +284,7 @@ internal fun buildState(
         error = error,
         tuckedTags = tuckedTags,
         tagged = tagged,
+        storylineTimeline = FeedTimeline.ofStoryline(storylineDays),
     )
 }
 

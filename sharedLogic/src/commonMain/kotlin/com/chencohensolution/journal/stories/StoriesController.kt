@@ -782,6 +782,49 @@ class StoriesController internal constructor(
     }
 
     /**
+     * Delete tag (Nov 21, 2026): [tag] (ignoring case) comes off every photo's note, whether or not the photo is in the
+     * library now; the photos stay. The notes are sent to the server as any change is ([NoteSync]), and the tag leaves
+     * the tucked list if it was there. Returns how many notes changed.
+     */
+    fun deleteTag(tag: String): Int {
+        val carrying = notes.values.filter { note -> note.tags.any { it.equals(tag, ignoreCase = true) } }
+        if (carrying.isNotEmpty()) {
+            val time = now()
+            try {
+                carrying.forEach { note ->
+                    val changed = note.copy(tags = note.tags.filterNot { it.equals(tag, ignoreCase = true) }, updatedAt = time)
+                    if (changed.isEmpty) {
+                        noteStore.delete(note.deviceId)
+                        notes = notes - note.deviceId
+                    } else {
+                        noteStore.save(changed)
+                        notes = notes + (note.deviceId to changed)
+                    }
+                }
+                error = null
+            } catch (e: Exception) {
+                error = e.describe()
+            }
+            try {
+                outbox?.add(carrying.map { it.deviceId })
+            } catch (e: Exception) {
+                // Sent with the notes' next change.
+            }
+            // A tucked tag's photos come back: their days are made again (the tucked list's change remakes them all).
+            if (feed != null) {
+                val days = carrying.mapNotNull { _state.value.itemsById[it.deviceId]?.day ?: readItems[it.deviceId]?.day }.toSet()
+                if (days.isNotEmpty()) scope.launch {
+                    feed.markDays(days)
+                    outsideChanges.value++
+                }
+            }
+        }
+        if (tuckedTags.isTucked(tag)) setTagTucked(tag, false)
+        publish()
+        return carrying.size
+    }
+
+    /**
      * Tucks the tag [tag] away ([on]): its photos leave Moments, the storyline, Explore and search, each day saying how
      * many it holds ("3 Dog"); or brings it back. Saved on the phone and synced with the server ([TuckedTags]); no
      * file is marked.

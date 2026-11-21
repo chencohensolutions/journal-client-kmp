@@ -82,6 +82,13 @@ class FeedTimeline(val months: List<TimelineMonth>) {
             return of(days.values)
         }
 
+        /**
+         * The storyline's timeline (Nov 21, 2026): its days with writing shown, each counting its entries; a day of
+         * only tucked-away photos has nothing to go to and is left out. The key is the day's heading's.
+         */
+        fun ofStoryline(days: List<StorylineDay>): FeedTimeline =
+            of(days.filter { it.items.isNotEmpty() }.map { TimelineDay(it.day, it.items.size, "story-day-${it.day}") })
+
         /** The timeline of [days], each with the row it is in (the database's rows: FeedTable.timeline). */
         internal fun of(days: Collection<TimelineDay>): FeedTimeline {
             val months = days.sortedByDescending { it.day }.groupBy { it.day.year to it.day.month }

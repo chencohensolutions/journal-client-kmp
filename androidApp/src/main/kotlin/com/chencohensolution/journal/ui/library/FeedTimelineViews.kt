@@ -649,8 +649,12 @@ private fun FeedRow.newestDay(): LocalDay? = when (this) {
     is FeedRow.Label -> moment.items.maxByOrNull { it.takenAtMillis }?.day
     is FeedRow.RecordingBar -> moment.items.maxByOrNull { it.takenAtMillis }?.day
     is FeedRow.Photo -> block.items.maxByOrNull { it.takenAtMillis }?.day
+    is FeedRow.StoryDay -> day
     else -> null
 }
+
+/** The storyline's heading of [day]; -1 when it has none (Nov 21, 2026: the storyline's month pill). */
+internal fun List<FeedRow>.storyRowOfDay(day: LocalDay): Int = indexOfFirst { it is FeedRow.StoryDay && it.day == day }
 
 /** Each feed row's day: its own newest, or the one above it for rows without photos. The pill's day at the top. */
 internal fun List<FeedRow>.rowDays(): List<LocalDay?> {

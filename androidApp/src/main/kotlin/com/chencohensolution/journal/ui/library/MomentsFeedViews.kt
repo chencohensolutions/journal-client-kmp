@@ -806,7 +806,14 @@ private fun FullWidthPhoto(item: MediaItem, video: FeedVideo, crop: CropRect?, m
  * length, playing in place while [video] says so.
  */
 @Composable
-private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: CropRect? = null) {
+private fun PhotoOrVideo(
+    item: MediaItem,
+    video: FeedVideo,
+    width: Int,
+    frame: CropRect? = null,
+    /** False for a set's photo: the set draws the mark beside its count, so the two never overlap. */
+    tuckedMark: Boolean = true,
+) {
     val playing = video.isPlaying(item)
     // Start over each time it starts playing.
     var showing by remember(item.id, playing) { mutableStateOf(false) }
@@ -849,11 +856,18 @@ private fun PhotoOrVideo(item: MediaItem, video: FeedVideo, width: Int, frame: C
             )
         }
         item.durationMillis?.let { VideoLength(it, Modifier.align(Alignment.BottomStart).padding(10.dp)) }
-        // Tucked away and revealed for the session.
-        // Or revealed with its tucked tag: the mark says which.
-        val tuckedTag = if (item.isTucked) null else LocalTucked.current.tagOf(item.id)
-        if (item.isTucked || tuckedTag != null) TuckedMark(Modifier.align(Alignment.TopEnd).padding(10.dp), tuckedTag)
+        if (tuckedMark) TuckedMarkOf(item, Modifier.align(Alignment.TopEnd).padding(10.dp))
     }
+}
+
+/**
+ * Tucked away and revealed for the session, or revealed with its tucked tag (the mark says which); nothing for a
+ * photo that isn't.
+ */
+@Composable
+private fun TuckedMarkOf(item: MediaItem, modifier: Modifier = Modifier) {
+    val tuckedTag = if (item.isTucked) null else LocalTucked.current.tagOf(item.id)
+    if (item.isTucked || tuckedTag != null) TuckedMark(modifier, tuckedTag)
 }
 
 /**
@@ -1081,19 +1095,26 @@ private fun SetCover(
             val ratio = item.shownRatio(crop)
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Box(Modifier.aspectRatio(ratio, matchHeightConstraintsFirst = ratio < boxRatio).shared(SharedKey.item(item.id))) {
-                    PhotoOrVideo(item, video, if (ratio >= boxRatio) width else (width / boxRatio * ratio).toInt(), crop)
+                    PhotoOrVideo(item, video, if (ratio >= boxRatio) width else (width / boxRatio * ratio).toInt(), crop, tuckedMark = false)
                 }
             }
         }
+        // The set's count, then the tucked mark of the photo shown, side by side in one corner (Nov 21, 2026: they
+        // overlapped); the row follows the language's direction.
         Row(
-            Modifier.align(Alignment.TopEnd).padding(10.dp)
-                .background(LibraryColors.BadgeScrim, RoundedCornerShape(50))
-                .padding(horizontal = 9.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            Modifier.align(Alignment.TopEnd).padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
-            Text(items.size.toString(), color = LibraryColors.PhotoText, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
+            Row(
+                Modifier.height(26.dp).background(LibraryColors.BadgeScrim, RoundedCornerShape(50)).padding(horizontal = 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(LibraryIcons.Stack, null, tint = LibraryColors.PhotoText, modifier = Modifier.size(13.dp))
+                Text(items.size.toString(), color = LibraryColors.PhotoText, style = LibraryType.Small, fontWeight = FontWeight.SemiBold)
+            }
+            TuckedMarkOf(shown)
         }
         if (scrubbing) {
             Text(
